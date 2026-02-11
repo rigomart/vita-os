@@ -6,27 +6,27 @@ import { defineConfig } from "vite";
 
 // https://vite.dev/config/
 export default defineConfig({
-	plugins: [
-		tanstackRouter({
-			target: "react",
-			autoCodeSplitting: true,
-		}),
-		react({
-			babel: {
-				plugins: [["babel-plugin-react-compiler"]],
-			},
-		}),
-		tailwindcss(),
-	],
-	resolve: {
-		alias: {
-			"@": "/src",
-		},
-	},
-	test: {
-		globals: true,
-		environment: "jsdom",
-		setupFiles: ["./src/test/setup.ts"],
-		css: true,
-	},
+  plugins: [
+    tanstackRouter({
+      target: "react",
+      autoCodeSplitting: true,
+    }),
+    react({
+      babel: {
+        plugins: [["babel-plugin-react-compiler"]],
+      },
+    }),
+    tailwindcss(),
+  ],
+  resolve: {
+    alias: {
+      "@": "/src",
+    },
+  },
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
+    css: true,
+  },
 });

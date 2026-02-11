@@ -6,14 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "biome check .",
+    "lint": "biome check --write .",
     "format": "biome format --write .",
-    "check": "biome check --write .",
     "test": "vitest",
     "test:run": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@convex-dev/better-auth": "^0.10.10",
+    "better-auth": "1.4.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.31.7",
