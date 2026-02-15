@@ -4,6 +4,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { AddTaskRow } from "@/components/tasks/add-task-row";
 import { CompletedSection } from "@/components/tasks/completed-section";
 import { TaskListSkeleton } from "@/components/tasks/task-list-skeleton";
@@ -21,7 +22,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ProjectFormDialog } from "./-project-form-dialog";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   component: ProjectDetailPage,
