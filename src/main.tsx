@@ -7,7 +7,13 @@ import { authClient } from "./lib/auth-client";
 import { routeTree } from "./routeTree.gen";
 import "./index.css";
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+if (!import.meta.env.VITE_CONVEX_URL) {
+  throw new Error("VITE_CONVEX_URL is not set");
+}
+
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL, {
+  expectAuth: true,
+});
 
 const router = createRouter({ routeTree });
 

@@ -1,30 +1,17 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { authClient } from "@/lib/auth-client";
 
-export const Route = createFileRoute("/")({
-  beforeLoad: async () => {
-    const { data: session } = await authClient.getSession();
-    if (!session) {
-      throw redirect({ to: "/sign-in" });
-    }
-  },
+export const Route = createFileRoute("/_authenticated/")({
   component: Index,
 });
 
 function Index() {
-  const navigate = useNavigate();
   const { data: session } = authClient.useSession();
 
   const handleSignOut = async () => {
-    await authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          navigate({ to: "/sign-in" });
-        },
-      },
-    });
+    await authClient.signOut();
   };
 
   return (

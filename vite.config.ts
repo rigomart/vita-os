@@ -29,4 +29,7 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     css: true,
   },
+  preview: {
+    port: 5173,
+  },
 });
