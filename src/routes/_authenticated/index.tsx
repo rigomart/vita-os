@@ -97,6 +97,11 @@ function TaskRow({ task }: { task: Doc<"tasks"> }) {
           >
             {task.title}
           </span>
+          {task.description && (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {task.description}
+            </p>
+          )}
           {task.dueDate && <DueDateLabel timestamp={task.dueDate} />}
         </div>
         <Button
@@ -143,6 +148,7 @@ function DueDateLabel({ timestamp }: { timestamp: number }) {
 function AddTaskRow() {
   const [isAdding, setIsAdding] = useState(false);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const createTask = useMutation(api.tasks.create).withOptimisticUpdate(
     (localStore, args) => {
@@ -156,6 +162,7 @@ function AddTaskRow() {
           _creationTime: Date.now(),
           userId: "",
           title: args.title,
+          description: args.description,
           isCompleted: false,
           dueDate: args.dueDate,
           order: maxOrder + 1,
@@ -169,14 +176,21 @@ function AddTaskRow() {
     const trimmed = title.trim();
     if (!trimmed) return;
 
-    createTask({ title: trimmed, dueDate: dueDate?.getTime() });
+    const trimmedDesc = description.trim();
+    createTask({
+      title: trimmed,
+      description: trimmedDesc || undefined,
+      dueDate: dueDate?.getTime(),
+    });
     setTitle("");
+    setDescription("");
     setDueDate(undefined);
     setIsAdding(false);
   };
 
   const handleCancel = () => {
     setTitle("");
+    setDescription("");
     setDueDate(undefined);
     setIsAdding(false);
   };
@@ -218,6 +232,13 @@ function AddTaskRow() {
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleKeyDown}
           className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        />
+        <textarea
+          placeholder="Description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={2}
+          className="w-full resize-none bg-transparent text-xs text-muted-foreground outline-none placeholder:text-muted-foreground"
         />
         <div className="flex items-center justify-between">
           <Popover>

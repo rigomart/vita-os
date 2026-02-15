@@ -5,6 +5,7 @@ export default defineSchema({
   tasks: defineTable({
     userId: v.string(),
     title: v.string(),
+    description: v.optional(v.string()),
     isCompleted: v.boolean(),
     dueDate: v.optional(v.number()),
     order: v.number(),

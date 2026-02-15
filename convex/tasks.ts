@@ -18,6 +18,7 @@ export const list = query({
 export const create = mutation({
   args: {
     title: v.string(),
+    description: v.optional(v.string()),
     dueDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -35,6 +36,7 @@ export const create = mutation({
     return ctx.db.insert("tasks", {
       userId,
       title: args.title,
+      description: args.description,
       isCompleted: false,
       dueDate: args.dueDate,
       order: nextOrder,
@@ -47,6 +49,8 @@ export const update = mutation({
   args: {
     id: v.id("tasks"),
     title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    clearDescription: v.optional(v.boolean()),
     isCompleted: v.optional(v.boolean()),
     dueDate: v.optional(v.number()),
     clearDueDate: v.optional(v.boolean()),
@@ -63,6 +67,11 @@ export const update = mutation({
     const updates: Record<string, unknown> = {};
     if (args.title !== undefined) updates.title = args.title;
     if (args.isCompleted !== undefined) updates.isCompleted = args.isCompleted;
+    if (args.clearDescription) {
+      updates.description = undefined;
+    } else if (args.description !== undefined) {
+      updates.description = args.description;
+    }
     if (args.clearDueDate) {
       updates.dueDate = undefined;
     } else if (args.dueDate !== undefined) {
