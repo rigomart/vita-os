@@ -45,7 +45,6 @@ function SignIn() {
   const handleGitHub = async () => {
     await authClient.signIn.social({
       provider: "github",
-      callbackURL: "/",
     });
   };
 
