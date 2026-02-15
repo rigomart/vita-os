@@ -8,9 +8,27 @@ export const list = query({
     const user = await authComponent.safeGetAuthUser(ctx);
     if (!user) return [];
     const userId = String(user._id);
-    return ctx.db
+    const tasks = await ctx.db
       .query("tasks")
       .withIndex("by_user_order", (q) => q.eq("userId", userId))
+      .collect();
+    return tasks.filter((t) => t.projectId === undefined);
+  },
+});
+
+export const listByProject = query({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) return [];
+    const userId = String(user._id);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.userId !== userId) return [];
+
+    return ctx.db
+      .query("tasks")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
   },
 });
@@ -20,6 +38,7 @@ export const create = mutation({
     title: v.string(),
     description: v.optional(v.string()),
     dueDate: v.optional(v.number()),
+    projectId: v.optional(v.id("projects")),
   },
   handler: async (ctx, args) => {
     const user = await authComponent.getAuthUser(ctx);
@@ -39,6 +58,7 @@ export const create = mutation({
       description: args.description,
       isCompleted: false,
       dueDate: args.dueDate,
+      projectId: args.projectId,
       order: nextOrder,
       createdAt: Date.now(),
     });
@@ -54,6 +74,8 @@ export const update = mutation({
     isCompleted: v.optional(v.boolean()),
     dueDate: v.optional(v.number()),
     clearDueDate: v.optional(v.boolean()),
+    projectId: v.optional(v.id("projects")),
+    clearProjectId: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await authComponent.getAuthUser(ctx);
@@ -76,6 +98,11 @@ export const update = mutation({
       updates.dueDate = undefined;
     } else if (args.dueDate !== undefined) {
       updates.dueDate = args.dueDate;
+    }
+    if (args.clearProjectId) {
+      updates.projectId = undefined;
+    } else if (args.projectId !== undefined) {
+      updates.projectId = args.projectId;
     }
 
     await ctx.db.patch(args.id, updates);
