@@ -33,16 +33,23 @@ Convex: `bunx convex dev` to start the Convex dev server (syncs functions and sc
 
 ## Architecture
 
-**Frontend** (Vite + React 19 + TypeScript 5.9):
+**Frontend** (Vite 7 + React 19 + TypeScript 5.9):
 - `src/main.tsx` — Entry point. `ConvexBetterAuthProvider` wraps `RouterProvider`.
-- `src/routes/` — TanStack Router file-based routing. `__root.tsx` is the root layout; add pages by creating new files here. The route tree is auto-generated at `src/routeTree.gen.ts` (gitignored).
+- `src/routes/` — TanStack Router file-based routing with layout-based route groups:
+  - `__root.tsx` — Root layout with devtools.
+  - `_authenticated/` — Protected routes (redirects to `/sign-in` if not authenticated). Contains `route.tsx` (layout with header) and `index.tsx` (Inbox/tasks page).
+  - `_unauthenticated/` — Public routes. Contains `route.tsx` (layout), `sign-in.tsx`, `sign-up.tsx`.
+  - Route tree auto-generated at `src/routeTree.gen.ts` (gitignored).
 - `src/components/ui/` — shadcn/ui components (added via CLI, not hand-written).
+- `src/components/auth/` — Auth-related components (e.g. loading spinner).
 - `src/lib/utils.ts` — `cn()` helper for Tailwind class merging.
 - `src/lib/auth-client.ts` — Better Auth client (signIn, signUp, signOut, useSession).
 - `src/index.css` — Tailwind v4 imports + shadcn CSS variables (light/dark themes).
+- React Compiler enabled via `babel-plugin-react-compiler` in `vite.config.ts`.
 
 **Backend** (Convex):
-- `convex/` — Convex functions (queries, mutations, actions). Files here deploy as serverless functions.
+- `convex/schema.ts` — Database schema. Currently defines `tasks` table (title, description, isCompleted, dueDate, order, createdAt, userId).
+- `convex/tasks.ts` — Task CRUD: `list` query, `create`/`update`/`remove` mutations with auth checks and optimistic update support on the frontend.
 - `convex/auth.ts` — Better Auth server config. Exports `authComponent`, `createAuth`, `getCurrentUser`.
 - `convex/http.ts` — HTTP router with auth routes.
 - `convex/convex.config.ts` — Convex app config registering the Better Auth component.
@@ -52,14 +59,15 @@ Convex: `bunx convex dev` to start the Convex dev server (syncs functions and sc
 ## Code Style
 
 Biome handles all linting and formatting. Key settings:
-- **Tabs** for indentation, **double quotes**, line width **80**
+- **Spaces** for indentation, **double quotes**, line width **80**
 - Organize imports enabled
-- `routeTree.gen.ts` is excluded from linting
+- `routeTree.gen.ts` and `convex/_generated` are excluded from linting
 
 ## Vite Plugin Order
 
 In `vite.config.ts`, the TanStack Router plugin **must** come before the React plugin.
 
-## Path Alias
+## Path Aliases
 
-`@` maps to `./src` — use `@/components/...`, `@/lib/...`, etc.
+- `@` maps to `./src` — use `@/components/...`, `@/lib/...`, etc.
+- `@convex` maps to `./convex` — use `@convex/_generated/...`, etc.
