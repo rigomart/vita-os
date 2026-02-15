@@ -1,6 +1,17 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import { format, isToday, isTomorrow } from "date-fns";
 import { Calendar as CalendarIcon, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
@@ -43,15 +54,35 @@ export function TaskRow({
           )}
           {task.dueDate && <DueDateLabel timestamp={task.dueDate} />}
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
-          onClick={() => removeTask({ id: task._id })}
-          aria-label="Delete task"
-        >
-          <Trash2 className="h-4 w-4 text-muted-foreground" />
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+              aria-label="Delete task"
+            >
+              <Trash2 className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete task?</AlertDialogTitle>
+              <AlertDialogDescription>
+                &ldquo;{task.title}&rdquo; will be permanently deleted.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => removeTask({ id: task._id })}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
       <Separator />
     </>
