@@ -3,9 +3,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { FolderOpen, Plus } from "lucide-react";
 import { useState } from "react";
+import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ProjectFormDialog } from "./-project-form-dialog";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   component: ProjectsPage,
