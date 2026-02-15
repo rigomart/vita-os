@@ -1,5 +1,5 @@
 import { api } from "@convex/_generated/api";
-import type { Doc } from "@convex/_generated/dataModel";
+import type { Doc, Id } from "@convex/_generated/dataModel";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { format, isToday, isTomorrow } from "date-fns";
@@ -47,8 +47,34 @@ function Inbox() {
 }
 
 function TaskRow({ task }: { task: Doc<"tasks"> }) {
-  const updateTask = useMutation(api.tasks.update);
-  const removeTask = useMutation(api.tasks.remove);
+  const updateTask = useMutation(api.tasks.update).withOptimisticUpdate(
+    (localStore, args) => {
+      const tasks = localStore.getQuery(api.tasks.list, {});
+      if (tasks === undefined) return;
+      const { id, ...updates } = args;
+
+      const updatedTask = tasks.find((t) => t._id === id);
+
+      if (!updatedTask) return;
+
+      localStore.setQuery(
+        api.tasks.list,
+        {},
+        tasks.map((t) => (t._id === id ? { ...updatedTask, ...updates } : t)),
+      );
+    },
+  );
+  const removeTask = useMutation(api.tasks.remove).withOptimisticUpdate(
+    (localStore, args) => {
+      const tasks = localStore.getQuery(api.tasks.list, {});
+      if (tasks === undefined) return;
+      localStore.setQuery(
+        api.tasks.list,
+        {},
+        tasks.filter((t) => t._id !== args.id),
+      );
+    },
+  );
 
   return (
     <>
@@ -118,17 +144,32 @@ function AddTaskRow() {
   const [isAdding, setIsAdding] = useState(false);
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState<Date | undefined>();
-  const createTask = useMutation(api.tasks.create);
+  const createTask = useMutation(api.tasks.create).withOptimisticUpdate(
+    (localStore, args) => {
+      const tasks = localStore.getQuery(api.tasks.list, {});
+      if (tasks === undefined) return;
+      const maxOrder = tasks.reduce((max, t) => Math.max(max, t.order), -1);
+      localStore.setQuery(api.tasks.list, {}, [
+        ...tasks,
+        {
+          _id: crypto.randomUUID() as Id<"tasks">,
+          _creationTime: Date.now(),
+          userId: "",
+          title: args.title,
+          isCompleted: false,
+          dueDate: args.dueDate,
+          order: maxOrder + 1,
+          createdAt: Date.now(),
+        },
+      ]);
+    },
+  );
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     const trimmed = title.trim();
     if (!trimmed) return;
 
-    await createTask({
-      title: trimmed,
-      dueDate: dueDate?.getTime(),
-    });
-
+    createTask({ title: trimmed, dueDate: dueDate?.getTime() });
     setTitle("");
     setDueDate(undefined);
     setIsAdding(false);
