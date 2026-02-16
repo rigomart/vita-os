@@ -90,20 +90,23 @@ export function AppSidebar() {
                 <Link to="/projects">Projects</Link>
               </SidebarGroupLabel>
               <CollapsibleTrigger asChild>
-                <SidebarGroupAction className="right-8">
+                <SidebarGroupAction>
                   <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
                   <span className="sr-only">Toggle projects</span>
                 </SidebarGroupAction>
               </CollapsibleTrigger>
-              <SidebarGroupAction
-                title="New project"
-                onClick={() => setShowCreateProject(true)}
-              >
-                <Plus />
-              </SidebarGroupAction>
               <CollapsibleContent>
                 <SidebarGroupContent>
                   <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        tooltip="New project"
+                        onClick={() => setShowCreateProject(true)}
+                      >
+                        <Plus />
+                        <span>New project</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                     {projects?.map((project) => {
                       return (
                         <SidebarMenuItem key={project._id}>
