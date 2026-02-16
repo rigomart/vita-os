@@ -1,5 +1,5 @@
 import { api } from "@convex/_generated/api";
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { FolderOpen, Inbox, LogOut, Plus } from "lucide-react";
 import { useState } from "react";
@@ -23,6 +23,7 @@ import { authClient } from "@/lib/auth-client";
 export function AppSidebar() {
   const { data: session } = authClient.useSession();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const projects = useQuery(api.projects.list);
   const createProject = useMutation(api.projects.create);
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -128,7 +129,10 @@ export function AppSidebar() {
       <ProjectFormDialog
         open={showCreateProject}
         onOpenChange={setShowCreateProject}
-        onSubmit={(data) => createProject(data)}
+        onSubmit={async (data) => {
+          const projectId = await createProject(data);
+          navigate({ to: "/projects/$projectId", params: { projectId } });
+        }}
       />
     </>
   );
