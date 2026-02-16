@@ -1,0 +1,13 @@
+{
+  "extends": "//",
+  "files": {
+    "includes": ["**", "!**/routeTree.gen.ts", "!**/convex/_generated"]
+  },
+  "linter": {
+    "domains": {
+      "react": "recommended",
+      "test": "recommended",
+      "turborepo": "all"
+    }
+  }
+}
