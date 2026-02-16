@@ -1,6 +1,8 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import { format, isToday, isTomorrow } from "date-fns";
 import { Calendar as CalendarIcon, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { EditTaskDialog } from "@/components/tasks/edit-task-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +27,7 @@ export function TaskRow({
   projectId?: Id<"projects">;
 }) {
   const { updateTask, removeTask } = useTaskMutations(projectId);
+  const [editOpen, setEditOpen] = useState(false);
 
   return (
     <>
@@ -39,7 +42,11 @@ export function TaskRow({
           }
           className="mt-0.5 rounded-full"
         />
-        <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          className="min-w-0 flex-1 cursor-pointer text-left"
+          onClick={() => setEditOpen(true)}
+        >
           <span
             className={
               task.isCompleted ? "line-through text-muted-foreground" : ""
@@ -53,7 +60,7 @@ export function TaskRow({
             </p>
           )}
           {task.dueDate && <DueDateLabel timestamp={task.dueDate} />}
-        </div>
+        </button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button
@@ -83,6 +90,12 @@ export function TaskRow({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        <EditTaskDialog
+          task={task}
+          projectId={projectId}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
       </div>
       <Separator />
     </>
