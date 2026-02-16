@@ -1,9 +1,17 @@
 import { api } from "@convex/_generated/api";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { FolderOpen, Inbox, LogOut, Plus } from "lucide-react";
+import { ChevronsUpDown, FolderOpen, Inbox, LogOut, Plus } from "lucide-react";
 import { useState } from "react";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -110,15 +118,61 @@ export function AppSidebar() {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip="Sign out"
-                onClick={() => authClient.signOut()}
-              >
-                <LogOut />
-                <span className="truncate text-xs text-muted-foreground">
-                  {session?.user?.email ?? "Sign out"}
-                </span>
-              </SidebarMenuButton>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton
+                    size="lg"
+                    tooltip={
+                      session?.user?.name ?? session?.user?.email ?? "Account"
+                    }
+                  >
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                      {(
+                        session?.user?.name?.[0] ??
+                        session?.user?.email?.[0] ??
+                        "?"
+                      ).toUpperCase()}
+                    </div>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-medium">
+                        {session?.user?.name ??
+                          session?.user?.email ??
+                          "Account"}
+                      </span>
+                      {session?.user?.name && (
+                        <span className="truncate text-xs text-muted-foreground">
+                          {session.user.email}
+                        </span>
+                      )}
+                    </div>
+                    <ChevronsUpDown className="ml-auto size-4" />
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  className="w-[--radix-dropdown-menu-trigger-width] min-w-56"
+                  side="top"
+                  align="start"
+                  sideOffset={4}
+                >
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col gap-1">
+                      {session?.user?.name && (
+                        <p className="text-sm font-medium leading-none">
+                          {session.user.name}
+                        </p>
+                      )}
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {session?.user?.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => authClient.signOut()}>
+                    <LogOut />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
