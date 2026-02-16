@@ -27,7 +27,7 @@ bun run test:run     # Run tests once
 bunx vitest run src/path/to/file.test.tsx  # Run a single test file
 ```
 
-Add shadcn components: `bunx shadcn@latest add <component>`
+Add **new** shadcn components: `bunx shadcn@latest add <component>`. **Do NOT use `--overwrite`** — existing components in `src/components/ui/` may have custom modifications.
 
 Convex: `bunx convex dev` to start the Convex dev server (syncs functions and schema).
 
@@ -39,7 +39,7 @@ Convex: `bunx convex dev` to start the Convex dev server (syncs functions and sc
   - `__root.tsx` — Root layout with devtools.
   - `_authenticated/` — Protected routes (redirects to `/sign-in` if not authenticated). Contains `route.tsx` (layout with header) and `index.tsx` (Inbox/tasks page).
   - `_unauthenticated/` — Public routes. Contains `route.tsx` (layout), `sign-in.tsx`, `sign-up.tsx`.
-  - Route tree auto-generated at `src/routeTree.gen.ts` (gitignored).
+  - Route tree auto-generated at `src/routeTree.gen.ts` (committed per TanStack Router docs). **When adding, removing, or renaming route files**, run `bunx tsr generate` to regenerate it and include the updated file in your commit.
 - `src/components/ui/` — shadcn/ui components (added via CLI, not hand-written).
 - `src/components/auth/` — Auth-related components (e.g. loading spinner).
 - `src/lib/utils.ts` — `cn()` helper for Tailwind class merging.
