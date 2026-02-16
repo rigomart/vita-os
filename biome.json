@@ -1,18 +1,12 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.0/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
     "useIgnoreFile": true
   },
   "files": {
-    "includes": [
-      "**",
-      "!**/node_modules",
-      "!**/dist",
-      "!**/routeTree.gen.ts",
-      "!**/convex/_generated"
-    ]
+    "includes": ["**", "!**/node_modules", "!**/dist", "!**/.turbo"]
   },
   "formatter": {
     "enabled": true,
