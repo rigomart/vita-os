@@ -83,28 +83,18 @@ export function AppSidebar() {
 
           <Collapsible defaultOpen className="group/collapsible">
             <SidebarGroup>
-              <SidebarGroupLabel asChild>
-                <div>
-                  <Link
-                    to="/projects"
-                    className={
-                      pathname.startsWith("/projects")
-                        ? "text-sidebar-foreground"
-                        : ""
-                    }
-                  >
-                    Projects
-                  </Link>
-                  <CollapsibleTrigger asChild>
-                    <button
-                      type="button"
-                      className="ml-auto p-0.5 rounded-md hover:bg-sidebar-accent"
-                    >
-                      <ChevronRight className="size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                    </button>
-                  </CollapsibleTrigger>
-                </div>
+              <SidebarGroupLabel
+                asChild
+                className="hover:text-sidebar-foreground"
+              >
+                <Link to="/projects">Projects</Link>
               </SidebarGroupLabel>
+              <CollapsibleTrigger asChild>
+                <SidebarGroupAction className="right-8">
+                  <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                  <span className="sr-only">Toggle projects</span>
+                </SidebarGroupAction>
+              </CollapsibleTrigger>
               <SidebarGroupAction
                 title="New project"
                 onClick={() => setShowCreateProject(true)}
