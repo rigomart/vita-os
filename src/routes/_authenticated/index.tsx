@@ -1,6 +1,7 @@
 import { api } from "@convex/_generated/api";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
+import { PageHeader } from "@/components/layout/page-header";
 import { AddTaskRow } from "@/components/tasks/add-task-row";
 import { CompletedSection } from "@/components/tasks/completed-section";
 import { TaskListSkeleton } from "@/components/tasks/task-list-skeleton";
@@ -24,7 +25,7 @@ function Inbox() {
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-bold">Inbox</h1>
+      <PageHeader title="Inbox" />
       <div>
         {activeTasks.map((task) => (
           <TaskRow key={task._id} task={task} />
