@@ -2,8 +2,9 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { PageHeader } from "@/components/layout/page-header";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { AddTaskRow } from "@/components/tasks/add-task-row";
 import { CompletedSection } from "@/components/tasks/completed-section";
@@ -66,17 +67,12 @@ function ProjectDetailPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <Link
-          to="/projects"
-          className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          Projects
-        </Link>
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{project.name}</h1>
-          <div className="flex items-center gap-1">
+      <PageHeader
+        title={project.name}
+        backLink={{ label: "Projects", to: "/projects" }}
+        description={project.description || undefined}
+        actions={
+          <>
             <Button
               variant="ghost"
               size="icon"
@@ -110,14 +106,9 @@ function ProjectDetailPage() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </div>
-        </div>
-        {project.description && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {project.description}
-          </p>
-        )}
-      </div>
+          </>
+        }
+      />
 
       {project.definitionOfDone && (
         <div className="mb-6 rounded-md border p-4">

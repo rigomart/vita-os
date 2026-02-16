@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { FolderOpen, Plus, Search, X } from "lucide-react";
 import { useState } from "react";
+import { PageHeader } from "@/components/layout/page-header";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,17 +33,19 @@ function ProjectsPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Projects</h1>
-        <Button
-          size="sm"
-          className="gap-1.5"
-          onClick={() => setShowCreate(true)}
-        >
-          <Plus className="h-4 w-4" />
-          New project
-        </Button>
-      </div>
+      <PageHeader
+        title="Projects"
+        actions={
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setShowCreate(true)}
+          >
+            <Plus className="h-4 w-4" />
+            New project
+          </Button>
+        }
+      />
 
       {projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -118,7 +121,7 @@ function ProjectsPage() {
 function ProjectsListSkeleton() {
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <div className="h-8 w-24 animate-pulse rounded bg-muted" />
         <div className="h-8 w-28 animate-pulse rounded bg-muted" />
       </div>
