@@ -1,9 +1,21 @@
 import { api } from "@convex/_generated/api";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { ChevronsUpDown, FolderOpen, Inbox, LogOut, Plus } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronsUpDown,
+  FolderOpen,
+  Inbox,
+  LogOut,
+  Plus,
+} from "lucide-react";
 import { useState } from "react";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,50 +81,56 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <SidebarGroup>
-            <SidebarGroupLabel>Projects</SidebarGroupLabel>
-            <SidebarGroupAction
-              title="New project"
-              onClick={() => setShowCreateProject(true)}
-            >
-              <Plus />
-            </SidebarGroupAction>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {projects?.map((project) => {
-                  return (
-                    <SidebarMenuItem key={project._id}>
+          <Collapsible defaultOpen className="group/collapsible">
+            <SidebarGroup>
+              <SidebarGroupLabel
+                asChild
+                className="hover:text-sidebar-foreground"
+              >
+                <Link to="/projects">Projects</Link>
+              </SidebarGroupLabel>
+              <CollapsibleTrigger asChild>
+                <SidebarGroupAction>
+                  <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                  <span className="sr-only">Toggle projects</span>
+                </SidebarGroupAction>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
                       <SidebarMenuButton
-                        asChild
-                        isActive={pathname === `/projects/${project._id}`}
-                        tooltip={project.name}
+                        tooltip="New project"
+                        onClick={() => setShowCreateProject(true)}
                       >
-                        <Link
-                          to="/projects/$projectId"
-                          params={{ projectId: project._id }}
-                        >
-                          <FolderOpen />
-                          <span>{project.name}</span>
-                        </Link>
+                        <Plus />
+                        <span>New project</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                  );
-                })}
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === "/projects"}
-                    tooltip="All projects"
-                  >
-                    <Link to="/projects">
-                      <FolderOpen />
-                      <span>All projects</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                    {projects?.map((project) => {
+                      return (
+                        <SidebarMenuItem key={project._id}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={pathname === `/projects/${project._id}`}
+                            tooltip={project.name}
+                          >
+                            <Link
+                              to="/projects/$projectId"
+                              params={{ projectId: project._id }}
+                            >
+                              <FolderOpen />
+                              <span>{project.name}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
         </SidebarContent>
 
         <SidebarFooter>
