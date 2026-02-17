@@ -1,5 +1,4 @@
 import { api } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { format } from "date-fns";
@@ -26,17 +25,17 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useProjectMutations } from "@/hooks/use-project-mutations";
 
-export const Route = createFileRoute("/_authenticated/projects/$projectId")({
+export const Route = createFileRoute("/_authenticated/projects/$projectSlug")({
   component: ProjectDetailPage,
 });
 
 function ProjectDetailPage() {
-  const { projectId } = Route.useParams();
-  const id = projectId as Id<"projects">;
-  const project = useQuery(api.projects.get, { id });
-  const tasks = useQuery(api.tasks.listByProject, {
-    projectId: id,
-  });
+  const { projectSlug } = Route.useParams();
+  const project = useQuery(api.projects.getBySlug, { slug: projectSlug });
+  const tasks = useQuery(
+    api.tasks.listByProject,
+    project ? { projectId: project._id } : "skip",
+  );
   const { updateProject, removeProject } = useProjectMutations();
   const navigate = useNavigate();
   const [showEdit, setShowEdit] = useState(false);
@@ -62,7 +61,7 @@ function ProjectDetailPage() {
   const completedTasks = tasks.filter((t) => t.isCompleted);
 
   const handleDelete = async () => {
-    await removeProject({ id });
+    await removeProject({ id: project._id });
     navigate({ to: "/projects" });
   };
 
@@ -139,11 +138,11 @@ function ProjectDetailPage() {
 
       <div>
         {activeTasks.map((task) => (
-          <TaskRow key={task._id} task={task} projectId={id} />
+          <TaskRow key={task._id} task={task} projectId={project._id} />
         ))}
-        <AddTaskRow projectId={id} />
+        <AddTaskRow projectId={project._id} />
         {completedTasks.length > 0 && (
-          <CompletedSection tasks={completedTasks} projectId={id} />
+          <CompletedSection tasks={completedTasks} projectId={project._id} />
         )}
       </div>
 
@@ -152,9 +151,9 @@ function ProjectDetailPage() {
           open={showEdit}
           onOpenChange={setShowEdit}
           project={project}
-          onSubmit={(data) =>
-            updateProject({
-              id,
+          onSubmit={async (data) => {
+            const result = await updateProject({
+              id: project._id,
               name: data.name,
               description: data.description,
               clearDescription: !data.description,
@@ -164,8 +163,15 @@ function ProjectDetailPage() {
               clearStartDate: !data.startDate,
               endDate: data.endDate,
               clearEndDate: !data.endDate,
-            })
-          }
+            });
+            if (data.name !== project.name && result?.slug) {
+              navigate({
+                to: "/projects/$projectSlug",
+                params: { projectSlug: result.slug },
+                replace: true,
+              });
+            }
+          }}
         />
       )}
     </div>

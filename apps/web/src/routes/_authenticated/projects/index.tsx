@@ -90,8 +90,10 @@ function ProjectsPage() {
             filteredProjects.map((project) => (
               <div key={project._id}>
                 <Link
-                  to="/projects/$projectId"
-                  params={{ projectId: project._id }}
+                  to="/projects/$projectSlug"
+                  params={{
+                    projectSlug: project.slug ?? project._id,
+                  }}
                   className="-mx-2 flex items-center gap-3 rounded px-2 py-3 transition-colors hover:bg-muted/50"
                 >
                   <div className="min-w-0 flex-1">
