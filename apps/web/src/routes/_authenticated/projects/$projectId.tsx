@@ -2,7 +2,8 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
-import { Pencil, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
@@ -110,6 +111,19 @@ function ProjectDetailPage() {
         }
       />
 
+      {(project.startDate || project.endDate) && (
+        <div className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <CalendarIcon className="h-4 w-4" />
+          <span>
+            {project.startDate &&
+              format(new Date(project.startDate), "MMM d, yyyy")}
+            {project.startDate && project.endDate && " \u2013 "}
+            {project.endDate &&
+              format(new Date(project.endDate), "MMM d, yyyy")}
+          </span>
+        </div>
+      )}
+
       {project.definitionOfDone && (
         <div className="mb-6 rounded-md border p-4">
           <h2 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -146,6 +160,10 @@ function ProjectDetailPage() {
               clearDescription: !data.description,
               definitionOfDone: data.definitionOfDone,
               clearDefinitionOfDone: !data.definitionOfDone,
+              startDate: data.startDate,
+              clearStartDate: !data.startDate,
+              endDate: data.endDate,
+              clearEndDate: !data.endDate,
             })
           }
         />

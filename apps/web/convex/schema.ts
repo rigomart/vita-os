@@ -7,6 +7,8 @@ export default defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     definitionOfDone: v.optional(v.string()),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
     order: v.number(),
     isArchived: v.boolean(),
     createdAt: v.number(),

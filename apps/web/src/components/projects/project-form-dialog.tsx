@@ -1,6 +1,9 @@
 import type { Doc } from "@convex/_generated/dataModel";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +13,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 
 interface ProjectFormDialogProps {
@@ -19,6 +27,8 @@ interface ProjectFormDialogProps {
     name: string;
     description?: string;
     definitionOfDone?: string;
+    startDate?: number;
+    endDate?: number;
   }) => void;
   project?: Doc<"projects">;
 }
@@ -34,6 +44,19 @@ export function ProjectFormDialog({
   const [definitionOfDone, setDefinitionOfDone] = useState(
     project?.definitionOfDone ?? "",
   );
+  const [startDate, setStartDate] = useState<Date | undefined>(
+    project?.startDate ? new Date(project.startDate) : undefined,
+  );
+  const [endDate, setEndDate] = useState<Date | undefined>(
+    project?.endDate ? new Date(project.endDate) : undefined,
+  );
+
+  const handleStartDateChange = (date: Date | undefined) => {
+    setStartDate(date);
+    if (!date || (endDate && date > endDate)) {
+      setEndDate(undefined);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,12 +67,16 @@ export function ProjectFormDialog({
       name: trimmedName,
       description: description.trim() || undefined,
       definitionOfDone: definitionOfDone.trim() || undefined,
+      startDate: startDate?.getTime(),
+      endDate: endDate?.getTime(),
     });
 
     if (!project) {
       setName("");
       setDescription("");
       setDefinitionOfDone("");
+      setStartDate(undefined);
+      setEndDate(undefined);
     }
     onOpenChange(false);
   };
@@ -89,6 +116,80 @@ export function ProjectFormDialog({
               placeholder="When is this project considered done?"
               rows={3}
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Dates</Label>
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
+                  >
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    {startDate
+                      ? format(startDate, "MMM d, yyyy")
+                      : "Start date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={handleStartDateChange}
+                  />
+                </PopoverContent>
+              </Popover>
+              {startDate && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => handleStartDateChange(undefined)}
+                  aria-label="Clear start date"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+              <span className="text-xs text-muted-foreground">&ndash;</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
+                    disabled={!startDate}
+                  >
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    {endDate ? format(endDate, "MMM d, yyyy") : "End date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    disabled={(date) => (startDate ? date < startDate : false)}
+                  />
+                </PopoverContent>
+              </Popover>
+              {endDate && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setEndDate(undefined)}
+                  aria-label="Clear end date"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button
