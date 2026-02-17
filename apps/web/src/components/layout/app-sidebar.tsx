@@ -1,6 +1,5 @@
 import { api } from "@convex/_generated/api";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
   ChevronRight,
@@ -39,6 +38,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { useProjectMutations } from "@/hooks/use-project-mutations";
 import { authClient } from "@/lib/auth-client";
 
 export function AppSidebar() {
@@ -46,7 +46,7 @@ export function AppSidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const projects = useQuery(api.projects.list);
-  const createProject = useMutation(api.projects.create);
+  const { createProject } = useProjectMutations();
   const [showCreateProject, setShowCreateProject] = useState(false);
 
   return (

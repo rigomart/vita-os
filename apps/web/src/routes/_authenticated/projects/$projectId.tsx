@@ -1,7 +1,6 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -24,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useProjectMutations } from "@/hooks/use-project-mutations";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   component: ProjectDetailPage,
@@ -36,8 +36,7 @@ function ProjectDetailPage() {
   const tasks = useQuery(api.tasks.listByProject, {
     projectId: id,
   });
-  const updateProject = useMutation(api.projects.update);
-  const removeProject = useMutation(api.projects.remove);
+  const { updateProject, removeProject } = useProjectMutations();
   const navigate = useNavigate();
   const [showEdit, setShowEdit] = useState(false);
 
