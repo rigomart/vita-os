@@ -1,12 +1,11 @@
 import { api } from "@convex/_generated/api";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
-import { FolderOpen, Plus, Search, X } from "lucide-react";
+import { FolderOpen, Plus } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useProjectMutations } from "@/hooks/use-project-mutations";
 
@@ -18,19 +17,11 @@ function ProjectsPage() {
   const projects = useQuery(api.projects.list);
   const { createProject } = useProjectMutations();
   const [showCreate, setShowCreate] = useState(false);
-  const [search, setSearch] = useState("");
   const isLoading = projects === undefined;
 
   if (isLoading) {
     return <ProjectsListSkeleton />;
   }
-
-  const query = search.toLowerCase();
-  const filteredProjects = projects.filter(
-    (p) =>
-      p.name.toLowerCase().includes(query) ||
-      p.description?.toLowerCase().includes(query),
-  );
 
   return (
     <div>
@@ -57,58 +48,27 @@ function ProjectsPage() {
         </div>
       ) : (
         <div>
-          <div className="relative mb-4">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search projects..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") setSearch("");
-              }}
-              className="pl-8 pr-8"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          {projects.map((project) => (
+            <div key={project._id}>
+              <Link
+                to="/projects/$projectSlug"
+                params={{
+                  projectSlug: project.slug ?? project._id,
+                }}
+                className="-mx-2 flex items-center gap-3 rounded px-2 py-3 transition-colors hover:bg-muted/50"
               >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          {filteredProjects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Search className="mb-3 h-10 w-10 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                No projects match your search.
-              </p>
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium">{project.name}</span>
+                  {project.description && (
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {project.description}
+                    </p>
+                  )}
+                </div>
+              </Link>
+              <Separator />
             </div>
-          ) : (
-            filteredProjects.map((project) => (
-              <div key={project._id}>
-                <Link
-                  to="/projects/$projectSlug"
-                  params={{
-                    projectSlug: project.slug ?? project._id,
-                  }}
-                  className="-mx-2 flex items-center gap-3 rounded px-2 py-3 transition-colors hover:bg-muted/50"
-                >
-                  <div className="min-w-0 flex-1">
-                    <span className="font-medium">{project.name}</span>
-                    {project.description && (
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {project.description}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-                <Separator />
-              </div>
-            ))
-          )}
+          ))}
         </div>
       )}
 
