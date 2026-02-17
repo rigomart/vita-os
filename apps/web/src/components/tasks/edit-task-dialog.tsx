@@ -1,6 +1,6 @@
 import { api } from "@convex/_generated/api";
 import type { Doc, Id } from "@convex/_generated/dataModel";
-import { useQuery } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache/hooks";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
 import { useEffect, useState } from "react";

@@ -1,6 +1,7 @@
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { ConvexReactClient } from "convex/react";
+import { ConvexQueryCacheProvider } from "convex-helpers/react/cache";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { authClient } from "./lib/auth-client";
@@ -29,7 +30,9 @@ if (!root) throw new Error("Root element not found");
 createRoot(root).render(
   <StrictMode>
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-      <RouterProvider router={router} />
+      <ConvexQueryCacheProvider expiration={300_000}>
+        <RouterProvider router={router} />
+      </ConvexQueryCacheProvider>
     </ConvexBetterAuthProvider>
   </StrictMode>,
 );
