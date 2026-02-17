@@ -33,8 +33,21 @@ export const create = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     definitionOfDone: v.optional(v.string()),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    if (args.endDate !== undefined && args.startDate === undefined) {
+      throw new Error("End date requires a start date");
+    }
+    if (
+      args.startDate !== undefined &&
+      args.endDate !== undefined &&
+      args.endDate < args.startDate
+    ) {
+      throw new Error("End date must not be before start date");
+    }
+
     const user = await authComponent.getAuthUser(ctx);
     const userId = String(user._id);
 
@@ -51,6 +64,8 @@ export const create = mutation({
       name: args.name,
       description: args.description,
       definitionOfDone: args.definitionOfDone,
+      startDate: args.startDate,
+      endDate: args.endDate,
       order: nextOrder,
       isArchived: false,
       createdAt: Date.now(),
@@ -66,6 +81,10 @@ export const update = mutation({
     clearDescription: v.optional(v.boolean()),
     definitionOfDone: v.optional(v.string()),
     clearDefinitionOfDone: v.optional(v.boolean()),
+    startDate: v.optional(v.number()),
+    clearStartDate: v.optional(v.boolean()),
+    endDate: v.optional(v.number()),
+    clearEndDate: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await authComponent.getAuthUser(ctx);
@@ -74,6 +93,32 @@ export const update = mutation({
     const project = await ctx.db.get(args.id);
     if (!project || project.userId !== userId) {
       throw new Error("Project not found");
+    }
+
+    // Compute effective dates to validate the resulting state
+    let effectiveStartDate = project.startDate;
+    if (args.clearStartDate) {
+      effectiveStartDate = undefined;
+    } else if (args.startDate !== undefined) {
+      effectiveStartDate = args.startDate;
+    }
+
+    let effectiveEndDate = project.endDate;
+    if (args.clearEndDate || args.clearStartDate) {
+      effectiveEndDate = undefined;
+    } else if (args.endDate !== undefined) {
+      effectiveEndDate = args.endDate;
+    }
+
+    if (effectiveEndDate !== undefined && effectiveStartDate === undefined) {
+      throw new Error("End date requires a start date");
+    }
+    if (
+      effectiveStartDate !== undefined &&
+      effectiveEndDate !== undefined &&
+      effectiveEndDate < effectiveStartDate
+    ) {
+      throw new Error("End date must not be before start date");
     }
 
     const updates: Record<string, unknown> = {};
@@ -87,6 +132,17 @@ export const update = mutation({
       updates.definitionOfDone = undefined;
     } else if (args.definitionOfDone !== undefined) {
       updates.definitionOfDone = args.definitionOfDone;
+    }
+    if (args.clearStartDate) {
+      updates.startDate = undefined;
+      updates.endDate = undefined;
+    } else if (args.startDate !== undefined) {
+      updates.startDate = args.startDate;
+    }
+    if (args.clearEndDate || args.clearStartDate) {
+      updates.endDate = undefined;
+    } else if (args.endDate !== undefined) {
+      updates.endDate = args.endDate;
     }
 
     await ctx.db.patch(args.id, updates);

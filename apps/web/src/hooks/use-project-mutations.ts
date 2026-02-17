@@ -7,12 +7,22 @@ export function useProjectMutations() {
     (localStore, args) => {
       const { id, ...updates } = args;
 
+      // Handle date clearing in optimistic state
+      const resolved = { ...updates };
+      if (updates.clearStartDate) {
+        resolved.startDate = undefined;
+        resolved.endDate = undefined;
+      }
+      if (updates.clearEndDate) {
+        resolved.endDate = undefined;
+      }
+
       const projects = localStore.getQuery(api.projects.list, {});
       if (projects !== undefined) {
         localStore.setQuery(
           api.projects.list,
           {},
-          projects.map((p) => (p._id === id ? { ...p, ...updates } : p)),
+          projects.map((p) => (p._id === id ? { ...p, ...resolved } : p)),
         );
       }
 
@@ -21,7 +31,7 @@ export function useProjectMutations() {
         localStore.setQuery(
           api.projects.get,
           { id },
-          { ...project, ...updates },
+          { ...project, ...resolved },
         );
       }
     },
@@ -59,6 +69,8 @@ export function useProjectMutations() {
             name: args.name,
             description: args.description,
             definitionOfDone: args.definitionOfDone,
+            startDate: args.startDate,
+            endDate: args.endDate,
             order: maxOrder + 1,
             isArchived: false,
             createdAt: Date.now(),
