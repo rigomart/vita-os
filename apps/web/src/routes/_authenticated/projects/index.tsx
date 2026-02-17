@@ -1,6 +1,5 @@
 import { api } from "@convex/_generated/api";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { FolderOpen, Plus, Search, X } from "lucide-react";
 import { useState } from "react";
@@ -9,6 +8,7 @@ import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { useProjectMutations } from "@/hooks/use-project-mutations";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   component: ProjectsPage,
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/projects/")({
 
 function ProjectsPage() {
   const projects = useQuery(api.projects.list);
-  const createProject = useMutation(api.projects.create);
+  const { createProject } = useProjectMutations();
   const [showCreate, setShowCreate] = useState(false);
   const [search, setSearch] = useState("");
   const isLoading = projects === undefined;
