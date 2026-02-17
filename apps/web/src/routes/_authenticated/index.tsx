@@ -1,6 +1,6 @@
 import { api } from "@convex/_generated/api";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache/hooks";
 import { PageHeader } from "@/components/layout/page-header";
 import { AddTaskRow } from "@/components/tasks/add-task-row";
 import { CompletedSection } from "@/components/tasks/completed-section";
