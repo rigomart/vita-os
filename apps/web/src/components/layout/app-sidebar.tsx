@@ -109,16 +109,17 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     {projects?.map((project) => {
+                      const slug = project.slug ?? project._id;
                       return (
                         <SidebarMenuItem key={project._id}>
                           <SidebarMenuButton
                             asChild
-                            isActive={pathname === `/projects/${project._id}`}
+                            isActive={pathname === `/projects/${slug}`}
                             tooltip={project.name}
                           >
                             <Link
-                              to="/projects/$projectId"
-                              params={{ projectId: project._id }}
+                              to="/projects/$projectSlug"
+                              params={{ projectSlug: slug }}
                             >
                               <FolderOpen />
                               <span>{project.name}</span>
@@ -203,8 +204,11 @@ export function AppSidebar() {
         open={showCreateProject}
         onOpenChange={setShowCreateProject}
         onSubmit={async (data) => {
-          const projectId = await createProject(data);
-          navigate({ to: "/projects/$projectId", params: { projectId } });
+          const { slug } = await createProject(data);
+          navigate({
+            to: "/projects/$projectSlug",
+            params: { projectSlug: slug },
+          });
         }}
       />
     </>

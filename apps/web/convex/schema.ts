@@ -5,6 +5,7 @@ export default defineSchema({
   projects: defineTable({
     userId: v.string(),
     name: v.string(),
+    slug: v.optional(v.string()),
     description: v.optional(v.string()),
     definitionOfDone: v.optional(v.string()),
     startDate: v.optional(v.number()),
@@ -14,7 +15,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
-    .index("by_user_order", ["userId", "order"]),
+    .index("by_user_order", ["userId", "order"])
+    .index("by_user_slug", ["userId", "slug"]),
 
   tasks: defineTable({
     userId: v.string(),

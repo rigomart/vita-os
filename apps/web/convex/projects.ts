@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
+import { generateSlug } from "./lib/slugs";
 
 export const list = query({
   args: {},
@@ -24,6 +25,23 @@ export const get = query({
     const project = await ctx.db.get(args.id);
     if (!project || project.userId !== String(user._id)) return null;
     if (project.isArchived) return null;
+    return project;
+  },
+});
+
+export const getBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) return null;
+    const userId = String(user._id);
+    const project = await ctx.db
+      .query("projects")
+      .withIndex("by_user_slug", (q) =>
+        q.eq("userId", userId).eq("slug", args.slug),
+      )
+      .unique();
+    if (!project || project.isArchived) return null;
     return project;
   },
 });
@@ -58,10 +76,12 @@ export const create = mutation({
       .first();
 
     const nextOrder = existing ? existing.order + 1 : 0;
+    const slug = generateSlug(args.name);
 
-    return ctx.db.insert("projects", {
+    const id = await ctx.db.insert("projects", {
       userId,
       name: args.name,
+      slug,
       description: args.description,
       definitionOfDone: args.definitionOfDone,
       startDate: args.startDate,
@@ -70,6 +90,8 @@ export const create = mutation({
       isArchived: false,
       createdAt: Date.now(),
     });
+
+    return { id, slug };
   },
 });
 
@@ -122,7 +144,10 @@ export const update = mutation({
     }
 
     const updates: Record<string, unknown> = {};
-    if (args.name !== undefined) updates.name = args.name;
+    if (args.name !== undefined) {
+      updates.name = args.name;
+      updates.slug = generateSlug(args.name);
+    }
     if (args.clearDescription) {
       updates.description = undefined;
     } else if (args.description !== undefined) {
@@ -146,6 +171,8 @@ export const update = mutation({
     }
 
     await ctx.db.patch(args.id, updates);
+
+    return { slug: (updates.slug as string) ?? project.slug };
   },
 });
 
@@ -172,5 +199,21 @@ export const remove = mutation({
     for (const task of tasks) {
       await ctx.db.patch(task._id, { projectId: undefined });
     }
+  },
+});
+
+export const backfillSlugs = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const projects = await ctx.db.query("projects").collect();
+    let count = 0;
+    for (const project of projects) {
+      if (!project.slug) {
+        const slug = generateSlug(project.name);
+        await ctx.db.patch(project._id, { slug });
+        count++;
+      }
+    }
+    return { backfilled: count };
   },
 });

@@ -1,5 +1,6 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { generateSlug } from "@convex/lib/slugs";
 import { useMutation } from "convex/react";
 
 export function useProjectMutations() {
@@ -17,12 +18,16 @@ export function useProjectMutations() {
         resolved.endDate = undefined;
       }
 
+      const slugUpdate =
+        updates.name !== undefined ? { slug: generateSlug(updates.name) } : {};
+      const fullUpdates = { ...resolved, ...slugUpdate };
+
       const projects = localStore.getQuery(api.projects.list, {});
       if (projects !== undefined) {
         localStore.setQuery(
           api.projects.list,
           {},
-          projects.map((p) => (p._id === id ? { ...p, ...resolved } : p)),
+          projects.map((p) => (p._id === id ? { ...p, ...fullUpdates } : p)),
         );
       }
 
@@ -31,7 +36,7 @@ export function useProjectMutations() {
         localStore.setQuery(
           api.projects.get,
           { id },
-          { ...project, ...resolved },
+          { ...project, ...fullUpdates },
         );
       }
     },
@@ -67,6 +72,7 @@ export function useProjectMutations() {
             _creationTime: Date.now(),
             userId: "",
             name: args.name,
+            slug: generateSlug(args.name),
             description: args.description,
             definitionOfDone: args.definitionOfDone,
             startDate: args.startDate,
