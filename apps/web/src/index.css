@@ -120,6 +120,10 @@
   html {
     scrollbar-gutter: stable;
   }
+  body[data-scroll-locked] {
+    /* biome-ignore lint/complexity/noImportantStyles: must override react-remove-scroll-bar's !important inline compensation */
+    margin-right: 0 !important;
+  }
   body {
     @apply bg-background text-foreground;
   }
