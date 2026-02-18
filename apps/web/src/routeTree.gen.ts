@@ -16,6 +16,7 @@ import { Route as UnauthenticatedSignUpRouteImport } from './routes/_unauthentic
 import { Route as UnauthenticatedSignInRouteImport } from './routes/_unauthenticated/sign-in'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
 import { Route as AuthenticatedProjectsProjectSlugRouteImport } from './routes/_authenticated/projects/$projectSlug'
+import { Route as AuthenticatedAreasAreaSlugRouteImport } from './routes/_authenticated/areas/$areaSlug'
 
 const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
   id: '/_unauthenticated',
@@ -52,11 +53,18 @@ const AuthenticatedProjectsProjectSlugRoute =
     path: '/projects/$projectSlug',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAreasAreaSlugRoute =
+  AuthenticatedAreasAreaSlugRouteImport.update({
+    id: '/areas/$areaSlug',
+    path: '/areas/$areaSlug',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/sign-in': typeof UnauthenticatedSignInRoute
   '/sign-up': typeof UnauthenticatedSignUpRoute
+  '/areas/$areaSlug': typeof AuthenticatedAreasAreaSlugRoute
   '/projects/$projectSlug': typeof AuthenticatedProjectsProjectSlugRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
 }
@@ -64,6 +72,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/sign-in': typeof UnauthenticatedSignInRoute
   '/sign-up': typeof UnauthenticatedSignUpRoute
+  '/areas/$areaSlug': typeof AuthenticatedAreasAreaSlugRoute
   '/projects/$projectSlug': typeof AuthenticatedProjectsProjectSlugRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
 }
@@ -74,6 +83,7 @@ export interface FileRoutesById {
   '/_unauthenticated/sign-in': typeof UnauthenticatedSignInRoute
   '/_unauthenticated/sign-up': typeof UnauthenticatedSignUpRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/areas/$areaSlug': typeof AuthenticatedAreasAreaSlugRoute
   '/_authenticated/projects/$projectSlug': typeof AuthenticatedProjectsProjectSlugRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
 }
@@ -83,10 +93,17 @@ export interface FileRouteTypes {
     | '/'
     | '/sign-in'
     | '/sign-up'
+    | '/areas/$areaSlug'
     | '/projects/$projectSlug'
     | '/projects/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sign-in' | '/sign-up' | '/projects/$projectSlug' | '/projects'
+  to:
+    | '/'
+    | '/sign-in'
+    | '/sign-up'
+    | '/areas/$areaSlug'
+    | '/projects/$projectSlug'
+    | '/projects'
   id:
     | '__root__'
     | '/_authenticated'
@@ -94,6 +111,7 @@ export interface FileRouteTypes {
     | '/_unauthenticated/sign-in'
     | '/_unauthenticated/sign-up'
     | '/_authenticated/'
+    | '/_authenticated/areas/$areaSlug'
     | '/_authenticated/projects/$projectSlug'
     | '/_authenticated/projects/'
   fileRoutesById: FileRoutesById
@@ -154,17 +172,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjectsProjectSlugRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/areas/$areaSlug': {
+      id: '/_authenticated/areas/$areaSlug'
+      path: '/areas/$areaSlug'
+      fullPath: '/areas/$areaSlug'
+      preLoaderRoute: typeof AuthenticatedAreasAreaSlugRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedAreasAreaSlugRoute: typeof AuthenticatedAreasAreaSlugRoute
   AuthenticatedProjectsProjectSlugRoute: typeof AuthenticatedProjectsProjectSlugRoute
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedAreasAreaSlugRoute: AuthenticatedAreasAreaSlugRoute,
   AuthenticatedProjectsProjectSlugRoute: AuthenticatedProjectsProjectSlugRoute,
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
 }

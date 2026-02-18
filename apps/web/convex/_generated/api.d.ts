@@ -8,8 +8,10 @@
  * @module
  */
 
+import type * as areas from "../areas.js";
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
+import type * as lib_slugs from "../lib/slugs.js";
 import type * as projects from "../projects.js";
 import type * as tasks from "../tasks.js";
 
@@ -20,8 +22,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  areas: typeof areas;
   auth: typeof auth;
   http: typeof http;
+  "lib/slugs": typeof lib_slugs;
   projects: typeof projects;
   tasks: typeof tasks;
 }>;
