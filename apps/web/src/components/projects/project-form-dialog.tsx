@@ -1,7 +1,7 @@
 import type { Doc } from "@convex/_generated/dataModel";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AreaPicker } from "@/components/areas/area-picker";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -59,6 +59,17 @@ export function ProjectFormDialog({
   const [endDate, setEndDate] = useState<Date | undefined>(
     project?.endDate ? new Date(project.endDate) : undefined,
   );
+
+  useEffect(() => {
+    if (open && !project) {
+      setName("");
+      setDescription("");
+      setDefinitionOfDone("");
+      setAreaId(defaultAreaId);
+      setStartDate(undefined);
+      setEndDate(undefined);
+    }
+  }, [open, project, defaultAreaId]);
 
   const handleStartDateChange = (date: Date | undefined) => {
     setStartDate(date);
