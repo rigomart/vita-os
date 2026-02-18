@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectSlug")({
   component: ProjectDetailPage,
@@ -99,7 +100,7 @@ function ProjectDetailPage() {
   const isLoading = project === undefined || tasks === undefined;
 
   if (isLoading) {
-    return <TaskListSkeleton />;
+    return <ProjectDetailSkeleton />;
   }
 
   if (project === null) {
@@ -233,6 +234,38 @@ function ProjectDetailPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+function ProjectDetailSkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-6">
+        <Skeleton className="mb-3 h-4 w-16" />
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <div className="flex items-center gap-1">
+            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-8 w-8 rounded-md" />
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-4 flex items-center gap-1.5">
+        <Skeleton className="h-4 w-4" />
+        <Skeleton className="h-4 w-40" />
+      </div>
+
+      <div className="mb-6 rounded-md border p-4">
+        <Skeleton className="mb-2 h-3 w-28" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="mt-1 h-4 w-3/4" />
+      </div>
+
+      <Separator className="mb-4" />
+
+      <TaskListSkeleton />
     </div>
   );
 }

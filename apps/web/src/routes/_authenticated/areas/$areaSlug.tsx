@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/areas/$areaSlug")({
   component: AreaDetailPage,
@@ -149,11 +150,7 @@ function AreaDetailPage() {
   const isLoading = area === undefined || projects === undefined;
 
   if (isLoading) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
-      </div>
-    );
+    return <AreaDetailSkeleton />;
   }
 
   if (area === null) {
@@ -361,6 +358,64 @@ function AreaDetailPage() {
           });
         }}
       />
+    </div>
+  );
+}
+
+function AreaDetailSkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-6">
+        <Skeleton className="mb-3 h-4 w-12" />
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-40" />
+          <div className="flex items-center gap-1">
+            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-8 w-8 rounded-md" />
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-4 flex items-center gap-2">
+        <Skeleton className="h-2.5 w-2.5 rounded-full" />
+        <Skeleton className="h-8 w-40 rounded-md" />
+      </div>
+
+      <div className="mb-6 rounded-md border p-4">
+        <Skeleton className="mb-2 h-3 w-16" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="mt-1 h-4 w-2/3" />
+      </div>
+
+      <Separator className="mb-4" />
+
+      <div className="overflow-hidden rounded-md border">
+        <div className="flex gap-4 border-b px-3 py-1.5">
+          <Skeleton className="h-3 w-8" />
+          <Skeleton className="h-3 w-8" />
+          <Skeleton className="h-3 w-8" />
+        </div>
+        <div className="space-y-1.5 px-3 py-2">
+          <Skeleton className="h-6 w-3/4" />
+          <Skeleton className="h-6 w-1/2" />
+        </div>
+      </div>
+
+      <div className="mt-4 mb-2 flex items-center justify-between">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-7 w-24 rounded-md" />
+      </div>
+
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
+          key={i}
+          className="border-b py-3 last:border-b-0"
+        >
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="mt-1.5 h-3 w-64" />
+        </div>
+      ))}
     </div>
   );
 }
