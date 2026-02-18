@@ -66,7 +66,7 @@ function ProjectDetailPage() {
   };
 
   return (
-    <div>
+    <div className="mx-auto max-w-3xl">
       <PageHeader
         title={project.name}
         backLink={{ label: "Projects", to: "/projects" }}

@@ -24,7 +24,7 @@ function Inbox() {
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-3xl">
       <PageHeader title="Inbox" />
       <div>
         {activeTasks.map((task) => (
