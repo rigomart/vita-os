@@ -81,7 +81,7 @@ function ProjectsPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        title="Projects"
+        title="Ungrouped"
         actions={
           <Button
             size="sm"

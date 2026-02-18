@@ -205,12 +205,12 @@ export function AppSidebar() {
                 asChild
                 className="hover:text-sidebar-foreground"
               >
-                <Link to="/projects">Projects</Link>
+                <Link to="/projects">Ungrouped</Link>
               </SidebarGroupLabel>
               <CollapsibleTrigger asChild>
                 <SidebarGroupAction>
                   <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                  <span className="sr-only">Toggle projects</span>
+                  <span className="sr-only">Toggle ungrouped</span>
                 </SidebarGroupAction>
               </CollapsibleTrigger>
               <CollapsibleContent>
