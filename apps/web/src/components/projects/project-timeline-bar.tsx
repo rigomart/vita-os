@@ -9,12 +9,14 @@ interface ProjectTimelineBarProps {
   project: Doc<"projects"> & { startDate: number };
   rangeStart: Date;
   today: Date;
+  areaSlug?: string;
 }
 
 export function ProjectTimelineBar({
   project,
   rangeStart,
   today,
+  areaSlug,
 }: ProjectTimelineBarProps) {
   const startDate = new Date(project.startDate);
   const endDate = project.endDate ? new Date(project.endDate) : today;
@@ -26,10 +28,12 @@ export function ProjectTimelineBar({
   return (
     <div className="relative h-10 w-full">
       <Link
-        to="/projects/$projectSlug"
-        params={{
-          projectSlug: project.slug ?? project._id,
-        }}
+        to={areaSlug ? "/$areaSlug/$projectSlug" : "/projects/$projectSlug"}
+        params={
+          areaSlug
+            ? { areaSlug, projectSlug: project.slug ?? project._id }
+            : { projectSlug: project.slug ?? project._id }
+        }
         className={cn(
           "absolute top-1 flex h-8 items-center px-2",
           "bg-primary/15 text-foreground border border-primary/25",

@@ -1,7 +1,16 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
-import { generateSlug } from "./lib/slugs";
+import { generateSlug, slugify } from "./lib/slugs";
+
+const RESERVED_SLUGS = new Set(["projects", "settings", "sign-in", "sign-up"]);
+
+function validateAreaSlug(name: string) {
+  const base = slugify(name);
+  if (RESERVED_SLUGS.has(base)) {
+    throw new Error(`"${name}" is reserved and cannot be used as an area name`);
+  }
+}
 
 export const list = query({
   args: {},
@@ -58,6 +67,8 @@ export const create = mutation({
     const user = await authComponent.getAuthUser(ctx);
     const userId = String(user._id);
 
+    validateAreaSlug(args.name);
+
     const existing = await ctx.db
       .query("areas")
       .withIndex("by_user_order", (q) => q.eq("userId", userId))
@@ -100,6 +111,7 @@ export const update = mutation({
 
     const updates: Record<string, unknown> = {};
     if (args.name !== undefined) {
+      validateAreaSlug(args.name);
       updates.name = args.name;
       updates.slug = generateSlug(args.name);
     }

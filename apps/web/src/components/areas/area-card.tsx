@@ -15,7 +15,7 @@ interface AreaCardProps {
 export function AreaCard({ area, projectCount }: AreaCardProps) {
   return (
     <Link
-      to="/areas/$areaSlug"
+      to="/$areaSlug"
       params={{ areaSlug: area.slug ?? area._id }}
       className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
     >
