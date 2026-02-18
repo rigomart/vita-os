@@ -1,15 +1,17 @@
 import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
   ChevronRight,
   ChevronsUpDown,
+  Compass,
   FolderOpen,
   Inbox,
   LogOut,
   Plus,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import {
   Collapsible,
@@ -46,8 +48,30 @@ export function AppSidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const projects = useQuery(api.projects.list);
+  const areas = useQuery(api.areas.list);
   const { createProject } = useProjectMutations();
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [createForAreaId, setCreateForAreaId] = useState<string | undefined>();
+
+  const { areaProjects, ungroupedProjects } = useMemo(() => {
+    const grouped = new Map<string, typeof projects>();
+    const ungrouped: NonNullable<typeof projects> = [];
+    for (const project of projects ?? []) {
+      if (project.areaId) {
+        const list = grouped.get(project.areaId) ?? [];
+        list.push(project);
+        grouped.set(project.areaId, list);
+      } else {
+        ungrouped.push(project);
+      }
+    }
+    return { areaProjects: grouped, ungroupedProjects: ungrouped };
+  }, [projects]);
+
+  const handleCreateProject = (forAreaId?: string) => {
+    setCreateForAreaId(forAreaId);
+    setShowCreateProject(true);
+  };
 
   return (
     <>
@@ -82,6 +106,73 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
 
+          {areas?.map((area) => {
+            const areaSlug = area.slug ?? area._id;
+            const areaProjectList = areaProjects.get(area._id) ?? [];
+            return (
+              <Collapsible
+                key={area._id}
+                defaultOpen
+                className="group/collapsible"
+              >
+                <SidebarGroup>
+                  <SidebarGroupLabel
+                    asChild
+                    className="hover:text-sidebar-foreground"
+                  >
+                    <Link to="/areas/$areaSlug" params={{ areaSlug }}>
+                      <Compass className="mr-1 h-3 w-3" />
+                      {area.name}
+                    </Link>
+                  </SidebarGroupLabel>
+                  <CollapsibleTrigger asChild>
+                    <SidebarGroupAction>
+                      <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                      <span className="sr-only">Toggle {area.name}</span>
+                    </SidebarGroupAction>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        <SidebarMenuItem>
+                          <SidebarMenuButton
+                            tooltip="New project"
+                            onClick={() => handleCreateProject(area._id)}
+                          >
+                            <Plus />
+                            <span>New project</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        {areaProjectList.map((project) => {
+                          const slug = project.slug ?? project._id;
+                          return (
+                            <SidebarMenuItem key={project._id}>
+                              <SidebarMenuButton
+                                asChild
+                                isActive={pathname === `/projects/${slug}`}
+                                tooltip={project.name}
+                              >
+                                <Link
+                                  to="/projects/$projectSlug"
+                                  params={{
+                                    projectSlug: slug,
+                                  }}
+                                >
+                                  <FolderOpen />
+                                  <span>{project.name}</span>
+                                </Link>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          );
+                        })}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
+            );
+          })}
+
           <Collapsible defaultOpen className="group/collapsible">
             <SidebarGroup>
               <SidebarGroupLabel
@@ -102,13 +193,13 @@ export function AppSidebar() {
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         tooltip="New project"
-                        onClick={() => setShowCreateProject(true)}
+                        onClick={() => handleCreateProject()}
                       >
                         <Plus />
                         <span>New project</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                    {projects?.map((project) => {
+                    {ungroupedProjects.map((project) => {
                       const slug = project.slug ?? project._id;
                       return (
                         <SidebarMenuItem key={project._id}>
@@ -203,8 +294,13 @@ export function AppSidebar() {
       <ProjectFormDialog
         open={showCreateProject}
         onOpenChange={setShowCreateProject}
+        areas={areas ?? []}
+        defaultAreaId={createForAreaId}
         onSubmit={async (data) => {
-          const { slug } = await createProject(data);
+          const { slug } = await createProject({
+            ...data,
+            areaId: data.areaId ? (data.areaId as Id<"areas">) : undefined,
+          });
           navigate({
             to: "/projects/$projectSlug",
             params: { projectSlug: slug },

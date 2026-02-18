@@ -8,7 +8,7 @@ export function useProjectMutations() {
     (localStore, args) => {
       const { id, ...updates } = args;
 
-      // Handle date clearing in optimistic state
+      // Handle clearing in optimistic state
       const resolved = { ...updates };
       if (updates.clearStartDate) {
         resolved.startDate = undefined;
@@ -16,6 +16,9 @@ export function useProjectMutations() {
       }
       if (updates.clearEndDate) {
         resolved.endDate = undefined;
+      }
+      if (updates.clearAreaId) {
+        resolved.areaId = undefined;
       }
 
       const slugUpdate =
@@ -75,6 +78,7 @@ export function useProjectMutations() {
             slug: generateSlug(args.name),
             description: args.description,
             definitionOfDone: args.definitionOfDone,
+            areaId: args.areaId,
             startDate: args.startDate,
             endDate: args.endDate,
             order: maxOrder + 1,

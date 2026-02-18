@@ -1,4 +1,5 @@
 import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { format } from "date-fns";
@@ -36,6 +37,7 @@ function ProjectDetailPage() {
     api.tasks.listByProject,
     project ? { projectId: project._id } : "skip",
   );
+  const areas = useQuery(api.areas.list);
   const { updateProject, removeProject } = useProjectMutations();
   const navigate = useNavigate();
   const [showEdit, setShowEdit] = useState(false);
@@ -151,6 +153,7 @@ function ProjectDetailPage() {
           open={showEdit}
           onOpenChange={setShowEdit}
           project={project}
+          areas={areas ?? []}
           onSubmit={async (data) => {
             const result = await updateProject({
               id: project._id,
@@ -159,6 +162,8 @@ function ProjectDetailPage() {
               clearDescription: !data.description,
               definitionOfDone: data.definitionOfDone,
               clearDefinitionOfDone: !data.definitionOfDone,
+              areaId: data.areaId ? (data.areaId as Id<"areas">) : undefined,
+              clearAreaId: !data.areaId,
               startDate: data.startDate,
               clearStartDate: !data.startDate,
               endDate: data.endDate,

@@ -1,4 +1,5 @@
 import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { format } from "date-fns";
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/projects/")({
 
 function ProjectsPage() {
   const projects = useQuery(api.projects.list);
+  const areas = useQuery(api.areas.list);
   const { createProject } = useProjectMutations();
   const [showCreate, setShowCreate] = useState(false);
   const isLoading = projects === undefined;
@@ -90,7 +92,13 @@ function ProjectsPage() {
       <ProjectFormDialog
         open={showCreate}
         onOpenChange={setShowCreate}
-        onSubmit={(data) => createProject(data)}
+        areas={areas ?? []}
+        onSubmit={(data) =>
+          createProject({
+            ...data,
+            areaId: data.areaId ? (data.areaId as Id<"areas">) : undefined,
+          })
+        }
       />
     </div>
   );

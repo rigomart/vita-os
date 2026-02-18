@@ -2,6 +2,7 @@ import type { Doc } from "@convex/_generated/dataModel";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
 import { useState } from "react";
+import { AreaPicker } from "@/components/areas/area-picker";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -27,10 +28,13 @@ interface ProjectFormDialogProps {
     name: string;
     description?: string;
     definitionOfDone?: string;
+    areaId?: string;
     startDate?: number;
     endDate?: number;
   }) => void;
   project?: Doc<"projects">;
+  areas?: Doc<"areas">[];
+  defaultAreaId?: string;
 }
 
 export function ProjectFormDialog({
@@ -38,11 +42,16 @@ export function ProjectFormDialog({
   onOpenChange,
   onSubmit,
   project,
+  areas,
+  defaultAreaId,
 }: ProjectFormDialogProps) {
   const [name, setName] = useState(project?.name ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
   const [definitionOfDone, setDefinitionOfDone] = useState(
     project?.definitionOfDone ?? "",
+  );
+  const [areaId, setAreaId] = useState<string | undefined>(
+    project?.areaId ?? defaultAreaId,
   );
   const [startDate, setStartDate] = useState<Date | undefined>(
     project?.startDate ? new Date(project.startDate) : undefined,
@@ -67,6 +76,7 @@ export function ProjectFormDialog({
       name: trimmedName,
       description: description.trim() || undefined,
       definitionOfDone: definitionOfDone.trim() || undefined,
+      areaId,
       startDate: startDate?.getTime(),
       endDate: endDate?.getTime(),
     });
@@ -75,6 +85,7 @@ export function ProjectFormDialog({
       setName("");
       setDescription("");
       setDefinitionOfDone("");
+      setAreaId(defaultAreaId);
       setStartDate(undefined);
       setEndDate(undefined);
     }
@@ -191,6 +202,16 @@ export function ProjectFormDialog({
               )}
             </div>
           </div>
+          {areas && areas.length > 0 && (
+            <div className="space-y-2">
+              <Label>Area</Label>
+              <AreaPicker
+                areas={areas}
+                selectedAreaId={areaId}
+                onSelect={setAreaId}
+              />
+            </div>
+          )}
           <DialogFooter>
             <Button
               type="button"

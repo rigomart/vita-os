@@ -46,11 +46,26 @@ export const getBySlug = query({
   },
 });
 
+export const listByArea = query({
+  args: { areaId: v.id("areas") },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) return [];
+    const userId = String(user._id);
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_area", (q) => q.eq("areaId", args.areaId))
+      .collect();
+    return projects.filter((p) => p.userId === userId && !p.isArchived);
+  },
+});
+
 export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
     definitionOfDone: v.optional(v.string()),
+    areaId: v.optional(v.id("areas")),
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
@@ -84,6 +99,7 @@ export const create = mutation({
       slug,
       description: args.description,
       definitionOfDone: args.definitionOfDone,
+      areaId: args.areaId,
       startDate: args.startDate,
       endDate: args.endDate,
       order: nextOrder,
@@ -103,6 +119,8 @@ export const update = mutation({
     clearDescription: v.optional(v.boolean()),
     definitionOfDone: v.optional(v.string()),
     clearDefinitionOfDone: v.optional(v.boolean()),
+    areaId: v.optional(v.id("areas")),
+    clearAreaId: v.optional(v.boolean()),
     startDate: v.optional(v.number()),
     clearStartDate: v.optional(v.boolean()),
     endDate: v.optional(v.number()),
@@ -157,6 +175,11 @@ export const update = mutation({
       updates.definitionOfDone = undefined;
     } else if (args.definitionOfDone !== undefined) {
       updates.definitionOfDone = args.definitionOfDone;
+    }
+    if (args.clearAreaId) {
+      updates.areaId = undefined;
+    } else if (args.areaId !== undefined) {
+      updates.areaId = args.areaId;
     }
     if (args.clearStartDate) {
       updates.startDate = undefined;
