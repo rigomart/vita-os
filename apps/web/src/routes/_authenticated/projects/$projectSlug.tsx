@@ -79,6 +79,17 @@ function ProjectDetailPage() {
           { ...single, ...fullUpdates },
         );
       }
+
+      const bySlug = localStore.getQuery(api.projects.getBySlug, {
+        slug: projectSlug,
+      });
+      if (bySlug !== undefined && bySlug !== null) {
+        localStore.setQuery(
+          api.projects.getBySlug,
+          { slug: projectSlug },
+          { ...bySlug, ...fullUpdates },
+        );
+      }
     },
   );
 
@@ -93,6 +104,7 @@ function ProjectDetailPage() {
         );
       }
       localStore.setQuery(api.projects.get, { id: args.id }, null);
+      localStore.setQuery(api.projects.getBySlug, { slug: projectSlug }, null);
     },
   );
   const [showEdit, setShowEdit] = useState(false);
