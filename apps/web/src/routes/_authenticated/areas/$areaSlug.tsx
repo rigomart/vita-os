@@ -5,7 +5,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
@@ -158,6 +158,14 @@ function AreaDetailPage() {
   );
   const [showEdit, setShowEdit] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
+
+  useEffect(() => {
+    const title = area?.name ? `${area.name} | Vita OS` : "Area | Vita OS";
+    document.title = title;
+    return () => {
+      document.title = "Vita OS";
+    };
+  }, [area?.name]);
 
   const isLoading = area === undefined || projects === undefined;
 

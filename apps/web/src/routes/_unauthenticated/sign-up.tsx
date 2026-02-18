@@ -14,6 +14,20 @@ import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/_unauthenticated/sign-up")({
+  head: () => ({
+    meta: [
+      { title: "Sign Up | Vita OS" },
+      {
+        name: "description",
+        content: "Create a Vita OS account to get started.",
+      },
+      { property: "og:title", content: "Sign Up | Vita OS" },
+      {
+        property: "og:description",
+        content: "Create a Vita OS account to get started.",
+      },
+    ],
+  }),
   component: SignUp,
 });
 

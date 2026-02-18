@@ -17,6 +17,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/")({
+  head: () => ({
+    meta: [{ title: "Inbox | Vita OS" }],
+  }),
   component: Inbox,
 });
 
