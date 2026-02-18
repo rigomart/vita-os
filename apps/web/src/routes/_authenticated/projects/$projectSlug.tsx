@@ -6,7 +6,7 @@ import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { AddTaskRow } from "@/components/tasks/add-task-row";
@@ -108,6 +108,16 @@ function ProjectDetailPage() {
     },
   );
   const [showEdit, setShowEdit] = useState(false);
+
+  useEffect(() => {
+    const title = project?.name
+      ? `${project.name} | Vita OS`
+      : "Project | Vita OS";
+    document.title = title;
+    return () => {
+      document.title = "Vita OS";
+    };
+  }, [project?.name]);
 
   const isLoading = project === undefined || tasks === undefined;
 

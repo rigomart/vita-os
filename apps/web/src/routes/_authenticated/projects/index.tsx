@@ -26,6 +26,9 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
+  head: () => ({
+    meta: [{ title: "Projects | Vita OS" }],
+  }),
   component: ProjectsPage,
 });
 
