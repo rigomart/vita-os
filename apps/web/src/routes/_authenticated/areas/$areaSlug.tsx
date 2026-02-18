@@ -82,6 +82,17 @@ function AreaDetailPage() {
           { ...single, ...fullUpdates },
         );
       }
+
+      const bySlug = localStore.getQuery(api.areas.getBySlug, {
+        slug: areaSlug,
+      });
+      if (bySlug !== undefined && bySlug !== null) {
+        localStore.setQuery(
+          api.areas.getBySlug,
+          { slug: areaSlug },
+          { ...bySlug, ...fullUpdates },
+        );
+      }
     },
   );
 
@@ -96,6 +107,7 @@ function AreaDetailPage() {
         );
       }
       localStore.setQuery(api.areas.get, { id: args.id }, null);
+      localStore.setQuery(api.areas.getBySlug, { slug: areaSlug }, null);
     },
   );
 
