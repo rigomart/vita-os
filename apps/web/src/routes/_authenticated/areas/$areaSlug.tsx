@@ -1,6 +1,8 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { generateSlug } from "@convex/lib/slugs";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -28,8 +30,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useAreaMutations } from "@/hooks/use-area-mutations";
-import { useProjectMutations } from "@/hooks/use-project-mutations";
 
 export const Route = createFileRoute("/_authenticated/areas/$areaSlug")({
   component: AreaDetailPage,
@@ -49,9 +49,100 @@ function AreaDetailPage() {
     api.projects.listByArea,
     area ? { areaId: area._id } : "skip",
   );
-  const { updateArea, removeArea } = useAreaMutations();
-  const { createProject } = useProjectMutations();
   const navigate = useNavigate();
+
+  const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
+    (localStore, args) => {
+      const { id, ...updates } = args;
+
+      const resolved = { ...updates };
+      if (updates.clearStandard) {
+        resolved.standard = undefined;
+      }
+
+      const slugUpdate =
+        updates.name !== undefined ? { slug: generateSlug(updates.name) } : {};
+      const fullUpdates = { ...resolved, ...slugUpdate };
+
+      const current = localStore.getQuery(api.areas.list, {});
+      if (current !== undefined) {
+        localStore.setQuery(
+          api.areas.list,
+          {},
+          current.map((a) => (a._id === id ? { ...a, ...fullUpdates } : a)),
+        );
+      }
+
+      const single = localStore.getQuery(api.areas.get, { id });
+      if (single !== undefined && single !== null) {
+        localStore.setQuery(
+          api.areas.get,
+          { id },
+          { ...single, ...fullUpdates },
+        );
+      }
+    },
+  );
+
+  const removeArea = useMutation(api.areas.remove).withOptimisticUpdate(
+    (localStore, args) => {
+      const current = localStore.getQuery(api.areas.list, {});
+      if (current !== undefined) {
+        localStore.setQuery(
+          api.areas.list,
+          {},
+          current.filter((a) => a._id !== args.id),
+        );
+      }
+      localStore.setQuery(api.areas.get, { id: args.id }, null);
+    },
+  );
+
+  const createProject = useMutation(api.projects.create).withOptimisticUpdate(
+    (localStore, args) => {
+      if (!area) return;
+      const current = localStore.getQuery(api.projects.listByArea, {
+        areaId: area._id,
+      });
+      if (current !== undefined) {
+        const maxOrder = current.reduce((max, p) => Math.max(max, p.order), -1);
+        localStore.setQuery(api.projects.listByArea, { areaId: area._id }, [
+          ...current,
+          {
+            _id: crypto.randomUUID() as Id<"projects">,
+            _creationTime: Date.now(),
+            userId: "",
+            name: args.name,
+            slug: generateSlug(args.name),
+            description: args.description,
+            definitionOfDone: args.definitionOfDone,
+            areaId: args.areaId,
+            startDate: args.startDate,
+            endDate: args.endDate,
+            order: maxOrder + 1,
+            isArchived: false,
+            createdAt: Date.now(),
+          },
+        ]);
+      }
+    },
+  );
+
+  const removeProject = useMutation(api.projects.remove).withOptimisticUpdate(
+    (localStore, args) => {
+      if (!area) return;
+      const current = localStore.getQuery(api.projects.listByArea, {
+        areaId: area._id,
+      });
+      if (current !== undefined) {
+        localStore.setQuery(
+          api.projects.listByArea,
+          { areaId: area._id },
+          current.filter((p) => p._id !== args.id),
+        );
+      }
+    },
+  );
   const [showEdit, setShowEdit] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
 
@@ -182,21 +273,55 @@ function AreaDetailPage() {
           {projects.map((project) => {
             const slug = project.slug ?? project._id;
             return (
-              <Link
+              <div
                 key={project._id}
-                to="/projects/$projectSlug"
-                params={{ projectSlug: slug }}
-                className="flex items-center gap-3 border-b py-3 transition-colors last:border-b-0 hover:bg-muted/50"
+                className="group flex items-center border-b transition-colors last:border-b-0 hover:bg-muted/50"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{project.name}</p>
-                  {project.description && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      {project.description}
-                    </p>
-                  )}
-                </div>
-              </Link>
+                <Link
+                  to="/projects/$projectSlug"
+                  params={{ projectSlug: slug }}
+                  className="flex min-w-0 flex-1 items-center gap-3 py-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{project.name}</p>
+                    {project.description && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {project.description}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+                      aria-label="Delete project"
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete project?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        All tasks in &ldquo;{project.name}&rdquo; will be moved
+                        to Inbox.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => removeProject({ id: project._id })}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             );
           })}
         </div>
