@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   component: ProjectsPage,
@@ -193,19 +194,34 @@ function ProjectsListSkeleton() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6 flex items-center justify-between">
-        <div className="h-8 w-24 animate-pulse rounded bg-muted" />
-        <div className="h-8 w-28 animate-pulse rounded bg-muted" />
+        <Skeleton className="h-8 w-28" />
+        <Skeleton className="h-8 w-28 rounded-md" />
       </div>
-      {Array.from({ length: 3 }).map((_, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
-        <div key={i}>
-          <div className="py-3">
-            <div className="h-5 w-40 animate-pulse rounded bg-muted" />
-            <div className="mt-1.5 h-3 w-64 animate-pulse rounded bg-muted" />
-          </div>
-          <Separator />
+
+      <div className="overflow-hidden rounded-md border">
+        <div className="flex gap-4 border-b px-3 py-1.5">
+          <Skeleton className="h-3 w-8" />
+          <Skeleton className="h-3 w-8" />
+          <Skeleton className="h-3 w-8" />
         </div>
-      ))}
+        <div className="space-y-1.5 px-3 py-2">
+          <Skeleton className="h-6 w-3/4" />
+          <Skeleton className="h-6 w-1/2" />
+        </div>
+      </div>
+
+      <div className="mt-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
+          <div key={i}>
+            <div className="py-3">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="mt-1.5 h-3 w-64" />
+            </div>
+            <Separator />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
