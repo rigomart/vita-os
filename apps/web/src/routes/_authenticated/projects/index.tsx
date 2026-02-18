@@ -29,15 +29,15 @@ export const Route = createFileRoute("/_authenticated/projects/")({
 });
 
 function ProjectsPage() {
-  const projects = useQuery(api.projects.list);
+  const projects = useQuery(api.projects.listUngrouped);
   const areas = useQuery(api.areas.list);
 
   const createProject = useMutation(api.projects.create).withOptimisticUpdate(
     (localStore, args) => {
-      const current = localStore.getQuery(api.projects.list, {});
+      const current = localStore.getQuery(api.projects.listUngrouped, {});
       if (current !== undefined) {
         const maxOrder = current.reduce((max, p) => Math.max(max, p.order), -1);
-        localStore.setQuery(api.projects.list, {}, [
+        localStore.setQuery(api.projects.listUngrouped, {}, [
           ...current,
           {
             _id: crypto.randomUUID() as Id<"projects">,
@@ -61,10 +61,10 @@ function ProjectsPage() {
 
   const removeProject = useMutation(api.projects.remove).withOptimisticUpdate(
     (localStore, args) => {
-      const current = localStore.getQuery(api.projects.list, {});
+      const current = localStore.getQuery(api.projects.listUngrouped, {});
       if (current !== undefined) {
         localStore.setQuery(
-          api.projects.list,
+          api.projects.listUngrouped,
           {},
           current.filter((p) => p._id !== args.id),
         );
@@ -101,7 +101,8 @@ function ProjectsPage() {
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <FolderOpen className="mb-3 h-10 w-10 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              No projects yet. Create one to organize your tasks.
+              No ungrouped projects. Projects not assigned to an area will
+              appear here.
             </p>
           </div>
         ) : (
