@@ -22,9 +22,10 @@ type ProjectWithStartDate = Doc<"projects"> & {
 
 interface ProjectTimelineProps {
   projects: Doc<"projects">[];
+  areaSlug?: string;
 }
 
-export function ProjectTimeline({ projects }: ProjectTimelineProps) {
+export function ProjectTimeline({ projects, areaSlug }: ProjectTimelineProps) {
   const today = useMemo(() => new Date(), []);
 
   const timelineProjects = useMemo(
@@ -151,6 +152,7 @@ export function ProjectTimeline({ projects }: ProjectTimelineProps) {
               project={project}
               rangeStart={rangeStart}
               today={today}
+              areaSlug={areaSlug}
             />
           ))}
         </div>

@@ -28,12 +28,13 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const Route = createFileRoute("/_authenticated/projects/$projectSlug")({
-  component: ProjectDetailPage,
+export const Route = createFileRoute("/_authenticated/$areaSlug/$projectSlug")({
+  component: AreaProjectDetailPage,
 });
 
-function ProjectDetailPage() {
-  const { projectSlug } = Route.useParams();
+function AreaProjectDetailPage() {
+  const { areaSlug, projectSlug } = Route.useParams();
+  const area = useQuery(api.areas.getBySlug, { slug: areaSlug });
   const project = useQuery(api.projects.getBySlug, { slug: projectSlug });
   const tasks = useQuery(
     api.tasks.listByProject,
@@ -119,18 +120,23 @@ function ProjectDetailPage() {
     };
   }, [project?.name]);
 
-  const isLoading = project === undefined || tasks === undefined;
+  const isLoading =
+    area === undefined || project === undefined || tasks === undefined;
 
   if (isLoading) {
     return <ProjectDetailSkeleton />;
   }
 
-  if (project === null) {
+  if (area === null || project === null || project.areaId !== area._id) {
     return (
       <div className="py-16 text-center">
         <p className="text-sm text-muted-foreground">Project not found.</p>
-        <Link to="/projects" className="mt-2 inline-block text-sm underline">
-          Back to projects
+        <Link
+          to="/$areaSlug"
+          params={{ areaSlug }}
+          className="mt-2 inline-block text-sm underline"
+        >
+          Back to area
         </Link>
       </div>
     );
@@ -141,14 +147,18 @@ function ProjectDetailPage() {
 
   const handleDelete = async () => {
     await removeProject({ id: project._id });
-    navigate({ to: "/projects" });
+    navigate({ to: "/$areaSlug", params: { areaSlug } });
   };
 
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
         title={project.name}
-        backLink={{ label: "Projects", to: "/projects" }}
+        backLink={{
+          label: area.name,
+          to: "/$areaSlug",
+          params: { areaSlug },
+        }}
         description={project.description || undefined}
         actions={
           <>
@@ -252,25 +262,35 @@ function ProjectDetailPage() {
                 ? result.slug
                 : projectSlug;
 
-            if (data.areaId) {
-              const newArea = (areas ?? []).find((a) => a._id === data.areaId);
-              if (newArea) {
+            const areaChanged =
+              (data.areaId ?? null) !== (project.areaId ?? null);
+
+            if (areaChanged) {
+              if (!data.areaId) {
                 navigate({
-                  to: "/$areaSlug/$projectSlug",
-                  params: {
-                    areaSlug: newArea.slug ?? newArea._id,
-                    projectSlug: newSlug,
-                  },
+                  to: "/projects/$projectSlug",
+                  params: { projectSlug: newSlug },
                   replace: true,
                 });
-                return;
+              } else {
+                const newArea = (areas ?? []).find(
+                  (a) => a._id === data.areaId,
+                );
+                if (newArea) {
+                  navigate({
+                    to: "/$areaSlug/$projectSlug",
+                    params: {
+                      areaSlug: newArea.slug ?? newArea._id,
+                      projectSlug: newSlug,
+                    },
+                    replace: true,
+                  });
+                }
               }
-            }
-
-            if (data.name !== project.name && result?.slug) {
+            } else if (data.name !== project.name && result?.slug) {
               navigate({
-                to: "/projects/$projectSlug",
-                params: { projectSlug: result.slug },
+                to: "/$areaSlug/$projectSlug",
+                params: { areaSlug, projectSlug: result.slug },
                 replace: true,
               });
             }

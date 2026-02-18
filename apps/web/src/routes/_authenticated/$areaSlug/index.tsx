@@ -32,7 +32,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const Route = createFileRoute("/_authenticated/areas/$areaSlug")({
+export const Route = createFileRoute("/_authenticated/$areaSlug/")({
   component: AreaDetailPage,
 });
 
@@ -266,7 +266,7 @@ function AreaDetailPage() {
 
       <Separator className="mb-4" />
 
-      <ProjectTimeline projects={projects} />
+      <ProjectTimeline projects={projects} areaSlug={areaSlug} />
 
       <div className="mt-4 mb-2 flex items-center justify-between">
         <h2 className="text-sm font-medium">Projects</h2>
@@ -295,8 +295,8 @@ function AreaDetailPage() {
                 className="group flex items-center border-b transition-colors last:border-b-0 hover:bg-muted/50"
               >
                 <Link
-                  to="/projects/$projectSlug"
-                  params={{ projectSlug: slug }}
+                  to="/$areaSlug/$projectSlug"
+                  params={{ areaSlug, projectSlug: slug }}
                   className="flex min-w-0 flex-1 items-center gap-3 py-3"
                 >
                   <div className="min-w-0 flex-1">
@@ -358,7 +358,7 @@ function AreaDetailPage() {
           });
           if (data.name !== area.name && result?.slug) {
             navigate({
-              to: "/areas/$areaSlug",
+              to: "/$areaSlug",
               params: { areaSlug: result.slug },
               replace: true,
             });
@@ -372,9 +372,13 @@ function AreaDetailPage() {
         areas={areas ?? []}
         defaultAreaId={area._id}
         onSubmit={async (data) => {
-          await createProject({
+          const { slug } = await createProject({
             ...data,
             areaId: (data.areaId ?? area._id) as Id<"areas">,
+          });
+          navigate({
+            to: "/$areaSlug/$projectSlug",
+            params: { areaSlug, projectSlug: slug },
           });
         }}
       />

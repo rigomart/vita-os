@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 interface PageHeaderBackLink {
   label: string;
   to: LinkProps["to"];
+  // biome-ignore lint/suspicious/noExplicitAny: params type depends on route
+  params?: any;
 }
 
 interface PageHeaderProps {
@@ -29,6 +31,7 @@ export function PageHeader({
       {backLink && (
         <Link
           to={backLink.to}
+          params={backLink.params}
           className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3 w-3" />

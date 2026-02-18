@@ -151,7 +151,7 @@ export function AppSidebar() {
                     asChild
                     className="hover:text-sidebar-foreground"
                   >
-                    <Link to="/areas/$areaSlug" params={{ areaSlug }}>
+                    <Link to="/$areaSlug" params={{ areaSlug }}>
                       <Compass className="mr-1 h-3 w-3" />
                       {area.name}
                     </Link>
@@ -184,12 +184,13 @@ export function AppSidebar() {
                             <SidebarMenuItem key={project._id}>
                               <SidebarMenuButton
                                 asChild
-                                isActive={pathname === `/projects/${slug}`}
+                                isActive={pathname === `/${areaSlug}/${slug}`}
                                 tooltip={project.name}
                               >
                                 <Link
-                                  to="/projects/$projectSlug"
+                                  to="/$areaSlug/$projectSlug"
                                   params={{
+                                    areaSlug,
                                     projectSlug: slug,
                                   }}
                                 >
@@ -340,6 +341,19 @@ export function AppSidebar() {
             ...data,
             areaId: data.areaId ? (data.areaId as Id<"areas">) : undefined,
           });
+          if (data.areaId) {
+            const area = (areas ?? []).find((a) => a._id === data.areaId);
+            if (area) {
+              navigate({
+                to: "/$areaSlug/$projectSlug",
+                params: {
+                  areaSlug: area.slug ?? area._id,
+                  projectSlug: slug,
+                },
+              });
+              return;
+            }
+          }
           navigate({
             to: "/projects/$projectSlug",
             params: { projectSlug: slug },
