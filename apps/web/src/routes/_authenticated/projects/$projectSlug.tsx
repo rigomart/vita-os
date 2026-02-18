@@ -1,6 +1,8 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { generateSlug } from "@convex/lib/slugs";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Pencil, Trash2 } from "lucide-react";
@@ -24,7 +26,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useProjectMutations } from "@/hooks/use-project-mutations";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectSlug")({
   component: ProjectDetailPage,
@@ -38,8 +39,61 @@ function ProjectDetailPage() {
     project ? { projectId: project._id } : "skip",
   );
   const areas = useQuery(api.areas.list);
-  const { updateProject, removeProject } = useProjectMutations();
   const navigate = useNavigate();
+
+  const updateProject = useMutation(api.projects.update).withOptimisticUpdate(
+    (localStore, args) => {
+      const { id, ...updates } = args;
+
+      const resolved = { ...updates };
+      if (updates.clearStartDate) {
+        resolved.startDate = undefined;
+        resolved.endDate = undefined;
+      }
+      if (updates.clearEndDate) {
+        resolved.endDate = undefined;
+      }
+      if (updates.clearAreaId) {
+        resolved.areaId = undefined;
+      }
+
+      const slugUpdate =
+        updates.name !== undefined ? { slug: generateSlug(updates.name) } : {};
+      const fullUpdates = { ...resolved, ...slugUpdate };
+
+      const current = localStore.getQuery(api.projects.list, {});
+      if (current !== undefined) {
+        localStore.setQuery(
+          api.projects.list,
+          {},
+          current.map((p) => (p._id === id ? { ...p, ...fullUpdates } : p)),
+        );
+      }
+
+      const single = localStore.getQuery(api.projects.get, { id });
+      if (single !== undefined && single !== null) {
+        localStore.setQuery(
+          api.projects.get,
+          { id },
+          { ...single, ...fullUpdates },
+        );
+      }
+    },
+  );
+
+  const removeProject = useMutation(api.projects.remove).withOptimisticUpdate(
+    (localStore, args) => {
+      const current = localStore.getQuery(api.projects.list, {});
+      if (current !== undefined) {
+        localStore.setQuery(
+          api.projects.list,
+          {},
+          current.filter((p) => p._id !== args.id),
+        );
+      }
+      localStore.setQuery(api.projects.get, { id: args.id }, null);
+    },
+  );
   const [showEdit, setShowEdit] = useState(false);
 
   const isLoading = project === undefined || tasks === undefined;

@@ -1,6 +1,8 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { generateSlug } from "@convex/lib/slugs";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
   ChevronRight,
@@ -40,7 +42,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useProjectMutations } from "@/hooks/use-project-mutations";
 import { authClient } from "@/lib/auth-client";
 
 export function AppSidebar() {
@@ -49,7 +50,32 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const projects = useQuery(api.projects.list);
   const areas = useQuery(api.areas.list);
-  const { createProject } = useProjectMutations();
+  const createProject = useMutation(api.projects.create).withOptimisticUpdate(
+    (localStore, args) => {
+      const current = localStore.getQuery(api.projects.list, {});
+      if (current !== undefined) {
+        const maxOrder = current.reduce((max, p) => Math.max(max, p.order), -1);
+        localStore.setQuery(api.projects.list, {}, [
+          ...current,
+          {
+            _id: crypto.randomUUID() as Id<"projects">,
+            _creationTime: Date.now(),
+            userId: "",
+            name: args.name,
+            slug: generateSlug(args.name),
+            description: args.description,
+            definitionOfDone: args.definitionOfDone,
+            areaId: args.areaId,
+            startDate: args.startDate,
+            endDate: args.endDate,
+            order: maxOrder + 1,
+            isArchived: false,
+            createdAt: Date.now(),
+          },
+        ]);
+      }
+    },
+  );
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [createForAreaId, setCreateForAreaId] = useState<string | undefined>();
 

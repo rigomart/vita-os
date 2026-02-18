@@ -1,5 +1,8 @@
 import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
+import { generateSlug } from "@convex/lib/slugs";
 import { createFileRoute } from "@tanstack/react-router";
+import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { Compass, Plus } from "lucide-react";
 import { useState } from "react";
@@ -11,7 +14,6 @@ import { CompletedSection } from "@/components/tasks/completed-section";
 import { TaskListSkeleton } from "@/components/tasks/task-list-skeleton";
 import { TaskRow } from "@/components/tasks/task-row";
 import { Button } from "@/components/ui/button";
-import { useAreaMutations } from "@/hooks/use-area-mutations";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: Inbox,
@@ -21,7 +23,28 @@ function Inbox() {
   const tasks = useQuery(api.tasks.list);
   const projects = useQuery(api.projects.list);
   const areas = useQuery(api.areas.list);
-  const { createArea } = useAreaMutations();
+  const createArea = useMutation(api.areas.create).withOptimisticUpdate(
+    (localStore, args) => {
+      const current = localStore.getQuery(api.areas.list, {});
+      if (current !== undefined) {
+        const maxOrder = current.reduce((max, a) => Math.max(max, a.order), -1);
+        localStore.setQuery(api.areas.list, {}, [
+          ...current,
+          {
+            _id: crypto.randomUUID() as Id<"areas">,
+            _creationTime: Date.now(),
+            userId: "",
+            name: args.name,
+            slug: generateSlug(args.name),
+            standard: args.standard,
+            healthStatus: args.healthStatus,
+            order: maxOrder + 1,
+            createdAt: Date.now(),
+          },
+        ]);
+      }
+    },
+  );
   const [showCreateArea, setShowCreateArea] = useState(false);
   const isLoading = tasks === undefined;
 

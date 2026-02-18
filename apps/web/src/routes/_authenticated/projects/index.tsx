@@ -1,16 +1,28 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { generateSlug } from "@convex/lib/slugs";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { format } from "date-fns";
-import { FolderOpen, Plus } from "lucide-react";
+import { FolderOpen, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { ProjectTimeline } from "@/components/projects/project-timeline";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useProjectMutations } from "@/hooks/use-project-mutations";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   component: ProjectsPage,
@@ -19,7 +31,46 @@ export const Route = createFileRoute("/_authenticated/projects/")({
 function ProjectsPage() {
   const projects = useQuery(api.projects.list);
   const areas = useQuery(api.areas.list);
-  const { createProject } = useProjectMutations();
+
+  const createProject = useMutation(api.projects.create).withOptimisticUpdate(
+    (localStore, args) => {
+      const current = localStore.getQuery(api.projects.list, {});
+      if (current !== undefined) {
+        const maxOrder = current.reduce((max, p) => Math.max(max, p.order), -1);
+        localStore.setQuery(api.projects.list, {}, [
+          ...current,
+          {
+            _id: crypto.randomUUID() as Id<"projects">,
+            _creationTime: Date.now(),
+            userId: "",
+            name: args.name,
+            slug: generateSlug(args.name),
+            description: args.description,
+            definitionOfDone: args.definitionOfDone,
+            areaId: args.areaId,
+            startDate: args.startDate,
+            endDate: args.endDate,
+            order: maxOrder + 1,
+            isArchived: false,
+            createdAt: Date.now(),
+          },
+        ]);
+      }
+    },
+  );
+
+  const removeProject = useMutation(api.projects.remove).withOptimisticUpdate(
+    (localStore, args) => {
+      const current = localStore.getQuery(api.projects.list, {});
+      if (current !== undefined) {
+        localStore.setQuery(
+          api.projects.list,
+          {},
+          current.filter((p) => p._id !== args.id),
+        );
+      }
+    },
+  );
   const [showCreate, setShowCreate] = useState(false);
   const isLoading = projects === undefined;
 
@@ -57,29 +108,65 @@ function ProjectsPage() {
           <div>
             {projects.map((project) => (
               <div key={project._id}>
-                <Link
-                  to="/projects/$projectSlug"
-                  params={{
-                    projectSlug: project.slug ?? project._id,
-                  }}
-                  className="-mx-2 flex items-center gap-3 rounded px-2 py-3 transition-colors hover:bg-muted/50"
-                >
-                  <div className="min-w-0 flex-1">
-                    <span className="font-medium">{project.name}</span>
-                    {project.description && (
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {project.description}
-                      </p>
+                <div className="group -mx-2 flex items-center rounded px-2 transition-colors hover:bg-muted/50">
+                  <Link
+                    to="/projects/$projectSlug"
+                    params={{
+                      projectSlug: project.slug ?? project._id,
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-3 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium">{project.name}</span>
+                      {project.description && (
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {project.description}
+                        </p>
+                      )}
+                    </div>
+                    {project.startDate && (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {format(new Date(project.startDate), "MMM d")}
+                        {project.endDate &&
+                          ` – ${format(new Date(project.endDate), "MMM d")}`}
+                      </span>
                     )}
-                  </div>
-                  {project.startDate && (
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {format(new Date(project.startDate), "MMM d")}
-                      {project.endDate &&
-                        ` – ${format(new Date(project.endDate), "MMM d")}`}
-                    </span>
-                  )}
-                </Link>
+                  </Link>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+                        aria-label="Delete project"
+                      >
+                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete project?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          All tasks in &ldquo;{project.name}
+                          &rdquo; will be moved to Inbox.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() =>
+                            removeProject({
+                              id: project._id,
+                            })
+                          }
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
                 <Separator />
               </div>
             ))}
