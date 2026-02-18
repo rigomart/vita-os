@@ -42,6 +42,11 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { authClient } from "@/lib/auth-client";
 
 export function AppSidebar() {
@@ -151,6 +156,19 @@ export function AppSidebar() {
                       {area.name}
                     </Link>
                   </SidebarGroupLabel>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="New project"
+                        onClick={() => handleCreateProject(area._id)}
+                        className="text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-3.5 right-9 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 after:absolute after:-inset-2 md:after:hidden group-data-[collapsible=icon]:hidden [&>svg]:size-4 [&>svg]:shrink-0"
+                      >
+                        <Plus />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">New project</TooltipContent>
+                  </Tooltip>
                   <CollapsibleTrigger asChild>
                     <SidebarGroupAction>
                       <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
@@ -160,15 +178,6 @@ export function AppSidebar() {
                   <CollapsibleContent>
                     <SidebarGroupContent>
                       <SidebarMenu>
-                        <SidebarMenuItem>
-                          <SidebarMenuButton
-                            tooltip="New project"
-                            onClick={() => handleCreateProject(area._id)}
-                          >
-                            <Plus />
-                            <span>New project</span>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
                         {areaProjectList.map((project) => {
                           const slug = project.slug ?? project._id;
                           return (
@@ -207,6 +216,19 @@ export function AppSidebar() {
               >
                 <Link to="/projects">Ungrouped</Link>
               </SidebarGroupLabel>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="New project"
+                    onClick={() => handleCreateProject()}
+                    className="text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-3.5 right-9 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 after:absolute after:-inset-2 md:after:hidden group-data-[collapsible=icon]:hidden [&>svg]:size-4 [&>svg]:shrink-0"
+                  >
+                    <Plus />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">New project</TooltipContent>
+              </Tooltip>
               <CollapsibleTrigger asChild>
                 <SidebarGroupAction>
                   <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
@@ -216,15 +238,6 @@ export function AppSidebar() {
               <CollapsibleContent>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        tooltip="New project"
-                        onClick={() => handleCreateProject()}
-                      >
-                        <Plus />
-                        <span>New project</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
                     {ungroupedProjects.map((project) => {
                       const slug = project.slug ?? project._id;
                       return (
