@@ -28,26 +28,24 @@ function ProjectsPage() {
   }
 
   return (
-    <div>
-      <div className="mx-auto max-w-3xl">
-        <PageHeader
-          title="Projects"
-          actions={
-            <Button
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setShowCreate(true)}
-            >
-              <Plus className="h-4 w-4" />
-              New project
-            </Button>
-          }
-        />
-      </div>
+    <div className="mx-auto max-w-3xl">
+      <PageHeader
+        title="Projects"
+        actions={
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setShowCreate(true)}
+          >
+            <Plus className="h-4 w-4" />
+            New project
+          </Button>
+        }
+      />
 
       <ProjectTimeline projects={projects} />
 
-      <div className="mx-auto mt-6 max-w-3xl">
+      <div className="mt-6">
         {projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <FolderOpen className="mb-3 h-10 w-10 text-muted-foreground" />
