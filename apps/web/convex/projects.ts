@@ -46,6 +46,20 @@ export const getBySlug = query({
   },
 });
 
+export const listUngrouped = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) return [];
+    const userId = String(user._id);
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_user_order", (q) => q.eq("userId", userId))
+      .collect();
+    return projects.filter((p) => !p.isArchived && !p.areaId);
+  },
+});
+
 export const listByArea = query({
   args: { areaId: v.id("areas") },
   handler: async (ctx, args) => {
