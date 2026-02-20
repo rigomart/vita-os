@@ -8,13 +8,6 @@ import { useState } from "react";
 import { ProjectPicker } from "@/components/tasks/project-picker";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -22,6 +15,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Textarea } from "@/components/ui/textarea";
 
 interface QuickAddTaskDialogProps {
@@ -67,17 +67,17 @@ export function QuickAddTaskDialog({
   };
 
   return (
-    <Dialog
+    <ResponsiveDialog
       open={open}
       onOpenChange={(value) => {
         if (!value) reset();
         onOpenChange(value);
       }}
     >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add task</DialogTitle>
-        </DialogHeader>
+      <ResponsiveDialogContent>
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Add task</ResponsiveDialogTitle>
+        </ResponsiveDialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="quick-task-title">Title</Label>
@@ -128,7 +128,7 @@ export function QuickAddTaskDialog({
               />
             )}
           </div>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button
               type="button"
               variant="ghost"
@@ -142,9 +142,9 @@ export function QuickAddTaskDialog({
             <Button type="submit" disabled={!title.trim()}>
               Add task
             </Button>
-          </DialogFooter>
+          </ResponsiveDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

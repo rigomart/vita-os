@@ -73,17 +73,18 @@ export function AddTaskRow({
 
   if (!isAdding) {
     return (
-      <>
-        <button
+      <div className="flex flex-col gap-2">
+        <Separator />
+        <Button
           type="button"
           onClick={() => setIsAdding(true)}
-          className="flex w-full items-center gap-3 py-3 text-muted-foreground transition-colors hover:text-foreground"
+          className="flex w-full items-center"
+          variant="ghost"
         >
-          <Plus className="h-4 w-4" />
-          <span>Add task</span>
-        </button>
-        <Separator />
-      </>
+          <Plus className="size-4" />
+          Add task
+        </Button>
+      </div>
     );
   }
 
