@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
 import { nullsToUndefined } from "./lib/patch";
@@ -51,6 +52,61 @@ export const countByUser = query({
       }
     }
     return counts;
+  },
+});
+
+export const listUpcoming = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) return [];
+    const userId = String(user._id);
+    const limit = Math.min(args.limit ?? 20, 50);
+
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_user_order", (q) => q.eq("userId", userId))
+      .collect();
+
+    const upcoming = tasks
+      .filter(
+        (t): t is typeof t & { dueDate: number; projectId: Id<"projects"> } =>
+          !t.isCompleted &&
+          t.dueDate !== undefined &&
+          t.projectId !== undefined,
+      )
+      .sort((a, b) => a.dueDate - b.dueDate)
+      .slice(0, limit);
+
+    // Batch-fetch projects
+    const projectIds = [...new Set(upcoming.map((t) => t.projectId))];
+    const projectResults = await Promise.all(
+      projectIds.map((id) => ctx.db.get(id)),
+    );
+    const projectMap = new Map<string, (typeof projectResults)[number] & {}>();
+    for (const p of projectResults) {
+      if (p) projectMap.set(p._id, p);
+    }
+
+    // Batch-fetch areas
+    const areaIds = [...new Set([...projectMap.values()].map((p) => p.areaId))];
+    const areaResults = await Promise.all(areaIds.map((id) => ctx.db.get(id)));
+    const areaMap = new Map<string, (typeof areaResults)[number] & {}>();
+    for (const a of areaResults) {
+      if (a) areaMap.set(a._id, a);
+    }
+
+    return upcoming.map((t) => {
+      const project = projectMap.get(t.projectId);
+      const area = project ? areaMap.get(project.areaId) : undefined;
+      return {
+        ...t,
+        projectName: project?.name ?? "Unknown",
+        projectSlug: project?.slug ?? "",
+        areaName: area?.name ?? "Unknown",
+        areaSlug: area?.slug ?? "",
+      };
+    });
   },
 });
 
