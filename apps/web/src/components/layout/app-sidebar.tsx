@@ -7,8 +7,6 @@ import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
   ChevronRight,
   ChevronsUpDown,
-  Compass,
-  FolderOpen,
   Inbox,
   LogOut,
   Plus,
@@ -33,21 +31,18 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupAction,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { authClient } from "@/lib/auth-client";
+import { Button } from "../ui/button";
 
 export function AppSidebar() {
   const { data: session } = authClient.useSession();
@@ -96,7 +91,10 @@ export function AppSidebar() {
         ungrouped.push(project);
       }
     }
-    return { areaProjects: grouped, ungroupedProjects: ungrouped };
+    return {
+      areaProjects: grouped,
+      ungroupedProjects: ungrouped,
+    };
   }, [projects]);
 
   const handleCreateProject = (forAreaId?: string) => {
@@ -106,12 +104,19 @@ export function AppSidebar() {
 
   return (
     <>
-      <Sidebar collapsible="icon">
+      <Sidebar>
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
-                <span className="font-semibold">vita-os</span>
+                <Link to="/">
+                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg font-semibold">
+                    V
+                  </div>
+                  <div className="flex flex-col gap-0.5 leading-none">
+                    <span className="font-medium">vita-os</span>
+                  </div>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -119,151 +124,121 @@ export function AppSidebar() {
 
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === "/"}
-                    tooltip="Inbox"
-                  >
-                    <Link to="/">
-                      <Inbox />
-                      <span>Inbox</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/"}
+                  tooltip="Inbox"
+                >
+                  <Link to="/">
+                    <Inbox />
+                    <span>Inbox</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
-          {areas?.map((area) => {
-            const areaSlug = area.slug ?? area._id;
-            const areaProjectList = areaProjects.get(area._id) ?? [];
-            return (
-              <Collapsible
-                key={area._id}
-                defaultOpen
-                className="group/collapsible"
-              >
-                <SidebarGroup>
-                  <SidebarGroupLabel
-                    asChild
-                    className="hover:text-sidebar-foreground"
+              {areas?.map((area) => {
+                const areaSlug = area.slug ?? area._id;
+                const areaProjectList = areaProjects.get(area._id) ?? [];
+                return (
+                  <Collapsible
+                    key={area._id}
+                    defaultOpen
+                    className="group/collapsible"
                   >
-                    <Link to="/$areaSlug" params={{ areaSlug }}>
-                      <Compass className="mr-1 h-3 w-3" />
-                      {area.name}
-                    </Link>
-                  </SidebarGroupLabel>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="New project"
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton>
+                          <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                          {area.name}
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <SidebarMenuAction
+                        showOnHover
                         onClick={() => handleCreateProject(area._id)}
-                        className="text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-3.5 right-9 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 after:absolute after:-inset-2 md:after:hidden group-data-[collapsible=icon]:hidden [&>svg]:size-4 [&>svg]:shrink-0"
+                        title="New project"
+                        asChild
                       >
-                        <Plus />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">New project</TooltipContent>
-                  </Tooltip>
-                  <CollapsibleTrigger asChild>
-                    <SidebarGroupAction>
-                      <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                      <span className="sr-only">Toggle {area.name}</span>
-                    </SidebarGroupAction>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarGroupContent>
-                      <SidebarMenu>
-                        {areaProjectList.map((project) => {
-                          const slug = project.slug ?? project._id;
-                          return (
-                            <SidebarMenuItem key={project._id}>
-                              <SidebarMenuButton
-                                asChild
-                                isActive={pathname === `/${areaSlug}/${slug}`}
-                                tooltip={project.name}
-                              >
-                                <Link
-                                  to="/$areaSlug/$projectSlug"
-                                  params={{
-                                    areaSlug,
-                                    projectSlug: slug,
-                                  }}
+                        <Button size="icon-xs" variant="ghost">
+                          <Plus />
+                        </Button>
+                      </SidebarMenuAction>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {areaProjectList.map((project) => {
+                            const slug = project.slug ?? project._id;
+                            return (
+                              <SidebarMenuSubItem key={project._id}>
+                                <SidebarMenuSubButton
+                                  asChild
+                                  isActive={pathname === `/${areaSlug}/${slug}`}
                                 >
-                                  <FolderOpen />
-                                  <span>{project.name}</span>
-                                </Link>
-                              </SidebarMenuButton>
-                            </SidebarMenuItem>
-                          );
-                        })}
-                      </SidebarMenu>
-                    </SidebarGroupContent>
-                  </CollapsibleContent>
-                </SidebarGroup>
-              </Collapsible>
-            );
-          })}
+                                  <Link
+                                    to="/$areaSlug/$projectSlug"
+                                    params={{
+                                      areaSlug,
+                                      projectSlug: slug,
+                                    }}
+                                  >
+                                    <span className="truncate">
+                                      {project.name}
+                                    </span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            );
+                          })}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                );
+              })}
 
-          <Collapsible defaultOpen className="group/collapsible">
-            <SidebarGroup>
-              <SidebarGroupLabel
-                asChild
-                className="hover:text-sidebar-foreground"
-              >
-                <Link to="/projects">Ungrouped</Link>
-              </SidebarGroupLabel>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="New project"
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton>
+                      <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                      Ungrouped
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <SidebarMenuAction
+                    showOnHover
                     onClick={() => handleCreateProject()}
-                    className="text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-3.5 right-9 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 after:absolute after:-inset-2 md:after:hidden group-data-[collapsible=icon]:hidden [&>svg]:size-4 [&>svg]:shrink-0"
+                    title="New project"
                   >
                     <Plus />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">New project</TooltipContent>
-              </Tooltip>
-              <CollapsibleTrigger asChild>
-                <SidebarGroupAction>
-                  <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                  <span className="sr-only">Toggle ungrouped</span>
-                </SidebarGroupAction>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {ungroupedProjects.map((project) => {
-                      const slug = project.slug ?? project._id;
-                      return (
-                        <SidebarMenuItem key={project._id}>
-                          <SidebarMenuButton
-                            asChild
-                            isActive={pathname === `/projects/${slug}`}
-                            tooltip={project.name}
-                          >
-                            <Link
-                              to="/projects/$projectSlug"
-                              params={{ projectSlug: slug }}
+                  </SidebarMenuAction>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {ungroupedProjects.map((project) => {
+                        const slug = project.slug ?? project._id;
+                        return (
+                          <SidebarMenuSubItem key={project._id}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={pathname === `/projects/${slug}`}
                             >
-                              <FolderOpen />
-                              <span>{project.name}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </CollapsibleContent>
-            </SidebarGroup>
-          </Collapsible>
+                              <Link
+                                to="/projects/$projectSlug"
+                                params={{
+                                  projectSlug: slug,
+                                }}
+                              >
+                                <span className="truncate">{project.name}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        );
+                      })}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+            </SidebarMenu>
+          </SidebarGroup>
         </SidebarContent>
 
         <SidebarFooter>
