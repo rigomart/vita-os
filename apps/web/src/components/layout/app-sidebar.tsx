@@ -13,6 +13,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { QuickAddTaskDialog } from "@/components/tasks/quick-add-task-dialog";
 import {
@@ -82,6 +83,29 @@ export function AppSidebar() {
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [createForAreaId, setCreateForAreaId] = useState<string | undefined>();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showCreateArea, setShowCreateArea] = useState(false);
+  const createArea = useMutation(api.areas.create).withOptimisticUpdate(
+    (localStore, args) => {
+      const current = localStore.getQuery(api.areas.list, {});
+      if (current !== undefined) {
+        const maxOrder = current.reduce((max, a) => Math.max(max, a.order), -1);
+        localStore.setQuery(api.areas.list, {}, [
+          ...current,
+          {
+            _id: crypto.randomUUID() as Id<"areas">,
+            _creationTime: Date.now(),
+            userId: "",
+            name: args.name,
+            slug: generateSlug(args.name),
+            standard: args.standard,
+            healthStatus: args.healthStatus,
+            order: maxOrder + 1,
+            createdAt: Date.now(),
+          },
+        ]);
+      }
+    },
+  );
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -239,6 +263,12 @@ export function AppSidebar() {
                   </Collapsible>
                 );
               })}
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={() => setShowCreateArea(true)}>
+                  <Plus />
+                  <span>Add area</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroup>
         </SidebarContent>
@@ -331,6 +361,11 @@ export function AppSidebar() {
         }}
       />
       <QuickAddTaskDialog open={showQuickAdd} onOpenChange={setShowQuickAdd} />
+      <AreaFormDialog
+        open={showCreateArea}
+        onOpenChange={setShowCreateArea}
+        onSubmit={(data) => createArea(data)}
+      />
     </>
   );
 }
