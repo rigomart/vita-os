@@ -37,7 +37,7 @@ export function QuickAddTaskDialog({
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [selectedProjectId, setSelectedProjectId] = useState<
-    string | undefined
+    Id<"projects"> | undefined
   >();
   const projects = useQuery(api.projects.list);
   const createTask = useMutation(api.tasks.create);
@@ -58,9 +58,7 @@ export function QuickAddTaskDialog({
       title: trimmed,
       description: description.trim() || undefined,
       dueDate: dueDate?.getTime(),
-      projectId: selectedProjectId
-        ? (selectedProjectId as Id<"projects">)
-        : undefined,
+      projectId: selectedProjectId ? selectedProjectId : undefined,
     });
     reset();
     onOpenChange(false);

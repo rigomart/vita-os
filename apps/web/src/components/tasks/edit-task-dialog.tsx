@@ -43,7 +43,7 @@ export function EditTaskDialog({
     task.dueDate ? new Date(task.dueDate) : undefined,
   );
   const [selectedProjectId, setSelectedProjectId] = useState<
-    string | undefined
+    Id<"projects"> | undefined
   >(task.projectId);
   const projects = useQuery(api.projects.list);
   const { updateTask } = useTaskMutations(projectId);
@@ -57,7 +57,7 @@ export function EditTaskDialog({
     }
   }, [open, task.title, task.description, task.dueDate, task.projectId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) return;
@@ -66,14 +66,9 @@ export function EditTaskDialog({
     await updateTask({
       id: task._id,
       title: trimmed,
-      description: descTrimmed || undefined,
-      clearDescription: !descTrimmed && !!task.description,
-      dueDate: dueDate?.getTime(),
-      clearDueDate: !dueDate && !!task.dueDate,
-      projectId: selectedProjectId
-        ? (selectedProjectId as Id<"projects">)
-        : undefined,
-      clearProjectId: !selectedProjectId && !!task.projectId,
+      description: descTrimmed || null,
+      dueDate: dueDate?.getTime() ?? null,
+      projectId: selectedProjectId ? selectedProjectId : null,
     });
     onOpenChange(false);
   };

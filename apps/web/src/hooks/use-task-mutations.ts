@@ -1,11 +1,13 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { nullsToUndefined } from "@convex/lib/patch";
 import { useMutation } from "convex/react";
 
 export function useTaskMutations(projectId?: Id<"projects">) {
   const updateTask = useMutation(api.tasks.update).withOptimisticUpdate(
     (localStore, args) => {
       const { id, ...updates } = args;
+      const resolved = nullsToUndefined(updates);
 
       if (projectId) {
         const tasks = localStore.getQuery(api.tasks.listByProject, {
@@ -17,7 +19,7 @@ export function useTaskMutations(projectId?: Id<"projects">) {
             localStore.setQuery(
               api.tasks.listByProject,
               { projectId },
-              tasks.map((t) => (t._id === id ? { ...task, ...updates } : t)),
+              tasks.map((t) => (t._id === id ? { ...task, ...resolved } : t)),
             );
           }
         }
@@ -29,7 +31,7 @@ export function useTaskMutations(projectId?: Id<"projects">) {
             localStore.setQuery(
               api.tasks.list,
               {},
-              tasks.map((t) => (t._id === id ? { ...task, ...updates } : t)),
+              tasks.map((t) => (t._id === id ? { ...task, ...resolved } : t)),
             );
           }
         }

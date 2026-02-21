@@ -1,5 +1,6 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { nullsToUndefined } from "@convex/lib/patch";
 import { generateSlug } from "@convex/lib/slugs";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
@@ -60,11 +61,7 @@ function AreaDetailPage() {
   const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
     (localStore, args) => {
       const { id, ...updates } = args;
-
-      const resolved = { ...updates };
-      if (updates.clearStandard) {
-        resolved.standard = undefined;
-      }
+      const resolved = nullsToUndefined(updates);
 
       const bySlug = localStore.getQuery(api.areas.getBySlug, {
         slug: areaSlug,
@@ -361,8 +358,7 @@ function AreaDetailPage() {
           const result = await updateArea({
             id: area._id,
             name: data.name,
-            standard: data.standard,
-            clearStandard: !data.standard,
+            standard: data.standard || null,
             healthStatus: data.healthStatus,
           });
           if (data.name !== area.name && result?.slug) {

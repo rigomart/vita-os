@@ -1,5 +1,6 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { nullsToUndefined } from "@convex/lib/patch";
 import { generateSlug } from "@convex/lib/slugs";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
@@ -59,14 +60,9 @@ function AreaProjectDetailPage() {
     (localStore, args) => {
       const { id, ...updates } = args;
 
-      const resolved = { ...updates };
-      if (updates.clearStartDate) {
-        resolved.startDate = undefined;
-        resolved.endDate = undefined;
-      }
-      if (updates.clearEndDate) {
-        resolved.endDate = undefined;
-      }
+      // Clearing startDate must also clear endDate
+      if (updates.startDate === null) updates.endDate = null;
+      const resolved = nullsToUndefined(updates);
 
       const bySlug = localStore.getQuery(api.projects.getBySlug, {
         slug: projectSlug,
@@ -258,15 +254,11 @@ function AreaProjectDetailPage() {
             const result = await updateProject({
               id: project._id,
               name: data.name,
-              description: data.description,
-              clearDescription: !data.description,
-              definitionOfDone: data.definitionOfDone,
-              clearDefinitionOfDone: !data.definitionOfDone,
+              description: data.description || null,
+              definitionOfDone: data.definitionOfDone || null,
               areaId: data.areaId as Id<"areas">,
-              startDate: data.startDate,
-              clearStartDate: !data.startDate,
-              endDate: data.endDate,
-              clearEndDate: !data.endDate,
+              startDate: data.startDate ?? null,
+              endDate: data.endDate ?? null,
             });
 
             const newSlug =

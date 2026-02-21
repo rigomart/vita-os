@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
+import { validateDateRange, validateEffectiveDates } from "./lib/dates";
+import { nullsToUndefined } from "./lib/patch";
 import { generateSlug } from "./lib/slugs";
 
 export const list = query({
@@ -70,16 +72,7 @@ export const create = mutation({
     endDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    if (args.endDate !== undefined && args.startDate === undefined) {
-      throw new Error("End date requires a start date");
-    }
-    if (
-      args.startDate !== undefined &&
-      args.endDate !== undefined &&
-      args.endDate < args.startDate
-    ) {
-      throw new Error("End date must not be before start date");
-    }
+    validateDateRange(args.startDate, args.endDate);
 
     const user = await authComponent.getAuthUser(ctx);
     const userId = String(user._id);
@@ -115,15 +108,11 @@ export const update = mutation({
   args: {
     id: v.id("projects"),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
-    clearDescription: v.optional(v.boolean()),
-    definitionOfDone: v.optional(v.string()),
-    clearDefinitionOfDone: v.optional(v.boolean()),
+    description: v.optional(v.union(v.string(), v.null())),
+    definitionOfDone: v.optional(v.union(v.string(), v.null())),
     areaId: v.optional(v.id("areas")),
-    startDate: v.optional(v.number()),
-    clearStartDate: v.optional(v.boolean()),
-    endDate: v.optional(v.number()),
-    clearEndDate: v.optional(v.boolean()),
+    startDate: v.optional(v.union(v.number(), v.null())),
+    endDate: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
     const user = await authComponent.getAuthUser(ctx);
@@ -134,67 +123,26 @@ export const update = mutation({
       throw new Error("Project not found");
     }
 
-    // Compute effective dates to validate the resulting state
-    let effectiveStartDate = project.startDate;
-    if (args.clearStartDate) {
-      effectiveStartDate = undefined;
-    } else if (args.startDate !== undefined) {
-      effectiveStartDate = args.startDate;
-    }
+    const { id, ...rest } = args;
 
-    let effectiveEndDate = project.endDate;
-    if (args.clearEndDate || args.clearStartDate) {
-      effectiveEndDate = undefined;
-    } else if (args.endDate !== undefined) {
-      effectiveEndDate = args.endDate;
-    }
+    validateEffectiveDates(
+      { startDate: project.startDate, endDate: project.endDate },
+      { startDate: rest.startDate, endDate: rest.endDate },
+    );
 
-    if (effectiveEndDate !== undefined && effectiveStartDate === undefined) {
-      throw new Error("End date requires a start date");
+    let newSlug: string | undefined;
+    if (rest.name && rest.name !== project.name) {
+      newSlug = generateSlug(rest.name);
     }
-    if (
-      effectiveStartDate !== undefined &&
-      effectiveEndDate !== undefined &&
-      effectiveEndDate < effectiveStartDate
-    ) {
-      throw new Error("End date must not be before start date");
-    }
+    // Clearing startDate must also clear endDate
+    if (rest.startDate === null) rest.endDate = null;
 
-    const updates: Record<string, unknown> = {};
-    if (args.name !== undefined) {
-      updates.name = args.name;
-      if (args.name !== project.name) {
-        updates.slug = generateSlug(args.name);
-      }
-    }
-    if (args.clearDescription) {
-      updates.description = undefined;
-    } else if (args.description !== undefined) {
-      updates.description = args.description;
-    }
-    if (args.clearDefinitionOfDone) {
-      updates.definitionOfDone = undefined;
-    } else if (args.definitionOfDone !== undefined) {
-      updates.definitionOfDone = args.definitionOfDone;
-    }
-    if (args.areaId !== undefined) {
-      updates.areaId = args.areaId;
-    }
-    if (args.clearStartDate) {
-      updates.startDate = undefined;
-      updates.endDate = undefined;
-    } else if (args.startDate !== undefined) {
-      updates.startDate = args.startDate;
-    }
-    if (args.clearEndDate || args.clearStartDate) {
-      updates.endDate = undefined;
-    } else if (args.endDate !== undefined) {
-      updates.endDate = args.endDate;
-    }
+    await ctx.db.patch(id, {
+      ...nullsToUndefined(rest),
+      ...(newSlug && { slug: newSlug }),
+    });
 
-    await ctx.db.patch(args.id, updates);
-
-    return { slug: (updates.slug as string) ?? project.slug };
+    return { slug: newSlug ?? project.slug };
   },
 });
 

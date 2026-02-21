@@ -29,7 +29,7 @@ export function AddTaskRow({
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [selectedProjectId, setSelectedProjectId] = useState<
-    string | undefined
+    Id<"projects"> | undefined
   >();
   const { createTask } = useTaskMutations(projectId);
 
