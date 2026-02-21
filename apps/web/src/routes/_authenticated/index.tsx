@@ -1,16 +1,13 @@
 import { api } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
+import type { Doc, Id } from "@convex/_generated/dataModel";
 import { generateSlug } from "@convex/lib/slugs";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { Compass, Plus } from "lucide-react";
 import { useState } from "react";
 import { AreaCard } from "@/components/areas/area-card";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
-import { PageHeader } from "@/components/layout/page-header";
-import { AddTaskRow } from "@/components/tasks/add-task-row";
-import { CompletedSection } from "@/components/tasks/completed-section";
 import { TaskListSkeleton } from "@/components/tasks/task-list-skeleton";
 import { TaskRow } from "@/components/tasks/task-row";
 import { UpcomingSection } from "@/components/tasks/upcoming-section";
@@ -19,12 +16,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
-    meta: [{ title: "Inbox | Vita OS" }],
+    meta: [{ title: "Dashboard | Vita OS" }],
   }),
-  component: Inbox,
+  component: Dashboard,
 });
 
-function Inbox() {
+function Dashboard() {
   const tasks = useQuery(api.tasks.list);
   const upcomingTasks = useQuery(api.tasks.listUpcoming, {});
   const projects = useQuery(api.projects.list);
@@ -54,15 +51,12 @@ function Inbox() {
   const [showCreateArea, setShowCreateArea] = useState(false);
   const isLoading = tasks === undefined;
 
-  const activeTasks = tasks?.filter((t) => !t.isCompleted) ?? [];
-  const completedTasks = tasks?.filter((t) => t.isCompleted) ?? [];
-
   if (isLoading) {
-    return <InboxSkeleton />;
+    return <DashboardSkeleton />;
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-5xl">
       <div className="mb-6">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-medium">Areas</h2>
@@ -110,16 +104,7 @@ function Inbox() {
 
       <UpcomingSection tasks={upcomingTasks ?? []} />
 
-      <PageHeader title="Inbox" />
-      <div>
-        {activeTasks.map((task) => (
-          <TaskRow key={task._id} task={task} />
-        ))}
-        <AddTaskRow showProjectPicker projects={projects ?? []} />
-        {completedTasks.length > 0 && (
-          <CompletedSection tasks={completedTasks} />
-        )}
-      </div>
+      <InboxSummary tasks={tasks} />
 
       <AreaFormDialog
         open={showCreateArea}
@@ -130,9 +115,50 @@ function Inbox() {
   );
 }
 
-function InboxSkeleton() {
+const INBOX_PREVIEW_LIMIT = 5;
+
+function InboxSummary({ tasks }: { tasks: Doc<"tasks">[] }) {
+  const activeTasks = tasks.filter((t) => !t.isCompleted);
+  const preview = activeTasks.slice(0, INBOX_PREVIEW_LIMIT);
+  const overflow = activeTasks.length - preview.length;
+
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mb-6">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-medium">Inbox</h2>
+        <Link
+          to="/inbox"
+          className="text-xs text-muted-foreground hover:underline"
+        >
+          View all ({activeTasks.length})
+        </Link>
+      </div>
+      {activeTasks.length === 0 ? (
+        <p className="py-4 text-center text-sm text-muted-foreground">
+          No inbox tasks.
+        </p>
+      ) : (
+        <div>
+          {preview.map((task) => (
+            <TaskRow key={task._id} task={task} />
+          ))}
+          {overflow > 0 && (
+            <p className="py-2 text-center text-xs text-muted-foreground">
+              +{overflow} more in{" "}
+              <Link to="/inbox" className="hover:underline">
+                Inbox
+              </Link>
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="mx-auto max-w-5xl">
       <div className="mb-6">
         <div className="mb-3 flex items-center justify-between">
           <Skeleton className="h-4 w-12" />
@@ -175,10 +201,12 @@ function InboxSkeleton() {
       </div>
 
       <div className="mb-6">
-        <Skeleton className="h-8 w-20" />
+        <div className="mb-3 flex items-center justify-between">
+          <Skeleton className="h-4 w-12" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+        <TaskListSkeleton />
       </div>
-
-      <TaskListSkeleton />
     </div>
   );
 }

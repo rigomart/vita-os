@@ -178,10 +178,10 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === "/"}
+                  isActive={pathname === "/inbox"}
                   tooltip="Inbox"
                 >
-                  <Link to="/">
+                  <Link to="/inbox">
                     <Inbox />
                     <span>Inbox</span>
                   </Link>
