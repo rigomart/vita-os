@@ -33,6 +33,26 @@ export const listByProject = query({
   },
 });
 
+export const countByUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) return {};
+    const userId = String(user._id);
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_user_order", (q) => q.eq("userId", userId))
+      .collect();
+    const counts: Record<string, number> = {};
+    for (const task of tasks) {
+      if (!task.isCompleted && task.projectId) {
+        counts[task.projectId] = (counts[task.projectId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  },
+});
+
 export const create = mutation({
   args: {
     title: v.string(),

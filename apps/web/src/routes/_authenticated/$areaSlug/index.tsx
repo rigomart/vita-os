@@ -220,8 +220,8 @@ function AreaDetailPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete area?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Projects in &ldquo;{area.name}&rdquo; will be unassigned but
-                    not deleted.
+                    This area and its data will be permanently deleted. Move or
+                    delete all projects first.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

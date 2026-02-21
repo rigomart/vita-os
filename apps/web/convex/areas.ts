@@ -141,14 +141,16 @@ export const remove = mutation({
       throw new Error("Area not found");
     }
 
-    // Unassign all projects from this area
     const projects = await ctx.db
       .query("projects")
       .withIndex("by_area", (q) => q.eq("areaId", args.id))
       .collect();
 
-    for (const project of projects) {
-      await ctx.db.patch(project._id, { areaId: undefined });
+    const activeProjects = projects.filter((p) => !p.isArchived);
+    if (activeProjects.length > 0) {
+      throw new Error(
+        "Cannot delete an area that has projects. Move or delete the projects first.",
+      );
     }
 
     await ctx.db.delete(args.id);

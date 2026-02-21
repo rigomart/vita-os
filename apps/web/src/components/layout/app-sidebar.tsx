@@ -7,12 +7,14 @@ import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
   ChevronRight,
   ChevronsUpDown,
+  CirclePlus,
   Inbox,
   LogOut,
   Plus,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
+import { QuickAddTaskDialog } from "@/components/tasks/quick-add-task-dialog";
 import {
   Collapsible,
   CollapsibleContent,
@@ -31,6 +33,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
@@ -42,7 +45,6 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "../ui/button";
 
 export function AppSidebar() {
   const { data: session } = authClient.useSession();
@@ -76,25 +78,40 @@ export function AppSidebar() {
       }
     },
   );
+  const taskCounts = useQuery(api.tasks.countByUser);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [createForAreaId, setCreateForAreaId] = useState<string | undefined>();
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
-  const { areaProjects, ungroupedProjects } = useMemo(() => {
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== "q" && e.key !== "Q") return;
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+      e.preventDefault();
+      setShowQuickAdd(true);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const areaProjects = useMemo(() => {
     const grouped = new Map<string, typeof projects>();
-    const ungrouped: NonNullable<typeof projects> = [];
     for (const project of projects ?? []) {
       if (project.areaId) {
         const list = grouped.get(project.areaId) ?? [];
         list.push(project);
         grouped.set(project.areaId, list);
-      } else {
-        ungrouped.push(project);
       }
     }
-    return {
-      areaProjects: grouped,
-      ungroupedProjects: ungrouped,
-    };
+    return grouped;
   }, [projects]);
 
   const handleCreateProject = (forAreaId?: string) => {
@@ -127,6 +144,15 @@ export function AppSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
+                  tooltip="Add task"
+                  onClick={() => setShowQuickAdd(true)}
+                >
+                  <CirclePlus />
+                  <span>Add task</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
                   asChild
                   isActive={pathname === "/"}
                   tooltip="Inbox"
@@ -137,7 +163,12 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
 
+          <SidebarGroup>
+            <SidebarGroupLabel>Areas</SidebarGroupLabel>
+            <SidebarMenu>
               {areas?.map((area) => {
                 const areaSlug = area.slug ?? area._id;
                 const areaProjectList = areaProjects.get(area._id) ?? [];
@@ -148,26 +179,34 @@ export function AppSidebar() {
                     className="group/collapsible"
                   >
                     <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton>
-                          <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                          {area.name}
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
+                      <SidebarMenuButton
+                        asChild
+                        tooltip={area.name}
+                        isActive={pathname === `/${areaSlug}`}
+                      >
+                        <Link to="/$areaSlug" params={{ areaSlug }}>
+                          <span>{area.name}</span>
+                        </Link>
+                      </SidebarMenuButton>
                       <SidebarMenuAction
                         showOnHover
+                        className="right-6"
                         onClick={() => handleCreateProject(area._id)}
-                        title="New project"
-                        asChild
                       >
-                        <Button size="icon-xs" variant="ghost">
-                          <Plus />
-                        </Button>
+                        <Plus />
+                        <span className="sr-only">New project</span>
                       </SidebarMenuAction>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuAction className="data-[state=open]:rotate-90">
+                          <ChevronRight />
+                          <span className="sr-only">Toggle</span>
+                        </SidebarMenuAction>
+                      </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub>
                           {areaProjectList.map((project) => {
                             const slug = project.slug ?? project._id;
+                            const count = taskCounts?.[project._id] ?? 0;
                             return (
                               <SidebarMenuSubItem key={project._id}>
                                 <SidebarMenuSubButton
@@ -184,6 +223,11 @@ export function AppSidebar() {
                                     <span className="truncate">
                                       {project.name}
                                     </span>
+                                    {count > 0 && (
+                                      <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                                        {count}
+                                      </span>
+                                    )}
                                   </Link>
                                 </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
@@ -195,48 +239,6 @@ export function AppSidebar() {
                   </Collapsible>
                 );
               })}
-
-              <Collapsible defaultOpen className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton>
-                      <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                      Ungrouped
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <SidebarMenuAction
-                    showOnHover
-                    onClick={() => handleCreateProject()}
-                    title="New project"
-                  >
-                    <Plus />
-                  </SidebarMenuAction>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {ungroupedProjects.map((project) => {
-                        const slug = project.slug ?? project._id;
-                        return (
-                          <SidebarMenuSubItem key={project._id}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={pathname === `/projects/${slug}`}
-                            >
-                              <Link
-                                to="/projects/$projectSlug"
-                                params={{
-                                  projectSlug: slug,
-                                }}
-                              >
-                                <span className="truncate">{project.name}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        );
-                      })}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
             </SidebarMenu>
           </SidebarGroup>
         </SidebarContent>
@@ -314,27 +316,21 @@ export function AppSidebar() {
         onSubmit={async (data) => {
           const { slug } = await createProject({
             ...data,
-            areaId: data.areaId ? (data.areaId as Id<"areas">) : undefined,
+            areaId: data.areaId as Id<"areas">,
           });
-          if (data.areaId) {
-            const area = (areas ?? []).find((a) => a._id === data.areaId);
-            if (area) {
-              navigate({
-                to: "/$areaSlug/$projectSlug",
-                params: {
-                  areaSlug: area.slug ?? area._id,
-                  projectSlug: slug,
-                },
-              });
-              return;
-            }
+          const area = (areas ?? []).find((a) => a._id === data.areaId);
+          if (area) {
+            navigate({
+              to: "/$areaSlug/$projectSlug",
+              params: {
+                areaSlug: area.slug ?? area._id,
+                projectSlug: slug,
+              },
+            });
           }
-          navigate({
-            to: "/projects/$projectSlug",
-            params: { projectSlug: slug },
-          });
         }}
       />
+      <QuickAddTaskDialog open={showQuickAdd} onOpenChange={setShowQuickAdd} />
     </>
   );
 }

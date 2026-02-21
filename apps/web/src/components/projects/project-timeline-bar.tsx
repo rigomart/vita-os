@@ -9,7 +9,7 @@ interface ProjectTimelineBarProps {
   project: Doc<"projects"> & { startDate: number };
   rangeStart: Date;
   today: Date;
-  areaSlug?: string;
+  areaSlug: string;
 }
 
 export function ProjectTimelineBar({
@@ -28,12 +28,8 @@ export function ProjectTimelineBar({
   return (
     <div className="relative h-10 w-full">
       <Link
-        to={areaSlug ? "/$areaSlug/$projectSlug" : "/projects/$projectSlug"}
-        params={
-          areaSlug
-            ? { areaSlug, projectSlug: project.slug ?? project._id }
-            : { projectSlug: project.slug ?? project._id }
-        }
+        to="/$areaSlug/$projectSlug"
+        params={{ areaSlug, projectSlug: project.slug ?? project._id }}
         className={cn(
           "absolute top-1 flex h-8 items-center px-2",
           "bg-primary/15 text-foreground border border-primary/25",

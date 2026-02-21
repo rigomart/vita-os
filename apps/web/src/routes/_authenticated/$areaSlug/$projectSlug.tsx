@@ -55,9 +55,6 @@ function AreaProjectDetailPage() {
       if (updates.clearEndDate) {
         resolved.endDate = undefined;
       }
-      if (updates.clearAreaId) {
-        resolved.areaId = undefined;
-      }
 
       const slugUpdate =
         updates.name !== undefined ? { slug: generateSlug(updates.name) } : {};
@@ -249,8 +246,7 @@ function AreaProjectDetailPage() {
               clearDescription: !data.description,
               definitionOfDone: data.definitionOfDone,
               clearDefinitionOfDone: !data.definitionOfDone,
-              areaId: data.areaId ? (data.areaId as Id<"areas">) : undefined,
-              clearAreaId: !data.areaId,
+              areaId: data.areaId as Id<"areas">,
               startDate: data.startDate,
               clearStartDate: !data.startDate,
               endDate: data.endDate,
@@ -262,30 +258,19 @@ function AreaProjectDetailPage() {
                 ? result.slug
                 : projectSlug;
 
-            const areaChanged =
-              (data.areaId ?? null) !== (project.areaId ?? null);
+            const areaChanged = data.areaId !== project.areaId;
 
             if (areaChanged) {
-              if (!data.areaId) {
+              const newArea = (areas ?? []).find((a) => a._id === data.areaId);
+              if (newArea) {
                 navigate({
-                  to: "/projects/$projectSlug",
-                  params: { projectSlug: newSlug },
+                  to: "/$areaSlug/$projectSlug",
+                  params: {
+                    areaSlug: newArea.slug ?? newArea._id,
+                    projectSlug: newSlug,
+                  },
                   replace: true,
                 });
-              } else {
-                const newArea = (areas ?? []).find(
-                  (a) => a._id === data.areaId,
-                );
-                if (newArea) {
-                  navigate({
-                    to: "/$areaSlug/$projectSlug",
-                    params: {
-                      areaSlug: newArea.slug ?? newArea._id,
-                      projectSlug: newSlug,
-                    },
-                    replace: true,
-                  });
-                }
               }
             } else if (data.name !== project.name && result?.slug) {
               navigate({

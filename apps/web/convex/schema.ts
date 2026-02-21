@@ -25,7 +25,7 @@ export default defineSchema({
     slug: v.optional(v.string()),
     description: v.optional(v.string()),
     definitionOfDone: v.optional(v.string()),
-    areaId: v.optional(v.id("areas")),
+    areaId: v.id("areas"),
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
     order: v.number(),

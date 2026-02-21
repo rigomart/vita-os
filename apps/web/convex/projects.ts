@@ -46,20 +46,6 @@ export const getBySlug = query({
   },
 });
 
-export const listUngrouped = query({
-  args: {},
-  handler: async (ctx) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return [];
-    const userId = String(user._id);
-    const projects = await ctx.db
-      .query("projects")
-      .withIndex("by_user_order", (q) => q.eq("userId", userId))
-      .collect();
-    return projects.filter((p) => !p.isArchived && !p.areaId);
-  },
-});
-
 export const listByArea = query({
   args: { areaId: v.id("areas") },
   handler: async (ctx, args) => {
@@ -79,7 +65,7 @@ export const create = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     definitionOfDone: v.optional(v.string()),
-    areaId: v.optional(v.id("areas")),
+    areaId: v.id("areas"),
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
@@ -134,7 +120,6 @@ export const update = mutation({
     definitionOfDone: v.optional(v.string()),
     clearDefinitionOfDone: v.optional(v.boolean()),
     areaId: v.optional(v.id("areas")),
-    clearAreaId: v.optional(v.boolean()),
     startDate: v.optional(v.number()),
     clearStartDate: v.optional(v.boolean()),
     endDate: v.optional(v.number()),
@@ -190,9 +175,7 @@ export const update = mutation({
     } else if (args.definitionOfDone !== undefined) {
       updates.definitionOfDone = args.definitionOfDone;
     }
-    if (args.clearAreaId) {
-      updates.areaId = undefined;
-    } else if (args.areaId !== undefined) {
+    if (args.areaId !== undefined) {
       updates.areaId = args.areaId;
     }
     if (args.clearStartDate) {
@@ -252,5 +235,52 @@ export const backfillSlugs = mutation({
       }
     }
     return { backfilled: count };
+  },
+});
+
+export const migrateUngrouped = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await authComponent.getAuthUser(ctx);
+    const userId = String(user._id);
+
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_user_order", (q) => q.eq("userId", userId))
+      .collect();
+
+    const ungrouped = projects.filter((p) => !p.areaId);
+    if (ungrouped.length === 0) return { migrated: 0 };
+
+    // Find or create a "General" area
+    const existingAreas = await ctx.db
+      .query("areas")
+      .withIndex("by_user_order", (q) => q.eq("userId", userId))
+      .collect();
+
+    let generalArea = existingAreas.find((a) => a.name === "General");
+    if (!generalArea) {
+      const maxOrder = existingAreas.reduce(
+        (max, a) => Math.max(max, a.order),
+        -1,
+      );
+      const id = await ctx.db.insert("areas", {
+        userId,
+        name: "General",
+        slug: generateSlug("General"),
+        healthStatus: "healthy",
+        order: maxOrder + 1,
+        createdAt: Date.now(),
+      });
+      const created = await ctx.db.get(id);
+      if (!created) throw new Error("Failed to create General area");
+      generalArea = created;
+    }
+
+    for (const project of ungrouped) {
+      await ctx.db.patch(project._id, { areaId: generalArea._id });
+    }
+
+    return { migrated: ungrouped.length, areaId: generalArea._id };
   },
 });
