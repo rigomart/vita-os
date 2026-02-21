@@ -36,6 +36,29 @@ export function useTaskMutations(projectId?: Id<"projects">) {
           }
         }
       }
+
+      // Also update listUpcoming cache
+      const upcoming = localStore.getQuery(api.tasks.listUpcoming, {});
+      if (upcoming !== undefined) {
+        const task = upcoming.find((t) => t._id === id);
+        if (task) {
+          if (resolved.isCompleted) {
+            localStore.setQuery(
+              api.tasks.listUpcoming,
+              {},
+              upcoming.filter((t) => t._id !== id),
+            );
+          } else {
+            localStore.setQuery(
+              api.tasks.listUpcoming,
+              {},
+              upcoming.map((t) =>
+                t._id === id ? { ...task, ...resolved } : t,
+              ),
+            );
+          }
+        }
+      }
     },
   );
 
@@ -61,6 +84,16 @@ export function useTaskMutations(projectId?: Id<"projects">) {
             tasks.filter((t) => t._id !== args.id),
           );
         }
+      }
+
+      // Also update listUpcoming cache
+      const upcoming = localStore.getQuery(api.tasks.listUpcoming, {});
+      if (upcoming !== undefined) {
+        localStore.setQuery(
+          api.tasks.listUpcoming,
+          {},
+          upcoming.filter((t) => t._id !== args.id),
+        );
       }
     },
   );

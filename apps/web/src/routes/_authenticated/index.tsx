@@ -13,6 +13,7 @@ import { AddTaskRow } from "@/components/tasks/add-task-row";
 import { CompletedSection } from "@/components/tasks/completed-section";
 import { TaskListSkeleton } from "@/components/tasks/task-list-skeleton";
 import { TaskRow } from "@/components/tasks/task-row";
+import { UpcomingSection } from "@/components/tasks/upcoming-section";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -25,6 +26,7 @@ export const Route = createFileRoute("/_authenticated/")({
 
 function Inbox() {
   const tasks = useQuery(api.tasks.list);
+  const upcomingTasks = useQuery(api.tasks.listUpcoming, {});
   const projects = useQuery(api.projects.list);
   const areas = useQuery(api.areas.list);
   const createArea = useMutation(api.areas.create).withOptimisticUpdate(
@@ -106,6 +108,8 @@ function Inbox() {
         )}
       </div>
 
+      <UpcomingSection tasks={upcomingTasks ?? []} />
+
       <PageHeader title="Inbox" />
       <div>
         {activeTasks.map((task) => (
@@ -145,6 +149,25 @@ function InboxSkeleton() {
               <div className="min-w-0 flex-1 space-y-1.5">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <Skeleton className="mb-3 h-4 w-20" />
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
+              key={i}
+              className="flex items-start gap-3 py-3"
+            >
+              <Skeleton className="mt-0.5 h-4 w-4 shrink-0 rounded-full" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-3 w-32" />
               </div>
             </div>
           ))}
