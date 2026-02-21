@@ -28,7 +28,7 @@ interface ProjectFormDialogProps {
     name: string;
     description?: string;
     definitionOfDone?: string;
-    areaId?: string;
+    areaId: string;
     startDate?: number;
     endDate?: number;
   }) => void;
@@ -81,7 +81,7 @@ export function ProjectFormDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
-    if (!trimmedName) return;
+    if (!trimmedName || !areaId) return;
 
     onSubmit({
       name: trimmedName,
@@ -215,7 +215,7 @@ export function ProjectFormDialog({
               )}
             </div>
           </div>
-          {areas && areas.length > 0 && (
+          {areas && (
             <div className="space-y-2">
               <Label>Area</Label>
               <AreaPicker
@@ -233,7 +233,7 @@ export function ProjectFormDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!name.trim()}>
+            <Button type="submit" disabled={!name.trim() || !areaId}>
               {project ? "Save" : "Create"}
             </Button>
           </ResponsiveDialogFooter>

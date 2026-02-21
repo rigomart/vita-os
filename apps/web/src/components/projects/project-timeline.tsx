@@ -22,7 +22,7 @@ type ProjectWithStartDate = Doc<"projects"> & {
 
 interface ProjectTimelineProps {
   projects: Doc<"projects">[];
-  areaSlug?: string;
+  areaSlug: string;
 }
 
 export function ProjectTimeline({ projects, areaSlug }: ProjectTimelineProps) {
