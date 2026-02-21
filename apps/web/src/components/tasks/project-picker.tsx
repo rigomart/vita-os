@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { Doc, Id } from "@convex/_generated/dataModel";
 import { FolderOpen, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,8 @@ import {
 
 interface ProjectPickerProps {
   projects: Doc<"projects">[];
-  selectedProjectId: string | undefined;
-  onSelect: (id: string | undefined) => void;
+  selectedProjectId: Id<"projects"> | undefined;
+  onSelect: (id: Id<"projects"> | undefined) => void;
 }
 
 export function ProjectPicker({

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
+import { nullsToUndefined } from "./lib/patch";
 
 export const list = query({
   args: {},
@@ -89,13 +90,10 @@ export const update = mutation({
   args: {
     id: v.id("tasks"),
     title: v.optional(v.string()),
-    description: v.optional(v.string()),
-    clearDescription: v.optional(v.boolean()),
+    description: v.optional(v.union(v.string(), v.null())),
     isCompleted: v.optional(v.boolean()),
-    dueDate: v.optional(v.number()),
-    clearDueDate: v.optional(v.boolean()),
-    projectId: v.optional(v.id("projects")),
-    clearProjectId: v.optional(v.boolean()),
+    dueDate: v.optional(v.union(v.number(), v.null())),
+    projectId: v.optional(v.union(v.id("projects"), v.null())),
   },
   handler: async (ctx, args) => {
     const user = await authComponent.getAuthUser(ctx);
@@ -106,26 +104,8 @@ export const update = mutation({
       throw new Error("Task not found");
     }
 
-    const updates: Record<string, unknown> = {};
-    if (args.title !== undefined) updates.title = args.title;
-    if (args.isCompleted !== undefined) updates.isCompleted = args.isCompleted;
-    if (args.clearDescription) {
-      updates.description = undefined;
-    } else if (args.description !== undefined) {
-      updates.description = args.description;
-    }
-    if (args.clearDueDate) {
-      updates.dueDate = undefined;
-    } else if (args.dueDate !== undefined) {
-      updates.dueDate = args.dueDate;
-    }
-    if (args.clearProjectId) {
-      updates.projectId = undefined;
-    } else if (args.projectId !== undefined) {
-      updates.projectId = args.projectId;
-    }
-
-    await ctx.db.patch(args.id, updates);
+    const { id, ...rest } = args;
+    await ctx.db.patch(id, nullsToUndefined(rest));
   },
 });
 

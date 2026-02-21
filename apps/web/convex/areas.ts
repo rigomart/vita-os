@@ -1,16 +1,9 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
-import { generateSlug, slugify } from "./lib/slugs";
-
-const RESERVED_SLUGS = new Set(["projects", "settings", "sign-in", "sign-up"]);
-
-function validateAreaSlug(name: string) {
-  const base = slugify(name);
-  if (RESERVED_SLUGS.has(base)) {
-    throw new Error(`"${name}" is reserved and cannot be used as an area name`);
-  }
-}
+import { nullsToUndefined } from "./lib/patch";
+import { generateSlug } from "./lib/slugs";
+import { validateAreaName } from "./lib/validation";
 
 export const list = query({
   args: {},
@@ -67,7 +60,7 @@ export const create = mutation({
     const user = await authComponent.getAuthUser(ctx);
     const userId = String(user._id);
 
-    validateAreaSlug(args.name);
+    validateAreaName(args.name);
 
     const existing = await ctx.db
       .query("areas")
@@ -96,8 +89,7 @@ export const update = mutation({
   args: {
     id: v.id("areas"),
     name: v.optional(v.string()),
-    standard: v.optional(v.string()),
-    clearStandard: v.optional(v.boolean()),
+    standard: v.optional(v.union(v.string(), v.null())),
     healthStatus: v.optional(healthStatusValidator),
   },
   handler: async (ctx, args) => {
@@ -109,26 +101,21 @@ export const update = mutation({
       throw new Error("Area not found");
     }
 
-    const updates: Record<string, unknown> = {};
-    if (args.name !== undefined) {
-      validateAreaSlug(args.name);
-      updates.name = args.name;
-      if (args.name !== area.name) {
-        updates.slug = generateSlug(args.name);
-      }
+    const { id, ...rest } = args;
+    if (rest.name !== undefined) {
+      validateAreaName(rest.name);
     }
-    if (args.clearStandard) {
-      updates.standard = undefined;
-    } else if (args.standard !== undefined) {
-      updates.standard = args.standard;
-    }
-    if (args.healthStatus !== undefined) {
-      updates.healthStatus = args.healthStatus;
+    let newSlug: string | undefined;
+    if (rest.name && rest.name !== area.name) {
+      newSlug = generateSlug(rest.name);
     }
 
-    await ctx.db.patch(args.id, updates);
+    await ctx.db.patch(id, {
+      ...nullsToUndefined(rest),
+      ...(newSlug && { slug: newSlug }),
+    });
 
-    return { slug: (updates.slug as string) ?? area.slug };
+    return { slug: newSlug ?? area.slug };
   },
 });
 
