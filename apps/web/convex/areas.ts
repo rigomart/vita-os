@@ -113,7 +113,9 @@ export const update = mutation({
     if (args.name !== undefined) {
       validateAreaSlug(args.name);
       updates.name = args.name;
-      updates.slug = generateSlug(args.name);
+      if (args.name !== area.name) {
+        updates.slug = generateSlug(args.name);
+      }
     }
     if (args.clearStandard) {
       updates.standard = undefined;

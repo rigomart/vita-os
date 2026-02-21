@@ -163,7 +163,9 @@ export const update = mutation({
     const updates: Record<string, unknown> = {};
     if (args.name !== undefined) {
       updates.name = args.name;
-      updates.slug = generateSlug(args.name);
+      if (args.name !== project.name) {
+        updates.slug = generateSlug(args.name);
+      }
     }
     if (args.clearDescription) {
       updates.description = undefined;

@@ -6,7 +6,7 @@ import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Pencil, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { AddTaskRow } from "@/components/tasks/add-task-row";
@@ -34,8 +34,20 @@ export const Route = createFileRoute("/_authenticated/$areaSlug/$projectSlug")({
 
 function AreaProjectDetailPage() {
   const { areaSlug, projectSlug } = Route.useParams();
-  const area = useQuery(api.areas.getBySlug, { slug: areaSlug });
-  const project = useQuery(api.projects.getBySlug, { slug: projectSlug });
+  const areaResult = useQuery(api.areas.getBySlug, { slug: areaSlug });
+  const lastAreaRef = useRef<NonNullable<typeof areaResult>>(undefined);
+  if (areaResult !== undefined && areaResult !== null)
+    lastAreaRef.current = areaResult;
+  const area = areaResult ?? lastAreaRef.current ?? null;
+
+  const projectResult = useQuery(api.projects.getBySlug, {
+    slug: projectSlug,
+  });
+  const lastProjectRef = useRef<NonNullable<typeof projectResult>>(undefined);
+  if (projectResult !== undefined && projectResult !== null)
+    lastProjectRef.current = projectResult;
+  const project = projectResult ?? lastProjectRef.current ?? null;
+
   const tasks = useQuery(
     api.tasks.listByProject,
     project ? { projectId: project._id } : "skip",
@@ -56,8 +68,13 @@ function AreaProjectDetailPage() {
         resolved.endDate = undefined;
       }
 
+      const bySlug = localStore.getQuery(api.projects.getBySlug, {
+        slug: projectSlug,
+      });
+      const nameChanged =
+        updates.name !== undefined && bySlug && updates.name !== bySlug.name;
       const slugUpdate =
-        updates.name !== undefined ? { slug: generateSlug(updates.name) } : {};
+        nameChanged && updates.name ? { slug: generateSlug(updates.name) } : {};
       const fullUpdates = { ...resolved, ...slugUpdate };
 
       const current = localStore.getQuery(api.projects.list, {});
@@ -78,9 +95,6 @@ function AreaProjectDetailPage() {
         );
       }
 
-      const bySlug = localStore.getQuery(api.projects.getBySlug, {
-        slug: projectSlug,
-      });
       if (bySlug !== undefined && bySlug !== null) {
         localStore.setQuery(
           api.projects.getBySlug,
@@ -118,7 +132,9 @@ function AreaProjectDetailPage() {
   }, [project?.name]);
 
   const isLoading =
-    area === undefined || project === undefined || tasks === undefined;
+    (areaResult === undefined && !lastAreaRef.current) ||
+    (projectResult === undefined && !lastProjectRef.current) ||
+    tasks === undefined;
 
   if (isLoading) {
     return <ProjectDetailSkeleton />;

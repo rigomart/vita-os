@@ -5,7 +5,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
@@ -44,7 +44,12 @@ const healthColors = {
 
 function AreaDetailPage() {
   const { areaSlug } = Route.useParams();
-  const area = useQuery(api.areas.getBySlug, { slug: areaSlug });
+  const areaResult = useQuery(api.areas.getBySlug, { slug: areaSlug });
+  const lastAreaRef = useRef<NonNullable<typeof areaResult>>(undefined);
+  if (areaResult !== undefined && areaResult !== null)
+    lastAreaRef.current = areaResult;
+  const area = areaResult ?? lastAreaRef.current ?? null;
+
   const areas = useQuery(api.areas.list);
   const projects = useQuery(
     api.projects.listByArea,
@@ -61,8 +66,13 @@ function AreaDetailPage() {
         resolved.standard = undefined;
       }
 
+      const bySlug = localStore.getQuery(api.areas.getBySlug, {
+        slug: areaSlug,
+      });
+      const nameChanged =
+        updates.name !== undefined && bySlug && updates.name !== bySlug.name;
       const slugUpdate =
-        updates.name !== undefined ? { slug: generateSlug(updates.name) } : {};
+        nameChanged && updates.name ? { slug: generateSlug(updates.name) } : {};
       const fullUpdates = { ...resolved, ...slugUpdate };
 
       const current = localStore.getQuery(api.areas.list, {});
@@ -83,9 +93,6 @@ function AreaDetailPage() {
         );
       }
 
-      const bySlug = localStore.getQuery(api.areas.getBySlug, {
-        slug: areaSlug,
-      });
       if (bySlug !== undefined && bySlug !== null) {
         localStore.setQuery(
           api.areas.getBySlug,
@@ -167,7 +174,9 @@ function AreaDetailPage() {
     };
   }, [area?.name]);
 
-  const isLoading = area === undefined || projects === undefined;
+  const isLoading =
+    (areaResult === undefined && !lastAreaRef.current) ||
+    projects === undefined;
 
   if (isLoading) {
     return <AreaDetailSkeleton />;
