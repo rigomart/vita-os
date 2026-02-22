@@ -254,7 +254,7 @@ function AreaDetailPage() {
       </div>
 
       {area.standard && (
-        <div className="mb-6 rounded-md border p-4">
+        <div className="mb-6 rounded-md border border-l-2 border-l-primary/30 p-4">
           <h2 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Standard
           </h2>
@@ -288,7 +288,7 @@ function AreaDetailPage() {
             return (
               <div
                 key={project._id}
-                className="group flex items-center border-b transition-colors last:border-b-0 hover:bg-muted/50"
+                className="group flex items-center border-b px-3 transition-colors last:border-b-0 hover:bg-card"
               >
                 <Link
                   to="/$areaSlug/$projectSlug"

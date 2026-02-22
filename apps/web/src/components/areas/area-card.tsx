@@ -18,7 +18,13 @@ export function AreaCard({
     <Link
       to="/$areaSlug"
       params={{ areaSlug: area.slug ?? area._id }}
-      className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+      className={`flex items-center gap-3 rounded-lg border border-l-2 bg-card p-4 transition-colors hover:bg-muted/50 ${
+        area.healthStatus === "critical"
+          ? "border-l-red-500"
+          : area.healthStatus === "needs_attention"
+            ? "border-l-yellow-500"
+            : "border-l-green-500"
+      }`}
     >
       <span
         className={`h-2.5 w-2.5 shrink-0 rounded-full ${healthColors[area.healthStatus]}`}
