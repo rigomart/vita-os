@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
-import { validateDateRange, validateEffectiveDates } from "./lib/dates";
 import { nullsToUndefined } from "./lib/patch";
 import { generateSlug } from "./lib/slugs";
 
@@ -15,7 +14,7 @@ export const list = query({
       .query("projects")
       .withIndex("by_user_order", (q) => q.eq("userId", userId))
       .collect();
-    return projects.filter((p) => !p.isArchived);
+    return projects.filter((p) => p.state === "active");
   },
 });
 
@@ -26,7 +25,7 @@ export const get = query({
     if (!user) return null;
     const project = await ctx.db.get(args.id);
     if (!project || project.userId !== String(user._id)) return null;
-    if (project.isArchived) return null;
+    if (project.state !== "active") return null;
     return project;
   },
 });
@@ -43,7 +42,7 @@ export const getBySlug = query({
         q.eq("userId", userId).eq("slug", args.slug),
       )
       .unique();
-    if (!project || project.isArchived) return null;
+    if (!project || project.state !== "active") return null;
     return project;
   },
 });
@@ -58,7 +57,7 @@ export const listByArea = query({
       .query("projects")
       .withIndex("by_area", (q) => q.eq("areaId", args.areaId))
       .collect();
-    return projects.filter((p) => p.userId === userId && !p.isArchived);
+    return projects.filter((p) => p.userId === userId && p.state === "active");
   },
 });
 
@@ -68,12 +67,8 @@ export const create = mutation({
     description: v.optional(v.string()),
     definitionOfDone: v.optional(v.string()),
     areaId: v.id("areas"),
-    startDate: v.optional(v.number()),
-    endDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    validateDateRange(args.startDate, args.endDate);
-
     const user = await authComponent.getAuthUser(ctx);
     const userId = String(user._id);
 
@@ -93,10 +88,8 @@ export const create = mutation({
       description: args.description,
       definitionOfDone: args.definitionOfDone,
       areaId: args.areaId,
-      startDate: args.startDate,
-      endDate: args.endDate,
       order: nextOrder,
-      isArchived: false,
+      state: "active",
       createdAt: Date.now(),
     });
 
@@ -111,8 +104,16 @@ export const update = mutation({
     description: v.optional(v.union(v.string(), v.null())),
     definitionOfDone: v.optional(v.union(v.string(), v.null())),
     areaId: v.optional(v.id("areas")),
-    startDate: v.optional(v.union(v.number(), v.null())),
-    endDate: v.optional(v.union(v.number(), v.null())),
+    status: v.optional(v.union(v.string(), v.null())),
+    nextAction: v.optional(v.union(v.string(), v.null())),
+    nextReviewDate: v.optional(v.union(v.number(), v.null())),
+    state: v.optional(
+      v.union(
+        v.literal("active"),
+        v.literal("completed"),
+        v.literal("dropped"),
+      ),
+    ),
   },
   handler: async (ctx, args) => {
     const user = await authComponent.getAuthUser(ctx);
@@ -125,17 +126,10 @@ export const update = mutation({
 
     const { id, ...rest } = args;
 
-    validateEffectiveDates(
-      { startDate: project.startDate, endDate: project.endDate },
-      { startDate: rest.startDate, endDate: rest.endDate },
-    );
-
     let newSlug: string | undefined;
     if (rest.name && rest.name !== project.name) {
       newSlug = generateSlug(rest.name);
     }
-    // Clearing startDate must also clear endDate
-    if (rest.startDate === null) rest.endDate = null;
 
     await ctx.db.patch(id, {
       ...nullsToUndefined(rest),
@@ -157,18 +151,7 @@ export const remove = mutation({
       throw new Error("Project not found");
     }
 
-    // Archive the project
-    await ctx.db.patch(args.id, { isArchived: true });
-
-    // Unassign all tasks from this project
-    const tasks = await ctx.db
-      .query("tasks")
-      .withIndex("by_project", (q) => q.eq("projectId", args.id))
-      .collect();
-
-    for (const task of tasks) {
-      await ctx.db.patch(task._id, { projectId: undefined });
-    }
+    await ctx.db.patch(args.id, { state: "dropped" });
   },
 });
 

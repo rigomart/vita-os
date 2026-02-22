@@ -14,8 +14,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
+import { QuickCaptureDialog } from "@/components/captures/quick-capture-dialog";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
-import { QuickAddTaskDialog } from "@/components/tasks/quick-add-task-dialog";
 import {
   Collapsible,
   CollapsibleContent,
@@ -53,6 +53,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const projects = useQuery(api.projects.list);
   const areas = useQuery(api.areas.list);
+  const captureCount = useQuery(api.captures.count);
   const createProject = useMutation(api.projects.create).withOptimisticUpdate(
     (localStore, args) => {
       const current = localStore.getQuery(api.projects.list, {});
@@ -69,20 +70,17 @@ export function AppSidebar() {
             description: args.description,
             definitionOfDone: args.definitionOfDone,
             areaId: args.areaId,
-            startDate: args.startDate,
-            endDate: args.endDate,
             order: maxOrder + 1,
-            isArchived: false,
+            state: "active" as const,
             createdAt: Date.now(),
           },
         ]);
       }
     },
   );
-  const taskCounts = useQuery(api.tasks.countByUser);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [createForAreaId, setCreateForAreaId] = useState<string | undefined>();
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [showCreateArea, setShowCreateArea] = useState(false);
   const createArea = useMutation(api.areas.create).withOptimisticUpdate(
     (localStore, args) => {
@@ -120,7 +118,7 @@ export function AppSidebar() {
         return;
       }
       e.preventDefault();
-      setShowQuickAdd(true);
+      setShowQuickCapture(true);
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -168,11 +166,11 @@ export function AppSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  tooltip="Add task"
-                  onClick={() => setShowQuickAdd(true)}
+                  tooltip="Capture"
+                  onClick={() => setShowQuickCapture(true)}
                 >
                   <CirclePlus />
-                  <span>Add task</span>
+                  <span>Capture</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -184,6 +182,11 @@ export function AppSidebar() {
                   <Link to="/inbox">
                     <Inbox />
                     <span>Inbox</span>
+                    {captureCount !== undefined && captureCount > 0 && (
+                      <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                        {captureCount}
+                      </span>
+                    )}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -230,7 +233,6 @@ export function AppSidebar() {
                         <SidebarMenuSub>
                           {areaProjectList.map((project) => {
                             const slug = project.slug ?? project._id;
-                            const count = taskCounts?.[project._id] ?? 0;
                             return (
                               <SidebarMenuSubItem key={project._id}>
                                 <SidebarMenuSubButton
@@ -247,11 +249,6 @@ export function AppSidebar() {
                                     <span className="truncate">
                                       {project.name}
                                     </span>
-                                    {count > 0 && (
-                                      <span className="ml-auto text-xs tabular-nums text-muted-foreground">
-                                        {count}
-                                      </span>
-                                    )}
                                   </Link>
                                 </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
@@ -360,7 +357,10 @@ export function AppSidebar() {
           }
         }}
       />
-      <QuickAddTaskDialog open={showQuickAdd} onOpenChange={setShowQuickAdd} />
+      <QuickCaptureDialog
+        open={showQuickCapture}
+        onOpenChange={setShowQuickCapture}
+      />
       <AreaFormDialog
         open={showCreateArea}
         onOpenChange={setShowCreateArea}
