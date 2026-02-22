@@ -50,7 +50,7 @@ export function RecentCaptures() {
         <h2 className="text-sm font-medium">Recent Captures</h2>
         <span className="text-xs text-muted-foreground">{captures.length}</span>
       </div>
-      <div className="divide-y divide-border/50 rounded-xl bg-surface-2">
+      <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
         {visible.map((capture) => (
           <CaptureRow
             key={capture._id}

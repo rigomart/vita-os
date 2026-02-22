@@ -34,7 +34,7 @@ export function AttentionSection({ items, areas }: AttentionSectionProps) {
         <h2 className="text-sm font-medium">Needs Attention</h2>
         <span className="text-xs text-muted-foreground">{items.length}</span>
       </div>
-      <div className="divide-y divide-border/50 rounded-xl bg-surface-2">
+      <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
         {items.map((item) => {
           const area = areaMap.get(item.areaId);
           const areaSlug = area?.slug ?? area?._id ?? item.areaId;

@@ -60,7 +60,7 @@ function InboxPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-lg border">
+        <div className="rounded-lg border border-border-subtle">
           {captures.map((capture) => (
             <CaptureRow
               key={capture._id}

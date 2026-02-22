@@ -26,6 +26,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.93 0 0);
   --border: oklch(0.34 0.006 250);
+  --border-subtle: oklch(0.34 0.006 250 / 0.2);
   --input: var(--surface-3);
   --ring: oklch(0.7 0.17 155);
   --chart-1: oklch(0.7 0.17 155);
@@ -88,6 +89,7 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);

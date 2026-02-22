@@ -146,7 +146,7 @@ function DashboardSkeleton() {
             <div
               // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
               key={i}
-              className="rounded-xl bg-surface-2 p-5"
+              className="rounded-xl border border-border-subtle bg-surface-2 p-5"
             >
               <div className="space-y-3">
                 <div className="flex items-center gap-2.5">
