@@ -38,7 +38,8 @@ function InboxPage() {
           areaId: Id<"areas">;
           description?: string;
         }
-      | { type: "add_to_project"; projectId: Id<"projects"> },
+      | { type: "add_to_project"; projectId: Id<"projects"> }
+      | { type: "set_next_action"; projectId: Id<"projects"> },
   ) => {
     await processCapture({ id: captureId, action });
     setProcessingCapture(undefined);
