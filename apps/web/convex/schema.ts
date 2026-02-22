@@ -58,6 +58,11 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"]),
 
+  userSettings: defineTable({
+    userId: v.string(),
+    lastReviewDate: v.optional(v.number()),
+  }).index("by_user", ["userId"]),
+
   projectLogs: defineTable({
     userId: v.string(),
     projectId: v.id("projects"),
