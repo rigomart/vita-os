@@ -9,6 +9,7 @@ import { useState } from "react";
 import { AreaCard } from "@/components/areas/area-card";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { AttentionSection } from "@/components/dashboard/attention-section";
+import { RecentCaptures } from "@/components/dashboard/recent-captures";
 import { ReviewStatus } from "@/components/dashboard/review-status";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -111,6 +112,8 @@ function Dashboard() {
       {attention && attention.items.length > 0 && (
         <AttentionSection items={attention.items} areas={areas ?? []} />
       )}
+
+      <RecentCaptures />
 
       <AreaFormDialog
         open={showCreateArea}
