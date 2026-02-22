@@ -62,7 +62,6 @@ export const listByArea = query({
 export const create = mutation({
   args: {
     name: v.string(),
-    description: v.optional(v.string()),
     definitionOfDone: v.optional(v.string()),
     areaId: v.id("areas"),
   },
@@ -75,7 +74,6 @@ export const create = mutation({
       userId,
       name: args.name,
       slug,
-      description: args.description,
       definitionOfDone: args.definitionOfDone,
       areaId: args.areaId,
       order: nextOrder,
@@ -91,7 +89,6 @@ export const update = mutation({
   args: {
     id: v.id("projects"),
     name: v.optional(v.string()),
-    description: v.optional(v.union(v.string(), v.null())),
     definitionOfDone: v.optional(v.union(v.string(), v.null())),
     areaId: v.optional(v.id("areas")),
     status: v.optional(v.union(v.string(), v.null())),

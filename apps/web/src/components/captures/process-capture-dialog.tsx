@@ -30,7 +30,7 @@ interface ProcessCaptureDialogProps {
           type: "create_project";
           name: string;
           areaId: Id<"areas">;
-          description?: string;
+          definitionOfDone?: string;
         }
       | { type: "add_to_project"; projectId: Id<"projects"> }
       | { type: "discard" },
@@ -47,7 +47,7 @@ export function ProcessCaptureDialog({
 }: ProcessCaptureDialogProps) {
   const [mode, setMode] = useState<ProcessMode>("create_project");
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [definitionOfDone, setDefinitionOfDone] = useState("");
   const [areaId, setAreaId] = useState<string | undefined>(areas[0]?._id);
   const [projectId, setProjectId] = useState<string | undefined>(undefined);
 
@@ -61,7 +61,7 @@ export function ProcessCaptureDialog({
         type: "create_project",
         name: trimmedName,
         areaId: areaId as Id<"areas">,
-        description: description.trim() || undefined,
+        definitionOfDone: definitionOfDone.trim() || undefined,
       });
     } else if (mode === "add_to_project") {
       if (!projectId) return;
@@ -143,19 +143,18 @@ export function ProcessCaptureDialog({
                 </div>
                 <div className="space-y-1.5">
                   <Label
-                    htmlFor="process-desc"
+                    htmlFor="process-dod"
                     className="text-xs text-muted-foreground"
                   >
-                    Description
+                    Definition of Done
                   </Label>
                   <Input
-                    id="process-desc"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Optional description"
+                    id="process-dod"
+                    value={definitionOfDone}
+                    onChange={(e) => setDefinitionOfDone(e.target.value)}
+                    placeholder="What does done look like?"
                   />
                 </div>
-                {/* definitionOfDone field hidden — pending removal from backend */}
               </div>
             </TabsContent>
 

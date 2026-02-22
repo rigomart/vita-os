@@ -19,7 +19,7 @@ interface ProjectFormDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: {
     name: string;
-    description?: string;
+    definitionOfDone?: string;
     areaId: string;
   }) => void;
   project?: Doc<"projects">;
@@ -36,7 +36,9 @@ export function ProjectFormDialog({
   defaultAreaId,
 }: ProjectFormDialogProps) {
   const [name, setName] = useState(project?.name ?? "");
-  const [description, setDescription] = useState(project?.description ?? "");
+  const [definitionOfDone, setDefinitionOfDone] = useState(
+    project?.definitionOfDone ?? "",
+  );
   const [areaId, setAreaId] = useState<string | undefined>(
     project?.areaId ?? defaultAreaId,
   );
@@ -44,7 +46,7 @@ export function ProjectFormDialog({
   useEffect(() => {
     if (open && !project) {
       setName("");
-      setDescription("");
+      setDefinitionOfDone("");
       setAreaId(defaultAreaId);
     }
   }, [open, project, defaultAreaId]);
@@ -56,13 +58,13 @@ export function ProjectFormDialog({
 
     onSubmit({
       name: trimmedName,
-      description: description.trim() || undefined,
+      definitionOfDone: definitionOfDone.trim() || undefined,
       areaId,
     });
 
     if (!project) {
       setName("");
-      setDescription("");
+      setDefinitionOfDone("");
       setAreaId(defaultAreaId);
     }
     onOpenChange(false);
@@ -93,21 +95,20 @@ export function ProjectFormDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="project-description">
-              Description
+            <Label htmlFor="project-dod">
+              Definition of Done
               <span className="ml-1 font-normal text-muted-foreground">
                 (optional)
               </span>
             </Label>
             <Textarea
-              id="project-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief context about this project..."
+              id="project-dod"
+              value={definitionOfDone}
+              onChange={(e) => setDefinitionOfDone(e.target.value)}
+              placeholder="What does done look like?"
               rows={2}
             />
           </div>
-          {/* definitionOfDone field hidden — pending removal from backend */}
           {areas && (
             <div className="space-y-2">
               <Label>Area</Label>

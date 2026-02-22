@@ -23,7 +23,6 @@ export default defineSchema({
     userId: v.string(),
     name: v.string(),
     slug: v.optional(v.string()),
-    description: v.optional(v.string()),
     definitionOfDone: v.optional(v.string()),
     areaId: v.id("areas"),
     order: v.number(),

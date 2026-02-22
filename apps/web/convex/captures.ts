@@ -66,7 +66,6 @@ export const process = mutation({
         type: v.literal("create_project"),
         name: v.string(),
         areaId: v.id("areas"),
-        description: v.optional(v.string()),
         definitionOfDone: v.optional(v.string()),
       }),
       v.object({
@@ -94,7 +93,6 @@ export const process = mutation({
         userId,
         name: args.action.name,
         slug,
-        description: args.action.description,
         definitionOfDone: args.action.definitionOfDone,
         areaId: args.action.areaId,
         order: nextOrder,
