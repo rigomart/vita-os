@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   ChevronRight,
   MessageSquare,
+  Pen,
   Tag,
   Target,
   Trash2,
@@ -442,40 +443,49 @@ function AreaProjectDetailPage() {
         </form>
 
         {logs === undefined ? (
-          <div className="space-y-4">
+          <div className="relative before:absolute before:left-[11px] before:top-0 before:bottom-0 before:w-px before:bg-border/50">
             {Array.from({ length: 3 }).map((_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
-              <div key={i} className="pl-5">
+              <div key={i} className="relative py-2 pl-8">
+                <div className="absolute left-[7px] top-[13px] h-3 w-3 rounded-full bg-surface-3" />
                 <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="mt-1 h-3 w-20" />
+                <Skeleton className="mt-1.5 h-3 w-20" />
               </div>
             ))}
           </div>
         ) : logs.length > 0 ? (
-          <div className="space-y-0">
-            {logs.map((log) => (
-              <div
-                key={log._id}
-                className={`border-l-2 py-3 pl-5 ${
-                  log.type === "note" ? "border-primary/30" : "border-border/50"
-                }`}
-              >
-                {log.type === "note" ? (
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {log.content}
-                  </p>
-                ) : (
+          <div className="relative before:absolute before:left-[11px] before:top-0 before:bottom-0 before:w-px before:bg-border/50">
+            {logs.map((log) =>
+              log.type === "note" ? (
+                <div key={log._id} className="relative py-2 pl-8">
+                  <div className="absolute left-0 top-[17px] flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 ring-2 ring-background">
+                    <Pen className="h-3 w-3 text-primary" />
+                  </div>
+                  <div className="rounded-lg bg-surface-2 px-4 py-3">
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                      {log.content}
+                    </p>
+                    <p className="mt-1.5 text-xs text-muted-foreground/70">
+                      {formatDistanceToNow(new Date(log.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div key={log._id} className="relative py-1.5 pl-8">
+                  <div className="absolute left-[7px] top-[13px] h-3 w-3 rounded-full border-2 border-border/60 bg-surface-1" />
                   <p className="text-xs text-muted-foreground italic">
                     {log.content}
                   </p>
-                )}
-                <p className="mt-1 text-xs text-muted-foreground/70">
-                  {formatDistanceToNow(new Date(log.createdAt), {
-                    addSuffix: true,
-                  })}
-                </p>
-              </div>
-            ))}
+                  <p className="mt-0.5 text-xs text-muted-foreground/50">
+                    {formatDistanceToNow(new Date(log.createdAt), {
+                      addSuffix: true,
+                    })}
+                  </p>
+                </div>
+              ),
+            )}
           </div>
         ) : (
           <p className="py-6 text-center text-xs text-muted-foreground">
