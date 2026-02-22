@@ -1,12 +1,7 @@
 import type { Doc } from "@convex/_generated/dataModel";
+import { healthColors, healthLabels } from "@convex/lib/types";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
-
-const healthColors = {
-  healthy: "bg-green-500",
-  needs_attention: "bg-yellow-500",
-  critical: "bg-red-500",
-} as const;
 
 interface AreaCardProps {
   area: Doc<"areas">;
@@ -27,6 +22,8 @@ export function AreaCard({
     >
       <span
         className={`h-2.5 w-2.5 shrink-0 rounded-full ${healthColors[area.healthStatus]}`}
+        role="img"
+        aria-label={healthLabels[area.healthStatus]}
       />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{area.name}</p>

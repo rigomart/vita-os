@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { authComponent } from "./auth";
+import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { nullsToUndefined } from "./lib/patch";
 import { generateSlug } from "./lib/slugs";
 import { validateAreaName } from "./lib/validation";
@@ -8,9 +8,8 @@ import { validateAreaName } from "./lib/validation";
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return [];
-    const userId = String(user._id);
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return [];
     return ctx.db
       .query("areas")
       .withIndex("by_user_order", (q) => q.eq("userId", userId))
@@ -21,10 +20,10 @@ export const list = query({
 export const get = query({
   args: { id: v.id("areas") },
   handler: async (ctx, args) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return null;
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return null;
     const area = await ctx.db.get(args.id);
-    if (!area || area.userId !== String(user._id)) return null;
+    if (!area || area.userId !== userId) return null;
     return area;
   },
 });
@@ -32,9 +31,8 @@ export const get = query({
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return null;
-    const userId = String(user._id);
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return null;
     return ctx.db
       .query("areas")
       .withIndex("by_user_slug", (q) =>
@@ -57,18 +55,11 @@ export const create = mutation({
     healthStatus: healthStatusValidator,
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     validateAreaName(args.name);
 
-    const existing = await ctx.db
-      .query("areas")
-      .withIndex("by_user_order", (q) => q.eq("userId", userId))
-      .order("desc")
-      .first();
-
-    const nextOrder = existing ? existing.order + 1 : 0;
+    const nextOrder = await getNextOrder(ctx, "areas", userId);
     const slug = generateSlug(args.name);
 
     const id = await ctx.db.insert("areas", {
@@ -93,8 +84,7 @@ export const update = mutation({
     healthStatus: v.optional(healthStatusValidator),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     const area = await ctx.db.get(args.id);
     if (!area || area.userId !== userId) {
@@ -122,8 +112,7 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("areas") },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     const area = await ctx.db.get(args.id);
     if (!area || area.userId !== userId) {
@@ -151,8 +140,7 @@ export const reorder = mutation({
     items: v.array(v.object({ id: v.id("areas"), order: v.number() })),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     for (const item of args.items) {
       const area = await ctx.db.get(item.id);

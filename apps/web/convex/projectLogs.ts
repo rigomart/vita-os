@@ -1,13 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { authComponent } from "./auth";
+import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
 
 export const listByProject = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return [];
-    const userId = String(user._id);
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return [];
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.userId !== userId) return [];
@@ -26,8 +25,7 @@ export const create = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     const project = await ctx.db.get(args.projectId);
     if (!project || project.userId !== userId) {

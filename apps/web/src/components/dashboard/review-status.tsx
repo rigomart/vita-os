@@ -22,6 +22,8 @@ export function ReviewStatus({
         className={`h-2 w-2 shrink-0 rounded-full ${
           isOverdue ? "bg-amber-500" : "bg-green-500"
         }`}
+        role="img"
+        aria-label={isOverdue ? "Review overdue" : "Up to date"}
       />
       <span className="text-muted-foreground">
         {lastReviewDate

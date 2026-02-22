@@ -1,20 +1,19 @@
 import { mutation, query } from "./_generated/server";
-import { authComponent } from "./auth";
+import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
 
 export const attention = query({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return { items: [], byArea: {} as Record<string, number> };
-    const userId = String(user._id);
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return { items: [], byArea: {} as Record<string, number> };
     const now = Date.now();
 
-    const projects = await ctx.db
+    const activeProjects = await ctx.db
       .query("projects")
-      .withIndex("by_user_order", (q) => q.eq("userId", userId))
+      .withIndex("by_user_state", (q) =>
+        q.eq("userId", userId).eq("state", "active"),
+      )
       .collect();
-
-    const activeProjects = projects.filter((p) => p.state === "active");
 
     const items: Array<{
       projectId: string;
@@ -77,9 +76,8 @@ export const attention = query({
 export const lastReview = query({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return null;
-    const userId = String(user._id);
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return null;
 
     const settings = await ctx.db
       .query("userSettings")
@@ -93,8 +91,7 @@ export const lastReview = query({
 export const markReviewed = mutation({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     const existing = await ctx.db
       .query("userSettings")

@@ -1,4 +1,5 @@
 import type { Doc } from "@convex/_generated/dataModel";
+import type { HealthStatus } from "@convex/lib/types";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-
-type HealthStatus = "healthy" | "needs_attention" | "critical";
 
 interface AreaFormDialogProps {
   open: boolean;

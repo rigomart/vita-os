@@ -2,13 +2,15 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { nullsToUndefined } from "@convex/lib/patch";
 import { generateSlug } from "@convex/lib/slugs";
+import { healthColors } from "@convex/lib/types";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { format } from "date-fns";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
+import { RouteErrorFallback } from "@/components/error-boundary";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import {
@@ -33,24 +35,16 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useStableQuery } from "@/hooks/use-stable-query";
 
 export const Route = createFileRoute("/_authenticated/$areaSlug/")({
+  errorComponent: RouteErrorFallback,
   component: AreaDetailPage,
 });
 
-const healthColors = {
-  healthy: "bg-green-500",
-  needs_attention: "bg-yellow-500",
-  critical: "bg-red-500",
-} as const;
-
 function AreaDetailPage() {
   const { areaSlug } = Route.useParams();
-  const areaResult = useQuery(api.areas.getBySlug, { slug: areaSlug });
-  const lastAreaRef = useRef<NonNullable<typeof areaResult>>(undefined);
-  if (areaResult !== undefined && areaResult !== null)
-    lastAreaRef.current = areaResult;
-  const area = areaResult ?? lastAreaRef.current ?? null;
+  const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
 
   const areas = useQuery(api.areas.list);
   const projects = useQuery(
@@ -171,9 +165,7 @@ function AreaDetailPage() {
     };
   }, [area?.name]);
 
-  const isLoading =
-    (areaResult === undefined && !lastAreaRef.current) ||
-    projects === undefined;
+  const isLoading = area === undefined || projects === undefined;
 
   if (isLoading) {
     return <AreaDetailSkeleton />;
