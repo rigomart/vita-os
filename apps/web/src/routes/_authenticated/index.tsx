@@ -59,19 +59,24 @@ function Dashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <ReviewStatus
-        lastReviewDate={lastReviewDate ?? null}
-        onMarkReviewed={() => markReviewed()}
-      />
+    <div className="mx-auto max-w-4xl space-y-10">
+      <div className="space-y-1">
+        <h1 className="text-lg font-medium tracking-tight">Dashboard</h1>
+        <ReviewStatus
+          lastReviewDate={lastReviewDate ?? null}
+          onMarkReviewed={() => markReviewed()}
+        />
+      </div>
 
-      <div className="mb-8">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium">Areas</h2>
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Areas
+          </h2>
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 gap-1 text-xs"
+            className="h-7 gap-1.5 text-xs text-muted-foreground"
             onClick={() => setShowCreateArea(true)}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -79,7 +84,7 @@ function Dashboard() {
           </Button>
         </div>
         {areas && areas.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {areas.map((area) => {
               const projectCount = (projects ?? []).filter(
                 (p) => p.areaId === area._id,
@@ -95,9 +100,9 @@ function Dashboard() {
             })}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-8 text-center">
-            <Compass className="mb-3 h-8 w-8 text-muted-foreground" />
-            <p className="mb-3 text-sm text-muted-foreground">
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/50 py-10 text-center">
+            <Compass className="mb-3 h-8 w-8 text-muted-foreground/60" />
+            <p className="mb-4 max-w-xs text-sm text-muted-foreground">
               Define your life areas to organize projects by responsibility.
             </p>
             <Button
@@ -109,7 +114,7 @@ function Dashboard() {
             </Button>
           </div>
         )}
-      </div>
+      </section>
 
       {attention && attention.items.length > 0 && (
         <AttentionSection items={attention.items} areas={areas ?? []} />
@@ -128,27 +133,26 @@ function Dashboard() {
 
 function DashboardSkeleton() {
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex items-center gap-2">
-        <Skeleton className="h-2 w-2 rounded-full" />
-        <Skeleton className="h-3 w-32" />
+    <div className="mx-auto max-w-4xl space-y-10">
+      <div className="space-y-1">
+        <Skeleton className="h-6 w-28" />
+        <Skeleton className="h-4 w-48" />
       </div>
 
-      <div className="mb-6">
-        <div className="mb-3 flex items-center justify-between">
-          <Skeleton className="h-4 w-12" />
-          <Skeleton className="h-7 w-20 rounded-md" />
-        </div>
+      <div>
+        <Skeleton className="mb-4 h-4 w-12" />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
               key={i}
-              className="flex items-center gap-3 rounded-lg border p-3"
+              className="rounded-xl bg-card p-5"
             >
-              <Skeleton className="h-2.5 w-2.5 shrink-0 rounded-full" />
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <Skeleton className="h-4 w-24" />
+              <div className="space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <Skeleton className="h-2.5 w-2.5 rounded-full" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
                 <Skeleton className="h-3 w-16" />
               </div>
             </div>

@@ -5,6 +5,17 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { formatDistanceToNow } from "date-fns";
+import {
+  ArrowRight,
+  Calendar,
+  CheckCircle2,
+  ChevronRight,
+  MessageSquare,
+  Tag,
+  Target,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { RouteErrorFallback } from "@/components/error-boundary";
 import { TagInput } from "@/components/projects/tag-input";
@@ -22,7 +33,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { EditableField } from "@/components/ui/editable-field";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useStableQuery } from "@/hooks/use-stable-query";
@@ -116,10 +126,7 @@ function AreaProjectDetailPage() {
         localStore.setQuery(
           api.projects.getBySlug,
           { slug: projectSlug },
-          {
-            ...bySlug,
-            tags,
-          },
+          { ...bySlug, tags },
         );
       }
     },
@@ -223,64 +230,79 @@ function AreaProjectDetailPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl">
-      {/* Back link */}
-      <Link
-        to="/$areaSlug"
-        params={{ areaSlug }}
-        className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        {area.name}
-      </Link>
+    <div className="mx-auto max-w-3xl space-y-8">
+      {/* Header: breadcrumb + name + description */}
+      <div>
+        <Link
+          to="/$areaSlug"
+          params={{ areaSlug }}
+          className="mb-2 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {area.name}
+          <ChevronRight className="h-3 w-3" />
+        </Link>
 
-      {/* Project name */}
-      <EditableField
-        value={project.name}
-        onSave={handleNameSave}
-        className="text-2xl font-bold"
-      />
-
-      {/* Description */}
-      <div className="mt-2">
         <EditableField
-          value={project.description ?? ""}
-          onSave={(v) => handleFieldSave("description", v)}
-          variant="textarea"
-          placeholder="Add a description..."
-          className="text-sm text-muted-foreground"
+          value={project.name}
+          onSave={handleNameSave}
+          className="text-xl font-semibold tracking-tight"
         />
+
+        <div className="mt-1">
+          <EditableField
+            value={project.description ?? ""}
+            onSave={(v) => handleFieldSave("description", v)}
+            variant="textarea"
+            placeholder="Add a description..."
+            className="text-sm text-muted-foreground"
+          />
+        </div>
       </div>
 
-      {/* Fields */}
-      <div className="mt-6 rounded-lg border bg-card p-4 space-y-0">
-        <FieldRow label="Status">
+      {/* Primary: Status & Next Action */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl bg-card p-4">
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <Target className="h-3.5 w-3.5" />
+            Status
+          </div>
           <EditableField
             value={project.status ?? ""}
             onSave={(v) => handleFieldSave("status", v)}
-            placeholder="Set status..."
+            placeholder="Where things stand..."
             className="text-sm"
           />
-        </FieldRow>
+        </div>
 
-        <FieldRow label="Next Action">
+        <div className="rounded-xl bg-card p-4">
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <ArrowRight className="h-3.5 w-3.5" />
+            Next Action
+          </div>
           <EditableField
             value={project.nextAction ?? ""}
             onSave={(v) => handleFieldSave("nextAction", v)}
             placeholder="What's the next step?"
             className="text-sm"
           />
-        </FieldRow>
+        </div>
+      </div>
 
-        <FieldRow label="Tags">
+      {/* Metadata: Tags, Review Date, Definition of Done */}
+      <div className="space-y-4">
+        <MetadataRow icon={<Tag className="h-3.5 w-3.5" />} label="Tags">
           <TagInput
             tags={project.tags ?? []}
             suggestions={allTags}
             onAdd={(tag) => addTag({ id: project._id, tag })}
             onRemove={(tag) => removeTagMutation({ id: project._id, tag })}
           />
-        </FieldRow>
+        </MetadataRow>
 
-        <FieldRow label="Review Date">
+        <MetadataRow
+          icon={<Calendar className="h-3.5 w-3.5" />}
+          label="Review Date"
+        >
           <DatePicker
             value={
               project.nextReviewDate
@@ -290,9 +312,12 @@ function AreaProjectDetailPage() {
             onChange={handleReviewDateChange}
             placeholder="Set review date..."
           />
-        </FieldRow>
+        </MetadataRow>
 
-        <FieldRow label="Definition of Done">
+        <MetadataRow
+          icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+          label="Definition of Done"
+        >
           <EditableField
             value={project.definitionOfDone ?? ""}
             onSave={(v) => handleFieldSave("definitionOfDone", v)}
@@ -300,15 +325,16 @@ function AreaProjectDetailPage() {
             placeholder="When is this done?"
             className="text-sm"
           />
-        </FieldRow>
+        </MetadataRow>
       </div>
 
-      {/* Action buttons */}
-      <div className="mt-6 flex items-center gap-2">
+      {/* Actions */}
+      <div className="flex items-center gap-2 border-t border-border/50 pt-6">
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              Mark Complete
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Complete
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -329,8 +355,13 @@ function AreaProjectDetailPage() {
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              Drop Project
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-muted-foreground"
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              Drop
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -352,9 +383,16 @@ function AreaProjectDetailPage() {
           </AlertDialogContent>
         </AlertDialog>
 
+        <div className="flex-1" />
+
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-muted-foreground">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
               Delete
             </Button>
           </AlertDialogTrigger>
@@ -378,96 +416,103 @@ function AreaProjectDetailPage() {
         </AlertDialog>
       </div>
 
-      <Separator className="my-6" />
-
-      {/* Activity log */}
-      <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-sm font-medium">Activity</h2>
-        {logs && logs.length > 0 && (
-          <span className="rounded-full bg-muted px-1.5 py-0 text-[10px] font-medium text-muted-foreground">
-            {logs.length}
-          </span>
-        )}
-      </div>
-      <form onSubmit={handleAddNote} className="mb-4 flex gap-2">
-        <Textarea
-          value={noteText}
-          onChange={(e) => setNoteText(e.target.value)}
-          placeholder="Add a note..."
-          className="min-h-9"
-          rows={1}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleAddNote(e);
-            }
-          }}
-        />
-        <Button
-          type="submit"
-          size="sm"
-          disabled={!noteText.trim()}
-          className="shrink-0"
-        >
-          Add
-        </Button>
-      </form>
-
-      {logs === undefined ? (
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
-            <div key={i}>
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="mt-1 h-3 w-20" />
-            </div>
-          ))}
+      {/* Activity Log */}
+      <section>
+        <div className="mb-4 flex items-center gap-2.5">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted">
+            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+          <h2 className="text-sm font-medium">Activity</h2>
+          {logs && logs.length > 0 && (
+            <span className="text-xs text-muted-foreground">{logs.length}</span>
+          )}
         </div>
-      ) : logs.length > 0 ? (
-        <div className="space-y-3">
-          {logs.map((log) => (
-            <div
-              key={log._id}
-              className={`border-l-2 pl-4 ml-1 text-sm ${
-                log.type === "note" ? "border-primary/30" : "border-border"
-              }`}
-            >
-              {log.type === "note" ? (
-                <p className="whitespace-pre-wrap">{log.content}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">
-                  {log.content}
+
+        <form onSubmit={handleAddNote} className="mb-5 flex gap-2">
+          <Textarea
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="Add a note..."
+            className="min-h-9 bg-card"
+            rows={1}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleAddNote(e);
+              }
+            }}
+          />
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!noteText.trim()}
+            className="shrink-0"
+          >
+            Add
+          </Button>
+        </form>
+
+        {logs === undefined ? (
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
+              <div key={i} className="pl-5">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="mt-1 h-3 w-20" />
+              </div>
+            ))}
+          </div>
+        ) : logs.length > 0 ? (
+          <div className="space-y-0">
+            {logs.map((log) => (
+              <div
+                key={log._id}
+                className={`border-l-2 py-3 pl-5 ${
+                  log.type === "note" ? "border-primary/30" : "border-border/50"
+                }`}
+              >
+                {log.type === "note" ? (
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {log.content}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">
+                    {log.content}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-muted-foreground/70">
+                  {formatDistanceToNow(new Date(log.createdAt), {
+                    addSuffix: true,
+                  })}
                 </p>
-              )}
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(log.createdAt), {
-                  addSuffix: true,
-                })}
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="py-4 text-center text-xs text-muted-foreground">
-          No activity yet
-        </p>
-      )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="py-6 text-center text-xs text-muted-foreground">
+            No activity yet
+          </p>
+        )}
+      </section>
     </div>
   );
 }
 
-function FieldRow({
+function MetadataRow({
+  icon,
   label,
   children,
 }: {
+  icon: React.ReactNode;
   label: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-4 border-b border-border/50 py-3 last:border-b-0">
-      <span className="w-32 shrink-0 pt-1 text-xs font-medium text-muted-foreground">
+    <div className="flex items-start gap-3">
+      <div className="flex w-36 shrink-0 items-center gap-2 pt-1 text-xs text-muted-foreground">
+        {icon}
         {label}
-      </span>
+      </div>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
@@ -475,28 +520,36 @@ function FieldRow({
 
 function ProjectDetailSkeleton() {
   return (
-    <div className="mx-auto max-w-3xl">
-      <Skeleton className="mb-3 h-4 w-16" />
-      <Skeleton className="h-8 w-48" />
-      <Skeleton className="mt-2 h-4 w-64" />
+    <div className="mx-auto max-w-3xl space-y-8">
+      <div>
+        <Skeleton className="mb-2 h-3 w-16" />
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="mt-2 h-4 w-64" />
+      </div>
 
-      <div className="mt-6 space-y-3">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl bg-card p-4">
+          <Skeleton className="mb-2 h-3 w-12" />
+          <Skeleton className="h-5 w-3/4" />
+        </div>
+        <div className="rounded-xl bg-card p-4">
+          <Skeleton className="mb-2 h-3 w-16" />
+          <Skeleton className="h-5 w-3/4" />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
           <div
             // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
             key={i}
-            className="flex items-center gap-4"
+            className="flex items-center gap-3"
           >
-            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-3 w-36" />
             <Skeleton className="h-4 flex-1" />
           </div>
         ))}
       </div>
-
-      <Separator className="my-6" />
-
-      <Skeleton className="mb-3 h-4 w-16" />
-      <Skeleton className="h-9 w-full" />
     </div>
   );
 }

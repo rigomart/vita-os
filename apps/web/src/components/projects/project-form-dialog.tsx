@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
+  ResponsiveDialogDescription,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
@@ -81,36 +82,55 @@ export function ProjectFormDialog({
           <ResponsiveDialogTitle>
             {project ? "Edit project" : "New project"}
           </ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            {project
+              ? "Update this project's details."
+              : "Projects are active efforts with a defined end state."}
+          </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="project-name">Name</Label>
             <Input
               id="project-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Project name"
+              placeholder="e.g. Renew passport, File Q4 taxes"
               autoFocus
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="project-description">Description</Label>
-            <Input
+            <Label htmlFor="project-description">
+              Description
+              <span className="ml-1 font-normal text-muted-foreground">
+                (optional)
+              </span>
+            </Label>
+            <Textarea
               id="project-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What is this project about?"
+              placeholder="Brief context about this project..."
+              rows={2}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="project-dod">Definition of Done</Label>
+            <Label htmlFor="project-dod">
+              Definition of Done
+              <span className="ml-1 font-normal text-muted-foreground">
+                (optional)
+              </span>
+            </Label>
             <Textarea
               id="project-dod"
               value={definitionOfDone}
               onChange={(e) => setDefinitionOfDone(e.target.value)}
-              placeholder="When is this project considered done?"
-              rows={3}
+              placeholder="A concrete, verifiable outcome..."
+              rows={2}
             />
+            <p className="text-xs text-muted-foreground">
+              How will you know this is done?
+            </p>
           </div>
           {areas && (
             <div className="space-y-2">
@@ -131,7 +151,7 @@ export function ProjectFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!name.trim() || !areaId}>
-              {project ? "Save" : "Create"}
+              {project ? "Save changes" : "Create project"}
             </Button>
           </ResponsiveDialogFooter>
         </form>

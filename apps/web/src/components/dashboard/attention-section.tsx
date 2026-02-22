@@ -26,15 +26,16 @@ export function AttentionSection({ items, areas }: AttentionSectionProps) {
   );
 
   return (
-    <div>
-      <div className="mb-3 flex items-center gap-2">
+    <section>
+      <div className="mb-4 flex items-center gap-2.5">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/15">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+        </div>
         <h2 className="text-sm font-medium">Needs Attention</h2>
-        <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-          {items.length}
-        </Badge>
+        <span className="text-xs text-muted-foreground">{items.length}</span>
       </div>
-      <div className="rounded-lg border border-l-2 border-l-amber-500/50">
-        {items.map((item, i) => {
+      <div className="divide-y divide-border/50 rounded-xl bg-card">
+        {items.map((item) => {
           const area = areaMap.get(item.areaId);
           const areaSlug = area?.slug ?? area?._id ?? item.areaId;
           const projectSlug = item.projectSlug ?? item.projectId;
@@ -44,22 +45,22 @@ export function AttentionSection({ items, areas }: AttentionSectionProps) {
               key={`${item.projectId}-${item.reason}`}
               to="/$areaSlug/$projectSlug"
               params={{ areaSlug, projectSlug }}
-              className={`flex items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-muted/50 ${
-                i < items.length - 1 ? "border-b" : ""
-              }`}
+              className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-accent/60"
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">
                   {item.projectName}
                 </p>
                 {area && (
-                  <p className="text-xs text-muted-foreground">{area.name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {area.name}
+                  </p>
                 )}
               </div>
               {item.reason === "no_next_action" ? (
                 <Badge
                   variant="outline"
-                  className="shrink-0 gap-1 text-[10px] text-amber-600 dark:text-amber-500"
+                  className="shrink-0 gap-1 border-amber-500/25 bg-amber-500/10 text-[10px] text-amber-500"
                 >
                   <CircleAlert className="h-3 w-3" />
                   No next action
@@ -67,7 +68,7 @@ export function AttentionSection({ items, areas }: AttentionSectionProps) {
               ) : (
                 <Badge
                   variant="outline"
-                  className="shrink-0 gap-1 text-[10px] text-amber-600 dark:text-amber-500"
+                  className="shrink-0 gap-1 border-amber-500/25 bg-amber-500/10 text-[10px] text-amber-500"
                 >
                   <AlertTriangle className="h-3 w-3" />
                   Review overdue{" "}
@@ -80,6 +81,6 @@ export function AttentionSection({ items, areas }: AttentionSectionProps) {
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }

@@ -30,35 +30,37 @@ export function CaptureRow({ capture, onProcess }: CaptureRowProps) {
   );
 
   return (
-    <div className="group flex items-start gap-3 border-b px-3 py-3 last:border-b-0">
+    <div className="group flex items-start gap-3 px-4 py-3.5 first:rounded-t-xl last:rounded-b-xl">
       <div className="min-w-0 flex-1">
-        <p className="whitespace-pre-wrap text-sm">{capture.text}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="whitespace-pre-wrap text-sm leading-relaxed">
+          {capture.text}
+        </p>
+        <p className="mt-1.5 text-xs text-muted-foreground">
           {formatDistanceToNow(new Date(capture.createdAt), {
             addSuffix: true,
           })}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         {onProcess && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7"
             onClick={() => onProcess(capture)}
             aria-label="Process capture"
           >
-            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
         )}
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-7 w-7"
           onClick={() => removeCapture({ id: capture._id })}
           aria-label="Discard capture"
         >
-          <Trash2 className="h-4 w-4 text-muted-foreground" />
+          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
       </div>
     </div>
