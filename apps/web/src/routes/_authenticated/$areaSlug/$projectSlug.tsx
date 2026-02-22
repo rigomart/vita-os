@@ -195,7 +195,7 @@ function AreaProjectDetailPage() {
   };
 
   const handleFieldSave = (
-    field: "description" | "status" | "nextAction" | "definitionOfDone",
+    field: "description" | "status" | "nextAction",
     value: string,
   ) => {
     updateProject({
@@ -261,7 +261,7 @@ function AreaProjectDetailPage() {
 
       {/* Primary: Status & Next Action */}
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl bg-card p-4">
+        <div className="rounded-xl bg-surface-2 p-4">
           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
             <Target className="h-3.5 w-3.5" />
             Status
@@ -274,7 +274,7 @@ function AreaProjectDetailPage() {
           />
         </div>
 
-        <div className="rounded-xl bg-card p-4">
+        <div className="rounded-xl bg-surface-2 p-4">
           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
             <ArrowRight className="h-3.5 w-3.5" />
             Next Action
@@ -314,18 +314,7 @@ function AreaProjectDetailPage() {
           />
         </MetadataRow>
 
-        <MetadataRow
-          icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-          label="Definition of Done"
-        >
-          <EditableField
-            value={project.definitionOfDone ?? ""}
-            onSave={(v) => handleFieldSave("definitionOfDone", v)}
-            variant="textarea"
-            placeholder="When is this done?"
-            className="text-sm"
-          />
-        </MetadataRow>
+        {/* definitionOfDone field hidden — pending removal from backend */}
       </div>
 
       {/* Actions */}
@@ -419,7 +408,7 @@ function AreaProjectDetailPage() {
       {/* Activity Log */}
       <section>
         <div className="mb-4 flex items-center gap-2.5">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-3">
             <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           <h2 className="text-sm font-medium">Activity</h2>
@@ -433,7 +422,7 @@ function AreaProjectDetailPage() {
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             placeholder="Add a note..."
-            className="min-h-9 bg-card"
+            className="min-h-9 bg-surface-2"
             rows={1}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -528,11 +517,11 @@ function ProjectDetailSkeleton() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl bg-card p-4">
+        <div className="rounded-xl bg-surface-2 p-4">
           <Skeleton className="mb-2 h-3 w-12" />
           <Skeleton className="h-5 w-3/4" />
         </div>
-        <div className="rounded-xl bg-card p-4">
+        <div className="rounded-xl bg-surface-2 p-4">
           <Skeleton className="mb-2 h-3 w-16" />
           <Skeleton className="h-5 w-3/4" />
         </div>

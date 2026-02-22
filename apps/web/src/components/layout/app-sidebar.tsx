@@ -72,7 +72,6 @@ export function AppSidebar() {
             name: args.name,
             slug: generateSlug(args.name),
             description: args.description,
-            definitionOfDone: args.definitionOfDone,
             areaId: args.areaId,
             order: maxOrder + 1,
             state: "active" as const,

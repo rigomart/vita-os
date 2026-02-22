@@ -133,7 +133,6 @@ function AreaDetailPage() {
             name: args.name,
             slug: generateSlug(args.name),
             description: args.description,
-            definitionOfDone: args.definitionOfDone,
             areaId: args.areaId,
             order: maxOrder + 1,
             state: "active" as const,
@@ -259,7 +258,7 @@ function AreaDetailPage() {
 
         <div className="mt-3 flex items-center gap-3">
           <Select value={area.healthStatus} onValueChange={handleHealthChange}>
-            <SelectTrigger className="h-7 w-auto gap-2 border-none bg-muted/60 px-3 text-xs">
+            <SelectTrigger className="h-7 w-auto gap-2 border-none bg-surface-3/60 px-3 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -276,7 +275,7 @@ function AreaDetailPage() {
 
       {/* Standard */}
       {area.standard && (
-        <div className="rounded-xl bg-card p-5">
+        <div className="rounded-xl bg-surface-2 p-5">
           <h2 className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Standard
           </h2>
@@ -290,7 +289,7 @@ function AreaDetailPage() {
       <section>
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-3">
               <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
             <h2 className="text-sm font-medium">Projects</h2>
@@ -321,7 +320,7 @@ function AreaDetailPage() {
             </Button>
           </div>
         ) : (
-          <div className="divide-y divide-border/50 rounded-xl bg-card">
+          <div className="divide-y divide-border/50 rounded-xl bg-surface-2">
             {projects.map((project) => {
               const slug = project.slug ?? project._id;
               return (
@@ -332,7 +331,7 @@ function AreaDetailPage() {
                   <Link
                     to="/$areaSlug/$projectSlug"
                     params={{ areaSlug, projectSlug: slug }}
-                    className="flex min-w-0 flex-1 items-start gap-4 px-4 py-4 transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-accent/60"
+                    className="flex min-w-0 flex-1 items-start gap-4 px-4 py-4 transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-surface-3/60"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -472,7 +471,7 @@ function AreaDetailSkeleton() {
           <Skeleton className="h-6 w-6 rounded-md" />
           <Skeleton className="h-4 w-16" />
         </div>
-        <div className="divide-y divide-border/50 rounded-xl bg-card">
+        <div className="divide-y divide-border/50 rounded-xl bg-surface-2">
           {Array.from({ length: 2 }).map((_, i) => (
             <div
               // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
