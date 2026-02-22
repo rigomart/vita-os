@@ -136,6 +136,59 @@ export const update = mutation({
       ...(newSlug && { slug: newSlug }),
     });
 
+    // Auto-generate log entries for tracked field changes
+    const now = Date.now();
+
+    if (
+      args.status !== undefined &&
+      (args.status ?? undefined) !== (project.status ?? undefined)
+    ) {
+      const prev = project.status ?? "";
+      const next = args.status === null ? "" : args.status;
+      await ctx.db.insert("projectLogs", {
+        userId,
+        projectId: id,
+        type: "status_change",
+        content: prev
+          ? `Status changed from "${prev}" to "${next || "(cleared)"}"`
+          : `Status set to "${next}"`,
+        previousValue: prev || undefined,
+        newValue: next || undefined,
+        createdAt: now,
+      });
+    }
+
+    if (
+      args.nextAction !== undefined &&
+      (args.nextAction ?? undefined) !== (project.nextAction ?? undefined)
+    ) {
+      const prev = project.nextAction ?? "";
+      const next = args.nextAction === null ? "" : args.nextAction;
+      await ctx.db.insert("projectLogs", {
+        userId,
+        projectId: id,
+        type: "next_action_change",
+        content: prev
+          ? `Next action changed from "${prev}" to "${next || "(cleared)"}"`
+          : `Next action set to "${next}"`,
+        previousValue: prev || undefined,
+        newValue: next || undefined,
+        createdAt: now,
+      });
+    }
+
+    if (args.state !== undefined && args.state !== project.state) {
+      await ctx.db.insert("projectLogs", {
+        userId,
+        projectId: id,
+        type: "state_change",
+        content: `State changed from "${project.state}" to "${args.state}"`,
+        previousValue: project.state,
+        newValue: args.state,
+        createdAt: now,
+      });
+    }
+
     return { slug: newSlug ?? project.slug };
   },
 });
@@ -152,6 +205,85 @@ export const remove = mutation({
     }
 
     await ctx.db.patch(args.id, { state: "dropped" });
+
+    if (project.state !== "dropped") {
+      await ctx.db.insert("projectLogs", {
+        userId,
+        projectId: args.id,
+        type: "state_change",
+        content: `State changed from "${project.state}" to "dropped"`,
+        previousValue: project.state,
+        newValue: "dropped",
+        createdAt: Date.now(),
+      });
+    }
+  },
+});
+
+export const addTag = mutation({
+  args: {
+    id: v.id("projects"),
+    tag: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.getAuthUser(ctx);
+    const userId = String(user._id);
+
+    const project = await ctx.db.get(args.id);
+    if (!project || project.userId !== userId) {
+      throw new Error("Project not found");
+    }
+
+    const tags = project.tags ?? [];
+    const normalized = args.tag.trim().toLowerCase();
+    if (!normalized || tags.includes(normalized)) return;
+
+    await ctx.db.patch(args.id, { tags: [...tags, normalized] });
+  },
+});
+
+export const removeTag = mutation({
+  args: {
+    id: v.id("projects"),
+    tag: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.getAuthUser(ctx);
+    const userId = String(user._id);
+
+    const project = await ctx.db.get(args.id);
+    if (!project || project.userId !== userId) {
+      throw new Error("Project not found");
+    }
+
+    const tags = project.tags ?? [];
+    await ctx.db.patch(args.id, {
+      tags: tags.filter((t) => t !== args.tag),
+    });
+  },
+});
+
+export const listTags = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) return [];
+    const userId = String(user._id);
+
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    const tagSet = new Set<string>();
+    for (const project of projects) {
+      if (project.state === "active" && project.tags) {
+        for (const tag of project.tags) {
+          tagSet.add(tag);
+        }
+      }
+    }
+    return [...tagSet].sort();
   },
 });
 

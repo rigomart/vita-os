@@ -42,6 +42,7 @@ export default defineSchema({
     waitingSince: v.optional(v.number()),
     waitingExpectedDate: v.optional(v.number()),
     waitingFollowUpDate: v.optional(v.number()),
+    tags: v.optional(v.array(v.string())),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
@@ -60,8 +61,15 @@ export default defineSchema({
   projectLogs: defineTable({
     userId: v.string(),
     projectId: v.id("projects"),
-    type: v.literal("note"),
+    type: v.union(
+      v.literal("note"),
+      v.literal("status_change"),
+      v.literal("next_action_change"),
+      v.literal("state_change"),
+    ),
     content: v.string(),
+    previousValue: v.optional(v.string()),
+    newValue: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_project", ["projectId", "createdAt"]),
 });

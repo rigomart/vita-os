@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -136,6 +137,7 @@ function AreaDetailPage() {
             areaId: args.areaId,
             order: maxOrder + 1,
             state: "active" as const,
+            tags: undefined,
             createdAt: Date.now(),
           },
         ]);
@@ -303,6 +305,24 @@ function AreaDetailPage() {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{project.name}</p>
+                    {project.tags && project.tags.length > 0 && (
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        {project.tags.slice(0, 3).map((tag) => (
+                          <Badge
+                            key={tag}
+                            variant="secondary"
+                            className="px-1.5 py-0 text-[10px]"
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
+                        {project.tags.length > 3 && (
+                          <span className="text-[10px] text-muted-foreground">
+                            +{project.tags.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {project.status && (
                       <p className="truncate text-xs text-muted-foreground">
                         {project.status}
