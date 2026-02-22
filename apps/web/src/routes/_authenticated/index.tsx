@@ -8,6 +8,8 @@ import { Compass, Plus } from "lucide-react";
 import { useState } from "react";
 import { AreaCard } from "@/components/areas/area-card";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
+import { AttentionSection } from "@/components/dashboard/attention-section";
+import { ReviewStatus } from "@/components/dashboard/review-status";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -21,6 +23,8 @@ export const Route = createFileRoute("/_authenticated/")({
 function Dashboard() {
   const projects = useQuery(api.projects.list);
   const areas = useQuery(api.areas.list);
+  const attention = useQuery(api.dashboard.attention);
+  const lastReviewDate = useQuery(api.dashboard.lastReview);
   const createArea = useMutation(api.areas.create).withOptimisticUpdate(
     (localStore, args) => {
       const current = localStore.getQuery(api.areas.list, {});
@@ -43,6 +47,7 @@ function Dashboard() {
       }
     },
   );
+  const markReviewed = useMutation(api.dashboard.markReviewed);
   const [showCreateArea, setShowCreateArea] = useState(false);
   const isLoading = areas === undefined;
 
@@ -52,6 +57,11 @@ function Dashboard() {
 
   return (
     <div className="mx-auto max-w-5xl">
+      <ReviewStatus
+        lastReviewDate={lastReviewDate ?? null}
+        onMarkReviewed={() => markReviewed()}
+      />
+
       <div className="mb-6">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-medium">Areas</h2>
@@ -76,6 +86,7 @@ function Dashboard() {
                   key={area._id}
                   area={area}
                   projectCount={projectCount}
+                  attentionCount={attention?.byArea[area._id] ?? 0}
                 />
               );
             })}
@@ -97,6 +108,10 @@ function Dashboard() {
         )}
       </div>
 
+      {attention && attention.items.length > 0 && (
+        <AttentionSection items={attention.items} areas={areas ?? []} />
+      )}
+
       <AreaFormDialog
         open={showCreateArea}
         onOpenChange={setShowCreateArea}
@@ -109,6 +124,11 @@ function Dashboard() {
 function DashboardSkeleton() {
   return (
     <div className="mx-auto max-w-5xl">
+      <div className="mb-6 flex items-center gap-2">
+        <Skeleton className="h-2 w-2 rounded-full" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+
       <div className="mb-6">
         <div className="mb-3 flex items-center justify-between">
           <Skeleton className="h-4 w-12" />

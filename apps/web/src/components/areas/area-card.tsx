@@ -1,5 +1,6 @@
 import type { Doc } from "@convex/_generated/dataModel";
 import { Link } from "@tanstack/react-router";
+import { AlertTriangle } from "lucide-react";
 
 const healthColors = {
   healthy: "bg-green-500",
@@ -10,9 +11,14 @@ const healthColors = {
 interface AreaCardProps {
   area: Doc<"areas">;
   projectCount: number;
+  attentionCount: number;
 }
 
-export function AreaCard({ area, projectCount }: AreaCardProps) {
+export function AreaCard({
+  area,
+  projectCount,
+  attentionCount,
+}: AreaCardProps) {
   return (
     <Link
       to="/$areaSlug"
@@ -27,6 +33,12 @@ export function AreaCard({ area, projectCount }: AreaCardProps) {
         <p className="text-xs text-muted-foreground">
           {projectCount} {projectCount === 1 ? "project" : "projects"}
         </p>
+        {attentionCount > 0 && (
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-500">
+            <AlertTriangle className="h-3 w-3" />
+            {attentionCount} needs attention
+          </p>
+        )}
       </div>
     </Link>
   );

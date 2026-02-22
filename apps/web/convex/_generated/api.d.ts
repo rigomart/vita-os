@@ -11,6 +11,7 @@
 import type * as areas from "../areas.js";
 import type * as auth from "../auth.js";
 import type * as captures from "../captures.js";
+import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
 import type * as lib_patch from "../lib/patch.js";
 import type * as lib_slugs from "../lib/slugs.js";
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   areas: typeof areas;
   auth: typeof auth;
   captures: typeof captures;
+  dashboard: typeof dashboard;
   http: typeof http;
   "lib/patch": typeof lib_patch;
   "lib/slugs": typeof lib_slugs;
