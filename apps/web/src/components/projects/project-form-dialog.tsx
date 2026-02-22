@@ -20,7 +20,6 @@ interface ProjectFormDialogProps {
   onSubmit: (data: {
     name: string;
     description?: string;
-    definitionOfDone?: string;
     areaId: string;
   }) => void;
   project?: Doc<"projects">;
@@ -38,9 +37,6 @@ export function ProjectFormDialog({
 }: ProjectFormDialogProps) {
   const [name, setName] = useState(project?.name ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
-  const [definitionOfDone, setDefinitionOfDone] = useState(
-    project?.definitionOfDone ?? "",
-  );
   const [areaId, setAreaId] = useState<string | undefined>(
     project?.areaId ?? defaultAreaId,
   );
@@ -49,7 +45,6 @@ export function ProjectFormDialog({
     if (open && !project) {
       setName("");
       setDescription("");
-      setDefinitionOfDone("");
       setAreaId(defaultAreaId);
     }
   }, [open, project, defaultAreaId]);
@@ -62,14 +57,12 @@ export function ProjectFormDialog({
     onSubmit({
       name: trimmedName,
       description: description.trim() || undefined,
-      definitionOfDone: definitionOfDone.trim() || undefined,
       areaId,
     });
 
     if (!project) {
       setName("");
       setDescription("");
-      setDefinitionOfDone("");
       setAreaId(defaultAreaId);
     }
     onOpenChange(false);
@@ -114,24 +107,7 @@ export function ProjectFormDialog({
               rows={2}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="project-dod">
-              Definition of Done
-              <span className="ml-1 font-normal text-muted-foreground">
-                (optional)
-              </span>
-            </Label>
-            <Textarea
-              id="project-dod"
-              value={definitionOfDone}
-              onChange={(e) => setDefinitionOfDone(e.target.value)}
-              placeholder="A concrete, verifiable outcome..."
-              rows={2}
-            />
-            <p className="text-xs text-muted-foreground">
-              How will you know this is done?
-            </p>
-          </div>
+          {/* definitionOfDone field hidden — pending removal from backend */}
           {areas && (
             <div className="space-y-2">
               <Label>Area</Label>

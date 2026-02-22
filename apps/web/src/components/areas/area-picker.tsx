@@ -39,7 +39,7 @@ export function AreaPicker({
               onSelect(a._id);
               setOpen(false);
             }}
-            className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-muted"
+            className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-surface-3"
           >
             {a.name}
           </button>

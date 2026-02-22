@@ -123,7 +123,9 @@ function SignUp() {
               <div className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-card px-2 text-muted-foreground">or</span>
+              <span className="bg-surface-2 px-2 text-muted-foreground">
+                or
+              </span>
             </div>
           </div>
           <Button variant="outline" className="w-full" onClick={handleGitHub}>

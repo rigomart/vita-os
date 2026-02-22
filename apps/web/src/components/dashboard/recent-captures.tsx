@@ -33,7 +33,6 @@ export function RecentCaptures() {
           name: string;
           areaId: Id<"areas">;
           description?: string;
-          definitionOfDone?: string;
         }
       | { type: "add_to_project"; projectId: Id<"projects"> }
       | { type: "discard" },
@@ -45,13 +44,13 @@ export function RecentCaptures() {
   return (
     <section>
       <div className="mb-4 flex items-center gap-2.5">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-3">
           <Inbox className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
         <h2 className="text-sm font-medium">Recent Captures</h2>
         <span className="text-xs text-muted-foreground">{captures.length}</span>
       </div>
-      <div className="divide-y divide-border/50 rounded-xl bg-card">
+      <div className="divide-y divide-border/50 rounded-xl bg-surface-2">
         {visible.map((capture) => (
           <CaptureRow
             key={capture._id}

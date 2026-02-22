@@ -37,7 +37,6 @@ function InboxPage() {
           name: string;
           areaId: Id<"areas">;
           description?: string;
-          definitionOfDone?: string;
         }
       | { type: "add_to_project"; projectId: Id<"projects"> }
       | { type: "discard" },

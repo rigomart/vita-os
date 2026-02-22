@@ -127,7 +127,7 @@ export function TagInput({
               key={suggestion}
               type="button"
               onClick={() => handleAdd(suggestion)}
-              className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-muted"
+              className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-surface-3"
             >
               <span>{suggestion}</span>
               {PROBLEM_TYPE_TAGS.includes(suggestion) && (

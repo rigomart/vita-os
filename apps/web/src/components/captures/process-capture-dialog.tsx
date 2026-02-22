@@ -14,7 +14,6 @@ import {
   ResponsiveDialogTitle,
 } from "@/components/ui/responsive-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 
 type ProcessMode = "create_project" | "add_to_project" | "discard";
 
@@ -32,7 +31,6 @@ interface ProcessCaptureDialogProps {
           name: string;
           areaId: Id<"areas">;
           description?: string;
-          definitionOfDone?: string;
         }
       | { type: "add_to_project"; projectId: Id<"projects"> }
       | { type: "discard" },
@@ -50,7 +48,6 @@ export function ProcessCaptureDialog({
   const [mode, setMode] = useState<ProcessMode>("create_project");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [definitionOfDone, setDefinitionOfDone] = useState("");
   const [areaId, setAreaId] = useState<string | undefined>(areas[0]?._id);
   const [projectId, setProjectId] = useState<string | undefined>(undefined);
 
@@ -65,7 +62,6 @@ export function ProcessCaptureDialog({
         name: trimmedName,
         areaId: areaId as Id<"areas">,
         description: description.trim() || undefined,
-        definitionOfDone: definitionOfDone.trim() || undefined,
       });
     } else if (mode === "add_to_project") {
       if (!projectId) return;
@@ -93,7 +89,7 @@ export function ProcessCaptureDialog({
         </ResponsiveDialogHeader>
 
         {/* Capture text reference */}
-        <div className="border-l-2 border-primary/30 bg-muted/30 py-2 pr-3 pl-3">
+        <div className="border-l-2 border-primary/30 bg-surface-3/30 py-2 pr-3 pl-3">
           <p className="line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">
             {capture.text}
           </p>
@@ -159,21 +155,7 @@ export function ProcessCaptureDialog({
                     placeholder="Optional description"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="process-dod"
-                    className="text-xs text-muted-foreground"
-                  >
-                    Definition of Done
-                  </Label>
-                  <Textarea
-                    id="process-dod"
-                    value={definitionOfDone}
-                    onChange={(e) => setDefinitionOfDone(e.target.value)}
-                    placeholder="When is this project done?"
-                    rows={2}
-                  />
-                </div>
+                {/* definitionOfDone field hidden — pending removal from backend */}
               </div>
             </TabsContent>
 

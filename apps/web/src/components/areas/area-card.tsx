@@ -18,7 +18,7 @@ export function AreaCard({
     <Link
       to="/$areaSlug"
       params={{ areaSlug: area.slug ?? area._id }}
-      className="group relative rounded-xl bg-card p-5 transition-colors hover:bg-accent/60"
+      className="group relative rounded-xl bg-surface-2 p-5 transition-colors hover:bg-surface-3/60"
     >
       <div className="flex items-center gap-2.5">
         <span
