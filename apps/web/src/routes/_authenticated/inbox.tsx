@@ -7,6 +7,7 @@ import { Inbox } from "lucide-react";
 import { useState } from "react";
 import { CaptureRow } from "@/components/captures/capture-row";
 import { ProcessCaptureDialog } from "@/components/captures/process-capture-dialog";
+import { RouteErrorFallback } from "@/components/error-boundary";
 import { PageHeader } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/_authenticated/inbox")({
   head: () => ({
     meta: [{ title: "Inbox | Vita OS" }],
   }),
+  errorComponent: RouteErrorFallback,
   component: InboxPage,
 });
 

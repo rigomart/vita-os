@@ -5,7 +5,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { formatDistanceToNow } from "date-fns";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { RouteErrorFallback } from "@/components/error-boundary";
 import { TagInput } from "@/components/projects/tag-input";
 import {
   AlertDialog,
@@ -24,26 +25,19 @@ import { EditableField } from "@/components/ui/editable-field";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useStableQuery } from "@/hooks/use-stable-query";
 
 export const Route = createFileRoute("/_authenticated/$areaSlug/$projectSlug")({
+  errorComponent: RouteErrorFallback,
   component: AreaProjectDetailPage,
 });
 
 function AreaProjectDetailPage() {
   const { areaSlug, projectSlug } = Route.useParams();
-  const areaResult = useQuery(api.areas.getBySlug, { slug: areaSlug });
-  const lastAreaRef = useRef<NonNullable<typeof areaResult>>(undefined);
-  if (areaResult !== undefined && areaResult !== null)
-    lastAreaRef.current = areaResult;
-  const area = areaResult ?? lastAreaRef.current ?? null;
-
-  const projectResult = useQuery(api.projects.getBySlug, {
+  const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
+  const project = useStableQuery(api.projects.getBySlug, {
     slug: projectSlug,
   });
-  const lastProjectRef = useRef<NonNullable<typeof projectResult>>(undefined);
-  if (projectResult !== undefined && projectResult !== null)
-    lastProjectRef.current = projectResult;
-  const project = projectResult ?? lastProjectRef.current ?? null;
 
   const logs = useQuery(
     api.projectLogs.listByProject,
@@ -160,9 +154,7 @@ function AreaProjectDetailPage() {
     };
   }, [project?.name]);
 
-  const isLoading =
-    (areaResult === undefined && !lastAreaRef.current) ||
-    (projectResult === undefined && !lastProjectRef.current);
+  const isLoading = area === undefined || project === undefined;
 
   if (isLoading) {
     return <ProjectDetailSkeleton />;
@@ -414,7 +406,17 @@ function AreaProjectDetailPage() {
         </Button>
       </form>
 
-      {logs && logs.length > 0 ? (
+      {logs === undefined ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
+            <div key={i}>
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="mt-1 h-3 w-20" />
+            </div>
+          ))}
+        </div>
+      ) : logs.length > 0 ? (
         <div className="space-y-3">
           {logs.map((log) => (
             <div key={log._id} className="text-sm">

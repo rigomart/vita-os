@@ -1,14 +1,13 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { authComponent } from "./auth";
+import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { generateSlug } from "./lib/slugs";
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return [];
-    const userId = String(user._id);
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return [];
     return ctx.db
       .query("captures")
       .withIndex("by_user_created", (q) => q.eq("userId", userId))
@@ -20,9 +19,8 @@ export const list = query({
 export const count = query({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return 0;
-    const userId = String(user._id);
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return 0;
     const captures = await ctx.db
       .query("captures")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -36,8 +34,7 @@ export const create = mutation({
     text: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     return ctx.db.insert("captures", {
       userId,
@@ -50,8 +47,7 @@ export const create = mutation({
 export const remove = mutation({
   args: { id: v.id("captures") },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     const capture = await ctx.db.get(args.id);
     if (!capture || capture.userId !== userId) {
@@ -83,8 +79,7 @@ export const process = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     const capture = await ctx.db.get(args.id);
     if (!capture || capture.userId !== userId) {
@@ -92,13 +87,7 @@ export const process = mutation({
     }
 
     if (args.action.type === "create_project") {
-      const existing = await ctx.db
-        .query("projects")
-        .withIndex("by_user_order", (q) => q.eq("userId", userId))
-        .order("desc")
-        .first();
-
-      const nextOrder = existing ? existing.order + 1 : 0;
+      const nextOrder = await getNextOrder(ctx, "projects", userId);
       const slug = generateSlug(args.action.name);
 
       const projectId = await ctx.db.insert("projects", {

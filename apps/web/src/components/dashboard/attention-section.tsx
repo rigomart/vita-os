@@ -2,6 +2,7 @@ import type { Doc } from "@convex/_generated/dataModel";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { AlertTriangle, CircleAlert } from "lucide-react";
+import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 
 interface AttentionItem {
@@ -19,7 +20,10 @@ interface AttentionSectionProps {
 }
 
 export function AttentionSection({ items, areas }: AttentionSectionProps) {
-  const areaMap = new Map(areas.map((a) => [a._id as string, a]));
+  const areaMap = useMemo(
+    () => new Map(areas.map((a) => [a._id as string, a])),
+    [areas],
+  );
 
   return (
     <div>

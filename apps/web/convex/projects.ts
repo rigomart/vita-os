@@ -1,30 +1,30 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { authComponent } from "./auth";
+import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { nullsToUndefined } from "./lib/patch";
 import { generateSlug } from "./lib/slugs";
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return [];
-    const userId = String(user._id);
-    const projects = await ctx.db
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return [];
+    return ctx.db
       .query("projects")
-      .withIndex("by_user_order", (q) => q.eq("userId", userId))
+      .withIndex("by_user_state", (q) =>
+        q.eq("userId", userId).eq("state", "active"),
+      )
       .collect();
-    return projects.filter((p) => p.state === "active");
   },
 });
 
 export const get = query({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return null;
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return null;
     const project = await ctx.db.get(args.id);
-    if (!project || project.userId !== String(user._id)) return null;
+    if (!project || project.userId !== userId) return null;
     if (project.state !== "active") return null;
     return project;
   },
@@ -33,9 +33,8 @@ export const get = query({
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return null;
-    const userId = String(user._id);
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return null;
     const project = await ctx.db
       .query("projects")
       .withIndex("by_user_slug", (q) =>
@@ -50,9 +49,8 @@ export const getBySlug = query({
 export const listByArea = query({
   args: { areaId: v.id("areas") },
   handler: async (ctx, args) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return [];
-    const userId = String(user._id);
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return [];
     const projects = await ctx.db
       .query("projects")
       .withIndex("by_area", (q) => q.eq("areaId", args.areaId))
@@ -69,16 +67,8 @@ export const create = mutation({
     areaId: v.id("areas"),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
-
-    const existing = await ctx.db
-      .query("projects")
-      .withIndex("by_user_order", (q) => q.eq("userId", userId))
-      .order("desc")
-      .first();
-
-    const nextOrder = existing ? existing.order + 1 : 0;
+    const userId = await getAuthUserId(ctx);
+    const nextOrder = await getNextOrder(ctx, "projects", userId);
     const slug = generateSlug(args.name);
 
     const id = await ctx.db.insert("projects", {
@@ -116,8 +106,7 @@ export const update = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     const project = await ctx.db.get(args.id);
     if (!project || project.userId !== userId) {
@@ -196,8 +185,7 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     const project = await ctx.db.get(args.id);
     if (!project || project.userId !== userId) {
@@ -226,8 +214,7 @@ export const addTag = mutation({
     tag: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     const project = await ctx.db.get(args.id);
     if (!project || project.userId !== userId) {
@@ -248,8 +235,7 @@ export const removeTag = mutation({
     tag: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     const project = await ctx.db.get(args.id);
     if (!project || project.userId !== userId) {
@@ -266,18 +252,19 @@ export const removeTag = mutation({
 export const listTags = query({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) return [];
-    const userId = String(user._id);
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return [];
 
     const projects = await ctx.db
       .query("projects")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_user_state", (q) =>
+        q.eq("userId", userId).eq("state", "active"),
+      )
       .collect();
 
     const tagSet = new Set<string>();
     for (const project of projects) {
-      if (project.state === "active" && project.tags) {
+      if (project.tags) {
         for (const tag of project.tags) {
           tagSet.add(tag);
         }
@@ -306,8 +293,7 @@ export const backfillSlugs = mutation({
 export const migrateUngrouped = mutation({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.getAuthUser(ctx);
-    const userId = String(user._id);
+    const userId = await getAuthUserId(ctx);
 
     const projects = await ctx.db
       .query("projects")

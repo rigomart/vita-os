@@ -48,6 +48,7 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_order", ["userId", "order"])
     .index("by_user_slug", ["userId", "slug"])
+    .index("by_user_state", ["userId", "state"])
     .index("by_area", ["areaId"]),
 
   captures: defineTable({

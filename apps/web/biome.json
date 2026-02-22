@@ -1,4 +1,5 @@
 {
+  "root": false,
   "extends": "//",
   "files": {
     "includes": ["**", "!**/routeTree.gen.ts", "!**/convex/_generated"]
