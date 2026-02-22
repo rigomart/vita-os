@@ -93,6 +93,19 @@ export function TagInput({
                 setOpen(true);
               }
             }}
+            onBlur={(e) => {
+              // Close unless focus moved into the popover
+              const related = e.relatedTarget as Node | null;
+              if (
+                related &&
+                e.currentTarget
+                  .closest("[data-slot='popover']")
+                  ?.contains(related)
+              ) {
+                return;
+              }
+              setTimeout(() => setOpen(false), 150);
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Add a tag..."
             className="h-7 text-xs"
@@ -102,6 +115,12 @@ export function TagInput({
           className="w-48 p-1"
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          onInteractOutside={(e) => {
+            if (inputRef.current?.contains(e.target as Node)) {
+              e.preventDefault();
+            }
+          }}
         >
           {filtered.map((suggestion) => (
             <button
