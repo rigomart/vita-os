@@ -196,7 +196,7 @@ function AreaProjectDetailPage() {
   };
 
   const handleFieldSave = (
-    field: "description" | "status" | "nextAction",
+    field: "definitionOfDone" | "status" | "nextAction",
     value: string,
   ) => {
     updateProject({
@@ -248,16 +248,6 @@ function AreaProjectDetailPage() {
           onSave={handleNameSave}
           className="text-xl font-semibold tracking-tight"
         />
-
-        <div className="mt-1">
-          <EditableField
-            value={project.description ?? ""}
-            onSave={(v) => handleFieldSave("description", v)}
-            variant="textarea"
-            placeholder="Add a description..."
-            className="text-sm text-muted-foreground"
-          />
-        </div>
       </div>
 
       {/* Primary: Status & Next Action */}
@@ -315,7 +305,18 @@ function AreaProjectDetailPage() {
           />
         </MetadataRow>
 
-        {/* definitionOfDone field hidden — pending removal from backend */}
+        <MetadataRow
+          icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+          label="Definition of Done"
+        >
+          <EditableField
+            value={project.definitionOfDone ?? ""}
+            onSave={(v) => handleFieldSave("definitionOfDone", v)}
+            variant="textarea"
+            placeholder="What does done look like?"
+            className="text-sm"
+          />
+        </MetadataRow>
       </div>
 
       {/* Actions */}
