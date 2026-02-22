@@ -73,6 +73,10 @@ export const process = mutation({
         projectId: v.id("projects"),
       }),
       v.object({
+        type: v.literal("set_next_action"),
+        projectId: v.id("projects"),
+      }),
+      v.object({
         type: v.literal("discard"),
       }),
     ),
@@ -128,6 +132,35 @@ export const process = mutation({
 
       await ctx.db.delete(args.id);
       return { type: "added" as const };
+    }
+
+    if (args.action.type === "set_next_action") {
+      const project = await ctx.db.get(args.action.projectId);
+      if (!project || project.userId !== userId) {
+        throw new Error("Project not found");
+      }
+
+      const prev = project.nextAction ?? "";
+      const next = capture.text;
+
+      await ctx.db.patch(args.action.projectId, {
+        nextAction: next,
+      });
+
+      await ctx.db.insert("projectLogs", {
+        userId,
+        projectId: args.action.projectId,
+        type: "next_action_change",
+        content: prev
+          ? `Next action changed from "${prev}" to "${next}"`
+          : `Next action set to "${next}"`,
+        previousValue: prev || undefined,
+        newValue: next,
+        createdAt: Date.now(),
+      });
+
+      await ctx.db.delete(args.id);
+      return { type: "set_next_action" as const };
     }
 
     // discard

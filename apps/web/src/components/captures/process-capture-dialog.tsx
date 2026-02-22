@@ -1,5 +1,5 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
-import { FolderPlus, ListPlus } from "lucide-react";
+import { Crosshair, FolderPlus, ListPlus } from "lucide-react";
 import { useState } from "react";
 import { AreaPicker } from "@/components/areas/area-picker";
 import { ProjectPicker } from "@/components/projects/project-picker";
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/responsive-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type ProcessMode = "create_project" | "add_to_project";
+type ProcessMode = "create_project" | "add_to_project" | "set_next_action";
 
 interface ProcessCaptureDialogProps {
   open: boolean;
@@ -32,7 +32,8 @@ interface ProcessCaptureDialogProps {
           areaId: Id<"areas">;
           definitionOfDone?: string;
         }
-      | { type: "add_to_project"; projectId: Id<"projects"> },
+      | { type: "add_to_project"; projectId: Id<"projects"> }
+      | { type: "set_next_action"; projectId: Id<"projects"> },
   ) => void;
 }
 
@@ -68,6 +69,12 @@ export function ProcessCaptureDialog({
         type: "add_to_project",
         projectId: projectId as Id<"projects">,
       });
+    } else if (mode === "set_next_action") {
+      if (!projectId) return;
+      onProcess(capture._id, {
+        type: "set_next_action",
+        projectId: projectId as Id<"projects">,
+      });
     }
 
     onOpenChange(false);
@@ -75,7 +82,8 @@ export function ProcessCaptureDialog({
 
   const canSubmit =
     (mode === "create_project" && name.trim() && areaId) ||
-    (mode === "add_to_project" && projectId);
+    (mode === "add_to_project" && projectId) ||
+    (mode === "set_next_action" && projectId);
 
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
@@ -100,6 +108,10 @@ export function ProcessCaptureDialog({
             <TabsTrigger value="add_to_project" className="text-xs">
               <ListPlus className="h-3.5 w-3.5" />
               Add to project
+            </TabsTrigger>
+            <TabsTrigger value="set_next_action" className="text-xs">
+              <Crosshair className="h-3.5 w-3.5" />
+              Set next action
             </TabsTrigger>
           </TabsList>
 
@@ -166,6 +178,22 @@ export function ProcessCaptureDialog({
               </div>
             </TabsContent>
 
+            <TabsContent value="set_next_action">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Project</Label>
+                <ProjectPicker
+                  projects={projects}
+                  areas={areas}
+                  selectedProjectId={projectId}
+                  onSelect={setProjectId}
+                />
+                <p className="text-xs text-muted-foreground">
+                  The capture text will replace the project's current next
+                  action.
+                </p>
+              </div>
+            </TabsContent>
+
             <ResponsiveDialogFooter>
               <Button
                 type="button"
@@ -177,7 +205,9 @@ export function ProcessCaptureDialog({
               <Button type="submit" disabled={!canSubmit}>
                 {mode === "create_project"
                   ? "Create project"
-                  : "Add to project"}
+                  : mode === "add_to_project"
+                    ? "Add to project"
+                    : "Set next action"}
               </Button>
             </ResponsiveDialogFooter>
           </form>
