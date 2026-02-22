@@ -1,0 +1,150 @@
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { authComponent } from "./auth";
+import { generateSlug } from "./lib/slugs";
+
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) return [];
+    const userId = String(user._id);
+    return ctx.db
+      .query("captures")
+      .withIndex("by_user_created", (q) => q.eq("userId", userId))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const count = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) return 0;
+    const userId = String(user._id);
+    const captures = await ctx.db
+      .query("captures")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    return captures.length;
+  },
+});
+
+export const create = mutation({
+  args: {
+    text: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.getAuthUser(ctx);
+    const userId = String(user._id);
+
+    return ctx.db.insert("captures", {
+      userId,
+      text: args.text,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const remove = mutation({
+  args: { id: v.id("captures") },
+  handler: async (ctx, args) => {
+    const user = await authComponent.getAuthUser(ctx);
+    const userId = String(user._id);
+
+    const capture = await ctx.db.get(args.id);
+    if (!capture || capture.userId !== userId) {
+      throw new Error("Capture not found");
+    }
+
+    await ctx.db.delete(args.id);
+  },
+});
+
+export const process = mutation({
+  args: {
+    id: v.id("captures"),
+    action: v.union(
+      v.object({
+        type: v.literal("create_project"),
+        name: v.string(),
+        areaId: v.id("areas"),
+        description: v.optional(v.string()),
+        definitionOfDone: v.optional(v.string()),
+      }),
+      v.object({
+        type: v.literal("add_to_project"),
+        projectId: v.id("projects"),
+      }),
+      v.object({
+        type: v.literal("discard"),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const user = await authComponent.getAuthUser(ctx);
+    const userId = String(user._id);
+
+    const capture = await ctx.db.get(args.id);
+    if (!capture || capture.userId !== userId) {
+      throw new Error("Capture not found");
+    }
+
+    if (args.action.type === "create_project") {
+      const existing = await ctx.db
+        .query("projects")
+        .withIndex("by_user_order", (q) => q.eq("userId", userId))
+        .order("desc")
+        .first();
+
+      const nextOrder = existing ? existing.order + 1 : 0;
+      const slug = generateSlug(args.action.name);
+
+      const projectId = await ctx.db.insert("projects", {
+        userId,
+        name: args.action.name,
+        slug,
+        description: args.action.description,
+        definitionOfDone: args.action.definitionOfDone,
+        areaId: args.action.areaId,
+        order: nextOrder,
+        state: "active",
+        createdAt: Date.now(),
+      });
+
+      await ctx.db.insert("projectLogs", {
+        userId,
+        projectId,
+        type: "note",
+        content: capture.text,
+        createdAt: Date.now(),
+      });
+
+      await ctx.db.delete(args.id);
+      return { type: "created" as const, slug };
+    }
+
+    if (args.action.type === "add_to_project") {
+      const project = await ctx.db.get(args.action.projectId);
+      if (!project || project.userId !== userId) {
+        throw new Error("Project not found");
+      }
+
+      await ctx.db.insert("projectLogs", {
+        userId,
+        projectId: args.action.projectId,
+        type: "note",
+        content: capture.text,
+        createdAt: Date.now(),
+      });
+
+      await ctx.db.delete(args.id);
+      return { type: "added" as const };
+    }
+
+    // discard
+    await ctx.db.delete(args.id);
+    return { type: "discarded" as const };
+  },
+});

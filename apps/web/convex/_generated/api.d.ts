@@ -10,13 +10,13 @@
 
 import type * as areas from "../areas.js";
 import type * as auth from "../auth.js";
+import type * as captures from "../captures.js";
 import type * as http from "../http.js";
-import type * as lib_dates from "../lib/dates.js";
 import type * as lib_patch from "../lib/patch.js";
 import type * as lib_slugs from "../lib/slugs.js";
 import type * as lib_validation from "../lib/validation.js";
+import type * as projectLogs from "../projectLogs.js";
 import type * as projects from "../projects.js";
-import type * as tasks from "../tasks.js";
 
 import type {
   ApiFromModules,
@@ -27,13 +27,13 @@ import type {
 declare const fullApi: ApiFromModules<{
   areas: typeof areas;
   auth: typeof auth;
+  captures: typeof captures;
   http: typeof http;
-  "lib/dates": typeof lib_dates;
   "lib/patch": typeof lib_patch;
   "lib/slugs": typeof lib_slugs;
   "lib/validation": typeof lib_validation;
+  projectLogs: typeof projectLogs;
   projects: typeof projects;
-  tasks: typeof tasks;
 }>;
 
 /**

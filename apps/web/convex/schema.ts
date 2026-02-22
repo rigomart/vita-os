@@ -26,10 +26,22 @@ export default defineSchema({
     description: v.optional(v.string()),
     definitionOfDone: v.optional(v.string()),
     areaId: v.id("areas"),
-    startDate: v.optional(v.number()),
-    endDate: v.optional(v.number()),
     order: v.number(),
-    isArchived: v.boolean(),
+    state: v.union(
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("dropped"),
+    ),
+    status: v.optional(v.string()),
+    nextAction: v.optional(v.string()),
+    nextReviewDate: v.optional(v.number()),
+    // Phase 2 fields
+    actionDate: v.optional(v.number()),
+    targetDate: v.optional(v.number()),
+    waitingOn: v.optional(v.string()),
+    waitingSince: v.optional(v.number()),
+    waitingExpectedDate: v.optional(v.number()),
+    waitingFollowUpDate: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
@@ -37,17 +49,19 @@ export default defineSchema({
     .index("by_user_slug", ["userId", "slug"])
     .index("by_area", ["areaId"]),
 
-  tasks: defineTable({
+  captures: defineTable({
     userId: v.string(),
-    title: v.string(),
-    description: v.optional(v.string()),
-    isCompleted: v.boolean(),
-    dueDate: v.optional(v.number()),
-    projectId: v.optional(v.id("projects")),
-    order: v.number(),
+    text: v.string(),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
-    .index("by_user_order", ["userId", "order"])
-    .index("by_project", ["projectId"]),
+    .index("by_user_created", ["userId", "createdAt"]),
+
+  projectLogs: defineTable({
+    userId: v.string(),
+    projectId: v.id("projects"),
+    type: v.literal("note"),
+    content: v.string(),
+    createdAt: v.number(),
+  }).index("by_project", ["projectId", "createdAt"]),
 });

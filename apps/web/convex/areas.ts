@@ -135,7 +135,7 @@ export const remove = mutation({
       .withIndex("by_area", (q) => q.eq("areaId", args.id))
       .collect();
 
-    const activeProjects = projects.filter((p) => !p.isArchived);
+    const activeProjects = projects.filter((p) => p.state === "active");
     if (activeProjects.length > 0) {
       throw new Error(
         "Cannot delete an area that has projects. Move or delete the projects first.",

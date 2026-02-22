@@ -5,12 +5,12 @@ import { generateSlug } from "@convex/lib/slugs";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
+import { format } from "date-fns";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
-import { ProjectTimeline } from "@/components/projects/project-timeline";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -134,10 +134,8 @@ function AreaDetailPage() {
             description: args.description,
             definitionOfDone: args.definitionOfDone,
             areaId: args.areaId,
-            startDate: args.startDate,
-            endDate: args.endDate,
             order: maxOrder + 1,
-            isArchived: false,
+            state: "active" as const,
             createdAt: Date.now(),
           },
         ]);
@@ -272,8 +270,6 @@ function AreaDetailPage() {
 
       <Separator className="mb-4" />
 
-      <ProjectTimeline projects={projects} areaSlug={areaSlug} />
-
       <div className="mt-4 mb-2 flex items-center justify-between">
         <h2 className="text-sm font-medium">Projects</h2>
         <Button
@@ -307,12 +303,22 @@ function AreaDetailPage() {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{project.name}</p>
-                    {project.description && (
+                    {project.status && (
                       <p className="truncate text-xs text-muted-foreground">
-                        {project.description}
+                        {project.status}
+                      </p>
+                    )}
+                    {project.nextAction && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        Next: {project.nextAction}
                       </p>
                     )}
                   </div>
+                  {project.nextReviewDate && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {format(new Date(project.nextReviewDate), "MMM d")}
+                    </span>
+                  )}
                 </Link>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -329,8 +335,8 @@ function AreaDetailPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete project?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        All tasks in &ldquo;{project.name}&rdquo; will be moved
-                        to Inbox.
+                        &ldquo;{project.name}&rdquo; will be permanently
+                        removed.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -417,18 +423,6 @@ function AreaDetailSkeleton() {
       </div>
 
       <Separator className="mb-4" />
-
-      <div className="overflow-hidden rounded-md border">
-        <div className="flex gap-4 border-b px-3 py-1.5">
-          <Skeleton className="h-3 w-8" />
-          <Skeleton className="h-3 w-8" />
-          <Skeleton className="h-3 w-8" />
-        </div>
-        <div className="space-y-1.5 px-3 py-2">
-          <Skeleton className="h-6 w-3/4" />
-          <Skeleton className="h-6 w-1/2" />
-        </div>
-      </div>
 
       <div className="mt-4 mb-2 flex items-center justify-between">
         <Skeleton className="h-4 w-16" />
