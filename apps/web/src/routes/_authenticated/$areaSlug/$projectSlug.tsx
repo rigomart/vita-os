@@ -252,7 +252,7 @@ function AreaProjectDetailPage() {
 
       {/* Primary: Status & Next Action */}
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl bg-surface-2 p-4">
+        <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
             <Target className="h-3.5 w-3.5" />
             Status
@@ -265,7 +265,7 @@ function AreaProjectDetailPage() {
           />
         </div>
 
-        <div className="rounded-xl bg-surface-2 p-4">
+        <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
             <ArrowRight className="h-3.5 w-3.5" />
             Next Action
@@ -462,7 +462,7 @@ function AreaProjectDetailPage() {
                   <div className="absolute left-0 top-[17px] flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 ring-2 ring-background">
                     <Pen className="h-3 w-3 text-primary" />
                   </div>
-                  <div className="rounded-lg bg-surface-2 px-4 py-3">
+                  <div className="rounded-lg border border-border-subtle bg-surface-2 px-4 py-3">
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">
                       {log.content}
                     </p>
@@ -528,11 +528,11 @@ function ProjectDetailSkeleton() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl bg-surface-2 p-4">
+        <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
           <Skeleton className="mb-2 h-3 w-12" />
           <Skeleton className="h-5 w-3/4" />
         </div>
-        <div className="rounded-xl bg-surface-2 p-4">
+        <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
           <Skeleton className="mb-2 h-3 w-16" />
           <Skeleton className="h-5 w-3/4" />
         </div>

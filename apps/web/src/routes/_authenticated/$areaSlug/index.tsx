@@ -275,7 +275,7 @@ function AreaDetailPage() {
 
       {/* Standard */}
       {area.standard && (
-        <div className="rounded-xl bg-surface-2 p-5">
+        <div className="rounded-xl border border-border-subtle bg-surface-2 p-5">
           <h2 className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Standard
           </h2>
@@ -320,7 +320,7 @@ function AreaDetailPage() {
             </Button>
           </div>
         ) : (
-          <div className="divide-y divide-border/50 rounded-xl bg-surface-2">
+          <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
             {projects.map((project) => {
               const slug = project.slug ?? project._id;
               return (
@@ -471,7 +471,7 @@ function AreaDetailSkeleton() {
           <Skeleton className="h-6 w-6 rounded-md" />
           <Skeleton className="h-4 w-16" />
         </div>
-        <div className="divide-y divide-border/50 rounded-xl bg-surface-2">
+        <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
           {Array.from({ length: 2 }).map((_, i) => (
             <div
               // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
