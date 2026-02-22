@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
+  ResponsiveDialogDescription,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
@@ -30,6 +31,16 @@ interface AreaFormDialogProps {
   }) => void;
   area?: Doc<"areas">;
 }
+
+const healthOptions: { value: HealthStatus; label: string; color: string }[] = [
+  { value: "healthy", label: "Healthy", color: "bg-green-500" },
+  {
+    value: "needs_attention",
+    label: "Needs attention",
+    color: "bg-yellow-500",
+  },
+  { value: "critical", label: "Critical", color: "bg-red-500" },
+];
 
 export function AreaFormDialog({
   open,
@@ -69,8 +80,13 @@ export function AreaFormDialog({
           <ResponsiveDialogTitle>
             {area ? "Edit area" : "New area"}
           </ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            {area
+              ? "Update this life area's details."
+              : "Areas are stable life domains like Health, Career, or Finances."}
+          </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="area-name">Name</Label>
             <Input
@@ -82,14 +98,22 @@ export function AreaFormDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="area-standard">Standard</Label>
+            <Label htmlFor="area-standard">
+              Standard
+              <span className="ml-1 font-normal text-muted-foreground">
+                (optional)
+              </span>
+            </Label>
             <Textarea
               id="area-standard"
               value={standard}
               onChange={(e) => setStandard(e.target.value)}
-              placeholder="What does 'good enough' look like?"
+              placeholder="What does 'good enough' look like for this area?"
               rows={3}
             />
+            <p className="text-xs text-muted-foreground">
+              The maintenance threshold, not an aspirational goal.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="area-health">Health status</Label>
@@ -101,9 +125,14 @@ export function AreaFormDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="healthy">Healthy</SelectItem>
-                <SelectItem value="needs_attention">Needs attention</SelectItem>
-                <SelectItem value="critical">Critical</SelectItem>
+                {healthOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    <span className="flex items-center gap-2">
+                      <span className={`h-2 w-2 rounded-full ${opt.color}`} />
+                      {opt.label}
+                    </span>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -116,7 +145,7 @@ export function AreaFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!name.trim()}>
-              {area ? "Save" : "Create"}
+              {area ? "Save changes" : "Create area"}
             </Button>
           </ResponsiveDialogFooter>
         </form>

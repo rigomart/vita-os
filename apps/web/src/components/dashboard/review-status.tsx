@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
-import { Check } from "lucide-react";
+import { Check, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -17,23 +17,24 @@ export function ReviewStatus({
     !lastReviewDate || Date.now() - lastReviewDate >= SEVEN_DAYS_MS;
 
   return (
-    <div className="mb-6 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs">
+    <div className="flex items-center gap-3 text-sm text-muted-foreground">
       <span
-        className={`h-2 w-2 shrink-0 rounded-full ${
+        className={`inline-flex h-1.5 w-1.5 rounded-full ${
           isOverdue ? "bg-amber-500" : "bg-green-500"
         }`}
         role="img"
         aria-label={isOverdue ? "Review overdue" : "Up to date"}
       />
-      <span className="text-muted-foreground">
+      <Clock className="h-3.5 w-3.5" />
+      <span>
         {lastReviewDate
-          ? `Last reviewed ${formatDistanceToNow(new Date(lastReviewDate), { addSuffix: true })}`
+          ? `Reviewed ${formatDistanceToNow(new Date(lastReviewDate), { addSuffix: true })}`
           : "Never reviewed"}
       </span>
       <Button
         variant="ghost"
         size="sm"
-        className="h-6 gap-1 px-2 text-xs"
+        className="h-6 gap-1 px-2 text-xs text-muted-foreground"
         onClick={onMarkReviewed}
       >
         <Check className="h-3 w-3" />

@@ -1,6 +1,7 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { generateSlug } from "@convex/lib/slugs";
+import { healthColors } from "@convex/lib/types";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
@@ -9,6 +10,7 @@ import {
   ChevronsUpDown,
   CirclePlus,
   Inbox,
+  LayoutDashboard,
   LogOut,
   Plus,
 } from "lucide-react";
@@ -16,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { QuickCaptureDialog } from "@/components/captures/quick-capture-dialog";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
+import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -29,6 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Kbd } from "@/components/ui/kbd";
 import {
   Sidebar,
   SidebarContent,
@@ -149,7 +153,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
                 <Link to="/">
-                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg font-semibold">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary font-semibold text-sidebar-primary-foreground">
                     V
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
@@ -165,12 +169,28 @@ export function AppSidebar() {
           <SidebarGroup>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="Capture"
+                <button
+                  type="button"
                   onClick={() => setShowQuickCapture(true)}
+                  className="flex w-full items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
-                  <CirclePlus />
+                  <CirclePlus className="size-4" />
                   <span>Capture</span>
+                  <Kbd className="ml-auto bg-primary-foreground/15 text-primary-foreground/70">
+                    Q
+                  </Kbd>
+                </button>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/"}
+                  tooltip="Dashboard"
+                >
+                  <Link to="/">
+                    <LayoutDashboard />
+                    <span>Dashboard</span>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -183,9 +203,12 @@ export function AppSidebar() {
                     <Inbox />
                     <span>Inbox</span>
                     {captureCount !== undefined && captureCount > 0 && (
-                      <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                      <Badge
+                        variant="secondary"
+                        className="ml-auto h-5 min-w-5 justify-center px-1.5 text-[10px] tabular-nums"
+                      >
                         {captureCount}
-                      </span>
+                      </Badge>
                     )}
                   </Link>
                 </SidebarMenuButton>
@@ -199,6 +222,7 @@ export function AppSidebar() {
               {areas?.map((area) => {
                 const areaSlug = area.slug ?? area._id;
                 const areaProjectList = areaProjects.get(area._id) ?? [];
+                const hasProjects = areaProjectList.length > 0;
                 return (
                   <Collapsible
                     key={area._id}
@@ -212,6 +236,9 @@ export function AppSidebar() {
                         isActive={pathname === `/${areaSlug}`}
                       >
                         <Link to="/$areaSlug" params={{ areaSlug }}>
+                          <span
+                            className={`h-2 w-2 shrink-0 rounded-full ${healthColors[area.healthStatus]}`}
+                          />
                           <span>{area.name}</span>
                         </Link>
                       </SidebarMenuButton>
@@ -223,45 +250,54 @@ export function AppSidebar() {
                         <Plus />
                         <span className="sr-only">New project</span>
                       </SidebarMenuAction>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuAction className="data-[state=open]:rotate-90">
-                          <ChevronRight />
-                          <span className="sr-only">Toggle</span>
-                        </SidebarMenuAction>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenuSub>
-                          {areaProjectList.map((project) => {
-                            const slug = project.slug ?? project._id;
-                            return (
-                              <SidebarMenuSubItem key={project._id}>
-                                <SidebarMenuSubButton
-                                  asChild
-                                  isActive={pathname === `/${areaSlug}/${slug}`}
-                                >
-                                  <Link
-                                    to="/$areaSlug/$projectSlug"
-                                    params={{
-                                      areaSlug,
-                                      projectSlug: slug,
-                                    }}
+                      {hasProjects && (
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuAction className="data-[state=open]:rotate-90">
+                            <ChevronRight />
+                            <span className="sr-only">Toggle</span>
+                          </SidebarMenuAction>
+                        </CollapsibleTrigger>
+                      )}
+                      {hasProjects && (
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {areaProjectList.map((project) => {
+                              const slug = project.slug ?? project._id;
+                              return (
+                                <SidebarMenuSubItem key={project._id}>
+                                  <SidebarMenuSubButton
+                                    asChild
+                                    isActive={
+                                      pathname === `/${areaSlug}/${slug}`
+                                    }
                                   >
-                                    <span className="truncate">
-                                      {project.name}
-                                    </span>
-                                  </Link>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            );
-                          })}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
+                                    <Link
+                                      to="/$areaSlug/$projectSlug"
+                                      params={{
+                                        areaSlug,
+                                        projectSlug: slug,
+                                      }}
+                                    >
+                                      <span className="truncate">
+                                        {project.name}
+                                      </span>
+                                    </Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              );
+                            })}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      )}
                     </SidebarMenuItem>
                   </Collapsible>
                 );
               })}
               <SidebarMenuItem>
-                <SidebarMenuButton onClick={() => setShowCreateArea(true)}>
+                <SidebarMenuButton
+                  className="text-muted-foreground"
+                  onClick={() => setShowCreateArea(true)}
+                >
                   <Plus />
                   <span>Add area</span>
                 </SidebarMenuButton>
