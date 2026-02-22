@@ -34,8 +34,7 @@ export function RecentCaptures() {
           areaId: Id<"areas">;
           description?: string;
         }
-      | { type: "add_to_project"; projectId: Id<"projects"> }
-      | { type: "discard" },
+      | { type: "add_to_project"; projectId: Id<"projects"> },
   ) => {
     await processCapture({ id: captureId, action });
     setProcessingCapture(undefined);

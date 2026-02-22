@@ -1,5 +1,5 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
-import { FolderPlus, ListPlus, Trash2 } from "lucide-react";
+import { FolderPlus, ListPlus } from "lucide-react";
 import { useState } from "react";
 import { AreaPicker } from "@/components/areas/area-picker";
 import { ProjectPicker } from "@/components/projects/project-picker";
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/responsive-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type ProcessMode = "create_project" | "add_to_project" | "discard";
+type ProcessMode = "create_project" | "add_to_project";
 
 interface ProcessCaptureDialogProps {
   open: boolean;
@@ -32,8 +32,7 @@ interface ProcessCaptureDialogProps {
           areaId: Id<"areas">;
           description?: string;
         }
-      | { type: "add_to_project"; projectId: Id<"projects"> }
-      | { type: "discard" },
+      | { type: "add_to_project"; projectId: Id<"projects"> },
   ) => void;
 }
 
@@ -69,15 +68,12 @@ export function ProcessCaptureDialog({
         type: "add_to_project",
         projectId: projectId as Id<"projects">,
       });
-    } else {
-      onProcess(capture._id, { type: "discard" });
     }
 
     onOpenChange(false);
   };
 
   const canSubmit =
-    mode === "discard" ||
     (mode === "create_project" && name.trim() && areaId) ||
     (mode === "add_to_project" && projectId);
 
@@ -104,10 +100,6 @@ export function ProcessCaptureDialog({
             <TabsTrigger value="add_to_project" className="text-xs">
               <ListPlus className="h-3.5 w-3.5" />
               Add to project
-            </TabsTrigger>
-            <TabsTrigger value="discard" className="text-xs">
-              <Trash2 className="h-3.5 w-3.5" />
-              Discard
             </TabsTrigger>
           </TabsList>
 
@@ -175,16 +167,6 @@ export function ProcessCaptureDialog({
               </div>
             </TabsContent>
 
-            <TabsContent value="discard">
-              <div className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-3">
-                <Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                <p className="text-sm text-muted-foreground">
-                  This capture will be permanently deleted. This action cannot
-                  be undone.
-                </p>
-              </div>
-            </TabsContent>
-
             <ResponsiveDialogFooter>
               <Button
                 type="button"
@@ -193,16 +175,10 @@ export function ProcessCaptureDialog({
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={!canSubmit}
-                variant={mode === "discard" ? "destructive" : "default"}
-              >
+              <Button type="submit" disabled={!canSubmit}>
                 {mode === "create_project"
                   ? "Create project"
-                  : mode === "add_to_project"
-                    ? "Add to project"
-                    : "Discard"}
+                  : "Add to project"}
               </Button>
             </ResponsiveDialogFooter>
           </form>
