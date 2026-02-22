@@ -1,4 +1,5 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
+import { FolderPlus, ListPlus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { AreaPicker } from "@/components/areas/area-picker";
 import { ProjectPicker } from "@/components/projects/project-picker";
@@ -12,6 +13,7 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@/components/ui/responsive-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
 type ProcessMode = "create_project" | "add_to_project" | "discard";
@@ -91,118 +93,138 @@ export function ProcessCaptureDialog({
         </ResponsiveDialogHeader>
 
         {/* Capture text reference */}
-        <div className="rounded-md border bg-muted/30 px-3 py-2">
-          <p className="whitespace-pre-wrap text-sm">{capture.text}</p>
+        <div className="border-l-2 border-primary/30 bg-muted/30 py-2 pr-3 pl-3">
+          <p className="line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">
+            {capture.text}
+          </p>
         </div>
 
-        {/* Mode selector */}
-        <div className="flex gap-1">
-          {(
-            [
-              ["create_project", "New project"],
-              ["add_to_project", "Add to project"],
-              ["discard", "Discard"],
-            ] as const
-          ).map(([value, label]) => (
-            <Button
-              key={value}
-              type="button"
-              variant={mode === value ? "default" : "outline"}
-              size="sm"
-              onClick={() => setMode(value)}
-              className="text-xs"
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
+        <Tabs value={mode} onValueChange={(v) => setMode(v as ProcessMode)}>
+          <TabsList className="w-full">
+            <TabsTrigger value="create_project" className="text-xs">
+              <FolderPlus className="h-3.5 w-3.5" />
+              New project
+            </TabsTrigger>
+            <TabsTrigger value="add_to_project" className="text-xs">
+              <ListPlus className="h-3.5 w-3.5" />
+              Add to project
+            </TabsTrigger>
+            <TabsTrigger value="discard" className="text-xs">
+              <Trash2 className="h-3.5 w-3.5" />
+              Discard
+            </TabsTrigger>
+          </TabsList>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === "create_project" && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="process-name">Name</Label>
-                <Input
-                  id="process-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Project name"
-                  autoFocus
-                />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <TabsContent value="create_project">
+              <div className="space-y-4">
+                <div className="grid grid-cols-[1fr_auto] gap-3">
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="process-name"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Name
+                    </Label>
+                    <Input
+                      id="process-name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Project name"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">
+                      Area
+                    </Label>
+                    <AreaPicker
+                      areas={areas}
+                      selectedAreaId={areaId}
+                      onSelect={setAreaId}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="process-desc"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Description
+                  </Label>
+                  <Input
+                    id="process-desc"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Optional description"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="process-dod"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Definition of Done
+                  </Label>
+                  <Textarea
+                    id="process-dod"
+                    value={definitionOfDone}
+                    onChange={(e) => setDefinitionOfDone(e.target.value)}
+                    placeholder="When is this project done?"
+                    rows={2}
+                  />
+                </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="add_to_project">
               <div className="space-y-2">
-                <Label>Area</Label>
-                <AreaPicker
+                <Label className="text-xs text-muted-foreground">Project</Label>
+                <ProjectPicker
+                  projects={projects}
                   areas={areas}
-                  selectedAreaId={areaId}
-                  onSelect={setAreaId}
+                  selectedProjectId={projectId}
+                  onSelect={setProjectId}
                 />
+                <p className="text-xs text-muted-foreground">
+                  The capture text will be added as a note on the selected
+                  project.
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="process-desc">Description</Label>
-                <Input
-                  id="process-desc"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Optional description"
-                />
+            </TabsContent>
+
+            <TabsContent value="discard">
+              <div className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-3">
+                <Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <p className="text-sm text-muted-foreground">
+                  This capture will be permanently deleted. This action cannot
+                  be undone.
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="process-dod">Definition of Done</Label>
-                <Textarea
-                  id="process-dod"
-                  value={definitionOfDone}
-                  onChange={(e) => setDefinitionOfDone(e.target.value)}
-                  placeholder="When is this project done?"
-                  rows={2}
-                />
-              </div>
-            </>
-          )}
+            </TabsContent>
 
-          {mode === "add_to_project" && (
-            <div className="space-y-2">
-              <Label>Project</Label>
-              <ProjectPicker
-                projects={projects}
-                areas={areas}
-                selectedProjectId={projectId}
-                onSelect={setProjectId}
-              />
-              <p className="text-xs text-muted-foreground">
-                The capture text will be added as a note on the selected
-                project.
-              </p>
-            </div>
-          )}
-
-          {mode === "discard" && (
-            <p className="text-sm text-muted-foreground">
-              This capture will be permanently deleted.
-            </p>
-          )}
-
-          <ResponsiveDialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={!canSubmit}
-              variant={mode === "discard" ? "destructive" : "default"}
-            >
-              {mode === "create_project"
-                ? "Create project"
-                : mode === "add_to_project"
-                  ? "Add to project"
-                  : "Discard"}
-            </Button>
-          </ResponsiveDialogFooter>
-        </form>
+            <ResponsiveDialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!canSubmit}
+                variant={mode === "discard" ? "destructive" : "default"}
+              >
+                {mode === "create_project"
+                  ? "Create project"
+                  : mode === "add_to_project"
+                    ? "Add to project"
+                    : "Discard"}
+              </Button>
+            </ResponsiveDialogFooter>
+          </form>
+        </Tabs>
       </ResponsiveDialogContent>
     </ResponsiveDialog>
   );

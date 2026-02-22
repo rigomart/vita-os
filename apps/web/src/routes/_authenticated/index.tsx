@@ -65,7 +65,7 @@ function Dashboard() {
         onMarkReviewed={() => markReviewed()}
       />
 
-      <div className="mb-6">
+      <div className="mb-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-medium">Areas</h2>
           <Button
@@ -79,7 +79,7 @@ function Dashboard() {
           </Button>
         </div>
         {areas && areas.length > 0 ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {areas.map((area) => {
               const projectCount = (projects ?? []).filter(
                 (p) => p.areaId === area._id,

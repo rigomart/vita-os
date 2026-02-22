@@ -30,7 +30,7 @@ export function CaptureRow({ capture, onProcess }: CaptureRowProps) {
   );
 
   return (
-    <div className="group flex items-start gap-3 border-b py-3 last:border-b-0">
+    <div className="group flex items-start gap-3 border-b px-3 py-3 last:border-b-0">
       <div className="min-w-0 flex-1">
         <p className="whitespace-pre-wrap text-sm">{capture.text}</p>
         <p className="mt-1 text-xs text-muted-foreground">

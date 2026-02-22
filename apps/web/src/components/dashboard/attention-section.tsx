@@ -33,7 +33,7 @@ export function AttentionSection({ items, areas }: AttentionSectionProps) {
           {items.length}
         </Badge>
       </div>
-      <div className="rounded-lg border">
+      <div className="rounded-lg border border-l-2 border-l-amber-500/50">
         {items.map((item, i) => {
           const area = areaMap.get(item.areaId);
           const areaSlug = area?.slug ?? area?._id ?? item.areaId;

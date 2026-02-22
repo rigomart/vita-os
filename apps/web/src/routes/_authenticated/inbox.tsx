@@ -61,7 +61,7 @@ function InboxPage() {
           </p>
         </div>
       ) : (
-        <div>
+        <div className="rounded-lg border">
           {captures.map((capture) => (
             <CaptureRow
               key={capture._id}

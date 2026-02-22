@@ -252,7 +252,7 @@ function AreaProjectDetailPage() {
       </div>
 
       {/* Fields */}
-      <div className="mt-6 space-y-3">
+      <div className="mt-6 rounded-lg border bg-card p-4 space-y-0">
         <FieldRow label="Status">
           <EditableField
             value={project.status ?? ""}
@@ -381,7 +381,14 @@ function AreaProjectDetailPage() {
       <Separator className="my-6" />
 
       {/* Activity log */}
-      <h2 className="mb-3 text-sm font-medium">Activity</h2>
+      <div className="mb-3 flex items-center gap-2">
+        <h2 className="text-sm font-medium">Activity</h2>
+        {logs && logs.length > 0 && (
+          <span className="rounded-full bg-muted px-1.5 py-0 text-[10px] font-medium text-muted-foreground">
+            {logs.length}
+          </span>
+        )}
+      </div>
       <form onSubmit={handleAddNote} className="mb-4 flex gap-2">
         <Textarea
           value={noteText}
@@ -419,7 +426,12 @@ function AreaProjectDetailPage() {
       ) : logs.length > 0 ? (
         <div className="space-y-3">
           {logs.map((log) => (
-            <div key={log._id} className="text-sm">
+            <div
+              key={log._id}
+              className={`border-l-2 pl-4 ml-1 text-sm ${
+                log.type === "note" ? "border-primary/30" : "border-border"
+              }`}
+            >
               {log.type === "note" ? (
                 <p className="whitespace-pre-wrap">{log.content}</p>
               ) : (
@@ -452,7 +464,7 @@ function FieldRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-4">
+    <div className="flex items-start gap-4 border-b border-border/50 py-3 last:border-b-0">
       <span className="w-32 shrink-0 pt-1 text-xs font-medium text-muted-foreground">
         {label}
       </span>
