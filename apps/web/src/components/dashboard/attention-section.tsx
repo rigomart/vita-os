@@ -1,6 +1,5 @@
 import type { Doc } from "@convex/_generated/dataModel";
 import { Link } from "@tanstack/react-router";
-import { formatDistanceToNow } from "date-fns";
 import { AlertTriangle, CircleAlert } from "lucide-react";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +9,7 @@ interface AttentionItem {
   projectName: string;
   projectSlug: string | undefined;
   areaId: string;
-  reason: "no_next_action" | "review_overdue";
-  overdueBy?: number;
+  reason: "no_next_action";
 }
 
 interface AttentionSectionProps {
@@ -57,26 +55,13 @@ export function AttentionSection({ items, areas }: AttentionSectionProps) {
                   </p>
                 )}
               </div>
-              {item.reason === "no_next_action" ? (
-                <Badge
-                  variant="outline"
-                  className="shrink-0 gap-1 border-amber-500/25 bg-amber-500/10 text-[10px] text-amber-500"
-                >
-                  <CircleAlert className="h-3 w-3" />
-                  No next action
-                </Badge>
-              ) : (
-                <Badge
-                  variant="outline"
-                  className="shrink-0 gap-1 border-amber-500/25 bg-amber-500/10 text-[10px] text-amber-500"
-                >
-                  <AlertTriangle className="h-3 w-3" />
-                  Review overdue{" "}
-                  {item.overdueBy
-                    ? formatDistanceToNow(Date.now() - item.overdueBy)
-                    : ""}
-                </Badge>
-              )}
+              <Badge
+                variant="outline"
+                className="shrink-0 gap-1 border-amber-500/25 bg-amber-500/10 text-[10px] text-amber-500"
+              >
+                <CircleAlert className="h-3 w-3" />
+                No next action
+              </Badge>
             </Link>
           );
         })}

@@ -10,7 +10,6 @@ import { AreaCard } from "@/components/areas/area-card";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { AttentionSection } from "@/components/dashboard/attention-section";
 import { RecentCaptures } from "@/components/dashboard/recent-captures";
-import { ReviewStatus } from "@/components/dashboard/review-status";
 import { RouteErrorFallback } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,7 +26,6 @@ function Dashboard() {
   const projects = useQuery(api.projects.list);
   const areas = useQuery(api.areas.list);
   const attention = useQuery(api.dashboard.attention);
-  const lastReviewDate = useQuery(api.dashboard.lastReview);
   const createArea = useMutation(api.areas.create).withOptimisticUpdate(
     (localStore, args) => {
       const current = localStore.getQuery(api.areas.list, {});
@@ -50,7 +48,6 @@ function Dashboard() {
       }
     },
   );
-  const markReviewed = useMutation(api.dashboard.markReviewed);
   const [showCreateArea, setShowCreateArea] = useState(false);
   const isLoading = areas === undefined;
 
@@ -60,13 +57,7 @@ function Dashboard() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-10">
-      <div className="space-y-1">
-        <h1 className="text-lg font-medium tracking-tight">Dashboard</h1>
-        <ReviewStatus
-          lastReviewDate={lastReviewDate ?? null}
-          onMarkReviewed={() => markReviewed()}
-        />
-      </div>
+      <h1 className="text-lg font-medium tracking-tight">Dashboard</h1>
 
       <section>
         <div className="mb-4 flex items-center justify-between">
@@ -134,10 +125,7 @@ function Dashboard() {
 function DashboardSkeleton() {
   return (
     <div className="mx-auto max-w-4xl space-y-10">
-      <div className="space-y-1">
-        <Skeleton className="h-6 w-28" />
-        <Skeleton className="h-4 w-48" />
-      </div>
+      <Skeleton className="h-6 w-28" />
 
       <div>
         <Skeleton className="mb-4 h-4 w-12" />

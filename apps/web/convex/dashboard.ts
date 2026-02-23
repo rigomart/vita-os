@@ -6,7 +6,6 @@ export const attention = query({
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return { items: [], byArea: {} as Record<string, number> };
-    const now = Date.now();
 
     const activeProjects = await ctx.db
       .query("projects")
@@ -20,8 +19,7 @@ export const attention = query({
       projectName: string;
       projectSlug: string | undefined;
       areaId: string;
-      reason: "no_next_action" | "review_overdue";
-      overdueBy?: number;
+      reason: "no_next_action";
     }> = [];
 
     for (const project of activeProjects) {
@@ -34,28 +32,7 @@ export const attention = query({
           reason: "no_next_action",
         });
       }
-      if (project.nextReviewDate && project.nextReviewDate < now) {
-        items.push({
-          projectId: project._id,
-          projectName: project.name,
-          projectSlug: project.slug,
-          areaId: project.areaId,
-          reason: "review_overdue",
-          overdueBy: now - project.nextReviewDate,
-        });
-      }
     }
-
-    items.sort((a, b) => {
-      if (a.reason === "no_next_action" && b.reason !== "no_next_action")
-        return -1;
-      if (a.reason !== "no_next_action" && b.reason === "no_next_action")
-        return 1;
-      if (a.reason === "review_overdue" && b.reason === "review_overdue") {
-        return (b.overdueBy ?? 0) - (a.overdueBy ?? 0);
-      }
-      return 0;
-    });
 
     const byArea: Record<string, number> = {};
     const seenByArea = new Map<string, Set<string>>();

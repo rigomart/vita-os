@@ -18,6 +18,7 @@ import type * as lib_patch from "../lib/patch.js";
 import type * as lib_slugs from "../lib/slugs.js";
 import type * as lib_types from "../lib/types.js";
 import type * as lib_validation from "../lib/validation.js";
+import type * as migrations from "../migrations.js";
 import type * as projectLogs from "../projectLogs.js";
 import type * as projects from "../projects.js";
 
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   "lib/slugs": typeof lib_slugs;
   "lib/types": typeof lib_types;
   "lib/validation": typeof lib_validation;
+  migrations: typeof migrations;
   projectLogs: typeof projectLogs;
   projects: typeof projects;
 }>;
