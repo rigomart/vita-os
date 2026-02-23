@@ -7,7 +7,6 @@ import { useQuery } from "convex-helpers/react/cache/hooks";
 import { formatDistanceToNow } from "date-fns";
 import {
   ArrowRight,
-  Calendar,
   CheckCircle2,
   ChevronRight,
   MessageSquare,
@@ -32,7 +31,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
 import { EditableField } from "@/components/ui/editable-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -205,13 +203,6 @@ function AreaProjectDetailPage() {
     });
   };
 
-  const handleReviewDateChange = (date: Date | undefined) => {
-    updateProject({
-      id: project._id,
-      nextReviewDate: date ? date.getTime() : null,
-    });
-  };
-
   const handleStateChange = (state: "completed" | "dropped") => {
     updateProject({ id: project._id, state });
     navigate({ to: "/$areaSlug", params: { areaSlug } });
@@ -287,21 +278,6 @@ function AreaProjectDetailPage() {
             suggestions={allTags}
             onAdd={(tag) => addTag({ id: project._id, tag })}
             onRemove={(tag) => removeTagMutation({ id: project._id, tag })}
-          />
-        </MetadataRow>
-
-        <MetadataRow
-          icon={<Calendar className="h-3.5 w-3.5" />}
-          label="Review Date"
-        >
-          <DatePicker
-            value={
-              project.nextReviewDate
-                ? new Date(project.nextReviewDate)
-                : undefined
-            }
-            onChange={handleReviewDateChange}
-            placeholder="Set review date..."
           />
         </MetadataRow>
 

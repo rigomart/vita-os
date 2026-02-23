@@ -33,6 +33,7 @@ export default defineSchema({
     ),
     status: v.optional(v.string()),
     nextAction: v.optional(v.string()),
+    // Deprecated — being removed, kept temporarily for migration
     nextReviewDate: v.optional(v.number()),
     // Phase 2 fields
     actionDate: v.optional(v.number()),

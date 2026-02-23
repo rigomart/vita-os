@@ -6,10 +6,8 @@ import { healthColors } from "@convex/lib/types";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
-import { format } from "date-fns";
 import {
   ArrowRight,
-  Calendar,
   ChevronRight,
   FolderOpen,
   Pencil,
@@ -369,12 +367,6 @@ function AreaDetailPage() {
                         </p>
                       )}
                     </div>
-                    {project.nextReviewDate && (
-                      <span className="flex shrink-0 items-center gap-1 pt-0.5 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        {format(new Date(project.nextReviewDate), "MMM d")}
-                      </span>
-                    )}
                   </Link>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
