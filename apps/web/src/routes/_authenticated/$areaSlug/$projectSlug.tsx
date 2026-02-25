@@ -11,14 +11,12 @@ import {
   ChevronRight,
   MessageSquare,
   Pen,
-  Tag,
   Target,
   Trash2,
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RouteErrorFallback } from "@/components/error-boundary";
-import { TagInput } from "@/components/projects/tag-input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -113,41 +111,6 @@ function AreaProjectDetailPage() {
   );
 
   const createLog = useMutation(api.projectLogs.create);
-  const addTag = useMutation(api.projects.addTag).withOptimisticUpdate(
-    (localStore, args) => {
-      const tag = args.tag.trim().toLowerCase();
-      const bySlug = localStore.getQuery(api.projects.getBySlug, {
-        slug: projectSlug,
-      });
-      if (bySlug) {
-        const tags = [...(bySlug.tags ?? [])];
-        if (!tags.includes(tag)) tags.push(tag);
-        localStore.setQuery(
-          api.projects.getBySlug,
-          { slug: projectSlug },
-          { ...bySlug, tags },
-        );
-      }
-    },
-  );
-  const removeTagMutation = useMutation(
-    api.projects.removeTag,
-  ).withOptimisticUpdate((localStore, args) => {
-    const bySlug = localStore.getQuery(api.projects.getBySlug, {
-      slug: projectSlug,
-    });
-    if (bySlug) {
-      localStore.setQuery(
-        api.projects.getBySlug,
-        { slug: projectSlug },
-        {
-          ...bySlug,
-          tags: (bySlug.tags ?? []).filter((t) => t !== args.tag),
-        },
-      );
-    }
-  });
-  const allTags = useQuery(api.projects.listTags) ?? [];
   const [noteText, setNoteText] = useState("");
 
   useEffect(() => {
@@ -270,17 +233,8 @@ function AreaProjectDetailPage() {
         </div>
       </div>
 
-      {/* Metadata: Tags, Review Date, Definition of Done */}
+      {/* Metadata: Definition of Done */}
       <div className="space-y-4">
-        <MetadataRow icon={<Tag className="h-3.5 w-3.5" />} label="Tags">
-          <TagInput
-            tags={project.tags ?? []}
-            suggestions={allTags}
-            onAdd={(tag) => addTag({ id: project._id, tag })}
-            onRemove={(tag) => removeTagMutation({ id: project._id, tag })}
-          />
-        </MetadataRow>
-
         <MetadataRow
           icon={<CheckCircle2 className="h-3.5 w-3.5" />}
           label="Definition of Done"
