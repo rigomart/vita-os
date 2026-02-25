@@ -42,6 +42,7 @@ export default defineSchema({
     waitingSince: v.optional(v.number()),
     waitingExpectedDate: v.optional(v.number()),
     waitingFollowUpDate: v.optional(v.number()),
+    // Deprecated — being removed, kept temporarily for migration
     tags: v.optional(v.array(v.string())),
     createdAt: v.number(),
   })
@@ -74,7 +75,6 @@ export default defineSchema({
       v.literal("state_change"),
       v.literal("decision"),
       v.literal("reference"),
-      v.literal("tag_change"),
       v.literal("waiting_change"),
     ),
     content: v.string(),
