@@ -263,23 +263,6 @@ export const completeAction = mutation({
   },
 });
 
-export const migrateNextActionToQueue = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const projects = await ctx.db.query("projects").collect();
-    let count = 0;
-    for (const project of projects) {
-      if (project.nextAction && !project.actionQueue) {
-        await ctx.db.patch(project._id, {
-          actionQueue: [{ id: crypto.randomUUID(), text: project.nextAction }],
-        });
-        count++;
-      }
-    }
-    return { migrated: count };
-  },
-});
-
 export const backfillSlugs = mutation({
   args: {},
   handler: async (ctx) => {
