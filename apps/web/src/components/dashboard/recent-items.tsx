@@ -5,40 +5,41 @@ import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { ArrowRight, Inbox } from "lucide-react";
 import { useState } from "react";
-import { CaptureRow } from "@/components/captures/capture-row";
-import { ProcessCaptureDialog } from "@/components/captures/process-capture-dialog";
+import { ItemRow } from "@/components/items/item-row";
+import { ProcessItemDialog } from "@/components/items/process-item-dialog";
 
 const MAX_VISIBLE = 5;
 
-export function RecentCaptures() {
-  const captures = useQuery(api.captures.list);
+export function RecentItems() {
+  const items = useQuery(api.items.list);
   const areas = useQuery(api.areas.list);
   const projects = useQuery(api.projects.list);
-  const processCapture = useMutation(api.captures.process);
+  const processItem = useMutation(api.items.process);
 
-  const [processingCapture, setProcessingCapture] = useState<
-    Doc<"captures"> | undefined
+  const [processingItem, setProcessingItem] = useState<
+    Doc<"items"> | undefined
   >(undefined);
 
-  if (!captures || captures.length === 0) return null;
+  if (!items || items.length === 0) return null;
 
-  const visible = captures.slice(0, MAX_VISIBLE);
-  const hasMore = captures.length > MAX_VISIBLE;
+  const visible = items.slice(0, MAX_VISIBLE);
+  const hasMore = items.length > MAX_VISIBLE;
 
   const handleProcess = async (
-    captureId: Id<"captures">,
+    itemId: Id<"items">,
     action:
+      | { type: "add_date"; date: number }
       | {
           type: "create_project";
           name: string;
           areaId: Id<"areas">;
-          description?: string;
+          definitionOfDone?: string;
         }
       | { type: "add_to_project"; projectId: Id<"projects"> }
       | { type: "set_next_action"; projectId: Id<"projects"> },
   ) => {
-    await processCapture({ id: captureId, action });
-    setProcessingCapture(undefined);
+    await processItem({ id: itemId, action });
+    setProcessingItem(undefined);
   };
 
   return (
@@ -47,16 +48,12 @@ export function RecentCaptures() {
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-3">
           <Inbox className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
-        <h2 className="text-sm font-medium">Recent Captures</h2>
-        <span className="text-xs text-muted-foreground">{captures.length}</span>
+        <h2 className="text-sm font-medium">Recent Items</h2>
+        <span className="text-xs text-muted-foreground">{items.length}</span>
       </div>
       <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
-        {visible.map((capture) => (
-          <CaptureRow
-            key={capture._id}
-            capture={capture}
-            onProcess={setProcessingCapture}
-          />
+        {visible.map((item) => (
+          <ItemRow key={item._id} item={item} onProcess={setProcessingItem} />
         ))}
       </div>
       {hasMore && (
@@ -65,19 +62,19 @@ export function RecentCaptures() {
             to="/inbox"
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
-            View all captures
+            View all items
             <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
       )}
 
-      {processingCapture && (
-        <ProcessCaptureDialog
-          open={!!processingCapture}
+      {processingItem && (
+        <ProcessItemDialog
+          open={!!processingItem}
           onOpenChange={(open) => {
-            if (!open) setProcessingCapture(undefined);
+            if (!open) setProcessingItem(undefined);
           }}
-          capture={processingCapture}
+          item={processingItem}
           areas={areas ?? []}
           projects={projects ?? []}
           onProcess={handleProcess}
