@@ -319,6 +319,8 @@ function AreaDetailPage() {
           <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
             {projects.map((project) => {
               const slug = project.slug ?? project._id;
+              const subtitle =
+                project.actionQueue?.[0]?.text ?? project.nextAction;
               return (
                 <div
                   key={project._id}
@@ -335,17 +337,16 @@ function AreaDetailPage() {
                           {project.name}
                         </p>
                       </div>
-                      {project.nextAction && (
+                      {subtitle ? (
                         <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                           <ArrowRight className="h-3 w-3 shrink-0" />
-                          {project.nextAction}
+                          {subtitle}
                         </p>
-                      )}
-                      {!project.nextAction && project.status && (
+                      ) : project.status ? (
                         <p className="mt-1 truncate text-xs text-muted-foreground">
                           {project.status}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </Link>
                   <AlertDialog>

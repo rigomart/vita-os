@@ -6,7 +6,6 @@ import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { formatDistanceToNow } from "date-fns";
 import {
-  ArrowRight,
   CheckCircle2,
   ChevronRight,
   MessageSquare,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RouteErrorFallback } from "@/components/error-boundary";
+import { ActionQueue } from "@/components/projects/action-queue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -110,6 +110,45 @@ function AreaProjectDetailPage() {
     },
   );
 
+  const completeAction = useMutation(
+    api.projects.completeAction,
+  ).withOptimisticUpdate((localStore, args) => {
+    const sliceQueue = <
+      T extends { actionQueue?: Array<{ id: string; text: string }> },
+    >(
+      p: T,
+    ): T => ({ ...p, actionQueue: (p.actionQueue ?? []).slice(1) });
+
+    const current = localStore.getQuery(api.projects.list, {});
+    if (current !== undefined) {
+      localStore.setQuery(
+        api.projects.list,
+        {},
+        current.map((p) => (p._id === args.id ? sliceQueue(p) : p)),
+      );
+    }
+
+    const single = localStore.getQuery(api.projects.get, { id: args.id });
+    if (single !== undefined && single !== null) {
+      localStore.setQuery(
+        api.projects.get,
+        { id: args.id },
+        sliceQueue(single),
+      );
+    }
+
+    const bySlug = localStore.getQuery(api.projects.getBySlug, {
+      slug: projectSlug,
+    });
+    if (bySlug !== undefined && bySlug !== null) {
+      localStore.setQuery(
+        api.projects.getBySlug,
+        { slug: projectSlug },
+        sliceQueue(bySlug),
+      );
+    }
+  });
+
   const createLog = useMutation(api.projectLogs.create);
   const [noteText, setNoteText] = useState("");
 
@@ -157,12 +196,41 @@ function AreaProjectDetailPage() {
   };
 
   const handleFieldSave = (
-    field: "definitionOfDone" | "status" | "nextAction",
+    field: "definitionOfDone" | "status",
     value: string,
   ) => {
     updateProject({
       id: project._id,
       [field]: value || null,
+    });
+  };
+
+  const queue = project.actionQueue ?? [];
+
+  const handleReorderQueue = (items: Array<{ id: string; text: string }>) => {
+    updateProject({ id: project._id, actionQueue: items });
+  };
+
+  const handleEditQueueItem = (itemId: string, text: string) => {
+    updateProject({
+      id: project._id,
+      actionQueue: queue.map((item) =>
+        item.id === itemId ? { ...item, text } : item,
+      ),
+    });
+  };
+
+  const handleAddQueueItem = (text: string) => {
+    updateProject({
+      id: project._id,
+      actionQueue: [...queue, { id: crypto.randomUUID(), text }],
+    });
+  };
+
+  const handleRemoveQueueItem = (itemId: string) => {
+    updateProject({
+      id: project._id,
+      actionQueue: queue.filter((item) => item.id !== itemId),
     });
   };
 
@@ -204,34 +272,29 @@ function AreaProjectDetailPage() {
         />
       </div>
 
-      {/* Primary: Status & Next Action */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
-          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            <Target className="h-3.5 w-3.5" />
-            Status
-          </div>
-          <EditableField
-            value={project.status ?? ""}
-            onSave={(v) => handleFieldSave("status", v)}
-            placeholder="Where things stand..."
-            className="text-sm"
-          />
+      {/* Status */}
+      <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
+        <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <Target className="h-3.5 w-3.5" />
+          Status
         </div>
-
-        <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
-          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            <ArrowRight className="h-3.5 w-3.5" />
-            Next Action
-          </div>
-          <EditableField
-            value={project.nextAction ?? ""}
-            onSave={(v) => handleFieldSave("nextAction", v)}
-            placeholder="What's the next step?"
-            className="text-sm"
-          />
-        </div>
+        <EditableField
+          value={project.status ?? ""}
+          onSave={(v) => handleFieldSave("status", v)}
+          placeholder="Where things stand..."
+          className="text-sm"
+        />
       </div>
+
+      {/* Action Queue */}
+      <ActionQueue
+        items={queue}
+        onComplete={() => completeAction({ id: project._id })}
+        onReorder={handleReorderQueue}
+        onEdit={handleEditQueueItem}
+        onAdd={handleAddQueueItem}
+        onRemove={handleRemoveQueueItem}
+      />
 
       {/* Metadata: Definition of Done */}
       <div className="space-y-4">
@@ -457,15 +520,14 @@ function ProjectDetailSkeleton() {
         <Skeleton className="mt-2 h-4 w-64" />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
-          <Skeleton className="mb-2 h-3 w-12" />
-          <Skeleton className="h-5 w-3/4" />
-        </div>
-        <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
-          <Skeleton className="mb-2 h-3 w-16" />
-          <Skeleton className="h-5 w-3/4" />
-        </div>
+      <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
+        <Skeleton className="mb-2 h-3 w-12" />
+        <Skeleton className="h-5 w-3/4" />
+      </div>
+      <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
+        <Skeleton className="mb-3 h-3 w-24" />
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="mt-1 h-8 w-full" />
       </div>
 
       <div className="space-y-4">
