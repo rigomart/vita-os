@@ -140,11 +140,13 @@ export const process = mutation({
         throw new Error("Project not found");
       }
 
-      const prev = project.nextAction ?? "";
-      const next = capture.text;
+      const currentQueue = project.actionQueue ?? [];
+      const newItem = { id: crypto.randomUUID(), text: capture.text };
+      const newQueue = [newItem, ...currentQueue];
+      const prev = currentQueue[0]?.text ?? project.nextAction ?? "";
 
       await ctx.db.patch(args.action.projectId, {
-        nextAction: next,
+        actionQueue: newQueue,
       });
 
       await ctx.db.insert("projectLogs", {
@@ -152,10 +154,10 @@ export const process = mutation({
         projectId: args.action.projectId,
         type: "next_action_change",
         content: prev
-          ? `Next action changed from "${prev}" to "${next}"`
-          : `Next action set to "${next}"`,
+          ? `Next action changed from "${prev}" to "${capture.text}"`
+          : `Next action set to "${capture.text}"`,
         previousValue: prev || undefined,
-        newValue: next,
+        newValue: capture.text,
         createdAt: Date.now(),
       });
 

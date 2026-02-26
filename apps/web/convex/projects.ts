@@ -93,6 +93,12 @@ export const update = mutation({
     areaId: v.optional(v.id("areas")),
     status: v.optional(v.union(v.string(), v.null())),
     nextAction: v.optional(v.union(v.string(), v.null())),
+    actionQueue: v.optional(
+      v.union(
+        v.array(v.object({ id: v.string(), text: v.string() })),
+        v.null(),
+      ),
+    ),
     state: v.optional(
       v.union(
         v.literal("active"),
@@ -162,6 +168,27 @@ export const update = mutation({
       });
     }
 
+    if (args.actionQueue !== undefined) {
+      const oldQueue = project.actionQueue ?? [];
+      const newQueue = args.actionQueue ?? [];
+      const oldFirst = oldQueue[0]?.text ?? "";
+      const newFirst = newQueue[0]?.text ?? "";
+
+      if (oldFirst !== newFirst) {
+        await ctx.db.insert("projectLogs", {
+          userId,
+          projectId: id,
+          type: "next_action_change",
+          content: oldFirst
+            ? `Next action changed from "${oldFirst}" to "${newFirst || "(cleared)"}"`
+            : `Next action set to "${newFirst}"`,
+          previousValue: oldFirst || undefined,
+          newValue: newFirst || undefined,
+          createdAt: now,
+        });
+      }
+    }
+
     if (args.state !== undefined && args.state !== project.state) {
       await ctx.db.insert("projectLogs", {
         userId,
@@ -201,6 +228,55 @@ export const remove = mutation({
         createdAt: Date.now(),
       });
     }
+  },
+});
+
+export const completeAction = mutation({
+  args: { id: v.id("projects") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const project = await ctx.db.get(args.id);
+    if (!project || project.userId !== userId) {
+      throw new Error("Project not found");
+    }
+
+    const queue = project.actionQueue ?? [];
+    if (queue.length === 0) return;
+
+    const completed = queue[0];
+    const remaining = queue.slice(1);
+    const next = remaining[0]?.text ?? "";
+
+    await ctx.db.patch(args.id, { actionQueue: remaining });
+
+    await ctx.db.insert("projectLogs", {
+      userId,
+      projectId: args.id,
+      type: "next_action_change",
+      content: next
+        ? `Completed "${completed.text}" — next action is now "${next}"`
+        : `Completed "${completed.text}" — no more actions queued`,
+      previousValue: completed.text,
+      newValue: next || undefined,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const migrateNextActionToQueue = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const projects = await ctx.db.query("projects").collect();
+    let count = 0;
+    for (const project of projects) {
+      if (project.nextAction && !project.actionQueue) {
+        await ctx.db.patch(project._id, {
+          actionQueue: [{ id: crypto.randomUUID(), text: project.nextAction }],
+        });
+        count++;
+      }
+    }
+    return { migrated: count };
   },
 });
 

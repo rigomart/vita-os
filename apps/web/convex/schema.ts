@@ -32,7 +32,11 @@ export default defineSchema({
       v.literal("dropped"),
     ),
     status: v.optional(v.string()),
+    // Deprecated — being replaced by actionQueue, kept temporarily for migration
     nextAction: v.optional(v.string()),
+    actionQueue: v.optional(
+      v.array(v.object({ id: v.string(), text: v.string() })),
+    ),
     // Deprecated — being removed, kept temporarily for migration
     nextReviewDate: v.optional(v.number()),
     // Phase 2 fields

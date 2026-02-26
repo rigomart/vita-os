@@ -23,7 +23,9 @@ export const attention = query({
     }> = [];
 
     for (const project of activeProjects) {
-      if (!project.nextAction) {
+      const hasAction =
+        (project.actionQueue?.length ?? 0) > 0 || project.nextAction;
+      if (!hasAction) {
         items.push({
           projectId: project._id,
           projectName: project.name,
