@@ -56,6 +56,19 @@ export default defineSchema({
     .index("by_user_state", ["userId", "state"])
     .index("by_area", ["areaId"]),
 
+  items: defineTable({
+    userId: v.string(),
+    text: v.string(),
+    date: v.optional(v.number()),
+    isCompleted: v.boolean(),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_user_inbox", ["userId", "isCompleted", "createdAt"]),
+
+  // Deprecated — being replaced by items, kept temporarily for migration
   captures: defineTable({
     userId: v.string(),
     text: v.string(),

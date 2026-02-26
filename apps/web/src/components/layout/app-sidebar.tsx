@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
+  CheckCircle2,
   ChevronRight,
   ChevronsUpDown,
   CirclePlus,
@@ -16,7 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
-import { QuickCaptureDialog } from "@/components/captures/quick-capture-dialog";
+import { NewItemDialog } from "@/components/items/new-item-dialog";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -57,7 +58,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const projects = useQuery(api.projects.list);
   const areas = useQuery(api.areas.list);
-  const captureCount = useQuery(api.captures.count);
+  const itemCount = useQuery(api.items.count);
   const createProject = useMutation(api.projects.create).withOptimisticUpdate(
     (localStore, args) => {
       const current = localStore.getQuery(api.projects.list, {});
@@ -83,7 +84,7 @@ export function AppSidebar() {
   );
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [createForAreaId, setCreateForAreaId] = useState<string | undefined>();
-  const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [showNewItem, setShowNewItem] = useState(false);
   const [showCreateArea, setShowCreateArea] = useState(false);
   const createArea = useMutation(api.areas.create).withOptimisticUpdate(
     (localStore, args) => {
@@ -121,7 +122,7 @@ export function AppSidebar() {
         return;
       }
       e.preventDefault();
-      setShowQuickCapture(true);
+      setShowNewItem(true);
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -170,11 +171,11 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <button
                   type="button"
-                  onClick={() => setShowQuickCapture(true)}
+                  onClick={() => setShowNewItem(true)}
                   className="flex w-full items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   <CirclePlus className="size-4" />
-                  <span>Capture</span>
+                  <span>New item</span>
                   <Kbd className="ml-auto bg-primary-foreground/15 text-primary-foreground/70">
                     Q
                   </Kbd>
@@ -201,14 +202,26 @@ export function AppSidebar() {
                   <Link to="/inbox">
                     <Inbox />
                     <span>Inbox</span>
-                    {captureCount !== undefined && captureCount > 0 && (
+                    {itemCount !== undefined && itemCount > 0 && (
                       <Badge
                         variant="secondary"
                         className="ml-auto h-5 min-w-5 justify-center px-1.5 text-[10px] tabular-nums"
                       >
-                        {captureCount}
+                        {itemCount}
                       </Badge>
                     )}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/completed"}
+                  tooltip="Completed"
+                >
+                  <Link to="/completed">
+                    <CheckCircle2 />
+                    <span>Completed</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -392,10 +405,7 @@ export function AppSidebar() {
           }
         }}
       />
-      <QuickCaptureDialog
-        open={showQuickCapture}
-        onOpenChange={setShowQuickCapture}
-      />
+      <NewItemDialog open={showNewItem} onOpenChange={setShowNewItem} />
       <AreaFormDialog
         open={showCreateArea}
         onOpenChange={setShowCreateArea}

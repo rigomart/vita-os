@@ -3,6 +3,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -12,35 +13,35 @@ import {
 } from "@/components/ui/responsive-dialog";
 import { Textarea } from "@/components/ui/textarea";
 
-interface QuickCaptureDialogProps {
+interface NewItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function QuickCaptureDialog({
-  open,
-  onOpenChange,
-}: QuickCaptureDialogProps) {
+export function NewItemDialog({ open, onOpenChange }: NewItemDialogProps) {
   const [text, setText] = useState("");
-  const createCapture = useMutation(api.captures.create).withOptimisticUpdate(
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const createItem = useMutation(api.items.create).withOptimisticUpdate(
     (localStore, args) => {
-      const current = localStore.getQuery(api.captures.list, {});
+      const current = localStore.getQuery(api.items.list, {});
       if (current !== undefined) {
-        localStore.setQuery(api.captures.list, {}, [
+        localStore.setQuery(api.items.list, {}, [
           {
-            _id: crypto.randomUUID() as Id<"captures">,
+            _id: crypto.randomUUID() as Id<"items">,
             _creationTime: Date.now(),
             userId: "",
             text: args.text,
+            date: args.date,
+            isCompleted: false,
             createdAt: Date.now(),
           },
           ...current,
         ]);
       }
 
-      const count = localStore.getQuery(api.captures.count, {});
+      const count = localStore.getQuery(api.items.count, {});
       if (count !== undefined) {
-        localStore.setQuery(api.captures.count, {}, count + 1);
+        localStore.setQuery(api.items.count, {}, count + 1);
       }
     },
   );
@@ -50,8 +51,9 @@ export function QuickCaptureDialog({
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    createCapture({ text: trimmed });
+    createItem({ text: trimmed, date: date?.getTime() });
     setText("");
+    setDate(undefined);
     onOpenChange(false);
   };
 
@@ -59,7 +61,7 @@ export function QuickCaptureDialog({
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
       <ResponsiveDialogContent>
         <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle>Quick capture</ResponsiveDialogTitle>
+          <ResponsiveDialogTitle>New item</ResponsiveDialogTitle>
         </ResponsiveDialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Textarea
@@ -75,6 +77,7 @@ export function QuickCaptureDialog({
               }
             }}
           />
+          <DatePicker value={date} onChange={setDate} placeholder="Add date" />
           <ResponsiveDialogFooter>
             <Button
               type="button"
@@ -84,7 +87,7 @@ export function QuickCaptureDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!text.trim()}>
-              Capture
+              Add
             </Button>
           </ResponsiveDialogFooter>
         </form>

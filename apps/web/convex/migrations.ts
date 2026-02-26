@@ -61,3 +61,28 @@ export const removeTags = internalMutation({
     return { updated, total: projects.length };
   },
 });
+
+/**
+ * One-off migration: convert all captures to items, then delete the captures.
+ *
+ * Run via dashboard or CLI:
+ *   npx convex run migrations:migrateCapturesToItems
+ */
+export const migrateCapturesToItems = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const captures = await ctx.db.query("captures").collect();
+
+    for (const capture of captures) {
+      await ctx.db.insert("items", {
+        userId: capture.userId,
+        text: capture.text,
+        isCompleted: false,
+        createdAt: capture.createdAt,
+      });
+      await ctx.db.delete(capture._id);
+    }
+
+    return { migrated: captures.length };
+  },
+});

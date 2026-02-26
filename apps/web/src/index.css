@@ -5,9 +5,9 @@
 
 :root {
   /* Surface scale */
-  --surface-1: oklch(0.205 0.006 250);
-  --surface-2: oklch(0.25 0.006 250);
-  --surface-3: oklch(0.3 0.006 250);
+  --surface-1: oklch(0.17 0.006 250);
+  --surface-2: oklch(0.205 0.006 250);
+  --surface-3: oklch(0.25 0.006 250);
 
   --background: var(--surface-1);
   --foreground: oklch(0.93 0.005 250);

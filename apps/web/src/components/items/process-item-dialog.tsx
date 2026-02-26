@@ -1,9 +1,10 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
-import { Crosshair, FolderPlus, ListPlus } from "lucide-react";
+import { CalendarPlus, Crosshair, FolderPlus, ListPlus } from "lucide-react";
 import { useState } from "react";
 import { AreaPicker } from "@/components/areas/area-picker";
 import { ProjectPicker } from "@/components/projects/project-picker";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -15,17 +16,22 @@ import {
 } from "@/components/ui/responsive-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type ProcessMode = "create_project" | "add_to_project" | "set_next_action";
+type ProcessMode =
+  | "add_date"
+  | "create_project"
+  | "add_to_project"
+  | "set_next_action";
 
-interface ProcessCaptureDialogProps {
+interface ProcessItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  capture: Doc<"captures">;
+  item: Doc<"items">;
   areas: Doc<"areas">[];
   projects: Doc<"projects">[];
   onProcess: (
-    captureId: Id<"captures">,
+    itemId: Id<"items">,
     action:
+      | { type: "add_date"; date: number }
       | {
           type: "create_project";
           name: string;
@@ -37,15 +43,16 @@ interface ProcessCaptureDialogProps {
   ) => void;
 }
 
-export function ProcessCaptureDialog({
+export function ProcessItemDialog({
   open,
   onOpenChange,
-  capture,
+  item,
   areas,
   projects,
   onProcess,
-}: ProcessCaptureDialogProps) {
-  const [mode, setMode] = useState<ProcessMode>("create_project");
+}: ProcessItemDialogProps) {
+  const [mode, setMode] = useState<ProcessMode>("add_date");
+  const [date, setDate] = useState<Date | undefined>(undefined);
   const [name, setName] = useState("");
   const [definitionOfDone, setDefinitionOfDone] = useState("");
   const [areaId, setAreaId] = useState<string | undefined>(areas[0]?._id);
@@ -54,10 +61,13 @@ export function ProcessCaptureDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (mode === "create_project") {
+    if (mode === "add_date") {
+      if (!date) return;
+      onProcess(item._id, { type: "add_date", date: date.getTime() });
+    } else if (mode === "create_project") {
       const trimmedName = name.trim();
       if (!trimmedName || !areaId) return;
-      onProcess(capture._id, {
+      onProcess(item._id, {
         type: "create_project",
         name: trimmedName,
         areaId: areaId as Id<"areas">,
@@ -65,13 +75,13 @@ export function ProcessCaptureDialog({
       });
     } else if (mode === "add_to_project") {
       if (!projectId) return;
-      onProcess(capture._id, {
+      onProcess(item._id, {
         type: "add_to_project",
         projectId: projectId as Id<"projects">,
       });
     } else if (mode === "set_next_action") {
       if (!projectId) return;
-      onProcess(capture._id, {
+      onProcess(item._id, {
         type: "set_next_action",
         projectId: projectId as Id<"projects">,
       });
@@ -81,26 +91,38 @@ export function ProcessCaptureDialog({
   };
 
   const canSubmit =
+    (mode === "add_date" && date) ||
     (mode === "create_project" && name.trim() && areaId) ||
     (mode === "add_to_project" && projectId) ||
     (mode === "set_next_action" && projectId);
+
+  const submitLabel = {
+    add_date: "Add date",
+    create_project: "Create project",
+    add_to_project: "Add to project",
+    set_next_action: "Set next action",
+  }[mode];
 
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
       <ResponsiveDialogContent>
         <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle>Process capture</ResponsiveDialogTitle>
+          <ResponsiveDialogTitle>Process item</ResponsiveDialogTitle>
         </ResponsiveDialogHeader>
 
-        {/* Capture text reference */}
+        {/* Item text reference */}
         <div className="border-l-2 border-primary/30 bg-surface-3/30 py-2 pr-3 pl-3">
           <p className="line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">
-            {capture.text}
+            {item.text}
           </p>
         </div>
 
         <Tabs value={mode} onValueChange={(v) => setMode(v as ProcessMode)}>
           <TabsList className="w-full">
+            <TabsTrigger value="add_date" className="text-xs">
+              <CalendarPlus className="h-3.5 w-3.5" />
+              Add date
+            </TabsTrigger>
             <TabsTrigger value="create_project" className="text-xs">
               <FolderPlus className="h-3.5 w-3.5" />
               New project
@@ -116,6 +138,21 @@ export function ProcessCaptureDialog({
           </TabsList>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <TabsContent value="add_date">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Date</Label>
+                <DatePicker
+                  value={date}
+                  onChange={setDate}
+                  placeholder="Pick a date"
+                />
+                <p className="text-xs text-muted-foreground">
+                  The item will leave the inbox and become a standalone dated
+                  action.
+                </p>
+              </div>
+            </TabsContent>
+
             <TabsContent value="create_project">
               <div className="space-y-4">
                 <div className="grid grid-cols-[1fr_auto] gap-3">
@@ -172,8 +209,7 @@ export function ProcessCaptureDialog({
                   onSelect={setProjectId}
                 />
                 <p className="text-xs text-muted-foreground">
-                  The capture text will be added as a note on the selected
-                  project.
+                  The item text will be added as a note on the selected project.
                 </p>
               </div>
             </TabsContent>
@@ -188,8 +224,7 @@ export function ProcessCaptureDialog({
                   onSelect={setProjectId}
                 />
                 <p className="text-xs text-muted-foreground">
-                  The capture text will replace the project's current next
-                  action.
+                  The item text will replace the project's current next action.
                 </p>
               </div>
             </TabsContent>
@@ -203,11 +238,7 @@ export function ProcessCaptureDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={!canSubmit}>
-                {mode === "create_project"
-                  ? "Create project"
-                  : mode === "add_to_project"
-                    ? "Add to project"
-                    : "Set next action"}
+                {submitLabel}
               </Button>
             </ResponsiveDialogFooter>
           </form>

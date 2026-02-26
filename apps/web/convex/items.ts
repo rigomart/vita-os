@@ -8,11 +8,12 @@ export const list = query({
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return [];
-    return ctx.db
-      .query("captures")
+    const all = await ctx.db
+      .query("items")
       .withIndex("by_user_created", (q) => q.eq("userId", userId))
       .order("desc")
       .collect();
+    return all.filter((item) => !item.isCompleted);
   },
 });
 
@@ -21,47 +22,102 @@ export const count = query({
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return 0;
-    const captures = await ctx.db
-      .query("captures")
+    const all = await ctx.db
+      .query("items")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
-    return captures.length;
+    return all.filter((item) => !item.isCompleted).length;
+  },
+});
+
+export const listCompleted = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return [];
+    const all = await ctx.db
+      .query("items")
+      .withIndex("by_user_created", (q) => q.eq("userId", userId))
+      .order("desc")
+      .collect();
+    return all.filter((item) => item.isCompleted);
   },
 });
 
 export const create = mutation({
   args: {
     text: v.string(),
+    date: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    return ctx.db.insert("captures", {
+    return ctx.db.insert("items", {
       userId,
       text: args.text,
+      date: args.date,
+      isCompleted: false,
       createdAt: Date.now(),
     });
   },
 });
 
 export const remove = mutation({
-  args: { id: v.id("captures") },
+  args: { id: v.id("items") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    const capture = await ctx.db.get(args.id);
-    if (!capture || capture.userId !== userId) {
-      throw new Error("Capture not found");
+    const item = await ctx.db.get(args.id);
+    if (!item || item.userId !== userId) {
+      throw new Error("Item not found");
     }
 
     await ctx.db.delete(args.id);
   },
 });
 
+export const complete = mutation({
+  args: { id: v.id("items") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+
+    const item = await ctx.db.get(args.id);
+    if (!item || item.userId !== userId) {
+      throw new Error("Item not found");
+    }
+
+    await ctx.db.patch(args.id, {
+      isCompleted: true,
+      completedAt: Date.now(),
+    });
+  },
+});
+
+export const uncomplete = mutation({
+  args: { id: v.id("items") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+
+    const item = await ctx.db.get(args.id);
+    if (!item || item.userId !== userId) {
+      throw new Error("Item not found");
+    }
+
+    await ctx.db.patch(args.id, {
+      isCompleted: false,
+      completedAt: undefined,
+    });
+  },
+});
+
 export const process = mutation({
   args: {
-    id: v.id("captures"),
+    id: v.id("items"),
     action: v.union(
+      v.object({
+        type: v.literal("add_date"),
+        date: v.number(),
+      }),
       v.object({
         type: v.literal("create_project"),
         name: v.string(),
@@ -84,9 +140,14 @@ export const process = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    const capture = await ctx.db.get(args.id);
-    if (!capture || capture.userId !== userId) {
-      throw new Error("Capture not found");
+    const item = await ctx.db.get(args.id);
+    if (!item || item.userId !== userId) {
+      throw new Error("Item not found");
+    }
+
+    if (args.action.type === "add_date") {
+      await ctx.db.patch(args.id, { date: args.action.date });
+      return { type: "dated" as const };
     }
 
     if (args.action.type === "create_project") {
@@ -108,7 +169,7 @@ export const process = mutation({
         userId,
         projectId,
         type: "note",
-        content: capture.text,
+        content: item.text,
         createdAt: Date.now(),
       });
 
@@ -126,7 +187,7 @@ export const process = mutation({
         userId,
         projectId: args.action.projectId,
         type: "note",
-        content: capture.text,
+        content: item.text,
         createdAt: Date.now(),
       });
 
@@ -141,8 +202,8 @@ export const process = mutation({
       }
 
       const currentQueue = project.actionQueue ?? [];
-      const newItem = { id: crypto.randomUUID(), text: capture.text };
-      const newQueue = [newItem, ...currentQueue];
+      const newQueueItem = { id: crypto.randomUUID(), text: item.text };
+      const newQueue = [newQueueItem, ...currentQueue];
       const prev = currentQueue[0]?.text ?? project.nextAction ?? "";
 
       await ctx.db.patch(args.action.projectId, {
@@ -154,10 +215,10 @@ export const process = mutation({
         projectId: args.action.projectId,
         type: "next_action_change",
         content: prev
-          ? `Next action changed from "${prev}" to "${capture.text}"`
-          : `Next action set to "${capture.text}"`,
+          ? `Next action changed from "${prev}" to "${item.text}"`
+          : `Next action set to "${item.text}"`,
         previousValue: prev || undefined,
-        newValue: capture.text,
+        newValue: item.text,
         createdAt: Date.now(),
       });
 

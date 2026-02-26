@@ -5,9 +5,9 @@ import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { Inbox } from "lucide-react";
 import { useState } from "react";
-import { CaptureRow } from "@/components/captures/capture-row";
-import { ProcessCaptureDialog } from "@/components/captures/process-capture-dialog";
 import { RouteErrorFallback } from "@/components/error-boundary";
+import { ItemRow } from "@/components/items/item-row";
+import { ProcessItemDialog } from "@/components/items/process-item-dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -20,39 +20,40 @@ export const Route = createFileRoute("/_authenticated/inbox")({
 });
 
 function InboxPage() {
-  const captures = useQuery(api.captures.list);
+  const items = useQuery(api.items.list);
   const areas = useQuery(api.areas.list);
   const projects = useQuery(api.projects.list);
-  const processCapture = useMutation(api.captures.process);
+  const processItem = useMutation(api.items.process);
 
-  const [processingCapture, setProcessingCapture] = useState<
-    Doc<"captures"> | undefined
+  const [processingItem, setProcessingItem] = useState<
+    Doc<"items"> | undefined
   >(undefined);
 
   const handleProcess = async (
-    captureId: Id<"captures">,
+    itemId: Id<"items">,
     action:
+      | { type: "add_date"; date: number }
       | {
           type: "create_project";
           name: string;
           areaId: Id<"areas">;
-          description?: string;
+          definitionOfDone?: string;
         }
       | { type: "add_to_project"; projectId: Id<"projects"> }
       | { type: "set_next_action"; projectId: Id<"projects"> },
   ) => {
-    await processCapture({ id: captureId, action });
-    setProcessingCapture(undefined);
+    await processItem({ id: itemId, action });
+    setProcessingItem(undefined);
   };
 
-  if (captures === undefined) {
+  if (items === undefined) {
     return <InboxSkeleton />;
   }
 
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Inbox" />
-      {captures.length === 0 ? (
+      {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Inbox className="mb-3 h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
@@ -60,24 +61,20 @@ function InboxPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-lg border border-border-subtle">
-          {captures.map((capture) => (
-            <CaptureRow
-              key={capture._id}
-              capture={capture}
-              onProcess={setProcessingCapture}
-            />
+        <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
+          {items.map((item) => (
+            <ItemRow key={item._id} item={item} onProcess={setProcessingItem} />
           ))}
         </div>
       )}
 
-      {processingCapture && (
-        <ProcessCaptureDialog
-          open={!!processingCapture}
+      {processingItem && (
+        <ProcessItemDialog
+          open={!!processingItem}
           onOpenChange={(open) => {
-            if (!open) setProcessingCapture(undefined);
+            if (!open) setProcessingItem(undefined);
           }}
-          capture={processingCapture}
+          item={processingItem}
           areas={areas ?? []}
           projects={projects ?? []}
           onProcess={handleProcess}
