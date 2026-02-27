@@ -204,7 +204,7 @@ export const process = mutation({
       const currentQueue = project.actionQueue ?? [];
       const newQueueItem = { id: crypto.randomUUID(), text: item.text };
       const newQueue = [newQueueItem, ...currentQueue];
-      const prev = currentQueue[0]?.text ?? project.nextAction ?? "";
+      const prev = currentQueue[0]?.text ?? "";
 
       await ctx.db.patch(args.action.projectId, {
         actionQueue: newQueue,

@@ -319,8 +319,7 @@ function AreaDetailPage() {
           <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
             {projects.map((project) => {
               const slug = project.slug ?? project._id;
-              const subtitle =
-                project.actionQueue?.[0]?.text ?? project.nextAction;
+              const subtitle = project.actionQueue?.[0]?.text;
               return (
                 <div
                   key={project._id}

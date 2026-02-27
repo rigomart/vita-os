@@ -12,7 +12,8 @@
     "lint": "biome check --write .",
     "format": "biome format --write .",
     "test": "turbo run test",
-    "test:run": "turbo run test:run"
+    "test:run": "turbo run test:run",
+    "convex": "turbo run convex --filter=@vita-os/web"
   },
   "workspaces": [
     "apps/*",
