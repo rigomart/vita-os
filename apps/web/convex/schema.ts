@@ -32,13 +32,9 @@ export default defineSchema({
       v.literal("dropped"),
     ),
     status: v.optional(v.string()),
-    // Deprecated — being replaced by actionQueue, kept temporarily for migration
-    nextAction: v.optional(v.string()),
     actionQueue: v.optional(
       v.array(v.object({ id: v.string(), text: v.string() })),
     ),
-    // Deprecated — being removed, kept temporarily for migration
-    nextReviewDate: v.optional(v.number()),
     // Phase 2 fields
     actionDate: v.optional(v.number()),
     targetDate: v.optional(v.number()),
@@ -46,8 +42,6 @@ export default defineSchema({
     waitingSince: v.optional(v.number()),
     waitingExpectedDate: v.optional(v.number()),
     waitingFollowUpDate: v.optional(v.number()),
-    // Deprecated — being removed, kept temporarily for migration
-    tags: v.optional(v.array(v.string())),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
@@ -67,15 +61,6 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"])
     .index("by_user_inbox", ["userId", "isCompleted", "createdAt"]),
-
-  // Deprecated — being replaced by items, kept temporarily for migration
-  captures: defineTable({
-    userId: v.string(),
-    text: v.string(),
-    createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_created", ["userId", "createdAt"]),
 
   userSettings: defineTable({
     userId: v.string(),

@@ -92,7 +92,6 @@ export const update = mutation({
     definitionOfDone: v.optional(v.union(v.string(), v.null())),
     areaId: v.optional(v.id("areas")),
     status: v.optional(v.union(v.string(), v.null())),
-    nextAction: v.optional(v.union(v.string(), v.null())),
     actionQueue: v.optional(
       v.union(
         v.array(v.object({ id: v.string(), text: v.string() })),
@@ -143,25 +142,6 @@ export const update = mutation({
         content: prev
           ? `Status changed from "${prev}" to "${next || "(cleared)"}"`
           : `Status set to "${next}"`,
-        previousValue: prev || undefined,
-        newValue: next || undefined,
-        createdAt: now,
-      });
-    }
-
-    if (
-      args.nextAction !== undefined &&
-      (args.nextAction ?? undefined) !== (project.nextAction ?? undefined)
-    ) {
-      const prev = project.nextAction ?? "";
-      const next = args.nextAction === null ? "" : args.nextAction;
-      await ctx.db.insert("projectLogs", {
-        userId,
-        projectId: id,
-        type: "next_action_change",
-        content: prev
-          ? `Next action changed from "${prev}" to "${next || "(cleared)"}"`
-          : `Next action set to "${next}"`,
         previousValue: prev || undefined,
         newValue: next || undefined,
         createdAt: now,
