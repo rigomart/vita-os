@@ -36,7 +36,7 @@ type AutoProjectLog = {
 };
 
 function hasOwn(obj: object, key: PropertyKey): boolean {
-  return Object.hasOwn(obj, key);
+  return Object.keys(obj).includes(String(key));
 }
 
 export function buildProjectPatchLogEntries(
