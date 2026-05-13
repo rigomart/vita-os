@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
+import { prependNextAction } from "./lib/projectChanges";
 import { generateSlug } from "./lib/slugs";
 
 export const list = query({
@@ -201,26 +202,7 @@ export const process = mutation({
         throw new Error("Project not found");
       }
 
-      const currentQueue = project.actionQueue ?? [];
-      const newQueueItem = { id: crypto.randomUUID(), text: item.text };
-      const newQueue = [newQueueItem, ...currentQueue];
-      const prev = currentQueue[0]?.text ?? "";
-
-      await ctx.db.patch(args.action.projectId, {
-        actionQueue: newQueue,
-      });
-
-      await ctx.db.insert("projectLogs", {
-        userId,
-        projectId: args.action.projectId,
-        type: "next_action_change",
-        content: prev
-          ? `Next action changed from "${prev}" to "${item.text}"`
-          : `Next action set to "${item.text}"`,
-        previousValue: prev || undefined,
-        newValue: item.text,
-        createdAt: Date.now(),
-      });
+      await prependNextAction(ctx, { userId, project, text: item.text });
 
       await ctx.db.delete(args.id);
       return { type: "set_next_action" as const };

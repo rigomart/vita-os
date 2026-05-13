@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { nullsToUndefined } from "./lib/patch";
+import { applyProjectPatch, completeNextAction } from "./lib/projectChanges";
 import { generateSlug } from "./lib/slugs";
 
 export const list = query({
@@ -121,65 +122,14 @@ export const update = mutation({
       newSlug = generateSlug(rest.name);
     }
 
-    await ctx.db.patch(id, {
-      ...nullsToUndefined(rest),
-      ...(newSlug && { slug: newSlug }),
+    await applyProjectPatch(ctx, {
+      userId,
+      project,
+      patch: {
+        ...nullsToUndefined(rest),
+        ...(newSlug && { slug: newSlug }),
+      },
     });
-
-    // Auto-generate log entries for tracked field changes
-    const now = Date.now();
-
-    if (
-      args.status !== undefined &&
-      (args.status ?? undefined) !== (project.status ?? undefined)
-    ) {
-      const prev = project.status ?? "";
-      const next = args.status === null ? "" : args.status;
-      await ctx.db.insert("projectLogs", {
-        userId,
-        projectId: id,
-        type: "status_change",
-        content: prev
-          ? `Status changed from "${prev}" to "${next || "(cleared)"}"`
-          : `Status set to "${next}"`,
-        previousValue: prev || undefined,
-        newValue: next || undefined,
-        createdAt: now,
-      });
-    }
-
-    if (args.actionQueue !== undefined) {
-      const oldQueue = project.actionQueue ?? [];
-      const newQueue = args.actionQueue ?? [];
-      const oldFirst = oldQueue[0]?.text ?? "";
-      const newFirst = newQueue[0]?.text ?? "";
-
-      if (oldFirst !== newFirst) {
-        await ctx.db.insert("projectLogs", {
-          userId,
-          projectId: id,
-          type: "next_action_change",
-          content: oldFirst
-            ? `Next action changed from "${oldFirst}" to "${newFirst || "(cleared)"}"`
-            : `Next action set to "${newFirst}"`,
-          previousValue: oldFirst || undefined,
-          newValue: newFirst || undefined,
-          createdAt: now,
-        });
-      }
-    }
-
-    if (args.state !== undefined && args.state !== project.state) {
-      await ctx.db.insert("projectLogs", {
-        userId,
-        projectId: id,
-        type: "state_change",
-        content: `State changed from "${project.state}" to "${args.state}"`,
-        previousValue: project.state,
-        newValue: args.state,
-        createdAt: now,
-      });
-    }
 
     return { slug: newSlug ?? project.slug };
   },
@@ -195,19 +145,11 @@ export const remove = mutation({
       throw new Error("Project not found");
     }
 
-    await ctx.db.patch(args.id, { state: "dropped" });
-
-    if (project.state !== "dropped") {
-      await ctx.db.insert("projectLogs", {
-        userId,
-        projectId: args.id,
-        type: "state_change",
-        content: `State changed from "${project.state}" to "dropped"`,
-        previousValue: project.state,
-        newValue: "dropped",
-        createdAt: Date.now(),
-      });
-    }
+    await applyProjectPatch(ctx, {
+      userId,
+      project,
+      patch: { state: "dropped" },
+    });
   },
 });
 
@@ -220,26 +162,7 @@ export const completeAction = mutation({
       throw new Error("Project not found");
     }
 
-    const queue = project.actionQueue ?? [];
-    if (queue.length === 0) return;
-
-    const completed = queue[0];
-    const remaining = queue.slice(1);
-    const next = remaining[0]?.text ?? "";
-
-    await ctx.db.patch(args.id, { actionQueue: remaining });
-
-    await ctx.db.insert("projectLogs", {
-      userId,
-      projectId: args.id,
-      type: "next_action_change",
-      content: next
-        ? `Completed "${completed.text}" — next action is now "${next}"`
-        : `Completed "${completed.text}" — no more actions queued`,
-      previousValue: completed.text,
-      newValue: next || undefined,
-      createdAt: Date.now(),
-    });
+    await completeNextAction(ctx, { userId, project });
   },
 });
 
