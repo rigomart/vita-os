@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAreaForUser } from "./lib/areaProjects";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { nullsToUndefined } from "./lib/patch";
 import { applyProjectPatch, completeNextAction } from "./lib/projectChanges";
@@ -68,6 +69,8 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
+    await getAreaForUser(ctx, { userId, areaId: args.areaId });
+
     const nextOrder = await getNextOrder(ctx, "projects", userId);
     const slug = generateSlug(args.name);
 
@@ -116,6 +119,10 @@ export const update = mutation({
     }
 
     const { id, ...rest } = args;
+
+    if (rest.areaId !== undefined) {
+      await getAreaForUser(ctx, { userId, areaId: rest.areaId });
+    }
 
     let newSlug: string | undefined;
     if (rest.name && rest.name !== project.name) {

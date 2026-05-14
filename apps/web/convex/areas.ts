@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { assertAreaCanBeDeleted } from "./lib/areaProjects";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { nullsToUndefined } from "./lib/patch";
 import { generateSlug } from "./lib/slugs";
@@ -119,17 +120,7 @@ export const remove = mutation({
       throw new Error("Area not found");
     }
 
-    const projects = await ctx.db
-      .query("projects")
-      .withIndex("by_area", (q) => q.eq("areaId", args.id))
-      .collect();
-
-    const activeProjects = projects.filter((p) => p.state === "active");
-    if (activeProjects.length > 0) {
-      throw new Error(
-        "Cannot delete an area that has projects. Move or delete the projects first.",
-      );
-    }
+    await assertAreaCanBeDeleted(ctx, { userId, areaId: args.id });
 
     await ctx.db.delete(args.id);
   },

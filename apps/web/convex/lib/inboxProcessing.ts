@@ -1,5 +1,6 @@
 import type { GenericMutationCtx } from "convex/server";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
+import { getAreaForUser } from "./areaProjects";
 import { getNextOrder } from "./helpers";
 import { prependNextAction } from "./projectChanges";
 import { generateSlug } from "./slugs";
@@ -64,6 +65,11 @@ export async function processInboxItem(
   }
 
   if (args.action.type === "create_project") {
+    await getAreaForUser(ctx, {
+      userId: args.userId,
+      areaId: args.action.areaId,
+    });
+
     const nextOrder = await getNextOrder(ctx, "projects", args.userId);
     const slug = generateSlug(args.action.name);
 
