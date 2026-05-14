@@ -37,16 +37,18 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { RouteErrorFallback } from "@/components/error-boundary";
-import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
-import { useStableQuery } from "@/hooks/use-stable-query";
+import { AreaFormDialog } from "@/features/areas/components/area-form-dialog";
+import {
+  optimisticallyRemoveArea,
+  optimisticallyUpdateArea,
+} from "@/features/areas/optimistic";
+import { ProjectFormDialog } from "@/features/projects/components/project-form-dialog";
 import {
   optimisticallyCreateProjectInArea,
-  optimisticallyRemoveArea,
   optimisticallyRemoveProject,
-  optimisticallyUpdateArea,
-} from "@/lib/optimistic-updates";
+} from "@/features/projects/optimistic";
+import { useStableQuery } from "@/hooks/use-stable-query";
 
 export const Route = createFileRoute("/_authenticated/$areaSlug/")({
   errorComponent: RouteErrorFallback,

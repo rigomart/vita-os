@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI Agents when working with code in this repository.
 
 ## Verification (MUST RUN)
 
@@ -40,6 +40,14 @@ Add **new** shadcn components from `apps/web/`: `bunx shadcn@latest add <compone
 In `apps/web/`:
 - `@` maps to `./src` — use `@/components/...`, `@/lib/...`, etc.
 - `@convex` maps to `./convex` — use `@convex/_generated/...`, etc.
+
+## Commits
+
+Use conventional commits for all commits with the type and scope.
+
+```bash
+git commit -m "<type>(<scope>): <description>"
+```
 
 ## Agent skills
 

@@ -18,8 +18,8 @@ import {
 } from "@vita-os/ui/components/tabs";
 import { CalendarPlus, Crosshair, FolderPlus, ListPlus } from "lucide-react";
 import { useState } from "react";
-import { AreaPicker } from "@/components/areas/area-picker";
-import { ProjectPicker } from "@/components/projects/project-picker";
+import { AreaPicker } from "@/features/areas/components/area-picker";
+import { ProjectPicker } from "@/features/projects/components/project-picker";
 
 type ProcessMode =
   | "add_date"

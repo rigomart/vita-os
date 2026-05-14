@@ -5,8 +5,8 @@ import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { ArrowRight, Inbox } from "lucide-react";
 import { useState } from "react";
-import { ItemRow } from "@/components/items/item-row";
-import { ProcessItemDialog } from "@/components/items/process-item-dialog";
+import { ItemRow } from "@/features/items/components/item-row";
+import { ProcessItemDialog } from "@/features/items/components/process-item-dialog";
 
 const MAX_VISIBLE = 5;
 

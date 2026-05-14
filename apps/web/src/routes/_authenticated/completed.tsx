@@ -4,8 +4,8 @@ import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { CheckCircle2 } from "lucide-react";
 import { RouteErrorFallback } from "@/components/error-boundary";
-import { CompletedItemRow } from "@/components/items/completed-item-row";
 import { PageHeader } from "@/components/layout/page-header";
+import { CompletedItemRow } from "@/features/items/components/completed-item-row";
 
 export const Route = createFileRoute("/_authenticated/completed")({
   head: () => ({

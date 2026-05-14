@@ -46,14 +46,12 @@ import {
   Plus,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { AreaFormDialog } from "@/components/areas/area-form-dialog";
-import { NewItemDialog } from "@/components/items/new-item-dialog";
-import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
+import { AreaFormDialog } from "@/features/areas/components/area-form-dialog";
+import { optimisticallyCreateArea } from "@/features/areas/optimistic";
+import { NewItemDialog } from "@/features/items/components/new-item-dialog";
+import { ProjectFormDialog } from "@/features/projects/components/project-form-dialog";
+import { optimisticallyCreateProjectInList } from "@/features/projects/optimistic";
 import { authClient } from "@/lib/auth-client";
-import {
-  optimisticallyCreateArea,
-  optimisticallyCreateProjectInList,
-} from "@/lib/optimistic-updates";
 
 export function AppSidebar() {
   const { data: session } = authClient.useSession();

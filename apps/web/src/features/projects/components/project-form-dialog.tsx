@@ -12,7 +12,7 @@ import {
 } from "@vita-os/ui/components/responsive-dialog";
 import { Textarea } from "@vita-os/ui/components/textarea";
 import { useEffect, useState } from "react";
-import { AreaPicker } from "@/components/areas/area-picker";
+import { AreaPicker } from "@/features/areas/components/area-picker";
 
 interface ProjectFormDialogProps {
   open: boolean;

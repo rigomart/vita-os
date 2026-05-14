@@ -6,12 +6,12 @@ import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { Compass, Plus } from "lucide-react";
 import { useState } from "react";
-import { AreaCard } from "@/components/areas/area-card";
-import { AreaFormDialog } from "@/components/areas/area-form-dialog";
-import { AttentionSection } from "@/components/dashboard/attention-section";
-import { RecentItems } from "@/components/dashboard/recent-items";
 import { RouteErrorFallback } from "@/components/error-boundary";
-import { optimisticallyCreateArea } from "@/lib/optimistic-updates";
+import { AreaCard } from "@/features/areas/components/area-card";
+import { AreaFormDialog } from "@/features/areas/components/area-form-dialog";
+import { optimisticallyCreateArea } from "@/features/areas/optimistic";
+import { AttentionSection } from "@/features/dashboard/components/attention-section";
+import { RecentItems } from "@/features/dashboard/components/recent-items";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({

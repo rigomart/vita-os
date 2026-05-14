@@ -28,14 +28,14 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RouteErrorFallback } from "@/components/error-boundary";
-import { ActionQueue } from "@/components/projects/action-queue";
 import { EditableField } from "@/components/ui/editable-field";
-import { useStableQuery } from "@/hooks/use-stable-query";
+import { ActionQueue } from "@/features/projects/components/action-queue";
 import {
   optimisticallyCompleteNextAction,
   optimisticallyRemoveProject,
   optimisticallyUpdateProject,
-} from "@/lib/optimistic-updates";
+} from "@/features/projects/optimistic";
+import { useStableQuery } from "@/hooks/use-stable-query";
 
 export const Route = createFileRoute("/_authenticated/$areaSlug/$projectSlug")({
   errorComponent: RouteErrorFallback,

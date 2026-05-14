@@ -7,9 +7,9 @@ import { useQuery } from "convex-helpers/react/cache/hooks";
 import { Inbox } from "lucide-react";
 import { useState } from "react";
 import { RouteErrorFallback } from "@/components/error-boundary";
-import { ItemRow } from "@/components/items/item-row";
-import { ProcessItemDialog } from "@/components/items/process-item-dialog";
 import { PageHeader } from "@/components/layout/page-header";
+import { ItemRow } from "@/features/items/components/item-row";
+import { ProcessItemDialog } from "@/features/items/components/process-item-dialog";
 
 export const Route = createFileRoute("/_authenticated/inbox")({
   head: () => ({
