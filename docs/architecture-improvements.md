@@ -53,3 +53,47 @@ Action queue, Project log, and Health status. No ADRs were present in
    - Test gain: cache behavior can be tested separately from server mutation
      behavior.
 
+6. Move toward feature slices by product language.
+   - Current friction: `src/components` is grouped partly by feature, but the
+     folder name implies UI-only code. As Area, Project, Item, Inbox, and
+     Dashboard behavior grows, colocating feature UI, client adapters, and
+     small pure helpers under `components` will become unclear.
+   - Improvement: introduce `src/features/` gradually, using the product
+     language as folder names: `areas`, `projects`, `items`, `inbox`, and
+     `dashboard`. Keep route files in `src/routes` focused on params,
+     navigation, and page composition. Use route-local `-*` folders only for
+     implementation details that truly belong to one route.
+   - Shape:
+
+     ```text
+     apps/web/src/features/
+       areas/
+         components/
+         optimistic.ts
+       projects/
+         components/
+         optimistic.ts
+       items/
+         components/
+       inbox/
+         components/
+       dashboard/
+         components/
+       shared/
+         optimistic.ts
+     ```
+
+   - Backend follow-up: move domain helpers from `convex/lib` toward
+     `convex/domain` when the separation becomes useful:
+
+     ```text
+     apps/web/convex/domain/
+       areaProjects.ts
+       healthStatus.ts
+       inboxProcessing.ts
+       projectChanges.ts
+     ```
+
+   - Test gain: feature-level client adapters can be tested close to the
+     feature they serve, while pure domain helpers remain testable without
+     React or Convex.
