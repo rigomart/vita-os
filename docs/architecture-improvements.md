@@ -47,11 +47,35 @@ Action queue, Project log, and Health status. No ADRs were present in
 
 5. Deepen optimistic update behavior.
    - Current friction: route code duplicates server rules for slugs, ordering,
-     default fields, and cache fan-out.
-   - Improvement: add client-side optimistic update adapters per domain concept
-     or reduce optimistic behavior where the server owns the result.
+     default fields, and cache fan-out. A single optimistic update file is a
+     better first step than route-local duplication, but it will become another
+     shallow module if every future optimistic update is dumped into it.
+   - Improvement: split optimistic update code by feature. Keep Convex cache
+     fan-out in feature adapters, and keep only generic list helpers in shared
+     code. Do not mix pure data transforms with Convex `localStore` calls when
+     they can be separated.
+   - Shape:
+
+     ```text
+     apps/web/src/features/
+       shared/
+         optimistic.ts          # patchById, removeById, nextOrder
+       areas/
+         optimistic.ts          # Area list/detail/slug cache updates
+         optimistic.test.ts
+       projects/
+         optimistic.ts          # Project list/detail/slug/action queue updates
+         optimistic.test.ts
+     ```
+
+   - Interface guidance:
+     - Shared helpers should not import `api` or touch Convex local cache.
+     - Feature adapters may import `api` and use `OptimisticLocalStore`; that is
+       their job as Convex adapters.
+     - Optimistic create records should avoid inventing server-owned values such
+       as slugs. The server result remains the source of truth.
    - Test gain: cache behavior can be tested separately from server mutation
-     behavior.
+     behavior, and pure list transforms can be tested without Convex.
 
 6. Move toward feature slices by product language.
    - Current friction: `src/components` is grouped partly by feature, but the
