@@ -5,8 +5,6 @@ import {
   healthColors,
   isHealthStatus,
 } from "@convex/lib/healthStatus";
-import { nullsToUndefined } from "@convex/lib/patch";
-import { generateSlug } from "@convex/lib/slugs";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertDialog,
@@ -43,6 +41,12 @@ import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { RouteErrorFallback } from "@/components/error-boundary";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { useStableQuery } from "@/hooks/use-stable-query";
+import {
+  optimisticallyCreateProjectInArea,
+  optimisticallyRemoveArea,
+  optimisticallyRemoveProject,
+  optimisticallyUpdateArea,
+} from "@/lib/optimistic-updates";
 
 export const Route = createFileRoute("/_authenticated/$areaSlug/")({
   errorComponent: RouteErrorFallback,
@@ -62,101 +66,27 @@ function AreaDetailPage() {
 
   const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
     (localStore, args) => {
-      const { id, ...updates } = args;
-      const resolved = nullsToUndefined(updates);
-
-      const bySlug = localStore.getQuery(api.areas.getBySlug, {
-        slug: areaSlug,
-      });
-      const nameChanged =
-        updates.name !== undefined && bySlug && updates.name !== bySlug.name;
-      const slugUpdate =
-        nameChanged && updates.name ? { slug: generateSlug(updates.name) } : {};
-      const fullUpdates = { ...resolved, ...slugUpdate };
-
-      const current = localStore.getQuery(api.areas.list, {});
-      if (current !== undefined) {
-        localStore.setQuery(
-          api.areas.list,
-          {},
-          current.map((a) => (a._id === id ? { ...a, ...fullUpdates } : a)),
-        );
-      }
-
-      const single = localStore.getQuery(api.areas.get, { id });
-      if (single !== undefined && single !== null) {
-        localStore.setQuery(
-          api.areas.get,
-          { id },
-          { ...single, ...fullUpdates },
-        );
-      }
-
-      if (bySlug !== undefined && bySlug !== null) {
-        localStore.setQuery(
-          api.areas.getBySlug,
-          { slug: areaSlug },
-          { ...bySlug, ...fullUpdates },
-        );
-      }
+      optimisticallyUpdateArea(localStore, args, { areaSlug });
     },
   );
 
   const removeArea = useMutation(api.areas.remove).withOptimisticUpdate(
     (localStore, args) => {
-      const current = localStore.getQuery(api.areas.list, {});
-      if (current !== undefined) {
-        localStore.setQuery(
-          api.areas.list,
-          {},
-          current.filter((a) => a._id !== args.id),
-        );
-      }
-      localStore.setQuery(api.areas.get, { id: args.id }, null);
-      localStore.setQuery(api.areas.getBySlug, { slug: areaSlug }, null);
+      optimisticallyRemoveArea(localStore, args, { areaSlug });
     },
   );
 
   const createProject = useMutation(api.projects.create).withOptimisticUpdate(
     (localStore, args) => {
       if (!area) return;
-      const current = localStore.getQuery(api.projects.listByArea, {
-        areaId: area._id,
-      });
-      if (current !== undefined) {
-        const maxOrder = current.reduce((max, p) => Math.max(max, p.order), -1);
-        localStore.setQuery(api.projects.listByArea, { areaId: area._id }, [
-          ...current,
-          {
-            _id: crypto.randomUUID() as Id<"projects">,
-            _creationTime: Date.now(),
-            userId: "",
-            name: args.name,
-            slug: generateSlug(args.name),
-            definitionOfDone: args.definitionOfDone,
-            areaId: args.areaId,
-            order: maxOrder + 1,
-            state: "active" as const,
-            createdAt: Date.now(),
-          },
-        ]);
-      }
+      optimisticallyCreateProjectInArea(localStore, args, { areaId: area._id });
     },
   );
 
   const removeProject = useMutation(api.projects.remove).withOptimisticUpdate(
     (localStore, args) => {
       if (!area) return;
-      const current = localStore.getQuery(api.projects.listByArea, {
-        areaId: area._id,
-      });
-      if (current !== undefined) {
-        localStore.setQuery(
-          api.projects.listByArea,
-          { areaId: area._id },
-          current.filter((p) => p._id !== args.id),
-        );
-      }
+      optimisticallyRemoveProject(localStore, args, { areaId: area._id });
     },
   );
   const [showEdit, setShowEdit] = useState(false);

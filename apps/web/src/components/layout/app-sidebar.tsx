@@ -1,7 +1,6 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { healthColors } from "@convex/lib/healthStatus";
-import { generateSlug } from "@convex/lib/slugs";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@vita-os/ui/components/badge";
 import {
@@ -51,6 +50,10 @@ import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { NewItemDialog } from "@/components/items/new-item-dialog";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { authClient } from "@/lib/auth-client";
+import {
+  optimisticallyCreateArea,
+  optimisticallyCreateProjectInList,
+} from "@/lib/optimistic-updates";
 
 export function AppSidebar() {
   const { data: session } = authClient.useSession();
@@ -61,25 +64,7 @@ export function AppSidebar() {
   const itemCount = useQuery(api.items.count);
   const createProject = useMutation(api.projects.create).withOptimisticUpdate(
     (localStore, args) => {
-      const current = localStore.getQuery(api.projects.list, {});
-      if (current !== undefined) {
-        const maxOrder = current.reduce((max, p) => Math.max(max, p.order), -1);
-        localStore.setQuery(api.projects.list, {}, [
-          ...current,
-          {
-            _id: crypto.randomUUID() as Id<"projects">,
-            _creationTime: Date.now(),
-            userId: "",
-            name: args.name,
-            slug: generateSlug(args.name),
-            definitionOfDone: args.definitionOfDone,
-            areaId: args.areaId,
-            order: maxOrder + 1,
-            state: "active" as const,
-            createdAt: Date.now(),
-          },
-        ]);
-      }
+      optimisticallyCreateProjectInList(localStore, args);
     },
   );
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -88,24 +73,7 @@ export function AppSidebar() {
   const [showCreateArea, setShowCreateArea] = useState(false);
   const createArea = useMutation(api.areas.create).withOptimisticUpdate(
     (localStore, args) => {
-      const current = localStore.getQuery(api.areas.list, {});
-      if (current !== undefined) {
-        const maxOrder = current.reduce((max, a) => Math.max(max, a.order), -1);
-        localStore.setQuery(api.areas.list, {}, [
-          ...current,
-          {
-            _id: crypto.randomUUID() as Id<"areas">,
-            _creationTime: Date.now(),
-            userId: "",
-            name: args.name,
-            slug: generateSlug(args.name),
-            standard: args.standard,
-            healthStatus: args.healthStatus,
-            order: maxOrder + 1,
-            createdAt: Date.now(),
-          },
-        ]);
-      }
+      optimisticallyCreateArea(localStore, args);
     },
   );
 

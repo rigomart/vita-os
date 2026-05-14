@@ -1,6 +1,4 @@
 import { api } from "@convex/_generated/api";
-import { nullsToUndefined } from "@convex/lib/patch";
-import { generateSlug } from "@convex/lib/slugs";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertDialog,
@@ -33,6 +31,11 @@ import { RouteErrorFallback } from "@/components/error-boundary";
 import { ActionQueue } from "@/components/projects/action-queue";
 import { EditableField } from "@/components/ui/editable-field";
 import { useStableQuery } from "@/hooks/use-stable-query";
+import {
+  optimisticallyCompleteNextAction,
+  optimisticallyRemoveProject,
+  optimisticallyUpdateProject,
+} from "@/lib/optimistic-updates";
 
 export const Route = createFileRoute("/_authenticated/$areaSlug/$projectSlug")({
   errorComponent: RouteErrorFallback,
@@ -55,98 +58,20 @@ function AreaProjectDetailPage() {
 
   const updateProject = useMutation(api.projects.update).withOptimisticUpdate(
     (localStore, args) => {
-      const { id, ...updates } = args;
-      const resolved = nullsToUndefined(updates);
-
-      const bySlug = localStore.getQuery(api.projects.getBySlug, {
-        slug: projectSlug,
-      });
-      const nameChanged =
-        updates.name !== undefined && bySlug && updates.name !== bySlug.name;
-      const slugUpdate =
-        nameChanged && updates.name ? { slug: generateSlug(updates.name) } : {};
-      const fullUpdates = { ...resolved, ...slugUpdate };
-
-      const current = localStore.getQuery(api.projects.list, {});
-      if (current !== undefined) {
-        localStore.setQuery(
-          api.projects.list,
-          {},
-          current.map((p) => (p._id === id ? { ...p, ...fullUpdates } : p)),
-        );
-      }
-
-      const single = localStore.getQuery(api.projects.get, { id });
-      if (single !== undefined && single !== null) {
-        localStore.setQuery(
-          api.projects.get,
-          { id },
-          { ...single, ...fullUpdates },
-        );
-      }
-
-      if (bySlug !== undefined && bySlug !== null) {
-        localStore.setQuery(
-          api.projects.getBySlug,
-          { slug: projectSlug },
-          { ...bySlug, ...fullUpdates },
-        );
-      }
+      optimisticallyUpdateProject(localStore, args, { projectSlug });
     },
   );
 
   const removeProject = useMutation(api.projects.remove).withOptimisticUpdate(
     (localStore, args) => {
-      const current = localStore.getQuery(api.projects.list, {});
-      if (current !== undefined) {
-        localStore.setQuery(
-          api.projects.list,
-          {},
-          current.filter((p) => p._id !== args.id),
-        );
-      }
-      localStore.setQuery(api.projects.get, { id: args.id }, null);
-      localStore.setQuery(api.projects.getBySlug, { slug: projectSlug }, null);
+      optimisticallyRemoveProject(localStore, args, { projectSlug });
     },
   );
 
   const completeAction = useMutation(
     api.projects.completeAction,
   ).withOptimisticUpdate((localStore, args) => {
-    const sliceQueue = <
-      T extends { actionQueue?: Array<{ id: string; text: string }> },
-    >(
-      p: T,
-    ): T => ({ ...p, actionQueue: (p.actionQueue ?? []).slice(1) });
-
-    const current = localStore.getQuery(api.projects.list, {});
-    if (current !== undefined) {
-      localStore.setQuery(
-        api.projects.list,
-        {},
-        current.map((p) => (p._id === args.id ? sliceQueue(p) : p)),
-      );
-    }
-
-    const single = localStore.getQuery(api.projects.get, { id: args.id });
-    if (single !== undefined && single !== null) {
-      localStore.setQuery(
-        api.projects.get,
-        { id: args.id },
-        sliceQueue(single),
-      );
-    }
-
-    const bySlug = localStore.getQuery(api.projects.getBySlug, {
-      slug: projectSlug,
-    });
-    if (bySlug !== undefined && bySlug !== null) {
-      localStore.setQuery(
-        api.projects.getBySlug,
-        { slug: projectSlug },
-        sliceQueue(bySlug),
-      );
-    }
+    optimisticallyCompleteNextAction(localStore, args, { projectSlug });
   });
 
   const createLog = useMutation(api.projectLogs.create);
