@@ -1,40 +1,17 @@
 import { api } from "@convex/_generated/api";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@vita-os/ui/components/alert-dialog";
-import { Button } from "@vita-os/ui/components/button";
-import { Skeleton } from "@vita-os/ui/components/skeleton";
-import { Textarea } from "@vita-os/ui/components/textarea";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
-import { formatDistanceToNow } from "date-fns";
-import {
-  CheckCircle2,
-  ChevronRight,
-  MessageSquare,
-  Pen,
-  Target,
-  Trash2,
-  XCircle,
-} from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { RouteErrorFallback } from "@/components/error-boundary";
-import { EditableField } from "@/components/ui/editable-field";
 import { ActionQueue } from "@/features/projects/components/action-queue";
-import {
-  optimisticallyCompleteNextAction,
-  optimisticallyRemoveProject,
-  optimisticallyUpdateProject,
-} from "@/features/projects/optimistic";
+import { ProjectDefinitionSection } from "@/features/projects/components/project-definition-section";
+import { ProjectDetailSkeleton } from "@/features/projects/components/project-detail-skeleton";
+import { ProjectHeader } from "@/features/projects/components/project-header";
+import { ProjectLifecycleActions } from "@/features/projects/components/project-lifecycle-actions";
+import { ProjectLogSection } from "@/features/projects/components/project-log-section";
+import { ProjectStatusCard } from "@/features/projects/components/project-status-card";
+import { useProjectDetailMutations } from "@/features/projects/use-project-detail-mutations";
 import { useStableQuery } from "@/hooks/use-stable-query";
 
 export const Route = createFileRoute("/_authenticated/$areaSlug/$projectSlug")({
@@ -55,27 +32,9 @@ function AreaProjectDetailPage() {
   );
 
   const navigate = useNavigate();
-
-  const updateProject = useMutation(api.projects.update).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyUpdateProject(localStore, args, { projectSlug });
-    },
-  );
-
-  const removeProject = useMutation(api.projects.remove).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyRemoveProject(localStore, args, { projectSlug });
-    },
-  );
-
-  const completeAction = useMutation(
-    api.projects.completeAction,
-  ).withOptimisticUpdate((localStore, args) => {
-    optimisticallyCompleteNextAction(localStore, args, { projectSlug });
-  });
-
+  const { updateProject, removeProject, completeAction } =
+    useProjectDetailMutations({ projectSlug });
   const createLog = useMutation(api.projectLogs.create);
-  const [noteText, setNoteText] = useState("");
 
   useEffect(() => {
     const title = project?.name
@@ -169,47 +128,19 @@ function AreaProjectDetailPage() {
     navigate({ to: "/$areaSlug", params: { areaSlug } });
   };
 
-  const handleAddNote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const text = noteText.trim();
-    if (!text) return;
-    setNoteText("");
-    await createLog({ projectId: project._id, content: text });
-  };
-
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      {/* Header: breadcrumb + name + description */}
-      <div>
-        <Link
-          to="/$areaSlug"
-          params={{ areaSlug }}
-          className="mb-2 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {area.name}
-          <ChevronRight className="h-3 w-3" />
-        </Link>
+      <ProjectHeader
+        area={area}
+        project={project}
+        areaSlug={areaSlug}
+        onNameSave={handleNameSave}
+      />
 
-        <EditableField
-          value={project.name}
-          onSave={handleNameSave}
-          className="text-xl font-semibold tracking-tight"
-        />
-      </div>
-
-      {/* Status */}
-      <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
-        <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          <Target className="h-3.5 w-3.5" />
-          Status
-        </div>
-        <EditableField
-          value={project.status ?? ""}
-          onSave={(v) => handleFieldSave("status", v)}
-          placeholder="Where things stand..."
-          className="text-sm"
-        />
-      </div>
+      <ProjectStatusCard
+        status={project.status}
+        onSave={(value) => handleFieldSave("status", value)}
+      />
 
       {/* Action Queue */}
       <ActionQueue
@@ -221,256 +152,23 @@ function AreaProjectDetailPage() {
         onRemove={handleRemoveQueueItem}
       />
 
-      {/* Metadata: Definition of Done */}
-      <div className="space-y-4">
-        <MetadataRow
-          icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-          label="Definition of Done"
-        >
-          <EditableField
-            value={project.definitionOfDone ?? ""}
-            onSave={(v) => handleFieldSave("definitionOfDone", v)}
-            variant="textarea"
-            placeholder="What does done look like?"
-            className="text-sm"
-          />
-        </MetadataRow>
-      </div>
+      <ProjectDefinitionSection
+        definitionOfDone={project.definitionOfDone}
+        onSave={(value) => handleFieldSave("definitionOfDone", value)}
+      />
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 border-t border-border/50 pt-6">
-        <AlertDialog>
-          <AlertDialogTrigger
-            render={<Button variant="outline" size="sm" className="gap-1.5" />}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Complete
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Complete project?</AlertDialogTitle>
-              <AlertDialogDescription>
-                &ldquo;{project.name}&rdquo; will be marked as completed.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => handleStateChange("completed")}>
-                Complete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+      <ProjectLifecycleActions
+        project={project}
+        onStateChange={handleStateChange}
+        onDelete={handleDelete}
+      />
 
-        <AlertDialog>
-          <AlertDialogTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-muted-foreground"
-              />
-            }
-          >
-            <XCircle className="h-3.5 w-3.5" />
-            Drop
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Drop project?</AlertDialogTitle>
-              <AlertDialogDescription>
-                &ldquo;{project.name}&rdquo; will be marked as dropped.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => handleStateChange("dropped")}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Drop
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <div className="flex-1" />
-
-        <AlertDialog>
-          <AlertDialogTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-muted-foreground hover:text-destructive"
-              />
-            }
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete project?</AlertDialogTitle>
-              <AlertDialogDescription>
-                &ldquo;{project.name}&rdquo; will be permanently removed.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-
-      {/* Activity Log */}
-      <section>
-        <div className="mb-4 flex items-center gap-2.5">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-3">
-            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <h2 className="text-sm font-medium">Activity</h2>
-          {logs && logs.length > 0 && (
-            <span className="text-xs text-muted-foreground">{logs.length}</span>
-          )}
-        </div>
-
-        <form onSubmit={handleAddNote} className="mb-5 flex gap-2">
-          <Textarea
-            value={noteText}
-            onChange={(e) => setNoteText(e.target.value)}
-            placeholder="Add a note..."
-            className="min-h-9 bg-surface-2"
-            rows={1}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleAddNote(e);
-              }
-            }}
-          />
-          <Button
-            type="submit"
-            size="sm"
-            disabled={!noteText.trim()}
-            className="shrink-0"
-          >
-            Add
-          </Button>
-        </form>
-
-        {logs === undefined ? (
-          <div className="relative before:absolute before:left-[11px] before:top-0 before:bottom-0 before:w-px before:bg-border/50">
-            {Array.from({ length: 3 }).map((_, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
-              <div key={i} className="relative py-2 pl-8">
-                <div className="absolute left-[7px] top-[13px] h-3 w-3 rounded-full bg-surface-3" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="mt-1.5 h-3 w-20" />
-              </div>
-            ))}
-          </div>
-        ) : logs.length > 0 ? (
-          <div className="relative before:absolute before:left-[11px] before:top-0 before:bottom-0 before:w-px before:bg-border/50">
-            {logs.map((log) =>
-              log.type === "note" ? (
-                <div key={log._id} className="relative py-2 pl-8">
-                  <div className="absolute left-0 top-[17px] flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 ring-2 ring-background">
-                    <Pen className="h-3 w-3 text-primary" />
-                  </div>
-                  <div className="rounded-lg border border-border-subtle bg-surface-2 px-4 py-3">
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                      {log.content}
-                    </p>
-                    <p className="mt-1.5 text-xs text-muted-foreground/70">
-                      {formatDistanceToNow(new Date(log.createdAt), {
-                        addSuffix: true,
-                      })}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div key={log._id} className="relative py-1.5 pl-8">
-                  <div className="absolute left-[7px] top-[13px] h-3 w-3 rounded-full border-2 border-border/60 bg-surface-1" />
-                  <p className="text-xs text-muted-foreground italic">
-                    {log.content}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground/50">
-                    {formatDistanceToNow(new Date(log.createdAt), {
-                      addSuffix: true,
-                    })}
-                  </p>
-                </div>
-              ),
-            )}
-          </div>
-        ) : (
-          <p className="py-6 text-center text-xs text-muted-foreground">
-            No activity yet
-          </p>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function MetadataRow({
-  icon,
-  label,
-  children,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="flex w-36 shrink-0 items-center gap-2 pt-1 text-xs text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <div className="min-w-0 flex-1">{children}</div>
-    </div>
-  );
-}
-
-function ProjectDetailSkeleton() {
-  return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <Skeleton className="mb-2 h-3 w-16" />
-        <Skeleton className="h-7 w-48" />
-        <Skeleton className="mt-2 h-4 w-64" />
-      </div>
-
-      <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
-        <Skeleton className="mb-2 h-3 w-12" />
-        <Skeleton className="h-5 w-3/4" />
-      </div>
-      <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
-        <Skeleton className="mb-3 h-3 w-24" />
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="mt-1 h-8 w-full" />
-      </div>
-
-      <div className="space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
-            key={i}
-            className="flex items-center gap-3"
-          >
-            <Skeleton className="h-3 w-36" />
-            <Skeleton className="h-4 flex-1" />
-          </div>
-        ))}
-      </div>
+      <ProjectLogSection
+        logs={logs}
+        onCreateNote={async (content) => {
+          await createLog({ projectId: project._id, content });
+        }}
+      />
     </div>
   );
 }

@@ -1,53 +1,16 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import {
-  HEALTH_STATUS_OPTIONS,
-  healthColors,
-  isHealthStatus,
-} from "@convex/lib/healthStatus";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@vita-os/ui/components/alert-dialog";
-import { Button } from "@vita-os/ui/components/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@vita-os/ui/components/select";
-import { Skeleton } from "@vita-os/ui/components/skeleton";
-import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
-import {
-  ArrowRight,
-  ChevronRight,
-  FolderOpen,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
 import { useEffect, useState } from "react";
 import { RouteErrorFallback } from "@/components/error-boundary";
+import { AreaDetailSkeleton } from "@/features/areas/components/area-detail-skeleton";
 import { AreaFormDialog } from "@/features/areas/components/area-form-dialog";
-import {
-  optimisticallyRemoveArea,
-  optimisticallyUpdateArea,
-} from "@/features/areas/optimistic";
+import { AreaHeader } from "@/features/areas/components/area-header";
+import { AreaProjectsSection } from "@/features/areas/components/area-projects-section";
+import { AreaStandardCard } from "@/features/areas/components/area-standard-card";
+import { useAreaDetailMutations } from "@/features/areas/use-area-detail-mutations";
 import { ProjectFormDialog } from "@/features/projects/components/project-form-dialog";
-import {
-  optimisticallyCreateProjectInArea,
-  optimisticallyRemoveProject,
-} from "@/features/projects/optimistic";
 import { useStableQuery } from "@/hooks/use-stable-query";
 
 export const Route = createFileRoute("/_authenticated/$areaSlug/")({
@@ -65,32 +28,8 @@ function AreaDetailPage() {
     area ? { areaId: area._id } : "skip",
   );
   const navigate = useNavigate();
-
-  const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyUpdateArea(localStore, args, { areaSlug });
-    },
-  );
-
-  const removeArea = useMutation(api.areas.remove).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyRemoveArea(localStore, args, { areaSlug });
-    },
-  );
-
-  const createProject = useMutation(api.projects.create).withOptimisticUpdate(
-    (localStore, args) => {
-      if (!area) return;
-      optimisticallyCreateProjectInArea(localStore, args, { areaId: area._id });
-    },
-  );
-
-  const removeProject = useMutation(api.projects.remove).withOptimisticUpdate(
-    (localStore, args) => {
-      if (!area) return;
-      optimisticallyRemoveProject(localStore, args, { areaId: area._id });
-    },
-  );
+  const { updateArea, removeArea, createProject, removeProject } =
+    useAreaDetailMutations({ areaSlug, areaId: area?._id });
   const [showEdit, setShowEdit] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
 
@@ -124,214 +63,26 @@ function AreaDetailPage() {
     navigate({ to: "/" });
   };
 
-  const handleHealthChange = (value: string | null) => {
-    if (!isHealthStatus(value)) {
-      return;
-    }
-
-    updateArea({ id: area._id, healthStatus: value });
-  };
-
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      {/* Header */}
-      <div>
-        <Link
-          to="/"
-          className="mb-2 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Dashboard
-          <ChevronRight className="h-3 w-3" />
-        </Link>
+      <AreaHeader
+        area={area}
+        projectCount={projects.length}
+        onEdit={() => setShowEdit(true)}
+        onDelete={handleDelete}
+        onHealthChange={(healthStatus) =>
+          updateArea({ id: area._id, healthStatus })
+        }
+      />
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold tracking-tight">
-              {area.name}
-            </h1>
-            <span
-              className={`h-2.5 w-2.5 shrink-0 rounded-full ${healthColors[area.healthStatus]}`}
-            />
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setShowEdit(true)}
-              aria-label="Edit area"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Delete area"
-                  />
-                }
-              >
-                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete area?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This area and its data will be permanently deleted. Move or
-                    delete all projects first.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
+      <AreaStandardCard standard={area.standard} />
 
-        <div className="mt-3 flex items-center gap-3">
-          <Select value={area.healthStatus} onValueChange={handleHealthChange}>
-            <SelectTrigger className="h-7 w-auto gap-2 border-none bg-surface-3/60 px-3 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {HEALTH_STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <span className="text-xs text-muted-foreground">
-            {projects.length} {projects.length === 1 ? "project" : "projects"}
-          </span>
-        </div>
-      </div>
-
-      {/* Standard */}
-      {area.standard && (
-        <div className="rounded-xl border border-border-subtle bg-surface-2 p-5">
-          <h2 className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Standard
-          </h2>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed">
-            {area.standard}
-          </p>
-        </div>
-      )}
-
-      {/* Projects */}
-      <section>
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-3">
-              <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-            <h2 className="text-sm font-medium">Projects</h2>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 text-xs text-muted-foreground"
-            onClick={() => setShowCreateProject(true)}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New project
-          </Button>
-        </div>
-
-        {projects.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/50 py-10 text-center">
-            <FolderOpen className="mb-3 h-8 w-8 text-muted-foreground/60" />
-            <p className="mb-4 max-w-xs text-sm text-muted-foreground">
-              No projects in this area yet.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCreateProject(true)}
-            >
-              Create project
-            </Button>
-          </div>
-        ) : (
-          <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
-            {projects.map((project) => {
-              const slug = project.slug ?? project._id;
-              const subtitle = project.actionQueue?.[0]?.text;
-              return (
-                <div
-                  key={project._id}
-                  className="group flex items-center first:rounded-t-xl last:rounded-b-xl"
-                >
-                  <Link
-                    to="/$areaSlug/$projectSlug"
-                    params={{ areaSlug, projectSlug: slug }}
-                    className="flex min-w-0 flex-1 items-start gap-4 px-4 py-4 transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-surface-3/60"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-medium">
-                          {project.name}
-                        </p>
-                      </div>
-                      {subtitle ? (
-                        <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-                          <ArrowRight className="h-3 w-3 shrink-0" />
-                          {subtitle}
-                        </p>
-                      ) : project.status ? (
-                        <p className="mt-1 truncate text-xs text-muted-foreground">
-                          {project.status}
-                        </p>
-                      ) : null}
-                    </div>
-                  </Link>
-                  <AlertDialog>
-                    <AlertDialogTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="mr-2 opacity-0 transition-opacity group-hover:opacity-100"
-                          aria-label="Delete project"
-                        />
-                      }
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete project?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          &ldquo;{project.name}&rdquo; will be permanently
-                          removed.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => removeProject({ id: project._id })}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <AreaProjectsSection
+        areaSlug={areaSlug}
+        projects={projects}
+        onCreateProject={() => setShowCreateProject(true)}
+        onRemoveProject={(projectId) => removeProject({ id: projectId })}
+      />
 
       <AreaFormDialog
         open={showEdit}
@@ -370,40 +121,6 @@ function AreaDetailPage() {
           });
         }}
       />
-    </div>
-  );
-}
-
-function AreaDetailSkeleton() {
-  return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <Skeleton className="mb-2 h-3 w-20" />
-        <Skeleton className="h-7 w-40" />
-        <div className="mt-3 flex items-center gap-3">
-          <Skeleton className="h-7 w-32 rounded-md" />
-          <Skeleton className="h-3 w-16" />
-        </div>
-      </div>
-
-      <div>
-        <div className="mb-4 flex items-center gap-2.5">
-          <Skeleton className="h-6 w-6 rounded-md" />
-          <Skeleton className="h-4 w-16" />
-        </div>
-        <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div
-              // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
-              key={i}
-              className="px-4 py-4"
-            >
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="mt-2 h-3 w-64" />
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

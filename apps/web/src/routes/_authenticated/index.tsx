@@ -1,16 +1,14 @@
 import { api } from "@convex/_generated/api";
 import { createFileRoute } from "@tanstack/react-router";
-import { Button } from "@vita-os/ui/components/button";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
-import { Compass, Plus } from "lucide-react";
 import { useState } from "react";
 import { RouteErrorFallback } from "@/components/error-boundary";
-import { AreaCard } from "@/features/areas/components/area-card";
 import { AreaFormDialog } from "@/features/areas/components/area-form-dialog";
 import { optimisticallyCreateArea } from "@/features/areas/optimistic";
 import { AttentionSection } from "@/features/dashboard/components/attention-section";
+import { DashboardAreasSection } from "@/features/dashboard/components/dashboard-areas-section";
 import { RecentItems } from "@/features/dashboard/components/recent-items";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -41,53 +39,12 @@ function Dashboard() {
     <div className="mx-auto max-w-4xl space-y-10">
       <h1 className="text-lg font-medium tracking-tight">Dashboard</h1>
 
-      <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-            Areas
-          </h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 text-xs text-muted-foreground"
-            onClick={() => setShowCreateArea(true)}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New area
-          </Button>
-        </div>
-        {areas && areas.length > 0 ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {areas.map((area) => {
-              const projectCount = (projects ?? []).filter(
-                (p) => p.areaId === area._id,
-              ).length;
-              return (
-                <AreaCard
-                  key={area._id}
-                  area={area}
-                  projectCount={projectCount}
-                  attentionCount={attention?.byArea[area._id] ?? 0}
-                />
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/50 py-10 text-center">
-            <Compass className="mb-3 h-8 w-8 text-muted-foreground/60" />
-            <p className="mb-4 max-w-xs text-sm text-muted-foreground">
-              Define your life areas to organize projects by responsibility.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCreateArea(true)}
-            >
-              Create area
-            </Button>
-          </div>
-        )}
-      </section>
+      <DashboardAreasSection
+        areas={areas}
+        projects={projects}
+        attentionByArea={attention?.byArea}
+        onCreateArea={() => setShowCreateArea(true)}
+      />
 
       {attention && attention.items.length > 0 && (
         <AttentionSection items={attention.items} areas={areas ?? []} />
