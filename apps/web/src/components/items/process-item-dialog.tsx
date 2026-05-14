@@ -229,7 +229,7 @@ export function ProcessItemDialog({
                   onSelect={setProjectId}
                 />
                 <p className="text-xs text-muted-foreground">
-                  The item text will replace the project's current next action.
+                  The item text will become the project's next action.
                 </p>
               </div>
             </TabsContent>
