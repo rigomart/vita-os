@@ -5,6 +5,7 @@ import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { nullsToUndefined } from "./lib/patch";
 import { generateSlug } from "./lib/slugs";
 import { validateAreaName } from "./lib/validation";
+import { healthStatusValidator } from "./lib/validators";
 
 export const list = query({
   args: {},
@@ -42,12 +43,6 @@ export const getBySlug = query({
       .unique();
   },
 });
-
-const healthStatusValidator = v.union(
-  v.literal("healthy"),
-  v.literal("needs_attention"),
-  v.literal("critical"),
-);
 
 export const create = mutation({
   args: {

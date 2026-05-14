@@ -1,7 +1,7 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { healthColors } from "@convex/lib/healthStatus";
 import { generateSlug } from "@convex/lib/slugs";
-import { healthColors } from "@convex/lib/types";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@vita-os/ui/components/badge";
 import {

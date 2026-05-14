@@ -1,8 +1,12 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import {
+  HEALTH_STATUS_OPTIONS,
+  healthColors,
+  isHealthStatus,
+} from "@convex/lib/healthStatus";
 import { nullsToUndefined } from "@convex/lib/patch";
 import { generateSlug } from "@convex/lib/slugs";
-import { healthColors } from "@convex/lib/types";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertDialog,
@@ -188,10 +192,8 @@ function AreaDetailPage() {
     navigate({ to: "/" });
   };
 
-  const handleHealthChange = (
-    value: "healthy" | "needs_attention" | "critical" | null,
-  ) => {
-    if (!value) {
+  const handleHealthChange = (value: string | null) => {
+    if (!isHealthStatus(value)) {
       return;
     }
 
@@ -268,9 +270,11 @@ function AreaDetailPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="healthy">Healthy</SelectItem>
-              <SelectItem value="needs_attention">Needs attention</SelectItem>
-              <SelectItem value="critical">Critical</SelectItem>
+              {HEALTH_STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <span className="text-xs text-muted-foreground">

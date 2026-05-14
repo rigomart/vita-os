@@ -1,5 +1,5 @@
 import type { Doc } from "@convex/_generated/dataModel";
-import { healthColors, healthLabels } from "@convex/lib/types";
+import { healthColors, healthLabels } from "@convex/lib/healthStatus";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
 

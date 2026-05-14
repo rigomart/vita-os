@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
 import { areaBelongsToUser, getAreaDeletionBlocker } from "./areaProjects";
+import { DEFAULT_HEALTH_STATUS } from "./healthStatus";
 
 function makeArea(overrides: Partial<Doc<"areas">> = {}): Doc<"areas"> {
   return {
@@ -9,7 +10,7 @@ function makeArea(overrides: Partial<Doc<"areas">> = {}): Doc<"areas"> {
     userId: "user1",
     name: "Family Health",
     slug: "family-health-00000000",
-    healthStatus: "healthy",
+    healthStatus: DEFAULT_HEALTH_STATUS,
     order: 0,
     createdAt: 0,
     ...overrides,

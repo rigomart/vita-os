@@ -1,5 +1,9 @@
 import type { Doc } from "@convex/_generated/dataModel";
-import type { HealthStatus } from "@convex/lib/types";
+import {
+  DEFAULT_HEALTH_STATUS,
+  HEALTH_STATUS_OPTIONS,
+  type HealthStatus,
+} from "@convex/lib/healthStatus";
 import { Button } from "@vita-os/ui/components/button";
 import { Input } from "@vita-os/ui/components/input";
 import { Label } from "@vita-os/ui/components/label";
@@ -32,16 +36,6 @@ interface AreaFormDialogProps {
   area?: Doc<"areas">;
 }
 
-const healthOptions: { value: HealthStatus; label: string; color: string }[] = [
-  { value: "healthy", label: "Healthy", color: "bg-green-500" },
-  {
-    value: "needs_attention",
-    label: "Needs attention",
-    color: "bg-yellow-500",
-  },
-  { value: "critical", label: "Critical", color: "bg-red-500" },
-];
-
 export function AreaFormDialog({
   open,
   onOpenChange,
@@ -51,7 +45,7 @@ export function AreaFormDialog({
   const [name, setName] = useState(area?.name ?? "");
   const [standard, setStandard] = useState(area?.standard ?? "");
   const [healthStatus, setHealthStatus] = useState<HealthStatus>(
-    area?.healthStatus ?? "healthy",
+    area?.healthStatus ?? DEFAULT_HEALTH_STATUS,
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -68,7 +62,7 @@ export function AreaFormDialog({
     if (!area) {
       setName("");
       setStandard("");
-      setHealthStatus("healthy");
+      setHealthStatus(DEFAULT_HEALTH_STATUS);
     }
     onOpenChange(false);
   };
@@ -125,7 +119,7 @@ export function AreaFormDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {healthOptions.map((opt) => (
+                {HEALTH_STATUS_OPTIONS.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
                     <span className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full ${opt.color}`} />

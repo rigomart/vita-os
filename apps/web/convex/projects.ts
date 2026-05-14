@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAreaForUser } from "./lib/areaProjects";
+import { DEFAULT_HEALTH_STATUS } from "./lib/healthStatus";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { nullsToUndefined } from "./lib/patch";
 import { applyProjectPatch, completeNextAction } from "./lib/projectChanges";
@@ -218,7 +219,7 @@ export const migrateUngrouped = mutation({
         userId,
         name: "General",
         slug: generateSlug("General"),
-        healthStatus: "healthy",
+        healthStatus: DEFAULT_HEALTH_STATUS,
         order: maxOrder + 1,
         createdAt: Date.now(),
       });
