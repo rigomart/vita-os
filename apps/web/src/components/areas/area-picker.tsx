@@ -1,12 +1,12 @@
 import type { Doc } from "@convex/_generated/dataModel";
-import { Compass } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@vita-os/ui/components/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@vita-os/ui/components/popover";
+import { Compass } from "lucide-react";
+import { useState } from "react";
 
 interface AreaPickerProps {
   areas: Doc<"areas">[];
@@ -24,11 +24,13 @@ export function AreaPicker({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
-          <Compass className="h-3 w-3" />
-          {selected ? selected.name : "Area"}
-        </Button>
+      <PopoverTrigger
+        render={
+          <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" />
+        }
+      >
+        <Compass className="h-3 w-3" />
+        {selected ? selected.name : "Area"}
       </PopoverTrigger>
       <PopoverContent className="w-48 p-1" align="start">
         {areas.map((a) => (

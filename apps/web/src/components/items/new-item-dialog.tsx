@@ -1,17 +1,17 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { useMutation } from "convex/react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
+import { Button } from "@vita-os/ui/components/button";
+import { DatePicker } from "@vita-os/ui/components/date-picker";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/ui/responsive-dialog";
-import { Textarea } from "@/components/ui/textarea";
+} from "@vita-os/ui/components/responsive-dialog";
+import { Textarea } from "@vita-os/ui/components/textarea";
+import { useMutation } from "convex/react";
+import { useState } from "react";
 
 interface NewItemDialogProps {
   open: boolean;

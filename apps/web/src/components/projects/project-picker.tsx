@@ -1,12 +1,12 @@
 import type { Doc } from "@convex/_generated/dataModel";
-import { FolderOpen } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@vita-os/ui/components/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@vita-os/ui/components/popover";
+import { FolderOpen } from "lucide-react";
+import { useState } from "react";
 
 interface ProjectPickerProps {
   projects: Doc<"projects">[];
@@ -33,11 +33,13 @@ export function ProjectPicker({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
-          <FolderOpen className="h-3 w-3" />
-          {selected ? selected.name : "Select project"}
-        </Button>
+      <PopoverTrigger
+        render={
+          <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" />
+        }
+      >
+        <FolderOpen className="h-3 w-3" />
+        {selected ? selected.name : "Select project"}
       </PopoverTrigger>
       <PopoverContent className="w-56 p-1" align="start">
         {projectsByArea.map(({ area, projects: areaProjects }) => (

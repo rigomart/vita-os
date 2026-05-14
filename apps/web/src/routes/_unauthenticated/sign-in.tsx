@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { type SubmitEvent, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@vita-os/ui/components/button";
 import {
   Card,
   CardContent,
@@ -8,9 +7,10 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@vita-os/ui/components/card";
+import { Input } from "@vita-os/ui/components/input";
+import { Label } from "@vita-os/ui/components/label";
+import { type SubmitEvent, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/_unauthenticated/sign-in")({

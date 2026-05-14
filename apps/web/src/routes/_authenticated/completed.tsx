@@ -1,11 +1,11 @@
 import { api } from "@convex/_generated/api";
 import { createFileRoute } from "@tanstack/react-router";
+import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { CheckCircle2 } from "lucide-react";
 import { RouteErrorFallback } from "@/components/error-boundary";
 import { CompletedItemRow } from "@/components/items/completed-item-row";
 import { PageHeader } from "@/components/layout/page-header";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/completed")({
   head: () => ({

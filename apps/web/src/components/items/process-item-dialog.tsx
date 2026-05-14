@@ -1,20 +1,25 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
-import { CalendarPlus, Crosshair, FolderPlus, ListPlus } from "lucide-react";
-import { useState } from "react";
-import { AreaPicker } from "@/components/areas/area-picker";
-import { ProjectPicker } from "@/components/projects/project-picker";
-import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@vita-os/ui/components/button";
+import { DatePicker } from "@vita-os/ui/components/date-picker";
+import { Input } from "@vita-os/ui/components/input";
+import { Label } from "@vita-os/ui/components/label";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/ui/responsive-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@vita-os/ui/components/responsive-dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@vita-os/ui/components/tabs";
+import { CalendarPlus, Crosshair, FolderPlus, ListPlus } from "lucide-react";
+import { useState } from "react";
+import { AreaPicker } from "@/components/areas/area-picker";
+import { ProjectPicker } from "@/components/projects/project-picker";
 
 type ProcessMode =
   | "add_date"

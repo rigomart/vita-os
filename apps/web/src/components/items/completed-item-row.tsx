@@ -1,15 +1,15 @@
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
-import { useMutation } from "convex/react";
-import { format, formatDistanceToNow } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox } from "@vita-os/ui/components/checkbox";
 import {
   Item,
   ItemContent,
   ItemDescription,
   ItemMedia,
-} from "@/components/ui/item";
+} from "@vita-os/ui/components/item";
+import { useMutation } from "convex/react";
+import { format, formatDistanceToNow } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 
 interface CompletedItemRowProps {
   item: Doc<"items">;

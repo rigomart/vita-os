@@ -1,6 +1,6 @@
+import { Button } from "@vita-os/ui/components/button";
 import { Check, GripVertical, ListOrdered, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Sortable,
   SortableContent,

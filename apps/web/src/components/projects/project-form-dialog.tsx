@@ -1,9 +1,7 @@
 import type { Doc } from "@convex/_generated/dataModel";
-import { useEffect, useState } from "react";
-import { AreaPicker } from "@/components/areas/area-picker";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@vita-os/ui/components/button";
+import { Input } from "@vita-os/ui/components/input";
+import { Label } from "@vita-os/ui/components/label";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -11,8 +9,10 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/ui/responsive-dialog";
-import { Textarea } from "@/components/ui/textarea";
+} from "@vita-os/ui/components/responsive-dialog";
+import { Textarea } from "@vita-os/ui/components/textarea";
+import { useEffect, useState } from "react";
+import { AreaPicker } from "@/components/areas/area-picker";
 
 interface ProjectFormDialogProps {
   open: boolean;

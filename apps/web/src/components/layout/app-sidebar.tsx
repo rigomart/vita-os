@@ -3,6 +3,37 @@ import type { Id } from "@convex/_generated/dataModel";
 import { generateSlug } from "@convex/lib/slugs";
 import { healthColors } from "@convex/lib/types";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Badge } from "@vita-os/ui/components/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@vita-os/ui/components/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@vita-os/ui/components/dropdown-menu";
+import { Kbd } from "@vita-os/ui/components/kbd";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarRail,
+} from "@vita-os/ui/components/sidebar";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
@@ -19,37 +50,6 @@ import { useEffect, useMemo, useState } from "react";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { NewItemDialog } from "@/components/items/new-item-dialog";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
-import { Badge } from "@/components/ui/badge";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Kbd } from "@/components/ui/kbd";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuAction,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarRail,
-} from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
 
 export function AppSidebar() {
@@ -151,15 +151,13 @@ export function AppSidebar() {
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild>
-                <Link to="/">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary font-semibold text-sidebar-primary-foreground">
-                    V
-                  </div>
-                  <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-medium">vita-os</span>
-                  </div>
-                </Link>
+              <SidebarMenuButton size="lg" render={<Link to="/" />}>
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary font-semibold text-sidebar-primary-foreground">
+                  V
+                </div>
+                <div className="flex flex-col gap-0.5 leading-none">
+                  <span className="font-medium">vita-os</span>
+                </div>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -183,46 +181,40 @@ export function AppSidebar() {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  asChild
                   isActive={pathname === "/"}
                   tooltip="Dashboard"
+                  render={<Link to="/" />}
                 >
-                  <Link to="/">
-                    <LayoutDashboard />
-                    <span>Dashboard</span>
-                  </Link>
+                  <LayoutDashboard />
+                  <span>Dashboard</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  asChild
                   isActive={pathname === "/inbox"}
                   tooltip="Inbox"
+                  render={<Link to="/inbox" />}
                 >
-                  <Link to="/inbox">
-                    <Inbox />
-                    <span>Inbox</span>
-                    {itemCount !== undefined && itemCount > 0 && (
-                      <Badge
-                        variant="secondary"
-                        className="ml-auto h-5 min-w-5 justify-center px-1.5 text-[10px] tabular-nums"
-                      >
-                        {itemCount}
-                      </Badge>
-                    )}
-                  </Link>
+                  <Inbox />
+                  <span>Inbox</span>
+                  {itemCount !== undefined && itemCount > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-auto h-5 min-w-5 justify-center px-1.5 text-[10px] tabular-nums"
+                    >
+                      {itemCount}
+                    </Badge>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  asChild
                   isActive={pathname === "/completed"}
                   tooltip="Completed"
+                  render={<Link to="/completed" />}
                 >
-                  <Link to="/completed">
-                    <CheckCircle2 />
-                    <span>Completed</span>
-                  </Link>
+                  <CheckCircle2 />
+                  <span>Completed</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -243,16 +235,14 @@ export function AppSidebar() {
                   >
                     <SidebarMenuItem>
                       <SidebarMenuButton
-                        asChild
                         tooltip={area.name}
                         isActive={pathname === `/${areaSlug}`}
+                        render={<Link to="/$areaSlug" params={{ areaSlug }} />}
                       >
-                        <Link to="/$areaSlug" params={{ areaSlug }}>
-                          <span
-                            className={`h-2 w-2 shrink-0 rounded-full ${healthColors[area.healthStatus]}`}
-                          />
-                          <span>{area.name}</span>
-                        </Link>
+                        <span
+                          className={`h-2 w-2 shrink-0 rounded-full ${healthColors[area.healthStatus]}`}
+                        />
+                        <span>{area.name}</span>
                       </SidebarMenuButton>
                       <SidebarMenuAction
                         showOnHover
@@ -263,11 +253,13 @@ export function AppSidebar() {
                         <span className="sr-only">New project</span>
                       </SidebarMenuAction>
                       {hasProjects && (
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuAction className="data-[state=open]:rotate-90">
-                            <ChevronRight />
-                            <span className="sr-only">Toggle</span>
-                          </SidebarMenuAction>
+                        <CollapsibleTrigger
+                          render={
+                            <SidebarMenuAction className="data-[state=open]:rotate-90" />
+                          }
+                        >
+                          <ChevronRight />
+                          <span className="sr-only">Toggle</span>
                         </CollapsibleTrigger>
                       )}
                       {hasProjects && (
@@ -278,22 +270,22 @@ export function AppSidebar() {
                               return (
                                 <SidebarMenuSubItem key={project._id}>
                                   <SidebarMenuSubButton
-                                    asChild
                                     isActive={
                                       pathname === `/${areaSlug}/${slug}`
                                     }
+                                    render={
+                                      <Link
+                                        to="/$areaSlug/$projectSlug"
+                                        params={{
+                                          areaSlug,
+                                          projectSlug: slug,
+                                        }}
+                                      />
+                                    }
                                   >
-                                    <Link
-                                      to="/$areaSlug/$projectSlug"
-                                      params={{
-                                        areaSlug,
-                                        projectSlug: slug,
-                                      }}
-                                    >
-                                      <span className="truncate">
-                                        {project.name}
-                                      </span>
-                                    </Link>
+                                    <span className="truncate">
+                                      {project.name}
+                                    </span>
                                   </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                               );
@@ -322,34 +314,34 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton
-                    size="lg"
-                    tooltip={
-                      session?.user?.name ?? session?.user?.email ?? "Account"
-                    }
-                  >
-                    <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                      {(
-                        session?.user?.name?.[0] ??
-                        session?.user?.email?.[0] ??
-                        "?"
-                      ).toUpperCase()}
-                    </div>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">
-                        {session?.user?.name ??
-                          session?.user?.email ??
-                          "Account"}
+                <DropdownMenuTrigger
+                  render={
+                    <SidebarMenuButton
+                      size="lg"
+                      tooltip={
+                        session?.user?.name ?? session?.user?.email ?? "Account"
+                      }
+                    />
+                  }
+                >
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                    {(
+                      session?.user?.name?.[0] ??
+                      session?.user?.email?.[0] ??
+                      "?"
+                    ).toUpperCase()}
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-medium">
+                      {session?.user?.name ?? session?.user?.email ?? "Account"}
+                    </span>
+                    {session?.user?.name && (
+                      <span className="truncate text-xs text-muted-foreground">
+                        {session.user.email}
                       </span>
-                      {session?.user?.name && (
-                        <span className="truncate text-xs text-muted-foreground">
-                          {session.user.email}
-                        </span>
-                      )}
-                    </div>
-                    <ChevronsUpDown className="ml-auto size-4" />
-                  </SidebarMenuButton>
+                    )}
+                  </div>
+                  <ChevronsUpDown className="ml-auto size-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   className="w-[--radix-dropdown-menu-trigger-width] min-w-56"

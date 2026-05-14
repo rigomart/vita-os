@@ -4,6 +4,26 @@ import { nullsToUndefined } from "@convex/lib/patch";
 import { generateSlug } from "@convex/lib/slugs";
 import { healthColors } from "@convex/lib/types";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@vita-os/ui/components/alert-dialog";
+import { Button } from "@vita-os/ui/components/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@vita-os/ui/components/select";
+import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
@@ -18,26 +38,6 @@ import { useEffect, useState } from "react";
 import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { RouteErrorFallback } from "@/components/error-boundary";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useStableQuery } from "@/hooks/use-stable-query";
 
 export const Route = createFileRoute("/_authenticated/$areaSlug/")({
@@ -189,8 +189,12 @@ function AreaDetailPage() {
   };
 
   const handleHealthChange = (
-    value: "healthy" | "needs_attention" | "critical",
+    value: "healthy" | "needs_attention" | "critical" | null,
   ) => {
+    if (!value) {
+      return;
+    }
+
     updateArea({ id: area._id, healthStatus: value });
   };
 
@@ -225,10 +229,16 @@ function AreaDetailPage() {
               <Pencil className="h-3.5 w-3.5" />
             </Button>
             <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Delete area">
-                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                </Button>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Delete area"
+                  />
+                }
+              >
+                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -349,15 +359,17 @@ function AreaDetailPage() {
                     </div>
                   </Link>
                   <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="mr-2 opacity-0 transition-opacity group-hover:opacity-100"
-                        aria-label="Delete project"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Button>
+                    <AlertDialogTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="mr-2 opacity-0 transition-opacity group-hover:opacity-100"
+                          aria-label="Delete project"
+                        />
+                      }
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>

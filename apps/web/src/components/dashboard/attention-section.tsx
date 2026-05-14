@@ -1,8 +1,8 @@
 import type { Doc } from "@convex/_generated/dataModel";
 import { Link } from "@tanstack/react-router";
+import { Badge } from "@vita-os/ui/components/badge";
 import { AlertTriangle, CircleAlert } from "lucide-react";
 import { useMemo } from "react";
-import { Badge } from "@/components/ui/badge";
 
 interface AttentionItem {
   projectId: string;

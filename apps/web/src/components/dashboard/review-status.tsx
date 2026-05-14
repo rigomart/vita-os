@@ -1,6 +1,6 @@
+import { Button } from "@vita-os/ui/components/button";
 import { formatDistanceToNow } from "date-fns";
 import { Check, Clock } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface ReviewStatusProps {
   lastReviewDate: number | null;

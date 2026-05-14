@@ -1,4 +1,4 @@
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@vita-os/ui/components/sidebar";
 
 export function AppHeader() {
   return (

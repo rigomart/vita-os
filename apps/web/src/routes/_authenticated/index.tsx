@@ -2,6 +2,8 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { generateSlug } from "@convex/lib/slugs";
 import { createFileRoute } from "@tanstack/react-router";
+import { Button } from "@vita-os/ui/components/button";
+import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { Compass, Plus } from "lucide-react";
@@ -11,8 +13,6 @@ import { AreaFormDialog } from "@/components/areas/area-form-dialog";
 import { AttentionSection } from "@/components/dashboard/attention-section";
 import { RecentItems } from "@/components/dashboard/recent-items";
 import { RouteErrorFallback } from "@/components/error-boundary";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({

@@ -2,6 +2,20 @@ import { api } from "@convex/_generated/api";
 import { nullsToUndefined } from "@convex/lib/patch";
 import { generateSlug } from "@convex/lib/slugs";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@vita-os/ui/components/alert-dialog";
+import { Button } from "@vita-os/ui/components/button";
+import { Skeleton } from "@vita-os/ui/components/skeleton";
+import { Textarea } from "@vita-os/ui/components/textarea";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { formatDistanceToNow } from "date-fns";
@@ -17,21 +31,7 @@ import {
 import { useEffect, useState } from "react";
 import { RouteErrorFallback } from "@/components/error-boundary";
 import { ActionQueue } from "@/components/projects/action-queue";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { EditableField } from "@/components/ui/editable-field";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import { useStableQuery } from "@/hooks/use-stable-query";
 
 export const Route = createFileRoute("/_authenticated/$areaSlug/$projectSlug")({
@@ -315,11 +315,11 @@ function AreaProjectDetailPage() {
       {/* Actions */}
       <div className="flex items-center gap-2 border-t border-border/50 pt-6">
         <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Complete
-            </Button>
+          <AlertDialogTrigger
+            render={<Button variant="outline" size="sm" className="gap-1.5" />}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Complete
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -338,15 +338,17 @@ function AreaProjectDetailPage() {
         </AlertDialog>
 
         <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 text-muted-foreground"
-            >
-              <XCircle className="h-3.5 w-3.5" />
-              Drop
-            </Button>
+          <AlertDialogTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-muted-foreground"
+              />
+            }
+          >
+            <XCircle className="h-3.5 w-3.5" />
+            Drop
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -370,15 +372,17 @@ function AreaProjectDetailPage() {
         <div className="flex-1" />
 
         <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete
-            </Button>
+          <AlertDialogTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-muted-foreground hover:text-destructive"
+              />
+            }
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>

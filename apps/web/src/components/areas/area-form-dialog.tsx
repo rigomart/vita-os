@@ -1,9 +1,8 @@
 import type { Doc } from "@convex/_generated/dataModel";
 import type { HealthStatus } from "@convex/lib/types";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@vita-os/ui/components/button";
+import { Input } from "@vita-os/ui/components/input";
+import { Label } from "@vita-os/ui/components/label";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -11,15 +10,16 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/ui/responsive-dialog";
+} from "@vita-os/ui/components/responsive-dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+} from "@vita-os/ui/components/select";
+import { Textarea } from "@vita-os/ui/components/textarea";
+import { useState } from "react";
 
 interface AreaFormDialogProps {
   open: boolean;

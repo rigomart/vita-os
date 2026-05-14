@@ -1,8 +1,5 @@
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
-import { useMutation } from "convex/react";
-import { format, formatDistanceToNow } from "date-fns";
-import { ArrowRight, CalendarIcon, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,16 +10,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+} from "@vita-os/ui/components/alert-dialog";
+import { Button } from "@vita-os/ui/components/button";
+import { Checkbox } from "@vita-os/ui/components/checkbox";
 import {
   Item,
   ItemActions,
   ItemContent,
   ItemDescription,
   ItemMedia,
-} from "@/components/ui/item";
+} from "@vita-os/ui/components/item";
+import { useMutation } from "convex/react";
+import { format, formatDistanceToNow } from "date-fns";
+import { ArrowRight, CalendarIcon, Trash2 } from "lucide-react";
 
 interface ItemRowProps {
   item: Doc<"items">;
@@ -106,15 +106,17 @@ export function ItemRow({ item, onProcess }: ItemRowProps) {
           </Button>
         )}
         <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              aria-label="Discard item"
-            >
-              <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-            </Button>
+          <AlertDialogTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                aria-label="Discard item"
+              />
+            }
+          >
+            <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>

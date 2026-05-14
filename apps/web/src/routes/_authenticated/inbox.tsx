@@ -1,6 +1,7 @@
 import { api } from "@convex/_generated/api";
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import { createFileRoute } from "@tanstack/react-router";
+import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { Inbox } from "lucide-react";
@@ -9,7 +10,6 @@ import { RouteErrorFallback } from "@/components/error-boundary";
 import { ItemRow } from "@/components/items/item-row";
 import { ProcessItemDialog } from "@/components/items/process-item-dialog";
 import { PageHeader } from "@/components/layout/page-header";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/_authenticated/inbox")({
   head: () => ({
