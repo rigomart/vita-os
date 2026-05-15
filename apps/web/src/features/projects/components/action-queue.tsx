@@ -1,4 +1,6 @@
+import { api } from "@convex/_generated/api";
 import { Button } from "@vita-os/ui/components/button";
+import { useMutation } from "convex/react";
 import { Check, GripVertical, ListOrdered, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -7,6 +9,11 @@ import {
   SortableItem,
   SortableItemHandle,
 } from "@/components/ui/sortable";
+import {
+  optimisticallyCompleteNextAction,
+  optimisticallyUpdateProject,
+} from "@/features/projects/optimistic";
+import { useStableQuery } from "@/hooks/use-stable-query";
 import { cn } from "@/lib/utils";
 
 interface ActionItem {
@@ -15,28 +22,68 @@ interface ActionItem {
 }
 
 interface ActionQueueProps {
-  items: ActionItem[];
-  onComplete: () => void;
-  onReorder: (items: ActionItem[]) => void;
-  onEdit: (id: string, text: string) => void;
-  onAdd: (text: string) => void;
-  onRemove: (id: string) => void;
+  projectSlug: string;
 }
 
-export function ActionQueue({
-  items,
-  onComplete,
-  onReorder,
-  onEdit,
-  onAdd,
-  onRemove,
-}: ActionQueueProps) {
+export function ActionQueue({ projectSlug }: ActionQueueProps) {
+  const project = useStableQuery(api.projects.getBySlug, {
+    slug: projectSlug,
+  });
+  const updateProject = useMutation(api.projects.update).withOptimisticUpdate(
+    (localStore, args) => {
+      optimisticallyUpdateProject(localStore, args, { projectSlug });
+    },
+  );
+  const completeAction = useMutation(
+    api.projects.completeAction,
+  ).withOptimisticUpdate((localStore, args) => {
+    optimisticallyCompleteNextAction(localStore, args, { projectSlug });
+  });
+
+  const queue = project?.actionQueue ?? [];
+
+  const handleReorder = (items: ActionItem[]) => {
+    if (!project) return;
+    updateProject({ id: project._id, actionQueue: items });
+  };
+
+  const handleEdit = (itemId: string, text: string) => {
+    if (!project) return;
+    updateProject({
+      id: project._id,
+      actionQueue: queue.map((item) =>
+        item.id === itemId ? { ...item, text } : item,
+      ),
+    });
+  };
+
+  const handleAdd = (text: string) => {
+    if (!project) return;
+    updateProject({
+      id: project._id,
+      actionQueue: [...queue, { id: crypto.randomUUID(), text }],
+    });
+  };
+
+  const handleRemove = (itemId: string) => {
+    if (!project) return;
+    updateProject({
+      id: project._id,
+      actionQueue: queue.filter((item) => item.id !== itemId),
+    });
+  };
+
+  const handleComplete = () => {
+    if (!project) return;
+    completeAction({ id: project._id });
+  };
+
   const [addText, setAddText] = useState("");
 
-  const handleAdd = () => {
+  const handleAddLocal = () => {
     const text = addText.trim();
     if (!text) return;
-    onAdd(text);
+    handleAdd(text);
     setAddText("");
   };
 
@@ -45,34 +92,34 @@ export function ActionQueue({
       <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <ListOrdered className="h-3.5 w-3.5" />
         Action Queue
-        {items.length > 0 && (
-          <span className="text-muted-foreground/60">{items.length}</span>
+        {queue.length > 0 && (
+          <span className="text-muted-foreground/60">{queue.length}</span>
         )}
       </div>
 
-      {items.length > 0 && (
+      {queue.length > 0 && (
         <Sortable
-          value={items}
-          onValueChange={onReorder}
+          value={queue}
+          onValueChange={handleReorder}
           getItemValue={(item) => item.id}
         >
           <SortableContent className="space-y-1">
-            {items.map((item, index) => (
+            {queue.map((item, index) => (
               <ActionQueueItem
                 key={item.id}
                 item={item}
                 index={index}
                 isCurrent={index === 0}
-                onEdit={onEdit}
-                onRemove={onRemove}
-                onComplete={onComplete}
+                onEdit={handleEdit}
+                onRemove={handleRemove}
+                onComplete={handleComplete}
               />
             ))}
           </SortableContent>
         </Sortable>
       )}
 
-      <div className={cn("flex gap-2", items.length > 0 && "mt-2")}>
+      <div className={cn("flex gap-2", queue.length > 0 && "mt-2")}>
         <input
           type="text"
           value={addText}
@@ -80,11 +127,11 @@ export function ActionQueue({
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              handleAdd();
+              handleAddLocal();
             }
           }}
           placeholder={
-            items.length === 0 ? "Add your first action..." : "Add next step..."
+            queue.length === 0 ? "Add your first action..." : "Add next step..."
           }
           className="w-full rounded bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-ring"
         />

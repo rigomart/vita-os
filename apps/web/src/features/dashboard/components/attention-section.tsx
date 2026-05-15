@@ -1,6 +1,8 @@
+import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@vita-os/ui/components/badge";
+import { useQuery } from "convex-helpers/react/cache/hooks";
 import { AlertTriangle, CircleAlert } from "lucide-react";
 import { useMemo } from "react";
 
@@ -12,16 +14,16 @@ interface AttentionItem {
   reason: "no_next_action";
 }
 
-interface AttentionSectionProps {
-  items: AttentionItem[];
-  areas: Doc<"areas">[];
-}
+export function AttentionSection() {
+  const attention = useQuery(api.dashboard.attention);
+  const areas = useQuery(api.areas.list);
 
-export function AttentionSection({ items, areas }: AttentionSectionProps) {
   const areaMap = useMemo(
-    () => new Map(areas.map((a) => [a._id as string, a])),
+    () => new Map((areas ?? []).map((a: Doc<"areas">) => [a._id as string, a])),
     [areas],
   );
+
+  if (!attention || attention.items.length === 0) return null;
 
   return (
     <section>
@@ -30,10 +32,12 @@ export function AttentionSection({ items, areas }: AttentionSectionProps) {
           <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
         </div>
         <h2 className="text-sm font-medium">Needs Attention</h2>
-        <span className="text-xs text-muted-foreground">{items.length}</span>
+        <span className="text-xs text-muted-foreground">
+          {attention.items.length}
+        </span>
       </div>
       <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
-        {items.map((item) => {
+        {attention.items.map((item: AttentionItem) => {
           const area = areaMap.get(item.areaId);
           const areaSlug = area?.slug ?? area?._id ?? item.areaId;
           const projectSlug = item.projectSlug ?? item.projectId;

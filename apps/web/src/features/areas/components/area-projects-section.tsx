@@ -1,3 +1,4 @@
+import { api } from "@convex/_generated/api";
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import { Link } from "@tanstack/react-router";
 import {
@@ -12,21 +13,33 @@ import {
   AlertDialogTrigger,
 } from "@vita-os/ui/components/alert-dialog";
 import { Button } from "@vita-os/ui/components/button";
+import { useMutation } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache/hooks";
 import { ArrowRight, FolderOpen, Plus, Trash2 } from "lucide-react";
+import { optimisticallyRemoveProject } from "@/features/projects/optimistic";
+import { useStableQuery } from "@/hooks/use-stable-query";
 
 interface AreaProjectsSectionProps {
   areaSlug: string;
-  projects: Doc<"projects">[];
   onCreateProject: () => void;
-  onRemoveProject: (projectId: Id<"projects">) => void;
 }
 
 export function AreaProjectsSection({
   areaSlug,
-  projects,
   onCreateProject,
-  onRemoveProject,
 }: AreaProjectsSectionProps) {
+  const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
+  const projects = useQuery(
+    api.projects.listByArea,
+    area ? { areaId: area._id } : "skip",
+  );
+  const removeProject = useMutation(api.projects.remove).withOptimisticUpdate(
+    (localStore, args) => {
+      if (!area) return;
+      optimisticallyRemoveProject(localStore, args, { areaId: area._id });
+    },
+  );
+
   return (
     <section>
       <div className="mb-4 flex items-center justify-between">
@@ -47,7 +60,7 @@ export function AreaProjectsSection({
         </Button>
       </div>
 
-      {projects.length === 0 ? (
+      {projects && projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/50 py-10 text-center">
           <FolderOpen className="mb-3 h-8 w-8 text-muted-foreground/60" />
           <p className="mb-4 max-w-xs text-sm text-muted-foreground">
@@ -59,12 +72,12 @@ export function AreaProjectsSection({
         </div>
       ) : (
         <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
-          {projects.map((project) => (
+          {(projects ?? []).map((project) => (
             <AreaProjectRow
               key={project._id}
               areaSlug={areaSlug}
               project={project}
-              onRemoveProject={onRemoveProject}
+              onRemoveProject={(projectId) => removeProject({ id: projectId })}
             />
           ))}
         </div>

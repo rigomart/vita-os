@@ -20,18 +20,15 @@ export const Route = createFileRoute("/_authenticated/")({
 });
 
 function Dashboard() {
-  const projects = useQuery(api.projects.list);
   const areas = useQuery(api.areas.list);
-  const attention = useQuery(api.dashboard.attention);
   const createArea = useMutation(api.areas.create).withOptimisticUpdate(
     (localStore, args) => {
       optimisticallyCreateArea(localStore, args);
     },
   );
   const [showCreateArea, setShowCreateArea] = useState(false);
-  const isLoading = areas === undefined;
 
-  if (isLoading) {
+  if (areas === undefined) {
     return <DashboardSkeleton />;
   }
 
@@ -39,16 +36,9 @@ function Dashboard() {
     <div className="mx-auto max-w-4xl space-y-10">
       <h1 className="text-lg font-medium tracking-tight">Dashboard</h1>
 
-      <DashboardAreasSection
-        areas={areas}
-        projects={projects}
-        attentionByArea={attention?.byArea}
-        onCreateArea={() => setShowCreateArea(true)}
-      />
+      <DashboardAreasSection onCreateArea={() => setShowCreateArea(true)} />
 
-      {attention && attention.items.length > 0 && (
-        <AttentionSection items={attention.items} areas={areas ?? []} />
-      )}
+      <AttentionSection />
 
       <RecentItems />
 

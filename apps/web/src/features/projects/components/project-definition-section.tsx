@@ -1,16 +1,35 @@
+import { api } from "@convex/_generated/api";
+import { useMutation } from "convex/react";
 import { CheckCircle2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { EditableField } from "@/components/ui/editable-field";
+import { optimisticallyUpdateProject } from "@/features/projects/optimistic";
+import { useStableQuery } from "@/hooks/use-stable-query";
 
 interface ProjectDefinitionSectionProps {
-  definitionOfDone?: string;
-  onSave: (definitionOfDone: string) => void;
+  projectSlug: string;
 }
 
 export function ProjectDefinitionSection({
-  definitionOfDone,
-  onSave,
+  projectSlug,
 }: ProjectDefinitionSectionProps) {
+  const project = useStableQuery(api.projects.getBySlug, {
+    slug: projectSlug,
+  });
+  const updateProject = useMutation(api.projects.update).withOptimisticUpdate(
+    (localStore, args) => {
+      optimisticallyUpdateProject(localStore, args, { projectSlug });
+    },
+  );
+
+  const handleSave = (definitionOfDone: string) => {
+    if (!project) return;
+    updateProject({
+      id: project._id,
+      definitionOfDone: definitionOfDone || null,
+    });
+  };
+
   return (
     <div className="space-y-4">
       <MetadataRow
@@ -18,8 +37,8 @@ export function ProjectDefinitionSection({
         label="Definition of Done"
       >
         <EditableField
-          value={definitionOfDone ?? ""}
-          onSave={onSave}
+          value={project?.definitionOfDone ?? ""}
+          onSave={handleSave}
           variant="textarea"
           placeholder="What does done look like?"
           className="text-sm"

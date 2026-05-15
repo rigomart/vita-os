@@ -1,21 +1,42 @@
-import type { Doc } from "@convex/_generated/dataModel";
-import { Link } from "@tanstack/react-router";
+import { api } from "@convex/_generated/api";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useMutation } from "convex/react";
 import { ChevronRight } from "lucide-react";
 import { EditableField } from "@/components/ui/editable-field";
+import { optimisticallyUpdateProject } from "@/features/projects/optimistic";
+import { useStableQuery } from "@/hooks/use-stable-query";
 
 interface ProjectHeaderProps {
-  area: Doc<"areas">;
-  project: Doc<"projects">;
   areaSlug: string;
-  onNameSave: (name: string) => void | Promise<void>;
+  projectSlug: string;
 }
 
-export function ProjectHeader({
-  area,
-  project,
-  areaSlug,
-  onNameSave,
-}: ProjectHeaderProps) {
+export function ProjectHeader({ areaSlug, projectSlug }: ProjectHeaderProps) {
+  const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
+  const project = useStableQuery(api.projects.getBySlug, {
+    slug: projectSlug,
+  });
+  const navigate = useNavigate();
+  const updateProject = useMutation(api.projects.update).withOptimisticUpdate(
+    (localStore, args) => {
+      optimisticallyUpdateProject(localStore, args, { projectSlug });
+    },
+  );
+
+  const handleNameSave = async (name: string) => {
+    if (!name || !project) return;
+    const result = await updateProject({ id: project._id, name });
+    if (result?.slug) {
+      navigate({
+        to: "/$areaSlug/$projectSlug",
+        params: { areaSlug, projectSlug: result.slug },
+        replace: true,
+      });
+    }
+  };
+
+  if (!area || !project) return null;
+
   return (
     <div>
       <Link
@@ -29,7 +50,7 @@ export function ProjectHeader({
 
       <EditableField
         value={project.name}
-        onSave={onNameSave}
+        onSave={handleNameSave}
         className="text-xl font-semibold tracking-tight"
       />
     </div>

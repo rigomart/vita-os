@@ -1,21 +1,20 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import { api } from "@convex/_generated/api";
 import { Button } from "@vita-os/ui/components/button";
+import { useQuery } from "convex-helpers/react/cache/hooks";
 import { Compass, Plus } from "lucide-react";
 import { AreaCard } from "@/features/areas/components/area-card";
 
 interface DashboardAreasSectionProps {
-  areas: Doc<"areas">[];
-  projects: Doc<"projects">[] | undefined;
-  attentionByArea: Record<string, number> | undefined;
   onCreateArea: () => void;
 }
 
 export function DashboardAreasSection({
-  areas,
-  projects,
-  attentionByArea,
   onCreateArea,
 }: DashboardAreasSectionProps) {
+  const areas = useQuery(api.areas.list);
+  const projects = useQuery(api.projects.list);
+  const attention = useQuery(api.dashboard.attention);
+
   return (
     <section>
       <div className="mb-4 flex items-center justify-between">
@@ -33,7 +32,7 @@ export function DashboardAreasSection({
         </Button>
       </div>
 
-      {areas.length > 0 ? (
+      {areas && areas.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {areas.map((area) => {
             const projectCount = (projects ?? []).filter(
@@ -45,7 +44,7 @@ export function DashboardAreasSection({
                 key={area._id}
                 area={area}
                 projectCount={projectCount}
-                attentionCount={attentionByArea?.[area._id] ?? 0}
+                attentionCount={attention?.byArea?.[area._id] ?? 0}
               />
             );
           })}

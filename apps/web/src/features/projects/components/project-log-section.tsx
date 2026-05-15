@@ -1,28 +1,36 @@
+import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
 import { Button } from "@vita-os/ui/components/button";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { Textarea } from "@vita-os/ui/components/textarea";
+import { useMutation } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache/hooks";
 import { formatDistanceToNow } from "date-fns";
 import { MessageSquare, Pen } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useState } from "react";
+import { useStableQuery } from "@/hooks/use-stable-query";
 
 interface ProjectLogSectionProps {
-  logs: Doc<"projectLogs">[] | undefined;
-  onCreateNote: (content: string) => void | Promise<void>;
+  projectSlug: string;
 }
 
-export function ProjectLogSection({
-  logs,
-  onCreateNote,
-}: ProjectLogSectionProps) {
+export function ProjectLogSection({ projectSlug }: ProjectLogSectionProps) {
+  const project = useStableQuery(api.projects.getBySlug, {
+    slug: projectSlug,
+  });
+  const logs = useQuery(
+    api.projectLogs.listByProject,
+    project ? { projectId: project._id } : "skip",
+  );
+  const createLog = useMutation(api.projectLogs.create);
   const [noteText, setNoteText] = useState("");
 
   const submitNote = async () => {
     const text = noteText.trim();
-    if (!text) return;
+    if (!text || !project) return;
 
     setNoteText("");
-    await onCreateNote(text);
+    await createLog({ projectId: project._id, content: text });
   };
 
   const handleAddNote = (event: FormEvent) => {

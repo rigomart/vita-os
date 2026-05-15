@@ -1,11 +1,10 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import { api } from "@convex/_generated/api";
 import {
   HEALTH_STATUS_OPTIONS,
-  type HealthStatus,
   healthColors,
   isHealthStatus,
 } from "@convex/lib/healthStatus";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,28 +24,50 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@vita-os/ui/components/select";
+import { useMutation } from "convex/react";
+import { useQuery } from "convex-helpers/react/cache/hooks";
 import { ChevronRight, Pencil, Trash2 } from "lucide-react";
+import {
+  optimisticallyRemoveArea,
+  optimisticallyUpdateArea,
+} from "@/features/areas/optimistic";
+import { useStableQuery } from "@/hooks/use-stable-query";
 
 interface AreaHeaderProps {
-  area: Doc<"areas">;
-  projectCount: number;
+  areaSlug: string;
   onEdit: () => void;
-  onDelete: () => void;
-  onHealthChange: (healthStatus: HealthStatus) => void;
 }
 
-export function AreaHeader({
-  area,
-  projectCount,
-  onEdit,
-  onDelete,
-  onHealthChange,
-}: AreaHeaderProps) {
-  const handleHealthChange = (value: string | null) => {
-    if (isHealthStatus(value)) {
-      onHealthChange(value);
-    }
+export function AreaHeader({ areaSlug, onEdit }: AreaHeaderProps) {
+  const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
+  const projects = useQuery(
+    api.projects.listByArea,
+    area ? { areaId: area._id } : "skip",
+  );
+  const navigate = useNavigate();
+  const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
+    (localStore, args) => {
+      optimisticallyUpdateArea(localStore, args, { areaSlug });
+    },
+  );
+  const removeArea = useMutation(api.areas.remove).withOptimisticUpdate(
+    (localStore, args) => {
+      optimisticallyRemoveArea(localStore, args, { areaSlug });
+    },
+  );
+
+  const handleDelete = async () => {
+    if (!area) return;
+    await removeArea({ id: area._id });
+    navigate({ to: "/" });
   };
+
+  const handleHealthChange = (value: string | null) => {
+    if (!area || !isHealthStatus(value)) return;
+    updateArea({ id: area._id, healthStatus: value });
+  };
+
+  if (!area) return null;
 
   return (
     <div>
@@ -97,7 +118,7 @@ export function AreaHeader({
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={onDelete}
+                  onClick={handleDelete}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   Delete
@@ -122,7 +143,8 @@ export function AreaHeader({
           </SelectContent>
         </Select>
         <span className="text-xs text-muted-foreground">
-          {projectCount} {projectCount === 1 ? "project" : "projects"}
+          {projects?.length ?? 0}{" "}
+          {projects?.length === 1 ? "project" : "projects"}
         </span>
       </div>
     </div>
