@@ -3,10 +3,12 @@ import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { CompletedItemRowContainer } from "@/features/items/completed-item-row/completed-item-row-container";
+import { CompletedItemRow } from "@/features/items/completed-item-row/completed-item-row";
+import { useUncompleteItem } from "@/features/items/use-uncomplete-item";
 
 export function CompletedScreen() {
   const items = useQuery(api.items.listCompleted);
+  const uncompleteItem = useUncompleteItem();
 
   if (items === undefined) {
     return <CompletedSkeleton />;
@@ -25,7 +27,11 @@ export function CompletedScreen() {
       ) : (
         <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
           {items.map((item) => (
-            <CompletedItemRowContainer key={item._id} item={item} />
+            <CompletedItemRow
+              key={item._id}
+              item={item}
+              onUncomplete={() => uncompleteItem(item._id)}
+            />
           ))}
         </div>
       )}

@@ -1,5 +1,4 @@
 import { api } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
 import { healthColors } from "@convex/lib/healthStatus";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@vita-os/ui/components/badge";
@@ -44,46 +43,35 @@ import {
   LogOut,
   Plus,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
-import { NewItemDialogContainer } from "@/features/items/new-item/new-item-dialog-container";
+import { NewItemDialog } from "@/features/items/new-item/new-item-dialog";
+import { useCreateItem } from "@/features/items/use-create-item";
 import { CreateProjectDialog } from "@/features/projects/project-form/create-project-dialog";
 import { useGlobalNewItemShortcut } from "@/features/sidebar/use-global-new-item-shortcut";
+import { useSidebarDialogs } from "@/features/sidebar/use-sidebar-dialogs";
+import { useAreaProjectTree } from "@/hooks/use-area-project-tree";
 import { authClient } from "@/lib/auth-client";
 
 export function AppSidebar() {
   const { data: session } = authClient.useSession();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const projects = useQuery(api.projects.list);
-  const areas = useQuery(api.areas.list);
+  const { areas, areaProjects } = useAreaProjectTree();
   const itemCount = useQuery(api.items.count);
-  const [showCreateProject, setShowCreateProject] = useState(false);
-  const [createForAreaId, setCreateForAreaId] = useState<
-    Id<"areas"> | undefined
-  >();
-  const [showNewItem, setShowNewItem] = useState(false);
-  const [showCreateArea, setShowCreateArea] = useState(false);
-  const openNewItem = useCallback(() => setShowNewItem(true), []);
+  const {
+    showCreateProject,
+    setShowCreateProject,
+    createForAreaId,
+    showNewItem,
+    setShowNewItem,
+    openNewItem,
+    showCreateArea,
+    setShowCreateArea,
+    openCreateProject,
+  } = useSidebarDialogs();
+  const createItem = useCreateItem();
 
   useGlobalNewItemShortcut(openNewItem);
-
-  const areaProjects = useMemo(() => {
-    const grouped = new Map<string, typeof projects>();
-    for (const project of projects ?? []) {
-      if (project.areaId) {
-        const list = grouped.get(project.areaId) ?? [];
-        list.push(project);
-        grouped.set(project.areaId, list);
-      }
-    }
-    return grouped;
-  }, [projects]);
-
-  const handleCreateProject = (forAreaId?: Id<"areas">) => {
-    setCreateForAreaId(forAreaId);
-    setShowCreateProject(true);
-  };
 
   return (
     <>
@@ -187,7 +175,7 @@ export function AppSidebar() {
                       <SidebarMenuAction
                         showOnHover
                         className="right-6"
-                        onClick={() => handleCreateProject(area._id)}
+                        onClick={() => openCreateProject(area._id)}
                       >
                         <Plus />
                         <span className="sr-only">New project</span>
@@ -333,9 +321,13 @@ export function AppSidebar() {
           }
         }}
       />
-      <NewItemDialogContainer
+      <NewItemDialog
         open={showNewItem}
         onOpenChange={setShowNewItem}
+        onSubmit={async (value) => {
+          await createItem(value);
+          setShowNewItem(false);
+        }}
       />
       <CreateAreaDialog
         open={showCreateArea}
