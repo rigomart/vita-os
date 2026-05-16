@@ -67,6 +67,34 @@ export const remove = mutation({
   },
 });
 
+export const updateText = mutation({
+  args: { id: v.id("items"), text: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+
+    const item = await ctx.db.get(args.id);
+    if (!item || item.userId !== userId) {
+      throw new Error("Item not found");
+    }
+
+    await ctx.db.patch(args.id, { text: args.text });
+  },
+});
+
+export const updateDate = mutation({
+  args: { id: v.id("items"), date: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+
+    const item = await ctx.db.get(args.id);
+    if (!item || item.userId !== userId) {
+      throw new Error("Item not found");
+    }
+
+    await ctx.db.patch(args.id, { date: args.date });
+  },
+});
+
 export const complete = mutation({
   args: { id: v.id("items") },
   handler: async (ctx, args) => {

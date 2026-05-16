@@ -5,6 +5,8 @@ import {
   isUnprocessedItem,
   removeItemFromInbox,
   uncompleteItemInInbox,
+  updateItemDateInInbox,
+  updateItemTextInInbox,
 } from "./optimistic";
 
 function makeItem(overrides: Partial<Doc<"items">> = {}): Doc<"items"> {
@@ -78,6 +80,32 @@ describe("Item optimistic updates", () => {
 
     expect(removeItemFromInbox([removing, keeping], removing._id)).toEqual([
       keeping,
+    ]);
+  });
+
+  it("updates an Item's text in the Inbox", () => {
+    const updating = makeItem({ _id: "updating" as Id<"items"> });
+    const unchanged = makeItem({ _id: "unchanged" as Id<"items"> });
+
+    expect(
+      updateItemTextInInbox([updating, unchanged], updating._id, "Book labs"),
+    ).toEqual([{ ...updating, text: "Book labs" }, unchanged]);
+  });
+
+  it("updates or clears an Item's date in the Inbox", () => {
+    const updating = makeItem({ _id: "updating" as Id<"items"> });
+    const unchanged = makeItem({ _id: "unchanged" as Id<"items"> });
+
+    const dated = updateItemDateInInbox(
+      [updating, unchanged],
+      updating._id,
+      1000,
+    );
+
+    expect(dated).toEqual([{ ...updating, date: 1000 }, unchanged]);
+    expect(updateItemDateInInbox(dated, updating._id, undefined)).toEqual([
+      { ...updating, date: undefined },
+      unchanged,
     ]);
   });
 
