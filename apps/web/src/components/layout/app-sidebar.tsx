@@ -34,7 +34,6 @@ import {
 } from "@vita-os/ui/components/sidebar";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
-  CheckCircle2,
   ChevronRight,
   ChevronsUpDown,
   CirclePlus,
@@ -133,16 +132,6 @@ export function AppSidebar() {
                       {itemCount}
                     </Badge>
                   )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={pathname === "/completed"}
-                  tooltip="Completed"
-                  render={<Link to="/completed" />}
-                >
-                  <CheckCircle2 />
-                  <span>Completed</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

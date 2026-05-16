@@ -17,7 +17,7 @@ A lightweight tactical entry — text + optional date + completed flag. Does **n
 _Avoid_: Task, todo, ticket. (The product is deliberately not a "task manager".)
 
 **Inbox**:
-The set of **Items** that have no date and aren't completed yet — i.e. unprocessed thoughts.
+The single view for all **Items**, regardless of date or completion status. Unprocessed items appear first; completed items appear in a collapsible section below.
 _Avoid_: Backlog.
 
 **Action queue**:
@@ -37,9 +37,13 @@ _Avoid_: Score, rating, traffic light (informally fine; not a domain term).
 - An **Area** has zero or more **Projects**; a **Project** belongs to exactly one **Area**.
 - An **Item** belongs to no **Area** and no **Project**. (If it deserves an **Area**, it should be a **Project**.)
 - A **Project** has one **Action queue** and one **Project log**.
-- An **Item** in the **Inbox** can be processed *into* a **Project** (as a log entry, as the new head of the **Action queue**, or as a promotion to a new **Project**) — but the **Item** itself does not become attached.
+- **Processing** an **Item** means assigning it to a **Project**: as a log note, as the new head of the **Action queue**, or by promoting it into a new **Project**. The **Item** is consumed (deleted) in all cases. Adding a date, editing text, completing, and discarding are *not* processing — they are inline actions on the row.
+- An **Item** that has been processed no longer exists; its text lives on inside the **Project** it was assigned to.
 
 ## Example dialogue
 
 > **Dev:** "If I drag an **Item** onto a **Project**, does the **Item** end up belonging to the **Project**?"
-> **Builder:** "No. **Items** never belong to **Projects**. Dragging it on means we copy its text into the **Project log** as a `note` entry, or into the **Action queue** as the new first step. The **Item** itself either gets a date and stays a standalone **Item**, or gets discarded."
+> **Builder:** "No. **Items** never belong to **Projects**. Processing it means we copy its text into the **Project log** as a `note` entry, or into the **Action queue** as the new first step — and then the **Item** itself is deleted. The data lives in the **Project**, not the **Item**."
+
+> **Dev:** "What about adding a date to an **Item** — is that processing?"
+> **Builder:** "No. Adding a date, editing text, completing, and discarding are all inline actions on the row. Processing specifically means consuming the **Item** into a **Project**."

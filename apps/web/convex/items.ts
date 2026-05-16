@@ -13,7 +13,11 @@ export const list = query({
       .withIndex("by_user_created", (q) => q.eq("userId", userId))
       .order("desc")
       .collect();
-    return all.filter((item) => !item.isCompleted);
+
+    return [
+      ...all.filter((item) => !item.isCompleted),
+      ...all.filter((item) => item.isCompleted),
+    ];
   },
 });
 
@@ -26,21 +30,8 @@ export const count = query({
       .query("items")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
-    return all.filter((item) => !item.isCompleted).length;
-  },
-});
-
-export const listCompleted = query({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await safeGetAuthUserId(ctx);
-    if (!userId) return [];
-    const all = await ctx.db
-      .query("items")
-      .withIndex("by_user_created", (q) => q.eq("userId", userId))
-      .order("desc")
-      .collect();
-    return all.filter((item) => item.isCompleted);
+    return all.filter((item) => !item.isCompleted && item.date === undefined)
+      .length;
   },
 });
 
