@@ -1,6 +1,7 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { useMutation } from "convex/react";
+import { isUnprocessedItem } from "./optimistic";
 
 export type CreateItemValue = {
   text: string;
@@ -27,7 +28,10 @@ export function useCreateItem() {
       }
 
       const count = localStore.getQuery(api.items.count, {});
-      if (count !== undefined) {
+      if (
+        count !== undefined &&
+        isUnprocessedItem({ isCompleted: false, date: args.date })
+      ) {
         localStore.setQuery(api.items.count, {}, count + 1);
       }
     },

@@ -15,7 +15,6 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as UnauthenticatedSignUpRouteImport } from './routes/_unauthenticated/sign-up'
 import { Route as UnauthenticatedSignInRouteImport } from './routes/_unauthenticated/sign-in'
 import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
-import { Route as AuthenticatedCompletedRouteImport } from './routes/_authenticated/completed'
 import { Route as AuthenticatedAreaSlugIndexRouteImport } from './routes/_authenticated/$areaSlug/index'
 import { Route as AuthenticatedAreaSlugProjectSlugRouteImport } from './routes/_authenticated/$areaSlug/$projectSlug'
 
@@ -47,11 +46,6 @@ const AuthenticatedInboxRoute = AuthenticatedInboxRouteImport.update({
   path: '/inbox',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedCompletedRoute = AuthenticatedCompletedRouteImport.update({
-  id: '/completed',
-  path: '/completed',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedAreaSlugIndexRoute =
   AuthenticatedAreaSlugIndexRouteImport.update({
     id: '/$areaSlug/',
@@ -67,7 +61,6 @@ const AuthenticatedAreaSlugProjectSlugRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
-  '/completed': typeof AuthenticatedCompletedRoute
   '/inbox': typeof AuthenticatedInboxRoute
   '/sign-in': typeof UnauthenticatedSignInRoute
   '/sign-up': typeof UnauthenticatedSignUpRoute
@@ -76,7 +69,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
-  '/completed': typeof AuthenticatedCompletedRoute
   '/inbox': typeof AuthenticatedInboxRoute
   '/sign-in': typeof UnauthenticatedSignInRoute
   '/sign-up': typeof UnauthenticatedSignUpRoute
@@ -87,7 +79,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_unauthenticated': typeof UnauthenticatedRouteRouteWithChildren
-  '/_authenticated/completed': typeof AuthenticatedCompletedRoute
   '/_authenticated/inbox': typeof AuthenticatedInboxRoute
   '/_unauthenticated/sign-in': typeof UnauthenticatedSignInRoute
   '/_unauthenticated/sign-up': typeof UnauthenticatedSignUpRoute
@@ -99,7 +90,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/completed'
     | '/inbox'
     | '/sign-in'
     | '/sign-up'
@@ -108,7 +98,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/completed'
     | '/inbox'
     | '/sign-in'
     | '/sign-up'
@@ -118,7 +107,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/_unauthenticated'
-    | '/_authenticated/completed'
     | '/_authenticated/inbox'
     | '/_unauthenticated/sign-in'
     | '/_unauthenticated/sign-up'
@@ -176,13 +164,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInboxRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/completed': {
-      id: '/_authenticated/completed'
-      path: '/completed'
-      fullPath: '/completed'
-      preLoaderRoute: typeof AuthenticatedCompletedRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/$areaSlug/': {
       id: '/_authenticated/$areaSlug/'
       path: '/$areaSlug'
@@ -201,7 +182,6 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedCompletedRoute: typeof AuthenticatedCompletedRoute
   AuthenticatedInboxRoute: typeof AuthenticatedInboxRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAreaSlugProjectSlugRoute: typeof AuthenticatedAreaSlugProjectSlugRoute
@@ -209,7 +189,6 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedCompletedRoute: AuthenticatedCompletedRoute,
   AuthenticatedInboxRoute: AuthenticatedInboxRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAreaSlugProjectSlugRoute: AuthenticatedAreaSlugProjectSlugRoute,

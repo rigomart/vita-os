@@ -1,6 +1,7 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { useMutation } from "convex/react";
+import { completeItemInInbox, isUnprocessedItem } from "./optimistic";
 
 export function useCompleteItem() {
   const completeItem = useMutation(api.items.complete).withOptimisticUpdate(
@@ -10,12 +11,17 @@ export function useCompleteItem() {
         localStore.setQuery(
           api.items.list,
           {},
-          current.filter((item) => item._id !== args.id),
+          completeItemInInbox(current, args.id, Date.now()),
         );
       }
 
       const count = localStore.getQuery(api.items.count, {});
-      if (count !== undefined) {
+      const item = current?.find((item) => item._id === args.id);
+      if (
+        count !== undefined &&
+        item !== undefined &&
+        isUnprocessedItem(item)
+      ) {
         localStore.setQuery(api.items.count, {}, Math.max(0, count - 1));
       }
     },
