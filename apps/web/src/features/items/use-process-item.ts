@@ -3,7 +3,6 @@ import type { Id } from "@convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 
 export type ProcessItemAction =
-  | { type: "add_date"; date: number }
   | {
       type: "create_project";
       name: string;

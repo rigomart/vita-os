@@ -1,6 +1,6 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
+import { Badge } from "@vita-os/ui/components/badge";
 import { Button } from "@vita-os/ui/components/button";
-import { DatePicker } from "@vita-os/ui/components/date-picker";
 import { Input } from "@vita-os/ui/components/input";
 import { Label } from "@vita-os/ui/components/label";
 import {
@@ -10,23 +10,12 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@vita-os/ui/components/responsive-dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@vita-os/ui/components/tabs";
-import { CalendarPlus, Crosshair, FolderPlus, ListPlus } from "lucide-react";
-import { useState } from "react";
-import { AreaPicker } from "@/features/areas/components/area-picker";
+import { cn } from "@vita-os/ui/lib/utils";
+import { FileText, ListPlus, Search, Target } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { ProcessItemAction } from "@/features/items/use-process-item";
-import { ProjectPicker } from "@/features/projects/components/project-picker";
 
-type ProcessMode =
-  | "add_date"
-  | "create_project"
-  | "add_to_project"
-  | "set_next_action";
+type ProcessingMode = "add_to_project" | "set_next_action";
 
 interface ProcessItemDialogProps {
   open: boolean;
@@ -34,7 +23,11 @@ interface ProcessItemDialogProps {
   item: Doc<"items">;
   areas: Doc<"areas">[];
   projects: Doc<"projects">[];
-  onProcess: (itemId: Id<"items">, action: ProcessItemAction) => void;
+  isLoading?: boolean;
+  onProcess: (
+    itemId: Id<"items">,
+    action: ProcessItemAction,
+  ) => void | Promise<void>;
 }
 
 export function ProcessItemDialog({
@@ -43,200 +36,219 @@ export function ProcessItemDialog({
   item,
   areas,
   projects,
+  isLoading = false,
   onProcess,
 }: ProcessItemDialogProps) {
-  const [mode, setMode] = useState<ProcessMode>("add_date");
-  const [date, setDate] = useState<Date | undefined>(undefined);
-  const [name, setName] = useState("");
-  const [definitionOfDone, setDefinitionOfDone] = useState("");
-  const [areaId, setAreaId] = useState<string | undefined>(areas[0]?._id);
-  const [projectId, setProjectId] = useState<string | undefined>(undefined);
+  const [query, setQuery] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState<Id<"projects">>();
+  const [mode, setMode] = useState<ProcessingMode>("add_to_project");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const areaById = useMemo(
+    () => new Map(areas.map((area) => [area._id, area])),
+    [areas],
+  );
 
-    if (mode === "add_date") {
-      if (!date) return;
-      onProcess(item._id, { type: "add_date", date: date.getTime() });
-    } else if (mode === "create_project") {
-      const trimmedName = name.trim();
-      if (!trimmedName || !areaId) return;
-      onProcess(item._id, {
-        type: "create_project",
-        name: trimmedName,
-        areaId: areaId as Id<"areas">,
-        definitionOfDone: definitionOfDone.trim() || undefined,
-      });
-    } else if (mode === "add_to_project") {
-      if (!projectId) return;
-      onProcess(item._id, {
-        type: "add_to_project",
-        projectId: projectId as Id<"projects">,
-      });
-    } else if (mode === "set_next_action") {
-      if (!projectId) return;
-      onProcess(item._id, {
-        type: "set_next_action",
-        projectId: projectId as Id<"projects">,
-      });
+  const filteredProjects = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return projects;
+
+    return projects.filter((project) => {
+      const areaName = areaById.get(project.areaId)?.name ?? "";
+      return `${project.name} ${areaName}`
+        .toLowerCase()
+        .includes(normalizedQuery);
+    });
+  }, [areaById, projects, query]);
+
+  const selectedProject = projects.find(
+    (project) => project._id === selectedProjectId,
+  );
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedProjectId) return;
+
+    setIsSubmitting(true);
+    try {
+      await onProcess(item._id, { type: mode, projectId: selectedProjectId });
+      onOpenChange(false);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    onOpenChange(false);
   };
-
-  const canSubmit =
-    (mode === "add_date" && date) ||
-    (mode === "create_project" && name.trim() && areaId) ||
-    (mode === "add_to_project" && projectId) ||
-    (mode === "set_next_action" && projectId);
-
-  const submitLabel = {
-    add_date: "Add date",
-    create_project: "Create project",
-    add_to_project: "Add to project",
-    set_next_action: "Set next action",
-  }[mode];
 
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
-      <ResponsiveDialogContent>
+      <ResponsiveDialogContent className="sm:max-w-lg">
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>Process item</ResponsiveDialogTitle>
         </ResponsiveDialogHeader>
 
-        <div className="border-l-2 border-primary/30 bg-surface-3/30 py-2 pr-3 pl-3">
-          <p className="line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">
+        <div className="rounded-lg border border-border-subtle bg-surface-2 px-3 py-2">
+          <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
             {item.text}
           </p>
         </div>
 
-        <Tabs value={mode} onValueChange={(v) => setMode(v as ProcessMode)}>
-          <TabsList className="w-full">
-            <TabsTrigger value="add_date" className="text-xs">
-              <CalendarPlus className="h-3.5 w-3.5" />
-              Add date
-            </TabsTrigger>
-            <TabsTrigger value="create_project" className="text-xs">
-              <FolderPlus className="h-3.5 w-3.5" />
-              New project
-            </TabsTrigger>
-            <TabsTrigger value="add_to_project" className="text-xs">
-              <ListPlus className="h-3.5 w-3.5" />
-              Add to project
-            </TabsTrigger>
-            <TabsTrigger value="set_next_action" className="text-xs">
-              <Crosshair className="h-3.5 w-3.5" />
-              Set next action
-            </TabsTrigger>
-          </TabsList>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="process-project-search">Project</Label>
+            <div className="relative">
+              <Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="process-project-search"
+                role="combobox"
+                aria-label="Project"
+                aria-controls="process-project-results"
+                aria-expanded="true"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setSelectedProjectId(undefined);
+                }}
+                placeholder="Search projects or areas"
+                autoFocus
+                className="pl-9"
+              />
+            </div>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <TabsContent value="add_date">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Date</Label>
-                <DatePicker
-                  value={date}
-                  onChange={setDate}
-                  placeholder="Pick a date"
-                />
-                <p className="text-xs text-muted-foreground">
-                  The item will leave the inbox and become a standalone dated
-                  action.
-                </p>
-              </div>
-            </TabsContent>
+          <div
+            id="process-project-results"
+            role="listbox"
+            aria-label="Projects"
+            className="max-h-64 overflow-y-auto rounded-lg border border-border-subtle"
+          >
+            {isLoading ? (
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+                Loading projects...
+              </p>
+            ) : filteredProjects.length > 0 ? (
+              filteredProjects.map((project) => {
+                const area = areaById.get(project.areaId);
+                const isSelected = project._id === selectedProjectId;
 
-            <TabsContent value="create_project">
-              <div className="space-y-4">
-                <div className="grid grid-cols-[1fr_auto] gap-3">
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="process-name"
-                      className="text-xs text-muted-foreground"
-                    >
-                      Name
-                    </Label>
-                    <Input
-                      id="process-name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Project name"
-                      autoFocus
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">
-                      Area
-                    </Label>
-                    <AreaPicker
-                      areas={areas}
-                      selectedAreaId={areaId}
-                      onSelect={setAreaId}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="process-dod"
-                    className="text-xs text-muted-foreground"
+                return (
+                  <button
+                    key={project._id}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      setSelectedProjectId(project._id);
+                      setQuery(project.name);
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-3 border-border-subtle border-b px-3 py-2.5 text-left text-sm last:border-b-0 hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
+                      isSelected && "bg-primary/5 text-primary",
+                    )}
                   >
-                    Definition of Done
-                  </Label>
-                  <Input
-                    id="process-dod"
-                    value={definitionOfDone}
-                    onChange={(e) => setDefinitionOfDone(e.target.value)}
-                    placeholder="What does done look like?"
-                  />
-                </div>
-              </div>
-            </TabsContent>
+                    <span className="min-w-0 truncate font-medium">
+                      {project.name}
+                    </span>
+                    {area && (
+                      <Badge variant="outline" className="max-w-32 truncate">
+                        {area.name}
+                      </Badge>
+                    )}
+                  </button>
+                );
+              })
+            ) : (
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+                No matching projects
+              </p>
+            )}
+          </div>
 
-            <TabsContent value="add_to_project">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Project</Label>
-                <ProjectPicker
-                  projects={projects}
-                  areas={areas}
-                  selectedProjectId={projectId}
-                  onSelect={setProjectId}
+          {selectedProject && (
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">
+                Add to {selectedProject.name}
+              </legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <ProcessingModeCard
+                  mode="add_to_project"
+                  selectedMode={mode}
+                  onSelect={setMode}
+                  title="Add as note"
+                  description="Keep it in the Project log."
+                  icon={<FileText className="h-5 w-5" />}
                 />
-                <p className="text-xs text-muted-foreground">
-                  The item text will be added as a note on the selected project.
-                </p>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="set_next_action">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Project</Label>
-                <ProjectPicker
-                  projects={projects}
-                  areas={areas}
-                  selectedProjectId={projectId}
-                  onSelect={setProjectId}
+                <ProcessingModeCard
+                  mode="set_next_action"
+                  selectedMode={mode}
+                  onSelect={setMode}
+                  title="Set as next action"
+                  description="Move it to the action queue."
+                  icon={<Target className="h-5 w-5" />}
                 />
-                <p className="text-xs text-muted-foreground">
-                  The item text will become the project's next action.
-                </p>
               </div>
-            </TabsContent>
+            </fieldset>
+          )}
 
-            <ResponsiveDialogFooter>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={!canSubmit}>
-                {submitLabel}
-              </Button>
-            </ResponsiveDialogFooter>
-          </form>
-        </Tabs>
+          <ResponsiveDialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!selectedProjectId || isSubmitting}>
+              <ListPlus className="h-4 w-4" />
+              Process
+            </Button>
+          </ResponsiveDialogFooter>
+        </form>
       </ResponsiveDialogContent>
     </ResponsiveDialog>
+  );
+}
+
+function ProcessingModeCard({
+  mode,
+  selectedMode,
+  onSelect,
+  title,
+  description,
+  icon,
+}: {
+  mode: ProcessingMode;
+  selectedMode: ProcessingMode;
+  onSelect: (mode: ProcessingMode) => void;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}) {
+  const id = `process-${mode}`;
+  const isSelected = mode === selectedMode;
+
+  return (
+    <label
+      htmlFor={id}
+      className={cn(
+        "flex min-h-28 cursor-pointer gap-3 rounded-lg border border-border-subtle p-3 transition-colors hover:bg-surface-3",
+        isSelected && "border-primary/50 bg-primary/5 text-primary",
+      )}
+    >
+      <input
+        id={id}
+        type="radio"
+        name="processing-mode"
+        value={mode}
+        checked={isSelected}
+        onChange={() => onSelect(mode)}
+        className="mt-1"
+      />
+      <span className="flex min-w-0 flex-1 flex-col gap-2">
+        <span className="text-muted-foreground">{icon}</span>
+        <span className="font-medium text-sm">{title}</span>
+        <span className="text-muted-foreground text-xs leading-relaxed">
+          {description}
+        </span>
+      </span>
+    </label>
   );
 }

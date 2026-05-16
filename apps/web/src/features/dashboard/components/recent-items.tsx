@@ -9,8 +9,6 @@ const MAX_VISIBLE = 5;
 
 export function RecentItems() {
   const items = useQuery(api.items.list);
-  const areas = useQuery(api.areas.list);
-  const projects = useQuery(api.projects.list);
 
   const [processingItem, setProcessingItem] = useState<
     Doc<"items"> | undefined
@@ -35,8 +33,6 @@ export function RecentItems() {
             if (!open) setProcessingItem(undefined);
           }}
           item={processingItem}
-          areas={areas ?? []}
-          projects={projects ?? []}
         />
       )}
     </>

@@ -23,12 +23,6 @@ function makeItem(overrides: Partial<Doc<"items">> = {}): Doc<"items"> {
 }
 
 describe("getItemProcessingDisposition", () => {
-  it("keeps dated Items standalone", () => {
-    expect(getItemProcessingDisposition({ type: "add_date", date: 123 })).toBe(
-      "keep_item",
-    );
-  });
-
   it.each<InboxProcessingAction>([
     {
       type: "create_project",
@@ -45,7 +39,6 @@ describe("getItemProcessingDisposition", () => {
 
 describe("getInboxProcessingResultType", () => {
   it.each<[InboxProcessingAction, string]>([
-    [{ type: "add_date", date: 123 }, "dated"],
     [{ type: "create_project", name: "Book health check", areaId }, "created"],
     [{ type: "add_to_project", projectId }, "added"],
     [{ type: "set_next_action", projectId }, "set_next_action"],

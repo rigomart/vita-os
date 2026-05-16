@@ -8,7 +8,6 @@ import { generateSlug } from "./slugs";
 type MutationCtx = GenericMutationCtx<DataModel>;
 
 export type InboxProcessingAction =
-  | { type: "add_date"; date: number }
   | {
       type: "create_project";
       name: string;
@@ -20,7 +19,6 @@ export type InboxProcessingAction =
   | { type: "discard" };
 
 export type InboxProcessingResult =
-  | { type: "dated" }
   | { type: "created"; slug: string }
   | { type: "added" }
   | { type: "set_next_action" }
@@ -29,15 +27,14 @@ export type InboxProcessingResult =
 export type ItemProcessingDisposition = "keep_item" | "delete_item";
 
 export function getItemProcessingDisposition(
-  action: InboxProcessingAction,
+  _action: InboxProcessingAction,
 ): ItemProcessingDisposition {
-  return action.type === "add_date" ? "keep_item" : "delete_item";
+  return "delete_item";
 }
 
 export function getInboxProcessingResultType(
   action: InboxProcessingAction,
 ): InboxProcessingResult["type"] {
-  if (action.type === "add_date") return "dated";
   if (action.type === "create_project") return "created";
   if (action.type === "add_to_project") return "added";
   if (action.type === "set_next_action") return "set_next_action";
@@ -59,11 +56,6 @@ export async function processInboxItem(
     action: InboxProcessingAction;
   },
 ): Promise<InboxProcessingResult> {
-  if (args.action.type === "add_date") {
-    await ctx.db.patch(args.item._id, { date: args.action.date });
-    return { type: "dated" };
-  }
-
   if (args.action.type === "create_project") {
     await getAreaForUser(ctx, {
       userId: args.userId,

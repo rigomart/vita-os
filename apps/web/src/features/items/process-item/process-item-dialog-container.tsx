@@ -1,4 +1,7 @@
+import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
+import { useQuery } from "convex-helpers/react/cache/hooks";
+import type { ProcessItemAction } from "@/features/items/use-process-item";
 import { useProcessItem } from "@/features/items/use-process-item";
 import { ProcessItemDialog } from "./process-item-dialog";
 
@@ -6,28 +9,54 @@ interface ProcessItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: Doc<"items">;
-  areas: Doc<"areas">[];
-  projects: Doc<"projects">[];
+  onProcessed?: (result: {
+    action: Extract<
+      ProcessItemAction,
+      { type: "add_to_project" | "set_next_action" }
+    >["type"];
+    project: Doc<"projects">;
+    area: Doc<"areas"> | undefined;
+  }) => void;
 }
 
 export function ProcessItemDialogContainer({
   open,
   onOpenChange,
   item,
-  areas,
-  projects,
+  onProcessed,
 }: ProcessItemDialogProps) {
   const processItem = useProcessItem();
+  const areas = useQuery(api.areas.list, open ? {} : "skip");
+  const projects = useQuery(api.projects.list, open ? {} : "skip");
+  const visibleAreas = areas ?? [];
+  const visibleProjects = projects ?? [];
+  const isLoading = open && (areas === undefined || projects === undefined);
 
   return (
     <ProcessItemDialog
       open={open}
       onOpenChange={onOpenChange}
       item={item}
-      areas={areas}
-      projects={projects}
+      areas={visibleAreas}
+      projects={visibleProjects}
+      isLoading={isLoading}
       onProcess={async (itemId, action) => {
         await processItem(itemId, action);
+        if (
+          action.type === "add_to_project" ||
+          action.type === "set_next_action"
+        ) {
+          const project = visibleProjects.find(
+            (candidate) => candidate._id === action.projectId,
+          );
+          if (project) {
+            onProcessed?.({
+              action: action.type,
+              project,
+              area: visibleAreas.find((area) => area._id === project.areaId),
+            });
+          }
+        }
         onOpenChange(false);
       }}
     />
