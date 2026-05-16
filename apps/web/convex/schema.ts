@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { healthStatusValidator } from "./lib/validators";
 
 export default defineSchema({
   areas: defineTable({
@@ -7,11 +8,7 @@ export default defineSchema({
     name: v.string(),
     slug: v.optional(v.string()),
     standard: v.optional(v.string()),
-    healthStatus: v.union(
-      v.literal("healthy"),
-      v.literal("needs_attention"),
-      v.literal("critical"),
-    ),
+    healthStatus: healthStatusValidator,
     order: v.number(),
     createdAt: v.number(),
   })

@@ -6,7 +6,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { authClient } from "./lib/auth-client";
 import { routeTree } from "./routeTree.gen";
-import "./index.css";
+import "@vita-os/ui/globals.css";
 
 if (!import.meta.env.VITE_CONVEX_URL) {
   throw new Error("VITE_CONVEX_URL is not set");

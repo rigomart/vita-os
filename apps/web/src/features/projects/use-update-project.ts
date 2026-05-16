@@ -1,0 +1,24 @@
+import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
+import { useMutation } from "convex/react";
+import { optimisticallyUpdateProject } from "@/features/projects/optimistic";
+
+export type UpdateProjectValue = {
+  id: Id<"projects">;
+  name?: string;
+  definitionOfDone?: string | null;
+  areaId?: Id<"areas">;
+  status?: string | null;
+  actionQueue?: { id: string; text: string }[];
+  state?: "active" | "completed" | "dropped";
+};
+
+export function useUpdateProject(projectSlug: string) {
+  const updateProject = useMutation(api.projects.update).withOptimisticUpdate(
+    (localStore, args) => {
+      optimisticallyUpdateProject(localStore, args, { projectSlug });
+    },
+  );
+
+  return (value: UpdateProjectValue) => updateProject(value);
+}

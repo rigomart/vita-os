@@ -1,0 +1,10 @@
+{
+  "root": false,
+  "extends": "//",
+  "linter": {
+    "domains": {
+      "react": "recommended",
+      "turborepo": "all"
+    }
+  }
+}

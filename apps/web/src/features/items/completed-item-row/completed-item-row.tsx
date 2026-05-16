@@ -1,0 +1,52 @@
+import type { Doc } from "@convex/_generated/dataModel";
+import { Checkbox } from "@vita-os/ui/components/checkbox";
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+} from "@vita-os/ui/components/item";
+import { format, formatDistanceToNow } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+
+interface CompletedItemRowProps {
+  item: Doc<"items">;
+  onUncomplete: () => void;
+}
+
+export function CompletedItemRow({
+  item,
+  onUncomplete,
+}: CompletedItemRowProps) {
+  return (
+    <Item size="sm" className="hover:bg-surface-3/30">
+      <ItemMedia>
+        <Checkbox
+          checked
+          onCheckedChange={onUncomplete}
+          aria-label="Uncomplete item"
+        />
+      </ItemMedia>
+      <ItemContent>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground/60 line-through decoration-muted-foreground/30">
+          {item.text}
+        </p>
+        <ItemDescription className="flex items-center gap-2 text-[11px]">
+          {item.date && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-border/50 px-1.5 py-0.5 text-muted-foreground/50">
+              <CalendarIcon className="h-3 w-3" />
+              {format(new Date(item.date), "MMM d, yyyy")}
+            </span>
+          )}
+          <span className="text-muted-foreground/50">
+            {item.completedAt
+              ? `Completed ${formatDistanceToNow(new Date(item.completedAt), { addSuffix: true })}`
+              : formatDistanceToNow(new Date(item.createdAt), {
+                  addSuffix: true,
+                })}
+          </span>
+        </ItemDescription>
+      </ItemContent>
+    </Item>
+  );
+}

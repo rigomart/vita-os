@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
-import { generateSlug } from "./lib/slugs";
+import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
+import { processInboxItem } from "./lib/inboxProcessing";
 
 export const list = query({
   args: {},
@@ -145,89 +145,6 @@ export const process = mutation({
       throw new Error("Item not found");
     }
 
-    if (args.action.type === "add_date") {
-      await ctx.db.patch(args.id, { date: args.action.date });
-      return { type: "dated" as const };
-    }
-
-    if (args.action.type === "create_project") {
-      const nextOrder = await getNextOrder(ctx, "projects", userId);
-      const slug = generateSlug(args.action.name);
-
-      const projectId = await ctx.db.insert("projects", {
-        userId,
-        name: args.action.name,
-        slug,
-        definitionOfDone: args.action.definitionOfDone,
-        areaId: args.action.areaId,
-        order: nextOrder,
-        state: "active",
-        createdAt: Date.now(),
-      });
-
-      await ctx.db.insert("projectLogs", {
-        userId,
-        projectId,
-        type: "note",
-        content: item.text,
-        createdAt: Date.now(),
-      });
-
-      await ctx.db.delete(args.id);
-      return { type: "created" as const, slug };
-    }
-
-    if (args.action.type === "add_to_project") {
-      const project = await ctx.db.get(args.action.projectId);
-      if (!project || project.userId !== userId) {
-        throw new Error("Project not found");
-      }
-
-      await ctx.db.insert("projectLogs", {
-        userId,
-        projectId: args.action.projectId,
-        type: "note",
-        content: item.text,
-        createdAt: Date.now(),
-      });
-
-      await ctx.db.delete(args.id);
-      return { type: "added" as const };
-    }
-
-    if (args.action.type === "set_next_action") {
-      const project = await ctx.db.get(args.action.projectId);
-      if (!project || project.userId !== userId) {
-        throw new Error("Project not found");
-      }
-
-      const currentQueue = project.actionQueue ?? [];
-      const newQueueItem = { id: crypto.randomUUID(), text: item.text };
-      const newQueue = [newQueueItem, ...currentQueue];
-      const prev = currentQueue[0]?.text ?? "";
-
-      await ctx.db.patch(args.action.projectId, {
-        actionQueue: newQueue,
-      });
-
-      await ctx.db.insert("projectLogs", {
-        userId,
-        projectId: args.action.projectId,
-        type: "next_action_change",
-        content: prev
-          ? `Next action changed from "${prev}" to "${item.text}"`
-          : `Next action set to "${item.text}"`,
-        previousValue: prev || undefined,
-        newValue: item.text,
-        createdAt: Date.now(),
-      });
-
-      await ctx.db.delete(args.id);
-      return { type: "set_next_action" as const };
-    }
-
-    // discard
-    await ctx.db.delete(args.id);
-    return { type: "discarded" as const };
+    return processInboxItem(ctx, { userId, item, action: args.action });
   },
 });
