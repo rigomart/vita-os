@@ -1,5 +1,5 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
-import { removeById } from "@/features/shared/optimistic";
+import { patchById, removeById } from "@/features/shared/optimistic";
 
 type Item = Doc<"items">;
 
@@ -45,6 +45,22 @@ export function removeItemFromInbox<T extends Item>(
   id: Id<"items">,
 ): T[] {
   return removeById(items, id);
+}
+
+export function updateItemTextInInbox<T extends Item>(
+  items: T[],
+  id: Id<"items">,
+  text: string,
+): T[] {
+  return patchById(items, id, { text } as Partial<T>);
+}
+
+export function updateItemDateInInbox<T extends Item>(
+  items: T[],
+  id: Id<"items">,
+  date: number | undefined,
+): T[] {
+  return patchById(items, id, { date } as Partial<T>);
 }
 
 export function isUnprocessedItem(

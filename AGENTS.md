@@ -17,6 +17,8 @@ If tests exist for the affected code, also run `bun run test:run`.
 
 All commands use **bun** (not npm/yarn/pnpm). Run from the **repo root**:
 
+Do **not** run the dev server, Convex dev, or Convex generation unless the user explicitly asks. Assume the user is already running Vite and Convex locally. If those are needed, remind the user to run them: Vite dev generates the route tree, and Convex dev uploads functions and schema to Convex.
+
 ```bash
 bun run dev          # Start all dev servers via turbo
 bun run build        # Type-check + build all apps via turbo
