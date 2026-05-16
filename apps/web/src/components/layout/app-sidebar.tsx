@@ -33,7 +33,6 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from "@vita-os/ui/components/sidebar";
-import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
   CheckCircle2,
@@ -45,12 +44,11 @@ import {
   LogOut,
   Plus,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { AreaFormDialog } from "@/features/areas/components/area-form-dialog";
-import { optimisticallyCreateArea } from "@/features/areas/optimistic";
-import { NewItemDialog } from "@/features/items/components/new-item-dialog";
-import { ProjectFormDialog } from "@/features/projects/components/project-form-dialog";
-import { optimisticallyCreateProjectInList } from "@/features/projects/optimistic";
+import { useCallback, useMemo, useState } from "react";
+import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
+import { NewItemDialogContainer } from "@/features/items/new-item/new-item-dialog-container";
+import { CreateProjectDialog } from "@/features/projects/project-form/create-project-dialog";
+import { useGlobalNewItemShortcut } from "@/features/sidebar/use-global-new-item-shortcut";
 import { authClient } from "@/lib/auth-client";
 
 export function AppSidebar() {
@@ -60,39 +58,15 @@ export function AppSidebar() {
   const projects = useQuery(api.projects.list);
   const areas = useQuery(api.areas.list);
   const itemCount = useQuery(api.items.count);
-  const createProject = useMutation(api.projects.create).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyCreateProjectInList(localStore, args);
-    },
-  );
   const [showCreateProject, setShowCreateProject] = useState(false);
-  const [createForAreaId, setCreateForAreaId] = useState<string | undefined>();
+  const [createForAreaId, setCreateForAreaId] = useState<
+    Id<"areas"> | undefined
+  >();
   const [showNewItem, setShowNewItem] = useState(false);
   const [showCreateArea, setShowCreateArea] = useState(false);
-  const createArea = useMutation(api.areas.create).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyCreateArea(localStore, args);
-    },
-  );
+  const openNewItem = useCallback(() => setShowNewItem(true), []);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key !== "q" && e.key !== "Q") return;
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.tagName === "SELECT" ||
-        target.isContentEditable
-      ) {
-        return;
-      }
-      e.preventDefault();
-      setShowNewItem(true);
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  useGlobalNewItemShortcut(openNewItem);
 
   const areaProjects = useMemo(() => {
     const grouped = new Map<string, typeof projects>();
@@ -106,7 +80,7 @@ export function AppSidebar() {
     return grouped;
   }, [projects]);
 
-  const handleCreateProject = (forAreaId?: string) => {
+  const handleCreateProject = (forAreaId?: Id<"areas">) => {
     setCreateForAreaId(forAreaId);
     setShowCreateProject(true);
   };
@@ -135,7 +109,7 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <button
                   type="button"
-                  onClick={() => setShowNewItem(true)}
+                  onClick={openNewItem}
                   className="flex w-full items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   <CirclePlus className="size-4" />
@@ -341,17 +315,13 @@ export function AppSidebar() {
         <SidebarRail />
       </Sidebar>
 
-      <ProjectFormDialog
+      <CreateProjectDialog
         open={showCreateProject}
         onOpenChange={setShowCreateProject}
         areas={areas ?? []}
         defaultAreaId={createForAreaId}
-        onSubmit={async (data) => {
-          const { slug } = await createProject({
-            ...data,
-            areaId: data.areaId as Id<"areas">,
-          });
-          const area = (areas ?? []).find((a) => a._id === data.areaId);
+        onCreated={({ slug, areaId }) => {
+          const area = (areas ?? []).find((a) => a._id === areaId);
           if (area) {
             navigate({
               to: "/$areaSlug/$projectSlug",
@@ -363,11 +333,13 @@ export function AppSidebar() {
           }
         }}
       />
-      <NewItemDialog open={showNewItem} onOpenChange={setShowNewItem} />
-      <AreaFormDialog
+      <NewItemDialogContainer
+        open={showNewItem}
+        onOpenChange={setShowNewItem}
+      />
+      <CreateAreaDialog
         open={showCreateArea}
         onOpenChange={setShowCreateArea}
-        onSubmit={(data) => createArea(data)}
       />
     </>
   );

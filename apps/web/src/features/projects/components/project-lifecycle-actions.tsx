@@ -1,5 +1,4 @@
-import { api } from "@convex/_generated/api";
-import { useNavigate } from "@tanstack/react-router";
+import type { Doc } from "@convex/_generated/dataModel";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,52 +11,21 @@ import {
   AlertDialogTrigger,
 } from "@vita-os/ui/components/alert-dialog";
 import { Button } from "@vita-os/ui/components/button";
-import { useMutation } from "convex/react";
 import { CheckCircle2, Trash2, XCircle } from "lucide-react";
-import {
-  optimisticallyRemoveProject,
-  optimisticallyUpdateProject,
-} from "@/features/projects/optimistic";
-import { useStableQuery } from "@/hooks/use-stable-query";
 
 interface ProjectLifecycleActionsProps {
-  areaSlug: string;
-  projectSlug: string;
+  project: Doc<"projects">;
+  onComplete: () => void;
+  onDrop: () => void;
+  onDelete: () => void;
 }
 
 export function ProjectLifecycleActions({
-  areaSlug,
-  projectSlug,
+  project,
+  onComplete,
+  onDrop,
+  onDelete,
 }: ProjectLifecycleActionsProps) {
-  const project = useStableQuery(api.projects.getBySlug, {
-    slug: projectSlug,
-  });
-  const navigate = useNavigate();
-  const updateProject = useMutation(api.projects.update).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyUpdateProject(localStore, args, { projectSlug });
-    },
-  );
-  const removeProject = useMutation(api.projects.remove).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyRemoveProject(localStore, args, { projectSlug });
-    },
-  );
-
-  const handleStateChange = (state: "completed" | "dropped") => {
-    if (!project) return;
-    updateProject({ id: project._id, state });
-    navigate({ to: "/$areaSlug", params: { areaSlug } });
-  };
-
-  const handleDelete = async () => {
-    if (!project) return;
-    await removeProject({ id: project._id });
-    navigate({ to: "/$areaSlug", params: { areaSlug } });
-  };
-
-  if (!project) return null;
-
   return (
     <div className="flex items-center gap-2 border-t border-border/50 pt-6">
       <AlertDialog>
@@ -76,9 +44,7 @@ export function ProjectLifecycleActions({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleStateChange("completed")}>
-              Complete
-            </AlertDialogAction>
+            <AlertDialogAction onClick={onComplete}>Complete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -106,7 +72,7 @@ export function ProjectLifecycleActions({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => handleStateChange("dropped")}
+              onClick={onDrop}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Drop
@@ -140,7 +106,7 @@ export function ProjectLifecycleActions({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={onDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

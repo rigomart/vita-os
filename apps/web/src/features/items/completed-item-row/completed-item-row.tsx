@@ -1,4 +1,3 @@
-import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
 import { Checkbox } from "@vita-os/ui/components/checkbox";
 import {
@@ -7,34 +6,24 @@ import {
   ItemDescription,
   ItemMedia,
 } from "@vita-os/ui/components/item";
-import { useMutation } from "convex/react";
 import { format, formatDistanceToNow } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 
 interface CompletedItemRowProps {
   item: Doc<"items">;
+  onUncomplete: () => void;
 }
 
-export function CompletedItemRow({ item }: CompletedItemRowProps) {
-  const uncompleteItem = useMutation(api.items.uncomplete).withOptimisticUpdate(
-    (localStore, args) => {
-      const current = localStore.getQuery(api.items.listCompleted, {});
-      if (current !== undefined) {
-        localStore.setQuery(
-          api.items.listCompleted,
-          {},
-          current.filter((i) => i._id !== args.id),
-        );
-      }
-    },
-  );
-
+export function CompletedItemRow({
+  item,
+  onUncomplete,
+}: CompletedItemRowProps) {
   return (
     <Item size="sm" className="hover:bg-surface-3/30">
       <ItemMedia>
         <Checkbox
           checked
-          onCheckedChange={() => uncompleteItem({ id: item._id })}
+          onCheckedChange={onUncomplete}
           aria-label="Uncomplete item"
         />
       </ItemMedia>

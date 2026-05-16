@@ -1,5 +1,3 @@
-import { api } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
 import { Button } from "@vita-os/ui/components/button";
 import { DatePicker } from "@vita-os/ui/components/date-picker";
 import {
@@ -10,51 +8,31 @@ import {
   ResponsiveDialogTitle,
 } from "@vita-os/ui/components/responsive-dialog";
 import { Textarea } from "@vita-os/ui/components/textarea";
-import { useMutation } from "convex/react";
 import { useState } from "react";
+import type { CreateItemValue } from "@/features/items/use-create-item";
 
 interface NewItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSubmit: (value: CreateItemValue) => Promise<void> | void;
 }
 
-export function NewItemDialog({ open, onOpenChange }: NewItemDialogProps) {
+export function NewItemDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+}: NewItemDialogProps) {
   const [text, setText] = useState("");
   const [date, setDate] = useState<Date | undefined>(undefined);
-  const createItem = useMutation(api.items.create).withOptimisticUpdate(
-    (localStore, args) => {
-      const current = localStore.getQuery(api.items.list, {});
-      if (current !== undefined) {
-        localStore.setQuery(api.items.list, {}, [
-          {
-            _id: crypto.randomUUID() as Id<"items">,
-            _creationTime: Date.now(),
-            userId: "",
-            text: args.text,
-            date: args.date,
-            isCompleted: false,
-            createdAt: Date.now(),
-          },
-          ...current,
-        ]);
-      }
 
-      const count = localStore.getQuery(api.items.count, {});
-      if (count !== undefined) {
-        localStore.setQuery(api.items.count, {}, count + 1);
-      }
-    },
-  );
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    createItem({ text: trimmed, date: date?.getTime() });
+    await onSubmit({ text: trimmed, date: date?.getTime() });
     setText("");
     setDate(undefined);
-    onOpenChange(false);
   };
 
   return (

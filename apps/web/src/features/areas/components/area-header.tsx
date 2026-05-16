@@ -1,10 +1,10 @@
-import { api } from "@convex/_generated/api";
+import type { Doc } from "@convex/_generated/dataModel";
 import {
   HEALTH_STATUS_OPTIONS,
   healthColors,
   isHealthStatus,
 } from "@convex/lib/healthStatus";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,51 +24,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@vita-os/ui/components/select";
-import { useMutation } from "convex/react";
-import { useQuery } from "convex-helpers/react/cache/hooks";
 import { ChevronRight, Pencil, Trash2 } from "lucide-react";
-import {
-  optimisticallyRemoveArea,
-  optimisticallyUpdateArea,
-} from "@/features/areas/optimistic";
-import { useStableQuery } from "@/hooks/use-stable-query";
 
 interface AreaHeaderProps {
-  areaSlug: string;
+  area: Doc<"areas">;
+  projectCount: number;
   onEdit: () => void;
+  onDelete: () => void;
+  onHealthChange: (value: Doc<"areas">["healthStatus"]) => void;
 }
 
-export function AreaHeader({ areaSlug, onEdit }: AreaHeaderProps) {
-  const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
-  const projects = useQuery(
-    api.projects.listByArea,
-    area ? { areaId: area._id } : "skip",
-  );
-  const navigate = useNavigate();
-  const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyUpdateArea(localStore, args, { areaSlug });
-    },
-  );
-  const removeArea = useMutation(api.areas.remove).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyRemoveArea(localStore, args, { areaSlug });
-    },
-  );
-
-  const handleDelete = async () => {
-    if (!area) return;
-    await removeArea({ id: area._id });
-    navigate({ to: "/" });
-  };
-
-  const handleHealthChange = (value: string | null) => {
-    if (!area || !isHealthStatus(value)) return;
-    updateArea({ id: area._id, healthStatus: value });
-  };
-
-  if (!area) return null;
-
+export function AreaHeader({
+  area,
+  projectCount,
+  onEdit,
+  onDelete,
+  onHealthChange,
+}: AreaHeaderProps) {
   return (
     <div>
       <Link
@@ -118,7 +90,7 @@ export function AreaHeader({ areaSlug, onEdit }: AreaHeaderProps) {
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={handleDelete}
+                  onClick={onDelete}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   Delete
@@ -130,7 +102,12 @@ export function AreaHeader({ areaSlug, onEdit }: AreaHeaderProps) {
       </div>
 
       <div className="mt-3 flex items-center gap-3">
-        <Select value={area.healthStatus} onValueChange={handleHealthChange}>
+        <Select
+          value={area.healthStatus}
+          onValueChange={(value) => {
+            if (isHealthStatus(value)) onHealthChange(value);
+          }}
+        >
           <SelectTrigger className="h-7 w-auto gap-2 border-none bg-surface-3/60 px-3 text-xs">
             <SelectValue />
           </SelectTrigger>
@@ -143,8 +120,7 @@ export function AreaHeader({ areaSlug, onEdit }: AreaHeaderProps) {
           </SelectContent>
         </Select>
         <span className="text-xs text-muted-foreground">
-          {projects?.length ?? 0}{" "}
-          {projects?.length === 1 ? "project" : "projects"}
+          {projectCount} {projectCount === 1 ? "project" : "projects"}
         </span>
       </div>
     </div>

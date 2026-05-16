@@ -1,6 +1,4 @@
-import { api } from "@convex/_generated/api";
 import { Button } from "@vita-os/ui/components/button";
-import { useMutation } from "convex/react";
 import { Check, GripVertical, ListOrdered, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -9,81 +7,36 @@ import {
   SortableItem,
   SortableItemHandle,
 } from "@/components/ui/sortable";
-import {
-  optimisticallyCompleteNextAction,
-  optimisticallyUpdateProject,
-} from "@/features/projects/optimistic";
-import { useStableQuery } from "@/hooks/use-stable-query";
 import { cn } from "@/lib/utils";
 
-interface ActionItem {
+export interface ActionItem {
   id: string;
   text: string;
 }
 
 interface ActionQueueProps {
-  projectSlug: string;
+  queue: ActionItem[];
+  onReorder: (items: ActionItem[]) => void;
+  onEdit: (itemId: string, text: string) => void;
+  onAdd: (text: string) => void;
+  onRemove: (itemId: string) => void;
+  onComplete: () => void;
 }
 
-export function ActionQueue({ projectSlug }: ActionQueueProps) {
-  const project = useStableQuery(api.projects.getBySlug, {
-    slug: projectSlug,
-  });
-  const updateProject = useMutation(api.projects.update).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyUpdateProject(localStore, args, { projectSlug });
-    },
-  );
-  const completeAction = useMutation(
-    api.projects.completeAction,
-  ).withOptimisticUpdate((localStore, args) => {
-    optimisticallyCompleteNextAction(localStore, args, { projectSlug });
-  });
-
-  const queue = project?.actionQueue ?? [];
-
-  const handleReorder = (items: ActionItem[]) => {
-    if (!project) return;
-    updateProject({ id: project._id, actionQueue: items });
-  };
-
-  const handleEdit = (itemId: string, text: string) => {
-    if (!project) return;
-    updateProject({
-      id: project._id,
-      actionQueue: queue.map((item) =>
-        item.id === itemId ? { ...item, text } : item,
-      ),
-    });
-  };
-
-  const handleAdd = (text: string) => {
-    if (!project) return;
-    updateProject({
-      id: project._id,
-      actionQueue: [...queue, { id: crypto.randomUUID(), text }],
-    });
-  };
-
-  const handleRemove = (itemId: string) => {
-    if (!project) return;
-    updateProject({
-      id: project._id,
-      actionQueue: queue.filter((item) => item.id !== itemId),
-    });
-  };
-
-  const handleComplete = () => {
-    if (!project) return;
-    completeAction({ id: project._id });
-  };
-
+export function ActionQueue({
+  queue,
+  onReorder,
+  onEdit,
+  onAdd,
+  onRemove,
+  onComplete,
+}: ActionQueueProps) {
   const [addText, setAddText] = useState("");
 
   const handleAddLocal = () => {
     const text = addText.trim();
     if (!text) return;
-    handleAdd(text);
+    onAdd(text);
     setAddText("");
   };
 
@@ -100,7 +53,7 @@ export function ActionQueue({ projectSlug }: ActionQueueProps) {
       {queue.length > 0 && (
         <Sortable
           value={queue}
-          onValueChange={handleReorder}
+          onValueChange={onReorder}
           getItemValue={(item) => item.id}
         >
           <SortableContent className="space-y-1">
@@ -110,9 +63,9 @@ export function ActionQueue({ projectSlug }: ActionQueueProps) {
                 item={item}
                 index={index}
                 isCurrent={index === 0}
-                onEdit={handleEdit}
-                onRemove={handleRemove}
-                onComplete={handleComplete}
+                onEdit={onEdit}
+                onRemove={onRemove}
+                onComplete={onComplete}
               />
             ))}
           </SortableContent>

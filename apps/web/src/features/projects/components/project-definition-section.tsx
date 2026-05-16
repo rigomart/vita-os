@@ -1,10 +1,7 @@
 import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
-import { CheckCircle2 } from "lucide-react";
-import type { ReactNode } from "react";
-import { EditableField } from "@/components/ui/editable-field";
-import { optimisticallyUpdateProject } from "@/features/projects/optimistic";
+import { useUpdateProject } from "@/features/projects/use-update-project";
 import { useStableQuery } from "@/hooks/use-stable-query";
+import { ProjectDefinition } from "./project-definition";
 
 interface ProjectDefinitionSectionProps {
   projectSlug: string;
@@ -16,11 +13,7 @@ export function ProjectDefinitionSection({
   const project = useStableQuery(api.projects.getBySlug, {
     slug: projectSlug,
   });
-  const updateProject = useMutation(api.projects.update).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyUpdateProject(localStore, args, { projectSlug });
-    },
-  );
+  const updateProject = useUpdateProject(projectSlug);
 
   const handleSave = (definitionOfDone: string) => {
     if (!project) return;
@@ -31,39 +24,9 @@ export function ProjectDefinitionSection({
   };
 
   return (
-    <div className="space-y-4">
-      <MetadataRow
-        icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-        label="Definition of Done"
-      >
-        <EditableField
-          value={project?.definitionOfDone ?? ""}
-          onSave={handleSave}
-          variant="textarea"
-          placeholder="What does done look like?"
-          className="text-sm"
-        />
-      </MetadataRow>
-    </div>
-  );
-}
-
-function MetadataRow({
-  icon,
-  label,
-  children,
-}: {
-  icon: ReactNode;
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="flex w-36 shrink-0 items-center gap-2 pt-1 text-xs text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <div className="min-w-0 flex-1">{children}</div>
-    </div>
+    <ProjectDefinition
+      definitionOfDone={project?.definitionOfDone ?? ""}
+      onSave={handleSave}
+    />
   );
 }

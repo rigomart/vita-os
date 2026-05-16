@@ -19,6 +19,7 @@ import {
 import { CalendarPlus, Crosshair, FolderPlus, ListPlus } from "lucide-react";
 import { useState } from "react";
 import { AreaPicker } from "@/features/areas/components/area-picker";
+import type { ProcessItemAction } from "@/features/items/use-process-item";
 import { ProjectPicker } from "@/features/projects/components/project-picker";
 
 type ProcessMode =
@@ -33,19 +34,7 @@ interface ProcessItemDialogProps {
   item: Doc<"items">;
   areas: Doc<"areas">[];
   projects: Doc<"projects">[];
-  onProcess: (
-    itemId: Id<"items">,
-    action:
-      | { type: "add_date"; date: number }
-      | {
-          type: "create_project";
-          name: string;
-          areaId: Id<"areas">;
-          definitionOfDone?: string;
-        }
-      | { type: "add_to_project"; projectId: Id<"projects"> }
-      | { type: "set_next_action"; projectId: Id<"projects"> },
-  ) => void;
+  onProcess: (itemId: Id<"items">, action: ProcessItemAction) => void;
 }
 
 export function ProcessItemDialog({
@@ -115,7 +104,6 @@ export function ProcessItemDialog({
           <ResponsiveDialogTitle>Process item</ResponsiveDialogTitle>
         </ResponsiveDialogHeader>
 
-        {/* Item text reference */}
         <div className="border-l-2 border-primary/30 bg-surface-3/30 py-2 pr-3 pl-3">
           <p className="line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">
             {item.text}

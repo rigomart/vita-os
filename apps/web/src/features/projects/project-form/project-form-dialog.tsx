@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { Doc, Id } from "@convex/_generated/dataModel";
 import { Button } from "@vita-os/ui/components/button";
 import { Input } from "@vita-os/ui/components/input";
 import { Label } from "@vita-os/ui/components/label";
@@ -13,61 +13,58 @@ import {
 import { Textarea } from "@vita-os/ui/components/textarea";
 import { useEffect, useState } from "react";
 import { AreaPicker } from "@/features/areas/components/area-picker";
+import type { ProjectFormValue } from "./types";
 
 interface ProjectFormDialogProps {
+  mode: "create" | "edit";
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: {
-    name: string;
-    definitionOfDone?: string;
-    areaId: string;
-  }) => void;
-  project?: Doc<"projects">;
-  areas?: Doc<"areas">[];
-  defaultAreaId?: string;
+  areas: Doc<"areas">[];
+  defaultAreaId?: Id<"areas">;
+  initialValue?: Partial<ProjectFormValue>;
+  onSubmit: (value: ProjectFormValue) => Promise<void> | void;
 }
 
 export function ProjectFormDialog({
+  mode,
   open,
   onOpenChange,
-  onSubmit,
-  project,
   areas,
   defaultAreaId,
+  initialValue,
+  onSubmit,
 }: ProjectFormDialogProps) {
-  const [name, setName] = useState(project?.name ?? "");
+  const [name, setName] = useState(initialValue?.name ?? "");
   const [definitionOfDone, setDefinitionOfDone] = useState(
-    project?.definitionOfDone ?? "",
+    initialValue?.definitionOfDone ?? "",
   );
   const [areaId, setAreaId] = useState<string | undefined>(
-    project?.areaId ?? defaultAreaId,
+    initialValue?.areaId ?? defaultAreaId,
   );
 
   useEffect(() => {
-    if (open && !project) {
-      setName("");
-      setDefinitionOfDone("");
-      setAreaId(defaultAreaId);
-    }
-  }, [open, project, defaultAreaId]);
+    if (!open) return;
+    setName(initialValue?.name ?? "");
+    setDefinitionOfDone(initialValue?.definitionOfDone ?? "");
+    setAreaId(initialValue?.areaId ?? defaultAreaId);
+  }, [open, initialValue, defaultAreaId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName || !areaId) return;
 
-    onSubmit({
+    await onSubmit({
       name: trimmedName,
       definitionOfDone: definitionOfDone.trim() || undefined,
-      areaId,
+      areaId: areaId as Id<"areas">,
     });
 
-    if (!project) {
+    if (mode === "create") {
       setName("");
       setDefinitionOfDone("");
       setAreaId(defaultAreaId);
     }
-    onOpenChange(false);
   };
 
   return (
@@ -75,10 +72,10 @@ export function ProjectFormDialog({
       <ResponsiveDialogContent>
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>
-            {project ? "Edit project" : "New project"}
+            {mode === "edit" ? "Edit project" : "New project"}
           </ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
-            {project
+            {mode === "edit"
               ? "Update this project's details."
               : "Projects are active efforts with a defined end state."}
           </ResponsiveDialogDescription>
@@ -109,16 +106,14 @@ export function ProjectFormDialog({
               rows={2}
             />
           </div>
-          {areas && (
-            <div className="space-y-2">
-              <Label>Area</Label>
-              <AreaPicker
-                areas={areas}
-                selectedAreaId={areaId}
-                onSelect={setAreaId}
-              />
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>Area</Label>
+            <AreaPicker
+              areas={areas}
+              selectedAreaId={areaId}
+              onSelect={setAreaId}
+            />
+          </div>
           <ResponsiveDialogFooter>
             <Button
               type="button"
@@ -128,7 +123,7 @@ export function ProjectFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!name.trim() || !areaId}>
-              {project ? "Save changes" : "Create project"}
+              {mode === "edit" ? "Save changes" : "Create project"}
             </Button>
           </ResponsiveDialogFooter>
         </form>

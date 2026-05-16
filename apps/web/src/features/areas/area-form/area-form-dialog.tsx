@@ -1,4 +1,3 @@
-import type { Doc } from "@convex/_generated/dataModel";
 import {
   DEFAULT_HEALTH_STATUS,
   HEALTH_STATUS_OPTIONS,
@@ -23,48 +22,53 @@ import {
   SelectValue,
 } from "@vita-os/ui/components/select";
 import { Textarea } from "@vita-os/ui/components/textarea";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { AreaFormValue } from "./types";
 
 interface AreaFormDialogProps {
+  mode: "create" | "edit";
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: {
-    name: string;
-    standard?: string;
-    healthStatus: HealthStatus;
-  }) => void;
-  area?: Doc<"areas">;
+  initialValue?: AreaFormValue;
+  onSubmit: (value: AreaFormValue) => Promise<void> | void;
 }
 
 export function AreaFormDialog({
+  mode,
   open,
   onOpenChange,
+  initialValue,
   onSubmit,
-  area,
 }: AreaFormDialogProps) {
-  const [name, setName] = useState(area?.name ?? "");
-  const [standard, setStandard] = useState(area?.standard ?? "");
+  const [name, setName] = useState(initialValue?.name ?? "");
+  const [standard, setStandard] = useState(initialValue?.standard ?? "");
   const [healthStatus, setHealthStatus] = useState<HealthStatus>(
-    area?.healthStatus ?? DEFAULT_HEALTH_STATUS,
+    initialValue?.healthStatus ?? DEFAULT_HEALTH_STATUS,
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!open) return;
+    setName(initialValue?.name ?? "");
+    setStandard(initialValue?.standard ?? "");
+    setHealthStatus(initialValue?.healthStatus ?? DEFAULT_HEALTH_STATUS);
+  }, [open, initialValue]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName) return;
 
-    onSubmit({
+    await onSubmit({
       name: trimmedName,
       standard: standard.trim() || undefined,
       healthStatus,
     });
 
-    if (!area) {
+    if (mode === "create") {
       setName("");
       setStandard("");
       setHealthStatus(DEFAULT_HEALTH_STATUS);
     }
-    onOpenChange(false);
   };
 
   return (
@@ -72,10 +76,10 @@ export function AreaFormDialog({
       <ResponsiveDialogContent>
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>
-            {area ? "Edit area" : "New area"}
+            {mode === "edit" ? "Edit area" : "New area"}
           </ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
-            {area
+            {mode === "edit"
               ? "Update this life area's details."
               : "Areas are stable life domains like Health, Career, or Finances."}
           </ResponsiveDialogDescription>
@@ -139,7 +143,7 @@ export function AreaFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!name.trim()}>
-              {area ? "Save changes" : "Create area"}
+              {mode === "edit" ? "Save changes" : "Create area"}
             </Button>
           </ResponsiveDialogFooter>
         </form>

@@ -1,4 +1,3 @@
-import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
 import {
   AlertDialog,
@@ -20,58 +19,28 @@ import {
   ItemDescription,
   ItemMedia,
 } from "@vita-os/ui/components/item";
-import { useMutation } from "convex/react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ArrowRight, CalendarIcon, Trash2 } from "lucide-react";
 
 interface ItemRowProps {
   item: Doc<"items">;
-  onProcess?: (item: Doc<"items">) => void;
+  onComplete: () => void;
+  onRemove: () => void;
+  onProcess?: () => void;
 }
 
-export function ItemRow({ item, onProcess }: ItemRowProps) {
-  const removeItem = useMutation(api.items.remove).withOptimisticUpdate(
-    (localStore, args) => {
-      const current = localStore.getQuery(api.items.list, {});
-      if (current !== undefined) {
-        localStore.setQuery(
-          api.items.list,
-          {},
-          current.filter((i) => i._id !== args.id),
-        );
-      }
-
-      const count = localStore.getQuery(api.items.count, {});
-      if (count !== undefined) {
-        localStore.setQuery(api.items.count, {}, Math.max(0, count - 1));
-      }
-    },
-  );
-
-  const completeItem = useMutation(api.items.complete).withOptimisticUpdate(
-    (localStore, args) => {
-      const current = localStore.getQuery(api.items.list, {});
-      if (current !== undefined) {
-        localStore.setQuery(
-          api.items.list,
-          {},
-          current.filter((i) => i._id !== args.id),
-        );
-      }
-
-      const count = localStore.getQuery(api.items.count, {});
-      if (count !== undefined) {
-        localStore.setQuery(api.items.count, {}, Math.max(0, count - 1));
-      }
-    },
-  );
-
+export function ItemRow({
+  item,
+  onComplete,
+  onRemove,
+  onProcess,
+}: ItemRowProps) {
   return (
     <Item size="sm" className="hover:bg-accent/50">
       <ItemMedia>
         <Checkbox
           checked={item.isCompleted}
-          onCheckedChange={() => completeItem({ id: item._id })}
+          onCheckedChange={onComplete}
           aria-label="Complete item"
         />
       </ItemMedia>
@@ -99,7 +68,7 @@ export function ItemRow({ item, onProcess }: ItemRowProps) {
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => onProcess(item)}
+            onClick={onProcess}
             aria-label="Process item"
           >
             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
@@ -129,7 +98,7 @@ export function ItemRow({ item, onProcess }: ItemRowProps) {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => removeItem({ id: item._id })}
+                onClick={onRemove}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 Discard
