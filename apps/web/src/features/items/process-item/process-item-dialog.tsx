@@ -1,17 +1,29 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
-import { Badge } from "@vita-os/ui/components/badge";
 import { Button } from "@vita-os/ui/components/button";
-import { Input } from "@vita-os/ui/components/input";
-import { Label } from "@vita-os/ui/components/label";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@vita-os/ui/components/combobox";
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemTitle,
+} from "@vita-os/ui/components/item";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
+  ResponsiveDialogDescription,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@vita-os/ui/components/responsive-dialog";
 import { cn } from "@vita-os/ui/lib/utils";
-import { FileText, ListPlus, Search, Target } from "lucide-react";
+import { ArrowRight, Check, FileText, Target } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ProcessItemAction } from "@/features/items/use-process-item";
 
@@ -30,6 +42,8 @@ interface ProcessItemDialogProps {
   ) => void | Promise<void>;
 }
 
+type ProjectItem = Doc<"projects"> & { areaName: string };
+
 export function ProcessItemDialog({
   open,
   onOpenChange,
@@ -39,8 +53,9 @@ export function ProcessItemDialog({
   isLoading = false,
   onProcess,
 }: ProcessItemDialogProps) {
-  const [query, setQuery] = useState("");
-  const [selectedProjectId, setSelectedProjectId] = useState<Id<"projects">>();
+  const [selectedProjectId, setSelectedProjectId] = useState<
+    Id<"projects"> | undefined
+  >();
   const [mode, setMode] = useState<ProcessingMode>("add_to_project");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -49,17 +64,14 @@ export function ProcessItemDialog({
     [areas],
   );
 
-  const filteredProjects = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return projects;
-
-    return projects.filter((project) => {
-      const areaName = areaById.get(project.areaId)?.name ?? "";
-      return `${project.name} ${areaName}`
-        .toLowerCase()
-        .includes(normalizedQuery);
-    });
-  }, [areaById, projects, query]);
+  const projectItems: ProjectItem[] = useMemo(
+    () =>
+      projects.map((project) => ({
+        ...project,
+        areaName: areaById.get(project.areaId)?.name ?? "No area",
+      })),
+    [projects, areaById],
+  );
 
   const selectedProject = projects.find(
     (project) => project._id === selectedProjectId,
@@ -71,7 +83,10 @@ export function ProcessItemDialog({
 
     setIsSubmitting(true);
     try {
-      await onProcess(item._id, { type: mode, projectId: selectedProjectId });
+      await onProcess(item._id, {
+        type: mode,
+        projectId: selectedProjectId,
+      });
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);
@@ -83,91 +98,74 @@ export function ProcessItemDialog({
       <ResponsiveDialogContent className="sm:max-w-lg">
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>Process item</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            Choose a project and decide what to do with this item.
+          </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
 
-        <div className="rounded-lg border border-border-subtle bg-surface-2 px-3 py-2">
-          <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-            {item.text}
-          </p>
+        <div className="space-y-1">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+            From inbox
+          </span>
+          <div className="border-l-2 border-border-subtle pl-3">
+            <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+              {item.text}
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="process-project-search">Project</Label>
-            <div className="relative">
-              <Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="process-project-search"
-                role="combobox"
-                aria-label="Project"
-                aria-controls="process-project-results"
-                aria-expanded="true"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setSelectedProjectId(undefined);
-                }}
-                placeholder="Search projects or areas"
-                autoFocus
-                className="pl-9"
-              />
-            </div>
-          </div>
-
-          <div
-            id="process-project-results"
-            role="listbox"
-            aria-label="Projects"
-            className="max-h-64 overflow-y-auto rounded-lg border border-border-subtle"
-          >
-            {isLoading ? (
-              <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                Loading projects...
-              </p>
-            ) : filteredProjects.length > 0 ? (
-              filteredProjects.map((project) => {
-                const area = areaById.get(project.areaId);
-                const isSelected = project._id === selectedProjectId;
-
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+              1. Choose a project
+            </span>
+            <Combobox
+              items={isLoading ? [] : projectItems}
+              itemToStringLabel={(project: ProjectItem) => project.name}
+              itemToStringValue={(project: ProjectItem) => project.name}
+              filter={(project: ProjectItem, query: string) => {
+                const q = query.trim().toLowerCase();
                 return (
-                  <button
-                    key={project._id}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    onClick={() => {
-                      setSelectedProjectId(project._id);
-                      setQuery(project.name);
-                    }}
-                    className={cn(
-                      "flex w-full items-center justify-between gap-3 border-border-subtle border-b px-3 py-2.5 text-left text-sm last:border-b-0 hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
-                      isSelected && "bg-primary/5 text-primary",
-                    )}
-                  >
-                    <span className="min-w-0 truncate font-medium">
-                      {project.name}
-                    </span>
-                    {area && (
-                      <Badge variant="outline" className="max-w-32 truncate">
-                        {area.name}
-                      </Badge>
-                    )}
-                  </button>
+                  project.name.toLowerCase().includes(q) ||
+                  project.areaName.toLowerCase().includes(q)
                 );
-              })
-            ) : (
-              <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                No matching projects
-              </p>
-            )}
+              }}
+              onValueChange={(project: ProjectItem | null) => {
+                setSelectedProjectId(
+                  project ? (project._id as Id<"projects">) : undefined,
+                );
+              }}
+            >
+              <ComboboxInput
+                placeholder="Search projects or areas..."
+                autoFocus
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>No matching projects</ComboboxEmpty>
+                <ComboboxList>
+                  {(project: ProjectItem) => (
+                    <ComboboxItem key={project._id} value={project}>
+                      <Item size="xs" className="p-0">
+                        <ItemContent>
+                          <ItemTitle className="whitespace-nowrap">
+                            {project.name}
+                          </ItemTitle>
+                          <ItemDescription>{project.areaName}</ItemDescription>
+                        </ItemContent>
+                      </Item>
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           </div>
 
           {selectedProject && (
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">
-                Add to {selectedProject.name}
-              </legend>
-              <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                2. What should happen?
+              </span>
+              <div className="grid gap-3 sm:grid-cols-2">
                 <ProcessingModeCard
                   mode="add_to_project"
                   selectedMode={mode}
@@ -185,7 +183,7 @@ export function ProcessItemDialog({
                   icon={<Target className="h-5 w-5" />}
                 />
               </div>
-            </fieldset>
+            </div>
           )}
 
           <ResponsiveDialogFooter>
@@ -197,7 +195,7 @@ export function ProcessItemDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!selectedProjectId || isSubmitting}>
-              <ListPlus className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4" />
               Process
             </Button>
           </ResponsiveDialogFooter>
@@ -229,8 +227,9 @@ function ProcessingModeCard({
     <label
       htmlFor={id}
       className={cn(
-        "flex min-h-28 cursor-pointer gap-3 rounded-lg border border-border-subtle p-3 transition-colors hover:bg-surface-3",
-        isSelected && "border-primary/50 bg-primary/5 text-primary",
+        "relative flex cursor-pointer flex-col gap-3 rounded-2xl border p-4 transition-all",
+        "border-border-subtle bg-surface-2 hover:border-border hover:bg-surface-3",
+        isSelected && "border-primary/50 bg-primary/5 ring-1 ring-primary/20",
       )}
     >
       <input
@@ -240,15 +239,36 @@ function ProcessingModeCard({
         value={mode}
         checked={isSelected}
         onChange={() => onSelect(mode)}
-        className="mt-1"
+        className="sr-only"
       />
-      <span className="flex min-w-0 flex-1 flex-col gap-2">
-        <span className="text-muted-foreground">{icon}</span>
-        <span className="font-medium text-sm">{title}</span>
-        <span className="text-muted-foreground text-xs leading-relaxed">
+
+      {isSelected && (
+        <div
+          className="absolute top-3 right-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
+          aria-hidden="true"
+        >
+          <Check className="h-3 w-3" />
+        </div>
+      )}
+
+      <div
+        aria-hidden="true"
+        className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-xl",
+          isSelected
+            ? "bg-primary/10 text-primary"
+            : "bg-muted text-muted-foreground",
+        )}
+      >
+        {icon}
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium">{title}</span>
+        <span className="text-xs leading-relaxed text-muted-foreground">
           {description}
         </span>
-      </span>
+      </div>
     </label>
   );
 }

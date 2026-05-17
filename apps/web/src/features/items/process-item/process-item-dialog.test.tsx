@@ -89,21 +89,22 @@ function renderDialog(onProcess = vi.fn()) {
 }
 
 describe("ProcessItemDialog", () => {
-  it("shows the Item as context and filters Projects by Area name", async () => {
+  it("shows the Item as context and filters Projects by search term", async () => {
     const user = userEvent.setup();
     renderDialog();
 
     expect(screen.getByText("Schedule a physical")).toBeInTheDocument();
 
-    await user.type(screen.getByRole("combobox", { name: /project/i }), "heal");
+    const combobox = screen.getByRole("combobox");
+    await user.type(combobox, "heal");
 
-    const results = screen.getByRole("listbox", { name: /projects/i });
+    const option = screen.getByRole("option", {
+      name: /book annual checkup/i,
+    });
+    expect(option).toBeInTheDocument();
+    expect(within(option).getByText("Health")).toBeInTheDocument();
     expect(
-      within(results).getByRole("option", { name: /book annual checkup/i }),
-    ).toBeInTheDocument();
-    expect(within(results).getByText("Health")).toBeInTheDocument();
-    expect(
-      within(results).queryByRole("option", { name: /renew passport/i }),
+      screen.queryByRole("option", { name: /renew passport/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -112,6 +113,7 @@ describe("ProcessItemDialog", () => {
     const onProcess = vi.fn();
     renderDialog(onProcess);
 
+    await user.click(screen.getByRole("combobox"));
     await user.click(screen.getByRole("option", { name: /book annual/i }));
 
     expect(
