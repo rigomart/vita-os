@@ -134,10 +134,6 @@ export const process = mutation({
     id: v.id("items"),
     action: v.union(
       v.object({
-        type: v.literal("add_date"),
-        date: v.number(),
-      }),
-      v.object({
         type: v.literal("create_project"),
         name: v.string(),
         areaId: v.id("areas"),

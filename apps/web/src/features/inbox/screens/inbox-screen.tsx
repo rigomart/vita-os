@@ -1,5 +1,7 @@
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
+import { Link } from "@tanstack/react-router";
+import { Button } from "@vita-os/ui/components/button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -13,12 +15,19 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ItemRowContainer } from "@/features/items/item-row/item-row-container";
 import { ProcessItemDialogContainer } from "@/features/items/process-item/process-item-dialog-container";
 
+interface ProcessingNotification {
+  action: "add_to_project" | "set_next_action";
+  project: Doc<"projects">;
+  area: Doc<"areas"> | undefined;
+}
+
 export function InboxScreen() {
   const items = useQuery(api.items.list);
-  const areas = useQuery(api.areas.list);
-  const projects = useQuery(api.projects.list);
   const [processingItem, setProcessingItem] = useState<
     Doc<"items"> | undefined
+  >(undefined);
+  const [notification, setNotification] = useState<
+    ProcessingNotification | undefined
   >(undefined);
 
   if (items === undefined) {
@@ -82,11 +91,55 @@ export function InboxScreen() {
             if (!open) setProcessingItem(undefined);
           }}
           item={processingItem}
-          areas={areas ?? []}
-          projects={projects ?? []}
+          onProcessed={setNotification}
+        />
+      )}
+
+      {notification && (
+        <ProcessingToast
+          notification={notification}
+          onDismiss={() => setNotification(undefined)}
         />
       )}
     </div>
+  );
+}
+
+function ProcessingToast({
+  notification,
+  onDismiss,
+}: {
+  notification: ProcessingNotification;
+  onDismiss: () => void;
+}) {
+  const message =
+    notification.action === "set_next_action"
+      ? "Set as next action"
+      : "Added as note";
+
+  return (
+    <output className="fixed right-4 bottom-4 z-50 flex max-w-sm items-center gap-3 rounded-lg border border-border-subtle bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg">
+      <span className="min-w-0">
+        {message} in{" "}
+        {notification.area && notification.project.slug ? (
+          <Link
+            to="/$areaSlug/$projectSlug"
+            params={{
+              areaSlug: notification.area.slug ?? notification.area._id,
+              projectSlug: notification.project.slug,
+            }}
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {notification.project.name}
+          </Link>
+        ) : (
+          <span className="font-medium">{notification.project.name}</span>
+        )}
+      </span>
+      <Button type="button" variant="ghost" size="xs" onClick={onDismiss}>
+        Dismiss
+      </Button>
+    </output>
   );
 }
 
