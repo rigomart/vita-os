@@ -45,6 +45,8 @@ function InputGroupAddon({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Addons are not focusable controls; the click target forwards focus to the input.
+    // biome-ignore lint/a11y/useSemanticElements: Input group addons are layout wrappers and should not imply fieldset semantics.
     <div
       role="group"
       data-slot="input-group-addon"
