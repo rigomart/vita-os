@@ -94,8 +94,18 @@ describe("ProcessItemDialog", () => {
     renderDialog();
 
     expect(screen.getByText("Schedule a physical")).toBeInTheDocument();
+    expect(
+      screen.getByText("Decide what should happen with this item."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Type a new Project name to create it here."),
+    ).toBeInTheDocument();
 
     const combobox = screen.getByRole("combobox");
+    expect(combobox).toHaveAttribute(
+      "placeholder",
+      "Search Projects or Areas...",
+    );
     await user.type(combobox, "heal");
 
     const option = screen.getByRole("option", {

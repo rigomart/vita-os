@@ -17,6 +17,7 @@ import {
   Check,
   Compass,
   FileText,
+  Plus,
   Search,
   Target,
 } from "lucide-react";
@@ -101,7 +102,7 @@ export function ProcessItemDialog({
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>Process item</ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
-            Choose a project and decide what to do with this item.
+            Decide what should happen with this item.
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
 
@@ -119,9 +120,7 @@ export function ProcessItemDialog({
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-              {isCreatingProject
-                ? "1. Create a project"
-                : "1. Choose a project"}
+              {isCreatingProject ? "1. Create project" : "1. Project"}
             </span>
             {isCreatingProject ? (
               <div className="flex gap-2">
@@ -171,6 +170,12 @@ export function ProcessItemDialog({
                   setDefinitionOfDone("");
                 }}
               />
+            )}
+            {!isCreatingProject && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Plus className="h-3.5 w-3.5" />
+                <span>Type a new Project name to create it here.</span>
+              </div>
             )}
           </div>
 

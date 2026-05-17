@@ -95,7 +95,7 @@ export function ProjectSearchAutocomplete({
       }}
     >
       <ComboboxInput
-        placeholder="Search projects or areas..."
+        placeholder="Search Projects or Areas..."
         autoFocus
         onChange={(event) => setQuery(event.currentTarget.value)}
       />
