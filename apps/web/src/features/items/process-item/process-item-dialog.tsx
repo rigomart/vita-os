@@ -1,19 +1,7 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import { Button } from "@vita-os/ui/components/button";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@vita-os/ui/components/combobox";
-import {
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemTitle,
-} from "@vita-os/ui/components/item";
+import { Input } from "@vita-os/ui/components/input";
+import { Label } from "@vita-os/ui/components/label";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -22,12 +10,18 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@vita-os/ui/components/responsive-dialog";
+import { Textarea } from "@vita-os/ui/components/textarea";
 import { cn } from "@vita-os/ui/lib/utils";
 import { ArrowRight, Check, FileText, Target } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { AreaPicker } from "@/features/areas/components/area-picker";
 import type { ProcessItemAction } from "@/features/items/use-process-item";
+import { ProjectSearchAutocomplete } from "./project-search-autocomplete";
 
 type ProcessingMode = "add_to_project" | "set_next_action";
+type ProcessSelection =
+  | { type: "existing_project"; projectId: Id<"projects"> }
+  | { type: "create_project" };
 
 interface ProcessItemDialogProps {
   open: boolean;
@@ -42,8 +36,6 @@ interface ProcessItemDialogProps {
   ) => void | Promise<void>;
 }
 
-type ProjectItem = Doc<"projects"> & { areaName: string };
-
 export function ProcessItemDialog({
   open,
   onOpenChange,
@@ -53,40 +45,44 @@ export function ProcessItemDialog({
   isLoading = false,
   onProcess,
 }: ProcessItemDialogProps) {
-  const [selectedProjectId, setSelectedProjectId] = useState<
-    Id<"projects"> | undefined
-  >();
+  const [selection, setSelection] = useState<ProcessSelection | undefined>();
   const [mode, setMode] = useState<ProcessingMode>("add_to_project");
+  const [createName, setCreateName] = useState("");
+  const [createAreaId, setCreateAreaId] = useState<string | undefined>();
+  const [definitionOfDone, setDefinitionOfDone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const areaById = useMemo(
-    () => new Map(areas.map((area) => [area._id, area])),
-    [areas],
-  );
-
-  const projectItems: ProjectItem[] = useMemo(
-    () =>
-      projects.map((project) => ({
-        ...project,
-        areaName: areaById.get(project.areaId)?.name ?? "No area",
-      })),
-    [projects, areaById],
-  );
-
   const selectedProject = projects.find(
-    (project) => project._id === selectedProjectId,
+    (project) =>
+      selection?.type === "existing_project" &&
+      project._id === selection.projectId,
   );
+  const isCreatingProject = selection?.type === "create_project";
+  const canSubmitExistingProject =
+    selection?.type === "existing_project" && !!selection.projectId;
+  const canSubmitCreatedProject =
+    isCreatingProject && createName.trim().length > 0 && !!createAreaId;
+  const canSubmit = canSubmitExistingProject || canSubmitCreatedProject;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!selectedProjectId) return;
+    if (!canSubmit) return;
 
     setIsSubmitting(true);
     try {
-      await onProcess(item._id, {
-        type: mode,
-        projectId: selectedProjectId,
-      });
+      if (isCreatingProject) {
+        await onProcess(item._id, {
+          type: "create_project",
+          name: createName.trim(),
+          areaId: createAreaId as Id<"areas">,
+          definitionOfDone: definitionOfDone.trim() || undefined,
+        });
+      } else if (selection?.type === "existing_project") {
+        await onProcess(item._id, {
+          type: mode,
+          projectId: selection.projectId,
+        });
+      }
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);
@@ -119,46 +115,57 @@ export function ProcessItemDialog({
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
               1. Choose a project
             </span>
-            <Combobox
-              items={isLoading ? [] : projectItems}
-              itemToStringLabel={(project: ProjectItem) => project.name}
-              itemToStringValue={(project: ProjectItem) => project.name}
-              filter={(project: ProjectItem, query: string) => {
-                const q = query.trim().toLowerCase();
-                return (
-                  project.name.toLowerCase().includes(q) ||
-                  project.areaName.toLowerCase().includes(q)
-                );
+            <ProjectSearchAutocomplete
+              areas={areas}
+              projects={projects}
+              isLoading={isLoading}
+              onSelect={(project) => {
+                setSelection({
+                  type: "existing_project",
+                  projectId: project._id,
+                });
               }}
-              onValueChange={(project: ProjectItem | null) => {
-                setSelectedProjectId(
-                  project ? (project._id as Id<"projects">) : undefined,
-                );
+              onCreate={(name) => {
+                setSelection({ type: "create_project" });
+                setCreateName(name);
+                setCreateAreaId(undefined);
+                setDefinitionOfDone("");
               }}
-            >
-              <ComboboxInput
-                placeholder="Search projects or areas..."
-                autoFocus
-              />
-              <ComboboxContent>
-                <ComboboxEmpty>No matching projects</ComboboxEmpty>
-                <ComboboxList>
-                  {(project: ProjectItem) => (
-                    <ComboboxItem key={project._id} value={project}>
-                      <Item size="xs" className="p-0">
-                        <ItemContent>
-                          <ItemTitle className="whitespace-nowrap">
-                            {project.name}
-                          </ItemTitle>
-                          <ItemDescription>{project.areaName}</ItemDescription>
-                        </ItemContent>
-                      </Item>
-                    </ComboboxItem>
-                  )}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
+            />
           </div>
+
+          {isCreatingProject && (
+            <div className="space-y-4 rounded-lg border border-border-subtle bg-surface-2 p-4">
+              <div className="space-y-2">
+                <Label htmlFor="inline-project-name">Project name</Label>
+                <Input
+                  id="inline-project-name"
+                  value={createName}
+                  onChange={(event) => setCreateName(event.currentTarget.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Area</Label>
+                <AreaPicker
+                  areas={areas}
+                  selectedAreaId={createAreaId}
+                  onSelect={setCreateAreaId}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="inline-project-dod">Definition of Done</Label>
+                <Textarea
+                  id="inline-project-dod"
+                  value={definitionOfDone}
+                  onChange={(event) =>
+                    setDefinitionOfDone(event.currentTarget.value)
+                  }
+                  placeholder="What does done look like?"
+                  rows={2}
+                />
+              </div>
+            </div>
+          )}
 
           {selectedProject && (
             <div className="space-y-2">
@@ -194,7 +201,7 @@ export function ProcessItemDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!selectedProjectId || isSubmitting}>
+            <Button type="submit" disabled={!canSubmit || isSubmitting}>
               <ArrowRight className="h-4 w-4" />
               Process
             </Button>

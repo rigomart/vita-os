@@ -129,4 +129,48 @@ describe("ProcessItemDialog", () => {
       projectId: projects[0]._id,
     });
   });
+
+  it("offers inline Project creation for a non-matching search", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.type(screen.getByRole("combobox"), "Schedule dentist");
+
+    await user.click(
+      screen.getByRole("option", { name: /create 'schedule dentist'/i }),
+    );
+
+    expect(
+      screen.getByRole("textbox", { name: /^project name$/i }),
+    ).toHaveValue("Schedule dentist");
+    expect(
+      screen.getByRole("textbox", { name: /definition of done/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^area$/i })).toBeInTheDocument();
+  });
+
+  it("submits inline Project creation with the selected Area", async () => {
+    const user = userEvent.setup();
+    const onProcess = vi.fn();
+    renderDialog(onProcess);
+
+    await user.type(screen.getByRole("combobox"), "Schedule dentist");
+    await user.click(
+      screen.getByRole("option", { name: /create 'schedule dentist'/i }),
+    );
+    await user.click(screen.getByRole("button", { name: /^area$/i }));
+    await user.click(screen.getByRole("button", { name: "Health" }));
+    await user.type(
+      screen.getByRole("textbox", { name: /definition of done/i }),
+      "Appointment is on the calendar",
+    );
+    await user.click(screen.getByRole("button", { name: /process/i }));
+
+    expect(onProcess).toHaveBeenCalledWith(item._id, {
+      type: "create_project",
+      name: "Schedule dentist",
+      areaId: healthArea._id,
+      definitionOfDone: "Appointment is on the calendar",
+    });
+  });
 });
