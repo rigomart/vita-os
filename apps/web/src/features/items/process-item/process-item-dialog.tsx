@@ -12,9 +12,15 @@ import {
 } from "@vita-os/ui/components/responsive-dialog";
 import { Textarea } from "@vita-os/ui/components/textarea";
 import { cn } from "@vita-os/ui/lib/utils";
-import { ArrowRight, Check, FileText, Target } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Compass,
+  FileText,
+  Search,
+  Target,
+} from "lucide-react";
 import { useState } from "react";
-import { AreaPicker } from "@/features/areas/components/area-picker";
 import type { ProcessItemAction } from "@/features/items/use-process-item";
 import { ProjectSearchAutocomplete } from "./project-search-autocomplete";
 
@@ -113,45 +119,68 @@ export function ProcessItemDialog({
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-              1. Choose a project
+              {isCreatingProject
+                ? "1. Create a project"
+                : "1. Choose a project"}
             </span>
-            <ProjectSearchAutocomplete
-              areas={areas}
-              projects={projects}
-              isLoading={isLoading}
-              onSelect={(project) => {
-                setSelection({
-                  type: "existing_project",
-                  projectId: project._id,
-                });
-              }}
-              onCreate={(name) => {
-                setSelection({ type: "create_project" });
-                setCreateName(name);
-                setCreateAreaId(undefined);
-                setDefinitionOfDone("");
-              }}
-            />
+            {isCreatingProject ? (
+              <div className="flex gap-2">
+                <div className="min-w-0 flex-1">
+                  <Label htmlFor="inline-project-name" className="sr-only">
+                    Project name
+                  </Label>
+                  <Input
+                    id="inline-project-name"
+                    value={createName}
+                    onChange={(event) =>
+                      setCreateName(event.currentTarget.value)
+                    }
+                    autoFocus
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  aria-label="Choose existing project"
+                  onClick={() => {
+                    setSelection(undefined);
+                    setCreateName("");
+                    setCreateAreaId(undefined);
+                    setDefinitionOfDone("");
+                  }}
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <ProjectSearchAutocomplete
+                areas={areas}
+                projects={projects}
+                isLoading={isLoading}
+                onSelect={(project) => {
+                  setSelection({
+                    type: "existing_project",
+                    projectId: project._id,
+                  });
+                }}
+                onCreate={(name) => {
+                  setSelection({ type: "create_project" });
+                  setCreateName(name);
+                  setCreateAreaId(undefined);
+                  setDefinitionOfDone("");
+                }}
+              />
+            )}
           </div>
 
           {isCreatingProject && (
-            <div className="space-y-4 rounded-lg border border-border-subtle bg-surface-2 p-4">
-              <div className="space-y-2">
-                <Label htmlFor="inline-project-name">Project name</Label>
-                <Input
-                  id="inline-project-name"
-                  value={createName}
-                  onChange={(event) => setCreateName(event.currentTarget.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Area</Label>
-                <AreaPicker
-                  areas={areas}
-                  selectedAreaId={createAreaId}
-                  onSelect={setCreateAreaId}
-                />
-              </div>
+            <div className="space-y-4">
+              <AreaChoice
+                areas={areas}
+                selectedAreaId={createAreaId}
+                onSelect={setCreateAreaId}
+              />
               <div className="space-y-2">
                 <Label htmlFor="inline-project-dod">Definition of Done</Label>
                 <Textarea
@@ -209,6 +238,42 @@ export function ProcessItemDialog({
         </form>
       </ResponsiveDialogContent>
     </ResponsiveDialog>
+  );
+}
+
+function AreaChoice({
+  areas,
+  selectedAreaId,
+  onSelect,
+}: {
+  areas: Doc<"areas">[];
+  selectedAreaId: string | undefined;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Compass className="h-4 w-4" />
+        <span>Place under</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {areas.map((area) => {
+          const isSelected = selectedAreaId === area._id;
+          return (
+            <Button
+              key={area._id}
+              type="button"
+              variant={isSelected ? "default" : "outline"}
+              size="sm"
+              onClick={() => onSelect(area._id)}
+              className="h-8 rounded-full"
+            >
+              {area.name}
+            </Button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

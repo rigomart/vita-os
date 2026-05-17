@@ -143,10 +143,11 @@ describe("ProcessItemDialog", () => {
     expect(
       screen.getByRole("textbox", { name: /^project name$/i }),
     ).toHaveValue("Schedule dentist");
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(
       screen.getByRole("textbox", { name: /definition of done/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^area$/i })).toBeInTheDocument();
+    expect(screen.getByText("Place under")).toBeInTheDocument();
   });
 
   it("submits inline Project creation with the selected Area", async () => {
@@ -158,7 +159,6 @@ describe("ProcessItemDialog", () => {
     await user.click(
       screen.getByRole("option", { name: /create 'schedule dentist'/i }),
     );
-    await user.click(screen.getByRole("button", { name: /^area$/i }));
     await user.click(screen.getByRole("button", { name: "Health" }));
     await user.type(
       screen.getByRole("textbox", { name: /definition of done/i }),
