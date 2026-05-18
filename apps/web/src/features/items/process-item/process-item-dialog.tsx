@@ -157,8 +157,7 @@ export function ProcessItemDialog({
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>Process item</ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
-            Choose an existing Project, or type a new Project name to create
-            one.
+            Turn this inbox item into a clear outcome or next action.
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
 
