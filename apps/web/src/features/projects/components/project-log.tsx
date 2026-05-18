@@ -106,7 +106,7 @@ function ProjectLogTimeline({
       {logs.map((log) =>
         log.type === "note" ? (
           <div key={log._id} className="relative py-2 pl-8">
-            <div className="absolute left-0 top-[17px] flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 ring-2 ring-background">
+            <div className="absolute left-0 top-[17px] flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 ring-2 ring-surface-1">
               <Pen className="h-3 w-3 text-primary" />
             </div>
             <div className="rounded-lg border border-border-subtle bg-surface-2 px-4 py-3">

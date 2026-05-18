@@ -16,8 +16,8 @@ import { ItemRowContainer } from "@/features/items/item-row/item-row-container";
 import { ProcessItemDialogContainer } from "@/features/items/process-item/process-item-dialog-container";
 
 interface ProcessingNotification {
-  action: "add_to_project" | "set_next_action";
-  project: Doc<"projects">;
+  action: "create_project" | "add_to_project" | "set_next_action";
+  project: Pick<Doc<"projects">, "name" | "slug">;
   area: Doc<"areas"> | undefined;
 }
 
@@ -113,9 +113,11 @@ function ProcessingToast({
   onDismiss: () => void;
 }) {
   const message =
-    notification.action === "set_next_action"
-      ? "Set as next action"
-      : "Added as note";
+    notification.action === "create_project"
+      ? "Created project"
+      : notification.action === "set_next_action"
+        ? "Set as next action"
+        : "Added as note";
 
   return (
     <output className="fixed right-4 bottom-4 z-50 flex max-w-sm items-center gap-3 rounded-lg border border-border-subtle bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg">

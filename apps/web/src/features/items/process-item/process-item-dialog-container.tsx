@@ -12,9 +12,9 @@ interface ProcessItemDialogProps {
   onProcessed?: (result: {
     action: Extract<
       ProcessItemAction,
-      { type: "add_to_project" | "set_next_action" }
+      { type: "create_project" | "add_to_project" | "set_next_action" }
     >["type"];
-    project: Doc<"projects">;
+    project: Pick<Doc<"projects">, "name" | "slug">;
     area: Doc<"areas"> | undefined;
   }) => void;
 }
@@ -41,7 +41,14 @@ export function ProcessItemDialogContainer({
       projects={visibleProjects}
       isLoading={isLoading}
       onProcess={async (itemId, action) => {
-        await processItem(itemId, action);
+        const result = await processItem(itemId, action);
+        if (action.type === "create_project" && result.type === "created") {
+          onProcessed?.({
+            action: action.type,
+            project: { name: action.name, slug: result.slug },
+            area: visibleAreas.find((area) => area._id === action.areaId),
+          });
+        }
         if (
           action.type === "add_to_project" ||
           action.type === "set_next_action"
