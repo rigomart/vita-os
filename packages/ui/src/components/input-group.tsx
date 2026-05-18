@@ -45,6 +45,8 @@ function InputGroupAddon({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: Addon is a layout region for icons/labels, not a form fieldset.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Click focuses the paired input; keyboard users tab to the control.
     <div
       role="group"
       data-slot="input-group-addon"
