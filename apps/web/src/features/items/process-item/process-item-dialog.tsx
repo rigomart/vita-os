@@ -10,6 +10,7 @@ import {
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
+  ResponsiveDialogDescription,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
@@ -155,6 +156,10 @@ export function ProcessItemDialog({
       <ResponsiveDialogContent className="sm:max-w-lg">
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>Process item</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            Choose an existing Project, or type a new Project name to create
+            one.
+          </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
 
         <InboxItemPreview item={item} />
