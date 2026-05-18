@@ -10,7 +10,6 @@ import {
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
-  ResponsiveDialogDescription,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
@@ -156,12 +155,12 @@ export function ProcessItemDialog({
       <ResponsiveDialogContent className="sm:max-w-lg">
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>Process item</ResponsiveDialogTitle>
-          <ResponsiveDialogDescription>
-            Turn this inbox item into a clear outcome or next action.
-          </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
 
         <InboxItemPreview item={item} />
+        <p className="-mt-3 text-sm text-muted-foreground">
+          Turn this inbox item into a clear outcome or next action.
+        </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <ProjectSearchAutocomplete
