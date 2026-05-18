@@ -1,28 +1,20 @@
-import { api } from "@convex/_generated/api";
-import { useQuery } from "convex-helpers/react/cache/hooks";
+import type { Doc } from "@convex/_generated/dataModel";
 import { DashboardAreas } from "./dashboard-areas";
 
+interface DashboardArea {
+  area: Doc<"areas">;
+  projectCount: number;
+  attentionCount: number;
+}
+
 interface DashboardAreasSectionProps {
+  areas: DashboardArea[];
   onCreateArea: () => void;
 }
 
 export function DashboardAreasSection({
+  areas,
   onCreateArea,
 }: DashboardAreasSectionProps) {
-  const areas = useQuery(api.areas.list);
-  const projects = useQuery(api.projects.list);
-  const attention = useQuery(api.dashboard.attention);
-
-  return (
-    <DashboardAreas
-      areas={(areas ?? []).map((area) => ({
-        area,
-        projectCount: (projects ?? []).filter(
-          (project) => project.areaId === area._id,
-        ).length,
-        attentionCount: attention?.byArea?.[area._id] ?? 0,
-      }))}
-      onCreateArea={onCreateArea}
-    />
-  );
+  return <DashboardAreas areas={areas} onCreateArea={onCreateArea} />;
 }
