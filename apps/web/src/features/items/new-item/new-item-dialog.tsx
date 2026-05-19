@@ -39,7 +39,7 @@ export function NewItemDialog({
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
       <ResponsiveDialogContent>
         <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle>New item</ResponsiveDialogTitle>
+          <ResponsiveDialogTitle>New task</ResponsiveDialogTitle>
         </ResponsiveDialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Textarea
@@ -55,7 +55,7 @@ export function NewItemDialog({
               }
             }}
           />
-          <DatePicker value={date} onChange={setDate} placeholder="Add date" />
+          <DatePicker value={date} onChange={setDate} placeholder="Add When" />
           <ResponsiveDialogFooter>
             <Button
               type="button"

@@ -100,7 +100,7 @@ export function AppSidebar() {
                   className="flex w-full items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   <CirclePlus className="size-4" />
-                  <span>New item</span>
+                  <span>New task</span>
                   <Kbd className="ml-auto bg-primary-foreground/15 text-primary-foreground/70">
                     Q
                   </Kbd>

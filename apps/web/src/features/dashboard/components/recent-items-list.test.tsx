@@ -36,7 +36,7 @@ function item(
 }
 
 describe("RecentItemsList", () => {
-  it("shows at most five recent uncompleted Items as a read-only list", () => {
+  it("shows at most five recent Open Tasks as a read-only list", () => {
     render(
       <RecentItemsList
         items={[
@@ -58,18 +58,18 @@ describe("RecentItemsList", () => {
 
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /process item/i }),
+      screen.queryByRole("button", { name: /process task/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /discard item/i }),
+      screen.queryByRole("button", { name: /discard task/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /add date/i }),
+      screen.queryByRole("button", { name: /add when/i }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/edit item text/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/edit task text/i)).not.toBeInTheDocument();
 
     expect(
-      screen.getByRole("link", { name: /view all items/i }),
+      screen.getByRole("link", { name: /view all tasks/i }),
     ).toHaveAttribute("href", "/inbox");
   });
 });
