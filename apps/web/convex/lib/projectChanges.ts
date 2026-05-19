@@ -1,5 +1,9 @@
 import type { GenericMutationCtx } from "convex/server";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
+import {
+  type AutoActivityLogEntry,
+  buildAreaMoveLogEntry,
+} from "./activityLog";
 
 type MutationCtx = GenericMutationCtx<DataModel>;
 
@@ -24,16 +28,7 @@ type ProjectPatch = Partial<
   >
 >;
 
-type AutoProjectLog = {
-  type:
-    | "status_change"
-    | "next_action_change"
-    | "state_change"
-    | "waiting_change";
-  content: string;
-  previousValue?: string;
-  newValue?: string;
-};
+type AutoProjectLog = AutoActivityLogEntry;
 
 function hasOwn(obj: object, key: PropertyKey): boolean {
   return Object.keys(obj).includes(String(key));
@@ -42,8 +37,19 @@ function hasOwn(obj: object, key: PropertyKey): boolean {
 export function buildProjectPatchLogEntries(
   project: Doc<"projects">,
   patch: ProjectPatch,
+  options?: { fromAreaName?: string; toAreaName?: string },
 ): AutoProjectLog[] {
   const logs: AutoProjectLog[] = [];
+
+  if (
+    hasOwn(patch, "areaId") &&
+    patch.areaId !== undefined &&
+    patch.areaId !== project.areaId &&
+    options?.fromAreaName &&
+    options?.toAreaName
+  ) {
+    logs.push(buildAreaMoveLogEntry(options.fromAreaName, options.toAreaName));
+  }
 
   if (
     hasOwn(patch, "status") &&
@@ -148,10 +154,30 @@ export async function applyProjectPatch(
     patch: ProjectPatch;
   },
 ): Promise<void> {
+  let areaMoveNames: { fromAreaName: string; toAreaName: string } | undefined;
+
+  if (
+    args.patch.areaId !== undefined &&
+    args.patch.areaId !== args.project.areaId
+  ) {
+    const fromArea = await ctx.db.get(args.project.areaId);
+    const toArea = await ctx.db.get(args.patch.areaId);
+    if (fromArea && toArea) {
+      areaMoveNames = {
+        fromAreaName: fromArea.name,
+        toAreaName: toArea.name,
+      };
+    }
+  }
+
   await ctx.db.patch(args.project._id, args.patch);
 
   const now = Date.now();
-  const logs = buildProjectPatchLogEntries(args.project, args.patch);
+  const logs = buildProjectPatchLogEntries(
+    args.project,
+    args.patch,
+    areaMoveNames,
+  );
   for (const log of logs) {
     await insertAutoProjectLog(ctx, {
       userId: args.userId,

@@ -5,6 +5,7 @@ import { Textarea } from "@vita-os/ui/components/textarea";
 import { formatDistanceToNow } from "date-fns";
 import { MessageSquare, Pen } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useState } from "react";
+import { getActivityLogEntryLabel } from "@/features/projects/activity-log-entry";
 
 interface ProjectLogProps {
   logs: Doc<"projectLogs">[] | undefined;
@@ -40,7 +41,7 @@ export function ProjectLog({ logs, onAddNote }: ProjectLogProps) {
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-3">
           <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
-        <h2 className="text-sm font-medium">Activity</h2>
+        <h2 className="text-sm font-medium">Activity log</h2>
         {logs && logs.length > 0 && (
           <span className="text-xs text-muted-foreground">{logs.length}</span>
         )}
@@ -50,7 +51,8 @@ export function ProjectLog({ logs, onAddNote }: ProjectLogProps) {
         <Textarea
           value={noteText}
           onChange={(event) => setNoteText(event.target.value)}
-          placeholder="Add a note..."
+          aria-label="Activity log note"
+          placeholder="Add to activity log..."
           className="min-h-9 bg-surface-2"
           rows={1}
           onKeyDown={handleNoteKeyDown}
@@ -119,6 +121,9 @@ function ProjectLogTimeline({
         ) : (
           <div key={log._id} className="relative py-1.5 pl-8">
             <div className="absolute left-[7px] top-[13px] h-3 w-3 rounded-full border-2 border-border/60 bg-surface-1" />
+            <p className="text-xs font-medium text-muted-foreground">
+              {getActivityLogEntryLabel(log.type)}
+            </p>
             <p className="text-xs text-muted-foreground italic">
               {log.content}
             </p>

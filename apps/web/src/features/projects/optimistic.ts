@@ -112,6 +112,35 @@ export function optimisticallyUpdateProject(
       { ...bySlug, ...patch },
     );
   }
+
+  if (patch.areaId !== undefined && bySlug !== undefined && bySlug !== null) {
+    const previousAreaId = bySlug.areaId;
+    if (previousAreaId !== patch.areaId) {
+      const previousAreaProjects = localStore.getQuery(
+        api.projects.listByArea,
+        {
+          areaId: previousAreaId,
+        },
+      );
+      if (previousAreaProjects !== undefined) {
+        localStore.setQuery(
+          api.projects.listByArea,
+          { areaId: previousAreaId },
+          removeById(previousAreaProjects, id),
+        );
+      }
+
+      const nextAreaProjects = localStore.getQuery(api.projects.listByArea, {
+        areaId: patch.areaId,
+      });
+      if (nextAreaProjects !== undefined) {
+        localStore.setQuery(api.projects.listByArea, { areaId: patch.areaId }, [
+          ...nextAreaProjects,
+          { ...bySlug, ...patch },
+        ]);
+      }
+    }
+  }
 }
 
 export function optimisticallyRemoveProject(
