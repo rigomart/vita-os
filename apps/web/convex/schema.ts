@@ -75,6 +75,7 @@ export default defineSchema({
       v.literal("decision"),
       v.literal("reference"),
       v.literal("waiting_change"),
+      v.literal("area_move"),
     ),
     content: v.string(),
     previousValue: v.optional(v.string()),

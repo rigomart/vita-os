@@ -1,7 +1,7 @@
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex-helpers/react/cache/hooks";
-import { useCreateProjectLog } from "@/features/projects/use-create-project-log";
 import { useStableQuery } from "@/hooks/use-stable-query";
+import { useCreateProjectLog } from "../use-create-project-log";
 import { ProjectLog } from "./project-log";
 
 interface ProjectLogSectionProps {

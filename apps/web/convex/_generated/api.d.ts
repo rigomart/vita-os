@@ -13,6 +13,7 @@ import type * as auth from "../auth.js";
 import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
 import type * as items from "../items.js";
+import type * as lib_activityLog from "../lib/activityLog.js";
 import type * as lib_areaProjects from "../lib/areaProjects.js";
 import type * as lib_condition from "../lib/condition.js";
 import type * as lib_healthStatus from "../lib/healthStatus.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   dashboard: typeof dashboard;
   http: typeof http;
   items: typeof items;
+  "lib/activityLog": typeof lib_activityLog;
   "lib/areaProjects": typeof lib_areaProjects;
   "lib/condition": typeof lib_condition;
   "lib/healthStatus": typeof lib_healthStatus;

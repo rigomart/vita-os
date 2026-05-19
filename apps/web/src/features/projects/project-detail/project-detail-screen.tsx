@@ -6,6 +6,7 @@ import { ProjectHeaderSection } from "@/features/projects/components/project-hea
 import { ProjectLifecycleActionsSection } from "@/features/projects/components/project-lifecycle-actions-section";
 import { ProjectLogSection } from "@/features/projects/components/project-log-section";
 import { ProjectStatusCardSection } from "@/features/projects/components/project-status-card-section";
+import { ThreadAreaSectionSection } from "@/features/projects/components/thread-area-section-section";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useStableQuery } from "@/hooks/use-stable-query";
 import { ProjectNotFound } from "./project-not-found";
@@ -37,6 +38,8 @@ export function ProjectDetailScreen({
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <ProjectHeaderSection areaSlug={areaSlug} projectSlug={projectSlug} />
+
+      <ThreadAreaSectionSection areaSlug={areaSlug} projectSlug={projectSlug} />
 
       <ProjectStatusCardSection projectSlug={projectSlug} />
 
