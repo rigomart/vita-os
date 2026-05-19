@@ -84,7 +84,7 @@ export function AreaHeader({
                 <AlertDialogTitle>Delete area?</AlertDialogTitle>
                 <AlertDialogDescription>
                   This area and its data will be permanently deleted. Move or
-                  delete all projects first.
+                  delete all threads first.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -126,7 +126,7 @@ export function AreaHeader({
           </SelectContent>
         </Select>
         <span className="text-xs text-muted-foreground">
-          {projectCount} {projectCount === 1 ? "project" : "projects"}
+          {projectCount} {projectCount === 1 ? "thread" : "threads"}
         </span>
       </div>
     </div>

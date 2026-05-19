@@ -98,7 +98,7 @@ describe("ProcessItemDialog", () => {
     const combobox = screen.getByRole("combobox");
     expect(combobox).toHaveAttribute(
       "placeholder",
-      "Search or type a new Project...",
+      "Search or type a new thread...",
     );
     await user.type(combobox, "heal");
 
@@ -147,7 +147,7 @@ describe("ProcessItemDialog", () => {
 
     expect(combobox).toHaveValue("Schedule dentist");
     expect(
-      screen.getByRole("textbox", { name: /definition of done/i }),
+      screen.getByRole("textbox", { name: /summary/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Health" })).toBeInTheDocument();
   });
@@ -165,7 +165,7 @@ describe("ProcessItemDialog", () => {
     expect(combobox).toHaveValue("Schedule dentist");
     await user.click(screen.getByRole("button", { name: "Health" }));
     await user.type(
-      screen.getByRole("textbox", { name: /definition of done/i }),
+      screen.getByRole("textbox", { name: /summary/i }),
       "Appointment is on the calendar",
     );
     await user.click(screen.getByRole("button", { name: /process/i }));
@@ -190,7 +190,7 @@ describe("ProcessItemDialog", () => {
     );
     await user.click(screen.getByRole("button", { name: "Health" }));
     await user.type(
-      screen.getByRole("textbox", { name: /definition of done/i }),
+      screen.getByRole("textbox", { name: /summary/i }),
       "Appointment is on the calendar",
     );
     expect(screen.getByRole("button", { name: /process/i })).toBeEnabled();
@@ -199,14 +199,14 @@ describe("ProcessItemDialog", () => {
     await user.type(combobox, "Schedule dentist visit");
     await user.click(
       screen.getByRole("textbox", {
-        name: /definition of done/i,
+        name: /summary/i,
         hidden: true,
       }),
     );
 
-    expect(
-      screen.getByRole("textbox", { name: /definition of done/i }),
-    ).toHaveValue("Appointment is on the calendar");
+    expect(screen.getByRole("textbox", { name: /summary/i })).toHaveValue(
+      "Appointment is on the calendar",
+    );
     expect(combobox).toHaveValue("Schedule dentist visit");
     const processButton = screen.getByRole("button", { name: /process/i });
     expect(processButton).toBeEnabled();

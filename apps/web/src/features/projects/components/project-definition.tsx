@@ -15,13 +15,13 @@ export function ProjectDefinition({
     <div className="space-y-4">
       <MetadataRow
         icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-        label="Definition of Done"
+        label="Summary"
       >
         <EditableField
           value={definitionOfDone}
           onSave={onSave}
           variant="textarea"
-          placeholder="What does done look like?"
+          placeholder="What is this thread about?"
           className="text-sm"
         />
       </MetadataRow>

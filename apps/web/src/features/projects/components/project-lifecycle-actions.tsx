@@ -37,7 +37,7 @@ export function ProjectLifecycleActions({
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Complete project?</AlertDialogTitle>
+            <AlertDialogTitle>Complete thread?</AlertDialogTitle>
             <AlertDialogDescription>
               &ldquo;{project.name}&rdquo; will be marked as completed.
             </AlertDialogDescription>
@@ -64,7 +64,7 @@ export function ProjectLifecycleActions({
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Drop project?</AlertDialogTitle>
+            <AlertDialogTitle>Drop thread?</AlertDialogTitle>
             <AlertDialogDescription>
               &ldquo;{project.name}&rdquo; will be marked as dropped.
             </AlertDialogDescription>
@@ -98,7 +98,7 @@ export function ProjectLifecycleActions({
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogTitle>Delete thread?</AlertDialogTitle>
             <AlertDialogDescription>
               &ldquo;{project.name}&rdquo; will be permanently removed.
             </AlertDialogDescription>

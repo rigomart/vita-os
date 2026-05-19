@@ -167,7 +167,7 @@ export function AppSidebar() {
                         onClick={() => openCreateProject(area._id)}
                       >
                         <Plus />
-                        <span className="sr-only">New project</span>
+                        <span className="sr-only">New thread</span>
                       </SidebarMenuAction>
                       {hasProjects && (
                         <CollapsibleTrigger

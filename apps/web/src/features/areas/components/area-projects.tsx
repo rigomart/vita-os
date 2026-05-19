@@ -34,7 +34,7 @@ export function AreaProjects({
           <div className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-3">
             <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
-          <h2 className="text-sm font-medium">Projects</h2>
+          <h2 className="text-sm font-medium">Threads</h2>
         </div>
         <Button
           variant="ghost"
@@ -43,7 +43,7 @@ export function AreaProjects({
           onClick={onCreateProject}
         >
           <Plus className="h-3.5 w-3.5" />
-          New project
+          New thread
         </Button>
       </div>
 
@@ -51,10 +51,10 @@ export function AreaProjects({
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/50 py-10 text-center">
           <FolderOpen className="mb-3 h-8 w-8 text-muted-foreground/60" />
           <p className="mb-4 max-w-xs text-sm text-muted-foreground">
-            No projects in this area yet.
+            No threads in this area yet.
           </p>
           <Button variant="outline" size="sm" onClick={onCreateProject}>
-            Create project
+            Create thread
           </Button>
         </div>
       ) : (
@@ -105,7 +105,7 @@ function AreaProjectRow({
               variant="ghost"
               size="icon-sm"
               className="mr-2 opacity-0 transition-opacity group-hover:opacity-100"
-              aria-label="Delete project"
+              aria-label="Delete thread"
             />
           }
         >
@@ -113,7 +113,7 @@ function AreaProjectRow({
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogTitle>Delete thread?</AlertDialogTitle>
             <AlertDialogDescription>
               &ldquo;{project.name}&rdquo; will be permanently removed.
             </AlertDialogDescription>

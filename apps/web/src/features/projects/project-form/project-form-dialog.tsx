@@ -72,19 +72,19 @@ export function ProjectFormDialog({
       <ResponsiveDialogContent>
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>
-            {mode === "edit" ? "Edit project" : "New project"}
+            {mode === "edit" ? "Edit thread" : "New thread"}
           </ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
             {mode === "edit"
-              ? "Update this project's details."
-              : "Projects are active efforts with a defined end state."}
+              ? "Update this thread's details."
+              : "Threads are ongoing situations that belong to an area."}
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="project-name">Name</Label>
+            <Label htmlFor="thread-name">Title</Label>
             <Input
-              id="project-name"
+              id="thread-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Renew passport, File Q4 taxes"
@@ -92,17 +92,17 @@ export function ProjectFormDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="project-dod">
-              Definition of Done
+            <Label htmlFor="thread-summary">
+              Summary
               <span className="ml-1 font-normal text-muted-foreground">
                 (optional)
               </span>
             </Label>
             <Textarea
-              id="project-dod"
+              id="thread-summary"
               value={definitionOfDone}
               onChange={(e) => setDefinitionOfDone(e.target.value)}
-              placeholder="What does done look like?"
+              placeholder="What is this thread about?"
               rows={2}
             />
           </div>
@@ -123,7 +123,7 @@ export function ProjectFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!name.trim() || !areaId}>
-              {mode === "edit" ? "Save changes" : "Create project"}
+              {mode === "edit" ? "Save changes" : "Create thread"}
             </Button>
           </ResponsiveDialogFooter>
         </form>
