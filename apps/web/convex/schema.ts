@@ -29,6 +29,8 @@ export default defineSchema({
       v.literal("dropped"),
     ),
     status: v.optional(v.string()),
+    nextMove: v.optional(v.string()),
+    /** @deprecated Replaced by nextMove — retained for migration (#158) */
     actionQueue: v.optional(
       v.array(v.object({ id: v.string(), text: v.string() })),
     ),

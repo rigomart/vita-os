@@ -134,7 +134,7 @@ function AreaProjectRow({
 }
 
 function AreaProjectSubtitle({ project }: { project: Doc<"projects"> }) {
-  const nextAction = project.actionQueue?.[0]?.text;
+  const nextAction = project.nextMove;
 
   if (nextAction) {
     return (

@@ -5,7 +5,6 @@ import type { OptimisticLocalStore } from "convex/browser";
 import { nextOrder, patchById, removeById } from "@/features/shared/optimistic";
 
 type Project = Doc<"projects">;
-type ActionQueueItem = { id: string; text: string };
 
 type CreateProjectArgs = {
   name: string;
@@ -20,7 +19,7 @@ type NullablePatch<T> = {
 type ProjectPatch = NullablePatch<
   Pick<
     Project,
-    "name" | "definitionOfDone" | "areaId" | "status" | "actionQueue" | "state"
+    "name" | "definitionOfDone" | "areaId" | "status" | "nextMove" | "state"
   >
 >;
 
@@ -41,10 +40,10 @@ export function buildOptimisticProject(
   };
 }
 
-export function completeNextAction<
-  T extends { actionQueue?: ActionQueueItem[] },
->(project: T): T {
-  return { ...project, actionQueue: (project.actionQueue ?? []).slice(1) };
+export function completeNextMove<T extends { nextMove?: string }>(
+  project: T,
+): T {
+  return { ...project, nextMove: undefined };
 }
 
 export function optimisticallyCreateProjectInList(
@@ -176,7 +175,7 @@ export function optimisticallyRemoveProject(
   }
 }
 
-export function optimisticallyCompleteNextAction(
+export function optimisticallyCompleteNextMove(
   localStore: OptimisticLocalStore,
   args: { id: Id<"projects"> },
   options: { projectSlug: string },
@@ -187,7 +186,7 @@ export function optimisticallyCompleteNextAction(
       api.projects.list,
       {},
       current.map((project) =>
-        project._id === args.id ? completeNextAction(project) : project,
+        project._id === args.id ? completeNextMove(project) : project,
       ),
     );
   }
@@ -197,7 +196,7 @@ export function optimisticallyCompleteNextAction(
     localStore.setQuery(
       api.projects.get,
       { id: args.id },
-      completeNextAction(single),
+      completeNextMove(single),
     );
   }
 
@@ -208,7 +207,7 @@ export function optimisticallyCompleteNextAction(
     localStore.setQuery(
       api.projects.getBySlug,
       { slug: options.projectSlug },
-      completeNextAction(bySlug),
+      completeNextMove(bySlug),
     );
   }
 }

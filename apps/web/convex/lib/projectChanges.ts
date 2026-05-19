@@ -7,8 +7,6 @@ import {
 
 type MutationCtx = GenericMutationCtx<DataModel>;
 
-export type ActionQueueItem = { id: string; text: string };
-
 type ProjectPatch = Partial<
   Pick<
     Doc<"projects">,
@@ -17,7 +15,7 @@ type ProjectPatch = Partial<
     | "definitionOfDone"
     | "areaId"
     | "status"
-    | "actionQueue"
+    | "nextMove"
     | "state"
     | "actionDate"
     | "targetDate"
@@ -67,21 +65,33 @@ export function buildProjectPatchLogEntries(
     });
   }
 
-  if (hasOwn(patch, "actionQueue")) {
-    const oldQueue = project.actionQueue ?? [];
-    const newQueue = patch.actionQueue ?? [];
-    const oldFirst = oldQueue[0]?.text ?? "";
-    const newFirst = newQueue[0]?.text ?? "";
+  if (hasOwn(patch, "nextMove")) {
+    const oldNextMove = project.nextMove ?? undefined;
+    const newNextMove = patch.nextMove ?? undefined;
 
-    if (oldFirst !== newFirst) {
-      logs.push({
-        type: "next_action_change",
-        content: oldFirst
-          ? `Next action changed from "${oldFirst}" to "${newFirst || "(cleared)"}"`
-          : `Next action set to "${newFirst}"`,
-        previousValue: oldFirst || undefined,
-        newValue: newFirst || undefined,
-      });
+    if (oldNextMove !== newNextMove) {
+      if (oldNextMove && newNextMove) {
+        logs.push({
+          type: "next_action_change",
+          content: `Next move changed from "${oldNextMove}" to "${newNextMove}"`,
+          previousValue: oldNextMove,
+          newValue: newNextMove,
+        });
+      } else if (!oldNextMove && newNextMove) {
+        logs.push({
+          type: "next_action_change",
+          content: `Next move set to "${newNextMove}"`,
+          previousValue: undefined,
+          newValue: newNextMove,
+        });
+      } else if (oldNextMove && !newNextMove) {
+        logs.push({
+          type: "next_action_change",
+          content: `Next move cleared`,
+          previousValue: oldNextMove,
+          newValue: undefined,
+        });
+      }
     }
   }
 
@@ -99,51 +109,6 @@ export function buildProjectPatchLogEntries(
   }
 
   return logs;
-}
-
-export function buildCompleteNextActionChange(queue: ActionQueueItem[]): {
-  remaining: ActionQueueItem[];
-  log: AutoProjectLog;
-} | null {
-  if (queue.length === 0) return null;
-
-  const completed = queue[0];
-  const remaining = queue.slice(1);
-  const next = remaining[0]?.text ?? "";
-
-  return {
-    remaining,
-    log: {
-      type: "next_action_change",
-      content: next
-        ? `Completed "${completed.text}" — next action is now "${next}"`
-        : `Completed "${completed.text}" — no more actions queued`,
-      previousValue: completed.text,
-      newValue: next || undefined,
-    },
-  };
-}
-
-export function buildPrependNextActionChange(
-  queue: ActionQueueItem[],
-  text: string,
-  id: string,
-): {
-  actionQueue: ActionQueueItem[];
-  log: AutoProjectLog;
-} {
-  const prev = queue[0]?.text ?? "";
-  return {
-    actionQueue: [{ id, text }, ...queue],
-    log: {
-      type: "next_action_change",
-      content: prev
-        ? `Next action changed from "${prev}" to "${text}"`
-        : `Next action set to "${text}"`,
-      previousValue: prev || undefined,
-      newValue: text,
-    },
-  };
 }
 
 export async function applyProjectPatch(
@@ -188,14 +153,16 @@ export async function applyProjectPatch(
   }
 }
 
-export async function completeNextAction(
+export async function completeNextMove(
   ctx: MutationCtx,
   args: { userId: string; project: Doc<"projects"> },
 ): Promise<void> {
-  const change = buildCompleteNextActionChange(args.project.actionQueue ?? []);
+  const change = buildCompleteNextMoveChange(
+    args.project.nextMove ?? undefined,
+  );
   if (!change) return;
 
-  await ctx.db.patch(args.project._id, { actionQueue: change.remaining });
+  await ctx.db.patch(args.project._id, { nextMove: undefined });
   await insertAutoProjectLog(ctx, {
     userId: args.userId,
     projectId: args.project._id,
@@ -204,26 +171,19 @@ export async function completeNextAction(
   });
 }
 
-export async function prependNextAction(
-  ctx: MutationCtx,
-  args: { userId: string; project: Doc<"projects">; text: string },
-): Promise<ActionQueueItem> {
-  const item = { id: crypto.randomUUID(), text: args.text };
-  const change = buildPrependNextActionChange(
-    args.project.actionQueue ?? [],
-    args.text,
-    item.id,
-  );
+export function buildCompleteNextMoveChange(
+  nextMove: string | undefined,
+): { log: AutoProjectLog } | null {
+  if (!nextMove) return null;
 
-  await ctx.db.patch(args.project._id, { actionQueue: change.actionQueue });
-  await insertAutoProjectLog(ctx, {
-    userId: args.userId,
-    projectId: args.project._id,
-    log: change.log,
-    createdAt: Date.now(),
-  });
-
-  return item;
+  return {
+    log: {
+      type: "next_action_change",
+      content: `Completed "${nextMove}" — next move cleared`,
+      previousValue: nextMove,
+      newValue: undefined,
+    },
+  };
 }
 
 async function insertAutoProjectLog(

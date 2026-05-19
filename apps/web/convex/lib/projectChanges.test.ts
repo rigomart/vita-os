@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
-  buildCompleteNextActionChange,
-  buildPrependNextActionChange,
+  buildCompleteNextMoveChange,
   buildProjectPatchLogEntries,
 } from "./projectChanges";
 
@@ -13,8 +12,8 @@ function makeProject(
     _id: "project1" as Id<"projects">,
     _creationTime: 0,
     userId: "user1",
-    name: "Project",
-    slug: "project-00000000",
+    name: "Thread",
+    slug: "thread-00000000",
     areaId: "area1" as Id<"areas">,
     order: 0,
     state: "active",
@@ -56,39 +55,62 @@ describe("buildProjectPatchLogEntries", () => {
     ]);
   });
 
-  it("records next action changes", () => {
-    const logs = buildProjectPatchLogEntries(
-      makeProject({ actionQueue: [{ id: "a1", text: "Call clinic" }] }),
-      { actionQueue: [{ id: "a2", text: "Book appointment" }] },
-    );
+  describe("nextMove", () => {
+    it("logs when setting a next move from empty", () => {
+      const logs = buildProjectPatchLogEntries(makeProject(), {
+        nextMove: "Call clinic",
+      });
 
-    expect(logs).toEqual([
-      {
-        type: "next_action_change",
-        content: 'Next action changed from "Call clinic" to "Book appointment"',
-        previousValue: "Call clinic",
-        newValue: "Book appointment",
-      },
-    ]);
-  });
+      expect(logs).toEqual([
+        {
+          type: "next_action_change",
+          content: 'Next move set to "Call clinic"',
+          previousValue: undefined,
+          newValue: "Call clinic",
+        },
+      ]);
+    });
 
-  it("does not log action queue reorders when the next action stays the same", () => {
-    const logs = buildProjectPatchLogEntries(
-      makeProject({
-        actionQueue: [
-          { id: "a1", text: "Call clinic" },
-          { id: "a2", text: "Book appointment" },
-        ],
-      }),
-      {
-        actionQueue: [
-          { id: "a1", text: "Call clinic" },
-          { id: "a3", text: "Find documents" },
-        ],
-      },
-    );
+    it("logs when changing an existing next move", () => {
+      const logs = buildProjectPatchLogEntries(
+        makeProject({ nextMove: "Call clinic" }),
+        { nextMove: "Book checkup" },
+      );
 
-    expect(logs).toEqual([]);
+      expect(logs).toEqual([
+        {
+          type: "next_action_change",
+          content: 'Next move changed from "Call clinic" to "Book checkup"',
+          previousValue: "Call clinic",
+          newValue: "Book checkup",
+        },
+      ]);
+    });
+
+    it("logs when clearing next move", () => {
+      const logs = buildProjectPatchLogEntries(
+        makeProject({ nextMove: "Call clinic" }),
+        { nextMove: undefined },
+      );
+
+      expect(logs).toEqual([
+        {
+          type: "next_action_change",
+          content: "Next move cleared",
+          previousValue: "Call clinic",
+          newValue: undefined,
+        },
+      ]);
+    });
+
+    it("does not log when next move stays the same", () => {
+      const logs = buildProjectPatchLogEntries(
+        makeProject({ nextMove: "Call clinic" }),
+        { nextMove: "Call clinic" },
+      );
+
+      expect(logs).toEqual([]);
+    });
   });
 
   it("records state changes", () => {
@@ -107,65 +129,21 @@ describe("buildProjectPatchLogEntries", () => {
   });
 });
 
-describe("buildCompleteNextActionChange", () => {
-  it("records the new next action after completing the head of the queue", () => {
-    const change = buildCompleteNextActionChange([
-      { id: "a1", text: "Call clinic" },
-      { id: "a2", text: "Book appointment" },
-    ]);
+describe("buildCompleteNextMoveChange", () => {
+  it("logs the completed next move", () => {
+    const change = buildCompleteNextMoveChange("Call clinic");
 
     expect(change).toEqual({
-      remaining: [{ id: "a2", text: "Book appointment" }],
       log: {
         type: "next_action_change",
-        content:
-          'Completed "Call clinic" — next action is now "Book appointment"',
-        previousValue: "Call clinic",
-        newValue: "Book appointment",
-      },
-    });
-  });
-
-  it("records when no actions remain", () => {
-    const change = buildCompleteNextActionChange([
-      { id: "a1", text: "Call clinic" },
-    ]);
-
-    expect(change).toEqual({
-      remaining: [],
-      log: {
-        type: "next_action_change",
-        content: 'Completed "Call clinic" — no more actions queued',
+        content: 'Completed "Call clinic" — next move cleared',
         previousValue: "Call clinic",
         newValue: undefined,
       },
     });
   });
 
-  it("does nothing for an empty queue", () => {
-    expect(buildCompleteNextActionChange([])).toBeNull();
-  });
-});
-
-describe("buildPrependNextActionChange", () => {
-  it("records the new head of the action queue", () => {
-    const change = buildPrependNextActionChange(
-      [{ id: "a1", text: "Call clinic" }],
-      "Book appointment",
-      "a2",
-    );
-
-    expect(change).toEqual({
-      actionQueue: [
-        { id: "a2", text: "Book appointment" },
-        { id: "a1", text: "Call clinic" },
-      ],
-      log: {
-        type: "next_action_change",
-        content: 'Next action changed from "Call clinic" to "Book appointment"',
-        previousValue: "Call clinic",
-        newValue: "Book appointment",
-      },
-    });
+  it("does nothing when there is no next move", () => {
+    expect(buildCompleteNextMoveChange(undefined)).toBeNull();
   });
 });

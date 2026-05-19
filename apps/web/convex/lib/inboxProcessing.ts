@@ -2,7 +2,6 @@ import type { GenericMutationCtx } from "convex/server";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
 import { getAreaForUser } from "./areaProjects";
 import { getNextOrder } from "./helpers";
-import { prependNextAction } from "./projectChanges";
 import { generateSlug } from "./slugs";
 
 type MutationCtx = GenericMutationCtx<DataModel>;
@@ -106,11 +105,7 @@ export async function processInboxItem(
       projectId: args.action.projectId,
     });
 
-    await prependNextAction(ctx, {
-      userId: args.userId,
-      project,
-      text: args.item.text,
-    });
+    await ctx.db.patch(project._id, { nextMove: args.item.text });
     await ctx.db.delete(args.item._id);
     return { type: "set_next_action" };
   }

@@ -4,7 +4,7 @@ import { getAreaForUser } from "./lib/areaProjects";
 import { DEFAULT_HEALTH_STATUS } from "./lib/healthStatus";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { nullsToUndefined } from "./lib/patch";
-import { applyProjectPatch, completeNextAction } from "./lib/projectChanges";
+import { applyProjectPatch, completeNextMove } from "./lib/projectChanges";
 import { generateSlug } from "./lib/slugs";
 
 export const list = query({
@@ -97,12 +97,7 @@ export const update = mutation({
     definitionOfDone: v.optional(v.union(v.string(), v.null())),
     areaId: v.optional(v.id("areas")),
     status: v.optional(v.union(v.string(), v.null())),
-    actionQueue: v.optional(
-      v.union(
-        v.array(v.object({ id: v.string(), text: v.string() })),
-        v.null(),
-      ),
-    ),
+    nextMove: v.optional(v.union(v.string(), v.null())),
     state: v.optional(
       v.union(
         v.literal("active"),
@@ -161,7 +156,7 @@ export const remove = mutation({
   },
 });
 
-export const completeAction = mutation({
+export const completeNextMoveMutation = mutation({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -170,7 +165,7 @@ export const completeAction = mutation({
       throw new Error("Project not found");
     }
 
-    await completeNextAction(ctx, { userId, project });
+    await completeNextMove(ctx, { userId, project });
   },
 });
 
