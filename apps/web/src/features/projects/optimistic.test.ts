@@ -1,6 +1,6 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import { describe, expect, it } from "vitest";
-import { buildOptimisticProject, completeNextAction } from "./optimistic";
+import { buildOptimisticProject, completeNextMove } from "./optimistic";
 
 function makeProject(
   overrides: Partial<Doc<"projects">> = {},
@@ -42,17 +42,12 @@ describe("Project optimistic updates", () => {
     });
   });
 
-  it("optimistically completes the current Action queue entry", () => {
-    const project = makeProject({
-      actionQueue: [
-        { id: "a1", text: "Call clinic" },
-        { id: "a2", text: "Book checkup" },
-      ],
-    });
+  it("clears the next move when completed", () => {
+    const project = makeProject({ nextMove: "Call clinic" });
 
-    expect(completeNextAction(project)).toEqual({
+    expect(completeNextMove(project)).toEqual({
       ...project,
-      actionQueue: [{ id: "a2", text: "Book checkup" }],
+      nextMove: undefined,
     });
   });
 });

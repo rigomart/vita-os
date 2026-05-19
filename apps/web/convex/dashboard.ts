@@ -23,7 +23,7 @@ export const attention = query({
     }> = [];
 
     for (const project of activeProjects) {
-      const hasAction = (project.actionQueue?.length ?? 0) > 0;
+      const hasAction = project.nextMove != null;
       if (!hasAction) {
         items.push({
           projectId: project._id,
@@ -82,7 +82,7 @@ export const overview = query({
     for (const project of activeProjects) {
       projectCounts[project.areaId] = (projectCounts[project.areaId] ?? 0) + 1;
 
-      const hasAction = (project.actionQueue?.length ?? 0) > 0;
+      const hasAction = project.nextMove != null;
       if (!hasAction) {
         attentionItems.push({
           projectId: project._id,

@@ -1,5 +1,5 @@
 import { api } from "@convex/_generated/api";
-import { ActionQueueSection } from "@/features/projects/components/action-queue-section";
+import { NextMoveSection } from "@/features/projects/components/next-move-section";
 import { ProjectDefinitionSection } from "@/features/projects/components/project-definition-section";
 import { ProjectDetailSkeleton } from "@/features/projects/components/project-detail-skeleton";
 import { ProjectHeaderSection } from "@/features/projects/components/project-header-section";
@@ -43,7 +43,7 @@ export function ProjectDetailScreen({
 
       <ProjectStatusCardSection projectSlug={projectSlug} />
 
-      <ActionQueueSection projectSlug={projectSlug} />
+      <NextMoveSection projectSlug={projectSlug} />
 
       <ProjectDefinitionSection projectSlug={projectSlug} />
 

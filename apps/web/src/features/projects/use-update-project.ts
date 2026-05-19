@@ -9,7 +9,7 @@ export type UpdateProjectValue = {
   definitionOfDone?: string | null;
   areaId?: Id<"areas">;
   status?: string | null;
-  actionQueue?: { id: string; text: string }[];
+  nextMove?: string | null;
   state?: "active" | "completed" | "dropped";
 };
 
