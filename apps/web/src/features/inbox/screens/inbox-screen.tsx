@@ -114,7 +114,7 @@ function ProcessingToast({
 }) {
   const message =
     notification.action === "create_project"
-      ? "Created project"
+      ? "Created thread"
       : notification.action === "set_next_action"
         ? "Set as next action"
         : "Added as note";

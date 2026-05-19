@@ -182,12 +182,12 @@ export function ProcessItemDialog({
               />
               <Textarea
                 id="inline-project-dod"
-                aria-label="Definition of Done"
+                aria-label="Summary"
                 value={definitionOfDone}
                 onChange={(event) =>
                   setDefinitionOfDone(event.currentTarget.value)
                 }
-                placeholder="Definition of Done"
+                placeholder="What is this thread about?"
                 rows={2}
                 className="resize-none"
               />
@@ -201,7 +201,7 @@ export function ProcessItemDialog({
                 selectedMode={mode}
                 onSelect={setMode}
                 title="Add as note"
-                description="Logged in the Project."
+                description="Logged in the thread activity log."
                 icon={<FileText className="h-4 w-4" />}
               />
               <ProcessingModeCard

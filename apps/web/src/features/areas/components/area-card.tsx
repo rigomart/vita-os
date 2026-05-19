@@ -29,7 +29,7 @@ export function AreaCard({
         <p className="truncate font-medium">{area.name}</p>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        {projectCount} {projectCount === 1 ? "project" : "projects"}
+        {projectCount} {projectCount === 1 ? "thread" : "threads"}
       </p>
       {attentionCount > 0 && (
         <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-500">

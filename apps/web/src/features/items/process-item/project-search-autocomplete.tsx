@@ -103,12 +103,12 @@ export function ProjectSearchAutocomplete({
       }}
     >
       <ComboboxInput
-        placeholder="Search or type a new Project..."
+        placeholder="Search or type a new thread..."
         autoFocus
         showClear={!!value || inputValue.length > 0}
       />
       <ComboboxContent>
-        <ComboboxEmpty>No Projects yet</ComboboxEmpty>
+        <ComboboxEmpty>No threads yet</ComboboxEmpty>
         <ComboboxList>
           {(choice: ProjectChoice) =>
             choice.kind === "create" ? (

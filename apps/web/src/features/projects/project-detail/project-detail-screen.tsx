@@ -24,7 +24,7 @@ export function ProjectDetailScreen({
     slug: projectSlug,
   });
 
-  useDocumentTitle(project?.name ?? "Project");
+  useDocumentTitle(project?.name ?? "Thread");
 
   if (area === undefined || project === undefined) {
     return <ProjectDetailSkeleton />;

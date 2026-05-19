@@ -7,7 +7,7 @@ interface ProjectNotFoundProps {
 export function ProjectNotFound({ areaSlug }: ProjectNotFoundProps) {
   return (
     <div className="py-16 text-center">
-      <p className="text-sm text-muted-foreground">Project not found.</p>
+      <p className="text-sm text-muted-foreground">Thread not found.</p>
       <Link
         to="/$areaSlug"
         params={{ areaSlug }}
