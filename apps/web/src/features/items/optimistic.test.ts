@@ -9,9 +9,9 @@ import {
   updateItemTextInInbox,
 } from "./optimistic";
 
-function makeItem(overrides: Partial<Doc<"items">> = {}): Doc<"items"> {
+function makeTask(overrides: Partial<Doc<"items">> = {}): Doc<"items"> {
   return {
-    _id: "item1" as Id<"items">,
+    _id: "task1" as Id<"items">,
     _creationTime: 0,
     userId: "user1",
     text: "Call clinic",
@@ -21,23 +21,23 @@ function makeItem(overrides: Partial<Doc<"items">> = {}): Doc<"items"> {
   };
 }
 
-describe("Item optimistic updates", () => {
-  it("keeps completed Items in the Inbox after active Items", () => {
-    const active = makeItem({
-      _id: "active" as Id<"items">,
+describe("Task optimistic updates", () => {
+  it("keeps Done Tasks in the Inbox after Open Tasks", () => {
+    const open = makeTask({
+      _id: "open" as Id<"items">,
       text: "Buy vitamins",
       createdAt: 200,
     });
-    const completing = makeItem({
+    const completing = makeTask({
       _id: "completing" as Id<"items">,
       text: "Call clinic",
       createdAt: 300,
     });
 
     expect(
-      completeItemInInbox([completing, active], completing._id, 500),
+      completeItemInInbox([completing, open], completing._id, 500),
     ).toEqual([
-      active,
+      open,
       {
         ...completing,
         isCompleted: true,
@@ -46,16 +46,16 @@ describe("Item optimistic updates", () => {
     ]);
   });
 
-  it("moves uncompleted Items back above completed Items", () => {
-    const uncompleting = makeItem({
+  it("moves uncompleted Tasks back above Done history", () => {
+    const uncompleting = makeTask({
       _id: "uncompleting" as Id<"items">,
       text: "Call clinic",
       isCompleted: true,
       createdAt: 100,
       completedAt: 500,
     });
-    const completed = makeItem({
-      _id: "completed" as Id<"items">,
+    const done = makeTask({
+      _id: "done" as Id<"items">,
       text: "Buy vitamins",
       isCompleted: true,
       createdAt: 300,
@@ -63,55 +63,55 @@ describe("Item optimistic updates", () => {
     });
 
     expect(
-      uncompleteItemInInbox([completed, uncompleting], uncompleting._id),
+      uncompleteItemInInbox([done, uncompleting], uncompleting._id),
     ).toEqual([
       {
         ...uncompleting,
         isCompleted: false,
         completedAt: undefined,
       },
-      completed,
+      done,
     ]);
   });
 
-  it("removes discarded Items from the unified Inbox list", () => {
-    const keeping = makeItem({ _id: "keeping" as Id<"items"> });
-    const removing = makeItem({ _id: "removing" as Id<"items"> });
+  it("removes discarded Tasks from the unified Inbox list", () => {
+    const keeping = makeTask({ _id: "keeping" as Id<"items"> });
+    const removing = makeTask({ _id: "removing" as Id<"items"> });
 
     expect(removeItemFromInbox([removing, keeping], removing._id)).toEqual([
       keeping,
     ]);
   });
 
-  it("updates an Item's text in the Inbox", () => {
-    const updating = makeItem({ _id: "updating" as Id<"items"> });
-    const unchanged = makeItem({ _id: "unchanged" as Id<"items"> });
+  it("updates a Task's text in the Inbox", () => {
+    const updating = makeTask({ _id: "updating" as Id<"items"> });
+    const unchanged = makeTask({ _id: "unchanged" as Id<"items"> });
 
     expect(
       updateItemTextInInbox([updating, unchanged], updating._id, "Book labs"),
     ).toEqual([{ ...updating, text: "Book labs" }, unchanged]);
   });
 
-  it("updates or clears an Item's date in the Inbox", () => {
-    const updating = makeItem({ _id: "updating" as Id<"items"> });
-    const unchanged = makeItem({ _id: "unchanged" as Id<"items"> });
+  it("updates or clears a Task's When in the Inbox", () => {
+    const updating = makeTask({ _id: "updating" as Id<"items"> });
+    const unchanged = makeTask({ _id: "unchanged" as Id<"items"> });
 
-    const dated = updateItemDateInInbox(
+    const withWhen = updateItemDateInInbox(
       [updating, unchanged],
       updating._id,
       1000,
     );
 
-    expect(dated).toEqual([{ ...updating, date: 1000 }, unchanged]);
-    expect(updateItemDateInInbox(dated, updating._id, undefined)).toEqual([
+    expect(withWhen).toEqual([{ ...updating, date: 1000 }, unchanged]);
+    expect(updateItemDateInInbox(withWhen, updating._id, undefined)).toEqual([
       { ...updating, date: undefined },
       unchanged,
     ]);
   });
 
-  it("counts only Items that are neither completed nor dated as unprocessed", () => {
-    expect(isUnprocessedItem(makeItem())).toBe(true);
-    expect(isUnprocessedItem(makeItem({ date: 500 }))).toBe(false);
-    expect(isUnprocessedItem(makeItem({ isCompleted: true }))).toBe(false);
+  it("counts only Open Tasks without When as unprocessed", () => {
+    expect(isUnprocessedItem(makeTask())).toBe(true);
+    expect(isUnprocessedItem(makeTask({ date: 500 }))).toBe(false);
+    expect(isUnprocessedItem(makeTask({ isCompleted: true }))).toBe(false);
   });
 });

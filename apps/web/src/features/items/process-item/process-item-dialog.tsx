@@ -154,12 +154,12 @@ export function ProcessItemDialog({
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
       <ResponsiveDialogContent className="sm:max-w-lg">
         <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle>Process item</ResponsiveDialogTitle>
+          <ResponsiveDialogTitle>Process task</ResponsiveDialogTitle>
         </ResponsiveDialogHeader>
 
         <InboxItemPreview item={item} />
         <p className="-mt-3 text-sm text-muted-foreground">
-          Turn this inbox item into a clear outcome or next action.
+          Turn this Inbox task into a clear outcome or next action.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">

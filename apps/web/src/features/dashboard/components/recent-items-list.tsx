@@ -26,7 +26,7 @@ export function RecentItemsList({ items }: RecentItemsListProps) {
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-3">
           <Inbox className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
-        <h2 className="text-sm font-medium">Recent Items</h2>
+        <h2 className="text-sm font-medium">Recent Tasks</h2>
         <span className="text-xs text-muted-foreground">
           {activeItems.length}
         </span>
@@ -41,7 +41,7 @@ export function RecentItemsList({ items }: RecentItemsListProps) {
           to="/inbox"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
-          View all items
+          View all tasks
           <ArrowRight className="h-3 w-3" />
         </Link>
       </div>

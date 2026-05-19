@@ -29,6 +29,7 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { ArrowRight, CalendarIcon, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { isTaskWhenEmphasized } from "@/features/tasks/inbox";
 
 interface ItemRowProps {
   item: Doc<"items">;
@@ -65,8 +66,9 @@ export function ItemRow({
     }
   }, [isEditingText, item.text]);
 
+  const now = Date.now();
   const timestamp = item.isCompleted
-    ? `Completed ${formatDistanceToNow(
+    ? `Done ${formatDistanceToNow(
         new Date(item.completedAt ?? item.createdAt),
         {
           addSuffix: true,
@@ -75,7 +77,8 @@ export function ItemRow({
     : formatDistanceToNow(new Date(item.createdAt), {
         addSuffix: true,
       });
-  const itemDate = item.date === undefined ? undefined : new Date(item.date);
+  const taskWhen = item.date === undefined ? undefined : new Date(item.date);
+  const whenIsEmphasized = isTaskWhenEmphasized(item, now);
 
   const saveText = () => {
     const nextText = draftText.trim();
@@ -99,7 +102,7 @@ export function ItemRow({
         <Checkbox
           checked={item.isCompleted}
           onCheckedChange={onToggleComplete}
-          aria-label={item.isCompleted ? "Uncomplete item" : "Complete item"}
+          aria-label={item.isCompleted ? "Mark task open" : "Mark task done"}
         />
       </ItemMedia>
       <ItemContent className="min-w-0 gap-1.5">
@@ -119,7 +122,7 @@ export function ItemRow({
                   cancelTextEdit();
                 }
               }}
-              aria-label="Edit item text"
+              aria-label="Edit task text"
               className="h-7 min-w-0 flex-1 rounded-md px-2 text-sm"
             />
           ) : (
@@ -142,7 +145,7 @@ export function ItemRow({
                 size="icon"
                 className="h-7 w-7"
                 onClick={onProcess}
-                aria-label="Process item"
+                aria-label="Process task"
               >
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
               </Button>
@@ -154,7 +157,7 @@ export function ItemRow({
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    aria-label="Discard item"
+                    aria-label="Discard task"
                   />
                 }
               >
@@ -162,10 +165,10 @@ export function ItemRow({
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Discard item?</AlertDialogTitle>
+                  <AlertDialogTitle>Discard task?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This item will be permanently deleted. This action cannot be
-                    undone.
+                    This task will be permanently removed from your Inbox. This
+                    action cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -189,27 +192,29 @@ export function ItemRow({
                   variant="ghost"
                   size="xs"
                   className={
-                    itemDate
+                    whenIsEmphasized
                       ? "h-6 rounded-md border border-primary/20 bg-primary/5 px-1.5 text-primary/80 hover:bg-primary/10 hover:text-primary"
-                      : "h-6 rounded-md px-1.5 text-muted-foreground/55 hover:text-muted-foreground"
+                      : taskWhen
+                        ? "h-6 rounded-md border border-border-subtle bg-surface-3 px-1.5 text-muted-foreground hover:text-foreground"
+                        : "h-6 rounded-md px-1.5 text-muted-foreground/55 hover:text-muted-foreground"
                   }
                 />
               }
             >
               <CalendarIcon className="h-3 w-3" />
-              {itemDate ? format(itemDate, "MMM d, yyyy") : "Add date"}
+              {taskWhen ? format(taskWhen, "MMM d, yyyy") : "Add When"}
             </PopoverTrigger>
             <PopoverContent className="w-auto gap-0 p-0" align="start">
               <Calendar
                 mode="single"
-                selected={itemDate}
+                selected={taskWhen}
                 onSelect={(date) => {
                   if (!date) return;
                   onUpdateDate(date.getTime());
                   setIsDateOpen(false);
                 }}
               />
-              {itemDate && (
+              {taskWhen && (
                 <div className="border-t border-border/60 p-2">
                   <Button
                     type="button"

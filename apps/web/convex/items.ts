@@ -60,7 +60,7 @@ export const remove = mutation({
 
     const item = await ctx.db.get(args.id);
     if (!item || item.userId !== userId) {
-      throw new Error("Item not found");
+      throw new Error("Task not found");
     }
 
     await ctx.db.delete(args.id);
@@ -74,7 +74,7 @@ export const updateText = mutation({
 
     const item = await ctx.db.get(args.id);
     if (!item || item.userId !== userId) {
-      throw new Error("Item not found");
+      throw new Error("Task not found");
     }
 
     await ctx.db.patch(args.id, { text: args.text });
@@ -88,7 +88,7 @@ export const updateDate = mutation({
 
     const item = await ctx.db.get(args.id);
     if (!item || item.userId !== userId) {
-      throw new Error("Item not found");
+      throw new Error("Task not found");
     }
 
     await ctx.db.patch(args.id, { date: args.date });
@@ -102,7 +102,7 @@ export const complete = mutation({
 
     const item = await ctx.db.get(args.id);
     if (!item || item.userId !== userId) {
-      throw new Error("Item not found");
+      throw new Error("Task not found");
     }
 
     await ctx.db.patch(args.id, {
@@ -119,7 +119,7 @@ export const uncomplete = mutation({
 
     const item = await ctx.db.get(args.id);
     if (!item || item.userId !== userId) {
-      throw new Error("Item not found");
+      throw new Error("Task not found");
     }
 
     await ctx.db.patch(args.id, {
@@ -157,7 +157,7 @@ export const process = mutation({
 
     const item = await ctx.db.get(args.id);
     if (!item || item.userId !== userId) {
-      throw new Error("Item not found");
+      throw new Error("Task not found");
     }
 
     return processInboxItem(ctx, { userId, item, action: args.action });

@@ -34,8 +34,8 @@ export function InboxScreen() {
     return <InboxSkeleton />;
   }
 
-  const activeItems = items.filter((item) => !item.isCompleted);
-  const completedItems = items.filter((item) => item.isCompleted);
+  const openTasks = items.filter((task) => !task.isCompleted);
+  const doneTasks = items.filter((task) => task.isCompleted);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -49,32 +49,32 @@ export function InboxScreen() {
         </div>
       ) : (
         <div className="space-y-3">
-          {activeItems.length > 0 && (
+          {openTasks.length > 0 && (
             <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
-              {activeItems.map((item) => (
+              {openTasks.map((task) => (
                 <ItemRowContainer
-                  key={item._id}
-                  item={item}
+                  key={task._id}
+                  item={task}
                   onProcess={setProcessingItem}
                 />
               ))}
             </div>
           )}
 
-          {completedItems.length > 0 && (
+          {doneTasks.length > 0 && (
             <Collapsible>
               <div className="rounded-xl border border-border-subtle bg-surface-2">
                 <CollapsibleTrigger className="group flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:text-foreground">
                   <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
-                  <span>Completed</span>
+                  <span>Done</span>
                   <span className="ml-auto text-xs tabular-nums">
-                    {completedItems.length}
+                    {doneTasks.length}
                   </span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="divide-y divide-border/50 border-t border-border/50">
-                    {completedItems.map((item) => (
-                      <ItemRowContainer key={item._id} item={item} />
+                    {doneTasks.map((task) => (
+                      <ItemRowContainer key={task._id} item={task} />
                     ))}
                   </div>
                 </CollapsibleContent>
