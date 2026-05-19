@@ -1,4 +1,5 @@
 import { api } from "@convex/_generated/api";
+import { DEFAULT_CONDITION } from "@convex/lib/condition";
 import { useMutation } from "convex/react";
 import { optimisticallyCreateArea } from "@/features/areas/optimistic";
 import type { AreaFormValue } from "./types";
@@ -16,4 +17,11 @@ export function useCreateArea() {
       standard: value.standard,
       healthStatus: value.healthStatus,
     });
+}
+
+export function useCreateStarterArea() {
+  const createArea = useCreateArea();
+
+  return (name: string) =>
+    createArea({ name, healthStatus: DEFAULT_CONDITION });
 }

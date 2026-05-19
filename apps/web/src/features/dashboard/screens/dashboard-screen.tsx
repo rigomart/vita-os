@@ -2,12 +2,14 @@ import { api } from "@convex/_generated/api";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useState } from "react";
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
+import { useCreateStarterArea } from "@/features/areas/area-form/use-create-area";
 import { AttentionSection } from "@/features/dashboard/components/attention-section";
 import { DashboardAreasSection } from "@/features/dashboard/components/dashboard-areas-section";
 import { RecentItems } from "@/features/dashboard/components/recent-items";
 
 export function DashboardScreen() {
   const overview = useQuery(api.dashboard.overview);
+  const createStarterArea = useCreateStarterArea();
   const [showCreateArea, setShowCreateArea] = useState(false);
 
   return (
@@ -17,6 +19,7 @@ export function DashboardScreen() {
       <DashboardAreasSection
         areas={overview?.areas ?? []}
         onCreateArea={() => setShowCreateArea(true)}
+        onCreateStarterArea={createStarterArea}
       />
 
       <AttentionSection items={overview?.attentionItems ?? []} />

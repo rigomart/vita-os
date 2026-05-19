@@ -1,8 +1,9 @@
 import {
-  DEFAULT_HEALTH_STATUS,
-  HEALTH_STATUS_OPTIONS,
-  type HealthStatus,
-} from "@convex/lib/healthStatus";
+  CONDITION_OPTIONS,
+  type Condition,
+  DEFAULT_CONDITION,
+  isCondition,
+} from "@convex/lib/condition";
 import { Button } from "@vita-os/ui/components/button";
 import { Input } from "@vita-os/ui/components/input";
 import { Label } from "@vita-os/ui/components/label";
@@ -23,6 +24,7 @@ import {
 } from "@vita-os/ui/components/select";
 import { Textarea } from "@vita-os/ui/components/textarea";
 import { useEffect, useState } from "react";
+import { StarterAreasSuggestions } from "@/features/areas/components/starter-areas-suggestions";
 import type { AreaFormValue } from "./types";
 
 interface AreaFormDialogProps {
@@ -42,15 +44,15 @@ export function AreaFormDialog({
 }: AreaFormDialogProps) {
   const [name, setName] = useState(initialValue?.name ?? "");
   const [standard, setStandard] = useState(initialValue?.standard ?? "");
-  const [healthStatus, setHealthStatus] = useState<HealthStatus>(
-    initialValue?.healthStatus ?? DEFAULT_HEALTH_STATUS,
+  const [condition, setCondition] = useState<Condition>(
+    initialValue?.healthStatus ?? DEFAULT_CONDITION,
   );
 
   useEffect(() => {
     if (!open) return;
     setName(initialValue?.name ?? "");
     setStandard(initialValue?.standard ?? "");
-    setHealthStatus(initialValue?.healthStatus ?? DEFAULT_HEALTH_STATUS);
+    setCondition(initialValue?.healthStatus ?? DEFAULT_CONDITION);
   }, [open, initialValue]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,13 +63,13 @@ export function AreaFormDialog({
     await onSubmit({
       name: trimmedName,
       standard: standard.trim() || undefined,
-      healthStatus,
+      healthStatus: condition,
     });
 
     if (mode === "create") {
       setName("");
       setStandard("");
-      setHealthStatus(DEFAULT_HEALTH_STATUS);
+      setCondition(DEFAULT_CONDITION);
     }
   };
 
@@ -85,6 +87,11 @@ export function AreaFormDialog({
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
+          {mode === "create" && (
+            <StarterAreasSuggestions
+              onSelect={(suggestion) => setName(suggestion)}
+            />
+          )}
           <div className="space-y-2">
             <Label htmlFor="area-name">Name</Label>
             <Input
@@ -114,25 +121,32 @@ export function AreaFormDialog({
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="area-health">Health status</Label>
+            <Label htmlFor="area-condition">Condition</Label>
             <Select
-              value={healthStatus}
-              onValueChange={(v) => setHealthStatus(v as HealthStatus)}
+              value={condition}
+              onValueChange={(value) => {
+                if (isCondition(value)) setCondition(value);
+              }}
             >
-              <SelectTrigger id="area-health">
+              <SelectTrigger id="area-condition">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {HEALTH_STATUS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
+                {CONDITION_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
                     <span className="flex items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full ${opt.color}`} />
-                      {opt.label}
+                      <span
+                        className={`h-2 w-2 rounded-full ${option.color}`}
+                      />
+                      {option.label}
                     </span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              Your manual judgment on this area — not calculated from activity.
+            </p>
           </div>
           <ResponsiveDialogFooter>
             <Button

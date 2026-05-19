@@ -1,20 +1,21 @@
-import type { Doc } from "@convex/_generated/dataModel";
-import { DashboardAreas } from "./dashboard-areas";
-
-interface DashboardArea {
-  area: Doc<"areas">;
-  projectCount: number;
-  attentionCount: number;
-}
+import { type DashboardArea, DashboardAreas } from "./dashboard-areas";
 
 interface DashboardAreasSectionProps {
   areas: DashboardArea[];
   onCreateArea: () => void;
+  onCreateStarterArea: (name: string) => Promise<unknown> | unknown;
 }
 
 export function DashboardAreasSection({
   areas,
   onCreateArea,
+  onCreateStarterArea,
 }: DashboardAreasSectionProps) {
-  return <DashboardAreas areas={areas} onCreateArea={onCreateArea} />;
+  return (
+    <DashboardAreas
+      areas={areas}
+      onCreateArea={onCreateArea}
+      onCreateStarterArea={onCreateStarterArea}
+    />
+  );
 }
