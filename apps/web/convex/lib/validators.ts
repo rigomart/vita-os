@@ -1,8 +1,8 @@
 import { v } from "convex/values";
-import { HEALTH_STATUSES } from "./healthStatus";
+import { CONDITIONS } from "./condition";
 
 export const healthStatusValidator = v.union(
-  v.literal(HEALTH_STATUSES[0]),
-  v.literal(HEALTH_STATUSES[1]),
-  v.literal(HEALTH_STATUSES[2]),
+  v.literal(CONDITIONS[0]),
+  v.literal(CONDITIONS[1]),
+  v.literal(CONDITIONS[2]),
 );

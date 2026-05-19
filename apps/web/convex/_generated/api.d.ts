@@ -14,6 +14,7 @@ import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
 import type * as items from "../items.js";
 import type * as lib_areaProjects from "../lib/areaProjects.js";
+import type * as lib_condition from "../lib/condition.js";
 import type * as lib_healthStatus from "../lib/healthStatus.js";
 import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_inboxProcessing from "../lib/inboxProcessing.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   items: typeof items;
   "lib/areaProjects": typeof lib_areaProjects;
+  "lib/condition": typeof lib_condition;
   "lib/healthStatus": typeof lib_healthStatus;
   "lib/helpers": typeof lib_helpers;
   "lib/inboxProcessing": typeof lib_inboxProcessing;

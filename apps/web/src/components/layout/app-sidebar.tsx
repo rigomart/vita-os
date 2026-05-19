@@ -1,5 +1,5 @@
 import { api } from "@convex/_generated/api";
-import { healthColors } from "@convex/lib/healthStatus";
+import { conditionColors } from "@convex/lib/condition";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@vita-os/ui/components/badge";
 import {
@@ -157,7 +157,7 @@ export function AppSidebar() {
                         render={<Link to="/$areaSlug" params={{ areaSlug }} />}
                       >
                         <span
-                          className={`h-2 w-2 shrink-0 rounded-full ${healthColors[area.healthStatus]}`}
+                          className={`h-2 w-2 shrink-0 rounded-full ${conditionColors[area.healthStatus]}`}
                         />
                         <span>{area.name}</span>
                       </SidebarMenuButton>

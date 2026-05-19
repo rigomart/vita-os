@@ -1,9 +1,9 @@
 import type { Doc } from "@convex/_generated/dataModel";
 import {
-  HEALTH_STATUS_OPTIONS,
-  healthColors,
-  isHealthStatus,
-} from "@convex/lib/healthStatus";
+  CONDITION_OPTIONS,
+  conditionColors,
+  isCondition,
+} from "@convex/lib/condition";
 import { Link } from "@tanstack/react-router";
 import {
   AlertDialog,
@@ -31,7 +31,7 @@ interface AreaHeaderProps {
   projectCount: number;
   onEdit: () => void;
   onDelete: () => void;
-  onHealthChange: (value: Doc<"areas">["healthStatus"]) => void;
+  onConditionChange: (value: Doc<"areas">["healthStatus"]) => void;
 }
 
 export function AreaHeader({
@@ -39,7 +39,7 @@ export function AreaHeader({
   projectCount,
   onEdit,
   onDelete,
-  onHealthChange,
+  onConditionChange,
 }: AreaHeaderProps) {
   return (
     <div>
@@ -55,7 +55,7 @@ export function AreaHeader({
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold tracking-tight">{area.name}</h1>
           <span
-            className={`h-2.5 w-2.5 shrink-0 rounded-full ${healthColors[area.healthStatus]}`}
+            className={`h-2.5 w-2.5 shrink-0 rounded-full ${conditionColors[area.healthStatus]}`}
           />
         </div>
         <div className="flex items-center gap-1">
@@ -105,16 +105,22 @@ export function AreaHeader({
         <Select
           value={area.healthStatus}
           onValueChange={(value) => {
-            if (isHealthStatus(value)) onHealthChange(value);
+            if (isCondition(value)) onConditionChange(value);
           }}
         >
-          <SelectTrigger className="h-7 w-auto gap-2 border-none bg-surface-3/60 px-3 text-xs">
+          <SelectTrigger
+            className="h-7 w-auto gap-2 border-none bg-surface-3/60 px-3 text-xs"
+            aria-label="Area condition"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {HEALTH_STATUS_OPTIONS.map((option) => (
+            {CONDITION_OPTIONS.map((option) => (
               <SelectItem key={option.value} value={option.value}>
-                {option.label}
+                <span className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${option.color}`} />
+                  {option.label}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>

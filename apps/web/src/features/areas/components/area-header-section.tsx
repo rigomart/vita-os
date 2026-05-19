@@ -39,7 +39,7 @@ export function AreaHeaderSection({ areaSlug, onEdit }: AreaHeaderProps) {
     navigate({ to: "/" });
   };
 
-  const handleHealthChange = (value: Doc<"areas">["healthStatus"]) => {
+  const handleConditionChange = (value: Doc<"areas">["healthStatus"]) => {
     if (!area) return;
     updateArea({ id: area._id, healthStatus: value });
   };
@@ -52,7 +52,7 @@ export function AreaHeaderSection({ areaSlug, onEdit }: AreaHeaderProps) {
       projectCount={projects?.length ?? 0}
       onEdit={onEdit}
       onDelete={handleDelete}
-      onHealthChange={handleHealthChange}
+      onConditionChange={handleConditionChange}
     />
   );
 }

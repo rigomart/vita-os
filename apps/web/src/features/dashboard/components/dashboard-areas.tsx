@@ -2,8 +2,9 @@ import type { Doc } from "@convex/_generated/dataModel";
 import { Button } from "@vita-os/ui/components/button";
 import { Compass, Plus } from "lucide-react";
 import { AreaCard } from "@/features/areas/components/area-card";
+import { StarterAreasSuggestions } from "@/features/areas/components/starter-areas-suggestions";
 
-interface DashboardArea {
+export interface DashboardArea {
   area: Doc<"areas">;
   projectCount: number;
   attentionCount: number;
@@ -12,9 +13,14 @@ interface DashboardArea {
 interface DashboardAreasProps {
   areas: DashboardArea[];
   onCreateArea: () => void;
+  onCreateStarterArea: (name: string) => Promise<unknown> | unknown;
 }
 
-export function DashboardAreas({ areas, onCreateArea }: DashboardAreasProps) {
+export function DashboardAreas({
+  areas,
+  onCreateArea,
+  onCreateStarterArea,
+}: DashboardAreasProps) {
   return (
     <section>
       <div className="mb-4 flex items-center justify-between">
@@ -44,13 +50,20 @@ export function DashboardAreas({ areas, onCreateArea }: DashboardAreasProps) {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/50 py-10 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/50 px-6 py-10 text-center">
           <Compass className="mb-3 h-8 w-8 text-muted-foreground/60" />
-          <p className="mb-4 max-w-xs text-sm text-muted-foreground">
-            Define your life areas to organize projects by responsibility.
+          <p className="mb-6 max-w-xs text-sm text-muted-foreground">
+            Map your life domains as Areas, then set each Area&apos;s Condition
+            when you are ready to judge how it is doing.
           </p>
-          <Button variant="outline" size="sm" onClick={onCreateArea}>
-            Create area
+          <StarterAreasSuggestions onSelect={onCreateStarterArea} />
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-6"
+            onClick={onCreateArea}
+          >
+            Create custom area
           </Button>
         </div>
       )}

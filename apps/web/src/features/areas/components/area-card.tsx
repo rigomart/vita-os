@@ -1,5 +1,5 @@
 import type { Doc } from "@convex/_generated/dataModel";
-import { healthColors, healthLabels } from "@convex/lib/healthStatus";
+import { conditionColors, conditionLabels } from "@convex/lib/condition";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
 
@@ -22,9 +22,9 @@ export function AreaCard({
     >
       <div className="flex items-center gap-2.5">
         <span
-          className={`h-2.5 w-2.5 shrink-0 rounded-full ${healthColors[area.healthStatus]}`}
+          className={`h-2.5 w-2.5 shrink-0 rounded-full ${conditionColors[area.healthStatus]}`}
           role="img"
-          aria-label={healthLabels[area.healthStatus]}
+          aria-label={conditionLabels[area.healthStatus]}
         />
         <p className="truncate font-medium">{area.name}</p>
       </div>
@@ -34,7 +34,7 @@ export function AreaCard({
       {attentionCount > 0 && (
         <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-500">
           <AlertTriangle className="h-3 w-3" />
-          {attentionCount} needs attention
+          {attentionCount} without a next action
         </p>
       )}
     </Link>
