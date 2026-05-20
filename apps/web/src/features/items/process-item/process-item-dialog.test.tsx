@@ -112,7 +112,7 @@ describe("ProcessItemDialog", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("reveals processing choices after Project selection and submits the selected action", async () => {
+  it("reveals explicit Thread destinations after Thread selection and submits the selected Next Move choice", async () => {
     const user = userEvent.setup();
     const onProcess = vi.fn();
     renderDialog(onProcess);
@@ -121,15 +121,13 @@ describe("ProcessItemDialog", () => {
     await user.click(screen.getByRole("option", { name: /book annual/i }));
 
     expect(
-      screen.getByRole("radio", { name: /add as note/i }),
+      screen.getByRole("radio", { name: /activity log entry/i }),
     ).toBeInTheDocument();
-    await user.click(
-      screen.getByRole("radio", { name: /set as next action/i }),
-    );
+    await user.click(screen.getByRole("radio", { name: /next move/i }));
     await user.click(screen.getByRole("button", { name: /process/i }));
 
     expect(onProcess).toHaveBeenCalledWith(item._id, {
-      type: "set_next_action",
+      type: "set_next_move",
       projectId: projects[0]._id,
     });
   });

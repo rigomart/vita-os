@@ -14,14 +14,14 @@ export type InboxProcessingAction =
       areaId: Id<"areas">;
       definitionOfDone?: string;
     }
-  | { type: "add_to_project"; projectId: Id<"projects"> }
-  | { type: "set_next_action"; projectId: Id<"projects"> }
+  | { type: "add_activity_log_entry"; projectId: Id<"projects"> }
+  | { type: "set_next_move"; projectId: Id<"projects"> }
   | { type: "discard" };
 
 export type InboxProcessingResult =
   | { type: "created"; slug: string }
   | { type: "added" }
-  | { type: "set_next_action" }
+  | { type: "set_next_move" }
   | { type: "discarded" };
 
 export type ItemProcessingDisposition = "keep_item" | "delete_item";
@@ -36,8 +36,8 @@ export function getInboxProcessingResultType(
   action: InboxProcessingAction,
 ): InboxProcessingResult["type"] {
   if (action.type === "create_project") return "created";
-  if (action.type === "add_to_project") return "added";
-  if (action.type === "set_next_action") return "set_next_action";
+  if (action.type === "add_activity_log_entry") return "added";
+  if (action.type === "set_next_move") return "set_next_move";
   return "discarded";
 }
 
@@ -85,7 +85,7 @@ export async function processInboxItem(
     return { type: "created", slug };
   }
 
-  if (args.action.type === "add_to_project") {
+  if (args.action.type === "add_activity_log_entry") {
     const project = await getProjectForProcessing(ctx, {
       userId: args.userId,
       projectId: args.action.projectId,
@@ -100,7 +100,7 @@ export async function processInboxItem(
     return { type: "added" };
   }
 
-  if (args.action.type === "set_next_action") {
+  if (args.action.type === "set_next_move") {
     const project = await getProjectForProcessing(ctx, {
       userId: args.userId,
       projectId: args.action.projectId,
@@ -112,7 +112,7 @@ export async function processInboxItem(
       patch: { nextMove: args.item.text },
     });
     await ctx.db.delete(args.item._id);
-    return { type: "set_next_action" };
+    return { type: "set_next_move" };
   }
 
   await ctx.db.delete(args.item._id);

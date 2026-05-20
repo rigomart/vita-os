@@ -12,7 +12,7 @@ interface ProcessItemDialogProps {
   onProcessed?: (result: {
     action: Extract<
       ProcessItemAction,
-      { type: "create_project" | "add_to_project" | "set_next_action" }
+      { type: "create_project" | "add_activity_log_entry" | "set_next_move" }
     >["type"];
     project: Pick<Doc<"projects">, "name" | "slug">;
     area: Doc<"areas"> | undefined;
@@ -50,8 +50,8 @@ export function ProcessItemDialogContainer({
           });
         }
         if (
-          action.type === "add_to_project" ||
-          action.type === "set_next_action"
+          action.type === "add_activity_log_entry" ||
+          action.type === "set_next_move"
         ) {
           const project = visibleProjects.find(
             (candidate) => candidate._id === action.projectId,
