@@ -24,8 +24,13 @@ export default defineSchema({
     areaId: v.id("areas"),
     order: v.number(),
     state: v.union(
+      v.literal("open"),
+      v.literal("resolved"),
+      /** @deprecated Use open instead. Retained until lifecycle migration runs. */
       v.literal("active"),
+      /** @deprecated Use resolved instead. Retained until lifecycle migration runs. */
       v.literal("completed"),
+      /** @deprecated Use resolved instead. Retained until lifecycle migration runs. */
       v.literal("dropped"),
     ),
     status: v.optional(v.string()),

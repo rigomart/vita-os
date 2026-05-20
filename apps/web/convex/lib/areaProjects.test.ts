@@ -28,7 +28,7 @@ function makeProject(
     slug: "book-checkup-00000000",
     areaId: "area1" as Id<"areas">,
     order: 0,
-    state: "active",
+    state: "open",
     createdAt: 0,
     ...overrides,
   };
@@ -56,9 +56,8 @@ describe("getAreaDeletionBlocker", () => {
   });
 
   it.each([
-    "active",
-    "completed",
-    "dropped",
+    "open",
+    "resolved",
   ] as const)("blocks deleting an Area with a %s Project", (state) => {
     const project = makeProject({ state });
 

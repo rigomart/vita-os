@@ -6,18 +6,18 @@ import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { nullsToUndefined } from "./lib/patch";
 import { applyProjectPatch, completeNextMove } from "./lib/projectChanges";
 import { generateSlug } from "./lib/slugs";
+import { isOpenProjectState } from "./lib/types";
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return [];
-    return ctx.db
+    const projects = await ctx.db
       .query("projects")
-      .withIndex("by_user_state", (q) =>
-        q.eq("userId", userId).eq("state", "active"),
-      )
+      .withIndex("by_user_order", (q) => q.eq("userId", userId))
       .collect();
+    return projects.filter((project) => isOpenProjectState(project.state));
   },
 });
 
@@ -28,7 +28,6 @@ export const get = query({
     if (!userId) return null;
     const project = await ctx.db.get(args.id);
     if (!project || project.userId !== userId) return null;
-    if (project.state !== "active") return null;
     return project;
   },
 });
@@ -44,7 +43,7 @@ export const getBySlug = query({
         q.eq("userId", userId).eq("slug", args.slug),
       )
       .unique();
-    if (!project || project.state !== "active") return null;
+    if (!project || project.userId !== userId) return null;
     return project;
   },
 });
@@ -58,7 +57,9 @@ export const listByArea = query({
       .query("projects")
       .withIndex("by_area", (q) => q.eq("areaId", args.areaId))
       .collect();
-    return projects.filter((p) => p.userId === userId && p.state === "active");
+    return projects.filter(
+      (p) => p.userId === userId && isOpenProjectState(p.state),
+    );
   },
 });
 
@@ -82,7 +83,7 @@ export const create = mutation({
       definitionOfDone: args.definitionOfDone,
       areaId: args.areaId,
       order: nextOrder,
-      state: "active",
+      state: "open",
       createdAt: Date.now(),
     });
 
@@ -99,13 +100,8 @@ export const update = mutation({
     status: v.optional(v.union(v.string(), v.null())),
     nextMove: v.optional(v.union(v.string(), v.null())),
     followUp: v.optional(v.union(v.number(), v.null())),
-    state: v.optional(
-      v.union(
-        v.literal("active"),
-        v.literal("completed"),
-        v.literal("dropped"),
-      ),
-    ),
+    state: v.optional(v.union(v.literal("open"), v.literal("resolved"))),
+    resolutionNote: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -115,7 +111,7 @@ export const update = mutation({
       throw new Error("Project not found");
     }
 
-    const { id, ...rest } = args;
+    const { id, resolutionNote, ...rest } = args;
 
     if (rest.areaId !== undefined) {
       await getAreaForUser(ctx, { userId, areaId: rest.areaId });
@@ -133,6 +129,7 @@ export const update = mutation({
         ...nullsToUndefined(rest),
         ...(newSlug && { slug: newSlug }),
       },
+      resolutionNote,
     });
 
     return { slug: newSlug ?? project.slug };
@@ -149,11 +146,7 @@ export const remove = mutation({
       throw new Error("Project not found");
     }
 
-    await applyProjectPatch(ctx, {
-      userId,
-      project,
-      patch: { state: "dropped" },
-    });
+    await ctx.db.delete(project._id);
   },
 });
 
@@ -183,6 +176,36 @@ export const backfillSlugs = mutation({
       }
     }
     return { backfilled: count };
+  },
+});
+
+export const migrateLifecycleStates = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_user_order", (q) => q.eq("userId", userId))
+      .collect();
+
+    let migrated = 0;
+    for (const project of projects) {
+      if (project.state === "active") {
+        await ctx.db.patch(project._id, { state: "open" });
+        migrated++;
+      }
+
+      if (project.state === "completed" || project.state === "dropped") {
+        await ctx.db.patch(project._id, {
+          state: "resolved",
+          nextMove: undefined,
+          followUp: undefined,
+        });
+        migrated++;
+      }
+    }
+
+    return { migrated };
   },
 });
 

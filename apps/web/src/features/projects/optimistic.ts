@@ -41,7 +41,7 @@ export function buildOptimisticProject(
     definitionOfDone: args.definitionOfDone,
     areaId: args.areaId,
     order: options.order,
-    state: "active",
+    state: "open",
     createdAt: options.now,
   };
 }
@@ -91,20 +91,34 @@ export function optimisticallyCreateProjectInArea(
 
 export function optimisticallyUpdateProject(
   localStore: OptimisticLocalStore,
-  args: { id: Id<"projects"> } & ProjectPatch,
+  args: { id: Id<"projects">; resolutionNote?: string } & ProjectPatch,
   options: { projectSlug: string },
 ): void {
-  const { id, ...updates } = args;
+  const { id, resolutionNote: _resolutionNote, ...updates } = args;
   const patch = nullsToUndefined(updates);
+  const projectPatch =
+    patch.state === "resolved"
+      ? { ...patch, nextMove: undefined, followUp: undefined }
+      : patch;
 
   const current = localStore.getQuery(api.projects.list, {});
   if (current !== undefined) {
-    localStore.setQuery(api.projects.list, {}, patchById(current, id, patch));
+    localStore.setQuery(
+      api.projects.list,
+      {},
+      projectPatch.state === "resolved"
+        ? removeById(current, id)
+        : patchById(current, id, projectPatch),
+    );
   }
 
   const single = localStore.getQuery(api.projects.get, { id });
   if (single !== undefined && single !== null) {
-    localStore.setQuery(api.projects.get, { id }, { ...single, ...patch });
+    localStore.setQuery(
+      api.projects.get,
+      { id },
+      { ...single, ...projectPatch },
+    );
   }
 
   const bySlug = localStore.getQuery(api.projects.getBySlug, {
@@ -114,13 +128,20 @@ export function optimisticallyUpdateProject(
     localStore.setQuery(
       api.projects.getBySlug,
       { slug: options.projectSlug },
-      { ...bySlug, ...patch },
+      { ...bySlug, ...projectPatch },
     );
   }
 
-  if (patch.areaId !== undefined && bySlug !== undefined && bySlug !== null) {
+  if (
+    (projectPatch.areaId !== undefined || projectPatch.state === "resolved") &&
+    bySlug !== undefined &&
+    bySlug !== null
+  ) {
     const previousAreaId = bySlug.areaId;
-    if (previousAreaId !== patch.areaId) {
+    if (
+      previousAreaId !== projectPatch.areaId ||
+      projectPatch.state === "resolved"
+    ) {
       const previousAreaProjects = localStore.getQuery(
         api.projects.listByArea,
         {
@@ -135,14 +156,20 @@ export function optimisticallyUpdateProject(
         );
       }
 
-      const nextAreaProjects = localStore.getQuery(api.projects.listByArea, {
-        areaId: patch.areaId,
-      });
-      if (nextAreaProjects !== undefined) {
-        localStore.setQuery(api.projects.listByArea, { areaId: patch.areaId }, [
-          ...nextAreaProjects,
-          { ...bySlug, ...patch },
-        ]);
+      if (
+        projectPatch.areaId !== undefined &&
+        projectPatch.state !== "resolved"
+      ) {
+        const nextAreaProjects = localStore.getQuery(api.projects.listByArea, {
+          areaId: projectPatch.areaId,
+        });
+        if (nextAreaProjects !== undefined) {
+          localStore.setQuery(
+            api.projects.listByArea,
+            { areaId: projectPatch.areaId },
+            [...nextAreaProjects, { ...bySlug, ...projectPatch }],
+          );
+        }
       }
     }
   }

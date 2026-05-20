@@ -64,7 +64,7 @@ export function ProjectPicker({
         ))}
         {projectsByArea.length === 0 && (
           <p className="px-2 py-3 text-center text-xs text-muted-foreground">
-            No active threads
+            No open threads
           </p>
         )}
       </PopoverContent>

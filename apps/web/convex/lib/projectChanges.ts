@@ -4,6 +4,7 @@ import {
   type AutoActivityLogEntry,
   buildAreaMoveLogEntry,
 } from "./activityLog";
+import { toThreadLifecycleState } from "./types";
 
 type MutationCtx = GenericMutationCtx<DataModel>;
 
@@ -81,7 +82,11 @@ function buildFieldChangeLogEntry(options: {
 export function buildProjectPatchLogEntries(
   project: Doc<"projects">,
   patch: ProjectPatch,
-  options?: { fromAreaName?: string; toAreaName?: string },
+  options?: {
+    fromAreaName?: string;
+    toAreaName?: string;
+    lifecycleLog?: AutoProjectLog;
+  },
 ): AutoProjectLog[] {
   const logs: AutoProjectLog[] = [];
 
@@ -126,12 +131,14 @@ export function buildProjectPatchLogEntries(
     patch.state !== undefined &&
     patch.state !== project.state
   ) {
-    logs.push({
-      type: "state_change",
-      content: `State changed from "${project.state}" to "${patch.state}"`,
-      previousValue: project.state,
-      newValue: patch.state,
-    });
+    logs.push(
+      options?.lifecycleLog ?? {
+        type: "state_change",
+        content: `Lifecycle changed from "${project.state}" to "${patch.state}"`,
+        previousValue: project.state,
+        newValue: patch.state,
+      },
+    );
   }
 
   if (hasOwn(patch, "followUp")) {
@@ -164,16 +171,24 @@ export async function applyProjectPatch(
     userId: string;
     project: Doc<"projects">;
     patch: ProjectPatch;
+    resolutionNote?: string;
   },
 ): Promise<void> {
   let areaMoveNames: { fromAreaName: string; toAreaName: string } | undefined;
+  const lifecycleChange =
+    args.patch.state !== undefined
+      ? buildThreadLifecyclePatch(args.project, {
+          state: args.patch.state,
+          resolutionNote: args.resolutionNote,
+        })
+      : null;
+  const patch = lifecycleChange
+    ? { ...args.patch, ...lifecycleChange.patch }
+    : args.patch;
 
-  if (
-    args.patch.areaId !== undefined &&
-    args.patch.areaId !== args.project.areaId
-  ) {
+  if (patch.areaId !== undefined && patch.areaId !== args.project.areaId) {
     const fromArea = await ctx.db.get(args.project.areaId);
-    const toArea = await ctx.db.get(args.patch.areaId);
+    const toArea = await ctx.db.get(patch.areaId);
     if (fromArea && toArea) {
       areaMoveNames = {
         fromAreaName: fromArea.name,
@@ -182,14 +197,13 @@ export async function applyProjectPatch(
     }
   }
 
-  await ctx.db.patch(args.project._id, args.patch);
+  await ctx.db.patch(args.project._id, patch);
 
   const now = Date.now();
-  const logs = buildProjectPatchLogEntries(
-    args.project,
-    args.patch,
-    areaMoveNames,
-  );
+  const logs = buildProjectPatchLogEntries(args.project, patch, {
+    ...areaMoveNames,
+    lifecycleLog: lifecycleChange?.log,
+  });
   for (const log of logs) {
     await insertAutoProjectLog(ctx, {
       userId: args.userId,
@@ -198,6 +212,44 @@ export async function applyProjectPatch(
       createdAt: now,
     });
   }
+}
+
+export function buildThreadLifecyclePatch(
+  project: Doc<"projects">,
+  args: { state: Doc<"projects">["state"]; resolutionNote?: string },
+): { patch: ProjectPatch; log: AutoProjectLog } | null {
+  if (args.state === project.state) return null;
+
+  if (args.state === "resolved") {
+    const note = args.resolutionNote?.trim();
+    const previousValue = toThreadLifecycleState(project.state);
+
+    return {
+      patch: {
+        state: "resolved",
+        nextMove: undefined,
+        followUp: undefined,
+      },
+      log: {
+        type: "state_change",
+        content: note ? `Resolved thread: ${note}` : "Resolved thread",
+        previousValue,
+        newValue: "resolved",
+      },
+    };
+  }
+
+  const previousValue = toThreadLifecycleState(project.state);
+
+  return {
+    patch: { state: "open" },
+    log: {
+      type: "state_change",
+      content: "Reopened thread",
+      previousValue,
+      newValue: "open",
+    },
+  };
 }
 
 export async function completeNextMove(

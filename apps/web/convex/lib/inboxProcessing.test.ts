@@ -33,7 +33,7 @@ function makeProject(
     name: "Book checkup",
     slug: "book-checkup",
     areaId: "area1" as Id<"areas">,
-    state: "active",
+    state: "open",
     order: 0,
     createdAt: 0,
     ...overrides,

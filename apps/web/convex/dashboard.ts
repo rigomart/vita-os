@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
+import { isOpenProjectState } from "./lib/types";
 
 export const attention = query({
   args: {},
@@ -7,12 +8,13 @@ export const attention = query({
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return { items: [], byArea: {} as Record<string, number> };
 
-    const activeProjects = await ctx.db
+    const projects = await ctx.db
       .query("projects")
-      .withIndex("by_user_state", (q) =>
-        q.eq("userId", userId).eq("state", "active"),
-      )
+      .withIndex("by_user_order", (q) => q.eq("userId", userId))
       .collect();
+    const openProjects = projects.filter((project) =>
+      isOpenProjectState(project.state),
+    );
 
     const items: Array<{
       projectId: string;
@@ -22,7 +24,7 @@ export const attention = query({
       reason: "no_next_action";
     }> = [];
 
-    for (const project of activeProjects) {
+    for (const project of openProjects) {
       const hasAction = project.nextMove != null;
       if (!hasAction) {
         items.push({
@@ -61,12 +63,13 @@ export const overview = query({
       .query("areas")
       .withIndex("by_user_order", (q) => q.eq("userId", userId))
       .collect();
-    const activeProjects = await ctx.db
+    const projects = await ctx.db
       .query("projects")
-      .withIndex("by_user_state", (q) =>
-        q.eq("userId", userId).eq("state", "active"),
-      )
+      .withIndex("by_user_order", (q) => q.eq("userId", userId))
       .collect();
+    const openProjects = projects.filter((project) =>
+      isOpenProjectState(project.state),
+    );
 
     const projectCounts: Record<string, number> = {};
     const areaById = new Map(areas.map((area) => [area._id as string, area]));
@@ -80,7 +83,7 @@ export const overview = query({
       followUp: number | undefined;
     }> = [];
 
-    for (const project of activeProjects) {
+    for (const project of openProjects) {
       projectCounts[project.areaId] = (projectCounts[project.areaId] ?? 0) + 1;
 
       attentionThreads.push({
