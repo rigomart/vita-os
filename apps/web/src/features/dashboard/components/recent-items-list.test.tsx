@@ -23,6 +23,7 @@ function item(
   text: string,
   createdAt: number,
   isCompleted = false,
+  date?: number,
 ): Doc<"items"> {
   return {
     _id: id as Id<"items">,
@@ -31,12 +32,68 @@ function item(
     text,
     isCompleted,
     createdAt,
+    date,
     completedAt: isCompleted ? createdAt + 1 : undefined,
   };
 }
 
 describe("RecentItemsList", () => {
-  it("shows at most five recent Open Tasks as a read-only list", () => {
+  const may18_2026 = new Date(2026, 4, 18, 12).getTime();
+  const may19_2026 = new Date(2026, 4, 19, 12).getTime();
+
+  it("surfaces Open Tasks with When today or earlier as due Tasks", () => {
+    render(
+      <RecentItemsList
+        items={[
+          item("item1", "Call clinic", 3, false, may18_2026),
+          item("item2", "Renew passport", 2, false, may19_2026),
+          item("item3", "Pay utility bill", 1, false, may18_2026 - 86_400_000),
+        ]}
+        referenceDate={may18_2026}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: /due tasks/i })).toBeVisible();
+    expect(screen.getByText("Call clinic")).toBeInTheDocument();
+    expect(screen.getByText("Pay utility bill")).toBeInTheDocument();
+    expect(screen.queryByText("Renew passport")).not.toBeInTheDocument();
+  });
+
+  it("summarizes remaining Open Tasks without counting Done Tasks", () => {
+    render(
+      <RecentItemsList
+        items={[
+          item("item1", "Call clinic", 4, false, may18_2026),
+          item("item2", "Renew passport", 3, false, may19_2026),
+          item("item3", "Sort receipts", 2),
+          item("item4", "Archived errand", 1, true),
+        ]}
+        referenceDate={may18_2026}
+      />,
+    );
+
+    expect(screen.getByText("2 more Open Tasks in Inbox")).toBeVisible();
+  });
+
+  it("summarizes Open Tasks instead of rendering the full Inbox when none are due", () => {
+    render(
+      <RecentItemsList
+        items={[
+          item("item1", "Renew passport", 3, false, may19_2026),
+          item("item2", "Sort receipts", 2),
+          item("item3", "Archived errand", 1, true),
+        ]}
+        referenceDate={may18_2026}
+      />,
+    );
+
+    expect(screen.getByText("2 Open Tasks in Inbox")).toBeVisible();
+    expect(screen.queryByText("Renew passport")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sort receipts")).not.toBeInTheDocument();
+    expect(screen.queryByText("Archived errand")).not.toBeInTheDocument();
+  });
+
+  it("keeps the Dashboard Task surface read-only with full handling in Inbox", () => {
     render(
       <RecentItemsList
         items={[
@@ -51,8 +108,9 @@ describe("RecentItemsList", () => {
       />,
     );
 
-    expect(screen.getByText("First active item")).toBeInTheDocument();
-    expect(screen.getByText("Fifth active item")).toBeInTheDocument();
+    expect(screen.getByText("6 Open Tasks in Inbox")).toBeVisible();
+    expect(screen.queryByText("First active item")).not.toBeInTheDocument();
+    expect(screen.queryByText("Fifth active item")).not.toBeInTheDocument();
     expect(screen.queryByText("Completed item")).not.toBeInTheDocument();
     expect(screen.queryByText("Sixth active item")).not.toBeInTheDocument();
 

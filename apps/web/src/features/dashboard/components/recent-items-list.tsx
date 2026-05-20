@@ -7,16 +7,29 @@ import {
 } from "@vita-os/ui/components/item";
 import { format, formatDistanceToNow } from "date-fns";
 import { ArrowRight, Inbox } from "lucide-react";
+import { isTaskWhenDue } from "@/features/tasks/inbox";
 
 const MAX_VISIBLE = 5;
 
 interface RecentItemsListProps {
   items: Doc<"items">[];
+  referenceDate?: number;
 }
 
-export function RecentItemsList({ items }: RecentItemsListProps) {
+export function RecentItemsList({
+  items,
+  referenceDate = Date.now(),
+}: RecentItemsListProps) {
   const activeItems = items.filter((item) => !item.isCompleted);
-  const visibleItems = activeItems.slice(0, MAX_VISIBLE);
+  const dueItems = activeItems.filter((item) =>
+    isTaskWhenDue(item.date, referenceDate),
+  );
+  const visibleItems = dueItems.slice(0, MAX_VISIBLE);
+  const remainingOpenCount = activeItems.length - visibleItems.length;
+  const hasDueItems = dueItems.length > 0;
+  const heading = hasDueItems ? "Due Tasks" : "Inbox";
+  const headingCount =
+    dueItems.length > 0 ? dueItems.length : activeItems.length;
 
   if (activeItems.length === 0) return null;
 
@@ -26,16 +39,28 @@ export function RecentItemsList({ items }: RecentItemsListProps) {
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-3">
           <Inbox className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
-        <h2 className="text-sm font-medium">Recent Tasks</h2>
-        <span className="text-xs text-muted-foreground">
-          {activeItems.length}
-        </span>
+        <h2 className="text-sm font-medium">{heading}</h2>
+        <span className="text-xs text-muted-foreground">{headingCount}</span>
       </div>
-      <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
-        {visibleItems.map((item) => (
-          <RecentItemRow key={item._id} item={item} />
-        ))}
-      </div>
+      {hasDueItems && (
+        <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
+          {visibleItems.map((item) => (
+            <RecentItemRow key={item._id} item={item} />
+          ))}
+        </div>
+      )}
+      {hasDueItems && remainingOpenCount > 0 && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          {remainingOpenCount} more Open{" "}
+          {remainingOpenCount === 1 ? "Task" : "Tasks"} in Inbox
+        </p>
+      )}
+      {!hasDueItems && (
+        <p className="text-xs text-muted-foreground">
+          {activeItems.length} Open{" "}
+          {activeItems.length === 1 ? "Task" : "Tasks"} in Inbox
+        </p>
+      )}
       <div className="mt-3 flex justify-end">
         <Link
           to="/inbox"
