@@ -16,6 +16,7 @@ type ProjectPatch = Partial<
     | "areaId"
     | "status"
     | "nextMove"
+    | "followUp"
     | "state"
     | "actionDate"
     | "targetDate"
@@ -30,6 +31,51 @@ type AutoProjectLog = AutoActivityLogEntry;
 
 function hasOwn(obj: object, key: PropertyKey): boolean {
   return Object.keys(obj).includes(String(key));
+}
+
+function formatFollowUpDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function buildFieldChangeLogEntry(options: {
+  type: AutoProjectLog["type"];
+  oldValue: string | undefined;
+  newValue: string | undefined;
+  label: string;
+}): AutoProjectLog | null {
+  const { type, oldValue, newValue, label } = options;
+  if (oldValue === newValue) return null;
+
+  if (oldValue && newValue) {
+    return {
+      type,
+      content: `${label} changed from "${oldValue}" to "${newValue}"`,
+      previousValue: oldValue,
+      newValue,
+    };
+  }
+  if (!oldValue && newValue) {
+    return {
+      type,
+      content: `${label} set to "${newValue}"`,
+      previousValue: undefined,
+      newValue,
+    };
+  }
+  if (oldValue && !newValue) {
+    return {
+      type,
+      content: `${label} cleared`,
+      previousValue: oldValue,
+      newValue: undefined,
+    };
+  }
+  return null;
 }
 
 export function buildProjectPatchLogEntries(
@@ -66,33 +112,13 @@ export function buildProjectPatchLogEntries(
   }
 
   if (hasOwn(patch, "nextMove")) {
-    const oldNextMove = project.nextMove ?? undefined;
-    const newNextMove = patch.nextMove ?? undefined;
-
-    if (oldNextMove !== newNextMove) {
-      if (oldNextMove && newNextMove) {
-        logs.push({
-          type: "next_action_change",
-          content: `Next move changed from "${oldNextMove}" to "${newNextMove}"`,
-          previousValue: oldNextMove,
-          newValue: newNextMove,
-        });
-      } else if (!oldNextMove && newNextMove) {
-        logs.push({
-          type: "next_action_change",
-          content: `Next move set to "${newNextMove}"`,
-          previousValue: undefined,
-          newValue: newNextMove,
-        });
-      } else if (oldNextMove && !newNextMove) {
-        logs.push({
-          type: "next_action_change",
-          content: `Next move cleared`,
-          previousValue: oldNextMove,
-          newValue: undefined,
-        });
-      }
-    }
+    const entry = buildFieldChangeLogEntry({
+      type: "next_action_change",
+      oldValue: project.nextMove ?? undefined,
+      newValue: patch.nextMove ?? undefined,
+      label: "Next move",
+    });
+    if (entry) logs.push(entry);
   }
 
   if (
@@ -106,6 +132,27 @@ export function buildProjectPatchLogEntries(
       previousValue: project.state,
       newValue: patch.state,
     });
+  }
+
+  if (hasOwn(patch, "followUp")) {
+    const oldFollowUp = project.followUp ?? undefined;
+    const newFollowUp = patch.followUp ?? undefined;
+
+    if (oldFollowUp !== newFollowUp) {
+      const entry = buildFieldChangeLogEntry({
+        type: "follow_up_change",
+        oldValue:
+          oldFollowUp !== undefined
+            ? formatFollowUpDate(oldFollowUp)
+            : undefined,
+        newValue:
+          newFollowUp !== undefined
+            ? formatFollowUpDate(newFollowUp)
+            : undefined,
+        label: "Follow-up",
+      });
+      if (entry) logs.push(entry);
+    }
   }
 
   return logs;

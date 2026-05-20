@@ -98,6 +98,7 @@ export const update = mutation({
     areaId: v.optional(v.id("areas")),
     status: v.optional(v.union(v.string(), v.null())),
     nextMove: v.optional(v.union(v.string(), v.null())),
+    followUp: v.optional(v.union(v.number(), v.null())),
     state: v.optional(
       v.union(
         v.literal("active"),

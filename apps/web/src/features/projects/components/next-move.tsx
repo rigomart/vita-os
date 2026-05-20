@@ -96,7 +96,7 @@ function NextMoveItem({
   };
 
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-surface-3/60 px-2 py-1.5">
+    <div className="group flex items-center gap-2 rounded-lg bg-surface-3/60 px-2 py-1.5">
       <Button
         variant="ghost"
         size="icon-xs"

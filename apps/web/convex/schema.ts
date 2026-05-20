@@ -30,6 +30,7 @@ export default defineSchema({
     ),
     status: v.optional(v.string()),
     nextMove: v.optional(v.string()),
+    followUp: v.optional(v.number()),
     /** @deprecated Replaced by nextMove — retained for migration (#158) */
     actionQueue: v.optional(
       v.array(v.object({ id: v.string(), text: v.string() })),
@@ -77,6 +78,7 @@ export default defineSchema({
       v.literal("decision"),
       v.literal("reference"),
       v.literal("waiting_change"),
+      v.literal("follow_up_change"),
       v.literal("area_move"),
     ),
     content: v.string(),

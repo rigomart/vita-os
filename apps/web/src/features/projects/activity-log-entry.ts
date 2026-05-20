@@ -10,6 +10,7 @@ const ACTIVITY_LOG_ENTRY_LABELS: Record<ActivityLogType, string> = {
   decision: "Decision",
   reference: "Reference",
   waiting_change: "Waiting",
+  follow_up_change: "Follow-up",
   area_move: "Area",
 };
 

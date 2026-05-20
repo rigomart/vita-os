@@ -6,6 +6,7 @@ export type ActivityLogEntryType =
   | "decision"
   | "reference"
   | "waiting_change"
+  | "follow_up_change"
   | "area_move";
 
 export const AUTO_ACTIVITY_LOG_ENTRY_TYPES = [
@@ -15,6 +16,7 @@ export const AUTO_ACTIVITY_LOG_ENTRY_TYPES = [
   "decision",
   "reference",
   "waiting_change",
+  "follow_up_change",
   "area_move",
 ] as const satisfies readonly Exclude<ActivityLogEntryType, "note">[];
 
