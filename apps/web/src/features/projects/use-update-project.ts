@@ -11,7 +11,8 @@ export type UpdateProjectValue = {
   status?: string | null;
   nextMove?: string | null;
   followUp?: number | null;
-  state?: "active" | "completed" | "dropped";
+  state?: "open" | "resolved";
+  resolutionNote?: string;
 };
 
 export function useUpdateProject(projectSlug: string) {

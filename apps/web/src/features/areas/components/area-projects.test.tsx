@@ -17,7 +17,7 @@ const project = {
   name: "Renew passport",
   slug: "renew-passport",
   areaId: "area1" as Id<"areas">,
-  state: "active",
+  state: "open",
   order: 0,
   createdAt: 0,
 } satisfies Doc<"projects">;

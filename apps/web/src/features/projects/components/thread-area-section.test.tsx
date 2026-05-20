@@ -33,7 +33,7 @@ const project = {
   name: "Renew passport",
   slug: "renew-passport",
   areaId: healthArea._id,
-  state: "active",
+  state: "open",
   order: 0,
   createdAt: 0,
 } satisfies Doc<"projects">;

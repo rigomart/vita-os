@@ -72,7 +72,7 @@ export async function processInboxItem(
       definitionOfDone: args.action.definitionOfDone,
       areaId: args.action.areaId,
       order: nextOrder,
-      state: "active",
+      state: "open",
       createdAt: Date.now(),
     });
 

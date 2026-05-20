@@ -11,75 +11,82 @@ import {
   AlertDialogTrigger,
 } from "@vita-os/ui/components/alert-dialog";
 import { Button } from "@vita-os/ui/components/button";
-import { CheckCircle2, Trash2, XCircle } from "lucide-react";
+import { Textarea } from "@vita-os/ui/components/textarea";
+import { CheckCircle2, RotateCcw, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 interface ProjectLifecycleActionsProps {
   project: Doc<"projects">;
-  onComplete: () => void;
-  onDrop: () => void;
+  onResolve: (resolutionNote?: string) => void;
+  onReopen: () => void;
   onDelete: () => void;
 }
 
 export function ProjectLifecycleActions({
   project,
-  onComplete,
-  onDrop,
+  onResolve,
+  onReopen,
   onDelete,
 }: ProjectLifecycleActionsProps) {
+  const [resolutionNote, setResolutionNote] = useState("");
+  const isResolved =
+    project.state === "resolved" ||
+    project.state === "completed" ||
+    project.state === "dropped";
+
   return (
     <div className="flex items-center gap-2 border-t border-border/50 pt-6">
-      <AlertDialog>
-        <AlertDialogTrigger
-          render={<Button variant="outline" size="sm" className="gap-1.5" />}
+      {isResolved ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={onReopen}
         >
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Complete
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Complete thread?</AlertDialogTitle>
-            <AlertDialogDescription>
-              &ldquo;{project.name}&rdquo; will be marked as completed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onComplete}>Complete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog>
-        <AlertDialogTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 text-muted-foreground"
-            />
-          }
-        >
-          <XCircle className="h-3.5 w-3.5" />
-          Drop
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Drop thread?</AlertDialogTitle>
-            <AlertDialogDescription>
-              &ldquo;{project.name}&rdquo; will be marked as dropped.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={onDrop}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Drop
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reopen
+        </Button>
+      ) : (
+        <AlertDialog>
+          <AlertDialogTrigger
+            render={<Button variant="outline" size="sm" className="gap-1.5" />}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Resolve
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Resolve thread?</AlertDialogTitle>
+              <AlertDialogDescription>
+                &ldquo;{project.name}&rdquo; will be marked as resolved. Its
+                current Next Move and Follow-up will be cleared.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2">
+              <label
+                htmlFor="resolution-note"
+                className="text-sm font-medium text-foreground"
+              >
+                Resolution note
+              </label>
+              <Textarea
+                id="resolution-note"
+                value={resolutionNote}
+                onChange={(event) => setResolutionNote(event.target.value)}
+                placeholder="Add context..."
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => onResolve(resolutionNote.trim() || undefined)}
+              >
+                Resolve thread
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
 
       <div className="flex-1" />
 

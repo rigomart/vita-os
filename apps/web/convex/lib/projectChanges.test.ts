@@ -3,6 +3,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import {
   buildCompleteNextMoveChange,
   buildProjectPatchLogEntries,
+  buildThreadLifecyclePatch,
 } from "./projectChanges";
 
 function makeProject(
@@ -16,7 +17,7 @@ function makeProject(
     slug: "thread-00000000",
     areaId: "area1" as Id<"areas">,
     order: 0,
-    state: "active",
+    state: "open",
     createdAt: 0,
     ...overrides,
   };
@@ -113,17 +114,17 @@ describe("buildProjectPatchLogEntries", () => {
     });
   });
 
-  it("records state changes", () => {
+  it("records lifecycle changes", () => {
     const logs = buildProjectPatchLogEntries(makeProject(), {
-      state: "completed",
+      state: "resolved",
     });
 
     expect(logs).toEqual([
       {
         type: "state_change",
-        content: 'State changed from "active" to "completed"',
-        previousValue: "active",
-        newValue: "completed",
+        content: 'Lifecycle changed from "open" to "resolved"',
+        previousValue: "open",
+        newValue: "resolved",
       },
     ]);
   });
@@ -186,6 +187,53 @@ describe("buildProjectPatchLogEntries", () => {
       );
 
       expect(logs).toEqual([]);
+    });
+  });
+});
+
+describe("buildThreadLifecyclePatch", () => {
+  it("resolves an open Thread, clears next move and follow-up, and records the note", () => {
+    const change = buildThreadLifecyclePatch(
+      makeProject({
+        state: "open",
+        nextMove: "Call clinic",
+        followUp: new Date("2026-05-20").getTime(),
+      }),
+      {
+        state: "resolved",
+        resolutionNote: "Clinic confirmed no further action",
+      },
+    );
+
+    expect(change).toEqual({
+      patch: {
+        state: "resolved",
+        nextMove: undefined,
+        followUp: undefined,
+      },
+      log: {
+        type: "state_change",
+        content: "Resolved thread: Clinic confirmed no further action",
+        previousValue: "open",
+        newValue: "resolved",
+      },
+    });
+  });
+
+  it("reopens a resolved Thread without restoring the old follow-up", () => {
+    const change = buildThreadLifecyclePatch(
+      makeProject({ state: "resolved", followUp: undefined }),
+      { state: "open" },
+    );
+
+    expect(change).toEqual({
+      patch: { state: "open" },
+      log: {
+        type: "state_change",
+        content: "Reopened thread",
+        previousValue: "resolved",
+        newValue: "open",
+      },
     });
   });
 });

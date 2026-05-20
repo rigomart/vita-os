@@ -21,10 +21,15 @@ export function ProjectLifecycleActionsSection({
   const updateProject = useUpdateProject(projectSlug);
   const removeProject = useRemoveProject({ projectSlug });
 
-  const handleStateChange = (state: "completed" | "dropped") => {
+  const handleResolve = (resolutionNote?: string) => {
     if (!project) return;
-    updateProject({ id: project._id, state });
+    updateProject({ id: project._id, state: "resolved", resolutionNote });
     navigate({ to: "/$areaSlug", params: { areaSlug } });
+  };
+
+  const handleReopen = () => {
+    if (!project) return;
+    updateProject({ id: project._id, state: "open" });
   };
 
   const handleDelete = async () => {
@@ -38,8 +43,8 @@ export function ProjectLifecycleActionsSection({
   return (
     <ProjectLifecycleActions
       project={project}
-      onComplete={() => handleStateChange("completed")}
-      onDrop={() => handleStateChange("dropped")}
+      onResolve={handleResolve}
+      onReopen={handleReopen}
       onDelete={handleDelete}
     />
   );

@@ -17,7 +17,7 @@ function makeProject(
     slug: "renew-passport",
     areaId: "area1" as Id<"areas">,
     order: 0,
-    state: "active",
+    state: "open",
     createdAt: 0,
     ...overrides,
   };
