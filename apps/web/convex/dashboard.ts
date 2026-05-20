@@ -55,7 +55,7 @@ export const overview = query({
   args: {},
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
-    if (!userId) return { areas: [], attentionItems: [] };
+    if (!userId) return { areas: [], attentionThreads: [] };
 
     const areas = await ctx.db
       .query("areas")
@@ -69,31 +69,35 @@ export const overview = query({
       .collect();
 
     const projectCounts: Record<string, number> = {};
-    const attentionCounts: Record<string, number> = {};
     const areaById = new Map(areas.map((area) => [area._id as string, area]));
-    const attentionItems: Array<{
+    const attentionThreads: Array<{
       projectId: string;
       projectName: string;
       projectSlug: string | undefined;
       areaId: string;
-      reason: "no_next_action";
+      lifecycle: "open";
+      nextMove: string | undefined;
+      followUp: number | undefined;
     }> = [];
 
     for (const project of activeProjects) {
       projectCounts[project.areaId] = (projectCounts[project.areaId] ?? 0) + 1;
 
-      const hasAction = project.nextMove != null;
-      if (!hasAction) {
-        attentionItems.push({
-          projectId: project._id,
-          projectName: project.name,
-          projectSlug: project.slug,
-          areaId: project.areaId,
-          reason: "no_next_action",
-        });
-        attentionCounts[project.areaId] =
-          (attentionCounts[project.areaId] ?? 0) + 1;
-      }
+      attentionThreads.push({
+        projectId: project._id,
+        projectName: project.name,
+        projectSlug: project.slug,
+        areaId: project.areaId,
+        lifecycle: "open",
+        nextMove: project.nextMove,
+        followUp: project.followUp,
+      });
+    }
+
+    const attentionCounts: Record<string, number> = {};
+    for (const thread of attentionThreads) {
+      attentionCounts[thread.areaId] =
+        (attentionCounts[thread.areaId] ?? 0) + 1;
     }
 
     return {
@@ -102,14 +106,19 @@ export const overview = query({
         projectCount: projectCounts[area._id] ?? 0,
         attentionCount: attentionCounts[area._id] ?? 0,
       })),
-      attentionItems: attentionItems.map((item) => {
-        const area = areaById.get(item.areaId);
+      attentionThreads: attentionThreads.map((thread) => {
+        const area = areaById.get(thread.areaId);
         return {
-          key: `${item.projectId}-${item.reason}`,
-          projectName: item.projectName,
+          id: thread.projectId,
+          key: thread.projectId,
+          projectName: thread.projectName,
+          name: thread.projectName,
           area,
-          areaSlug: area?.slug ?? area?._id ?? item.areaId,
-          projectSlug: item.projectSlug ?? item.projectId,
+          areaSlug: area?.slug ?? area?._id ?? thread.areaId,
+          projectSlug: thread.projectSlug ?? thread.projectId,
+          lifecycle: thread.lifecycle,
+          nextMove: thread.nextMove,
+          followUp: thread.followUp,
         };
       }),
     };

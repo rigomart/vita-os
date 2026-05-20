@@ -1,7 +1,7 @@
 import type { Doc } from "@convex/_generated/dataModel";
 import { conditionColors, conditionLabels } from "@convex/lib/condition";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle } from "lucide-react";
+import { CircleDot } from "lucide-react";
 
 interface AreaCardProps {
   area: Doc<"areas">;
@@ -32,9 +32,9 @@ export function AreaCard({
         {projectCount} {projectCount === 1 ? "thread" : "threads"}
       </p>
       {attentionCount > 0 && (
-        <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-500">
-          <AlertTriangle className="h-3 w-3" />
-          {attentionCount} without a next action
+        <p className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+          <CircleDot className="h-3 w-3" />
+          {attentionCount} on Dashboard
         </p>
       )}
     </Link>
