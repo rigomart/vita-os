@@ -19,7 +19,13 @@ type NullablePatch<T> = {
 type ProjectPatch = NullablePatch<
   Pick<
     Project,
-    "name" | "definitionOfDone" | "areaId" | "status" | "nextMove" | "state"
+    | "name"
+    | "definitionOfDone"
+    | "areaId"
+    | "status"
+    | "nextMove"
+    | "followUp"
+    | "state"
   >
 >;
 

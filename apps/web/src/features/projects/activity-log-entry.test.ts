@@ -11,5 +11,6 @@ describe("getActivityLogEntryLabel", () => {
     expect(getActivityLogEntryLabel("decision")).toBe("Decision");
     expect(getActivityLogEntryLabel("reference")).toBe("Reference");
     expect(getActivityLogEntryLabel("waiting_change")).toBe("Waiting");
+    expect(getActivityLogEntryLabel("follow_up_change")).toBe("Follow-up");
   });
 });

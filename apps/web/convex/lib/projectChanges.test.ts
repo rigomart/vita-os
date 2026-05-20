@@ -127,6 +127,67 @@ describe("buildProjectPatchLogEntries", () => {
       },
     ]);
   });
+
+  describe("followUp", () => {
+    const may20 = new Date("2026-05-20").getTime();
+    const jun1 = new Date("2026-06-01").getTime();
+
+    it("logs when setting a follow-up from empty", () => {
+      const logs = buildProjectPatchLogEntries(makeProject(), {
+        followUp: may20,
+      });
+
+      expect(logs).toEqual([
+        {
+          type: "follow_up_change",
+          content: 'Follow-up set to "May 20, 2026"',
+          previousValue: undefined,
+          newValue: "May 20, 2026",
+        },
+      ]);
+    });
+
+    it("logs when changing an existing follow-up", () => {
+      const logs = buildProjectPatchLogEntries(
+        makeProject({ followUp: may20 } satisfies Partial<Doc<"projects">>),
+        { followUp: jun1 },
+      );
+
+      expect(logs).toEqual([
+        {
+          type: "follow_up_change",
+          content: 'Follow-up changed from "May 20, 2026" to "Jun 1, 2026"',
+          previousValue: "May 20, 2026",
+          newValue: "Jun 1, 2026",
+        },
+      ]);
+    });
+
+    it("logs when clearing a follow-up", () => {
+      const logs = buildProjectPatchLogEntries(
+        makeProject({ followUp: may20 } satisfies Partial<Doc<"projects">>),
+        { followUp: undefined },
+      );
+
+      expect(logs).toEqual([
+        {
+          type: "follow_up_change",
+          content: "Follow-up cleared",
+          previousValue: "May 20, 2026",
+          newValue: undefined,
+        },
+      ]);
+    });
+
+    it("does not log when follow-up stays the same", () => {
+      const logs = buildProjectPatchLogEntries(
+        makeProject({ followUp: may20 } satisfies Partial<Doc<"projects">>),
+        { followUp: may20 },
+      );
+
+      expect(logs).toEqual([]);
+    });
+  });
 });
 
 describe("buildCompleteNextMoveChange", () => {

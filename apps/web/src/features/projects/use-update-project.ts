@@ -10,6 +10,7 @@ export type UpdateProjectValue = {
   areaId?: Id<"areas">;
   status?: string | null;
   nextMove?: string | null;
+  followUp?: number | null;
   state?: "active" | "completed" | "dropped";
 };
 
