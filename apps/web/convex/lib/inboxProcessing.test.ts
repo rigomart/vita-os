@@ -76,6 +76,84 @@ describe("buildProjectNoteFromItem", () => {
 });
 
 describe("processInboxItem", () => {
+  it("creates a new Thread from a Task, logs the original Task text, and consumes the Task", async () => {
+    const item = makeItem({ text: "Schedule a physical" });
+    const inserted: Array<{ table: string; value: Record<string, unknown> }> =
+      [];
+    const deleted: string[] = [];
+    const area = {
+      _id: areaId,
+      _creationTime: 0,
+      userId: "user1",
+      name: "Health",
+      slug: "health",
+      healthStatus: "healthy",
+      order: 0,
+      createdAt: 0,
+    };
+    const ctx = {
+      db: {
+        get: async (id: string) => (id === areaId ? area : null),
+        query: () => ({
+          withIndex: () => ({
+            order: () => ({
+              first: async () => null,
+            }),
+          }),
+        }),
+        insert: async (table: string, value: Record<string, unknown>) => {
+          inserted.push({ table, value });
+          return table === "projects" ? projectId : "log1";
+        },
+        delete: async (id: string) => {
+          deleted.push(id);
+        },
+      },
+    };
+
+    const result = await processInboxItem(ctx as never, {
+      userId: "user1",
+      item,
+      action: {
+        type: "create_project",
+        name: "Annual health check",
+        areaId,
+      },
+    });
+
+    expect(result).toEqual({
+      type: "created",
+      slug: expect.stringMatching(/^annual-health-check-[a-f0-9]{8}$/),
+    });
+    expect(inserted).toEqual([
+      {
+        table: "projects",
+        value: {
+          userId: "user1",
+          name: "Annual health check",
+          slug: expect.stringMatching(/^annual-health-check-[a-f0-9]{8}$/),
+          areaId,
+          order: 0,
+          state: "open",
+          createdAt: expect.any(Number),
+        },
+      },
+      {
+        table: "projectLogs",
+        value: {
+          userId: "user1",
+          projectId,
+          type: "note",
+          content: "Schedule a physical",
+          createdAt: expect.any(Number),
+        },
+      },
+    ]);
+    expect(inserted[0]?.value).not.toHaveProperty("nextMove");
+    expect(inserted[0]?.value).not.toHaveProperty("actionQueue");
+    expect(deleted).toEqual([item._id]);
+  });
+
   it("adds a Task to an existing Thread Activity Log and consumes the Task", async () => {
     const item = makeItem();
     const project = makeProject();
