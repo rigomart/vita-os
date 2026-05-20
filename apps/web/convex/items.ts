@@ -140,11 +140,11 @@ export const process = mutation({
         definitionOfDone: v.optional(v.string()),
       }),
       v.object({
-        type: v.literal("add_to_project"),
+        type: v.literal("add_activity_log_entry"),
         projectId: v.id("projects"),
       }),
       v.object({
-        type: v.literal("set_next_action"),
+        type: v.literal("set_next_move"),
         projectId: v.id("projects"),
       }),
       v.object({

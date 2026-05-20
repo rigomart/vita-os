@@ -9,8 +9,8 @@ export type ProcessItemAction =
       areaId: Id<"areas">;
       definitionOfDone?: string;
     }
-  | { type: "add_to_project"; projectId: Id<"projects"> }
-  | { type: "set_next_action"; projectId: Id<"projects"> };
+  | { type: "add_activity_log_entry"; projectId: Id<"projects"> }
+  | { type: "set_next_move"; projectId: Id<"projects"> };
 
 export function useProcessItem() {
   const processItem = useMutation(api.items.process);

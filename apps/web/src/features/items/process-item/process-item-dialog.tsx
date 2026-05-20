@@ -25,7 +25,7 @@ import {
   ProjectSearchAutocomplete,
 } from "./project-search-autocomplete";
 
-type ProcessingMode = "add_to_project" | "set_next_action";
+type ProcessingMode = "add_activity_log_entry" | "set_next_move";
 
 interface ProcessItemDialogProps {
   open: boolean;
@@ -51,7 +51,7 @@ export function ProcessItemDialog({
 }: ProcessItemDialogProps) {
   const [choice, setChoice] = useState<ProjectChoice | null>(null);
   const [inputValue, setInputValue] = useState("");
-  const [mode, setMode] = useState<ProcessingMode>("add_to_project");
+  const [mode, setMode] = useState<ProcessingMode>("add_activity_log_entry");
   const [creationDraft, setCreationDraft] = useState<{
     name: string;
   } | null>(null);
@@ -159,7 +159,8 @@ export function ProcessItemDialog({
 
         <InboxItemPreview item={item} />
         <p className="-mt-3 text-sm text-muted-foreground">
-          Turn this Inbox task into a clear outcome or next action.
+          Move this Inbox task into a Thread as an Activity Log entry or Next
+          Move.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -197,18 +198,18 @@ export function ProcessItemDialog({
           {selectedProject && (
             <div className="grid gap-2 sm:grid-cols-2">
               <ProcessingModeCard
-                mode="add_to_project"
+                mode="add_activity_log_entry"
                 selectedMode={mode}
                 onSelect={setMode}
-                title="Add as note"
+                title="Activity Log entry"
                 description="Logged in the thread activity log."
                 icon={<FileText className="h-4 w-4" />}
               />
               <ProcessingModeCard
-                mode="set_next_action"
+                mode="set_next_move"
                 selectedMode={mode}
                 onSelect={setMode}
-                title="Set as next action"
+                title="Next Move"
                 description="Becomes what to do next."
                 icon={<Target className="h-4 w-4" />}
               />
