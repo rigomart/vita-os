@@ -100,9 +100,9 @@ Use this body:
 Closes #123
 ```
 
-The PR body must reference the issue it closes whenever one can be found. Look for the issue number in the session context, the user's request, branch name, commit messages, recent issue discussion, or the diff itself. If the issue is still ambiguous, ask the user before creating the PR instead of guessing.
+The PR body must reference the issue it closes when the work is tied to an issue. Look for the issue number in the session context, the user's request, branch name, commit messages, recent issue discussion, or the diff itself.
 
-Use GitHub closing syntax, such as `Closes #123`, so merging the PR closes the issue automatically. Omit the closing line only when there is no issue to close after checking the available context. If a command was not run, say why instead of listing it.
+Use GitHub closing syntax, such as `Closes #123`, so merging the PR closes the issue automatically. If an issue appears relevant but cannot be identified, ask the user before creating the PR instead of guessing. If the change is clearly not issue-backed, such as a small agent-instruction cleanup requested directly in chat, omit the closing line and continue creating the PR. If a command was not run, say why instead of listing it.
 
 ## Workflow
 
@@ -110,5 +110,5 @@ Use GitHub closing syntax, such as `Closes #123`, so merging the PR closes the i
 2. Summarize what will ship and whether it needs one commit or multiple commits.
 3. Decide whether to keep the current branch or create a descriptive branch from the current worktree `HEAD`.
 4. Stage only intended files, commit with conventional messages, and push the branch.
-5. Create the PR with the standard title and body, including the inferred or confirmed closing issue reference.
+5. Create the PR with the standard title and body, including the inferred or confirmed closing issue reference when the work is issue-backed.
 6. Final response includes branch, commit hash or hashes, PR link, and verification status.
