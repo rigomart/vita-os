@@ -65,16 +65,21 @@ export async function processInboxItem(
     const nextOrder = await getNextOrder(ctx, "projects", args.userId);
     const slug = generateSlug(args.action.name);
 
-    const projectId = await ctx.db.insert("projects", {
+    const project: Omit<Doc<"projects">, "_id" | "_creationTime"> = {
       userId: args.userId,
       name: args.action.name,
       slug,
-      definitionOfDone: args.action.definitionOfDone,
       areaId: args.action.areaId,
       order: nextOrder,
       state: "open",
       createdAt: Date.now(),
-    });
+    };
+
+    if (args.action.definitionOfDone) {
+      project.definitionOfDone = args.action.definitionOfDone;
+    }
+
+    const projectId = await ctx.db.insert("projects", project);
 
     await copyItemToProjectLog(ctx, {
       userId: args.userId,

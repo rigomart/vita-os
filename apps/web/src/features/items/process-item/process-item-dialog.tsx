@@ -14,7 +14,6 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@vita-os/ui/components/responsive-dialog";
-import { Textarea } from "@vita-os/ui/components/textarea";
 import { cn } from "@vita-os/ui/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowRight, Check, FileText, Target } from "lucide-react";
@@ -56,7 +55,6 @@ export function ProcessItemDialog({
     name: string;
   } | null>(null);
   const [createAreaId, setCreateAreaId] = useState<string | undefined>();
-  const [definitionOfDone, setDefinitionOfDone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isCreating = creationDraft !== null;
@@ -69,7 +67,6 @@ export function ProcessItemDialog({
 
   const resetCreationFields = () => {
     setCreateAreaId(undefined);
-    setDefinitionOfDone("");
   };
 
   const handleChoiceChange = (next: ProjectChoice | null) => {
@@ -136,7 +133,6 @@ export function ProcessItemDialog({
           type: "create_project",
           name: createName.trim(),
           areaId: createAreaId as Id<"areas">,
-          definitionOfDone: definitionOfDone.trim() || undefined,
         });
       } else if (selectedProject) {
         await onProcess(item._id, {
@@ -180,17 +176,6 @@ export function ProcessItemDialog({
                 areas={areas}
                 selectedAreaId={createAreaId}
                 onSelect={setCreateAreaId}
-              />
-              <Textarea
-                id="inline-project-dod"
-                aria-label="Summary"
-                value={definitionOfDone}
-                onChange={(event) =>
-                  setDefinitionOfDone(event.currentTarget.value)
-                }
-                placeholder="What is this thread about?"
-                rows={2}
-                className="resize-none"
               />
             </div>
           )}
