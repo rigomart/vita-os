@@ -13,20 +13,6 @@ bun run build        # Type-check (tsc) then build for production
 
 If tests exist for the affected code, also run `bun run test:run`.
 
-## CI
-
-GitHub Actions runs on pull requests and pushes to `main` (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
-
-```bash
-bun run lint:check   # Check-only; does not rewrite the checkout
-bun run build
-bun run test:run
-```
-
-CI uses `lint:check`, not `lint` or `format`, so it never auto-fixes files. Local verification may still use `bun run lint` when changes need auto-fix.
-
-CI v1 does not run Vite dev, Convex dev, Convex code generation, or Convex deploy. No ADR is required for this routine CI setup.
-
 ## Commands
 
 All commands use **bun** (not npm/yarn/pnpm). Run from the **repo root**:
