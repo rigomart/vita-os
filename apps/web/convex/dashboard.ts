@@ -1,37 +1,34 @@
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
-import { isOpenProjectState } from "./lib/types";
 
 export const attention = query({
   args: {},
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
-    if (!userId) return { items: [], byArea: {} as Record<string, number> };
+    if (!userId) return { tasks: [], byArea: {} as Record<string, number> };
 
-    const projects = await ctx.db
-      .query("projects")
+    const threads = await ctx.db
+      .query("threads")
       .withIndex("by_user_order", (q) => q.eq("userId", userId))
       .collect();
-    const openProjects = projects.filter((project) =>
-      isOpenProjectState(project.state),
-    );
+    const openThreads = threads.filter((thread) => thread.state === "open");
 
-    const items: Array<{
-      projectId: string;
-      projectName: string;
-      projectSlug: string | undefined;
+    const tasks: Array<{
+      threadId: string;
+      threadName: string;
+      threadSlug: string | undefined;
       areaId: string;
       reason: "no_next_action";
     }> = [];
 
-    for (const project of openProjects) {
-      const hasAction = project.nextMove != null;
+    for (const thread of openThreads) {
+      const hasAction = thread.nextMove != null;
       if (!hasAction) {
-        items.push({
-          projectId: project._id,
-          projectName: project.name,
-          projectSlug: project.slug,
-          areaId: project.areaId,
+        tasks.push({
+          threadId: thread._id,
+          threadName: thread.title,
+          threadSlug: thread.slug,
+          areaId: thread.areaId,
           reason: "no_next_action",
         });
       }
@@ -39,17 +36,17 @@ export const attention = query({
 
     const byArea: Record<string, number> = {};
     const seenByArea = new Map<string, Set<string>>();
-    for (const item of items) {
-      if (!seenByArea.has(item.areaId)) {
-        seenByArea.set(item.areaId, new Set());
+    for (const task of tasks) {
+      if (!seenByArea.has(task.areaId)) {
+        seenByArea.set(task.areaId, new Set());
       }
-      seenByArea.get(item.areaId)?.add(item.projectId);
+      seenByArea.get(task.areaId)?.add(task.threadId);
     }
-    for (const [areaId, projectSet] of seenByArea) {
-      byArea[areaId] = projectSet.size;
+    for (const [areaId, threadSet] of seenByArea) {
+      byArea[areaId] = threadSet.size;
     }
 
-    return { items, byArea };
+    return { tasks, byArea };
   },
 });
 
@@ -63,37 +60,35 @@ export const overview = query({
       .query("areas")
       .withIndex("by_user_order", (q) => q.eq("userId", userId))
       .collect();
-    const projects = await ctx.db
-      .query("projects")
+    const threads = await ctx.db
+      .query("threads")
       .withIndex("by_user_order", (q) => q.eq("userId", userId))
       .collect();
-    const openProjects = projects.filter((project) =>
-      isOpenProjectState(project.state),
-    );
+    const openThreads = threads.filter((thread) => thread.state === "open");
 
-    const projectCounts: Record<string, number> = {};
+    const threadCounts: Record<string, number> = {};
     const areaById = new Map(areas.map((area) => [area._id as string, area]));
     const attentionThreads: Array<{
-      projectId: string;
-      projectName: string;
-      projectSlug: string | undefined;
+      threadId: string;
+      threadName: string;
+      threadSlug: string | undefined;
       areaId: string;
       lifecycle: "open";
       nextMove: string | undefined;
       followUp: number | undefined;
     }> = [];
 
-    for (const project of openProjects) {
-      projectCounts[project.areaId] = (projectCounts[project.areaId] ?? 0) + 1;
+    for (const thread of openThreads) {
+      threadCounts[thread.areaId] = (threadCounts[thread.areaId] ?? 0) + 1;
 
       attentionThreads.push({
-        projectId: project._id,
-        projectName: project.name,
-        projectSlug: project.slug,
-        areaId: project.areaId,
+        threadId: thread._id,
+        threadName: thread.title,
+        threadSlug: thread.slug,
+        areaId: thread.areaId,
         lifecycle: "open",
-        nextMove: project.nextMove,
-        followUp: project.followUp,
+        nextMove: thread.nextMove,
+        followUp: thread.followUp,
       });
     }
 
@@ -106,19 +101,19 @@ export const overview = query({
     return {
       areas: areas.map((area) => ({
         area,
-        projectCount: projectCounts[area._id] ?? 0,
+        threadCount: threadCounts[area._id] ?? 0,
         attentionCount: attentionCounts[area._id] ?? 0,
       })),
       attentionThreads: attentionThreads.map((thread) => {
         const area = areaById.get(thread.areaId);
         return {
-          id: thread.projectId,
-          key: thread.projectId,
-          projectName: thread.projectName,
-          name: thread.projectName,
+          id: thread.threadId,
+          key: thread.threadId,
+          threadName: thread.threadName,
+          name: thread.threadName,
           area,
           areaSlug: area?.slug ?? area?._id ?? thread.areaId,
-          projectSlug: thread.projectSlug ?? thread.projectId,
+          threadSlug: thread.threadSlug ?? thread.threadId,
           lifecycle: thread.lifecycle,
           nextMove: thread.nextMove,
           followUp: thread.followUp,

@@ -10,10 +10,10 @@ import {
 } from "lucide-react";
 import type { DashboardAttentionThread } from "@/features/dashboard/attention-state";
 
-export interface AttentionListItem extends DashboardAttentionThread {
+export interface AttentionListTask extends DashboardAttentionThread {
   key: string;
-  projectName: string;
-  projectSlug: string;
+  threadName: string;
+  threadSlug: string;
   area?: Doc<"areas">;
   areaSlug: string;
 }
@@ -21,7 +21,7 @@ export interface AttentionListItem extends DashboardAttentionThread {
 interface AttentionListProps {
   title: string;
   tone: "due" | "scheduled" | "ready" | "open";
-  items: AttentionListItem[];
+  tasks: AttentionListTask[];
 }
 
 const groupTone = {
@@ -51,8 +51,8 @@ const groupTone = {
   },
 };
 
-export function AttentionList({ title, tone, items }: AttentionListProps) {
-  if (items.length === 0) return null;
+export function AttentionList({ title, tone, tasks }: AttentionListProps) {
+  if (tasks.length === 0) return null;
 
   const { Icon, badge, className, iconClassName } = groupTone[tone];
 
@@ -65,21 +65,21 @@ export function AttentionList({ title, tone, items }: AttentionListProps) {
           <Icon className="h-3.5 w-3.5" />
         </div>
         <h2 className="text-sm font-medium">{title}</h2>
-        <span className="text-xs text-muted-foreground">{items.length}</span>
+        <span className="text-xs text-muted-foreground">{tasks.length}</span>
       </div>
       <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
-        {items.map((item) => (
+        {tasks.map((task) => (
           <Link
-            key={item.key}
-            to="/$areaSlug/$projectSlug"
-            params={{ areaSlug: item.areaSlug, projectSlug: item.projectSlug }}
+            key={task.key}
+            to="/$areaSlug/$threadSlug"
+            params={{ areaSlug: task.areaSlug, threadSlug: task.threadSlug }}
             className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-surface-3/60"
           >
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{item.projectName}</p>
-              {item.area && (
+              <p className="truncate text-sm font-medium">{task.threadName}</p>
+              {task.area && (
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {item.area.name}
+                  {task.area.name}
                 </p>
               )}
             </div>

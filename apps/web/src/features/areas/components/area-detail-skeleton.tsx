@@ -20,7 +20,7 @@ export function AreaDetailSkeleton() {
         <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
           {Array.from({ length: 2 }).map((_, i) => (
             <div
-              // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
+              // biome-ignore lint/suspicious/noArrayIndexKey: skeleton tasks have no stable id
               key={i}
               className="px-4 py-4"
             >

@@ -3,7 +3,7 @@ import { RESERVED_AREA_SLUGS, validateAreaName } from "./validation";
 
 describe("RESERVED_AREA_SLUGS", () => {
   it("contains expected reserved slugs", () => {
-    expect(RESERVED_AREA_SLUGS.has("projects")).toBe(true);
+    expect(RESERVED_AREA_SLUGS.has("threads")).toBe(true);
     expect(RESERVED_AREA_SLUGS.has("settings")).toBe(true);
     expect(RESERVED_AREA_SLUGS.has("sign-in")).toBe(true);
     expect(RESERVED_AREA_SLUGS.has("sign-up")).toBe(true);
@@ -16,13 +16,11 @@ describe("validateAreaName", () => {
   });
 
   it("accepts names that slugify differently from reserved words", () => {
-    expect(() => validateAreaName("My Projects List")).not.toThrow();
+    expect(() => validateAreaName("My Threads List")).not.toThrow();
   });
 
-  it("rejects 'Projects' (case-insensitive via slugify)", () => {
-    expect(() => validateAreaName("Projects")).toThrow(
-      '"Projects" is reserved',
-    );
+  it("rejects 'Threads' (case-insensitive via slugify)", () => {
+    expect(() => validateAreaName("Threads")).toThrow('"Threads" is reserved');
   });
 
   it("rejects 'Settings'", () => {

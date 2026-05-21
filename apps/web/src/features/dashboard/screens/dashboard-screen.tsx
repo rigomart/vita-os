@@ -5,7 +5,7 @@ import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog"
 import { useCreateStarterArea } from "@/features/areas/area-form/use-create-area";
 import { AttentionSection } from "@/features/dashboard/components/attention-section";
 import { DashboardAreasSection } from "@/features/dashboard/components/dashboard-areas-section";
-import { RecentItems } from "@/features/dashboard/components/recent-items";
+import { RecentTasks } from "@/features/dashboard/components/recent-tasks";
 import { shouldShowAreaSetup } from "./dashboard-screen-state";
 
 export function DashboardScreen() {
@@ -33,7 +33,7 @@ export function DashboardScreen() {
 
       <AttentionSection currentDate={Date.now()} threads={attentionThreads} />
 
-      <RecentItems />
+      <RecentTasks />
 
       <CreateAreaDialog
         open={showCreateArea}

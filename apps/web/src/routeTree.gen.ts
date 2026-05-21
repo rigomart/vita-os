@@ -16,7 +16,7 @@ import { Route as UnauthenticatedSignUpRouteImport } from './routes/_unauthentic
 import { Route as UnauthenticatedSignInRouteImport } from './routes/_unauthenticated/sign-in'
 import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
 import { Route as AuthenticatedAreaSlugIndexRouteImport } from './routes/_authenticated/$areaSlug/index'
-import { Route as AuthenticatedAreaSlugProjectSlugRouteImport } from './routes/_authenticated/$areaSlug/$projectSlug'
+import { Route as AuthenticatedAreaSlugThreadSlugRouteImport } from './routes/_authenticated/$areaSlug/$threadSlug'
 
 const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
   id: '/_unauthenticated',
@@ -52,10 +52,10 @@ const AuthenticatedAreaSlugIndexRoute =
     path: '/$areaSlug/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAreaSlugProjectSlugRoute =
-  AuthenticatedAreaSlugProjectSlugRouteImport.update({
-    id: '/$areaSlug/$projectSlug',
-    path: '/$areaSlug/$projectSlug',
+const AuthenticatedAreaSlugThreadSlugRoute =
+  AuthenticatedAreaSlugThreadSlugRouteImport.update({
+    id: '/$areaSlug/$threadSlug',
+    path: '/$areaSlug/$threadSlug',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
@@ -64,7 +64,7 @@ export interface FileRoutesByFullPath {
   '/inbox': typeof AuthenticatedInboxRoute
   '/sign-in': typeof UnauthenticatedSignInRoute
   '/sign-up': typeof UnauthenticatedSignUpRoute
-  '/$areaSlug/$projectSlug': typeof AuthenticatedAreaSlugProjectSlugRoute
+  '/$areaSlug/$threadSlug': typeof AuthenticatedAreaSlugThreadSlugRoute
   '/$areaSlug/': typeof AuthenticatedAreaSlugIndexRoute
 }
 export interface FileRoutesByTo {
@@ -72,7 +72,7 @@ export interface FileRoutesByTo {
   '/inbox': typeof AuthenticatedInboxRoute
   '/sign-in': typeof UnauthenticatedSignInRoute
   '/sign-up': typeof UnauthenticatedSignUpRoute
-  '/$areaSlug/$projectSlug': typeof AuthenticatedAreaSlugProjectSlugRoute
+  '/$areaSlug/$threadSlug': typeof AuthenticatedAreaSlugThreadSlugRoute
   '/$areaSlug': typeof AuthenticatedAreaSlugIndexRoute
 }
 export interface FileRoutesById {
@@ -83,7 +83,7 @@ export interface FileRoutesById {
   '/_unauthenticated/sign-in': typeof UnauthenticatedSignInRoute
   '/_unauthenticated/sign-up': typeof UnauthenticatedSignUpRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/$areaSlug/$projectSlug': typeof AuthenticatedAreaSlugProjectSlugRoute
+  '/_authenticated/$areaSlug/$threadSlug': typeof AuthenticatedAreaSlugThreadSlugRoute
   '/_authenticated/$areaSlug/': typeof AuthenticatedAreaSlugIndexRoute
 }
 export interface FileRouteTypes {
@@ -93,7 +93,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/sign-in'
     | '/sign-up'
-    | '/$areaSlug/$projectSlug'
+    | '/$areaSlug/$threadSlug'
     | '/$areaSlug/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -101,7 +101,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/sign-in'
     | '/sign-up'
-    | '/$areaSlug/$projectSlug'
+    | '/$areaSlug/$threadSlug'
     | '/$areaSlug'
   id:
     | '__root__'
@@ -111,7 +111,7 @@ export interface FileRouteTypes {
     | '/_unauthenticated/sign-in'
     | '/_unauthenticated/sign-up'
     | '/_authenticated/'
-    | '/_authenticated/$areaSlug/$projectSlug'
+    | '/_authenticated/$areaSlug/$threadSlug'
     | '/_authenticated/$areaSlug/'
   fileRoutesById: FileRoutesById
 }
@@ -171,11 +171,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAreaSlugIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/$areaSlug/$projectSlug': {
-      id: '/_authenticated/$areaSlug/$projectSlug'
-      path: '/$areaSlug/$projectSlug'
-      fullPath: '/$areaSlug/$projectSlug'
-      preLoaderRoute: typeof AuthenticatedAreaSlugProjectSlugRouteImport
+    '/_authenticated/$areaSlug/$threadSlug': {
+      id: '/_authenticated/$areaSlug/$threadSlug'
+      path: '/$areaSlug/$threadSlug'
+      fullPath: '/$areaSlug/$threadSlug'
+      preLoaderRoute: typeof AuthenticatedAreaSlugThreadSlugRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
   }
@@ -184,14 +184,14 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedInboxRoute: typeof AuthenticatedInboxRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedAreaSlugProjectSlugRoute: typeof AuthenticatedAreaSlugProjectSlugRoute
+  AuthenticatedAreaSlugThreadSlugRoute: typeof AuthenticatedAreaSlugThreadSlugRoute
   AuthenticatedAreaSlugIndexRoute: typeof AuthenticatedAreaSlugIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInboxRoute: AuthenticatedInboxRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedAreaSlugProjectSlugRoute: AuthenticatedAreaSlugProjectSlugRoute,
+  AuthenticatedAreaSlugThreadSlugRoute: AuthenticatedAreaSlugThreadSlugRoute,
   AuthenticatedAreaSlugIndexRoute: AuthenticatedAreaSlugIndexRoute,
 }
 

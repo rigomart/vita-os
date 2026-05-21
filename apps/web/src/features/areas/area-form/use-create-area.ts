@@ -15,13 +15,12 @@ export function useCreateArea() {
     createArea({
       name: value.name,
       standard: value.standard,
-      healthStatus: value.healthStatus,
+      condition: value.condition,
     });
 }
 
 export function useCreateStarterArea() {
   const createArea = useCreateArea();
 
-  return (name: string) =>
-    createArea({ name, healthStatus: DEFAULT_CONDITION });
+  return (name: string) => createArea({ name, condition: DEFAULT_CONDITION });
 }

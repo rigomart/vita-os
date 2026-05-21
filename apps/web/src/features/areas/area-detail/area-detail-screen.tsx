@@ -5,9 +5,9 @@ import { useState } from "react";
 import { EditAreaDialog } from "@/features/areas/area-form/edit-area-dialog";
 import { AreaDetailSkeleton } from "@/features/areas/components/area-detail-skeleton";
 import { AreaHeaderSection } from "@/features/areas/components/area-header-section";
-import { AreaProjectsSection } from "@/features/areas/components/area-projects-section";
 import { AreaStandardCardSection } from "@/features/areas/components/area-standard-card-section";
-import { CreateProjectDialog } from "@/features/projects/project-form/create-project-dialog";
+import { AreaThreadsSection } from "@/features/areas/components/area-threads-section";
+import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread-dialog";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useStableQuery } from "@/hooks/use-stable-query";
 import { AreaNotFound } from "./area-not-found";
@@ -21,7 +21,7 @@ export function AreaDetailScreen({ areaSlug }: AreaDetailScreenProps) {
   const areas = useQuery(api.areas.list);
   const navigate = useNavigate();
   const [showEdit, setShowEdit] = useState(false);
-  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showCreateThread, setShowCreateThread] = useState(false);
 
   useDocumentTitle(area?.name ?? "Area");
 
@@ -34,22 +34,22 @@ export function AreaDetailScreen({ areaSlug }: AreaDetailScreenProps) {
 
       <AreaStandardCardSection areaSlug={areaSlug} />
 
-      <AreaProjectsSection
+      <AreaThreadsSection
         areaSlug={areaSlug}
-        onCreateProject={() => setShowCreateProject(true)}
+        onCreateThread={() => setShowCreateThread(true)}
       />
 
       <EditAreaDialog open={showEdit} onOpenChange={setShowEdit} area={area} />
 
-      <CreateProjectDialog
-        open={showCreateProject}
-        onOpenChange={setShowCreateProject}
+      <CreateThreadDialog
+        open={showCreateThread}
+        onOpenChange={setShowCreateThread}
         areas={areas ?? []}
         defaultAreaId={area._id}
         onCreated={({ slug }) => {
           navigate({
-            to: "/$areaSlug/$projectSlug",
-            params: { areaSlug, projectSlug: slug },
+            to: "/$areaSlug/$threadSlug",
+            params: { areaSlug, threadSlug: slug },
           });
         }}
       />

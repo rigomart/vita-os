@@ -6,7 +6,7 @@ import { StarterAreasSuggestions } from "@/features/areas/components/starter-are
 
 export interface DashboardArea {
   area: Doc<"areas">;
-  projectCount: number;
+  threadCount: number;
   attentionCount: number;
 }
 
@@ -40,11 +40,11 @@ export function DashboardAreas({
 
       {areas.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {areas.map(({ area, projectCount, attentionCount }) => (
+          {areas.map(({ area, threadCount, attentionCount }) => (
             <AreaCard
               key={area._id}
               area={area}
-              projectCount={projectCount}
+              threadCount={threadCount}
               attentionCount={attentionCount}
             />
           ))}

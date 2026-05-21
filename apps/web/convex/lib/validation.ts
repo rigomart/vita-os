@@ -1,7 +1,7 @@
 import { slugify } from "./slugs";
 
 export const RESERVED_AREA_SLUGS = new Set([
-  "projects",
+  "threads",
   "settings",
   "sign-in",
   "sign-up",

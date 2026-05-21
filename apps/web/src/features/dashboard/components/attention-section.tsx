@@ -1,9 +1,9 @@
 import { groupThreadsByAttentionState } from "@/features/dashboard/attention-state";
-import { AttentionList, type AttentionListItem } from "./attention-list";
+import { AttentionList, type AttentionListTask } from "./attention-list";
 
 interface AttentionSectionProps {
   currentDate: number;
-  threads: AttentionListItem[];
+  threads: AttentionListTask[];
 }
 
 const groups = [
@@ -38,7 +38,7 @@ export function AttentionSection({
           key={group.key}
           title={group.title}
           tone={group.tone}
-          items={groupedThreads[group.key]}
+          tasks={groupedThreads[group.key]}
         />
       ))}
     </div>

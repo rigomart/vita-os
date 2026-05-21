@@ -29,8 +29,8 @@ describe("slugify", () => {
 
 describe("generateSlug", () => {
   it("produces a slug with an 8-char hex suffix", () => {
-    const slug = generateSlug("My Project");
-    expect(slug).toMatch(/^my-project-[0-9a-f]{8}$/);
+    const slug = generateSlug("My Thread");
+    expect(slug).toMatch(/^my-thread-[0-9a-f]{8}$/);
   });
 
   it("returns only the suffix for empty names", () => {

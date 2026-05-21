@@ -8,7 +8,7 @@ export const Route = createRootRoute({
       { title: "Vita OS" },
       {
         name: "description",
-        content: "A personal operating system for tasks, projects, and goals.",
+        content: "A personal operating system for tasks, threads, and goals.",
       },
     ],
   }),

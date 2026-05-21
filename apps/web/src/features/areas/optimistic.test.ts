@@ -9,7 +9,7 @@ describe("Area optimistic updates", () => {
         {
           name: "Family Health",
           standard: "Appointments are current",
-          healthStatus: "healthy",
+          condition: "healthy",
         },
         { id: "area1" as Id<"areas">, now: 123, order: 4 },
       ),
@@ -19,7 +19,7 @@ describe("Area optimistic updates", () => {
       userId: "",
       name: "Family Health",
       standard: "Appointments are current",
-      healthStatus: "healthy",
+      condition: "healthy",
       order: 4,
       createdAt: 123,
     });

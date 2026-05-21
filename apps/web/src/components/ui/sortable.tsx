@@ -251,8 +251,8 @@ function Sortable<T>(props: SortableProps<T>) {
     () => ({
       draggable: `
         To pick up a sortable item, press space or enter.
-        While dragging, use the ${orientation === "vertical" ? "up and down" : orientation === "horizontal" ? "left and right" : "arrow"} keys to move the item.
-        Press space or enter again to drop the item in its new position, or press escape to cancel.
+        While dragging, use the ${orientation === "vertical" ? "up and down" : orientation === "horizontal" ? "left and right" : "arrow"} keys to move the task.
+        Press space or enter again to drop the task in its new position, or press escape to cancel.
       `,
     }),
     [orientation],

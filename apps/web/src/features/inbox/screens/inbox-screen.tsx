@@ -12,35 +12,35 @@ import { useQuery } from "convex-helpers/react/cache/hooks";
 import { ChevronRight, Inbox } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
-import { ItemRowContainer } from "@/features/items/item-row/item-row-container";
-import { ProcessItemDialogContainer } from "@/features/items/process-item/process-item-dialog-container";
+import { ProcessTaskDialogContainer } from "@/features/tasks/process-task/process-task-dialog-container";
+import { TaskRowContainer } from "@/features/tasks/task-row/task-row-container";
 
 interface ProcessingNotification {
-  action: "create_project" | "add_activity_log_entry" | "set_next_move";
-  project: Pick<Doc<"projects">, "name" | "slug">;
+  action: "create_thread" | "add_activity_log_entry" | "set_next_move";
+  thread: Pick<Doc<"threads">, "title" | "slug">;
   area: Doc<"areas"> | undefined;
 }
 
 export function InboxScreen() {
-  const items = useQuery(api.items.list);
-  const [processingItem, setProcessingItem] = useState<
-    Doc<"items"> | undefined
+  const tasks = useQuery(api.tasks.list);
+  const [processingTask, setProcessingTask] = useState<
+    Doc<"tasks"> | undefined
   >(undefined);
   const [notification, setNotification] = useState<
     ProcessingNotification | undefined
   >(undefined);
 
-  if (items === undefined) {
+  if (tasks === undefined) {
     return <InboxSkeleton />;
   }
 
-  const openTasks = items.filter((task) => !task.isCompleted);
-  const doneTasks = items.filter((task) => task.isCompleted);
+  const openTasks = tasks.filter((task) => task.state === "open");
+  const doneTasks = tasks.filter((task) => task.state === "done");
 
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Inbox" />
-      {items.length === 0 ? (
+      {tasks.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Inbox className="mb-3 h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
@@ -52,10 +52,10 @@ export function InboxScreen() {
           {openTasks.length > 0 && (
             <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
               {openTasks.map((task) => (
-                <ItemRowContainer
+                <TaskRowContainer
                   key={task._id}
-                  item={task}
-                  onProcess={setProcessingItem}
+                  task={task}
+                  onProcess={setProcessingTask}
                 />
               ))}
             </div>
@@ -74,7 +74,7 @@ export function InboxScreen() {
                 <CollapsibleContent>
                   <div className="divide-y divide-border/50 border-t border-border/50">
                     {doneTasks.map((task) => (
-                      <ItemRowContainer key={task._id} item={task} />
+                      <TaskRowContainer key={task._id} task={task} />
                     ))}
                   </div>
                 </CollapsibleContent>
@@ -84,13 +84,13 @@ export function InboxScreen() {
         </div>
       )}
 
-      {processingItem && (
-        <ProcessItemDialogContainer
-          open={!!processingItem}
+      {processingTask && (
+        <ProcessTaskDialogContainer
+          open={!!processingTask}
           onOpenChange={(open) => {
-            if (!open) setProcessingItem(undefined);
+            if (!open) setProcessingTask(undefined);
           }}
-          item={processingItem}
+          task={processingTask}
           onProcessed={setNotification}
         />
       )}
@@ -113,7 +113,7 @@ function ProcessingToast({
   onDismiss: () => void;
 }) {
   const message =
-    notification.action === "create_project"
+    notification.action === "create_thread"
       ? "Created thread"
       : notification.action === "set_next_move"
         ? "Set Next Move"
@@ -123,19 +123,19 @@ function ProcessingToast({
     <output className="fixed right-4 bottom-4 z-50 flex max-w-sm items-center gap-3 rounded-lg border border-border-subtle bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg">
       <span className="min-w-0">
         {message} in{" "}
-        {notification.area && notification.project.slug ? (
+        {notification.area && notification.thread.slug ? (
           <Link
-            to="/$areaSlug/$projectSlug"
+            to="/$areaSlug/$threadSlug"
             params={{
               areaSlug: notification.area.slug ?? notification.area._id,
-              projectSlug: notification.project.slug,
+              threadSlug: notification.thread.slug,
             }}
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
-            {notification.project.name}
+            {notification.thread.title}
           </Link>
         ) : (
-          <span className="font-medium">{notification.project.name}</span>
+          <span className="font-medium">{notification.thread.title}</span>
         )}
       </span>
       <Button type="button" variant="ghost" size="xs" onClick={onDismiss}>
@@ -154,7 +154,7 @@ function InboxSkeleton() {
       <div className="space-y-1">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton items have no stable id
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton tasks have no stable id
             key={i}
             className="border-b py-3 last:border-b-0"
           >

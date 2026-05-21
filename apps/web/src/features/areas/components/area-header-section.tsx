@@ -17,8 +17,8 @@ interface AreaHeaderProps {
 
 export function AreaHeaderSection({ areaSlug, onEdit }: AreaHeaderProps) {
   const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
-  const projects = useQuery(
-    api.projects.listByArea,
+  const threads = useQuery(
+    api.threads.listByArea,
     area ? { areaId: area._id } : "skip",
   );
   const navigate = useNavigate();
@@ -39,9 +39,9 @@ export function AreaHeaderSection({ areaSlug, onEdit }: AreaHeaderProps) {
     navigate({ to: "/" });
   };
 
-  const handleConditionChange = (value: Doc<"areas">["healthStatus"]) => {
+  const handleConditionChange = (value: Doc<"areas">["condition"]) => {
     if (!area) return;
-    updateArea({ id: area._id, healthStatus: value });
+    updateArea({ id: area._id, condition: value });
   };
 
   if (!area) return null;
@@ -49,7 +49,7 @@ export function AreaHeaderSection({ areaSlug, onEdit }: AreaHeaderProps) {
   return (
     <AreaHeader
       area={area}
-      projectCount={projects?.length ?? 0}
+      threadCount={threads?.length ?? 0}
       onEdit={onEdit}
       onDelete={handleDelete}
       onConditionChange={handleConditionChange}

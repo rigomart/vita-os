@@ -43,34 +43,34 @@ import {
   Plus,
 } from "lucide-react";
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
-import { NewItemDialog } from "@/features/items/new-item/new-item-dialog";
-import { useCreateItem } from "@/features/items/use-create-item";
-import { CreateProjectDialog } from "@/features/projects/project-form/create-project-dialog";
-import { useGlobalNewItemShortcut } from "@/features/sidebar/use-global-new-item-shortcut";
+import { useGlobalNewTaskShortcut } from "@/features/sidebar/use-global-new-task-shortcut";
 import { useSidebarDialogs } from "@/features/sidebar/use-sidebar-dialogs";
-import { useAreaProjectTree } from "@/hooks/use-area-project-tree";
+import { NewTaskDialog } from "@/features/tasks/new-task/new-task-dialog";
+import { useCreateTask } from "@/features/tasks/use-create-task";
+import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread-dialog";
+import { useAreaThreadTree } from "@/hooks/use-area-thread-tree";
 import { authClient } from "@/lib/auth-client";
 
 export function AppSidebar() {
   const { data: session } = authClient.useSession();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { areas, areaProjects } = useAreaProjectTree();
-  const itemCount = useQuery(api.items.count);
+  const { areas, areaThreads } = useAreaThreadTree();
+  const taskCount = useQuery(api.tasks.count);
   const {
-    showCreateProject,
-    setShowCreateProject,
+    showCreateThread,
+    setShowCreateThread,
     createForAreaId,
-    showNewItem,
-    setShowNewItem,
-    openNewItem,
+    showNewTask,
+    setShowNewTask,
+    openNewTask,
     showCreateArea,
     setShowCreateArea,
-    openCreateProject,
+    openCreateThread,
   } = useSidebarDialogs();
-  const createItem = useCreateItem();
+  const createTask = useCreateTask();
 
-  useGlobalNewItemShortcut(openNewItem);
+  useGlobalNewTaskShortcut(openNewTask);
 
   return (
     <>
@@ -96,7 +96,7 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <button
                   type="button"
-                  onClick={openNewItem}
+                  onClick={openNewTask}
                   className="flex w-full items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   <CirclePlus className="size-4" />
@@ -124,12 +124,12 @@ export function AppSidebar() {
                 >
                   <Inbox />
                   <span>Inbox</span>
-                  {itemCount !== undefined && itemCount > 0 && (
+                  {taskCount !== undefined && taskCount > 0 && (
                     <Badge
                       variant="secondary"
                       className="ml-auto h-5 min-w-5 justify-center px-1.5 text-[10px] tabular-nums"
                     >
-                      {itemCount}
+                      {taskCount}
                     </Badge>
                   )}
                 </SidebarMenuButton>
@@ -142,8 +142,8 @@ export function AppSidebar() {
             <SidebarMenu>
               {areas?.map((area) => {
                 const areaSlug = area.slug ?? area._id;
-                const areaProjectList = areaProjects.get(area._id) ?? [];
-                const hasProjects = areaProjectList.length > 0;
+                const areaThreadList = areaThreads.get(area._id) ?? [];
+                const hasThreads = areaThreadList.length > 0;
                 return (
                   <Collapsible
                     key={area._id}
@@ -157,19 +157,19 @@ export function AppSidebar() {
                         render={<Link to="/$areaSlug" params={{ areaSlug }} />}
                       >
                         <span
-                          className={`h-2 w-2 shrink-0 rounded-full ${conditionColors[area.healthStatus]}`}
+                          className={`h-2 w-2 shrink-0 rounded-full ${conditionColors[area.condition]}`}
                         />
                         <span>{area.name}</span>
                       </SidebarMenuButton>
                       <SidebarMenuAction
                         showOnHover
                         className="right-6"
-                        onClick={() => openCreateProject(area._id)}
+                        onClick={() => openCreateThread(area._id)}
                       >
                         <Plus />
                         <span className="sr-only">New thread</span>
                       </SidebarMenuAction>
-                      {hasProjects && (
+                      {hasThreads && (
                         <CollapsibleTrigger
                           render={
                             <SidebarMenuAction className="data-[state=open]:rotate-90" />
@@ -179,29 +179,29 @@ export function AppSidebar() {
                           <span className="sr-only">Toggle</span>
                         </CollapsibleTrigger>
                       )}
-                      {hasProjects && (
+                      {hasThreads && (
                         <CollapsibleContent>
                           <SidebarMenuSub>
-                            {areaProjectList.map((project) => {
-                              const slug = project.slug ?? project._id;
+                            {areaThreadList.map((thread) => {
+                              const slug = thread.slug ?? thread._id;
                               return (
-                                <SidebarMenuSubItem key={project._id}>
+                                <SidebarMenuSubItem key={thread._id}>
                                   <SidebarMenuSubButton
                                     isActive={
                                       pathname === `/${areaSlug}/${slug}`
                                     }
                                     render={
                                       <Link
-                                        to="/$areaSlug/$projectSlug"
+                                        to="/$areaSlug/$threadSlug"
                                         params={{
                                           areaSlug,
-                                          projectSlug: slug,
+                                          threadSlug: slug,
                                         }}
                                       />
                                     }
                                   >
                                     <span className="truncate">
-                                      {project.name}
+                                      {thread.title}
                                     </span>
                                   </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
@@ -292,30 +292,30 @@ export function AppSidebar() {
         <SidebarRail />
       </Sidebar>
 
-      <CreateProjectDialog
-        open={showCreateProject}
-        onOpenChange={setShowCreateProject}
+      <CreateThreadDialog
+        open={showCreateThread}
+        onOpenChange={setShowCreateThread}
         areas={areas ?? []}
         defaultAreaId={createForAreaId}
         onCreated={({ slug, areaId }) => {
           const area = (areas ?? []).find((a) => a._id === areaId);
           if (area) {
             navigate({
-              to: "/$areaSlug/$projectSlug",
+              to: "/$areaSlug/$threadSlug",
               params: {
                 areaSlug: area.slug ?? area._id,
-                projectSlug: slug,
+                threadSlug: slug,
               },
             });
           }
         }}
       />
-      <NewItemDialog
-        open={showNewItem}
-        onOpenChange={setShowNewItem}
+      <NewTaskDialog
+        open={showNewTask}
+        onOpenChange={setShowNewTask}
         onSubmit={async (value) => {
-          await createItem(value);
-          setShowNewItem(false);
+          await createTask(value);
+          setShowNewTask(false);
         }}
       />
       <CreateAreaDialog
