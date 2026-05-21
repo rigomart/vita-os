@@ -1,8 +1,11 @@
-import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
+
+import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
+
 import { optimisticallyUpdateArea } from "@/features/areas/optimistic";
+
 import type { AreaFormValue } from "./types";
 
 export function useUpdateArea(areaSlug: string) {

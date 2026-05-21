@@ -1,6 +1,8 @@
 import { api } from "@convex/_generated/api";
+
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 import { useStableQuery } from "@/hooks/use-stable-query";
+
 import { FollowUp } from "./follow-up";
 
 interface FollowUpSectionProps {

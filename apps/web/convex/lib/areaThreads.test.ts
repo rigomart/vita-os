@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import type { Doc, Id } from "../_generated/dataModel";
+
 import { areaBelongsToUser, getAreaDeletionBlocker } from "./areaThreads";
 import { DEFAULT_CONDITION } from "./condition";
 
@@ -53,12 +55,12 @@ describe("getAreaDeletionBlocker", () => {
     expect(getAreaDeletionBlocker([])).toBeNull();
   });
 
-  it.each([
-    "open",
-    "resolved",
-  ] as const)("blocks deleting an Area with a %s Thread", (state) => {
-    const thread = makeThread({ state });
+  it.each(["open", "resolved"] as const)(
+    "blocks deleting an Area with a %s Thread",
+    (state) => {
+      const thread = makeThread({ state });
 
-    expect(getAreaDeletionBlocker([thread])).toBe(thread);
-  });
+      expect(getAreaDeletionBlocker([thread])).toBe(thread);
+    },
+  );
 });

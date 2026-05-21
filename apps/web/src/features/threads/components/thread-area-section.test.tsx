@@ -1,7 +1,9 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
+
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+
 import { ThreadAreaSection } from "./thread-area-section";
 
 const healthArea = {

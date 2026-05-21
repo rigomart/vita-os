@@ -1,7 +1,9 @@
-import { api } from "@convex/_generated/api";
 import type { Doc, Id } from "@convex/_generated/dataModel";
-import { nullsToUndefined } from "@convex/lib/patch";
 import type { OptimisticLocalStore } from "convex/browser";
+
+import { api } from "@convex/_generated/api";
+import { nullsToUndefined } from "@convex/lib/patch";
+
 import { nextOrder, patchById, removeById } from "@/features/shared/optimistic";
 
 type Area = Doc<"areas">;

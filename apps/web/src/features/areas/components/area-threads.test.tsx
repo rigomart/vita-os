@@ -1,7 +1,9 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
-import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
+
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
 import { AreaThreads } from "./area-threads";
 
 vi.mock("@tanstack/react-router", () => ({

@@ -21,11 +21,7 @@ export function ThreadDetailSkeleton() {
 
       <div className="space-y-4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton tasks have no stable id
-            key={i}
-            className="flex items-center gap-3"
-          >
+          <div key={i} className="flex items-center gap-3">
             <Skeleton className="h-3 w-36" />
             <Skeleton className="h-4 flex-1" />
           </div>

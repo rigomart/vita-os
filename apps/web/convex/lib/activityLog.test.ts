@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import type { Doc, Id } from "../_generated/dataModel";
+
 import {
   AUTO_ACTIVITY_LOG_ENTRY_TYPES,
   buildAreaMoveLogEntry,

@@ -1,5 +1,7 @@
 import type { GenericMutationCtx, GenericQueryCtx } from "convex/server";
+
 import type { DataModel } from "../_generated/dataModel";
+
 import { authComponent } from "../auth";
 
 /**

@@ -1,4 +1,5 @@
 import type { Doc } from "@convex/_generated/dataModel";
+
 import { AreaFormDialog } from "./area-form-dialog";
 import { useUpdateArea } from "./use-update-area";
 

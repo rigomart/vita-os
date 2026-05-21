@@ -1,5 +1,7 @@
 import type { Id } from "@convex/_generated/dataModel";
+
 import { describe, expect, it } from "vitest";
+
 import { buildOptimisticArea } from "./optimistic";
 
 describe("Area optimistic updates", () => {

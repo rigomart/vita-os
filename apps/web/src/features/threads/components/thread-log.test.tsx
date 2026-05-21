@@ -1,7 +1,9 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
+
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+
 import { ActivityLog } from "./thread-log";
 
 const now = new Date("2026-05-19T12:00:00Z").getTime();

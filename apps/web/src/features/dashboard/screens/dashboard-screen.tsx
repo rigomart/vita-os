@@ -1,11 +1,13 @@
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useState } from "react";
+
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
 import { useCreateStarterArea } from "@/features/areas/area-form/use-create-area";
 import { AttentionSection } from "@/features/dashboard/components/attention-section";
 import { DashboardAreasSection } from "@/features/dashboard/components/dashboard-areas-section";
 import { RecentTasks } from "@/features/dashboard/components/recent-tasks";
+
 import { shouldShowAreaSetup } from "./dashboard-screen-state";
 
 export function DashboardScreen() {

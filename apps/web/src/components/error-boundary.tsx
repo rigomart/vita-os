@@ -1,4 +1,5 @@
 import type { ErrorComponentProps } from "@tanstack/react-router";
+
 import { Button } from "@vita-os/ui/components/button";
 
 export function RouteErrorFallback({ reset }: ErrorComponentProps) {

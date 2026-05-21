@@ -1,8 +1,10 @@
 import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
+import { useMutation } from "convex/react";
+
 import { optimisticallyRemoveThread } from "@/features/threads/optimistic";
 import { useStableQuery } from "@/hooks/use-stable-query";
+
 import { AreaThreads } from "./area-threads";
 
 interface AreaThreadsSectionProps {

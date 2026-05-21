@@ -24,7 +24,9 @@ import {
 } from "@vita-os/ui/components/select";
 import { Textarea } from "@vita-os/ui/components/textarea";
 import { useEffect, useState } from "react";
+
 import { StarterAreasSuggestions } from "@/features/areas/components/starter-areas-suggestions";
+
 import type { AreaFormValue } from "./types";
 
 interface AreaFormDialogProps {

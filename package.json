@@ -1,7 +1,9 @@
 {
   "name": "vita-os",
+  "type": "module",
   "devDependencies": {
-    "@biomejs/biome": "^2.4.4",
+    "oxfmt": "0.51.0",
+    "oxlint": "1.66.0",
     "turbo": "^2.8.10"
   },
   "packageManager": "bun@1.3.6",
@@ -9,8 +11,10 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "turbo run format",
+    "lint": "oxlint --fix --deny-warnings . && oxfmt --write .",
+    "lint:check": "oxlint --deny-warnings . && oxfmt --check .",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
     "test": "turbo run test",
     "test:run": "turbo run test:run",
     "convex": "turbo run convex --filter=@vita-os/web"

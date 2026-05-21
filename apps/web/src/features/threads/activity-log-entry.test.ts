@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { getActivityLogEntryLabel } from "./activity-log-entry";
 
 describe("getActivityLogEntryLabel", () => {

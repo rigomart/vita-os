@@ -1,4 +1,5 @@
 import { groupThreadsByAttentionState } from "@/features/dashboard/attention-state";
+
 import { AttentionList, type AttentionListTask } from "./attention-list";
 
 interface AttentionSectionProps {

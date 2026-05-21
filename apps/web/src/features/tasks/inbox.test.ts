@@ -1,5 +1,7 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
+
 import { describe, expect, it } from "vitest";
+
 import {
   completeTaskInInbox,
   isTaskWhenDue,

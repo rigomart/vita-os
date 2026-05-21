@@ -5,8 +5,10 @@
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "lint": "biome check --write .",
-    "format": "biome format --write .",
+    "lint": "oxlint --fix --deny-warnings . && oxfmt --write .",
+    "lint:check": "oxlint --deny-warnings . && oxfmt --check .",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -1,4 +1,5 @@
 import type { Doc } from "@convex/_generated/dataModel";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,7 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { ArrowRight, CalendarIcon, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
 import { isTaskWhenEmphasized } from "@/features/tasks/inbox";
 
 interface TaskRowProps {

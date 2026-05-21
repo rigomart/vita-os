@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+
 import { mutation, query } from "./_generated/server";
 import { getAreaForUser } from "./lib/areaThreads";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
@@ -108,7 +109,7 @@ export const update = mutation({
       throw new Error("Thread not found");
     }
 
-    const { id, resolutionNote, ...rest } = args;
+    const { resolutionNote, ...rest } = args;
 
     if (rest.areaId !== undefined) {
       await getAreaForUser(ctx, { userId, areaId: rest.areaId });

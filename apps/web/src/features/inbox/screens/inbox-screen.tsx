@@ -1,5 +1,6 @@
-import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
+
+import { api } from "@convex/_generated/api";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@vita-os/ui/components/button";
 import {
@@ -11,6 +12,7 @@ import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { ChevronRight, Inbox } from "lucide-react";
 import { useState } from "react";
+
 import { PageHeader } from "@/components/layout/page-header";
 import { ProcessTaskDialogContainer } from "@/features/tasks/process-task/process-task-dialog-container";
 import { TaskRowContainer } from "@/features/tasks/task-row/task-row-container";
@@ -153,11 +155,7 @@ function InboxSkeleton() {
       </div>
       <div className="space-y-1">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton tasks have no stable id
-            key={i}
-            className="border-b py-3 last:border-b-0"
-          >
+          <div key={i} className="border-b py-3 last:border-b-0">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="mt-1.5 h-3 w-20" />
           </div>
