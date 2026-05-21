@@ -19,12 +19,15 @@ import type * as lib_condition from "../lib/condition.js";
 import type * as lib_healthStatus from "../lib/healthStatus.js";
 import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_inboxProcessing from "../lib/inboxProcessing.js";
+import type * as lib_legacyMigration from "../lib/legacyMigration.js";
+import type * as lib_legacyMigrationRunners from "../lib/legacyMigrationRunners.js";
 import type * as lib_patch from "../lib/patch.js";
 import type * as lib_projectChanges from "../lib/projectChanges.js";
 import type * as lib_slugs from "../lib/slugs.js";
 import type * as lib_types from "../lib/types.js";
 import type * as lib_validation from "../lib/validation.js";
 import type * as lib_validators from "../lib/validators.js";
+import type * as migrations from "../migrations.js";
 import type * as projectLogs from "../projectLogs.js";
 import type * as projects from "../projects.js";
 
@@ -46,12 +49,15 @@ declare const fullApi: ApiFromModules<{
   "lib/healthStatus": typeof lib_healthStatus;
   "lib/helpers": typeof lib_helpers;
   "lib/inboxProcessing": typeof lib_inboxProcessing;
+  "lib/legacyMigration": typeof lib_legacyMigration;
+  "lib/legacyMigrationRunners": typeof lib_legacyMigrationRunners;
   "lib/patch": typeof lib_patch;
   "lib/projectChanges": typeof lib_projectChanges;
   "lib/slugs": typeof lib_slugs;
   "lib/types": typeof lib_types;
   "lib/validation": typeof lib_validation;
   "lib/validators": typeof lib_validators;
+  migrations: typeof migrations;
   projectLogs: typeof projectLogs;
   projects: typeof projects;
 }>;
@@ -2058,6 +2064,93 @@ export declare const components: {
     adapterTest: {
       runCustomTests: FunctionReference<"action", "internal", any, any>;
       runTests: FunctionReference<"action", "internal", any, any>;
+    };
+  };
+  migrations: {
+    lib: {
+      cancel: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string },
+        {
+          batchSize?: number;
+          cursor?: string | null;
+          error?: string;
+          isDone: boolean;
+          latestEnd?: number;
+          latestStart: number;
+          name: string;
+          next?: Array<string>;
+          processed: number;
+          state: "inProgress" | "success" | "failed" | "canceled" | "unknown";
+        }
+      >;
+      cancelAll: FunctionReference<
+        "mutation",
+        "internal",
+        { sinceTs?: number },
+        Array<{
+          batchSize?: number;
+          cursor?: string | null;
+          error?: string;
+          isDone: boolean;
+          latestEnd?: number;
+          latestStart: number;
+          name: string;
+          next?: Array<string>;
+          processed: number;
+          state: "inProgress" | "success" | "failed" | "canceled" | "unknown";
+        }>
+      >;
+      clearAll: FunctionReference<
+        "mutation",
+        "internal",
+        { before?: number },
+        null
+      >;
+      getStatus: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; names?: Array<string> },
+        Array<{
+          batchSize?: number;
+          cursor?: string | null;
+          error?: string;
+          isDone: boolean;
+          latestEnd?: number;
+          latestStart: number;
+          name: string;
+          next?: Array<string>;
+          processed: number;
+          state: "inProgress" | "success" | "failed" | "canceled" | "unknown";
+        }>
+      >;
+      migrate: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          batchSize?: number;
+          cursor?: string | null;
+          dryRun: boolean;
+          fnHandle: string;
+          name: string;
+          next?: Array<{ fnHandle: string; name: string }>;
+          oneBatchOnly?: boolean;
+          reset?: boolean;
+        },
+        {
+          batchSize?: number;
+          cursor?: string | null;
+          error?: string;
+          isDone: boolean;
+          latestEnd?: number;
+          latestStart: number;
+          name: string;
+          next?: Array<string>;
+          processed: number;
+          state: "inProgress" | "success" | "failed" | "canceled" | "unknown";
+        }
+      >;
     };
   };
 };

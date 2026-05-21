@@ -1,6 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { healthStatusValidator } from "./lib/validators";
+import {
+  activityLogEntryTypeValidator,
+  conditionValidator,
+  healthStatusValidator,
+} from "./lib/validators";
 
 export default defineSchema({
   areas: defineTable({
@@ -9,6 +13,7 @@ export default defineSchema({
     slug: v.optional(v.string()),
     standard: v.optional(v.string()),
     healthStatus: healthStatusValidator,
+    condition: v.optional(conditionValidator),
     order: v.number(),
     createdAt: v.number(),
   })
@@ -67,6 +72,40 @@ export default defineSchema({
     .index("by_user_created", ["userId", "createdAt"])
     .index("by_user_inbox", ["userId", "isCompleted", "createdAt"]),
 
+  threads: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    slug: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    areaId: v.id("areas"),
+    order: v.number(),
+    state: v.union(v.literal("open"), v.literal("resolved")),
+    nextMove: v.optional(v.string()),
+    followUp: v.optional(v.number()),
+    legacyProjectId: v.id("projects"),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_order", ["userId", "order"])
+    .index("by_user_slug", ["userId", "slug"])
+    .index("by_user_state", ["userId", "state"])
+    .index("by_area", ["areaId"])
+    .index("by_legacy_project", ["legacyProjectId"]),
+
+  tasks: defineTable({
+    userId: v.string(),
+    text: v.string(),
+    when: v.optional(v.number()),
+    state: v.union(v.literal("open"), v.literal("done")),
+    completedAt: v.optional(v.number()),
+    legacyItemId: v.id("items"),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_user_inbox", ["userId", "state", "createdAt"])
+    .index("by_legacy_item", ["legacyItemId"]),
+
   userSettings: defineTable({
     userId: v.string(),
     lastReviewDate: v.optional(v.number()),
@@ -75,20 +114,29 @@ export default defineSchema({
   projectLogs: defineTable({
     userId: v.string(),
     projectId: v.id("projects"),
-    type: v.union(
-      v.literal("note"),
-      v.literal("status_change"),
-      v.literal("next_action_change"),
-      v.literal("state_change"),
-      v.literal("decision"),
-      v.literal("reference"),
-      v.literal("waiting_change"),
-      v.literal("follow_up_change"),
-      v.literal("area_move"),
-    ),
+    type: activityLogEntryTypeValidator,
     content: v.string(),
     previousValue: v.optional(v.string()),
     newValue: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_project", ["projectId", "createdAt"]),
+
+  activityLogs: defineTable({
+    userId: v.string(),
+    threadId: v.id("threads"),
+    type: activityLogEntryTypeValidator,
+    content: v.string(),
+    previousValue: v.optional(v.string()),
+    newValue: v.optional(v.string()),
+    legacyProjectLogId: v.optional(v.id("projectLogs")),
+    legacyProjectId: v.optional(v.id("projects")),
+    migrationSourceKey: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_thread", ["threadId", "createdAt"])
+    .index("by_legacy_project_log", ["legacyProjectLogId"])
+    .index("by_legacy_project_source", [
+      "legacyProjectId",
+      "migrationSourceKey",
+    ]),
 });
