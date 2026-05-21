@@ -9,16 +9,14 @@ type Area = Doc<"areas">;
 type CreateAreaArgs = {
   name: string;
   standard?: string;
-  healthStatus: Area["healthStatus"];
+  condition: Area["condition"];
 };
 
 type NullablePatch<T> = {
   [K in keyof T]?: T[K] | null;
 };
 
-type AreaPatch = NullablePatch<
-  Pick<Area, "name" | "standard" | "healthStatus">
->;
+type AreaPatch = NullablePatch<Pick<Area, "name" | "standard" | "condition">>;
 
 export function buildOptimisticArea(
   args: CreateAreaArgs,
@@ -30,7 +28,7 @@ export function buildOptimisticArea(
     userId: "",
     name: args.name,
     standard: args.standard,
-    healthStatus: args.healthStatus,
+    condition: args.condition,
     order: options.order,
     createdAt: options.now,
   };

@@ -1,21 +1,21 @@
 import type { GenericMutationCtx } from "convex/server";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
-import { getAreaForUser } from "./areaProjects";
+import { getAreaForUser } from "./areaThreads";
 import { getNextOrder } from "./helpers";
-import { applyProjectPatch } from "./projectChanges";
 import { generateSlug } from "./slugs";
+import { applyThreadPatch } from "./threadChanges";
 
 type MutationCtx = GenericMutationCtx<DataModel>;
 
 export type InboxProcessingAction =
   | {
-      type: "create_project";
-      name: string;
+      type: "create_thread";
+      title: string;
       areaId: Id<"areas">;
-      definitionOfDone?: string;
+      summary?: string;
     }
-  | { type: "add_activity_log_entry"; projectId: Id<"projects"> }
-  | { type: "set_next_move"; projectId: Id<"projects"> }
+  | { type: "add_activity_log_entry"; threadId: Id<"threads"> }
+  | { type: "set_next_move"; threadId: Id<"threads"> }
   | { type: "discard" };
 
 export type InboxProcessingResult =
@@ -24,50 +24,50 @@ export type InboxProcessingResult =
   | { type: "set_next_move" }
   | { type: "discarded" };
 
-export type ItemProcessingDisposition = "keep_item" | "delete_item";
+export type TaskProcessingDisposition = "keep_task" | "delete_task";
 
-export function getItemProcessingDisposition(
+export function getTaskProcessingDisposition(
   _action: InboxProcessingAction,
-): ItemProcessingDisposition {
-  return "delete_item";
+): TaskProcessingDisposition {
+  return "delete_task";
 }
 
 export function getInboxProcessingResultType(
   action: InboxProcessingAction,
 ): InboxProcessingResult["type"] {
-  if (action.type === "create_project") return "created";
+  if (action.type === "create_thread") return "created";
   if (action.type === "add_activity_log_entry") return "added";
   if (action.type === "set_next_move") return "set_next_move";
   return "discarded";
 }
 
-export function buildProjectNoteFromItem(item: Doc<"items">): {
+export function buildThreadNoteFromTask(task: Doc<"tasks">): {
   type: "note";
   content: string;
 } {
-  return { type: "note", content: item.text };
+  return { type: "note", content: task.text };
 }
 
-export async function processInboxItem(
+export async function processInboxTask(
   ctx: MutationCtx,
   args: {
     userId: string;
-    item: Doc<"items">;
+    task: Doc<"tasks">;
     action: InboxProcessingAction;
   },
 ): Promise<InboxProcessingResult> {
-  if (args.action.type === "create_project") {
+  if (args.action.type === "create_thread") {
     await getAreaForUser(ctx, {
       userId: args.userId,
       areaId: args.action.areaId,
     });
 
-    const nextOrder = await getNextOrder(ctx, "projects", args.userId);
-    const slug = generateSlug(args.action.name);
+    const nextOrder = await getNextOrder(ctx, "threads", args.userId);
+    const slug = generateSlug(args.action.title);
 
-    const project: Omit<Doc<"projects">, "_id" | "_creationTime"> = {
+    const thread: Omit<Doc<"threads">, "_id" | "_creationTime"> = {
       userId: args.userId,
-      name: args.action.name,
+      title: args.action.title,
       slug,
       areaId: args.action.areaId,
       order: nextOrder,
@@ -75,78 +75,78 @@ export async function processInboxItem(
       createdAt: Date.now(),
     };
 
-    if (args.action.definitionOfDone) {
-      project.definitionOfDone = args.action.definitionOfDone;
+    if (args.action.summary) {
+      thread.summary = args.action.summary;
     }
 
-    const projectId = await ctx.db.insert("projects", project);
+    const threadId = await ctx.db.insert("threads", thread);
 
-    await copyItemToProjectLog(ctx, {
+    await copyTaskToActivityLog(ctx, {
       userId: args.userId,
-      item: args.item,
-      projectId,
+      task: args.task,
+      threadId,
     });
-    await ctx.db.delete(args.item._id);
+    await ctx.db.delete(args.task._id);
     return { type: "created", slug };
   }
 
   if (args.action.type === "add_activity_log_entry") {
-    const project = await getProjectForProcessing(ctx, {
+    const thread = await getThreadForProcessing(ctx, {
       userId: args.userId,
-      projectId: args.action.projectId,
+      threadId: args.action.threadId,
     });
 
-    await copyItemToProjectLog(ctx, {
+    await copyTaskToActivityLog(ctx, {
       userId: args.userId,
-      item: args.item,
-      projectId: project._id,
+      task: args.task,
+      threadId: thread._id,
     });
-    await ctx.db.delete(args.item._id);
+    await ctx.db.delete(args.task._id);
     return { type: "added" };
   }
 
   if (args.action.type === "set_next_move") {
-    const project = await getProjectForProcessing(ctx, {
+    const thread = await getThreadForProcessing(ctx, {
       userId: args.userId,
-      projectId: args.action.projectId,
+      threadId: args.action.threadId,
     });
 
-    await applyProjectPatch(ctx, {
+    await applyThreadPatch(ctx, {
       userId: args.userId,
-      project,
-      patch: { nextMove: args.item.text },
+      thread,
+      patch: { nextMove: args.task.text },
     });
-    await ctx.db.delete(args.item._id);
+    await ctx.db.delete(args.task._id);
     return { type: "set_next_move" };
   }
 
-  await ctx.db.delete(args.item._id);
+  await ctx.db.delete(args.task._id);
   return { type: "discarded" };
 }
 
-async function getProjectForProcessing(
+async function getThreadForProcessing(
   ctx: MutationCtx,
-  args: { userId: string; projectId: Id<"projects"> },
-): Promise<Doc<"projects">> {
-  const project = await ctx.db.get(args.projectId);
-  if (!project || project.userId !== args.userId) {
-    throw new Error("Project not found");
+  args: { userId: string; threadId: Id<"threads"> },
+): Promise<Doc<"threads">> {
+  const thread = await ctx.db.get(args.threadId);
+  if (!thread || thread.userId !== args.userId) {
+    throw new Error("Thread not found");
   }
-  return project;
+  return thread;
 }
 
-async function copyItemToProjectLog(
+async function copyTaskToActivityLog(
   ctx: MutationCtx,
   args: {
     userId: string;
-    item: Doc<"items">;
-    projectId: Id<"projects">;
+    task: Doc<"tasks">;
+    threadId: Id<"threads">;
   },
 ): Promise<void> {
-  const note = buildProjectNoteFromItem(args.item);
-  await ctx.db.insert("projectLogs", {
+  const note = buildThreadNoteFromTask(args.task);
+  await ctx.db.insert("activityLogs", {
     userId: args.userId,
-    projectId: args.projectId,
+    threadId: args.threadId,
     type: note.type,
     content: note.content,
     createdAt: Date.now(),

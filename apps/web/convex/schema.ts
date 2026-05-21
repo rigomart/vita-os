@@ -3,8 +3,18 @@ import { v } from "convex/values";
 import {
   activityLogEntryTypeValidator,
   conditionValidator,
-  healthStatusValidator,
 } from "./lib/validators";
+
+const legacyMetadataValidators = {
+  // Keep these until every deployed environment has run cutoverCleanup.
+  // Existing migrated documents fail schema validation before cleanup can run
+  // unless the final legacy metadata fields are temporarily accepted here.
+  healthStatus: v.optional(v.string()),
+  legacyProjectId: v.optional(v.string()),
+  legacyItemId: v.optional(v.string()),
+  legacyProjectLogId: v.optional(v.string()),
+  migrationSourceKey: v.optional(v.string()),
+};
 
 export default defineSchema({
   areas: defineTable({
@@ -12,65 +22,14 @@ export default defineSchema({
     name: v.string(),
     slug: v.optional(v.string()),
     standard: v.optional(v.string()),
-    healthStatus: healthStatusValidator,
-    condition: v.optional(conditionValidator),
+    condition: conditionValidator,
     order: v.number(),
     createdAt: v.number(),
+    ...legacyMetadataValidators,
   })
     .index("by_user", ["userId"])
     .index("by_user_order", ["userId", "order"])
     .index("by_user_slug", ["userId", "slug"]),
-
-  projects: defineTable({
-    userId: v.string(),
-    name: v.string(),
-    slug: v.optional(v.string()),
-    definitionOfDone: v.optional(v.string()),
-    areaId: v.id("areas"),
-    order: v.number(),
-    state: v.union(
-      v.literal("open"),
-      v.literal("resolved"),
-      /** @deprecated Use open instead. Retained until lifecycle migration runs. */
-      v.literal("active"),
-      /** @deprecated Use resolved instead. Retained until lifecycle migration runs. */
-      v.literal("completed"),
-      /** @deprecated Use resolved instead. Retained until lifecycle migration runs. */
-      v.literal("dropped"),
-    ),
-    status: v.optional(v.string()),
-    nextMove: v.optional(v.string()),
-    followUp: v.optional(v.number()),
-    /** @deprecated Replaced by nextMove — retained for migration (#158) */
-    actionQueue: v.optional(
-      v.array(v.object({ id: v.string(), text: v.string() })),
-    ),
-    // Phase 2 fields
-    actionDate: v.optional(v.number()),
-    targetDate: v.optional(v.number()),
-    waitingOn: v.optional(v.string()),
-    waitingSince: v.optional(v.number()),
-    waitingExpectedDate: v.optional(v.number()),
-    waitingFollowUpDate: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_order", ["userId", "order"])
-    .index("by_user_slug", ["userId", "slug"])
-    .index("by_user_state", ["userId", "state"])
-    .index("by_area", ["areaId"]),
-
-  items: defineTable({
-    userId: v.string(),
-    text: v.string(),
-    date: v.optional(v.number()),
-    isCompleted: v.boolean(),
-    completedAt: v.optional(v.number()),
-    createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_created", ["userId", "createdAt"])
-    .index("by_user_inbox", ["userId", "isCompleted", "createdAt"]),
 
   threads: defineTable({
     userId: v.string(),
@@ -82,15 +41,14 @@ export default defineSchema({
     state: v.union(v.literal("open"), v.literal("resolved")),
     nextMove: v.optional(v.string()),
     followUp: v.optional(v.number()),
-    legacyProjectId: v.id("projects"),
     createdAt: v.number(),
+    ...legacyMetadataValidators,
   })
     .index("by_user", ["userId"])
     .index("by_user_order", ["userId", "order"])
     .index("by_user_slug", ["userId", "slug"])
     .index("by_user_state", ["userId", "state"])
-    .index("by_area", ["areaId"])
-    .index("by_legacy_project", ["legacyProjectId"]),
+    .index("by_area", ["areaId"]),
 
   tasks: defineTable({
     userId: v.string(),
@@ -98,28 +56,17 @@ export default defineSchema({
     when: v.optional(v.number()),
     state: v.union(v.literal("open"), v.literal("done")),
     completedAt: v.optional(v.number()),
-    legacyItemId: v.id("items"),
     createdAt: v.number(),
+    ...legacyMetadataValidators,
   })
     .index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"])
-    .index("by_user_inbox", ["userId", "state", "createdAt"])
-    .index("by_legacy_item", ["legacyItemId"]),
+    .index("by_user_inbox", ["userId", "state", "createdAt"]),
 
   userSettings: defineTable({
     userId: v.string(),
     lastReviewDate: v.optional(v.number()),
   }).index("by_user", ["userId"]),
-
-  projectLogs: defineTable({
-    userId: v.string(),
-    projectId: v.id("projects"),
-    type: activityLogEntryTypeValidator,
-    content: v.string(),
-    previousValue: v.optional(v.string()),
-    newValue: v.optional(v.string()),
-    createdAt: v.number(),
-  }).index("by_project", ["projectId", "createdAt"]),
 
   activityLogs: defineTable({
     userId: v.string(),
@@ -128,15 +75,7 @@ export default defineSchema({
     content: v.string(),
     previousValue: v.optional(v.string()),
     newValue: v.optional(v.string()),
-    legacyProjectLogId: v.optional(v.id("projectLogs")),
-    legacyProjectId: v.optional(v.id("projects")),
-    migrationSourceKey: v.optional(v.string()),
     createdAt: v.number(),
-  })
-    .index("by_thread", ["threadId", "createdAt"])
-    .index("by_legacy_project_log", ["legacyProjectLogId"])
-    .index("by_legacy_project_source", [
-      "legacyProjectId",
-      "migrationSourceKey",
-    ]),
+    ...legacyMetadataValidators,
+  }).index("by_thread", ["threadId", "createdAt"]),
 });

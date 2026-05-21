@@ -24,7 +24,7 @@ export function EditAreaDialog({
       initialValue={{
         name: area.name,
         standard: area.standard,
-        healthStatus: area.healthStatus,
+        condition: area.condition,
       }}
       onSubmit={async (value) => {
         await updateArea(area, value);

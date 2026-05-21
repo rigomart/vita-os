@@ -45,14 +45,14 @@ export function AreaFormDialog({
   const [name, setName] = useState(initialValue?.name ?? "");
   const [standard, setStandard] = useState(initialValue?.standard ?? "");
   const [condition, setCondition] = useState<Condition>(
-    initialValue?.healthStatus ?? DEFAULT_CONDITION,
+    initialValue?.condition ?? DEFAULT_CONDITION,
   );
 
   useEffect(() => {
     if (!open) return;
     setName(initialValue?.name ?? "");
     setStandard(initialValue?.standard ?? "");
-    setCondition(initialValue?.healthStatus ?? DEFAULT_CONDITION);
+    setCondition(initialValue?.condition ?? DEFAULT_CONDITION);
   }, [open, initialValue]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,7 +63,7 @@ export function AreaFormDialog({
     await onSubmit({
       name: trimmedName,
       standard: standard.trim() || undefined,
-      healthStatus: condition,
+      condition: condition,
     });
 
     if (mode === "create") {

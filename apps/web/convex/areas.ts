@@ -1,11 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { assertAreaCanBeDeleted } from "./lib/areaProjects";
+import { assertAreaCanBeDeleted } from "./lib/areaThreads";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { nullsToUndefined } from "./lib/patch";
 import { generateSlug } from "./lib/slugs";
 import { validateAreaName } from "./lib/validation";
-import { healthStatusValidator } from "./lib/validators";
+import { conditionValidator } from "./lib/validators";
 
 export const list = query({
   args: {},
@@ -48,7 +48,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     standard: v.optional(v.string()),
-    healthStatus: healthStatusValidator,
+    condition: conditionValidator,
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -63,7 +63,7 @@ export const create = mutation({
       name: args.name,
       slug,
       standard: args.standard,
-      healthStatus: args.healthStatus,
+      condition: args.condition,
       order: nextOrder,
       createdAt: Date.now(),
     });
@@ -77,7 +77,7 @@ export const update = mutation({
     id: v.id("areas"),
     name: v.optional(v.string()),
     standard: v.optional(v.union(v.string(), v.null())),
-    healthStatus: v.optional(healthStatusValidator),
+    condition: v.optional(conditionValidator),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -123,17 +123,17 @@ export const remove = mutation({
 
 export const reorder = mutation({
   args: {
-    items: v.array(v.object({ id: v.id("areas"), order: v.number() })),
+    tasks: v.array(v.object({ id: v.id("areas"), order: v.number() })),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    for (const item of args.items) {
-      const area = await ctx.db.get(item.id);
+    for (const task of args.tasks) {
+      const area = await ctx.db.get(task.id);
       if (!area || area.userId !== userId) {
         throw new Error("Area not found");
       }
-      await ctx.db.patch(item.id, { order: item.order });
+      await ctx.db.patch(task.id, { order: task.order });
     }
   },
 });

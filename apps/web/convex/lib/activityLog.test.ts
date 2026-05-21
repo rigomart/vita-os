@@ -4,16 +4,14 @@ import {
   AUTO_ACTIVITY_LOG_ENTRY_TYPES,
   buildAreaMoveLogEntry,
 } from "./activityLog";
-import { buildProjectPatchLogEntries } from "./projectChanges";
+import { buildThreadPatchLogEntries } from "./threadChanges";
 
-function makeProject(
-  overrides: Partial<Doc<"projects">> = {},
-): Doc<"projects"> {
+function makeThread(overrides: Partial<Doc<"threads">> = {}): Doc<"threads"> {
   return {
-    _id: "project1" as Id<"projects">,
+    _id: "thread1" as Id<"threads">,
     _creationTime: 0,
     userId: "user1",
-    name: "Renew passport",
+    title: "Renew passport",
     slug: "renew-passport",
     areaId: "area1" as Id<"areas">,
     order: 0,
@@ -34,10 +32,10 @@ describe("buildAreaMoveLogEntry", () => {
   });
 });
 
-describe("buildProjectPatchLogEntries area moves", () => {
+describe("buildThreadPatchLogEntries area moves", () => {
   it("records an Area move when the thread changes Areas", () => {
-    const logs = buildProjectPatchLogEntries(
-      makeProject({ areaId: "area1" as Id<"areas"> }),
+    const logs = buildThreadPatchLogEntries(
+      makeThread({ areaId: "area1" as Id<"areas"> }),
       { areaId: "area2" as Id<"areas"> },
       { fromAreaName: "Health", toAreaName: "Finances" },
     );
@@ -53,8 +51,8 @@ describe("buildProjectPatchLogEntries area moves", () => {
   });
 
   it("does not record an Area move when the Area stays the same", () => {
-    const logs = buildProjectPatchLogEntries(
-      makeProject({ areaId: "area1" as Id<"areas"> }),
+    const logs = buildThreadPatchLogEntries(
+      makeThread({ areaId: "area1" as Id<"areas"> }),
       { areaId: "area1" as Id<"areas"> },
       { fromAreaName: "Health", toAreaName: "Health" },
     );

@@ -18,7 +18,7 @@ export function useUpdateArea(areaSlug: string) {
       id: area._id,
       name: value.name,
       standard: value.standard ?? null,
-      healthStatus: value.healthStatus,
+      condition: value.condition,
     });
 
     if (value.name !== area.name && result?.slug) {

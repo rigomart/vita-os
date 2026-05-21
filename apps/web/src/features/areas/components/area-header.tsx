@@ -28,15 +28,15 @@ import { ChevronRight, Pencil, Trash2 } from "lucide-react";
 
 interface AreaHeaderProps {
   area: Doc<"areas">;
-  projectCount: number;
+  threadCount: number;
   onEdit: () => void;
   onDelete: () => void;
-  onConditionChange: (value: Doc<"areas">["healthStatus"]) => void;
+  onConditionChange: (value: Doc<"areas">["condition"]) => void;
 }
 
 export function AreaHeader({
   area,
-  projectCount,
+  threadCount,
   onEdit,
   onDelete,
   onConditionChange,
@@ -55,7 +55,7 @@ export function AreaHeader({
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold tracking-tight">{area.name}</h1>
           <span
-            className={`h-2.5 w-2.5 shrink-0 rounded-full ${conditionColors[area.healthStatus]}`}
+            className={`h-2.5 w-2.5 shrink-0 rounded-full ${conditionColors[area.condition]}`}
           />
         </div>
         <div className="flex items-center gap-1">
@@ -103,7 +103,7 @@ export function AreaHeader({
 
       <div className="mt-3 flex items-center gap-3">
         <Select
-          value={area.healthStatus}
+          value={area.condition}
           onValueChange={(value) => {
             if (isCondition(value)) onConditionChange(value);
           }}
@@ -126,7 +126,7 @@ export function AreaHeader({
           </SelectContent>
         </Select>
         <span className="text-xs text-muted-foreground">
-          {projectCount} {projectCount === 1 ? "thread" : "threads"}
+          {threadCount} {threadCount === 1 ? "thread" : "threads"}
         </span>
       </div>
     </div>

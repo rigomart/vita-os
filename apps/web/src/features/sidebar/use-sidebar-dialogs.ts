@@ -2,29 +2,29 @@ import type { Id } from "@convex/_generated/dataModel";
 import { useCallback, useState } from "react";
 
 export function useSidebarDialogs() {
-  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showCreateThread, setShowCreateThread] = useState(false);
   const [createForAreaId, setCreateForAreaId] = useState<
     Id<"areas"> | undefined
   >();
-  const [showNewItem, setShowNewItem] = useState(false);
+  const [showNewTask, setShowNewTask] = useState(false);
   const [showCreateArea, setShowCreateArea] = useState(false);
 
-  const openNewItem = useCallback(() => setShowNewItem(true), []);
+  const openNewTask = useCallback(() => setShowNewTask(true), []);
 
-  const openCreateProject = useCallback((areaId?: Id<"areas">) => {
+  const openCreateThread = useCallback((areaId?: Id<"areas">) => {
     setCreateForAreaId(areaId);
-    setShowCreateProject(true);
+    setShowCreateThread(true);
   }, []);
 
   return {
-    showCreateProject,
-    setShowCreateProject,
+    showCreateThread,
+    setShowCreateThread,
     createForAreaId,
-    showNewItem,
-    setShowNewItem,
-    openNewItem,
+    showNewTask,
+    setShowNewTask,
+    openNewTask,
     showCreateArea,
     setShowCreateArea,
-    openCreateProject,
+    openCreateThread,
   };
 }

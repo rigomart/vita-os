@@ -89,38 +89,8 @@ Use the Convex CLI to push your functions to a deployment. See everything
 the Convex CLI can do by running `npx convex -h` in your project root
 directory. To learn more, launch the docs with `npx convex docs`.
 
-## Area / Thread / Task migration operations
+## Area / Thread / Task storage
 
-Issue 172 adds the compatibility persistence shape and online Convex migrations
-for copying legacy Project / Item data into Thread / Task storage. Run these
-from the app root, `apps/web`, after the Convex deployment has the migration
-functions available.
-
-Dry-run the ordered migration set:
-
-```bash
-bunx convex run migrations:runAll '{"dryRun": true}'
-```
-
-Run or resume the ordered migration set:
-
-```bash
-bunx convex run migrations:runAll
-```
-
-Check status:
-
-```bash
-bunx convex run migrations:checkStatus
-```
-
-You can also watch the component's raw migration status:
-
-```bash
-bunx convex run --component migrations lib:getStatus --watch
-```
-
-If the generated Convex types or component references are stale after installing
-the migrations component, run Convex codegen/dev explicitly before operating on
-the deployment. Do not remove the legacy tables or fields until the separate
-cutover and cleanup slice has verified this migration.
+The app now uses Thread / Task / Activity Log storage directly. The one-time
+compatibility migration runners from Issue 172 were removed after the migrated
+data became the source of truth in every environment.

@@ -1,36 +1,34 @@
 import { describe, expect, it } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
-  buildProjectNoteFromItem,
+  buildThreadNoteFromTask,
   getInboxProcessingResultType,
-  getItemProcessingDisposition,
+  getTaskProcessingDisposition,
   type InboxProcessingAction,
-  processInboxItem,
+  processInboxTask,
 } from "./inboxProcessing";
 
 const areaId = "area1" as Id<"areas">;
-const projectId = "project1" as Id<"projects">;
+const threadId = "thread1" as Id<"threads">;
 
-function makeItem(overrides: Partial<Doc<"items">> = {}): Doc<"items"> {
+function makeTask(overrides: Partial<Doc<"tasks">> = {}): Doc<"tasks"> {
   return {
-    _id: "item1" as Id<"items">,
+    _id: "task1" as Id<"tasks">,
     _creationTime: 0,
     userId: "user1",
     text: "Call clinic",
-    isCompleted: false,
+    state: "open",
     createdAt: 0,
     ...overrides,
   };
 }
 
-function makeProject(
-  overrides: Partial<Doc<"projects">> = {},
-): Doc<"projects"> {
+function makeThread(overrides: Partial<Doc<"threads">> = {}): Doc<"threads"> {
   return {
-    _id: projectId,
+    _id: threadId,
     _creationTime: 0,
     userId: "user1",
-    name: "Book checkup",
+    title: "Book checkup",
     slug: "book-checkup",
     areaId: "area1" as Id<"areas">,
     state: "open",
@@ -40,44 +38,44 @@ function makeProject(
   };
 }
 
-describe("getItemProcessingDisposition", () => {
+describe("getTaskProcessingDisposition", () => {
   it.each<InboxProcessingAction>([
     {
-      type: "create_project",
-      name: "Book health check",
+      type: "create_thread",
+      title: "Book health check",
       areaId,
     },
-    { type: "add_activity_log_entry", projectId },
-    { type: "set_next_move", projectId },
+    { type: "add_activity_log_entry", threadId },
+    { type: "set_next_move", threadId },
     { type: "discard" },
-  ])("deletes the Item after %s processing", (action) => {
-    expect(getItemProcessingDisposition(action)).toBe("delete_item");
+  ])("deletes the Task after %s processing", (action) => {
+    expect(getTaskProcessingDisposition(action)).toBe("delete_task");
   });
 });
 
 describe("getInboxProcessingResultType", () => {
   it.each<[InboxProcessingAction, string]>([
-    [{ type: "create_project", name: "Book health check", areaId }, "created"],
-    [{ type: "add_activity_log_entry", projectId }, "added"],
-    [{ type: "set_next_move", projectId }, "set_next_move"],
+    [{ type: "create_thread", title: "Book health check", areaId }, "created"],
+    [{ type: "add_activity_log_entry", threadId }, "added"],
+    [{ type: "set_next_move", threadId }, "set_next_move"],
     [{ type: "discard" }, "discarded"],
   ])("maps processing action %# to its mutation result", (action, result) => {
     expect(getInboxProcessingResultType(action)).toBe(result);
   });
 });
 
-describe("buildProjectNoteFromItem", () => {
-  it("copies Item text into a Project log note", () => {
-    expect(buildProjectNoteFromItem(makeItem())).toEqual({
+describe("buildThreadNoteFromTask", () => {
+  it("copies Task text into a Thread log note", () => {
+    expect(buildThreadNoteFromTask(makeTask())).toEqual({
       type: "note",
       content: "Call clinic",
     });
   });
 });
 
-describe("processInboxItem", () => {
+describe("processInboxTask", () => {
   it("creates a new Thread from a Task, logs the original Task text, and consumes the Task", async () => {
-    const item = makeItem({ text: "Schedule a physical" });
+    const task = makeTask({ text: "Schedule a physical" });
     const inserted: Array<{ table: string; value: Record<string, unknown> }> =
       [];
     const deleted: string[] = [];
@@ -87,7 +85,7 @@ describe("processInboxItem", () => {
       userId: "user1",
       name: "Health",
       slug: "health",
-      healthStatus: "healthy",
+      condition: "healthy",
       order: 0,
       createdAt: 0,
     };
@@ -103,7 +101,7 @@ describe("processInboxItem", () => {
         }),
         insert: async (table: string, value: Record<string, unknown>) => {
           inserted.push({ table, value });
-          return table === "projects" ? projectId : "log1";
+          return table === "threads" ? threadId : "log1";
         },
         delete: async (id: string) => {
           deleted.push(id);
@@ -111,12 +109,12 @@ describe("processInboxItem", () => {
       },
     };
 
-    const result = await processInboxItem(ctx as never, {
+    const result = await processInboxTask(ctx as never, {
       userId: "user1",
-      item,
+      task,
       action: {
-        type: "create_project",
-        name: "Annual health check",
+        type: "create_thread",
+        title: "Annual health check",
         areaId,
       },
     });
@@ -127,10 +125,10 @@ describe("processInboxItem", () => {
     });
     expect(inserted).toEqual([
       {
-        table: "projects",
+        table: "threads",
         value: {
           userId: "user1",
-          name: "Annual health check",
+          title: "Annual health check",
           slug: expect.stringMatching(/^annual-health-check-[a-f0-9]{8}$/),
           areaId,
           order: 0,
@@ -139,10 +137,10 @@ describe("processInboxItem", () => {
         },
       },
       {
-        table: "projectLogs",
+        table: "activityLogs",
         value: {
           userId: "user1",
-          projectId,
+          threadId,
           type: "note",
           content: "Schedule a physical",
           createdAt: expect.any(Number),
@@ -151,17 +149,17 @@ describe("processInboxItem", () => {
     ]);
     expect(inserted[0]?.value).not.toHaveProperty("nextMove");
     expect(inserted[0]?.value).not.toHaveProperty("actionQueue");
-    expect(deleted).toEqual([item._id]);
+    expect(deleted).toEqual([task._id]);
   });
 
   it("adds a Task to an existing Thread Activity Log and consumes the Task", async () => {
-    const item = makeItem();
-    const project = makeProject();
+    const task = makeTask();
+    const thread = makeThread();
     const inserted: Array<{ table: string; value: unknown }> = [];
     const deleted: string[] = [];
     const ctx = {
       db: {
-        get: async (id: string) => (id === project._id ? project : null),
+        get: async (id: string) => (id === thread._id ? thread : null),
         insert: async (table: string, value: unknown) => {
           inserted.push({ table, value });
           return "inserted";
@@ -172,37 +170,37 @@ describe("processInboxItem", () => {
       },
     };
 
-    const result = await processInboxItem(ctx as never, {
+    const result = await processInboxTask(ctx as never, {
       userId: "user1",
-      item,
-      action: { type: "add_activity_log_entry", projectId: project._id },
+      task,
+      action: { type: "add_activity_log_entry", threadId: thread._id },
     });
 
     expect(result).toEqual({ type: "added" });
     expect(inserted).toEqual([
       {
-        table: "projectLogs",
+        table: "activityLogs",
         value: {
           userId: "user1",
-          projectId: project._id,
+          threadId: thread._id,
           type: "note",
           content: "Call clinic",
           createdAt: expect.any(Number),
         },
       },
     ]);
-    expect(deleted).toEqual([item._id]);
+    expect(deleted).toEqual([task._id]);
   });
 
   it("sets a Task as an existing Thread Next Move and consumes the Task", async () => {
-    const item = makeItem();
-    const project = makeProject();
+    const task = makeTask();
+    const thread = makeThread();
     const inserted: Array<{ table: string; value: unknown }> = [];
     const patched: Array<{ id: string; patch: unknown }> = [];
     const deleted: string[] = [];
     const ctx = {
       db: {
-        get: async (id: string) => (id === project._id ? project : null),
+        get: async (id: string) => (id === thread._id ? thread : null),
         insert: async (table: string, value: unknown) => {
           inserted.push({ table, value });
           return "inserted";
@@ -216,22 +214,22 @@ describe("processInboxItem", () => {
       },
     };
 
-    const result = await processInboxItem(ctx as never, {
+    const result = await processInboxTask(ctx as never, {
       userId: "user1",
-      item,
-      action: { type: "set_next_move", projectId: project._id },
+      task,
+      action: { type: "set_next_move", threadId: thread._id },
     });
 
     expect(result).toEqual({ type: "set_next_move" });
     expect(patched).toEqual([
-      { id: project._id, patch: { nextMove: "Call clinic" } },
+      { id: thread._id, patch: { nextMove: "Call clinic" } },
     ]);
     expect(inserted).toEqual([
       {
-        table: "projectLogs",
+        table: "activityLogs",
         value: {
           userId: "user1",
-          projectId: project._id,
+          threadId: thread._id,
           type: "next_action_change",
           content: 'Next move set to "Call clinic"',
           previousValue: undefined,
@@ -240,6 +238,6 @@ describe("processInboxItem", () => {
         },
       },
     ]);
-    expect(deleted).toEqual([item._id]);
+    expect(deleted).toEqual([task._id]);
   });
 });

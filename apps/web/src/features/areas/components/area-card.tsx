@@ -5,15 +5,11 @@ import { CircleDot } from "lucide-react";
 
 interface AreaCardProps {
   area: Doc<"areas">;
-  projectCount: number;
+  threadCount: number;
   attentionCount: number;
 }
 
-export function AreaCard({
-  area,
-  projectCount,
-  attentionCount,
-}: AreaCardProps) {
+export function AreaCard({ area, threadCount, attentionCount }: AreaCardProps) {
   return (
     <Link
       to="/$areaSlug"
@@ -22,14 +18,14 @@ export function AreaCard({
     >
       <div className="flex items-center gap-2.5">
         <span
-          className={`h-2.5 w-2.5 shrink-0 rounded-full ${conditionColors[area.healthStatus]}`}
+          className={`h-2.5 w-2.5 shrink-0 rounded-full ${conditionColors[area.condition]}`}
           role="img"
-          aria-label={conditionLabels[area.healthStatus]}
+          aria-label={conditionLabels[area.condition]}
         />
         <p className="truncate font-medium">{area.name}</p>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        {projectCount} {projectCount === 1 ? "thread" : "threads"}
+        {threadCount} {threadCount === 1 ? "thread" : "threads"}
       </p>
       {attentionCount > 0 && (
         <p className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">

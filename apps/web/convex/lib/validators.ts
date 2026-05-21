@@ -7,8 +7,6 @@ export const conditionValidator = v.union(
   v.literal(CONDITIONS[2]),
 );
 
-export const healthStatusValidator = conditionValidator;
-
 export const activityLogEntryTypeValidator = v.union(
   v.literal("note"),
   v.literal("status_change"),

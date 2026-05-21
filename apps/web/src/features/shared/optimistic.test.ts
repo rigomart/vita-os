@@ -17,7 +17,7 @@ function makeRecord(overrides: Partial<TestRecord> = {}): TestRecord {
 }
 
 describe("optimistic update helpers", () => {
-  it("patches an item by id without mutating other items", () => {
+  it("patches an task by id without mutating other tasks", () => {
     const record = makeRecord();
     const other = makeRecord({ _id: "record2", name: "Career" });
 
@@ -27,7 +27,7 @@ describe("optimistic update helpers", () => {
     ]);
   });
 
-  it("removes an item by id", () => {
+  it("removes an task by id", () => {
     const record = makeRecord();
     const other = makeRecord({ _id: "record2", name: "Career" });
 

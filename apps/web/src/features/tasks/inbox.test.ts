@@ -11,13 +11,13 @@ import {
   updateTaskWhenInInbox,
 } from "./inbox";
 
-function makeTask(overrides: Partial<Doc<"items">> = {}): Doc<"items"> {
+function makeTask(overrides: Partial<Doc<"tasks">> = {}): Doc<"tasks"> {
   return {
-    _id: "task1" as Id<"items">,
+    _id: "task1" as Id<"tasks">,
     _creationTime: 0,
     userId: "user1",
     text: "Call clinic",
-    isCompleted: false,
+    state: "open",
     createdAt: 0,
     ...overrides,
   };
@@ -30,14 +30,14 @@ const may17_2026 = new Date(2026, 4, 17, 12).getTime();
 describe("Task inbox ordering", () => {
   it("lists Open Tasks before Done Tasks", () => {
     const open = makeTask({
-      _id: "open" as Id<"items">,
+      _id: "open" as Id<"tasks">,
       text: "Buy vitamins",
       createdAt: 200,
     });
     const done = makeTask({
-      _id: "done" as Id<"items">,
+      _id: "done" as Id<"tasks">,
       text: "Call clinic",
-      isCompleted: true,
+      state: "done",
       completedAt: 500,
       createdAt: 300,
     });
@@ -56,14 +56,14 @@ describe("Task When emphasis", () => {
 
   it("emphasizes Open Tasks with due When", () => {
     expect(
-      isTaskWhenEmphasized(makeTask({ date: may17_2026 }), may18_2026),
+      isTaskWhenEmphasized(makeTask({ when: may17_2026 }), may18_2026),
     ).toBe(true);
     expect(
-      isTaskWhenEmphasized(makeTask({ date: may19_2026 }), may18_2026),
+      isTaskWhenEmphasized(makeTask({ when: may19_2026 }), may18_2026),
     ).toBe(false);
     expect(
       isTaskWhenEmphasized(
-        makeTask({ date: may17_2026, isCompleted: true }),
+        makeTask({ when: may17_2026, state: "done" }),
         may18_2026,
       ),
     ).toBe(false);
@@ -73,12 +73,12 @@ describe("Task When emphasis", () => {
 describe("Task inbox mutations", () => {
   it("moves completed Tasks into Done history after Open Tasks", () => {
     const open = makeTask({
-      _id: "open" as Id<"items">,
+      _id: "open" as Id<"tasks">,
       text: "Buy vitamins",
       createdAt: 200,
     });
     const completing = makeTask({
-      _id: "completing" as Id<"items">,
+      _id: "completing" as Id<"tasks">,
       text: "Call clinic",
       createdAt: 300,
     });
@@ -89,7 +89,7 @@ describe("Task inbox mutations", () => {
       open,
       {
         ...completing,
-        isCompleted: true,
+        state: "done",
         completedAt: 500,
       },
     ]);
@@ -97,14 +97,14 @@ describe("Task inbox mutations", () => {
 
   it("restores uncompleted Tasks above Done history", () => {
     const uncompleting = makeTask({
-      _id: "uncompleting" as Id<"items">,
-      isCompleted: true,
+      _id: "uncompleting" as Id<"tasks">,
+      state: "done",
       completedAt: 500,
       createdAt: 100,
     });
     const done = makeTask({
-      _id: "done" as Id<"items">,
-      isCompleted: true,
+      _id: "done" as Id<"tasks">,
+      state: "done",
       completedAt: 600,
       createdAt: 300,
     });
@@ -114,7 +114,7 @@ describe("Task inbox mutations", () => {
     ).toEqual([
       {
         ...uncompleting,
-        isCompleted: false,
+        state: "open",
         completedAt: undefined,
       },
       done,
@@ -122,8 +122,8 @@ describe("Task inbox mutations", () => {
   });
 
   it("removes discarded Tasks from the visible Inbox list", () => {
-    const keeping = makeTask({ _id: "keeping" as Id<"items"> });
-    const removing = makeTask({ _id: "removing" as Id<"items"> });
+    const keeping = makeTask({ _id: "keeping" as Id<"tasks"> });
+    const removing = makeTask({ _id: "removing" as Id<"tasks"> });
 
     expect(removeTaskFromInbox([removing, keeping], removing._id)).toEqual([
       keeping,
@@ -131,8 +131,8 @@ describe("Task inbox mutations", () => {
   });
 
   it("updates or clears Task When without removing the Task from the Inbox", () => {
-    const updating = makeTask({ _id: "updating" as Id<"items"> });
-    const unchanged = makeTask({ _id: "unchanged" as Id<"items"> });
+    const updating = makeTask({ _id: "updating" as Id<"tasks"> });
+    const unchanged = makeTask({ _id: "unchanged" as Id<"tasks"> });
 
     const withWhen = updateTaskWhenInInbox(
       [updating, unchanged],
@@ -140,9 +140,9 @@ describe("Task inbox mutations", () => {
       may19_2026,
     );
 
-    expect(withWhen).toEqual([{ ...updating, date: may19_2026 }, unchanged]);
+    expect(withWhen).toEqual([{ ...updating, when: may19_2026 }, unchanged]);
     expect(updateTaskWhenInInbox(withWhen, updating._id, undefined)).toEqual([
-      { ...updating, date: undefined },
+      { ...updating, when: undefined },
       unchanged,
     ]);
   });
@@ -151,7 +151,7 @@ describe("Task inbox mutations", () => {
 describe("Unprocessed Tasks", () => {
   it("counts only Open Tasks without When as unprocessed", () => {
     expect(isUnprocessedTask(makeTask())).toBe(true);
-    expect(isUnprocessedTask(makeTask({ date: 500 }))).toBe(false);
-    expect(isUnprocessedTask(makeTask({ isCompleted: true }))).toBe(false);
+    expect(isUnprocessedTask(makeTask({ when: 500 }))).toBe(false);
+    expect(isUnprocessedTask(makeTask({ state: "done" }))).toBe(false);
   });
 });

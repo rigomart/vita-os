@@ -25,7 +25,7 @@ export async function safeGetAuthUserId(
   return String(user._id);
 }
 
-type OrderedTable = "areas" | "projects";
+type OrderedTable = "areas" | "threads";
 
 /**
  * Get the next order value for a table with a by_user_order index.
