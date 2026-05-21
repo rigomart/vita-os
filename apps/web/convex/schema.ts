@@ -5,17 +5,6 @@ import {
   conditionValidator,
 } from "./lib/validators";
 
-const legacyMetadataValidators = {
-  // Keep these until every deployed environment has run cutoverCleanup.
-  // Existing migrated documents fail schema validation before cleanup can run
-  // unless the final legacy metadata fields are temporarily accepted here.
-  healthStatus: v.optional(v.string()),
-  legacyProjectId: v.optional(v.string()),
-  legacyItemId: v.optional(v.string()),
-  legacyProjectLogId: v.optional(v.string()),
-  migrationSourceKey: v.optional(v.string()),
-};
-
 export default defineSchema({
   areas: defineTable({
     userId: v.string(),
@@ -25,7 +14,6 @@ export default defineSchema({
     condition: conditionValidator,
     order: v.number(),
     createdAt: v.number(),
-    ...legacyMetadataValidators,
   })
     .index("by_user", ["userId"])
     .index("by_user_order", ["userId", "order"])
@@ -42,7 +30,6 @@ export default defineSchema({
     nextMove: v.optional(v.string()),
     followUp: v.optional(v.number()),
     createdAt: v.number(),
-    ...legacyMetadataValidators,
   })
     .index("by_user", ["userId"])
     .index("by_user_order", ["userId", "order"])
@@ -57,7 +44,6 @@ export default defineSchema({
     state: v.union(v.literal("open"), v.literal("done")),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
-    ...legacyMetadataValidators,
   })
     .index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"])
@@ -76,6 +62,5 @@ export default defineSchema({
     previousValue: v.optional(v.string()),
     newValue: v.optional(v.string()),
     createdAt: v.number(),
-    ...legacyMetadataValidators,
   }).index("by_thread", ["threadId", "createdAt"]),
 });

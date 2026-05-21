@@ -11,7 +11,6 @@
 import type * as activityLogs from "../activityLogs.js";
 import type * as areas from "../areas.js";
 import type * as auth from "../auth.js";
-import type * as cutoverCleanup from "../cutoverCleanup.js";
 import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
 import type * as lib_activityLog from "../lib/activityLog.js";
@@ -37,7 +36,6 @@ declare const fullApi: ApiFromModules<{
   activityLogs: typeof activityLogs;
   areas: typeof areas;
   auth: typeof auth;
-  cutoverCleanup: typeof cutoverCleanup;
   dashboard: typeof dashboard;
   http: typeof http;
   "lib/activityLog": typeof lib_activityLog;
