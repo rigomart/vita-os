@@ -1,5 +1,7 @@
-import { CheckCircle2 } from "lucide-react";
 import type { ReactNode } from "react";
+
+import { CheckCircle2 } from "lucide-react";
+
 import { EditableField } from "@/components/ui/editable-field";
 
 interface ThreadDefinitionProps {

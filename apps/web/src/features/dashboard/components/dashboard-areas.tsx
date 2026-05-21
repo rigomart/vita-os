@@ -1,6 +1,8 @@
 import type { Doc } from "@convex/_generated/dataModel";
+
 import { Button } from "@vita-os/ui/components/button";
 import { Compass, Plus } from "lucide-react";
+
 import { AreaCard } from "@/features/areas/components/area-card";
 import { StarterAreasSuggestions } from "@/features/areas/components/starter-areas-suggestions";
 

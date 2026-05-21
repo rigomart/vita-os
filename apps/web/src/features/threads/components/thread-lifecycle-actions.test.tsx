@@ -1,7 +1,9 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
+
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+
 import { ThreadLifecycleActions } from "./thread-lifecycle-actions";
 
 function makeThread(overrides: Partial<Doc<"threads">> = {}): Doc<"threads"> {

@@ -1,6 +1,7 @@
 import { Button } from "@vita-os/ui/components/button";
 import { Check, MoveRight, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
 import { cn } from "@/lib/utils";
 
 interface NextMoveProps {

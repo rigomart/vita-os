@@ -1,5 +1,7 @@
 import type { GenericMutationCtx } from "convex/server";
+
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
+
 import {
   type AutoActivityLogEntry,
   buildAreaMoveLogEntry,

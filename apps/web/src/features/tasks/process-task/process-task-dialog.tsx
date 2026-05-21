@@ -1,4 +1,5 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
+
 import { Button } from "@vita-os/ui/components/button";
 import { Checkbox } from "@vita-os/ui/components/checkbox";
 import {
@@ -18,7 +19,9 @@ import { cn } from "@vita-os/ui/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowRight, Check, FileText, Target } from "lucide-react";
 import { useState } from "react";
+
 import type { ProcessTaskAction } from "@/features/tasks/use-process-task";
+
 import {
   type ThreadChoice,
   ThreadSearchAutocomplete,

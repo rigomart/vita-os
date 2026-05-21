@@ -28,7 +28,6 @@ function ButtonGroup({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof buttonGroupVariants>) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements: Button groups are layout wrappers and should not imply form fieldset semantics.
     <div
       role="group"
       data-slot="button-group"

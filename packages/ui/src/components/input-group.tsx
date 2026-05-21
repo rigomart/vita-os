@@ -1,13 +1,13 @@
+import type * as React from "react";
+
 import { Button } from "@vita-os/ui/components/button";
 import { Input } from "@vita-os/ui/components/input";
 import { Textarea } from "@vita-os/ui/components/textarea";
 import { cn } from "@vita-os/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
-import type * as React from "react";
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements: Input groups are layout wrappers and should not imply form fieldset semantics.
     <div
       data-slot="input-group"
       role="group"
@@ -45,8 +45,6 @@ function InputGroupAddon({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: Addons are not focusable controls; the click target forwards focus to the input.
-    // biome-ignore lint/a11y/useSemanticElements: Input group addons are layout wrappers and should not imply fieldset semantics.
     <div
       role="group"
       data-slot="input-group-addon"

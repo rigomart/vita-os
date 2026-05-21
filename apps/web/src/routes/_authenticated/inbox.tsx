@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+
 import { RouteErrorFallback } from "@/components/error-boundary";
 import { InboxScreen } from "@/features/inbox/screens/inbox-screen";
 

@@ -1,4 +1,5 @@
 import type { Doc } from "@convex/_generated/dataModel";
+
 import { conditionColors, conditionLabels } from "@convex/lib/condition";
 import { Link } from "@tanstack/react-router";
 import { CircleDot } from "lucide-react";

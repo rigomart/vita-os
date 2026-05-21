@@ -1,13 +1,14 @@
 import type { LinkProps } from "@tanstack/react-router";
+import type { ReactNode } from "react";
+
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import type { ReactNode } from "react";
+
 import { cn } from "@/lib/utils";
 
 interface PageHeaderBackLink {
   label: string;
   to: LinkProps["to"];
-  // biome-ignore lint/suspicious/noExplicitAny: params type depends on route
   params?: any;
 }
 

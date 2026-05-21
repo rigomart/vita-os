@@ -42,6 +42,7 @@ import {
   LogOut,
   Plus,
 } from "lucide-react";
+
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
 import { useGlobalNewTaskShortcut } from "@/features/sidebar/use-global-new-task-shortcut";
 import { useSidebarDialogs } from "@/features/sidebar/use-sidebar-dialogs";

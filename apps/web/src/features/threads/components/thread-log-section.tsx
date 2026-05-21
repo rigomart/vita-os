@@ -1,6 +1,8 @@
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex-helpers/react/cache/hooks";
+
 import { useStableQuery } from "@/hooks/use-stable-query";
+
 import { useCreateActivityLog } from "../use-create-thread-log";
 import { ActivityLog } from "./thread-log";
 

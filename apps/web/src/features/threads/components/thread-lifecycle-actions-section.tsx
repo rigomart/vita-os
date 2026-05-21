@@ -1,8 +1,10 @@
 import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
+
 import { useRemoveThread } from "@/features/threads/use-remove-thread";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 import { useStableQuery } from "@/hooks/use-stable-query";
+
 import { ThreadLifecycleActions } from "./thread-lifecycle-actions";
 
 interface ThreadLifecycleActionsProps {

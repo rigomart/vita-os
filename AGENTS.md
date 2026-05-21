@@ -22,8 +22,10 @@ Do **not** run the dev server, Convex dev, or Convex generation unless the user 
 ```bash
 bun run dev          # Start all dev servers via turbo
 bun run build        # Type-check + build all apps via turbo
-bun run lint         # Lint + format + organize imports (whole repo via Biome)
-bun run format       # Format only (whole repo via Biome)
+bun run lint         # Lint with Oxlint fixes, then format + organize imports with Oxfmt
+bun run lint:check   # Check linting, formatting, and import ordering without writing files
+bun run format       # Format + organize imports with Oxfmt
+bun run format:check # Check formatting and import ordering without writing files
 bun run test         # Run tests in watch mode via turbo
 bun run test:run     # Run tests once via turbo
 ```

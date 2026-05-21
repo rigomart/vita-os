@@ -9,6 +9,7 @@ import {
 } from "@vita-os/ui/components/responsive-dialog";
 import { Textarea } from "@vita-os/ui/components/textarea";
 import { useState } from "react";
+
 import type { CreateTaskValue } from "@/features/tasks/use-create-task";
 
 interface NewTaskDialogProps {

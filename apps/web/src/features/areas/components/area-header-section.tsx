@@ -1,13 +1,16 @@
-import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
+
+import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
+import { useMutation } from "convex/react";
+
 import {
   optimisticallyRemoveArea,
   optimisticallyUpdateArea,
 } from "@/features/areas/optimistic";
 import { useStableQuery } from "@/hooks/use-stable-query";
+
 import { AreaHeader } from "./area-header";
 
 interface AreaHeaderProps {

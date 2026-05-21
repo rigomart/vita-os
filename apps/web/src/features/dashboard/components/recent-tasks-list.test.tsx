@@ -1,7 +1,9 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
-import { render, screen } from "@testing-library/react";
 import type { ComponentPropsWithoutRef } from "react";
+
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
 import { RecentTasksList } from "./recent-tasks-list";
 
 vi.mock("@tanstack/react-router", () => ({

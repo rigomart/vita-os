@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
 import { SidebarInset, SidebarProvider } from "@vita-os/ui/components/sidebar";
 import { useConvexAuth } from "convex/react";
+
 import { AuthVerifyingLoader } from "@/components/auth/auth-verifying-loader";
 import { RouteErrorFallback } from "@/components/error-boundary";
 import { AppHeader } from "@/components/layout/app-header";

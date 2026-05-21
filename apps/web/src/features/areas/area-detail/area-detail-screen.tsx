@@ -2,6 +2,7 @@ import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useState } from "react";
+
 import { EditAreaDialog } from "@/features/areas/area-form/edit-area-dialog";
 import { AreaDetailSkeleton } from "@/features/areas/components/area-detail-skeleton";
 import { AreaHeaderSection } from "@/features/areas/components/area-header-section";
@@ -10,6 +11,7 @@ import { AreaThreadsSection } from "@/features/areas/components/area-threads-sec
 import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread-dialog";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useStableQuery } from "@/hooks/use-stable-query";
+
 import { AreaNotFound } from "./area-not-found";
 
 interface AreaDetailScreenProps {

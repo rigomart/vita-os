@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { generateSlug, slugify } from "./slugs";
 
 describe("slugify", () => {

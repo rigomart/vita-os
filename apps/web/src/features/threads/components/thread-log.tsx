@@ -1,10 +1,12 @@
 import type { Doc } from "@convex/_generated/dataModel";
+
 import { Button } from "@vita-os/ui/components/button";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { Textarea } from "@vita-os/ui/components/textarea";
 import { formatDistanceToNow } from "date-fns";
 import { MessageSquare, Pen } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useState } from "react";
+
 import { getActivityLogEntryLabel } from "@/features/threads/activity-log-entry";
 
 interface ActivityLogProps {
@@ -81,11 +83,7 @@ function ActivityLogTimeline({
     return (
       <div className="relative before:absolute before:left-[11px] before:top-0 before:bottom-0 before:w-px before:bg-border/50">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton tasks have no stable id
-            key={i}
-            className="relative py-2 pl-8"
-          >
+          <div key={i} className="relative py-2 pl-8">
             <div className="absolute left-[7px] top-[13px] h-3 w-3 rounded-full bg-surface-3" />
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="mt-1.5 h-3 w-20" />

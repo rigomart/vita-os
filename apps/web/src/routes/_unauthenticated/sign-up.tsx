@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+
 import { SignUpScreen } from "@/features/auth/screens/sign-up-screen";
 
 export const Route = createFileRoute("/_unauthenticated/sign-up")({

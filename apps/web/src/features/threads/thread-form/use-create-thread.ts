@@ -1,9 +1,11 @@
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
+
 import {
   optimisticallyCreateThreadInArea,
   optimisticallyCreateThreadInList,
 } from "@/features/threads/optimistic";
+
 import type { CreatedThreadResult, ThreadFormValue } from "./types";
 
 export function useCreateThread() {

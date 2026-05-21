@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Button } from "@vita-os/ui/components/button";
 import {
   Card,
@@ -7,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@vita-os/ui/components/card";
-import type { ReactNode } from "react";
 
 interface AuthCardShellProps {
   title: string;

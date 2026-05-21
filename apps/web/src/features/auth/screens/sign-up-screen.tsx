@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import { SignUpForm } from "@/features/auth/sign-up/sign-up-form";
 import { useGitHubSignIn } from "@/features/auth/use-github-sign-in";
 import { useSignUp } from "@/features/auth/use-sign-up";

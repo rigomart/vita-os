@@ -1,5 +1,6 @@
 import { Button } from "@vita-os/ui/components/button";
 import { useState } from "react";
+
 import { STARTER_AREA_NAMES } from "@/features/areas/starter-areas";
 
 interface StarterAreasSuggestionsProps {

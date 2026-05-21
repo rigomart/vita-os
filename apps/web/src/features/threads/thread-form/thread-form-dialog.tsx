@@ -1,4 +1,5 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
+
 import { Button } from "@vita-os/ui/components/button";
 import { Input } from "@vita-os/ui/components/input";
 import { Label } from "@vita-os/ui/components/label";
@@ -12,7 +13,9 @@ import {
 } from "@vita-os/ui/components/responsive-dialog";
 import { Textarea } from "@vita-os/ui/components/textarea";
 import { useEffect, useState } from "react";
+
 import { AreaPicker } from "@/features/areas/components/area-picker";
+
 import type { ThreadFormValue } from "./types";
 
 interface ThreadFormDialogProps {

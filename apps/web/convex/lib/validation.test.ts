@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { RESERVED_AREA_SLUGS, validateAreaName } from "./validation";
 
 describe("RESERVED_AREA_SLUGS", () => {

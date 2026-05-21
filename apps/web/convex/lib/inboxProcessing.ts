@@ -1,5 +1,7 @@
 import type { GenericMutationCtx } from "convex/server";
+
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
+
 import { getAreaForUser } from "./areaThreads";
 import { getNextOrder } from "./helpers";
 import { generateSlug } from "./slugs";

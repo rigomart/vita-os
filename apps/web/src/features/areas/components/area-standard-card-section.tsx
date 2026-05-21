@@ -1,5 +1,7 @@
 import { api } from "@convex/_generated/api";
+
 import { useStableQuery } from "@/hooks/use-stable-query";
+
 import { AreaStandardCard } from "./area-standard-card";
 
 interface AreaStandardCardProps {

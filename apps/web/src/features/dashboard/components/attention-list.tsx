@@ -1,4 +1,5 @@
 import type { Doc } from "@convex/_generated/dataModel";
+
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@vita-os/ui/components/badge";
 import {
@@ -8,6 +9,7 @@ import {
   CircleCheck,
   CircleDot,
 } from "lucide-react";
+
 import type { DashboardAttentionThread } from "@/features/dashboard/attention-state";
 
 export interface AttentionListTask extends DashboardAttentionThread {

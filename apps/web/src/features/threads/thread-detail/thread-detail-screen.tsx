@@ -1,4 +1,5 @@
 import { api } from "@convex/_generated/api";
+
 import { FollowUpSection } from "@/features/threads/components/follow-up-section";
 import { NextMoveSection } from "@/features/threads/components/next-move-section";
 import { ThreadAreaSectionSection } from "@/features/threads/components/thread-area-section-section";
@@ -9,6 +10,7 @@ import { ThreadLifecycleActionsSection } from "@/features/threads/components/thr
 import { ActivityLogSection } from "@/features/threads/components/thread-log-section";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useStableQuery } from "@/hooks/use-stable-query";
+
 import { ThreadNotFound } from "./thread-not-found";
 
 interface ThreadDetailScreenProps {

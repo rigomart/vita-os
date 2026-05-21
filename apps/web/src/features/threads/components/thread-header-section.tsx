@@ -1,7 +1,9 @@
 import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
+
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 import { useStableQuery } from "@/hooks/use-stable-query";
+
 import { ThreadHeader } from "./thread-header";
 
 interface ThreadHeaderProps {

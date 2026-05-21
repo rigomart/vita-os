@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+
 import type { Doc, Id } from "../_generated/dataModel";
+
 import {
   buildCompleteNextMoveChange,
   buildThreadLifecyclePatch,

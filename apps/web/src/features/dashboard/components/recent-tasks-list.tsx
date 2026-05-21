@@ -1,4 +1,5 @@
 import type { Doc } from "@convex/_generated/dataModel";
+
 import { Link } from "@tanstack/react-router";
 import {
   Item,
@@ -7,6 +8,7 @@ import {
 } from "@vita-os/ui/components/item";
 import { format, formatDistanceToNow } from "date-fns";
 import { ArrowRight, Inbox } from "lucide-react";
+
 import { isTaskWhenDue } from "@/features/tasks/inbox";
 
 const MAX_VISIBLE = 5;

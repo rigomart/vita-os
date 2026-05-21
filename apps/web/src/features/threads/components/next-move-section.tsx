@@ -1,7 +1,9 @@
 import { api } from "@convex/_generated/api";
+
 import { useCompleteNextMove } from "@/features/threads/use-complete-next-move";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 import { useStableQuery } from "@/hooks/use-stable-query";
+
 import { NextMove } from "./next-move";
 
 interface NextMoveSectionProps {

@@ -1,8 +1,10 @@
-import { api } from "@convex/_generated/api";
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import type { OptimisticLocalStore } from "convex/browser";
+
+import { api } from "@convex/_generated/api";
 import { getFunctionName } from "convex/server";
 import { describe, expect, it } from "vitest";
+
 import {
   buildOptimisticThread,
   completeNextMove,

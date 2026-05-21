@@ -1,5 +1,7 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
+
 import { Compass } from "lucide-react";
+
 import { AreaPicker } from "@/features/areas/components/area-picker";
 
 interface ThreadAreaSectionProps {

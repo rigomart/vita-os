@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { shouldShowAreaSetup } from "./dashboard-screen-state";
 
 describe("shouldShowAreaSetup", () => {

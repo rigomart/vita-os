@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+
 import { RouteErrorFallback } from "@/components/error-boundary";
 import { AreaDetailScreen } from "@/features/areas/area-detail/area-detail-screen";
 

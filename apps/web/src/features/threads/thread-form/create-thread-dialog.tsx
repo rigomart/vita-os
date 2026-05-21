@@ -1,6 +1,8 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
-import { ThreadFormDialog } from "./thread-form-dialog";
+
 import type { CreatedThreadResult } from "./types";
+
+import { ThreadFormDialog } from "./thread-form-dialog";
 import { useCreateThread } from "./use-create-thread";
 
 interface CreateThreadDialogProps {

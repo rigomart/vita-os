@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { STARTER_AREA_NAMES } from "./starter-areas";
 
 describe("Starter Areas", () => {
