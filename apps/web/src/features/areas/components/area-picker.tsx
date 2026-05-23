@@ -13,12 +13,14 @@ interface AreaPickerProps {
   areas: Doc<"areas">[];
   selectedAreaId: string | undefined;
   onSelect: (id: string) => void;
+  disabled?: boolean;
 }
 
 export function AreaPicker({
   areas,
   selectedAreaId,
   onSelect,
+  disabled = false,
 }: AreaPickerProps) {
   const [open, setOpen] = useState(false);
   const selected = areas.find((a) => a._id === selectedAreaId);
@@ -27,7 +29,12 @@ export function AreaPicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 text-xs"
+            disabled={disabled}
+          />
         }
       >
         <Compass className="h-3 w-3" />
