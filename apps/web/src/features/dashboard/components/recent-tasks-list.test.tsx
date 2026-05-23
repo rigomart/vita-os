@@ -43,6 +43,22 @@ describe("RecentTasksList", () => {
   const may18_2026 = new Date(2026, 4, 18, 12).getTime();
   const may19_2026 = new Date(2026, 4, 19, 12).getTime();
 
+  it("shows a loading skeleton while Tasks are still loading", () => {
+    render(<RecentTasksList tasks={[]} isLoading />);
+
+    expect(screen.getByTestId("recent-tasks-skeleton")).toBeVisible();
+    expect(screen.queryByText(/open tasks in inbox/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /view all tasks/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders nothing after loading when there are no Open Tasks", () => {
+    const { container } = render(<RecentTasksList tasks={[]} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it("surfaces Open Tasks with When today or earlier as due Tasks", () => {
     render(
       <RecentTasksList

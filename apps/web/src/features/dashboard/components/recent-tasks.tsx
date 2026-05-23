@@ -6,5 +6,7 @@ import { RecentTasksList } from "./recent-tasks-list";
 export function RecentTasks() {
   const tasks = useQuery(api.tasks.list);
 
-  return <RecentTasksList tasks={tasks ?? []} />;
+  return (
+    <RecentTasksList tasks={tasks ?? []} isLoading={tasks === undefined} />
+  );
 }

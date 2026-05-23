@@ -1,5 +1,7 @@
 import { type DashboardArea, DashboardAreas } from "./dashboard-areas";
 
+export type { DashboardArea };
+
 interface DashboardAreasSectionProps {
   areas: DashboardArea[];
   onCreateArea: () => void;

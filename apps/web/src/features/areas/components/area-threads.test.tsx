@@ -44,6 +44,23 @@ describe("AreaThreads", () => {
     expect(screen.getByText("Renew passport")).toBeInTheDocument();
   });
 
+  it("shows a loading skeleton while Threads are still loading", () => {
+    render(
+      <AreaThreads
+        areaSlug="admin"
+        threads={[]}
+        isLoading
+        onCreateThread={vi.fn()}
+        onRemoveThread={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("area-threads-skeleton")).toBeVisible();
+    expect(
+      screen.queryByText("No threads in this area yet."),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows an empty state that invites creating a thread", () => {
     render(
       <AreaThreads

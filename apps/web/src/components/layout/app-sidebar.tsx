@@ -1,7 +1,6 @@
 import { api } from "@convex/_generated/api";
 import { conditionColors } from "@convex/lib/condition";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Badge } from "@vita-os/ui/components/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -51,6 +50,8 @@ import { useCreateTask } from "@/features/tasks/use-create-task";
 import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread-dialog";
 import { useAreaThreadTree } from "@/hooks/use-area-thread-tree";
 import { authClient } from "@/lib/auth-client";
+
+import { InboxTaskCountBadge } from "./inbox-task-count-badge";
 
 export function AppSidebar() {
   const { data: session } = authClient.useSession();
@@ -125,14 +126,7 @@ export function AppSidebar() {
                 >
                   <Inbox />
                   <span>Inbox</span>
-                  {taskCount !== undefined && taskCount > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="ml-auto h-5 min-w-5 justify-center px-1.5 text-[10px] tabular-nums"
-                    >
-                      {taskCount}
-                    </Badge>
-                  )}
+                  <InboxTaskCountBadge taskCount={taskCount} />
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
