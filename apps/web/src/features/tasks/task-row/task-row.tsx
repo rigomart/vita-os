@@ -35,11 +35,15 @@ import { isTaskWhenEmphasized } from "@/features/tasks/inbox";
 
 interface TaskRowProps {
   task: Doc<"tasks">;
-  onToggleComplete: () => void;
-  onRemove: () => void;
-  onUpdateText: (text: string) => void;
-  onUpdateWhen: (when: number | undefined) => void;
+  onToggleComplete: () => void | Promise<void>;
+  onRemove: () => void | Promise<void>;
+  onUpdateText: (text: string) => void | Promise<void>;
+  onUpdateWhen: (when: number | undefined) => void | Promise<void>;
   onProcess?: () => void;
+  isTogglePending?: boolean;
+  isDiscardPending?: boolean;
+  isSavingText?: boolean;
+  isWhenPending?: boolean;
 }
 
 export function TaskRow({
@@ -49,11 +53,16 @@ export function TaskRow({
   onUpdateText,
   onUpdateWhen,
   onProcess,
+  isTogglePending = false,
+  isDiscardPending = false,
+  isSavingText = false,
+  isWhenPending = false,
 }: TaskRowProps) {
   const [isEditingText, setIsEditingText] = useState(false);
   const [draftText, setDraftText] = useState(task.text);
   const [isWhenOpen, setIsWhenOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const saveCommittedRef = useRef(false);
 
   useEffect(() => {
     if (isEditingText) {
@@ -84,11 +93,18 @@ export function TaskRow({
   const whenIsEmphasized = isTaskWhenEmphasized(task, now);
 
   const saveText = () => {
+    if (saveCommittedRef.current || isSavingText) {
+      return;
+    }
+
     const nextText = draftText.trim();
     setIsEditingText(false);
 
     if (nextText && nextText !== task.text) {
-      onUpdateText(nextText);
+      saveCommittedRef.current = true;
+      void Promise.resolve(onUpdateText(nextText)).finally(() => {
+        saveCommittedRef.current = false;
+      });
     } else {
       setDraftText(task.text);
     }
@@ -104,7 +120,13 @@ export function TaskRow({
       <ItemMedia>
         <Checkbox
           checked={isDone}
-          onCheckedChange={onToggleComplete}
+          onCheckedChange={() => {
+            if (!isTogglePending) {
+              void onToggleComplete();
+            }
+          }}
+          disabled={isTogglePending}
+          aria-busy={isTogglePending}
           aria-label={isDone ? "Mark task open" : "Mark task done"}
         />
       </ItemMedia>
@@ -116,6 +138,8 @@ export function TaskRow({
               value={draftText}
               onChange={(event) => setDraftText(event.target.value)}
               onBlur={saveText}
+              disabled={isSavingText}
+              aria-busy={isSavingText}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
@@ -177,7 +201,13 @@ export function TaskRow({
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={onRemove}
+                    onClick={() => {
+                      if (!isDiscardPending) {
+                        void onRemove();
+                      }
+                    }}
+                    disabled={isDiscardPending}
+                    aria-busy={isDiscardPending}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
                     Discard
@@ -194,6 +224,8 @@ export function TaskRow({
                 <Button
                   variant="ghost"
                   size="xs"
+                  disabled={isWhenPending}
+                  aria-busy={isWhenPending}
                   className={
                     whenIsEmphasized
                       ? "h-6 rounded-md border border-primary/20 bg-primary/5 px-1.5 text-primary/80 hover:bg-primary/10 hover:text-primary"
@@ -211,9 +243,10 @@ export function TaskRow({
               <Calendar
                 mode="single"
                 selected={taskWhen}
+                disabled={isWhenPending}
                 onSelect={(date) => {
-                  if (!date) return;
-                  onUpdateWhen(date.getTime());
+                  if (!date || isWhenPending) return;
+                  void onUpdateWhen(date.getTime());
                   setIsWhenOpen(false);
                 }}
               />
@@ -224,8 +257,11 @@ export function TaskRow({
                     variant="ghost"
                     size="sm"
                     className="w-full justify-start text-muted-foreground"
+                    disabled={isWhenPending}
+                    aria-busy={isWhenPending}
                     onClick={() => {
-                      onUpdateWhen(undefined);
+                      if (isWhenPending) return;
+                      void onUpdateWhen(undefined);
                       setIsWhenOpen(false);
                     }}
                   >

@@ -1,10 +1,19 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 
-import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { render, screen, within, waitFor } from "@/test/render-with-providers";
+
 import { ProcessTaskDialog } from "./process-task-dialog";
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 const task = {
   _id: "task1" as Id<"tasks">,
@@ -199,5 +208,60 @@ describe("ProcessTaskDialog", () => {
       title: "Schedule dentist visit",
       areaId: healthArea._id,
     });
+  });
+
+  it("prevents duplicate process submissions while saving", async () => {
+    const user = userEvent.setup();
+    const pendingProcess = deferred();
+    const onProcess = vi.fn(() => pendingProcess.promise);
+    renderDialog(onProcess);
+
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("option", { name: /book annual/i }));
+
+    const processButton = screen.getByRole("button", { name: /process/i });
+    await user.click(processButton);
+    await user.click(processButton);
+
+    expect(onProcess).toHaveBeenCalledTimes(1);
+    expect(processButton).toBeDisabled();
+    expect(processButton).toHaveAttribute("aria-busy", "true");
+
+    pendingProcess.resolve();
+
+    await waitFor(() =>
+      expect(processButton).toHaveAttribute("aria-busy", "false"),
+    );
+  });
+
+  it("shows an error toast when process submission fails", async () => {
+    const user = userEvent.setup();
+    const onProcess = vi.fn(() =>
+      Promise.reject(new Error("Could not process task")),
+    );
+
+    const { feedback } = renderDialog(onProcess);
+
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("option", { name: /book annual/i }));
+    await user.click(screen.getByRole("button", { name: /process/i }));
+
+    expect(feedback.error).toHaveBeenCalledWith("Could not process task");
+  });
+
+  it("shows a structural success toast for Next Move outcomes", async () => {
+    const user = userEvent.setup();
+    const onProcess = vi.fn(async () => undefined);
+
+    const { feedback } = renderDialog(onProcess);
+
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("option", { name: /book annual/i }));
+    await user.click(screen.getByRole("radio", { name: /next move/i }));
+    await user.click(screen.getByRole("button", { name: /process/i }));
+
+    expect(feedback.success).toHaveBeenCalledWith(
+      "Set Next Move · Book annual checkup",
+    );
   });
 });
