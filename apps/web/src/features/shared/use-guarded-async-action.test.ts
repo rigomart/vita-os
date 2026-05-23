@@ -1,15 +1,12 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const toastMocks = vi.hoisted(() => ({
-  success: vi.fn(),
-  error: vi.fn(),
-}));
-
-vi.mock("@vita-os/ui/lib/toast", () => ({
-  toast: toastMocks,
-}));
+import {
+  createFeedbackMock,
+  type FeedbackMock,
+  renderHookWithProviders,
+} from "@/test/render-with-providers";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -20,16 +17,20 @@ function deferred<T>() {
 }
 
 describe("useGuardedAsyncAction", () => {
+  let feedback: FeedbackMock;
+
   beforeEach(() => {
-    toastMocks.success.mockClear();
-    toastMocks.error.mockClear();
+    feedback = createFeedbackMock();
   });
 
   it("ignores duplicate runs while the action is pending", async () => {
     const pending = deferred<void>();
     const action = vi.fn(() => pending.promise);
 
-    const { result } = renderHook(() => useGuardedAsyncAction(action));
+    const { result } = renderHookWithProviders(
+      () => useGuardedAsyncAction(action),
+      { feedback },
+    );
 
     let first!: ReturnType<typeof result.current.run>;
     let second!: ReturnType<typeof result.current.run>;
@@ -54,8 +55,9 @@ describe("useGuardedAsyncAction", () => {
   it("shows a structural success toast when configured", async () => {
     const action = vi.fn(async () => "done");
 
-    const { result } = renderHook(() =>
-      useGuardedAsyncAction(action, { successMessage: "Task added" }),
+    const { result } = renderHookWithProviders(
+      () => useGuardedAsyncAction(action, { successMessage: "Task added" }),
+      { feedback },
     );
 
     let outcome!: Awaited<ReturnType<typeof result.current.run>>;
@@ -64,18 +66,59 @@ describe("useGuardedAsyncAction", () => {
     });
 
     expect(outcome).toEqual({ ok: true, value: "done" });
-    expect(toastMocks.success).toHaveBeenCalledWith("Task added");
+    expect(feedback.success).toHaveBeenCalledWith("Task added");
   });
 
   it("stays quiet on success when no success message is configured", async () => {
     const action = vi.fn(async () => "done");
 
-    const { result } = renderHook(() => useGuardedAsyncAction(action));
+    const { result } = renderHookWithProviders(
+      () => useGuardedAsyncAction(action),
+      { feedback },
+    );
 
     await act(async () => {
       await result.current.run();
     });
 
-    expect(toastMocks.success).not.toHaveBeenCalled();
+    expect(feedback.success).not.toHaveBeenCalled();
+  });
+
+  it("shows an error toast by default when the action fails", async () => {
+    const action = vi.fn(() => Promise.reject(new Error("Save failed")));
+
+    const { result } = renderHookWithProviders(
+      () => useGuardedAsyncAction(action),
+      { feedback },
+    );
+
+    let outcome!: Awaited<ReturnType<typeof result.current.run>>;
+    await act(async () => {
+      outcome = await result.current.run();
+    });
+
+    expect(outcome).toEqual({
+      ok: false,
+      skipped: false,
+      error: "Save failed",
+    });
+    expect(result.current.error).toBe("Save failed");
+    expect(feedback.error).toHaveBeenCalledWith("Save failed");
+  });
+
+  it("suppresses the error toast when errorToast is false", async () => {
+    const action = vi.fn(() => Promise.reject(new Error("Save failed")));
+
+    const { result } = renderHookWithProviders(
+      () => useGuardedAsyncAction(action, { errorToast: false }),
+      { feedback },
+    );
+
+    await act(async () => {
+      await result.current.run();
+    });
+
+    expect(result.current.error).toBe("Save failed");
+    expect(feedback.error).not.toHaveBeenCalled();
   });
 });

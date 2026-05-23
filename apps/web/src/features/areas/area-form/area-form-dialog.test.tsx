@@ -1,17 +1,14 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  createFeedbackMock,
+  type FeedbackMock,
+  renderWithProviders,
+} from "@/test/render-with-providers";
+
 import { AreaFormDialog } from "./area-form-dialog";
-
-const toastMocks = vi.hoisted(() => ({
-  success: vi.fn(),
-  error: vi.fn(),
-}));
-
-vi.mock("@vita-os/ui/lib/toast", () => ({
-  toast: toastMocks,
-}));
 
 function deferred() {
   let resolve!: () => void;
@@ -37,10 +34,15 @@ beforeAll(() => {
 });
 
 describe("AreaFormDialog", () => {
+  let feedback: FeedbackMock;
+
   beforeEach(() => {
-    toastMocks.success.mockClear();
-    toastMocks.error.mockClear();
+    feedback = createFeedbackMock();
   });
+
+  function renderWithFeedback(ui: Parameters<typeof renderWithProviders>[0]) {
+    return renderWithProviders(ui, { feedback });
+  }
 
   it("prevents duplicate area creates while saving", async () => {
     const user = userEvent.setup();
@@ -48,7 +50,7 @@ describe("AreaFormDialog", () => {
     const onSubmit = vi.fn(() => pendingCreate.promise);
     const onOpenChange = vi.fn();
 
-    render(
+    renderWithFeedback(
       <AreaFormDialog
         mode="create"
         open
@@ -82,7 +84,7 @@ describe("AreaFormDialog", () => {
     const pendingCreate = deferred();
     const onSubmit = vi.fn(() => pendingCreate.promise);
 
-    render(
+    renderWithFeedback(
       <AreaFormDialog
         mode="create"
         open
@@ -113,7 +115,7 @@ describe("AreaFormDialog", () => {
       Promise.reject(new Error("Database unavailable")),
     );
 
-    render(
+    renderWithFeedback(
       <AreaFormDialog
         mode="create"
         open
@@ -128,14 +130,14 @@ describe("AreaFormDialog", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Area was not saved. Database unavailable",
     );
-    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(feedback.error).not.toHaveBeenCalled();
   });
 
   it("shows a structural success toast when area creation succeeds", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
 
-    render(
+    renderWithFeedback(
       <AreaFormDialog
         mode="create"
         open
@@ -148,7 +150,7 @@ describe("AreaFormDialog", () => {
     await user.click(screen.getByRole("button", { name: "Create area" }));
 
     await waitFor(() =>
-      expect(toastMocks.success).toHaveBeenCalledWith("Area created"),
+      expect(feedback.success).toHaveBeenCalledWith("Area created"),
     );
   });
 
@@ -157,7 +159,7 @@ describe("AreaFormDialog", () => {
     const pendingSave = deferred();
     const onSubmit = vi.fn(() => pendingSave.promise);
 
-    render(
+    renderWithFeedback(
       <AreaFormDialog
         mode="edit"
         open
@@ -173,7 +175,7 @@ describe("AreaFormDialog", () => {
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(saveButton).toBeDisabled();
-    expect(toastMocks.success).not.toHaveBeenCalled();
+    expect(feedback.success).not.toHaveBeenCalled();
 
     pendingSave.resolve();
 
@@ -186,7 +188,7 @@ describe("AreaFormDialog", () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(() => Promise.reject(new Error("Area not found")));
 
-    render(
+    renderWithFeedback(
       <AreaFormDialog
         mode="edit"
         open
@@ -201,6 +203,6 @@ describe("AreaFormDialog", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Area was not saved. Area not found",
     );
-    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(feedback.error).not.toHaveBeenCalled();
   });
 });

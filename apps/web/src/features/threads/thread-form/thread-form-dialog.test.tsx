@@ -1,19 +1,16 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  createFeedbackMock,
+  type FeedbackMock,
+  renderWithProviders,
+} from "@/test/render-with-providers";
+
 import { ThreadFormDialog } from "./thread-form-dialog";
-
-const toastMocks = vi.hoisted(() => ({
-  success: vi.fn(),
-  error: vi.fn(),
-}));
-
-vi.mock("@vita-os/ui/lib/toast", () => ({
-  toast: toastMocks,
-}));
 
 const areas = [
   {
@@ -52,13 +49,18 @@ function deferred() {
 }
 
 describe("ThreadFormDialog", () => {
+  let feedback: FeedbackMock;
+
   beforeEach(() => {
-    toastMocks.success.mockClear();
-    toastMocks.error.mockClear();
+    feedback = createFeedbackMock();
   });
 
+  function renderWithFeedback(ui: Parameters<typeof renderWithProviders>[0]) {
+    return renderWithProviders(ui, { feedback });
+  }
+
   it("uses Thread language and optional Summary on create", () => {
-    render(
+    renderWithFeedback(
       <ThreadFormDialog
         mode="create"
         open
@@ -83,7 +85,7 @@ describe("ThreadFormDialog", () => {
     const pendingCreate = deferred();
     const onSubmit = vi.fn(() => pendingCreate.promise);
 
-    render(
+    renderWithFeedback(
       <ThreadFormDialog
         mode="create"
         open
@@ -116,7 +118,7 @@ describe("ThreadFormDialog", () => {
     const pendingCreate = deferred();
     const onSubmit = vi.fn(() => pendingCreate.promise);
 
-    render(
+    renderWithFeedback(
       <ThreadFormDialog
         mode="create"
         open
@@ -151,7 +153,7 @@ describe("ThreadFormDialog", () => {
       Promise.reject(new Error("Database unavailable")),
     );
 
-    render(
+    renderWithFeedback(
       <ThreadFormDialog
         mode="create"
         open
@@ -168,14 +170,14 @@ describe("ThreadFormDialog", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Thread was not saved. Database unavailable",
     );
-    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(feedback.error).not.toHaveBeenCalled();
   });
 
   it("shows a structural success toast when thread creation succeeds", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
 
-    render(
+    renderWithFeedback(
       <ThreadFormDialog
         mode="create"
         open
@@ -190,7 +192,7 @@ describe("ThreadFormDialog", () => {
     await user.click(screen.getByRole("button", { name: "Create thread" }));
 
     await waitFor(() =>
-      expect(toastMocks.success).toHaveBeenCalledWith("Thread created"),
+      expect(feedback.success).toHaveBeenCalledWith("Thread created"),
     );
   });
 
@@ -199,7 +201,7 @@ describe("ThreadFormDialog", () => {
     const pendingSave = deferred();
     const onSubmit = vi.fn(() => pendingSave.promise);
 
-    render(
+    renderWithFeedback(
       <ThreadFormDialog
         mode="edit"
         open
@@ -216,7 +218,7 @@ describe("ThreadFormDialog", () => {
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(saveButton).toBeDisabled();
-    expect(toastMocks.success).not.toHaveBeenCalled();
+    expect(feedback.success).not.toHaveBeenCalled();
 
     pendingSave.resolve();
 
@@ -229,7 +231,7 @@ describe("ThreadFormDialog", () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(() => Promise.reject(new Error("Thread not found")));
 
-    render(
+    renderWithFeedback(
       <ThreadFormDialog
         mode="edit"
         open
@@ -245,6 +247,6 @@ describe("ThreadFormDialog", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Thread was not saved. Thread not found",
     );
-    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(feedback.error).not.toHaveBeenCalled();
   });
 });

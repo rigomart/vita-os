@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
-import { toast } from "../lib/toast";
+import { useFeedback } from "../lib/feedback";
 
 export type GuardedAsyncFeedback = {
   /** Success toast for structural actions. Omit for quiet inline edits. */
@@ -26,6 +26,7 @@ export function useGuardedAsyncAction<TArgs extends unknown[], TResult>(
   action: (...args: TArgs) => Promise<TResult> | TResult,
   feedback: GuardedAsyncFeedback = {},
 ) {
+  const feedbackClient = useFeedback();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendingRef = useRef(false);
@@ -51,14 +52,14 @@ export function useGuardedAsyncAction<TArgs extends unknown[], TResult>(
       try {
         const value = await action(...args);
         if (successMessage) {
-          toast.success(successMessage);
+          feedbackClient.success(successMessage);
         }
         return { ok: true, value };
       } catch (err) {
         const message = getErrorMessage(err);
         setError(message);
         if (errorToast) {
-          toast.error(message);
+          feedbackClient.error(message);
         }
         return { ok: false, skipped: false, error: message };
       } finally {
@@ -66,7 +67,7 @@ export function useGuardedAsyncAction<TArgs extends unknown[], TResult>(
         setIsPending(false);
       }
     },
-    [action, successMessage, errorToast, getErrorMessage],
+    [action, successMessage, errorToast, getErrorMessage, feedbackClient],
   );
 
   return { run, isPending, error, clearError };

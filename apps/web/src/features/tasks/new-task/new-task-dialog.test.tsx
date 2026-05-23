@@ -1,17 +1,14 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  createFeedbackMock,
+  type FeedbackMock,
+  renderWithProviders,
+} from "@/test/render-with-providers";
+
 import { NewTaskDialog } from "./new-task-dialog";
-
-const toastMocks = vi.hoisted(() => ({
-  success: vi.fn(),
-  error: vi.fn(),
-}));
-
-vi.mock("@vita-os/ui/lib/toast", () => ({
-  toast: toastMocks,
-}));
 
 function deferred() {
   let resolve!: () => void;
@@ -39,10 +36,15 @@ beforeAll(() => {
 });
 
 describe("NewTaskDialog", () => {
+  let feedback: FeedbackMock;
+
   beforeEach(() => {
-    toastMocks.success.mockClear();
-    toastMocks.error.mockClear();
+    feedback = createFeedbackMock();
   });
+
+  function renderWithFeedback(ui: Parameters<typeof renderWithProviders>[0]) {
+    return renderWithProviders(ui, { feedback });
+  }
 
   it("prevents duplicate task creates while saving", async () => {
     const user = userEvent.setup();
@@ -50,7 +52,7 @@ describe("NewTaskDialog", () => {
     const onSubmit = vi.fn(() => pendingCreate.promise);
     const onOpenChange = vi.fn();
 
-    render(
+    renderWithFeedback(
       <NewTaskDialog open onOpenChange={onOpenChange} onSubmit={onSubmit} />,
     );
 
@@ -81,7 +83,9 @@ describe("NewTaskDialog", () => {
       Promise.reject(new Error("Could not save task")),
     );
 
-    render(<NewTaskDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+    renderWithFeedback(
+      <NewTaskDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />,
+    );
 
     await user.type(
       screen.getByPlaceholderText("What's on your mind?"),
@@ -92,14 +96,16 @@ describe("NewTaskDialog", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Could not save task",
     );
-    expect(toastMocks.error).not.toHaveBeenCalled();
+    expect(feedback.error).not.toHaveBeenCalled();
   });
 
   it("shows a structural success toast when task creation succeeds", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
 
-    render(<NewTaskDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+    renderWithFeedback(
+      <NewTaskDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />,
+    );
 
     await user.type(
       screen.getByPlaceholderText("What's on your mind?"),
@@ -108,7 +114,7 @@ describe("NewTaskDialog", () => {
     await user.click(screen.getByRole("button", { name: "Add" }));
 
     await waitFor(() =>
-      expect(toastMocks.success).toHaveBeenCalledWith("Task added"),
+      expect(feedback.success).toHaveBeenCalledWith("Task added"),
     );
   });
 });
