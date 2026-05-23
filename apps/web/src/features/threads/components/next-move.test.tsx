@@ -88,6 +88,39 @@ describe("NextMove", () => {
     expect(onClear).toHaveBeenCalled();
   });
 
+  it("keeps only pending next move actions disabled", () => {
+    render(
+      <NextMove
+        nextMove="Call the clinic"
+        onSet={vi.fn()}
+        onClear={vi.fn()}
+        onComplete={vi.fn()}
+        pending={{ clear: true }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Clear next move" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Complete next move" }),
+    ).not.toBeDisabled();
+  });
+
+  it("disables the add field while saving a next move", () => {
+    render(
+      <NextMove
+        nextMove={undefined}
+        onSet={vi.fn()}
+        onClear={vi.fn()}
+        onComplete={vi.fn()}
+        pending={{ set: true }}
+      />,
+    );
+
+    expect(screen.getByPlaceholderText("Add a next move...")).toBeDisabled();
+  });
+
   it("enters edit mode on click and saves with Enter", async () => {
     const user = userEvent.setup();
     const onSet = vi.fn();

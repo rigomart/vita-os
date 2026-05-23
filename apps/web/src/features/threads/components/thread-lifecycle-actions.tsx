@@ -21,6 +21,9 @@ interface ThreadLifecycleActionsProps {
   onResolve: (resolutionNote?: string) => void;
   onReopen: () => void;
   onDelete: () => void;
+  isResolving?: boolean;
+  isReopening?: boolean;
+  isDeleting?: boolean;
 }
 
 export function ThreadLifecycleActions({
@@ -28,6 +31,9 @@ export function ThreadLifecycleActions({
   onResolve,
   onReopen,
   onDelete,
+  isResolving = false,
+  isReopening = false,
+  isDeleting = false,
 }: ThreadLifecycleActionsProps) {
   const [resolutionNote, setResolutionNote] = useState("");
   const isResolved = thread.state === "resolved";
@@ -40,6 +46,8 @@ export function ThreadLifecycleActions({
           size="sm"
           className="gap-1.5"
           onClick={onReopen}
+          disabled={isReopening}
+          aria-busy={isReopening}
         >
           <RotateCcw className="h-3.5 w-3.5" />
           Reopen
@@ -47,7 +55,15 @@ export function ThreadLifecycleActions({
       ) : (
         <AlertDialog>
           <AlertDialogTrigger
-            render={<Button variant="outline" size="sm" className="gap-1.5" />}
+            render={
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={isResolving}
+                aria-busy={isResolving}
+              />
+            }
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
             Resolve
@@ -77,6 +93,8 @@ export function ThreadLifecycleActions({
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
+                disabled={isResolving}
+                aria-busy={isResolving}
                 onClick={() => onResolve(resolutionNote.trim() || undefined)}
               >
                 Resolve thread
@@ -95,6 +113,8 @@ export function ThreadLifecycleActions({
               variant="ghost"
               size="sm"
               className="gap-1.5 text-muted-foreground hover:text-destructive"
+              disabled={isDeleting}
+              aria-busy={isDeleting}
             />
           }
         >
@@ -111,6 +131,8 @@ export function ThreadLifecycleActions({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              disabled={isDeleting}
+              aria-busy={isDeleting}
               onClick={onDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

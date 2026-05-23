@@ -1,4 +1,5 @@
 import { api } from "@convex/_generated/api";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 
 import { useCompleteNextMove } from "@/features/threads/use-complete-next-move";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
@@ -17,19 +18,45 @@ export function NextMoveSection({ threadSlug }: NextMoveSectionProps) {
   const updateThread = useUpdateThread(threadSlug);
   const completeNextMove = useCompleteNextMove(threadSlug);
 
+  const { run: setNextMove, isPending: isSetPending } = useGuardedAsyncAction(
+    async (text: string) => {
+      if (!thread) return;
+      await updateThread({ id: thread._id, nextMove: text });
+    },
+    { errorToast: true },
+  );
+
+  const { run: clearNextMove, isPending: isClearPending } =
+    useGuardedAsyncAction(
+      async () => {
+        if (!thread) return;
+        await updateThread({ id: thread._id, nextMove: null });
+      },
+      { errorToast: true },
+    );
+
+  const { run: completeNextMoveOnce, isPending: isCompletePending } =
+    useGuardedAsyncAction(
+      async () => {
+        if (!thread) return;
+        await completeNextMove(thread._id);
+      },
+      { errorToast: true },
+    );
+
   const handleSet = (text: string) => {
     if (!thread) return;
-    updateThread({ id: thread._id, nextMove: text });
+    void setNextMove(text);
   };
 
   const handleClear = () => {
     if (!thread) return;
-    updateThread({ id: thread._id, nextMove: null });
+    void clearNextMove();
   };
 
   const handleComplete = () => {
     if (!thread) return;
-    completeNextMove(thread._id);
+    void completeNextMoveOnce();
   };
 
   return (
@@ -38,6 +65,11 @@ export function NextMoveSection({ threadSlug }: NextMoveSectionProps) {
       onSet={handleSet}
       onClear={handleClear}
       onComplete={handleComplete}
+      pending={{
+        set: isSetPending,
+        clear: isClearPending,
+        complete: isCompletePending,
+      }}
     />
   );
 }

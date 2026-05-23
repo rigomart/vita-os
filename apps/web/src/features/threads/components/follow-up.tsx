@@ -5,9 +5,15 @@ interface FollowUpProps {
   followUp: number | undefined;
   onSet: (date: number) => void;
   onClear: () => void;
+  isPending?: boolean;
 }
 
-export function FollowUp({ followUp, onSet, onClear }: FollowUpProps) {
+export function FollowUp({
+  followUp,
+  onSet,
+  onClear,
+  isPending = false,
+}: FollowUpProps) {
   return (
     <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
       <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -25,6 +31,7 @@ export function FollowUp({ followUp, onSet, onClear }: FollowUpProps) {
           }
         }}
         placeholder="Add a follow-up..."
+        disabled={isPending}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { api } from "@convex/_generated/api";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 import { useStableQuery } from "@/hooks/use-stable-query";
@@ -15,14 +16,22 @@ export function FollowUpSection({ threadSlug }: FollowUpSectionProps) {
   });
   const updateThread = useUpdateThread(threadSlug);
 
+  const { run: saveFollowUp, isPending } = useGuardedAsyncAction(
+    async (followUp: number | null) => {
+      if (!thread) return;
+      await updateThread({ id: thread._id, followUp });
+    },
+    { errorToast: true },
+  );
+
   const handleSet = (date: number) => {
     if (!thread) return;
-    updateThread({ id: thread._id, followUp: date });
+    void saveFollowUp(date);
   };
 
   const handleClear = () => {
     if (!thread) return;
-    updateThread({ id: thread._id, followUp: null });
+    void saveFollowUp(null);
   };
 
   return (
@@ -30,6 +39,7 @@ export function FollowUpSection({ threadSlug }: FollowUpSectionProps) {
       followUp={thread?.followUp ?? undefined}
       onSet={handleSet}
       onClear={handleClear}
+      isPending={isPending}
     />
   );
 }

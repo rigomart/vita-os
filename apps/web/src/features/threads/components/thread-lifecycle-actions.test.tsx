@@ -65,4 +65,20 @@ describe("ThreadLifecycleActions", () => {
 
     expect(onReopen).toHaveBeenCalled();
   });
+
+  it("keeps representative thread actions disabled while pending", () => {
+    render(
+      <ThreadLifecycleActions
+        thread={makeThread({ state: "resolved" })}
+        onResolve={vi.fn()}
+        onReopen={vi.fn()}
+        onDelete={vi.fn()}
+        isReopening
+        isDeleting
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Reopen" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+  });
 });

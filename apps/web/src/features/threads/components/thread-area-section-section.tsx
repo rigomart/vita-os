@@ -2,6 +2,7 @@ import type { Id } from "@convex/_generated/dataModel";
 
 import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 
 import { ThreadAreaSection } from "@/features/threads/components/thread-area-section";
@@ -24,26 +25,41 @@ export function ThreadAreaSectionSection({
   const navigate = useNavigate();
   const updateThread = useUpdateThread(threadSlug);
 
+  const { run: moveThread, isPending: isMoving } = useGuardedAsyncAction(
+    async (areaId: Id<"areas">) => {
+      if (!areas || !thread || areaId === thread.areaId) return null;
+
+      await updateThread({ id: thread._id, areaId });
+      return areas.find((area) => area._id === areaId) ?? null;
+    },
+    { successMessage: "Thread moved", errorToast: true },
+  );
+
   if (!areas || !thread) return null;
 
-  const handleMove = async (areaId: Id<"areas">) => {
+  const handleMove = (areaId: Id<"areas">) => {
     if (areaId === thread.areaId) return;
 
-    await updateThread({ id: thread._id, areaId });
-    const targetArea = areas.find((area) => area._id === areaId);
-    if (!targetArea) return;
+    void moveThread(areaId).then((result) => {
+      if (!result.ok || !result.value) return;
 
-    const nextAreaSlug = targetArea.slug ?? targetArea._id;
-    if (nextAreaSlug !== areaSlug) {
-      navigate({
-        to: "/$areaSlug/$threadSlug",
-        params: { areaSlug: nextAreaSlug, threadSlug },
-        replace: true,
-      });
-    }
+      const nextAreaSlug = result.value.slug ?? result.value._id;
+      if (nextAreaSlug !== areaSlug) {
+        navigate({
+          to: "/$areaSlug/$threadSlug",
+          params: { areaSlug: nextAreaSlug, threadSlug },
+          replace: true,
+        });
+      }
+    });
   };
 
   return (
-    <ThreadAreaSection areas={areas} thread={thread} onMove={handleMove} />
+    <ThreadAreaSection
+      areas={areas}
+      thread={thread}
+      onMove={handleMove}
+      isMoving={isMoving}
+    />
   );
 }
