@@ -1,5 +1,6 @@
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { Toaster } from "@vita-os/ui/components/sonner";
 import { ConvexQueryCacheProvider } from "convex-helpers/react/cache";
 import { ConvexReactClient } from "convex/react";
 import { StrictMode } from "react";
@@ -33,6 +34,7 @@ createRoot(root).render(
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
       <ConvexQueryCacheProvider expiration={300_000}>
         <RouterProvider router={router} />
+        <Toaster />
       </ConvexQueryCacheProvider>
     </ConvexBetterAuthProvider>
   </StrictMode>,
