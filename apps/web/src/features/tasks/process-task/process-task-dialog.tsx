@@ -15,6 +15,8 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@vita-os/ui/components/responsive-dialog";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
+import { useFeedback } from "@vita-os/ui/lib/feedback";
 import { cn } from "@vita-os/ui/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowRight, Check, FileText, Target } from "lucide-react";
@@ -42,6 +44,24 @@ interface ProcessTaskDialogProps {
   ) => void | Promise<void>;
 }
 
+function getProcessSuccessMessage(
+  action: ProcessTaskAction,
+  threads: Doc<"threads">[],
+): string {
+  if (action.type === "create_thread") {
+    return `Created thread · ${action.title}`;
+  }
+
+  const thread = threads.find((candidate) => candidate._id === action.threadId);
+  const threadTitle = thread?.title ?? "thread";
+
+  if (action.type === "set_next_move") {
+    return `Set Next Move · ${threadTitle}`;
+  }
+
+  return `Added Activity Log entry · ${threadTitle}`;
+}
+
 export function ProcessTaskDialog({
   open,
   onOpenChange,
@@ -51,6 +71,7 @@ export function ProcessTaskDialog({
   isLoading = false,
   onProcess,
 }: ProcessTaskDialogProps) {
+  const feedback = useFeedback();
   const [choice, setChoice] = useState<ThreadChoice | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [mode, setMode] = useState<ProcessingMode>("add_activity_log_entry");
@@ -58,7 +79,13 @@ export function ProcessTaskDialog({
     title: string;
   } | null>(null);
   const [createAreaId, setCreateAreaId] = useState<string | undefined>();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { run: submitProcess, isPending } = useGuardedAsyncAction(
+    async (action: ProcessTaskAction) => {
+      await onProcess(task._id, action);
+    },
+    { errorToast: true },
+  );
 
   const isCreating = creationDraft !== null;
   const createTitle = creationDraft?.title ?? "";
@@ -67,6 +94,11 @@ export function ProcessTaskDialog({
   const canSubmit =
     !!selectedThread ||
     (isCreating && createTitle.trim().length > 0 && !!createAreaId);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (isPending && !nextOpen) return;
+    onOpenChange(nextOpen);
+  };
 
   const resetCreationFields = () => {
     setCreateAreaId(undefined);
@@ -127,31 +159,37 @@ export function ProcessTaskDialog({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || isPending) return;
 
-    setIsSubmitting(true);
-    try {
-      if (isCreating) {
-        await onProcess(task._id, {
-          type: "create_thread",
-          title: createTitle.trim(),
-          areaId: createAreaId as Id<"areas">,
-        });
-      } else if (selectedThread) {
-        await onProcess(task._id, {
-          type: mode,
-          threadId: selectedThread._id,
-        });
-      }
+    let action: ProcessTaskAction | undefined;
+    if (isCreating) {
+      action = {
+        type: "create_thread",
+        title: createTitle.trim(),
+        areaId: createAreaId as Id<"areas">,
+      };
+    } else if (selectedThread) {
+      action = {
+        type: mode,
+        threadId: selectedThread._id,
+      };
+    }
+
+    if (!action) return;
+
+    const result = await submitProcess(action);
+    if (result.ok) {
+      feedback.success(getProcessSuccessMessage(action, threads));
       onOpenChange(false);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
-      <ResponsiveDialogContent className="sm:max-w-lg">
+    <ResponsiveDialog open={open} onOpenChange={handleOpenChange}>
+      <ResponsiveDialogContent
+        className="sm:max-w-lg"
+        showCloseButton={!isPending}
+      >
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>Process task</ResponsiveDialogTitle>
         </ResponsiveDialogHeader>
@@ -208,11 +246,16 @@ export function ProcessTaskDialog({
             <Button
               type="button"
               variant="ghost"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
+              disabled={isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!canSubmit || isSubmitting}>
+            <Button
+              type="submit"
+              disabled={!canSubmit || isPending}
+              aria-busy={isPending}
+            >
               Process
               <ArrowRight className="h-4 w-4" />
             </Button>

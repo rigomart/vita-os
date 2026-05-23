@@ -1,10 +1,6 @@
 import type { Doc } from "@convex/_generated/dataModel";
 
-import { useCompleteTask } from "@/features/tasks/use-complete-task";
-import { useRemoveTask } from "@/features/tasks/use-remove-task";
-import { useUncompleteTask } from "@/features/tasks/use-uncomplete-task";
-import { useUpdateTaskText } from "@/features/tasks/use-update-task-text";
-import { useUpdateTaskWhen } from "@/features/tasks/use-update-task-when";
+import { useTaskRowActions } from "@/features/tasks/task-row/use-task-row-actions";
 
 import { TaskRow } from "./task-row";
 
@@ -14,24 +10,29 @@ interface TaskRowProps {
 }
 
 export function TaskRowContainer({ task, onProcess }: TaskRowProps) {
-  const completeTask = useCompleteTask();
-  const uncompleteTask = useUncompleteTask();
-  const removeTask = useRemoveTask();
-  const updateTaskText = useUpdateTaskText();
-  const updateTaskWhen = useUpdateTaskWhen();
+  const {
+    handleToggleComplete,
+    isTogglePending,
+    handleRemove,
+    isDiscardPending,
+    handleUpdateText,
+    isSavingText,
+    handleUpdateWhen,
+    isWhenPending,
+  } = useTaskRowActions(task);
 
   return (
     <TaskRow
       task={task}
-      onToggleComplete={() =>
-        task.state === "done"
-          ? uncompleteTask(task._id)
-          : completeTask(task._id)
-      }
-      onRemove={() => removeTask(task._id)}
-      onUpdateText={(text) => updateTaskText(task._id, text)}
-      onUpdateWhen={(when) => updateTaskWhen(task._id, when)}
+      onToggleComplete={handleToggleComplete}
+      onRemove={handleRemove}
+      onUpdateText={handleUpdateText}
+      onUpdateWhen={handleUpdateWhen}
       onProcess={onProcess ? () => onProcess(task) : undefined}
+      isTogglePending={isTogglePending}
+      isDiscardPending={isDiscardPending}
+      isSavingText={isSavingText}
+      isWhenPending={isWhenPending}
     />
   );
 }

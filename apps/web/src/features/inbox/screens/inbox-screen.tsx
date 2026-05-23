@@ -1,8 +1,6 @@
 import type { Doc } from "@convex/_generated/dataModel";
 
 import { api } from "@convex/_generated/api";
-import { Link } from "@tanstack/react-router";
-import { Button } from "@vita-os/ui/components/button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -17,19 +15,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ProcessTaskDialogContainer } from "@/features/tasks/process-task/process-task-dialog-container";
 import { TaskRowContainer } from "@/features/tasks/task-row/task-row-container";
 
-interface ProcessingNotification {
-  action: "create_thread" | "add_activity_log_entry" | "set_next_move";
-  thread: Pick<Doc<"threads">, "title" | "slug">;
-  area: Doc<"areas"> | undefined;
-}
-
 export function InboxScreen() {
   const tasks = useQuery(api.tasks.list);
   const [processingTask, setProcessingTask] = useState<
     Doc<"tasks"> | undefined
-  >(undefined);
-  const [notification, setNotification] = useState<
-    ProcessingNotification | undefined
   >(undefined);
 
   if (tasks === undefined) {
@@ -93,57 +82,9 @@ export function InboxScreen() {
             if (!open) setProcessingTask(undefined);
           }}
           task={processingTask}
-          onProcessed={setNotification}
-        />
-      )}
-
-      {notification && (
-        <ProcessingToast
-          notification={notification}
-          onDismiss={() => setNotification(undefined)}
         />
       )}
     </div>
-  );
-}
-
-function ProcessingToast({
-  notification,
-  onDismiss,
-}: {
-  notification: ProcessingNotification;
-  onDismiss: () => void;
-}) {
-  const message =
-    notification.action === "create_thread"
-      ? "Created thread"
-      : notification.action === "set_next_move"
-        ? "Set Next Move"
-        : "Added Activity Log entry";
-
-  return (
-    <output className="fixed right-4 bottom-4 z-50 flex max-w-sm items-center gap-3 rounded-lg border border-border-subtle bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg">
-      <span className="min-w-0">
-        {message} in{" "}
-        {notification.area && notification.thread.slug ? (
-          <Link
-            to="/$areaSlug/$threadSlug"
-            params={{
-              areaSlug: notification.area.slug ?? notification.area._id,
-              threadSlug: notification.thread.slug,
-            }}
-            className="font-medium text-primary underline-offset-4 hover:underline"
-          >
-            {notification.thread.title}
-          </Link>
-        ) : (
-          <span className="font-medium">{notification.thread.title}</span>
-        )}
-      </span>
-      <Button type="button" variant="ghost" size="xs" onClick={onDismiss}>
-        Dismiss
-      </Button>
-    </output>
   );
 }
 
