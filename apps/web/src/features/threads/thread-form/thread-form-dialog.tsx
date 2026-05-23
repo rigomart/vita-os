@@ -12,6 +12,7 @@ import {
   ResponsiveDialogTitle,
 } from "@vita-os/ui/components/responsive-dialog";
 import { Textarea } from "@vita-os/ui/components/textarea";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useEffect, useState } from "react";
 
 import { AreaPicker } from "@/features/areas/components/area-picker";
@@ -26,6 +27,14 @@ interface ThreadFormDialogProps {
   defaultAreaId?: Id<"areas">;
   initialValue?: Partial<ThreadFormValue>;
   onSubmit: (value: ThreadFormValue) => Promise<void> | void;
+}
+
+function getThreadSaveError(error: unknown) {
+  const detail =
+    error instanceof Error && error.message
+      ? error.message
+      : "Please try again.";
+  return `Thread was not saved. ${detail}`;
 }
 
 export function ThreadFormDialog({
@@ -50,16 +59,32 @@ export function ThreadFormDialog({
     setAreaId(initialValue?.areaId ?? defaultAreaId);
   }, [open, initialValue, defaultAreaId]);
 
+  const {
+    run: submitThread,
+    isPending,
+    error,
+  } = useGuardedAsyncAction(onSubmit, {
+    successMessage: mode === "create" ? "Thread created" : undefined,
+    errorToast: false,
+    getErrorMessage: getThreadSaveError,
+  });
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (isPending && !nextOpen) return;
+    onOpenChange(nextOpen);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedTitle = title.trim();
-    if (!trimmedTitle || !areaId) return;
+    if (!trimmedTitle || !areaId || isPending) return;
 
-    await onSubmit({
+    const result = await submitThread({
       title: trimmedTitle,
       summary: summary.trim() || undefined,
       areaId: areaId as Id<"areas">,
     });
+    if (!result.ok) return;
 
     if (mode === "create") {
       setTitle("");
@@ -69,8 +94,8 @@ export function ThreadFormDialog({
   };
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
-      <ResponsiveDialogContent>
+    <ResponsiveDialog open={open} onOpenChange={handleOpenChange}>
+      <ResponsiveDialogContent showCloseButton={!isPending}>
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>
             {mode === "edit" ? "Edit thread" : "New thread"}
@@ -90,6 +115,7 @@ export function ThreadFormDialog({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Renew passport, File Q4 taxes"
               autoFocus
+              disabled={isPending}
             />
           </div>
           <div className="space-y-2">
@@ -105,6 +131,7 @@ export function ThreadFormDialog({
               onChange={(e) => setSummary(e.target.value)}
               placeholder="What is this thread about?"
               rows={2}
+              disabled={isPending}
             />
           </div>
           <div className="space-y-2">
@@ -113,17 +140,28 @@ export function ThreadFormDialog({
               areas={areas}
               selectedAreaId={areaId}
               onSelect={setAreaId}
+              disabled={isPending}
             />
           </div>
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
           <ResponsiveDialogFooter>
             <Button
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
+              disabled={isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!title.trim() || !areaId}>
+            <Button
+              type="submit"
+              disabled={!title.trim() || !areaId || isPending}
+              aria-busy={isPending}
+            >
               {mode === "edit" ? "Save changes" : "Create thread"}
             </Button>
           </ResponsiveDialogFooter>

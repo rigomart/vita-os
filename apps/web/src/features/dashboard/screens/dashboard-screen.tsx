@@ -1,4 +1,5 @@
 import { api } from "@convex/_generated/api";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useState } from "react";
 
@@ -9,7 +10,11 @@ import { RecentTasks } from "@/features/dashboard/components/recent-tasks";
 
 export function DashboardScreen() {
   const overview = useQuery(api.dashboard.overview);
-  const createStarterArea = useCreateStarterArea();
+  const createStarterAreaMutation = useCreateStarterArea();
+  const { run: createStarterArea } = useGuardedAsyncAction(
+    createStarterAreaMutation,
+    { successMessage: "Area created" },
+  );
   const [showCreateArea, setShowCreateArea] = useState(false);
 
   return (

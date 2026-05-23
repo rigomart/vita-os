@@ -1,10 +1,8 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
-
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ThreadFormDialog } from "./thread-form-dialog";
+import { AreaFormDialog } from "./area-form-dialog";
 
 const toastMocks = vi.hoisted(() => ({
   success: vi.fn(),
@@ -15,18 +13,13 @@ vi.mock("@vita-os/ui/lib/toast", () => ({
   toast: toastMocks,
 }));
 
-const areas = [
-  {
-    _id: "area1" as Id<"areas">,
-    _creationTime: 0,
-    userId: "user1",
-    name: "Health",
-    slug: "health",
-    condition: "healthy",
-    order: 0,
-    createdAt: 0,
-  },
-] satisfies Doc<"areas">[];
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 beforeAll(() => {
   window.matchMedia =
@@ -43,66 +36,39 @@ beforeAll(() => {
     }));
 });
 
-function deferred() {
-  let resolve!: () => void;
-  const promise = new Promise<void>((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-  return { promise, resolve };
-}
-
-describe("ThreadFormDialog", () => {
+describe("AreaFormDialog", () => {
   beforeEach(() => {
     toastMocks.success.mockClear();
     toastMocks.error.mockClear();
   });
 
-  it("uses Thread language and optional Summary on create", () => {
-    render(
-      <ThreadFormDialog
-        mode="create"
-        open
-        onOpenChange={vi.fn()}
-        areas={areas}
-        defaultAreaId={areas[0]._id}
-        onSubmit={vi.fn()}
-      />,
-    );
-
-    expect(
-      screen.getByRole("heading", { name: "New thread" }),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Summary/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Create thread" }),
-    ).toBeInTheDocument();
-  });
-
-  it("prevents duplicate thread creates while saving", async () => {
+  it("prevents duplicate area creates while saving", async () => {
     const user = userEvent.setup();
     const pendingCreate = deferred();
     const onSubmit = vi.fn(() => pendingCreate.promise);
+    const onOpenChange = vi.fn();
 
     render(
-      <ThreadFormDialog
+      <AreaFormDialog
         mode="create"
         open
-        onOpenChange={vi.fn()}
-        areas={areas}
-        defaultAreaId={areas[0]._id}
+        onOpenChange={onOpenChange}
         onSubmit={onSubmit}
       />,
     );
 
-    await user.type(screen.getByLabelText("Title"), "Renew passport");
+    await user.type(screen.getByLabelText("Name"), "Health");
 
-    const createButton = screen.getByRole("button", { name: "Create thread" });
+    const createButton = screen.getByRole("button", { name: "Create area" });
     await user.click(createButton);
     await user.click(createButton);
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(createButton).toBeDisabled();
     expect(createButton).toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.queryByRole("button", { name: "Close" }),
+    ).not.toBeInTheDocument();
 
     pendingCreate.resolve();
 
@@ -111,101 +77,92 @@ describe("ThreadFormDialog", () => {
     );
   });
 
-  it("prevents duplicate thread creates from repeated Enter submits while saving", async () => {
+  it("prevents duplicate area creates from repeated Enter submits while saving", async () => {
     const user = userEvent.setup();
     const pendingCreate = deferred();
     const onSubmit = vi.fn(() => pendingCreate.promise);
 
     render(
-      <ThreadFormDialog
+      <AreaFormDialog
         mode="create"
         open
         onOpenChange={vi.fn()}
-        areas={areas}
-        defaultAreaId={areas[0]._id}
         onSubmit={onSubmit}
       />,
     );
 
-    await user.type(screen.getByLabelText("Title"), "Renew passport");
+    await user.type(screen.getByLabelText("Name"), "Health");
     await user.keyboard("{Enter}");
     await user.keyboard("{Enter}");
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByRole("button", { name: "Create thread" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create area" })).toBeDisabled();
 
     pendingCreate.resolve();
 
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Create thread" }),
+        screen.getByRole("button", { name: "Create area" }),
       ).toHaveAttribute("aria-busy", "false"),
     );
   });
 
-  it("shows a clear inline error when thread creation fails", async () => {
+  it("shows a clear inline error when area creation fails", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(() =>
       Promise.reject(new Error("Database unavailable")),
     );
 
     render(
-      <ThreadFormDialog
+      <AreaFormDialog
         mode="create"
         open
         onOpenChange={vi.fn()}
-        areas={areas}
-        defaultAreaId={areas[0]._id}
         onSubmit={onSubmit}
       />,
     );
 
-    await user.type(screen.getByLabelText("Title"), "Renew passport");
-    await user.click(screen.getByRole("button", { name: "Create thread" }));
+    await user.type(screen.getByLabelText("Name"), "Health");
+    await user.click(screen.getByRole("button", { name: "Create area" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Thread was not saved. Database unavailable",
+      "Area was not saved. Database unavailable",
     );
     expect(toastMocks.error).not.toHaveBeenCalled();
   });
 
-  it("shows a structural success toast when thread creation succeeds", async () => {
+  it("shows a structural success toast when area creation succeeds", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
 
     render(
-      <ThreadFormDialog
+      <AreaFormDialog
         mode="create"
         open
         onOpenChange={vi.fn()}
-        areas={areas}
-        defaultAreaId={areas[0]._id}
         onSubmit={onSubmit}
       />,
     );
 
-    await user.type(screen.getByLabelText("Title"), "Renew passport");
-    await user.click(screen.getByRole("button", { name: "Create thread" }));
+    await user.type(screen.getByLabelText("Name"), "Health");
+    await user.click(screen.getByRole("button", { name: "Create area" }));
 
     await waitFor(() =>
-      expect(toastMocks.success).toHaveBeenCalledWith("Thread created"),
+      expect(toastMocks.success).toHaveBeenCalledWith("Area created"),
     );
   });
 
-  it("prevents duplicate thread edits while saving without a success toast", async () => {
+  it("prevents duplicate area edits while saving without a success toast", async () => {
     const user = userEvent.setup();
     const pendingSave = deferred();
     const onSubmit = vi.fn(() => pendingSave.promise);
 
     render(
-      <ThreadFormDialog
+      <AreaFormDialog
         mode="edit"
         open
         onOpenChange={vi.fn()}
-        areas={areas}
-        initialValue={{ title: "Renew passport", areaId: areas[0]._id }}
+        initialValue={{ name: "Health", condition: "healthy" }}
         onSubmit={onSubmit}
       />,
     );
@@ -225,17 +182,16 @@ describe("ThreadFormDialog", () => {
     );
   });
 
-  it("shows a clear inline error when thread editing fails", async () => {
+  it("shows a clear inline error when area editing fails", async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn(() => Promise.reject(new Error("Thread not found")));
+    const onSubmit = vi.fn(() => Promise.reject(new Error("Area not found")));
 
     render(
-      <ThreadFormDialog
+      <AreaFormDialog
         mode="edit"
         open
         onOpenChange={vi.fn()}
-        areas={areas}
-        initialValue={{ title: "Renew passport", areaId: areas[0]._id }}
+        initialValue={{ name: "Health", condition: "healthy" }}
         onSubmit={onSubmit}
       />,
     );
@@ -243,7 +199,7 @@ describe("ThreadFormDialog", () => {
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Thread was not saved. Thread not found",
+      "Area was not saved. Area not found",
     );
     expect(toastMocks.error).not.toHaveBeenCalled();
   });

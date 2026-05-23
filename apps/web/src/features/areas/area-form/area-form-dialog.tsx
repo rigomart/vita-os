@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@vita-os/ui/components/select";
 import { Textarea } from "@vita-os/ui/components/textarea";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useEffect, useState } from "react";
 
 import { StarterAreasSuggestions } from "@/features/areas/components/starter-areas-suggestions";
@@ -35,6 +36,14 @@ interface AreaFormDialogProps {
   onOpenChange: (open: boolean) => void;
   initialValue?: AreaFormValue;
   onSubmit: (value: AreaFormValue) => Promise<void> | void;
+}
+
+function getAreaSaveError(error: unknown) {
+  const detail =
+    error instanceof Error && error.message
+      ? error.message
+      : "Please try again.";
+  return `Area was not saved. ${detail}`;
 }
 
 export function AreaFormDialog({
@@ -57,16 +66,32 @@ export function AreaFormDialog({
     setCondition(initialValue?.condition ?? DEFAULT_CONDITION);
   }, [open, initialValue]);
 
+  const {
+    run: submitArea,
+    isPending,
+    error,
+  } = useGuardedAsyncAction(onSubmit, {
+    successMessage: mode === "create" ? "Area created" : undefined,
+    errorToast: false,
+    getErrorMessage: getAreaSaveError,
+  });
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (isPending && !nextOpen) return;
+    onOpenChange(nextOpen);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
-    if (!trimmedName) return;
+    if (!trimmedName || isPending) return;
 
-    await onSubmit({
+    const result = await submitArea({
       name: trimmedName,
       standard: standard.trim() || undefined,
       condition: condition,
     });
+    if (!result.ok) return;
 
     if (mode === "create") {
       setName("");
@@ -76,8 +101,8 @@ export function AreaFormDialog({
   };
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
-      <ResponsiveDialogContent>
+    <ResponsiveDialog open={open} onOpenChange={handleOpenChange}>
+      <ResponsiveDialogContent showCloseButton={!isPending}>
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>
             {mode === "edit" ? "Edit area" : "New area"}
@@ -102,6 +127,7 @@ export function AreaFormDialog({
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Health, Career, Finances"
               autoFocus
+              disabled={isPending}
             />
           </div>
           <div className="space-y-2">
@@ -117,6 +143,7 @@ export function AreaFormDialog({
               onChange={(e) => setStandard(e.target.value)}
               placeholder="What does 'good enough' look like for this area?"
               rows={3}
+              disabled={isPending}
             />
             <p className="text-xs text-muted-foreground">
               The maintenance threshold, not an aspirational goal.
@@ -126,6 +153,7 @@ export function AreaFormDialog({
             <Label htmlFor="area-condition">Condition</Label>
             <Select
               value={condition}
+              disabled={isPending}
               onValueChange={(value) => {
                 if (isCondition(value)) setCondition(value);
               }}
@@ -150,15 +178,25 @@ export function AreaFormDialog({
               Your manual judgment on this area — not calculated from activity.
             </p>
           </div>
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
           <ResponsiveDialogFooter>
             <Button
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
+              disabled={isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!name.trim()}>
+            <Button
+              type="submit"
+              disabled={!name.trim() || isPending}
+              aria-busy={isPending}
+            >
               {mode === "edit" ? "Save changes" : "Create area"}
             </Button>
           </ResponsiveDialogFooter>
