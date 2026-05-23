@@ -1,14 +1,9 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 
-import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import {
-  createFeedbackMock,
-  type FeedbackMock,
-  renderWithProviders,
-} from "@/test/render-with-providers";
+import { render, screen, waitFor } from "@/test/render-with-providers";
 
 import { ThreadFormDialog } from "./thread-form-dialog";
 
@@ -25,21 +20,6 @@ const areas = [
   },
 ] satisfies Doc<"areas">[];
 
-beforeAll(() => {
-  window.matchMedia =
-    window.matchMedia ??
-    vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
-});
-
 function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((resolvePromise) => {
@@ -49,18 +29,8 @@ function deferred() {
 }
 
 describe("ThreadFormDialog", () => {
-  let feedback: FeedbackMock;
-
-  beforeEach(() => {
-    feedback = createFeedbackMock();
-  });
-
-  function renderWithFeedback(ui: Parameters<typeof renderWithProviders>[0]) {
-    return renderWithProviders(ui, { feedback });
-  }
-
   it("uses Thread language and optional Summary on create", () => {
-    renderWithFeedback(
+    render(
       <ThreadFormDialog
         mode="create"
         open
@@ -85,7 +55,7 @@ describe("ThreadFormDialog", () => {
     const pendingCreate = deferred();
     const onSubmit = vi.fn(() => pendingCreate.promise);
 
-    renderWithFeedback(
+    render(
       <ThreadFormDialog
         mode="create"
         open
@@ -118,7 +88,7 @@ describe("ThreadFormDialog", () => {
     const pendingCreate = deferred();
     const onSubmit = vi.fn(() => pendingCreate.promise);
 
-    renderWithFeedback(
+    render(
       <ThreadFormDialog
         mode="create"
         open
@@ -153,7 +123,7 @@ describe("ThreadFormDialog", () => {
       Promise.reject(new Error("Database unavailable")),
     );
 
-    renderWithFeedback(
+    const { feedback } = render(
       <ThreadFormDialog
         mode="create"
         open
@@ -177,7 +147,7 @@ describe("ThreadFormDialog", () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
 
-    renderWithFeedback(
+    const { feedback } = render(
       <ThreadFormDialog
         mode="create"
         open
@@ -201,7 +171,7 @@ describe("ThreadFormDialog", () => {
     const pendingSave = deferred();
     const onSubmit = vi.fn(() => pendingSave.promise);
 
-    renderWithFeedback(
+    const { feedback } = render(
       <ThreadFormDialog
         mode="edit"
         open
@@ -231,7 +201,7 @@ describe("ThreadFormDialog", () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(() => Promise.reject(new Error("Thread not found")));
 
-    renderWithFeedback(
+    const { feedback } = render(
       <ThreadFormDialog
         mode="edit"
         open

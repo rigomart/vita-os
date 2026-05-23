@@ -1,8 +1,8 @@
 import type { ReactElement, ReactNode } from "react";
 
 import {
-  render,
-  renderHook,
+  render as rtlRender,
+  renderHook as rtlRenderHook,
   type RenderHookOptions,
   type RenderOptions,
 } from "@testing-library/react";
@@ -37,28 +37,33 @@ function createWrapper(feedback: Feedback) {
   };
 }
 
-export function renderWithProviders(
+function customRender(
   ui: ReactElement,
   {
     feedback = createFeedbackMock(),
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  return render(ui, {
+  const result = rtlRender(ui, {
     ...options,
     wrapper: createWrapper(feedback),
   });
+  return { ...result, feedback };
 }
 
-export function renderHookWithProviders<TResult, TProps>(
+function customRenderHook<TResult, TProps>(
   hook: (initialProps: TProps) => TResult,
   {
     feedback = createFeedbackMock(),
     ...options
   }: RenderHookWithProvidersOptions<TProps> = {},
 ) {
-  return renderHook(hook, {
+  const result = rtlRenderHook(hook, {
     ...options,
     wrapper: createWrapper(feedback),
   });
+  return { ...result, feedback };
 }
+
+export * from "@testing-library/react";
+export { customRender as render, customRenderHook as renderHook };

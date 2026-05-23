@@ -1,12 +1,7 @@
-import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import {
-  createFeedbackMock,
-  type FeedbackMock,
-  renderWithProviders,
-} from "@/test/render-with-providers";
+import { render, screen, waitFor } from "@/test/render-with-providers";
 
 import { NewTaskDialog } from "./new-task-dialog";
 
@@ -20,39 +15,14 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-beforeAll(() => {
-  window.matchMedia =
-    window.matchMedia ??
-    vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
-});
-
 describe("NewTaskDialog", () => {
-  let feedback: FeedbackMock;
-
-  beforeEach(() => {
-    feedback = createFeedbackMock();
-  });
-
-  function renderWithFeedback(ui: Parameters<typeof renderWithProviders>[0]) {
-    return renderWithProviders(ui, { feedback });
-  }
-
   it("prevents duplicate task creates while saving", async () => {
     const user = userEvent.setup();
     const pendingCreate = deferred();
     const onSubmit = vi.fn(() => pendingCreate.promise);
     const onOpenChange = vi.fn();
 
-    renderWithFeedback(
+    render(
       <NewTaskDialog open onOpenChange={onOpenChange} onSubmit={onSubmit} />,
     );
 
@@ -83,7 +53,7 @@ describe("NewTaskDialog", () => {
       Promise.reject(new Error("Could not save task")),
     );
 
-    renderWithFeedback(
+    const { feedback } = render(
       <NewTaskDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />,
     );
 
@@ -103,7 +73,7 @@ describe("NewTaskDialog", () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
 
-    renderWithFeedback(
+    const { feedback } = render(
       <NewTaskDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />,
     );
 

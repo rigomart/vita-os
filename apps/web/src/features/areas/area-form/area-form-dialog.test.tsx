@@ -1,12 +1,7 @@
-import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import {
-  createFeedbackMock,
-  type FeedbackMock,
-  renderWithProviders,
-} from "@/test/render-with-providers";
+import { render, screen, waitFor } from "@/test/render-with-providers";
 
 import { AreaFormDialog } from "./area-form-dialog";
 
@@ -18,39 +13,14 @@ function deferred() {
   return { promise, resolve };
 }
 
-beforeAll(() => {
-  window.matchMedia =
-    window.matchMedia ??
-    vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
-});
-
 describe("AreaFormDialog", () => {
-  let feedback: FeedbackMock;
-
-  beforeEach(() => {
-    feedback = createFeedbackMock();
-  });
-
-  function renderWithFeedback(ui: Parameters<typeof renderWithProviders>[0]) {
-    return renderWithProviders(ui, { feedback });
-  }
-
   it("prevents duplicate area creates while saving", async () => {
     const user = userEvent.setup();
     const pendingCreate = deferred();
     const onSubmit = vi.fn(() => pendingCreate.promise);
     const onOpenChange = vi.fn();
 
-    renderWithFeedback(
+    render(
       <AreaFormDialog
         mode="create"
         open
@@ -84,7 +54,7 @@ describe("AreaFormDialog", () => {
     const pendingCreate = deferred();
     const onSubmit = vi.fn(() => pendingCreate.promise);
 
-    renderWithFeedback(
+    render(
       <AreaFormDialog
         mode="create"
         open
@@ -115,7 +85,7 @@ describe("AreaFormDialog", () => {
       Promise.reject(new Error("Database unavailable")),
     );
 
-    renderWithFeedback(
+    const { feedback } = render(
       <AreaFormDialog
         mode="create"
         open
@@ -137,7 +107,7 @@ describe("AreaFormDialog", () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
 
-    renderWithFeedback(
+    const { feedback } = render(
       <AreaFormDialog
         mode="create"
         open
@@ -159,7 +129,7 @@ describe("AreaFormDialog", () => {
     const pendingSave = deferred();
     const onSubmit = vi.fn(() => pendingSave.promise);
 
-    renderWithFeedback(
+    const { feedback } = render(
       <AreaFormDialog
         mode="edit"
         open
@@ -188,7 +158,7 @@ describe("AreaFormDialog", () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(() => Promise.reject(new Error("Area not found")));
 
-    renderWithFeedback(
+    const { feedback } = render(
       <AreaFormDialog
         mode="edit"
         open
