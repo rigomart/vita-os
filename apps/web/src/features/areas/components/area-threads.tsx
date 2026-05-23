@@ -15,9 +15,12 @@ import {
 import { Button } from "@vita-os/ui/components/button";
 import { ArrowRight, FolderOpen, Plus, Trash2 } from "lucide-react";
 
+import { AreaThreadsSkeleton } from "./area-threads-skeleton";
+
 interface AreaThreadsProps {
   areaSlug: string;
   threads: Doc<"threads">[];
+  isLoading?: boolean;
   onCreateThread: () => void;
   onRemoveThread: (threadId: Id<"threads">) => void;
 }
@@ -25,6 +28,7 @@ interface AreaThreadsProps {
 export function AreaThreads({
   areaSlug,
   threads,
+  isLoading = false,
   onCreateThread,
   onRemoveThread,
 }: AreaThreadsProps) {
@@ -48,7 +52,9 @@ export function AreaThreads({
         </Button>
       </div>
 
-      {threads.length === 0 ? (
+      {isLoading ? (
+        <AreaThreadsSkeleton />
+      ) : threads.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/50 py-10 text-center">
           <FolderOpen className="mb-3 h-8 w-8 text-muted-foreground/60" />
           <p className="mb-4 max-w-xs text-sm text-muted-foreground">

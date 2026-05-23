@@ -108,7 +108,11 @@ export function ThreadSearchAutocomplete({
         showClear={!!value || inputValue.length > 0}
       />
       <ComboboxContent>
-        <ComboboxEmpty>No threads yet</ComboboxEmpty>
+        {isLoading ? (
+          <p className="px-2 py-3 text-sm text-muted-foreground">Loading…</p>
+        ) : (
+          <ComboboxEmpty>No threads yet</ComboboxEmpty>
+        )}
         <ComboboxList>
           {(choice: ThreadChoice) =>
             choice.kind === "create" ? (

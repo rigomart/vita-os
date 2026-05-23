@@ -77,20 +77,34 @@ beforeAll(() => {
     }));
 });
 
-function renderDialog(onProcess = vi.fn()) {
+function renderDialog(
+  onProcess = vi.fn(),
+  options: { isLoading?: boolean; threads?: Doc<"threads">[] } = {},
+) {
   return render(
     <ProcessTaskDialog
       open
       onOpenChange={vi.fn()}
       task={task}
       areas={[healthArea, adminArea]}
-      threads={threads}
+      threads={options.threads ?? threads}
+      isLoading={options.isLoading}
       onProcess={onProcess}
     />,
   );
 }
 
 describe("ProcessTaskDialog", () => {
+  it("shows loading state instead of empty search results while destination data loads", async () => {
+    const user = userEvent.setup();
+    renderDialog(vi.fn(), { isLoading: true, threads: [] });
+
+    await user.click(screen.getByRole("combobox"));
+
+    expect(screen.getByText("Loading…")).toBeVisible();
+    expect(screen.queryByText("No threads yet")).not.toBeInTheDocument();
+  });
+
   it("shows the Task as context and filters Threads by search term", async () => {
     const user = userEvent.setup();
     renderDialog();

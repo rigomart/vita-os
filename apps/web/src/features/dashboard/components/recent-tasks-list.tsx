@@ -11,17 +11,25 @@ import { ArrowRight, Inbox } from "lucide-react";
 
 import { isTaskWhenDue } from "@/features/tasks/inbox";
 
+import { RecentTasksSkeleton } from "./recent-tasks-skeleton";
+
 const MAX_VISIBLE = 5;
 
 interface RecentTasksListProps {
   tasks: Doc<"tasks">[];
+  isLoading?: boolean;
   referenceDate?: number;
 }
 
 export function RecentTasksList({
   tasks,
+  isLoading = false,
   referenceDate = Date.now(),
 }: RecentTasksListProps) {
+  if (isLoading) {
+    return <RecentTasksSkeleton />;
+  }
+
   const activeTasks = tasks.filter((task) => task.state === "open");
   const dueTasks = activeTasks.filter((task) =>
     isTaskWhenDue(task.when, referenceDate),
