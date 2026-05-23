@@ -2,7 +2,7 @@ import type { Doc, Id } from "@convex/_generated/dataModel";
 
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ProcessTaskDialog } from "./process-task-dialog";
 
@@ -61,21 +61,6 @@ const threads = [
     createdAt: 0,
   },
 ] satisfies Doc<"threads">[];
-
-beforeAll(() => {
-  window.matchMedia =
-    window.matchMedia ??
-    vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
-});
 
 function renderDialog(
   onProcess = vi.fn(),
