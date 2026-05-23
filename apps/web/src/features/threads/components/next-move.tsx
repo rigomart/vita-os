@@ -9,6 +9,11 @@ interface NextMoveProps {
   onSet: (text: string) => void;
   onClear: () => void;
   onComplete: () => void;
+  pending?: {
+    set?: boolean;
+    clear?: boolean;
+    complete?: boolean;
+  };
 }
 
 export function NextMove({
@@ -16,6 +21,7 @@ export function NextMove({
   onSet,
   onClear,
   onComplete,
+  pending,
 }: NextMoveProps) {
   const [addText, setAddText] = useState("");
 
@@ -39,6 +45,7 @@ export function NextMove({
           onSet={onSet}
           onClear={onClear}
           onComplete={onComplete}
+          pending={pending}
         />
       ) : (
         <div className="flex gap-2">
@@ -46,6 +53,7 @@ export function NextMove({
             type="text"
             value={addText}
             onChange={(e) => setAddText(e.target.value)}
+            disabled={pending?.set}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -66,11 +74,17 @@ function NextMoveTask({
   onSet,
   onClear,
   onComplete,
+  pending,
 }: {
   text: string;
   onSet: (text: string) => void;
   onClear: () => void;
   onComplete: () => void;
+  pending?: {
+    set?: boolean;
+    clear?: boolean;
+    complete?: boolean;
+  };
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(text);
@@ -87,6 +101,7 @@ function NextMoveTask({
   }, [editing]);
 
   const commit = () => {
+    if (pending?.set) return;
     setEditing(false);
     const trimmed = draft.trim();
     if (trimmed && trimmed !== text) {
@@ -102,6 +117,8 @@ function NextMoveTask({
         variant="ghost"
         size="icon-xs"
         onClick={onComplete}
+        disabled={pending?.complete}
+        aria-busy={pending?.complete}
         className="rounded-full border border-green-500/40 text-green-600 hover:bg-green-500/10 hover:text-green-600"
         aria-label="Complete next move"
       >
@@ -114,6 +131,7 @@ function NextMoveTask({
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          disabled={pending?.set}
           onBlur={commit}
           onKeyDown={(e) => {
             if (e.key === "Enter") commit();
@@ -128,6 +146,7 @@ function NextMoveTask({
         <button
           type="button"
           onClick={() => setEditing(true)}
+          disabled={pending?.set}
           className={cn(
             "min-w-0 flex-1 cursor-text truncate rounded px-1 py-0.5 text-left text-sm font-medium transition-colors hover:bg-muted/50",
           )}
@@ -140,6 +159,8 @@ function NextMoveTask({
         variant="ghost"
         size="icon-xs"
         onClick={onClear}
+        disabled={pending?.clear}
+        aria-busy={pending?.clear}
         className="text-muted-foreground/40 opacity-0 hover:text-destructive group-hover:opacity-100"
         aria-label="Clear next move"
       >

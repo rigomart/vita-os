@@ -12,6 +12,7 @@ interface DatePickerProps {
   onChange: (date: Date | undefined) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export function DatePicker({
@@ -19,17 +20,19 @@ export function DatePicker({
   onChange,
   placeholder = "Pick a date",
   className,
+  disabled = false,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={disabled ? undefined : setOpen}>
       <div className={cn("flex items-center gap-1", className)}>
         <PopoverTrigger
           render={
             <Button
               variant="ghost"
               size="sm"
+              disabled={disabled}
               className={cn(
                 "h-7 justify-start gap-1.5 px-2 text-xs font-normal",
                 !value && "text-muted-foreground",
@@ -45,6 +48,7 @@ export function DatePicker({
             variant="ghost"
             size="icon"
             className="h-5 w-5"
+            disabled={disabled}
             onClick={() => onChange(undefined)}
             aria-label="Clear date"
           >

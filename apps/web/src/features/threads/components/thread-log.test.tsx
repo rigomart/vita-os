@@ -1,12 +1,21 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+
+import { render, screen, waitFor } from "@/test/render-with-providers";
 
 import { ActivityLog } from "./thread-log";
 
 const now = new Date("2026-05-19T12:00:00Z").getTime();
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 const note = {
   _id: "log1" as Id<"activityLogs">,
@@ -98,5 +107,28 @@ describe("ActivityLog", () => {
 
     expect(onAddNote).toHaveBeenCalledWith("Line one\nLine two");
     expect(noteInput).toHaveValue("");
+  });
+
+  it("prevents duplicate notes while submission is pending", async () => {
+    const user = userEvent.setup();
+    const pendingAdd = deferred();
+    const onAddNote = vi.fn(() => pendingAdd.promise);
+
+    render(<ActivityLog logs={[]} onAddNote={onAddNote} />);
+
+    const noteInput = screen.getByRole("textbox", {
+      name: "Activity log note",
+    });
+    await user.type(noteInput, "Called the clinic");
+    await user.keyboard("{Enter}{Enter}");
+
+    expect(onAddNote).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+    expect(noteInput).toBeDisabled();
+    expect(noteInput).toHaveValue("Called the clinic");
+
+    pendingAdd.resolve();
+
+    await waitFor(() => expect(noteInput).toHaveValue(""));
   });
 });

@@ -3,6 +3,7 @@ import type { Doc } from "@convex/_generated/dataModel";
 import { Button } from "@vita-os/ui/components/button";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { Textarea } from "@vita-os/ui/components/textarea";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { formatDistanceToNow } from "date-fns";
 import { MessageSquare, Pen } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useState } from "react";
@@ -16,13 +17,18 @@ interface ActivityLogProps {
 
 export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
   const [noteText, setNoteText] = useState("");
+  const { run: addNote, isPending } = useGuardedAsyncAction(onAddNote, {
+    errorToast: true,
+  });
 
   const submitNote = async () => {
     const text = noteText.trim();
-    if (!text) return;
+    if (!text || isPending) return;
 
-    setNoteText("");
-    await onAddNote(text);
+    const result = await addNote(text);
+    if (result.ok) {
+      setNoteText("");
+    }
   };
 
   const handleAddNote = (event: FormEvent) => {
@@ -53,6 +59,7 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
         <Textarea
           value={noteText}
           onChange={(event) => setNoteText(event.target.value)}
+          disabled={isPending}
           aria-label="Activity log note"
           placeholder="Add to activity log..."
           className="min-h-9 bg-surface-2"
@@ -62,7 +69,8 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
         <Button
           type="submit"
           size="sm"
-          disabled={!noteText.trim()}
+          disabled={!noteText.trim() || isPending}
+          aria-busy={isPending}
           className="shrink-0"
         >
           Add
