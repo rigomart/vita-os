@@ -1,24 +1,26 @@
 import { useNavigate } from "@tanstack/react-router";
+import { useCallback } from "react";
 
+import { getAuthErrorMessage } from "@/features/auth/auth-result";
 import { authClient } from "@/lib/auth-client";
 
 export function useSignIn() {
   const navigate = useNavigate();
 
-  return (input: {
-    email: string;
-    password: string;
-    onError: (message: string) => void;
-  }) =>
-    authClient.signIn.email(
-      { email: input.email, password: input.password },
-      {
-        onSuccess: () => {
-          navigate({ to: "/" });
-        },
-        onError: (ctx) => {
-          input.onError(ctx.error.message ?? "Sign in failed");
-        },
-      },
-    );
+  return useCallback(
+    async (input: { email: string; password: string }) => {
+      const result = await authClient.signIn.email({
+        email: input.email,
+        password: input.password,
+      });
+      const errorMessage = getAuthErrorMessage(result);
+
+      if (errorMessage) {
+        throw new Error(errorMessage);
+      }
+
+      navigate({ to: "/" });
+    },
+    [navigate],
+  );
 }

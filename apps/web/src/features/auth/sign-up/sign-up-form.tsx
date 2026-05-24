@@ -8,6 +8,8 @@ import { AuthCardShell } from "@/features/auth/auth-card-shell";
 
 interface SignUpFormProps {
   error: string;
+  githubError: string;
+  githubLoading: boolean;
   loading: boolean;
   onSubmit: (value: { name: string; email: string; password: string }) => void;
   onGitHub: () => void;
@@ -15,6 +17,8 @@ interface SignUpFormProps {
 
 export function SignUpForm({
   error,
+  githubError,
+  githubLoading,
   loading,
   onSubmit,
   onGitHub,
@@ -32,6 +36,8 @@ export function SignUpForm({
     <AuthCardShell
       title="Sign Up"
       description="Create a new account to get started"
+      githubError={githubError}
+      githubLoading={githubLoading}
       onGitHub={onGitHub}
       footer={
         <p className="text-sm text-muted-foreground">
@@ -76,8 +82,17 @@ export function SignUpForm({
             required
           />
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" className="w-full" disabled={loading}>
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={loading}
+          aria-busy={loading}
+        >
           {loading ? "Creating account..." : "Sign Up"}
         </Button>
       </form>
