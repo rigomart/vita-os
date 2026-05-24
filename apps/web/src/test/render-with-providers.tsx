@@ -1,5 +1,9 @@
-import type { ReactElement, ReactNode } from "react";
-
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterContextProvider,
+} from "@tanstack/react-router";
 import {
   render as rtlRender,
   renderHook as rtlRenderHook,
@@ -7,6 +11,7 @@ import {
   type RenderOptions,
 } from "@testing-library/react";
 import { FeedbackProvider, type Feedback } from "@vita-os/ui/lib/feedback";
+import { useMemo, type ReactElement, type ReactNode } from "react";
 import { vi } from "vitest";
 
 export type FeedbackMock = Feedback;
@@ -33,7 +38,21 @@ export function createFeedbackMock(): FeedbackMock {
 
 function createWrapper(feedback: Feedback) {
   return function Providers({ children }: { children: ReactNode }) {
-    return <FeedbackProvider feedback={feedback}>{children}</FeedbackProvider>;
+    const router = useMemo(() => {
+      const rootRoute = createRootRoute();
+      return createRouter({
+        routeTree: rootRoute,
+        history: createMemoryHistory({ initialEntries: ["/"] }),
+      });
+    }, []);
+
+    return (
+      <FeedbackProvider feedback={feedback}>
+        <RouterContextProvider router={router}>
+          {children}
+        </RouterContextProvider>
+      </FeedbackProvider>
+    );
   };
 }
 

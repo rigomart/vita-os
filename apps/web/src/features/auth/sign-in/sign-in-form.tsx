@@ -8,6 +8,8 @@ import { AuthCardShell } from "@/features/auth/auth-card-shell";
 
 interface SignInFormProps {
   error: string;
+  githubError: string;
+  githubLoading: boolean;
   loading: boolean;
   onSubmit: (value: { email: string; password: string }) => void;
   onGitHub: () => void;
@@ -15,6 +17,8 @@ interface SignInFormProps {
 
 export function SignInForm({
   error,
+  githubError,
+  githubLoading,
   loading,
   onSubmit,
   onGitHub,
@@ -31,6 +35,8 @@ export function SignInForm({
     <AuthCardShell
       title="Sign In"
       description="Sign in to your account to continue"
+      githubError={githubError}
+      githubLoading={githubLoading}
       onGitHub={onGitHub}
       footer={
         <p className="text-sm text-muted-foreground">
@@ -63,8 +69,17 @@ export function SignInForm({
             required
           />
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" className="w-full" disabled={loading}>
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={loading}
+          aria-busy={loading}
+        >
           {loading ? "Signing in..." : "Sign In"}
         </Button>
       </form>
