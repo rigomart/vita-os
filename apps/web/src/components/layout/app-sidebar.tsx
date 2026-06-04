@@ -1,11 +1,5 @@
 import { api } from "@convex/_generated/api";
-import { conditionColors } from "@convex/lib/condition";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@vita-os/ui/components/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,11 +23,9 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarRail,
 } from "@vita-os/ui/components/sidebar";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
-  ChevronRight,
   ChevronsUpDown,
   CirclePlus,
   Inbox,
@@ -138,75 +130,49 @@ export function AppSidebar() {
               {areas?.map((area) => {
                 const areaSlug = area.slug ?? area._id;
                 const areaThreadList = areaThreads.get(area._id) ?? [];
-                const hasThreads = areaThreadList.length > 0;
                 return (
-                  <Collapsible
-                    key={area._id}
-                    defaultOpen
-                    className="group/collapsible"
-                  >
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        tooltip={area.name}
-                        isActive={pathname === `/${areaSlug}`}
-                        render={<Link to="/$areaSlug" params={{ areaSlug }} />}
-                      >
-                        <span
-                          className={`h-2 w-2 shrink-0 rounded-full ${conditionColors[area.condition]}`}
-                        />
-                        <span>{area.name}</span>
-                      </SidebarMenuButton>
-                      <SidebarMenuAction
-                        showOnHover
-                        className="right-6"
-                        onClick={() => openCreateThread(area._id)}
-                      >
-                        <Plus />
-                        <span className="sr-only">New thread</span>
-                      </SidebarMenuAction>
-                      {hasThreads && (
-                        <CollapsibleTrigger
-                          render={
-                            <SidebarMenuAction className="data-[state=open]:rotate-90" />
-                          }
-                        >
-                          <ChevronRight />
-                          <span className="sr-only">Toggle</span>
-                        </CollapsibleTrigger>
-                      )}
-                      {hasThreads && (
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {areaThreadList.map((thread) => {
-                              const slug = thread.slug ?? thread._id;
-                              return (
-                                <SidebarMenuSubItem key={thread._id}>
-                                  <SidebarMenuSubButton
-                                    isActive={
-                                      pathname === `/${areaSlug}/${slug}`
-                                    }
-                                    render={
-                                      <Link
-                                        to="/$areaSlug/$threadSlug"
-                                        params={{
-                                          areaSlug,
-                                          threadSlug: slug,
-                                        }}
-                                      />
-                                    }
-                                  >
-                                    <span className="truncate">
-                                      {thread.title}
-                                    </span>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                              );
-                            })}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      )}
-                    </SidebarMenuItem>
-                  </Collapsible>
+                  <SidebarMenuItem key={area._id}>
+                    <SidebarMenuButton
+                      tooltip={area.name}
+                      isActive={pathname === `/${areaSlug}`}
+                      render={<Link to="/$areaSlug" params={{ areaSlug }} />}
+                    >
+                      <span>{area.name}</span>
+                    </SidebarMenuButton>
+                    <SidebarMenuAction
+                      showOnHover
+                      className="right-6"
+                      onClick={() => openCreateThread(area._id)}
+                    >
+                      <Plus />
+                      <span className="sr-only">New thread</span>
+                    </SidebarMenuAction>
+                    {areaThreadList.length > 0 && (
+                      <SidebarMenuSub>
+                        {areaThreadList.map((thread) => {
+                          const slug = thread.slug ?? thread._id;
+                          return (
+                            <SidebarMenuSubItem key={thread._id}>
+                              <SidebarMenuSubButton
+                                isActive={pathname === `/${areaSlug}/${slug}`}
+                                render={
+                                  <Link
+                                    to="/$areaSlug/$threadSlug"
+                                    params={{
+                                      areaSlug,
+                                      threadSlug: slug,
+                                    }}
+                                  />
+                                }
+                              >
+                                <span className="truncate">{thread.title}</span>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          );
+                        })}
+                      </SidebarMenuSub>
+                    )}
+                  </SidebarMenuItem>
                 );
               })}
               <SidebarMenuItem>
@@ -283,8 +249,6 @@ export function AppSidebar() {
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
-
-        <SidebarRail />
       </Sidebar>
 
       <CreateThreadDialog
