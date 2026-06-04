@@ -8,6 +8,7 @@ interface EditableFieldProps {
   variant?: "input" | "textarea";
   placeholder?: string;
   className?: string;
+  startEditing?: boolean;
 }
 
 export function EditableField({
@@ -16,8 +17,9 @@ export function EditableField({
   variant = "input",
   placeholder = "Click to edit...",
   className,
+  startEditing = false,
 }: EditableFieldProps) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState(value);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 

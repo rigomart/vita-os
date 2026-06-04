@@ -4,7 +4,6 @@ import { Button } from "@vita-os/ui/components/button";
 import { Compass, Plus } from "lucide-react";
 
 import { AreaCard } from "@/features/areas/components/area-card";
-import { StarterAreasSuggestions } from "@/features/areas/components/starter-areas-suggestions";
 
 export interface DashboardArea {
   area: Doc<"areas">;
@@ -15,14 +14,9 @@ export interface DashboardArea {
 interface DashboardAreasProps {
   areas: DashboardArea[];
   onCreateArea: () => void;
-  onCreateStarterArea: (name: string) => Promise<unknown> | unknown;
 }
 
-export function DashboardAreas({
-  areas,
-  onCreateArea,
-  onCreateStarterArea,
-}: DashboardAreasProps) {
+export function DashboardAreas({ areas, onCreateArea }: DashboardAreasProps) {
   return (
     <section>
       <div className="mb-4 flex items-center justify-between">
@@ -58,14 +52,8 @@ export function DashboardAreas({
             Map your life domains as Areas, then set each Area&apos;s Condition
             when you are ready to judge how it is doing.
           </p>
-          <StarterAreasSuggestions onSelect={onCreateStarterArea} />
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-6"
-            onClick={onCreateArea}
-          >
-            Create custom area
+          <Button variant="outline" size="sm" onClick={onCreateArea}>
+            Create area
           </Button>
         </div>
       )}

@@ -22,11 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@vita-os/ui/components/select";
-import { Textarea } from "@vita-os/ui/components/textarea";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useEffect, useState } from "react";
-
-import { StarterAreasSuggestions } from "@/features/areas/components/starter-areas-suggestions";
 
 import type { AreaFormValue } from "./types";
 
@@ -54,7 +51,6 @@ export function AreaFormDialog({
   onSubmit,
 }: AreaFormDialogProps) {
   const [name, setName] = useState(initialValue?.name ?? "");
-  const [standard, setStandard] = useState(initialValue?.standard ?? "");
   const [condition, setCondition] = useState<Condition>(
     initialValue?.condition ?? DEFAULT_CONDITION,
   );
@@ -62,7 +58,6 @@ export function AreaFormDialog({
   useEffect(() => {
     if (!open) return;
     setName(initialValue?.name ?? "");
-    setStandard(initialValue?.standard ?? "");
     setCondition(initialValue?.condition ?? DEFAULT_CONDITION);
   }, [open, initialValue]);
 
@@ -88,14 +83,12 @@ export function AreaFormDialog({
 
     const result = await submitArea({
       name: trimmedName,
-      standard: standard.trim() || undefined,
       condition: condition,
     });
     if (!result.ok) return;
 
     if (mode === "create") {
       setName("");
-      setStandard("");
       setCondition(DEFAULT_CONDITION);
     }
   };
@@ -114,11 +107,6 @@ export function AreaFormDialog({
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
-          {mode === "create" && (
-            <StarterAreasSuggestions
-              onSelect={(suggestion) => setName(suggestion)}
-            />
-          )}
           <div className="space-y-2">
             <Label htmlFor="area-name">Name</Label>
             <Input
@@ -129,25 +117,6 @@ export function AreaFormDialog({
               autoFocus
               disabled={isPending}
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="area-standard">
-              Standard
-              <span className="ml-1 font-normal text-muted-foreground">
-                (optional)
-              </span>
-            </Label>
-            <Textarea
-              id="area-standard"
-              value={standard}
-              onChange={(e) => setStandard(e.target.value)}
-              placeholder="What does 'good enough' look like for this area?"
-              rows={3}
-              disabled={isPending}
-            />
-            <p className="text-xs text-muted-foreground">
-              The maintenance threshold, not an aspirational goal.
-            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="area-condition">Condition</Label>
@@ -174,9 +143,6 @@ export function AreaFormDialog({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Your manual judgment on this area — not calculated from activity.
-            </p>
           </div>
           {error ? (
             <p role="alert" className="text-sm text-destructive">

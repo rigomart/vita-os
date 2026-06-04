@@ -10,7 +10,6 @@ describe("DashboardOverview", () => {
         overview={undefined}
         currentDate={Date.now()}
         onCreateArea={vi.fn()}
-        onCreateStarterArea={vi.fn()}
       />,
     );
 
@@ -26,7 +25,6 @@ describe("DashboardOverview", () => {
         overview={{ areas: [], attentionThreads: [] }}
         currentDate={Date.now()}
         onCreateArea={vi.fn()}
-        onCreateStarterArea={vi.fn()}
       />,
     );
 

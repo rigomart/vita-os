@@ -5,19 +5,11 @@ export type { DashboardArea };
 interface DashboardAreasSectionProps {
   areas: DashboardArea[];
   onCreateArea: () => void;
-  onCreateStarterArea: (name: string) => Promise<unknown> | unknown;
 }
 
 export function DashboardAreasSection({
   areas,
   onCreateArea,
-  onCreateStarterArea,
 }: DashboardAreasSectionProps) {
-  return (
-    <DashboardAreas
-      areas={areas}
-      onCreateArea={onCreateArea}
-      onCreateStarterArea={onCreateStarterArea}
-    />
-  );
+  return <DashboardAreas areas={areas} onCreateArea={onCreateArea} />;
 }

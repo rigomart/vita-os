@@ -18,14 +18,12 @@ interface DashboardOverviewProps {
   overview: DashboardOverviewData | undefined;
   currentDate: number;
   onCreateArea: () => void;
-  onCreateStarterArea: (name: string) => Promise<unknown> | unknown;
 }
 
 export function DashboardOverview({
   overview,
   currentDate,
   onCreateArea,
-  onCreateStarterArea,
 }: DashboardOverviewProps) {
   if (overview === undefined) {
     return <DashboardOverviewSkeleton />;
@@ -42,7 +40,6 @@ export function DashboardOverview({
         <DashboardAreasSection
           areas={overview.areas}
           onCreateArea={onCreateArea}
-          onCreateStarterArea={onCreateStarterArea}
         />
       )}
 
