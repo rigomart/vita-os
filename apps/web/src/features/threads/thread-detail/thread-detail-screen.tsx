@@ -38,23 +38,30 @@ export function ThreadDetailScreen({
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <div className="mx-auto max-w-5xl space-y-8">
       <ThreadHeaderSection areaSlug={areaSlug} threadSlug={threadSlug} />
 
-      <ThreadAreaSectionSection areaSlug={areaSlug} threadSlug={threadSlug} />
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
+        <div className="space-y-8">
+          <ThreadAreaSectionSection
+            areaSlug={areaSlug}
+            threadSlug={threadSlug}
+          />
 
-      <NextMoveSection threadSlug={threadSlug} />
+          <NextMoveSection threadSlug={threadSlug} />
 
-      <FollowUpSection threadSlug={threadSlug} />
+          <FollowUpSection threadSlug={threadSlug} />
 
-      <ThreadDefinitionSection threadSlug={threadSlug} />
+          <ThreadDefinitionSection threadSlug={threadSlug} />
 
-      <ThreadLifecycleActionsSection
-        areaSlug={areaSlug}
-        threadSlug={threadSlug}
-      />
+          <ThreadLifecycleActionsSection
+            areaSlug={areaSlug}
+            threadSlug={threadSlug}
+          />
+        </div>
 
-      <ActivityLogSection threadSlug={threadSlug} />
+        <ActivityLogSection threadSlug={threadSlug} />
+      </div>
     </div>
   );
 }
