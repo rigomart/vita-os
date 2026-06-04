@@ -29,7 +29,7 @@ function deferred() {
 }
 
 describe("ThreadFormDialog", () => {
-  it("uses Thread language and optional Summary on create", () => {
+  it("uses Thread language on create", () => {
     render(
       <ThreadFormDialog
         mode="create"
@@ -44,7 +44,6 @@ describe("ThreadFormDialog", () => {
     expect(
       screen.getByRole("heading", { name: "New thread" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Summary/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Create thread" }),
     ).toBeInTheDocument();

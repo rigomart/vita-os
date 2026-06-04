@@ -11,7 +11,6 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@vita-os/ui/components/responsive-dialog";
-import { Textarea } from "@vita-os/ui/components/textarea";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useEffect, useState } from "react";
 
@@ -47,7 +46,6 @@ export function ThreadFormDialog({
   onSubmit,
 }: ThreadFormDialogProps) {
   const [title, setTitle] = useState(initialValue?.title ?? "");
-  const [summary, setSummary] = useState(initialValue?.summary ?? "");
   const [areaId, setAreaId] = useState<string | undefined>(
     initialValue?.areaId ?? defaultAreaId,
   );
@@ -55,7 +53,6 @@ export function ThreadFormDialog({
   useEffect(() => {
     if (!open) return;
     setTitle(initialValue?.title ?? "");
-    setSummary(initialValue?.summary ?? "");
     setAreaId(initialValue?.areaId ?? defaultAreaId);
   }, [open, initialValue, defaultAreaId]);
 
@@ -81,14 +78,12 @@ export function ThreadFormDialog({
 
     const result = await submitThread({
       title: trimmedTitle,
-      summary: summary.trim() || undefined,
       areaId: areaId as Id<"areas">,
     });
     if (!result.ok) return;
 
     if (mode === "create") {
       setTitle("");
-      setSummary("");
       setAreaId(defaultAreaId);
     }
   };
@@ -115,22 +110,6 @@ export function ThreadFormDialog({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Renew passport, File Q4 taxes"
               autoFocus
-              disabled={isPending}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="thread-summary">
-              Summary
-              <span className="ml-1 font-normal text-muted-foreground">
-                (optional)
-              </span>
-            </Label>
-            <Textarea
-              id="thread-summary"
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              placeholder="What is this thread about?"
-              rows={2}
               disabled={isPending}
             />
           </div>
