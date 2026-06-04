@@ -16,6 +16,10 @@ _Avoid_: Template, default category, fixed category.
 The user's manual judgment on an **Area**: `healthy | needs_attention | critical`.
 _Avoid_: Health status, score, rating, traffic light.
 
+**Area Icon**:
+A user-chosen visual marker that helps identify an **Area**.
+_Avoid_: Status icon, condition icon.
+
 **Thread**:
 An ongoing effort, concern, decision, or situation that belongs to exactly one **Area** and may need attention over time.
 _Avoid_: Project, goal, initiative, epic.
@@ -76,6 +80,7 @@ _Avoid_: Task list, project board, backlog.
 
 - An **Area** has zero or more **Threads**; a **Thread** belongs to exactly one **Area**.
 - The app may suggest minimal **Starter Areas**, but users can edit, delete, and reorder **Areas**.
+- An **Area** has one **Area Icon**.
 - An **Area** **Condition** affects the Area's visual prominence, but it does not change a **Thread**'s derived attention state.
 - A **Thread** has zero or one **Summary**, zero or one **Next Move**, zero or one **Follow-up**, and one **Activity Log**.
 - A **Thread** is either **Open** or **Resolved**.
