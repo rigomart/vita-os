@@ -13,7 +13,13 @@ import {
   AlertDialogTrigger,
 } from "@vita-os/ui/components/alert-dialog";
 import { Button } from "@vita-os/ui/components/button";
+import { cn } from "@vita-os/ui/lib/utils";
 import { ArrowRight, FolderOpen, Plus, Trash2 } from "lucide-react";
+
+import {
+  flatListClassName,
+  flatListRowHoverClassName,
+} from "@/lib/flat-surface";
 
 import { AreaThreadsSkeleton } from "./area-threads-skeleton";
 
@@ -55,7 +61,7 @@ export function AreaThreads({
       {isLoading ? (
         <AreaThreadsSkeleton />
       ) : threads.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/50 py-10 text-center">
+        <div className="flex flex-col items-center justify-center py-10 text-center">
           <FolderOpen className="mb-3 h-8 w-8 text-muted-foreground/60" />
           <p className="mb-4 max-w-xs text-sm text-muted-foreground">
             No threads in this area yet.
@@ -65,7 +71,7 @@ export function AreaThreads({
           </Button>
         </div>
       ) : (
-        <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
+        <div className={flatListClassName}>
           {threads.map((thread) => (
             <AreaThreadRow
               key={thread._id}
@@ -92,11 +98,14 @@ function AreaThreadRow({
   const slug = thread.slug ?? thread._id;
 
   return (
-    <div className="group flex items-center first:rounded-t-xl last:rounded-b-xl">
+    <div className="group flex items-center">
       <Link
         to="/$areaSlug/$threadSlug"
         params={{ areaSlug, threadSlug: slug }}
-        className="flex min-w-0 flex-1 items-start gap-4 px-4 py-4 transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-surface-3/60"
+        className={cn(
+          "flex min-w-0 flex-1 items-start gap-4 py-4",
+          flatListRowHoverClassName,
+        )}
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

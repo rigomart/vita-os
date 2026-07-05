@@ -1,5 +1,7 @@
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 
+import { flatListClassName } from "@/lib/flat-surface";
+
 export function RecentTasksSkeleton() {
   return (
     <section data-testid="recent-tasks-skeleton">
@@ -8,9 +10,9 @@ export function RecentTasksSkeleton() {
         <Skeleton className="h-4 w-16" />
         <Skeleton className="h-3 w-6" />
       </div>
-      <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
+      <div className={flatListClassName}>
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="px-4 py-3">
+          <div key={i} className="py-3">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="mt-1.5 h-3 w-20" />
           </div>

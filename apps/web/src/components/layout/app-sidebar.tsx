@@ -141,7 +141,7 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                     <SidebarMenuAction
                       showOnHover
-                      className="right-6"
+                      className="right-2"
                       onClick={() => openCreateThread(area._id)}
                     >
                       <Plus />

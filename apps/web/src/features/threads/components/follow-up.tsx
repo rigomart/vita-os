@@ -15,8 +15,8 @@ export function FollowUp({
   isPending = false,
 }: FollowUpProps) {
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
-      <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <Bell className="h-3.5 w-3.5" />
         Follow-up
       </div>

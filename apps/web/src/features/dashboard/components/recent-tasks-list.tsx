@@ -6,10 +6,15 @@ import {
   ItemContent,
   ItemDescription,
 } from "@vita-os/ui/components/item";
+import { cn } from "@vita-os/ui/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { ArrowRight, Inbox } from "lucide-react";
 
 import { isTaskWhenDue } from "@/features/tasks/inbox";
+import {
+  flatListClassName,
+  flatListRowHoverClassName,
+} from "@/lib/flat-surface";
 
 import { RecentTasksSkeleton } from "./recent-tasks-skeleton";
 
@@ -53,7 +58,7 @@ export function RecentTasksList({
         <span className="text-xs text-muted-foreground">{headingCount}</span>
       </div>
       {hasDueTasks && (
-        <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
+        <div className={flatListClassName}>
           {visibleTasks.map((task) => (
             <RecentTaskRow key={task._id} task={task} />
           ))}
@@ -91,7 +96,13 @@ function RecentTaskRow({ task }: { task: Doc<"tasks"> }) {
   const taskWhen = task.when === undefined ? undefined : new Date(task.when);
 
   return (
-    <Item size="sm" className="items-start gap-3">
+    <Item
+      size="sm"
+      className={cn(
+        "flex-nowrap items-start gap-3 rounded-none border-0",
+        flatListRowHoverClassName,
+      )}
+    >
       <ItemContent className="min-w-0 gap-1.5">
         <div className="min-w-0 whitespace-pre-wrap text-sm leading-relaxed">
           {task.text}

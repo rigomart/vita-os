@@ -33,8 +33,8 @@ export function NextMove({
   };
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-2 p-4">
-      <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <MoveRight className="h-3.5 w-3.5" />
         Next Move
       </div>
@@ -112,7 +112,7 @@ function NextMoveTask({
   };
 
   return (
-    <div className="group flex items-center gap-2 rounded-lg bg-surface-3/60 px-2 py-1.5">
+    <div className="group flex items-center gap-2 rounded-md px-1 py-1.5 transition-colors hover:bg-muted/50">
       <Button
         variant="ghost"
         size="icon-xs"

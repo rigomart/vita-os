@@ -4,6 +4,7 @@ import { Button } from "@vita-os/ui/components/button";
 import { Compass, Plus } from "lucide-react";
 
 import { AreaCard } from "@/features/areas/components/area-card";
+import { flatListClassName } from "@/lib/flat-surface";
 
 export interface DashboardArea {
   area: Doc<"areas">;
@@ -35,7 +36,7 @@ export function DashboardAreas({ areas, onCreateArea }: DashboardAreasProps) {
       </div>
 
       {areas.length > 0 ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={flatListClassName}>
           {areas.map(({ area, threadCount, attentionCount }) => (
             <AreaCard
               key={area._id}
@@ -46,7 +47,7 @@ export function DashboardAreas({ areas, onCreateArea }: DashboardAreasProps) {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/50 px-6 py-10 text-center">
+        <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
           <Compass className="mb-3 h-8 w-8 text-muted-foreground/60" />
           <p className="mb-6 max-w-xs text-sm text-muted-foreground">
             Map your life domains as Areas, then set each Area&apos;s Condition

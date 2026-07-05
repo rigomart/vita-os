@@ -40,8 +40,8 @@ export function AreaStandardCard({ standard, onSave }: AreaStandardCardProps) {
   }
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-2 p-5">
-      <h2 className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+    <div className="space-y-1.5">
+      <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
         Standard
         <span className="ml-1 font-normal normal-case tracking-normal text-muted-foreground/70">
           (optional)

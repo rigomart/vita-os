@@ -2,6 +2,7 @@ import type { Doc } from "@convex/_generated/dataModel";
 
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@vita-os/ui/components/badge";
+import { cn } from "@vita-os/ui/lib/utils";
 import {
   Bell,
   CalendarClock,
@@ -11,6 +12,11 @@ import {
 } from "lucide-react";
 
 import type { DashboardAttentionThread } from "@/features/dashboard/attention-state";
+
+import {
+  flatListClassName,
+  flatListRowHoverClassName,
+} from "@/lib/flat-surface";
 
 export interface AttentionListTask extends DashboardAttentionThread {
   key: string;
@@ -69,13 +75,16 @@ export function AttentionList({ title, tone, tasks }: AttentionListProps) {
         <h2 className="text-sm font-medium">{title}</h2>
         <span className="text-xs text-muted-foreground">{tasks.length}</span>
       </div>
-      <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
+      <div className={flatListClassName}>
         {tasks.map((task) => (
           <Link
             key={task.key}
             to="/$areaSlug/$threadSlug"
             params={{ areaSlug: task.areaSlug, threadSlug: task.threadSlug }}
-            className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-surface-3/60"
+            className={cn(
+              "flex items-center justify-between gap-3 py-3.5",
+              flatListRowHoverClassName,
+            )}
           >
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{task.threadName}</p>
