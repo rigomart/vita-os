@@ -15,11 +15,45 @@ export type GuardedAsyncResult<TResult> =
   | { ok: false; skipped: true }
   | { ok: false; skipped: false; error: string };
 
+const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
+
+const RAW_ERROR_PATTERNS = [
+  /\[CONVEX [^\]]+\]/,
+  /Server Error/i,
+  /Failed to insert or update a document/i,
+  /does not match the schema/i,
+  /Object contains extra field/i,
+  /Validator:/i,
+  /\bat (?:async )?\S+/,
+];
+
+function getErrorText(error: unknown): string | null {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error.trim()) return error;
+  return null;
+}
+
+function getConvexUserMessage(message: string): string | null {
+  const match = message.match(/Uncaught Error:\s*([^\n]+)/);
+  return match?.[1]?.trim() || null;
+}
+
+function isRawInternalMessage(message: string): boolean {
+  return RAW_ERROR_PATTERNS.some((pattern) => pattern.test(message));
+}
+
 function defaultErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
+  const message = getErrorText(error);
+  if (!message) return GENERIC_ERROR_MESSAGE;
+
+  const convexUserMessage = getConvexUserMessage(message);
+  if (convexUserMessage && !isRawInternalMessage(convexUserMessage)) {
+    return convexUserMessage;
   }
-  return "Something went wrong. Please try again.";
+
+  if (isRawInternalMessage(message)) return GENERIC_ERROR_MESSAGE;
+
+  return message;
 }
 
 export function useGuardedAsyncAction<TArgs extends unknown[], TResult>(

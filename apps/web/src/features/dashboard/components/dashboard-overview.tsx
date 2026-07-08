@@ -1,17 +1,19 @@
-import { AttentionSection } from "@/features/dashboard/components/attention-section";
 import {
   type DashboardArea,
   DashboardAreasSection,
 } from "@/features/dashboard/components/dashboard-areas-section";
 import { DashboardOverviewSkeleton } from "@/features/dashboard/components/dashboard-overview-skeleton";
-
-import type { AttentionListTask } from "./attention-list";
+import {
+  DashboardThreadGroups,
+  type DashboardThread,
+} from "@/features/dashboard/components/dashboard-thread-groups";
 
 import { shouldShowAreaSetup } from "../screens/dashboard-screen-state";
 
 export interface DashboardOverviewData {
   areas: DashboardArea[];
-  attentionThreads: AttentionListTask[];
+  threads?: DashboardThread[];
+  attentionThreads?: DashboardThread[];
 }
 
 interface DashboardOverviewProps {
@@ -29,9 +31,11 @@ export function DashboardOverview({
     return <DashboardOverviewSkeleton />;
   }
 
+  const threads = overview.threads ?? overview.attentionThreads ?? [];
+
   const showAreaSetup = shouldShowAreaSetup({
     areaCount: overview.areas.length,
-    attentionThreadCount: overview.attentionThreads.length,
+    attentionThreadCount: threads.length,
   });
 
   return (
@@ -43,10 +47,13 @@ export function DashboardOverview({
         />
       )}
 
-      <AttentionSection
-        currentDate={currentDate}
-        threads={overview.attentionThreads}
-      />
+      {!showAreaSetup && (
+        <DashboardThreadGroups
+          areas={overview.areas}
+          threads={threads}
+          currentDate={currentDate}
+        />
+      )}
     </>
   );
 }

@@ -23,17 +23,17 @@ describe("Area Condition", () => {
       {
         value: "healthy",
         label: "Healthy",
-        color: "bg-green-500",
+        color: "bg-condition-healthy",
       },
       {
         value: "needs_attention",
         label: "Needs attention",
-        color: "bg-yellow-500",
+        color: "bg-condition-attention",
       },
       {
         value: "critical",
         label: "Critical",
-        color: "bg-red-500",
+        color: "bg-condition-critical",
       },
     ]);
 

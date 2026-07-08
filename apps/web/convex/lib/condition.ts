@@ -11,9 +11,9 @@ export const conditionLabels: Record<Condition, string> = {
 };
 
 export const conditionColors: Record<Condition, string> = {
-  healthy: "bg-green-500",
-  needs_attention: "bg-yellow-500",
-  critical: "bg-red-500",
+  healthy: "bg-condition-healthy",
+  needs_attention: "bg-condition-attention",
+  critical: "bg-condition-critical",
 };
 
 export const CONDITION_OPTIONS = CONDITIONS.map((value) => ({

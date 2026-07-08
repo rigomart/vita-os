@@ -53,10 +53,10 @@ describe("RecentTasksList", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders nothing after loading when there are no Open Tasks", () => {
-    const { container } = render(<RecentTasksList tasks={[]} />);
+  it("shows a clear Inbox message when there are no Open Tasks", () => {
+    render(<RecentTasksList tasks={[]} />);
 
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByText("Inbox is clear")).toBeVisible();
   });
 
   it("surfaces Open Tasks with When today or earlier as due Tasks", () => {

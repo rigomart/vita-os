@@ -8,7 +8,7 @@ import {
 } from "@vita-os/ui/components/item";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
-import { ArrowRight, Inbox } from "lucide-react";
+import { ArrowRight, Check, Inbox } from "lucide-react";
 
 import { isTaskWhenDue } from "@/features/tasks/inbox";
 import {
@@ -46,7 +46,14 @@ export function RecentTasksList({
   const headingCount =
     dueTasks.length > 0 ? dueTasks.length : activeTasks.length;
 
-  if (activeTasks.length === 0) return null;
+  if (activeTasks.length === 0) {
+    return (
+      <section className="flex items-center gap-2 text-muted-foreground">
+        <Check className="h-3.5 w-3.5 shrink-0 text-condition-healthy" />
+        <p className="text-sm">Inbox is clear</p>
+      </section>
+    );
+  }
 
   return (
     <section>

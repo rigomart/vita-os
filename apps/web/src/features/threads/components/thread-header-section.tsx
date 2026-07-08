@@ -15,7 +15,6 @@ export function ThreadHeaderSection({
   areaSlug,
   threadSlug,
 }: ThreadHeaderProps) {
-  const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
   const thread = useStableQuery(api.threads.getBySlug, {
     slug: threadSlug,
   });
@@ -34,14 +33,7 @@ export function ThreadHeaderSection({
     }
   };
 
-  if (!area || !thread) return null;
+  if (!thread) return null;
 
-  return (
-    <ThreadHeader
-      area={area}
-      areaSlug={areaSlug}
-      thread={thread}
-      onTitleSave={handleTitleSave}
-    />
-  );
+  return <ThreadHeader thread={thread} onTitleSave={handleTitleSave} />;
 }

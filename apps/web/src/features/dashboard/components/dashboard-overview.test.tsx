@@ -8,7 +8,7 @@ describe("DashboardOverview", () => {
     render(
       <DashboardOverview
         overview={undefined}
-        currentDate={Date.now()}
+        currentDate={1}
         onCreateArea={vi.fn()}
       />,
     );
@@ -22,8 +22,23 @@ describe("DashboardOverview", () => {
   it("shows first-run Area setup after overview loads with no Areas or attention Threads", () => {
     render(
       <DashboardOverview
-        overview={{ areas: [], attentionThreads: [] }}
-        currentDate={Date.now()}
+        overview={{ areas: [], threads: [] }}
+        currentDate={1}
+        onCreateArea={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/map your life domains as areas/i)).toBeVisible();
+    expect(
+      screen.queryByTestId("dashboard-overview-skeleton"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows first-run Area setup when overview loads without Threads", () => {
+    render(
+      <DashboardOverview
+        overview={{ areas: [] }}
+        currentDate={1}
         onCreateArea={vi.fn()}
       />,
     );

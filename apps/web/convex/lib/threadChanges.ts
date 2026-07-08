@@ -22,6 +22,18 @@ function hasOwn(obj: object, key: PropertyKey): boolean {
   return Object.keys(obj).includes(String(key));
 }
 
+export function sanitizeThreadPatch(patch: ThreadPatch): ThreadPatch {
+  return {
+    ...(hasOwn(patch, "title") ? { title: patch.title } : {}),
+    ...(hasOwn(patch, "slug") ? { slug: patch.slug } : {}),
+    ...(hasOwn(patch, "summary") ? { summary: patch.summary } : {}),
+    ...(hasOwn(patch, "areaId") ? { areaId: patch.areaId } : {}),
+    ...(hasOwn(patch, "nextMove") ? { nextMove: patch.nextMove } : {}),
+    ...(hasOwn(patch, "followUp") ? { followUp: patch.followUp } : {}),
+    ...(hasOwn(patch, "state") ? { state: patch.state } : {}),
+  };
+}
+
 function formatFollowUpDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString("en-US", {
     month: "short",
@@ -76,46 +88,47 @@ export function buildThreadPatchLogEntries(
     lifecycleLog?: AutoActivityLog;
   },
 ): AutoActivityLog[] {
+  const safePatch = sanitizeThreadPatch(patch);
   const logs: AutoActivityLog[] = [];
 
   if (
-    hasOwn(patch, "areaId") &&
-    patch.areaId !== undefined &&
-    patch.areaId !== thread.areaId &&
+    hasOwn(safePatch, "areaId") &&
+    safePatch.areaId !== undefined &&
+    safePatch.areaId !== thread.areaId &&
     options?.fromAreaName &&
     options?.toAreaName
   ) {
     logs.push(buildAreaMoveLogEntry(options.fromAreaName, options.toAreaName));
   }
 
-  if (hasOwn(patch, "nextMove")) {
+  if (hasOwn(safePatch, "nextMove")) {
     const entry = buildFieldChangeLogEntry({
       type: "next_action_change",
       oldValue: thread.nextMove ?? undefined,
-      newValue: patch.nextMove ?? undefined,
+      newValue: safePatch.nextMove ?? undefined,
       label: "Next move",
     });
     if (entry) logs.push(entry);
   }
 
   if (
-    hasOwn(patch, "state") &&
-    patch.state !== undefined &&
-    patch.state !== thread.state
+    hasOwn(safePatch, "state") &&
+    safePatch.state !== undefined &&
+    safePatch.state !== thread.state
   ) {
     logs.push(
       options?.lifecycleLog ?? {
         type: "state_change",
-        content: `Lifecycle changed from "${thread.state}" to "${patch.state}"`,
+        content: `Lifecycle changed from "${thread.state}" to "${safePatch.state}"`,
         previousValue: thread.state,
-        newValue: patch.state,
+        newValue: safePatch.state,
       },
     );
   }
 
-  if (hasOwn(patch, "followUp")) {
+  if (hasOwn(safePatch, "followUp")) {
     const oldFollowUp = thread.followUp ?? undefined;
-    const newFollowUp = patch.followUp ?? undefined;
+    const newFollowUp = safePatch.followUp ?? undefined;
 
     if (oldFollowUp !== newFollowUp) {
       const entry = buildFieldChangeLogEntry({
@@ -146,21 +159,26 @@ export async function applyThreadPatch(
     resolutionNote?: string;
   },
 ): Promise<void> {
+  const requestedPatch = sanitizeThreadPatch(args.patch);
   let areaMoveNames: { fromAreaName: string; toAreaName: string } | undefined;
   const lifecycleChange =
-    args.patch.state !== undefined
+    requestedPatch.state !== undefined
       ? buildThreadLifecyclePatch(args.thread, {
-          state: args.patch.state,
+          state: requestedPatch.state,
           resolutionNote: args.resolutionNote,
         })
       : null;
   const patch = lifecycleChange
-    ? { ...args.patch, ...lifecycleChange.patch }
-    : args.patch;
+    ? sanitizeThreadPatch({ ...requestedPatch, ...lifecycleChange.patch })
+    : requestedPatch;
+  const writePatch = sanitizeThreadPatch(patch);
 
-  if (patch.areaId !== undefined && patch.areaId !== args.thread.areaId) {
+  if (
+    writePatch.areaId !== undefined &&
+    writePatch.areaId !== args.thread.areaId
+  ) {
     const fromArea = await ctx.db.get(args.thread.areaId);
-    const toArea = await ctx.db.get(patch.areaId);
+    const toArea = await ctx.db.get(writePatch.areaId);
     if (fromArea && toArea) {
       areaMoveNames = {
         fromAreaName: fromArea.name,
@@ -169,10 +187,10 @@ export async function applyThreadPatch(
     }
   }
 
-  await ctx.db.patch(args.thread._id, patch);
+  await ctx.db.patch(args.thread._id, writePatch);
 
   const now = Date.now();
-  const logs = buildThreadPatchLogEntries(args.thread, patch, {
+  const logs = buildThreadPatchLogEntries(args.thread, writePatch, {
     ...areaMoveNames,
     lifecycleLog: lifecycleChange?.log,
   });

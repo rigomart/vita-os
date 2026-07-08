@@ -9,13 +9,14 @@ import { cn } from "@/lib/utils";
 interface PageHeaderBackLink {
   label: string;
   to: LinkProps["to"];
-  params?: any;
+  params?: LinkProps["params"];
 }
 
 interface PageHeaderProps {
   title: string;
   backLink?: PageHeaderBackLink;
   description?: string;
+  titleAccessory?: ReactNode;
   actions?: ReactNode;
   className?: string;
 }
@@ -24,6 +25,7 @@ export function PageHeader({
   title,
   backLink,
   description,
+  titleAccessory,
   actions,
   className,
 }: PageHeaderProps) {
@@ -40,7 +42,12 @@ export function PageHeader({
         </Link>
       )}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{title}</h1>
+        <div className="flex min-w-0 items-center gap-3">
+          <h1 className="truncate font-heading text-2xl font-semibold tracking-tight">
+            {title}
+          </h1>
+          {titleAccessory}
+        </div>
         {actions && <div className="flex items-center gap-1">{actions}</div>}
       </div>
       {description && (

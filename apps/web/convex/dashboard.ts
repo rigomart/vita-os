@@ -1,5 +1,45 @@
+import { v } from "convex/values";
+
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
+import { conditionValidator } from "./lib/validators";
+
+const areaOverviewValidator = v.object({
+  _id: v.id("areas"),
+  _creationTime: v.number(),
+  userId: v.string(),
+  name: v.string(),
+  slug: v.optional(v.string()),
+  standard: v.optional(v.string()),
+  condition: conditionValidator,
+  order: v.number(),
+  createdAt: v.number(),
+});
+
+const dashboardThreadValidator = v.object({
+  id: v.id("threads"),
+  key: v.string(),
+  threadName: v.string(),
+  name: v.string(),
+  area: v.optional(areaOverviewValidator),
+  areaId: v.id("areas"),
+  areaSlug: v.string(),
+  threadSlug: v.string(),
+  lifecycle: v.literal("open"),
+  nextMove: v.optional(v.string()),
+  followUp: v.optional(v.number()),
+});
+
+const dashboardOverviewValidator = v.object({
+  areas: v.array(
+    v.object({
+      area: areaOverviewValidator,
+      threadCount: v.number(),
+      attentionCount: v.number(),
+    }),
+  ),
+  threads: v.array(dashboardThreadValidator),
+});
 
 export const attention = query({
   args: {},
@@ -52,9 +92,10 @@ export const attention = query({
 
 export const overview = query({
   args: {},
+  returns: dashboardOverviewValidator,
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
-    if (!userId) return { areas: [], attentionThreads: [] };
+    if (!userId) return { areas: [], threads: [] };
 
     const areas = await ctx.db
       .query("areas")
@@ -62,63 +103,43 @@ export const overview = query({
       .collect();
     const threads = await ctx.db
       .query("threads")
-      .withIndex("by_user_order", (q) => q.eq("userId", userId))
+      .withIndex("by_user_state", (q) =>
+        q.eq("userId", userId).eq("state", "open"),
+      )
       .collect();
-    const openThreads = threads.filter((thread) => thread.state === "open");
+    const openThreads = [...threads].sort((a, b) => a.order - b.order);
 
     const threadCounts: Record<string, number> = {};
     const areaById = new Map(areas.map((area) => [area._id as string, area]));
-    const attentionThreads: Array<{
-      threadId: string;
-      threadName: string;
-      threadSlug: string | undefined;
-      areaId: string;
-      lifecycle: "open";
-      nextMove: string | undefined;
-      followUp: number | undefined;
-    }> = [];
 
     for (const thread of openThreads) {
       threadCounts[thread.areaId] = (threadCounts[thread.areaId] ?? 0) + 1;
+    }
 
-      attentionThreads.push({
-        threadId: thread._id,
+    const dashboardThreads = openThreads.map((thread) => {
+      const area = areaById.get(thread.areaId);
+      return {
+        id: thread._id,
+        key: thread._id as string,
         threadName: thread.title,
-        threadSlug: thread.slug,
+        name: thread.title,
+        area,
         areaId: thread.areaId,
-        lifecycle: "open",
+        areaSlug: (area?.slug ?? area?._id ?? thread.areaId) as string,
+        threadSlug: (thread.slug ?? thread._id) as string,
+        lifecycle: "open" as const,
         nextMove: thread.nextMove,
         followUp: thread.followUp,
-      });
-    }
-
-    const attentionCounts: Record<string, number> = {};
-    for (const thread of attentionThreads) {
-      attentionCounts[thread.areaId] =
-        (attentionCounts[thread.areaId] ?? 0) + 1;
-    }
+      };
+    });
 
     return {
       areas: areas.map((area) => ({
         area,
         threadCount: threadCounts[area._id] ?? 0,
-        attentionCount: attentionCounts[area._id] ?? 0,
+        attentionCount: threadCounts[area._id] ?? 0,
       })),
-      attentionThreads: attentionThreads.map((thread) => {
-        const area = areaById.get(thread.areaId);
-        return {
-          id: thread.threadId,
-          key: thread.threadId,
-          threadName: thread.threadName,
-          name: thread.threadName,
-          area,
-          areaSlug: area?.slug ?? area?._id ?? thread.areaId,
-          threadSlug: thread.threadSlug ?? thread.threadId,
-          lifecycle: thread.lifecycle,
-          nextMove: thread.nextMove,
-          followUp: thread.followUp,
-        };
-      }),
+      threads: dashboardThreads,
     };
   },
 });

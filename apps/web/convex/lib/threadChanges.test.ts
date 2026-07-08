@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { Doc, Id } from "../_generated/dataModel";
 
 import {
+  applyThreadPatch,
   buildCompleteNextMoveChange,
   buildThreadLifecyclePatch,
   buildThreadPatchLogEntries,
@@ -202,6 +203,85 @@ describe("buildThreadLifecyclePatch", () => {
         previousValue: "resolved",
         newValue: "open",
       },
+    });
+  });
+});
+
+describe("applyThreadPatch", () => {
+  it("strips client-only fields before writing the thread patch", async () => {
+    const thread = makeThread();
+    const followUp = new Date("2026-05-20").getTime();
+    const db = {
+      get: vi.fn(),
+      insert: vi.fn(),
+      patch: vi.fn(),
+    };
+    const ctx = { db } as unknown as Parameters<typeof applyThreadPatch>[0];
+    const unsafePatch = {
+      id: "client-thread-id",
+      key: "dashboard-row-key",
+      followUp,
+    } as unknown as Parameters<typeof applyThreadPatch>[1]["patch"];
+
+    await applyThreadPatch(ctx, {
+      userId: "user1",
+      thread,
+      patch: unsafePatch,
+    });
+
+    expect(db.patch).toHaveBeenCalledWith(thread._id, { followUp });
+    expect(db.patch.mock.calls[0]?.[1]).not.toHaveProperty("id");
+    expect(db.patch.mock.calls[0]?.[1]).not.toHaveProperty("key");
+    expect(db.insert).toHaveBeenCalledWith("activityLogs", {
+      userId: "user1",
+      threadId: thread._id,
+      type: "follow_up_change",
+      content: 'Follow-up set to "May 20, 2026"',
+      previousValue: undefined,
+      newValue: "May 20, 2026",
+      createdAt: expect.any(Number),
+    });
+  });
+
+  it("does not write a full thread document when the loaded thread has client-only fields", async () => {
+    const followUp = new Date("2026-05-20").getTime();
+    const thread = {
+      ...makeThread(),
+      id: "k977clientprojection",
+      key: "dashboard-row-key",
+    } as unknown as Doc<"threads">;
+    const db = {
+      get: vi.fn(),
+      insert: vi.fn(),
+      patch: vi.fn(),
+    };
+    const ctx = { db } as unknown as Parameters<typeof applyThreadPatch>[0];
+
+    await applyThreadPatch(ctx, {
+      userId: "user1",
+      thread,
+      patch: { followUp },
+    });
+
+    expect(db.patch).toHaveBeenCalledWith(thread._id, { followUp });
+    expect(db.patch.mock.calls[0]?.[1]).not.toMatchObject({
+      id: "k977clientprojection",
+      key: "dashboard-row-key",
+      userId: "user1",
+      title: "Thread",
+      areaId: "area1",
+      order: 0,
+      state: "open",
+      createdAt: 0,
+    });
+    expect(db.insert).toHaveBeenCalledWith("activityLogs", {
+      userId: "user1",
+      threadId: thread._id,
+      type: "follow_up_change",
+      content: 'Follow-up set to "May 20, 2026"',
+      previousValue: undefined,
+      newValue: "May 20, 2026",
+      createdAt: expect.any(Number),
     });
   });
 });
