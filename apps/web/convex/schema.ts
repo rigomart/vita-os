@@ -63,5 +63,7 @@ export default defineSchema({
     previousValue: v.optional(v.string()),
     newValue: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_thread", ["threadId", "createdAt"]),
+  })
+    .index("by_thread", ["threadId", "createdAt"])
+    .index("by_user_created", ["userId", "createdAt"]),
 });

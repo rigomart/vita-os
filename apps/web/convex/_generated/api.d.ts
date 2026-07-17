@@ -16,6 +16,7 @@ import type * as http from "../http.js";
 import type * as lib_activityLog from "../lib/activityLog.js";
 import type * as lib_areaThreads from "../lib/areaThreads.js";
 import type * as lib_condition from "../lib/condition.js";
+import type * as lib_dashboard from "../lib/dashboard.js";
 import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_inboxProcessing from "../lib/inboxProcessing.js";
 import type * as lib_patch from "../lib/patch.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   "lib/activityLog": typeof lib_activityLog;
   "lib/areaThreads": typeof lib_areaThreads;
   "lib/condition": typeof lib_condition;
+  "lib/dashboard": typeof lib_dashboard;
   "lib/helpers": typeof lib_helpers;
   "lib/inboxProcessing": typeof lib_inboxProcessing;
   "lib/patch": typeof lib_patch;

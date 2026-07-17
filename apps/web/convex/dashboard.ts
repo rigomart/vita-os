@@ -1,44 +1,51 @@
 import { v } from "convex/values";
 
 import { mutation, query } from "./_generated/server";
+import { buildDashboardOverview } from "./lib/dashboard";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
 import { conditionValidator } from "./lib/validators";
 
-const areaOverviewValidator = v.object({
-  _id: v.id("areas"),
-  _creationTime: v.number(),
-  userId: v.string(),
+const dashboardAreaValidator = v.object({
+  id: v.id("areas"),
   name: v.string(),
-  slug: v.optional(v.string()),
-  standard: v.optional(v.string()),
+  slug: v.string(),
   condition: conditionValidator,
   order: v.number(),
-  createdAt: v.number(),
 });
 
 const dashboardThreadValidator = v.object({
   id: v.id("threads"),
-  key: v.string(),
-  threadName: v.string(),
-  name: v.string(),
-  area: v.optional(areaOverviewValidator),
+  title: v.string(),
+  slug: v.string(),
+  summary: v.optional(v.string()),
   areaId: v.id("areas"),
-  areaSlug: v.string(),
-  threadSlug: v.string(),
-  lifecycle: v.literal("open"),
   nextMove: v.optional(v.string()),
   followUp: v.optional(v.number()),
+  order: v.number(),
 });
 
 const dashboardOverviewValidator = v.object({
-  areas: v.array(
+  areas: v.array(dashboardAreaValidator),
+  threads: v.array(dashboardThreadValidator),
+  inbox: v.object({
+    items: v.array(
+      v.object({
+        id: v.id("tasks"),
+        text: v.string(),
+        when: v.optional(v.number()),
+        createdAt: v.number(),
+      }),
+    ),
+    totalOpen: v.number(),
+  }),
+  recentActivity: v.array(
     v.object({
-      area: areaOverviewValidator,
-      threadCount: v.number(),
-      attentionCount: v.number(),
+      id: v.id("activityLogs"),
+      threadId: v.id("threads"),
+      content: v.string(),
+      createdAt: v.number(),
     }),
   ),
-  threads: v.array(dashboardThreadValidator),
 });
 
 export const attention = query({
@@ -95,52 +102,45 @@ export const overview = query({
   returns: dashboardOverviewValidator,
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
-    if (!userId) return { areas: [], threads: [] };
-
-    const areas = await ctx.db
-      .query("areas")
-      .withIndex("by_user_order", (q) => q.eq("userId", userId))
-      .collect();
-    const threads = await ctx.db
-      .query("threads")
-      .withIndex("by_user_state", (q) =>
-        q.eq("userId", userId).eq("state", "open"),
-      )
-      .collect();
-    const openThreads = [...threads].sort((a, b) => a.order - b.order);
-
-    const threadCounts: Record<string, number> = {};
-    const areaById = new Map(areas.map((area) => [area._id as string, area]));
-
-    for (const thread of openThreads) {
-      threadCounts[thread.areaId] = (threadCounts[thread.areaId] ?? 0) + 1;
+    if (!userId) {
+      return {
+        areas: [],
+        threads: [],
+        inbox: { items: [], totalOpen: 0 },
+        recentActivity: [],
+      };
     }
 
-    const dashboardThreads = openThreads.map((thread) => {
-      const area = areaById.get(thread.areaId);
-      return {
-        id: thread._id,
-        key: thread._id as string,
-        threadName: thread.title,
-        name: thread.title,
-        area,
-        areaId: thread.areaId,
-        areaSlug: (area?.slug ?? area?._id ?? thread.areaId) as string,
-        threadSlug: (thread.slug ?? thread._id) as string,
-        lifecycle: "open" as const,
-        nextMove: thread.nextMove,
-        followUp: thread.followUp,
-      };
-    });
+    const [areas, threads, tasks, activityLogs] = await Promise.all([
+      ctx.db
+        .query("areas")
+        .withIndex("by_user_order", (q) => q.eq("userId", userId))
+        .collect(),
+      ctx.db
+        .query("threads")
+        .withIndex("by_user_state", (q) =>
+          q.eq("userId", userId).eq("state", "open"),
+        )
+        .collect(),
+      ctx.db
+        .query("tasks")
+        .withIndex("by_user_inbox", (q) =>
+          q.eq("userId", userId).eq("state", "open"),
+        )
+        .collect(),
+      ctx.db
+        .query("activityLogs")
+        .withIndex("by_user_created", (q) => q.eq("userId", userId))
+        .order("desc")
+        .take(50),
+    ]);
 
-    return {
-      areas: areas.map((area) => ({
-        area,
-        threadCount: threadCounts[area._id] ?? 0,
-        attentionCount: threadCounts[area._id] ?? 0,
-      })),
-      threads: dashboardThreads,
-    };
+    return buildDashboardOverview(userId, {
+      areas,
+      threads,
+      tasks,
+      activityLogs,
+    });
   },
 });
 
