@@ -1,5 +1,52 @@
+import { v } from "convex/values";
+
 import { mutation, query } from "./_generated/server";
+import { buildDashboardOverview } from "./lib/dashboard";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
+import { conditionValidator } from "./lib/validators";
+
+const dashboardAreaValidator = v.object({
+  id: v.id("areas"),
+  name: v.string(),
+  slug: v.string(),
+  condition: conditionValidator,
+  order: v.number(),
+});
+
+const dashboardThreadValidator = v.object({
+  id: v.id("threads"),
+  title: v.string(),
+  slug: v.string(),
+  summary: v.optional(v.string()),
+  areaId: v.id("areas"),
+  nextMove: v.optional(v.string()),
+  followUp: v.optional(v.number()),
+  order: v.number(),
+});
+
+const dashboardOverviewValidator = v.object({
+  areas: v.array(dashboardAreaValidator),
+  threads: v.array(dashboardThreadValidator),
+  inbox: v.object({
+    items: v.array(
+      v.object({
+        id: v.id("tasks"),
+        text: v.string(),
+        when: v.optional(v.number()),
+        createdAt: v.number(),
+      }),
+    ),
+    totalOpen: v.number(),
+  }),
+  recentActivity: v.array(
+    v.object({
+      id: v.id("activityLogs"),
+      threadId: v.id("threads"),
+      content: v.string(),
+      createdAt: v.number(),
+    }),
+  ),
+});
 
 export const attention = query({
   args: {},
@@ -52,74 +99,48 @@ export const attention = query({
 
 export const overview = query({
   args: {},
+  returns: dashboardOverviewValidator,
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
-    if (!userId) return { areas: [], attentionThreads: [] };
-
-    const areas = await ctx.db
-      .query("areas")
-      .withIndex("by_user_order", (q) => q.eq("userId", userId))
-      .collect();
-    const threads = await ctx.db
-      .query("threads")
-      .withIndex("by_user_order", (q) => q.eq("userId", userId))
-      .collect();
-    const openThreads = threads.filter((thread) => thread.state === "open");
-
-    const threadCounts: Record<string, number> = {};
-    const areaById = new Map(areas.map((area) => [area._id as string, area]));
-    const attentionThreads: Array<{
-      threadId: string;
-      threadName: string;
-      threadSlug: string | undefined;
-      areaId: string;
-      lifecycle: "open";
-      nextMove: string | undefined;
-      followUp: number | undefined;
-    }> = [];
-
-    for (const thread of openThreads) {
-      threadCounts[thread.areaId] = (threadCounts[thread.areaId] ?? 0) + 1;
-
-      attentionThreads.push({
-        threadId: thread._id,
-        threadName: thread.title,
-        threadSlug: thread.slug,
-        areaId: thread.areaId,
-        lifecycle: "open",
-        nextMove: thread.nextMove,
-        followUp: thread.followUp,
-      });
+    if (!userId) {
+      return {
+        areas: [],
+        threads: [],
+        inbox: { items: [], totalOpen: 0 },
+        recentActivity: [],
+      };
     }
 
-    const attentionCounts: Record<string, number> = {};
-    for (const thread of attentionThreads) {
-      attentionCounts[thread.areaId] =
-        (attentionCounts[thread.areaId] ?? 0) + 1;
-    }
+    const [areas, threads, tasks, activityLogs] = await Promise.all([
+      ctx.db
+        .query("areas")
+        .withIndex("by_user_order", (q) => q.eq("userId", userId))
+        .collect(),
+      ctx.db
+        .query("threads")
+        .withIndex("by_user_state", (q) =>
+          q.eq("userId", userId).eq("state", "open"),
+        )
+        .collect(),
+      ctx.db
+        .query("tasks")
+        .withIndex("by_user_inbox", (q) =>
+          q.eq("userId", userId).eq("state", "open"),
+        )
+        .collect(),
+      ctx.db
+        .query("activityLogs")
+        .withIndex("by_user_created", (q) => q.eq("userId", userId))
+        .order("desc")
+        .take(50),
+    ]);
 
-    return {
-      areas: areas.map((area) => ({
-        area,
-        threadCount: threadCounts[area._id] ?? 0,
-        attentionCount: attentionCounts[area._id] ?? 0,
-      })),
-      attentionThreads: attentionThreads.map((thread) => {
-        const area = areaById.get(thread.areaId);
-        return {
-          id: thread.threadId,
-          key: thread.threadId,
-          threadName: thread.threadName,
-          name: thread.threadName,
-          area,
-          areaSlug: area?.slug ?? area?._id ?? thread.areaId,
-          threadSlug: thread.threadSlug ?? thread.threadId,
-          lifecycle: thread.lifecycle,
-          nextMove: thread.nextMove,
-          followUp: thread.followUp,
-        };
-      }),
-    };
+    return buildDashboardOverview(userId, {
+      areas,
+      threads,
+      tasks,
+      activityLogs,
+    });
   },
 });
 

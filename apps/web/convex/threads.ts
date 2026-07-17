@@ -5,7 +5,11 @@ import { getAreaForUser } from "./lib/areaThreads";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { nullsToUndefined } from "./lib/patch";
 import { generateSlug } from "./lib/slugs";
-import { applyThreadPatch, completeNextMove } from "./lib/threadChanges";
+import {
+  applyThreadPatch,
+  completeNextMove,
+  sanitizeThreadPatch,
+} from "./lib/threadChanges";
 
 export const list = query({
   args: {},
@@ -103,13 +107,12 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
+    const { id, resolutionNote, ...rest } = args;
 
-    const thread = await ctx.db.get(args.id);
+    const thread = await ctx.db.get(id);
     if (!thread || thread.userId !== userId) {
       throw new Error("Thread not found");
     }
-
-    const { resolutionNote, ...rest } = args;
 
     if (rest.areaId !== undefined) {
       await getAreaForUser(ctx, { userId, areaId: rest.areaId });
@@ -120,13 +123,15 @@ export const update = mutation({
       newSlug = generateSlug(rest.title);
     }
 
+    const patch = sanitizeThreadPatch({
+      ...nullsToUndefined(rest),
+      ...(newSlug && { slug: newSlug }),
+    });
+
     await applyThreadPatch(ctx, {
       userId,
       thread,
-      patch: {
-        ...nullsToUndefined(rest),
-        ...(newSlug && { slug: newSlug }),
-      },
+      patch,
       resolutionNote,
     });
 

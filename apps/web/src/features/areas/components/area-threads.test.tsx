@@ -12,24 +12,36 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-const thread = {
-  _id: "thread1" as Id<"threads">,
-  _creationTime: 0,
-  userId: "user1",
-  title: "Renew passport",
-  slug: "renew-passport",
-  areaId: "area1" as Id<"areas">,
-  state: "open",
-  order: 0,
-  createdAt: 0,
-} satisfies Doc<"threads">;
+const today = new Date(2026, 4, 20, 12).getTime();
+const yesterday = new Date(2026, 4, 19, 12).getTime();
+const tomorrow = new Date(2026, 4, 21, 12).getTime();
+
+function thread(
+  id: string,
+  title: string,
+  fields: Partial<Pick<Doc<"threads">, "followUp" | "nextMove">> = {},
+): Doc<"threads"> {
+  return {
+    _id: id as Id<"threads">,
+    _creationTime: 0,
+    userId: "user1",
+    title,
+    slug: id,
+    areaId: "area1" as Id<"areas">,
+    state: "open",
+    order: 0,
+    createdAt: 0,
+    ...fields,
+  };
+}
 
 describe("AreaThreads", () => {
   it("lists threads under the area with Thread language", () => {
     render(
       <AreaThreads
         areaSlug="admin"
-        threads={[thread]}
+        threads={[thread("renew-passport", "Renew passport")]}
+        currentDate={today}
         onCreateThread={vi.fn()}
         onRemoveThread={vi.fn()}
       />,
@@ -49,6 +61,7 @@ describe("AreaThreads", () => {
       <AreaThreads
         areaSlug="admin"
         threads={[]}
+        currentDate={today}
         isLoading
         onCreateThread={vi.fn()}
         onRemoveThread={vi.fn()}
@@ -66,6 +79,7 @@ describe("AreaThreads", () => {
       <AreaThreads
         areaSlug="admin"
         threads={[]}
+        currentDate={today}
         onCreateThread={vi.fn()}
         onRemoveThread={vi.fn()}
       />,
@@ -77,5 +91,26 @@ describe("AreaThreads", () => {
     expect(
       screen.getByRole("button", { name: "Create thread" }),
     ).toBeInTheDocument();
+  });
+
+  it("marks Threads with a due Follow-up and shows the date for scheduled ones", () => {
+    render(
+      <AreaThreads
+        areaSlug="admin"
+        threads={[
+          thread("call-clinic", "Call clinic", { followUp: yesterday }),
+          thread("renew-passport", "Renew passport", { followUp: tomorrow }),
+          thread("sort-receipts", "Sort receipts", { nextMove: "Scan them" }),
+        ]}
+        currentDate={today}
+        onCreateThread={vi.fn()}
+        onRemoveThread={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Follow-up due")).toBeVisible();
+    expect(screen.getByText("May 21")).toBeVisible();
+    // Ready/open Threads carry no attention badge on the Area page.
+    expect(screen.getAllByText(/follow-up due|may 21/i)).toHaveLength(2);
   });
 });

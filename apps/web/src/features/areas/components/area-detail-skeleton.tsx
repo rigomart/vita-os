@@ -1,5 +1,7 @@
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 
+import { flatListClassName } from "@/lib/flat-surface";
+
 export function AreaDetailSkeleton() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -17,9 +19,9 @@ export function AreaDetailSkeleton() {
           <Skeleton className="h-6 w-6 rounded-md" />
           <Skeleton className="h-4 w-16" />
         </div>
-        <div className="divide-y divide-border/50 rounded-xl border border-border-subtle bg-surface-2">
+        <div className={flatListClassName}>
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="px-4 py-4">
+            <div key={i} className="py-4">
               <Skeleton className="h-4 w-40" />
               <Skeleton className="mt-2 h-3 w-64" />
             </div>

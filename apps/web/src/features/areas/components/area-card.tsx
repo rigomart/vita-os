@@ -2,7 +2,10 @@ import type { Doc } from "@convex/_generated/dataModel";
 
 import { conditionColors, conditionLabels } from "@convex/lib/condition";
 import { Link } from "@tanstack/react-router";
+import { cn } from "@vita-os/ui/lib/utils";
 import { CircleDot } from "lucide-react";
+
+import { flatListRowHoverClassName } from "@/lib/flat-surface";
 
 interface AreaCardProps {
   area: Doc<"areas">;
@@ -15,7 +18,7 @@ export function AreaCard({ area, threadCount, attentionCount }: AreaCardProps) {
     <Link
       to="/$areaSlug"
       params={{ areaSlug: area.slug ?? area._id }}
-      className="group relative rounded-xl border border-border-subtle bg-surface-2 p-5 transition-colors hover:bg-surface-3/60"
+      className={cn("block py-4", flatListRowHoverClassName)}
     >
       <div className="flex items-center gap-2.5">
         <span

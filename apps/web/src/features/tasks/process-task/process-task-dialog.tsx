@@ -212,7 +212,7 @@ export function ProcessTaskDialog({
           />
 
           {isCreating && (
-            <div className="space-y-4 rounded-2xl border border-border-subtle bg-surface-2/60 p-4">
+            <div className="space-y-4 border-t border-border/50 pt-4">
               <AreaChoice
                 areas={areas}
                 selectedAreaId={createAreaId}
@@ -274,7 +274,7 @@ function InboxTaskPreview({ task }: { task: Doc<"tasks"> }) {
   return (
     <Item
       size="sm"
-      className="items-start gap-3 rounded-2xl border border-border-subtle bg-surface-2"
+      className="flex-nowrap items-start gap-3 rounded-none border-0"
     >
       <ItemMedia>
         <Checkbox
@@ -357,8 +357,8 @@ function ProcessingModeCard({
     <label
       htmlFor={id}
       className={cn(
-        "group relative flex cursor-pointer items-center gap-2.5 rounded-2xl border px-3 py-2.5 transition-all",
-        "border-border-subtle bg-surface-2 hover:border-border hover:bg-surface-3",
+        "group relative flex cursor-pointer items-center gap-2.5 rounded-lg border border-border/50 px-3 py-2.5 transition-all",
+        "bg-transparent hover:border-border hover:bg-muted/50",
         isSelected &&
           "border-primary/40 bg-primary/5 ring-1 ring-primary/20 hover:bg-primary/5",
       )}

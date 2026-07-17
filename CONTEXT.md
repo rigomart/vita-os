@@ -16,6 +16,10 @@ _Avoid_: Template, default category, fixed category.
 The user's manual judgment on an **Area**: `healthy | needs_attention | critical`.
 _Avoid_: Health status, score, rating, traffic light.
 
+**Area Icon**:
+A user-chosen visual marker that helps identify an **Area**.
+_Avoid_: Status icon, condition icon.
+
 **Thread**:
 An ongoing effort, concern, decision, or situation that belongs to exactly one **Area** and may need attention over time.
 _Avoid_: Project, goal, initiative, epic.
@@ -69,13 +73,14 @@ The single view for all visible **Tasks**, with **Open Tasks** first and **Done 
 _Avoid_: Backlog.
 
 **Dashboard**:
-The main awareness surface that groups **Open Threads** by derived attention state and lightly surfaces attention-worthy **Tasks**.
+The main awareness surface that starts with **Life Areas**, then offers an **Overview** of **Open Threads** and a read-only **Plan** of their **Follow-ups**. It also lightly surfaces **Open Tasks** and recent **Activity Log Entries**.
 _Avoid_: Task list, project board, backlog.
 
 ## Relationships
 
 - An **Area** has zero or more **Threads**; a **Thread** belongs to exactly one **Area**.
 - The app may suggest minimal **Starter Areas**, but users can edit, delete, and reorder **Areas**.
+- An **Area** has one **Area Icon**.
 - An **Area** **Condition** affects the Area's visual prominence, but it does not change a **Thread**'s derived attention state.
 - A **Thread** has zero or one **Summary**, zero or one **Next Move**, zero or one **Follow-up**, and one **Activity Log**.
 - A **Thread** is either **Open** or **Resolved**.
@@ -90,12 +95,20 @@ _Avoid_: Task list, project board, backlog.
 
 ## Thread Attention
 
-- The **Dashboard** groups **Open Threads** by derived attention state: follow-up due, scheduled, ready, or open.
-- **Follow-up Due** includes **Open Threads** whose **Follow-up** is today or earlier.
-- If an **Open Thread** has both a due **Follow-up** and a **Next Move**, it appears as **Follow-up Due**.
-- If an **Open Thread** has a future **Follow-up**, it appears as **Scheduled**, even when it also has a **Next Move**.
+- The **Dashboard Overview** groups **Open Threads** as **Overdue Follow-ups**, **Upcoming Follow-ups**, **Threads with Next Moves**, and **Open Threads**.
+- **Overdue Follow-ups** have a **Follow-up** before today. **Upcoming Follow-ups** have a **Follow-up** today or later.
+- A **Follow-up** takes precedence when a **Thread** also has a **Next Move**.
+- **Threads with Next Moves** have a **Next Move** and no **Follow-up**.
+- The plain **Open Threads** group contains **Threads** with neither field and starts collapsed to keep the awareness surface compact.
 - An **Open Thread** with no **Next Move** and no **Follow-up** is valid; it is not automatically overdue, stale, or broken.
 - Opening or reviewing a **Thread** does not clear its **Follow-up**; the user must clear, reschedule, or resolve it explicitly.
+
+## Dashboard Structure
+
+- **Life Areas** appear before every Dashboard view and are grouped by **Condition** in Critical, Needs Attention, then Healthy order. The user's Area order is preserved inside each group.
+- **Overview** is the default view. It shows Thread attention groups alongside a compact **Inbox** preview and recent **Activity Log Entries** from distinct Open Threads.
+- **Plan** is a read-only time distribution of **Open Threads** based on **Follow-up**. Threads without a Follow-up appear in a collapsed No Date group.
+- **Plan** does not introduce a separate schedule or priority model. Rescheduling continues to mean changing the Thread's existing **Follow-up**.
 
 ## Task Handling
 

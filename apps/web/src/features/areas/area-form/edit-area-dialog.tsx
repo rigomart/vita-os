@@ -24,7 +24,6 @@ export function EditAreaDialog({
       onOpenChange={onOpenChange}
       initialValue={{
         name: area.name,
-        standard: area.standard,
         condition: area.condition,
       }}
       onSubmit={async (value) => {

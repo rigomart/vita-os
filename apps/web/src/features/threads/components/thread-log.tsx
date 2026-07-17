@@ -62,7 +62,7 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
           disabled={isPending}
           aria-label="Activity log note"
           placeholder="Add to activity log..."
-          className="min-h-9 bg-surface-2"
+          className="min-h-9"
           rows={1}
           onKeyDown={handleNoteKeyDown}
         />
@@ -117,7 +117,7 @@ function ActivityLogTimeline({
             <div className="absolute left-0 top-[17px] flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 ring-2 ring-surface-1">
               <Pen className="h-3 w-3 text-primary" />
             </div>
-            <div className="rounded-lg border border-border-subtle bg-surface-2 px-4 py-3">
+            <div className="py-1">
               <p className="whitespace-pre-wrap text-sm leading-relaxed">
                 {log.content}
               </p>

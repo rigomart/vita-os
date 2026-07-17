@@ -89,6 +89,73 @@ describe("useGuardedAsyncAction", () => {
     expect(feedback.error).toHaveBeenCalledWith("Save failed");
   });
 
+  it("unwraps concise Convex domain errors", async () => {
+    const action = vi.fn(() =>
+      Promise.reject(
+        new Error(
+          [
+            "[CONVEX M(threads:update)] Server Error",
+            "Uncaught Error: Thread not found",
+            "    at handler (convex/threads.ts:109:13)",
+          ].join("\n"),
+        ),
+      ),
+    );
+
+    const { result, feedback } = renderHook(() =>
+      useGuardedAsyncAction(action),
+    );
+
+    let outcome!: Awaited<ReturnType<typeof result.current.run>>;
+    await act(async () => {
+      outcome = await result.current.run();
+    });
+
+    expect(outcome).toEqual({
+      ok: false,
+      skipped: false,
+      error: "Thread not found",
+    });
+    expect(result.current.error).toBe("Thread not found");
+    expect(feedback.error).toHaveBeenCalledWith("Thread not found");
+  });
+
+  it("hides raw Convex schema errors from toasts", async () => {
+    const action = vi.fn(() =>
+      Promise.reject(
+        new Error(
+          [
+            "[CONVEX M(threads:update)] Server Error",
+            'Uncaught Error: Failed to insert or update a document in table "threads" because it does not match the schema: Object contains extra field `id` that is not in the validator.',
+            "Validator: v.object({title, followUp})",
+            "    at async applyThreadPatch (convex/lib/threadChanges.ts:173:2)",
+          ].join("\n"),
+        ),
+      ),
+    );
+
+    const { result, feedback } = renderHook(() =>
+      useGuardedAsyncAction(action),
+    );
+
+    let outcome!: Awaited<ReturnType<typeof result.current.run>>;
+    await act(async () => {
+      outcome = await result.current.run();
+    });
+
+    expect(outcome).toEqual({
+      ok: false,
+      skipped: false,
+      error: "Something went wrong. Please try again.",
+    });
+    expect(result.current.error).toBe(
+      "Something went wrong. Please try again.",
+    );
+    expect(feedback.error).toHaveBeenCalledWith(
+      "Something went wrong. Please try again.",
+    );
+  });
+
   it("suppresses the error toast when errorToast is false", async () => {
     const action = vi.fn(() => Promise.reject(new Error("Save failed")));
 

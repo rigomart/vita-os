@@ -20,7 +20,6 @@ export function useUpdateArea(areaSlug: string) {
     const result = await updateArea({
       id: area._id,
       name: value.name,
-      standard: value.standard ?? null,
       condition: value.condition,
     });
 

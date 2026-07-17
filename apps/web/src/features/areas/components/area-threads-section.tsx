@@ -32,6 +32,7 @@ export function AreaThreadsSection({
     <AreaThreads
       areaSlug={areaSlug}
       threads={threads ?? []}
+      currentDate={Date.now()}
       isLoading={threads === undefined}
       onCreateThread={onCreateThread}
       onRemoveThread={(threadId) => removeThread({ id: threadId })}

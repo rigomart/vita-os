@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { RouteErrorFallback } from "@/components/error-boundary";
-import { ThreadDetailScreen } from "@/features/threads/thread-detail/thread-detail-screen";
+import { ThreadDetailSheet } from "@/features/threads/thread-detail/thread-detail-sheet";
 
 export const Route = createFileRoute("/_authenticated/$areaSlug/$threadSlug")({
   errorComponent: RouteErrorFallback,
@@ -10,5 +10,5 @@ export const Route = createFileRoute("/_authenticated/$areaSlug/$threadSlug")({
 
 function ThreadRoute() {
   const { areaSlug, threadSlug } = Route.useParams();
-  return <ThreadDetailScreen areaSlug={areaSlug} threadSlug={threadSlug} />;
+  return <ThreadDetailSheet areaSlug={areaSlug} threadSlug={threadSlug} />;
 }

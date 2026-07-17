@@ -3,9 +3,9 @@ import type { Doc } from "@convex/_generated/dataModel";
 import {
   CONDITION_OPTIONS,
   conditionColors,
+  conditionLabels,
   isCondition,
 } from "@convex/lib/condition";
-import { Link } from "@tanstack/react-router";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +25,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@vita-os/ui/components/select";
-import { ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
+
+import { PageHeader } from "@/components/layout/page-header";
+import { cn } from "@/lib/utils";
 
 interface AreaHeaderProps {
   area: Doc<"areas">;
@@ -44,65 +47,64 @@ export function AreaHeader({
 }: AreaHeaderProps) {
   return (
     <div>
-      <Link
-        to="/"
-        className="mb-2 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-      >
-        Dashboard
-        <ChevronRight className="h-3 w-3" />
-      </Link>
-
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold tracking-tight">{area.name}</h1>
+      <PageHeader
+        title={area.name}
+        backLink={{ label: "Dashboard", to: "/" }}
+        titleAccessory={
           <span
-            className={`h-2.5 w-2.5 shrink-0 rounded-full ${conditionColors[area.condition]}`}
+            className={cn(
+              "h-2.5 w-2.5 shrink-0 rounded-full",
+              conditionColors[area.condition],
+            )}
+            aria-label={conditionLabels[area.condition]}
           />
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={onEdit}
-            aria-label="Edit area"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Delete area"
-                />
-              }
+        }
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onEdit}
+              aria-label="Edit area"
             >
-              <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete area?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This area and its data will be permanently deleted. Move or
-                  delete all threads first.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={onDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      </div>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Delete area"
+                  />
+                }
+              >
+                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete area?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This area and its data will be permanently deleted. Move or
+                    delete all threads first.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
+        }
+      />
 
-      <div className="mt-3 flex items-center gap-3">
+      <div className="flex items-center gap-3">
         <Select
           value={area.condition}
           onValueChange={(value) => {
@@ -119,7 +121,7 @@ export function AreaHeader({
             {CONDITION_OPTIONS.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 <span className="flex items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full ${option.color}`} />
+                  <span className={cn("h-2 w-2 rounded-full", option.color)} />
                   {option.label}
                 </span>
               </SelectItem>

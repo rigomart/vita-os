@@ -15,6 +15,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as UnauthenticatedSignUpRouteImport } from './routes/_unauthenticated/sign-up'
 import { Route as UnauthenticatedSignInRouteImport } from './routes/_unauthenticated/sign-in'
 import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
+import { Route as AuthenticatedAreaSlugRouteRouteImport } from './routes/_authenticated/$areaSlug/route'
 import { Route as AuthenticatedAreaSlugIndexRouteImport } from './routes/_authenticated/$areaSlug/index'
 import { Route as AuthenticatedAreaSlugThreadSlugRouteImport } from './routes/_authenticated/$areaSlug/$threadSlug'
 
@@ -46,21 +47,28 @@ const AuthenticatedInboxRoute = AuthenticatedInboxRouteImport.update({
   path: '/inbox',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAreaSlugRouteRoute =
+  AuthenticatedAreaSlugRouteRouteImport.update({
+    id: '/$areaSlug',
+    path: '/$areaSlug',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAreaSlugIndexRoute =
   AuthenticatedAreaSlugIndexRouteImport.update({
-    id: '/$areaSlug/',
-    path: '/$areaSlug/',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAreaSlugRouteRoute,
   } as any)
 const AuthenticatedAreaSlugThreadSlugRoute =
   AuthenticatedAreaSlugThreadSlugRouteImport.update({
-    id: '/$areaSlug/$threadSlug',
-    path: '/$areaSlug/$threadSlug',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/$threadSlug',
+    path: '/$threadSlug',
+    getParentRoute: () => AuthenticatedAreaSlugRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/$areaSlug': typeof AuthenticatedAreaSlugRouteRouteWithChildren
   '/inbox': typeof AuthenticatedInboxRoute
   '/sign-in': typeof UnauthenticatedSignInRoute
   '/sign-up': typeof UnauthenticatedSignUpRoute
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_unauthenticated': typeof UnauthenticatedRouteRouteWithChildren
+  '/_authenticated/$areaSlug': typeof AuthenticatedAreaSlugRouteRouteWithChildren
   '/_authenticated/inbox': typeof AuthenticatedInboxRoute
   '/_unauthenticated/sign-in': typeof UnauthenticatedSignInRoute
   '/_unauthenticated/sign-up': typeof UnauthenticatedSignUpRoute
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$areaSlug'
     | '/inbox'
     | '/sign-in'
     | '/sign-up'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/_unauthenticated'
+    | '/_authenticated/$areaSlug'
     | '/_authenticated/inbox'
     | '/_unauthenticated/sign-in'
     | '/_unauthenticated/sign-up'
@@ -164,35 +175,56 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInboxRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/$areaSlug': {
+      id: '/_authenticated/$areaSlug'
+      path: '/$areaSlug'
+      fullPath: '/$areaSlug'
+      preLoaderRoute: typeof AuthenticatedAreaSlugRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/$areaSlug/': {
       id: '/_authenticated/$areaSlug/'
-      path: '/$areaSlug'
+      path: '/'
       fullPath: '/$areaSlug/'
       preLoaderRoute: typeof AuthenticatedAreaSlugIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAreaSlugRouteRoute
     }
     '/_authenticated/$areaSlug/$threadSlug': {
       id: '/_authenticated/$areaSlug/$threadSlug'
-      path: '/$areaSlug/$threadSlug'
+      path: '/$threadSlug'
       fullPath: '/$areaSlug/$threadSlug'
       preLoaderRoute: typeof AuthenticatedAreaSlugThreadSlugRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAreaSlugRouteRoute
     }
   }
 }
 
-interface AuthenticatedRouteRouteChildren {
-  AuthenticatedInboxRoute: typeof AuthenticatedInboxRoute
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+interface AuthenticatedAreaSlugRouteRouteChildren {
   AuthenticatedAreaSlugThreadSlugRoute: typeof AuthenticatedAreaSlugThreadSlugRoute
   AuthenticatedAreaSlugIndexRoute: typeof AuthenticatedAreaSlugIndexRoute
 }
 
+const AuthenticatedAreaSlugRouteRouteChildren: AuthenticatedAreaSlugRouteRouteChildren =
+  {
+    AuthenticatedAreaSlugThreadSlugRoute: AuthenticatedAreaSlugThreadSlugRoute,
+    AuthenticatedAreaSlugIndexRoute: AuthenticatedAreaSlugIndexRoute,
+  }
+
+const AuthenticatedAreaSlugRouteRouteWithChildren =
+  AuthenticatedAreaSlugRouteRoute._addFileChildren(
+    AuthenticatedAreaSlugRouteRouteChildren,
+  )
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAreaSlugRouteRoute: typeof AuthenticatedAreaSlugRouteRouteWithChildren
+  AuthenticatedInboxRoute: typeof AuthenticatedInboxRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+}
+
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAreaSlugRouteRoute: AuthenticatedAreaSlugRouteRouteWithChildren,
   AuthenticatedInboxRoute: AuthenticatedInboxRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedAreaSlugThreadSlugRoute: AuthenticatedAreaSlugThreadSlugRoute,
-  AuthenticatedAreaSlugIndexRoute: AuthenticatedAreaSlugIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
