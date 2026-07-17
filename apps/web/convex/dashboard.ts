@@ -3,13 +3,14 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { buildDashboardOverview } from "./lib/dashboard";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
-import { conditionValidator } from "./lib/validators";
+import { areaIconValidator, conditionValidator } from "./lib/validators";
 
 const dashboardAreaValidator = v.object({
   id: v.id("areas"),
   name: v.string(),
   slug: v.string(),
   condition: conditionValidator,
+  icon: v.optional(areaIconValidator),
   order: v.number(),
 });
 

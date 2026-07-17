@@ -24,6 +24,8 @@ import { useState } from "react";
 
 import type { ProcessTaskAction } from "@/features/tasks/use-process-task";
 
+import { AreaIcon } from "@/features/areas/components/area-icon";
+
 import {
   type ThreadChoice,
   ThreadSearchAutocomplete,
@@ -322,10 +324,11 @@ function AreaChoice({
               size="sm"
               onClick={() => onSelect(area._id)}
               className={cn(
-                "h-7 rounded-full px-3 text-xs font-medium",
+                "h-7 gap-1.5 rounded-full px-3 text-xs font-medium",
                 !isSelected && "bg-transparent",
               )}
             >
+              <AreaIcon icon={area.icon} className="size-3.5 shrink-0" />
               {area.name}
             </Button>
           );

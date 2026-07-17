@@ -14,6 +14,7 @@ import type * as auth from "../auth.js";
 import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
 import type * as lib_activityLog from "../lib/activityLog.js";
+import type * as lib_areaIcons from "../lib/areaIcons.js";
 import type * as lib_areaThreads from "../lib/areaThreads.js";
 import type * as lib_condition from "../lib/condition.js";
 import type * as lib_dashboard from "../lib/dashboard.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   dashboard: typeof dashboard;
   http: typeof http;
   "lib/activityLog": typeof lib_activityLog;
+  "lib/areaIcons": typeof lib_areaIcons;
   "lib/areaThreads": typeof lib_areaThreads;
   "lib/condition": typeof lib_condition;
   "lib/dashboard": typeof lib_dashboard;

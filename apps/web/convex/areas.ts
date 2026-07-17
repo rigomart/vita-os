@@ -6,7 +6,7 @@ import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { nullsToUndefined } from "./lib/patch";
 import { generateSlug } from "./lib/slugs";
 import { validateAreaName } from "./lib/validation";
-import { conditionValidator } from "./lib/validators";
+import { areaIconValidator, conditionValidator } from "./lib/validators";
 
 export const list = query({
   args: {},
@@ -50,6 +50,7 @@ export const create = mutation({
     name: v.string(),
     standard: v.optional(v.string()),
     condition: conditionValidator,
+    icon: areaIconValidator,
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -65,6 +66,7 @@ export const create = mutation({
       slug,
       standard: args.standard,
       condition: args.condition,
+      icon: args.icon,
       order: nextOrder,
       createdAt: Date.now(),
     });
@@ -79,6 +81,7 @@ export const update = mutation({
     name: v.optional(v.string()),
     standard: v.optional(v.union(v.string(), v.null())),
     condition: v.optional(conditionValidator),
+    icon: v.optional(areaIconValidator),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);

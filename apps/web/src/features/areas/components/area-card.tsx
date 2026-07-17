@@ -1,11 +1,12 @@
 import type { Doc } from "@convex/_generated/dataModel";
 
-import { conditionColors, conditionLabels } from "@convex/lib/condition";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@vita-os/ui/lib/utils";
 import { CircleDot } from "lucide-react";
 
 import { flatListRowHoverClassName } from "@/lib/flat-surface";
+
+import { AreaIcon } from "./area-icon";
 
 interface AreaCardProps {
   area: Doc<"areas">;
@@ -21,11 +22,7 @@ export function AreaCard({ area, threadCount, attentionCount }: AreaCardProps) {
       className={cn("block py-4", flatListRowHoverClassName)}
     >
       <div className="flex items-center gap-2.5">
-        <span
-          className={`h-2.5 w-2.5 shrink-0 rounded-full ${conditionColors[area.condition]}`}
-          role="img"
-          aria-label={conditionLabels[area.condition]}
-        />
+        <AreaIcon icon={area.icon} className="size-4 shrink-0" />
         <p className="truncate font-medium">{area.name}</p>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">

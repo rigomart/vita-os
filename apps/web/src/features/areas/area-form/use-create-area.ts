@@ -17,5 +17,6 @@ export function useCreateArea() {
       name: value.name,
       standard: value.standard,
       condition: value.condition,
+      icon: value.icon,
     });
 }

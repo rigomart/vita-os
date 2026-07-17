@@ -6,8 +6,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@vita-os/ui/components/popover";
-import { Compass } from "lucide-react";
 import { useState } from "react";
+
+import { AreaIcon } from "./area-icon";
 
 interface AreaPickerProps {
   areas: Doc<"areas">[];
@@ -37,7 +38,7 @@ export function AreaPicker({
           />
         }
       >
-        <Compass className="h-3 w-3" />
+        <AreaIcon icon={selected?.icon} className="h-3 w-3" />
         {selected ? selected.name : "Area"}
       </PopoverTrigger>
       <PopoverContent className="w-48 p-1" align="start">
@@ -49,8 +50,9 @@ export function AreaPicker({
               onSelect(a._id);
               setOpen(false);
             }}
-            className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-surface-3"
+            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-surface-3"
           >
+            <AreaIcon icon={a.icon} className="size-3.5 shrink-0" />
             {a.name}
           </button>
         ))}
