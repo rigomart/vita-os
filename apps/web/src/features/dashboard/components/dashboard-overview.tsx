@@ -98,7 +98,7 @@ export function DashboardOverview({
       <AreaConditionMap areas={overview.areas} />
 
       <Tabs defaultValue="overview" className="gap-5">
-        <TabsList variant="line" aria-label="Dashboard view">
+        <TabsList aria-label="Dashboard view">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="plan">Plan</TabsTrigger>
         </TabsList>
