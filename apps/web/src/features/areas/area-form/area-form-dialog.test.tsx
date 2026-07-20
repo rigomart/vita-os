@@ -84,6 +84,29 @@ describe("AreaFormDialog", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows the selected condition label instead of its stored value", () => {
+    render(
+      <AreaFormDialog
+        mode="edit"
+        open
+        onOpenChange={vi.fn()}
+        initialValue={{
+          name: "Health",
+          condition: "needs_attention",
+          icon: "Compass",
+        }}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Condition")).toHaveTextContent(
+      "Needs attention",
+    );
+    expect(screen.getByLabelText("Condition")).not.toHaveTextContent(
+      "needs_attention",
+    );
+  });
+
   it("prevents duplicate area creates while saving", async () => {
     const user = userEvent.setup();
     const pendingCreate = deferred();

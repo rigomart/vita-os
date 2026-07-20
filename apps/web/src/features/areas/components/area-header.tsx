@@ -23,6 +23,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -149,6 +150,7 @@ export function AreaHeader({
 
       <div className="flex items-center gap-3">
         <Select
+          items={CONDITION_OPTIONS}
           value={area.condition}
           onValueChange={(value) => {
             if (isCondition(value)) onConditionChange(value);
@@ -161,14 +163,18 @@ export function AreaHeader({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {CONDITION_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                <span className="flex items-center gap-2">
-                  <span className={cn("h-2 w-2 rounded-full", option.color)} />
-                  {option.label}
-                </span>
-              </SelectItem>
-            ))}
+            <SelectGroup>
+              {CONDITION_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={cn("h-2 w-2 rounded-full", option.color)}
+                    />
+                    {option.label}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectGroup>
           </SelectContent>
         </Select>
         <span className="text-xs text-muted-foreground">
