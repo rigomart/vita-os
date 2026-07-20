@@ -1,4 +1,4 @@
-import { conditionColors, type Condition } from "@convex/lib/condition";
+import { type Condition } from "@convex/lib/condition";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@vita-os/ui/components/badge";
 import { Button } from "@vita-os/ui/components/button";
@@ -27,6 +27,7 @@ import {
   MessagesSquare,
 } from "lucide-react";
 
+import { AreaIcon } from "@/features/areas/components/area-icon";
 import { flatListClassName } from "@/lib/flat-surface";
 
 import {
@@ -177,7 +178,10 @@ function AreaConditionMap({ areas }: { areas: DashboardArea[] }) {
                     params={{ areaSlug: area.slug }}
                     className="group flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium transition-colors hover:bg-muted/50"
                   >
-                    <span className="truncate">{area.name}</span>
+                    <span className="flex min-w-0 items-center gap-2 truncate">
+                      <AreaIcon icon={area.icon} className="size-4 shrink-0" />
+                      <span className="truncate">{area.name}</span>
+                    </span>
                     <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 ))}
@@ -327,12 +331,7 @@ function DashboardThreadRow({
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <h3 className="text-sm font-medium">{thread.title}</h3>
           <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <span
-              className={cn(
-                "size-1.5 rounded-full",
-                conditionColors[area.condition],
-              )}
-            />
+            <AreaIcon icon={area.icon} className="size-3 shrink-0" />
             {area.name}
           </span>
         </div>
@@ -480,12 +479,7 @@ function RecentActivity({
               className="block rounded-md px-1 py-2 transition-colors hover:bg-muted/50"
             >
               <div className="flex items-center gap-1.5">
-                <span
-                  className={cn(
-                    "size-1.5 shrink-0 rounded-full",
-                    conditionColors[area.condition],
-                  )}
-                />
+                <AreaIcon icon={area.icon} className="size-3.5 shrink-0" />
                 <p className="truncate text-sm font-medium">{thread.title}</p>
               </div>
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -601,13 +595,7 @@ function PlanThreadLink({
     >
       <MessagesSquare className="size-3.5 shrink-0" />
       <span className="truncate">{thread.title}</span>
-      <span
-        className={cn(
-          "size-1.5 shrink-0 rounded-full",
-          conditionColors[area.condition],
-        )}
-        aria-label={`${conditionLabels[area.condition]} Area`}
-      />
+      <AreaIcon icon={area.icon} className="size-3.5 shrink-0" />
     </Link>
   );
 }

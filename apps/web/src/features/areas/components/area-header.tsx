@@ -1,11 +1,8 @@
 import type { Doc } from "@convex/_generated/dataModel";
+import type { AreaIcon as AreaIconName } from "@convex/lib/areaIcons";
 
-import {
-  CONDITION_OPTIONS,
-  conditionColors,
-  conditionLabels,
-  isCondition,
-} from "@convex/lib/condition";
+import { getAreaIcon } from "@convex/lib/areaIcons";
+import { CONDITION_OPTIONS, isCondition } from "@convex/lib/condition";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,16 +16,26 @@ import {
 } from "@vita-os/ui/components/alert-dialog";
 import { Button } from "@vita-os/ui/components/button";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@vita-os/ui/components/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@vita-os/ui/components/select";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { Pencil, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { cn } from "@/lib/utils";
+
+import { AreaIcon } from "./area-icon";
+import { AreaIconPicker } from "./area-icon-picker";
 
 interface AreaHeaderProps {
   area: Doc<"areas">;
@@ -36,6 +43,7 @@ interface AreaHeaderProps {
   onEdit: () => void;
   onDelete: () => void;
   onConditionChange: (value: Doc<"areas">["condition"]) => void;
+  onIconChange: (value: AreaIconName) => Promise<void> | void;
 }
 
 export function AreaHeader({
@@ -44,20 +52,55 @@ export function AreaHeader({
   onEdit,
   onDelete,
   onConditionChange,
+  onIconChange,
 }: AreaHeaderProps) {
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const { run: saveIcon, isPending: isSavingIcon } =
+    useGuardedAsyncAction(onIconChange);
+  const selectedIcon = getAreaIcon(area.icon);
+
+  const handleIconSelect = async (icon: AreaIconName) => {
+    if (icon === selectedIcon) {
+      setIconPickerOpen(false);
+      return;
+    }
+
+    setIconPickerOpen(false);
+    await saveIcon(icon);
+  };
+
   return (
     <div>
       <PageHeader
         title={area.name}
         backLink={{ label: "Dashboard", to: "/" }}
-        titleAccessory={
-          <span
-            className={cn(
-              "h-2.5 w-2.5 shrink-0 rounded-full",
-              conditionColors[area.condition],
-            )}
-            aria-label={conditionLabels[area.condition]}
-          />
+        titleLeading={
+          <Popover
+            open={iconPickerOpen}
+            onOpenChange={(open) => {
+              if (!isSavingIcon) setIconPickerOpen(open);
+            }}
+          >
+            <PopoverTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Change Area icon"
+                  disabled={isSavingIcon}
+                />
+              }
+            >
+              <AreaIcon icon={selectedIcon} className="size-4" />
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-3" align="start">
+              <AreaIconPicker
+                selectedIcon={selectedIcon}
+                onSelect={(icon) => void handleIconSelect(icon)}
+                disabled={isSavingIcon}
+              />
+            </PopoverContent>
+          </Popover>
         }
         actions={
           <>

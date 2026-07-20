@@ -1,7 +1,9 @@
 import type { Doc, Id } from "../_generated/dataModel";
+import type { AreaIcon } from "./areaIcons";
 
 export interface DashboardArea {
   condition: Doc<"areas">["condition"];
+  icon?: AreaIcon;
   id: Id<"areas">;
   name: string;
   order: number;
@@ -53,6 +55,7 @@ export function buildDashboardOverview(
         name: area.name,
         slug: area.slug ?? area._id,
         condition: area.condition,
+        icon: area.icon,
         order: area.order,
       }),
     );

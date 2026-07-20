@@ -3,6 +3,7 @@ import { v } from "convex/values";
 
 import {
   activityLogEntryTypeValidator,
+  areaIconValidator,
   conditionValidator,
 } from "./lib/validators";
 
@@ -13,6 +14,7 @@ export default defineSchema({
     slug: v.optional(v.string()),
     standard: v.optional(v.string()),
     condition: conditionValidator,
+    icon: v.optional(areaIconValidator),
     order: v.number(),
     createdAt: v.number(),
   })

@@ -1,3 +1,4 @@
+import type { AreaIcon } from "@convex/lib/areaIcons";
 import type { Condition } from "@convex/lib/condition";
 
 import { addDays, format } from "date-fns";
@@ -6,6 +7,7 @@ export const DAY = 24 * 60 * 60 * 1000;
 
 export interface DashboardArea {
   condition: Condition;
+  icon?: AreaIcon;
   id: string;
   name: string;
   order: number;

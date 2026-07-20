@@ -1,5 +1,7 @@
 import type { Doc } from "@convex/_generated/dataModel";
 
+import { getAreaIcon } from "@convex/lib/areaIcons";
+
 import { AreaFormDialog } from "./area-form-dialog";
 import { useUpdateArea } from "./use-update-area";
 
@@ -25,6 +27,7 @@ export function EditAreaDialog({
       initialValue={{
         name: area.name,
         condition: area.condition,
+        icon: getAreaIcon(area.icon),
       }}
       onSubmit={async (value) => {
         await updateArea(area, value);

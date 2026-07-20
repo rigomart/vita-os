@@ -14,6 +14,76 @@ function deferred() {
 }
 
 describe("AreaFormDialog", () => {
+  it("starts new Areas with Compass and submits the selected icon", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+
+    render(
+      <AreaFormDialog
+        mode="create"
+        open
+        onOpenChange={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Choose Area icon: Compass" }),
+    );
+    expect(screen.getByRole("button", { name: "Compass" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(screen.getByRole("button", { name: "Health" }));
+    await user.type(screen.getByLabelText("Name"), "Family Health");
+    await user.click(screen.getByRole("button", { name: "Create area" }));
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Family Health",
+      condition: "healthy",
+      icon: "HeartPulse",
+    });
+  });
+
+  it("does not change the selected icon when the Area name changes", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AreaFormDialog
+        mode="create"
+        open
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Choose Area icon: Compass" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Finances" }));
+    await user.type(screen.getByLabelText("Name"), "Health");
+
+    expect(
+      screen.getByRole("button", { name: "Choose Area icon: WalletCards" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not expose icon editing in the general edit dialog", () => {
+    render(
+      <AreaFormDialog
+        mode="edit"
+        open
+        onOpenChange={vi.fn()}
+        initialValue={{ name: "Health", condition: "healthy", icon: "Compass" }}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /Choose Area icon/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("prevents duplicate area creates while saving", async () => {
     const user = userEvent.setup();
     const pendingCreate = deferred();
@@ -134,7 +204,7 @@ describe("AreaFormDialog", () => {
         mode="edit"
         open
         onOpenChange={vi.fn()}
-        initialValue={{ name: "Health", condition: "healthy" }}
+        initialValue={{ name: "Health", condition: "healthy", icon: "Compass" }}
         onSubmit={onSubmit}
       />,
     );
@@ -163,7 +233,7 @@ describe("AreaFormDialog", () => {
         mode="edit"
         open
         onOpenChange={vi.fn()}
-        initialValue={{ name: "Health", condition: "healthy" }}
+        initialValue={{ name: "Health", condition: "healthy", icon: "Compass" }}
         onSubmit={onSubmit}
       />,
     );

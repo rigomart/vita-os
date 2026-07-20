@@ -12,13 +12,16 @@ type CreateAreaArgs = {
   name: string;
   standard?: string;
   condition: Area["condition"];
+  icon: NonNullable<Area["icon"]>;
 };
 
 type NullablePatch<T> = {
   [K in keyof T]?: T[K] | null;
 };
 
-type AreaPatch = NullablePatch<Pick<Area, "name" | "standard" | "condition">>;
+type AreaPatch = NullablePatch<
+  Pick<Area, "name" | "standard" | "condition" | "icon">
+>;
 
 export function buildOptimisticArea(
   args: CreateAreaArgs,
@@ -31,6 +34,7 @@ export function buildOptimisticArea(
     name: args.name,
     standard: args.standard,
     condition: args.condition,
+    icon: args.icon,
     order: options.order,
     createdAt: options.now,
   };

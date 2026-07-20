@@ -9,6 +9,8 @@ import {
 import { FolderOpen } from "lucide-react";
 import { useState } from "react";
 
+import { AreaIcon } from "@/features/areas/components/area-icon";
+
 interface ThreadPickerProps {
   threads: Doc<"threads">[];
   areas: Doc<"areas">[];
@@ -45,7 +47,8 @@ export function ThreadPicker({
       <PopoverContent className="w-56 p-1" align="start">
         {threadsByArea.map(({ area, threads: areaThreads }) => (
           <div key={area._id}>
-            <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
+            <p className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted-foreground">
+              <AreaIcon icon={area.icon} className="size-3 shrink-0" />
               {area.name}
             </p>
             {areaThreads.map((p) => (

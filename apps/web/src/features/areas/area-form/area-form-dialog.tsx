@@ -1,4 +1,9 @@
 import {
+  DEFAULT_AREA_ICON,
+  getAreaIcon,
+  type AreaIcon as AreaIconName,
+} from "@convex/lib/areaIcons";
+import {
   CONDITION_OPTIONS,
   type Condition,
   DEFAULT_CONDITION,
@@ -7,6 +12,11 @@ import {
 import { Button } from "@vita-os/ui/components/button";
 import { Input } from "@vita-os/ui/components/input";
 import { Label } from "@vita-os/ui/components/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@vita-os/ui/components/popover";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -24,6 +34,9 @@ import {
 } from "@vita-os/ui/components/select";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useEffect, useState } from "react";
+
+import { AreaIcon } from "@/features/areas/components/area-icon";
+import { AreaIconPicker } from "@/features/areas/components/area-icon-picker";
 
 import type { AreaFormValue } from "./types";
 
@@ -54,11 +67,17 @@ export function AreaFormDialog({
   const [condition, setCondition] = useState<Condition>(
     initialValue?.condition ?? DEFAULT_CONDITION,
   );
+  const [icon, setIcon] = useState<AreaIconName>(
+    getAreaIcon(initialValue?.icon),
+  );
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setName(initialValue?.name ?? "");
     setCondition(initialValue?.condition ?? DEFAULT_CONDITION);
+    setIcon(getAreaIcon(initialValue?.icon));
+    setIconPickerOpen(false);
   }, [open, initialValue]);
 
   const {
@@ -84,12 +103,15 @@ export function AreaFormDialog({
     const result = await submitArea({
       name: trimmedName,
       condition: condition,
+      icon,
     });
     if (!result.ok) return;
 
     if (mode === "create") {
       setName("");
       setCondition(DEFAULT_CONDITION);
+      setIcon(DEFAULT_AREA_ICON);
+      setIconPickerOpen(false);
     }
   };
 
@@ -109,14 +131,44 @@ export function AreaFormDialog({
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="area-name">Name</Label>
-            <Input
-              id="area-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Health, Career, Finances"
-              autoFocus
-              disabled={isPending}
-            />
+            <div className="flex items-center gap-2">
+              {mode === "create" ? (
+                <Popover open={iconPickerOpen} onOpenChange={setIconPickerOpen}>
+                  <PopoverTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0"
+                        aria-label={`Choose Area icon: ${icon}`}
+                        disabled={isPending}
+                      />
+                    }
+                  >
+                    <AreaIcon icon={icon} className="size-4" />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-3" align="start">
+                    <AreaIconPicker
+                      selectedIcon={icon}
+                      onSelect={(selectedIcon) => {
+                        setIcon(selectedIcon);
+                        setIconPickerOpen(false);
+                      }}
+                      disabled={isPending}
+                    />
+                  </PopoverContent>
+                </Popover>
+              ) : null}
+              <Input
+                id="area-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Health, Career, Finances"
+                autoFocus
+                disabled={isPending}
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="area-condition">Condition</Label>
