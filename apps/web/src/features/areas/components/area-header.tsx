@@ -65,8 +65,8 @@ export function AreaHeader({
       return;
     }
 
-    const result = await saveIcon(icon);
-    if (result.ok) setIconPickerOpen(false);
+    setIconPickerOpen(false);
+    await saveIcon(icon);
   };
 
   return (

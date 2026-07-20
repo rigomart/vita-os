@@ -43,7 +43,7 @@ function renderHeader(onIconChange: (icon: AreaIcon) => Promise<void> | void) {
 }
 
 describe("AreaHeader icon picker", () => {
-  it("saves an icon once and closes after success", async () => {
+  it("closes immediately while saving the icon optimistically", async () => {
     const user = userEvent.setup();
     const pendingSave = deferred();
     const onIconChange = vi.fn(() => pendingSave.promise);
@@ -54,18 +54,23 @@ describe("AreaHeader icon picker", () => {
 
     expect(onIconChange).toHaveBeenCalledTimes(1);
     expect(onIconChange).toHaveBeenCalledWith("HeartPulse");
-    expect(screen.getByRole("button", { name: "Health" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Health" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Change Area icon" }),
+    ).toBeDisabled();
 
     pendingSave.resolve();
 
     await waitFor(() =>
       expect(
-        screen.queryByRole("button", { name: "Health" }),
-      ).not.toBeInTheDocument(),
+        screen.getByRole("button", { name: "Change Area icon" }),
+      ).toBeEnabled(),
     );
   });
 
-  it("keeps the picker open when saving fails", async () => {
+  it("keeps the picker closed and reports a failed optimistic save", async () => {
     const user = userEvent.setup();
     const pendingSave = deferred();
     const onIconChange = vi.fn(() => pendingSave.promise);
@@ -78,10 +83,11 @@ describe("AreaHeader icon picker", () => {
     await waitFor(() =>
       expect(feedback.error).toHaveBeenCalledWith("Database unavailable"),
     );
-    expect(screen.getByRole("button", { name: "Health" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Compass" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(
+      screen.queryByRole("button", { name: "Health" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Change Area icon" }),
+    ).toBeEnabled();
   });
 });
