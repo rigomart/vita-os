@@ -16,6 +16,7 @@ interface PageHeaderProps {
   title: string;
   backLink?: PageHeaderBackLink;
   description?: string;
+  titleLeading?: ReactNode;
   titleAccessory?: ReactNode;
   actions?: ReactNode;
   className?: string;
@@ -25,6 +26,7 @@ export function PageHeader({
   title,
   backLink,
   description,
+  titleLeading,
   titleAccessory,
   actions,
   className,
@@ -42,7 +44,8 @@ export function PageHeader({
         </Link>
       )}
       <div className="flex items-center justify-between">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-1">
+          {titleLeading}
           <h1 className="truncate font-heading text-2xl font-semibold tracking-tight">
             {title}
           </h1>

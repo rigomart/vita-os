@@ -89,6 +89,19 @@ describe("buildDashboardOverview", () => {
     expect(result.inbox.totalOpen).toBe(1);
   });
 
+  it("includes an Area Icon when one is stored", () => {
+    const result = buildDashboardOverview("user1", {
+      areas: [area("health", { icon: "HeartPulse" })],
+      threads: [],
+      tasks: [],
+      activityLogs: [],
+    });
+
+    expect(result.areas).toEqual([
+      expect.objectContaining({ id: "health", icon: "HeartPulse" }),
+    ]);
+  });
+
   it("orders dated Inbox Tasks first and undated Tasks newest first", () => {
     const result = buildDashboardOverview("user1", {
       areas: [],

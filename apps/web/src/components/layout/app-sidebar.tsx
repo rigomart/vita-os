@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
+import { AreaIcon } from "@/features/areas/components/area-icon";
 import { useGlobalNewTaskShortcut } from "@/features/sidebar/use-global-new-task-shortcut";
 import { useSidebarDialogs } from "@/features/sidebar/use-sidebar-dialogs";
 import { NewTaskDialog } from "@/features/tasks/new-task/new-task-dialog";
@@ -137,6 +138,7 @@ export function AppSidebar() {
                       isActive={pathname === `/${areaSlug}`}
                       render={<Link to="/$areaSlug" params={{ areaSlug }} />}
                     >
+                      <AreaIcon icon={area.icon} className="size-4" />
                       <span>{area.name}</span>
                     </SidebarMenuButton>
                     <SidebarMenuAction

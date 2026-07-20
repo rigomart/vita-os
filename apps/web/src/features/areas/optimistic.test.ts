@@ -12,6 +12,7 @@ describe("Area optimistic updates", () => {
           name: "Family Health",
           standard: "Appointments are current",
           condition: "healthy",
+          icon: "HeartPulse",
         },
         { id: "area1" as Id<"areas">, now: 123, order: 4 },
       ),
@@ -22,6 +23,7 @@ describe("Area optimistic updates", () => {
       name: "Family Health",
       standard: "Appointments are current",
       condition: "healthy",
+      icon: "HeartPulse",
       order: 4,
       createdAt: 123,
     });

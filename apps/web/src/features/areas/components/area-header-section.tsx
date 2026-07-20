@@ -1,4 +1,5 @@
 import type { Doc } from "@convex/_generated/dataModel";
+import type { AreaIcon } from "@convex/lib/areaIcons";
 
 import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
@@ -47,6 +48,11 @@ export function AreaHeaderSection({ areaSlug, onEdit }: AreaHeaderProps) {
     updateArea({ id: area._id, condition: value });
   };
 
+  const handleIconChange = async (icon: AreaIcon) => {
+    if (!area) return;
+    await updateArea({ id: area._id, icon });
+  };
+
   if (!area) return null;
 
   return (
@@ -56,6 +62,7 @@ export function AreaHeaderSection({ areaSlug, onEdit }: AreaHeaderProps) {
       onEdit={onEdit}
       onDelete={handleDelete}
       onConditionChange={handleConditionChange}
+      onIconChange={handleIconChange}
     />
   );
 }
