@@ -18,6 +18,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -121,6 +122,7 @@ export function AreaFormDialog({
           <div className="space-y-2">
             <Label htmlFor="area-condition">Condition</Label>
             <Select
+              items={CONDITION_OPTIONS}
               value={condition}
               disabled={isPending}
               onValueChange={(value) => {
@@ -131,16 +133,18 @@ export function AreaFormDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {CONDITION_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={`h-2 w-2 rounded-full ${option.color}`}
-                      />
-                      {option.label}
-                    </span>
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  {CONDITION_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={`h-2 w-2 rounded-full ${option.color}`}
+                        />
+                        {option.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
