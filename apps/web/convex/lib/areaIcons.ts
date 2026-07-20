@@ -42,6 +42,6 @@ export function isAreaIcon(value: unknown): value is AreaIcon {
   return typeof value === "string" && AREA_ICONS.includes(value as AreaIcon);
 }
 
-export function getAreaIcon(value: unknown): AreaIcon {
+export function getAreaIcon(value?: unknown): AreaIcon {
   return isAreaIcon(value) ? value : DEFAULT_AREA_ICON;
 }
