@@ -1,20 +1,9 @@
-import type { LinkProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-
-import { Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-interface PageHeaderBackLink {
-  label: string;
-  to: LinkProps["to"];
-  params?: LinkProps["params"];
-}
-
 interface PageHeaderProps {
   title: string;
-  backLink?: PageHeaderBackLink;
   description?: string;
   titleLeading?: ReactNode;
   titleAccessory?: ReactNode;
@@ -24,7 +13,6 @@ interface PageHeaderProps {
 
 export function PageHeader({
   title,
-  backLink,
   description,
   titleLeading,
   titleAccessory,
@@ -33,16 +21,6 @@ export function PageHeader({
 }: PageHeaderProps) {
   return (
     <div className={cn("mb-6", className)}>
-      {backLink && (
-        <Link
-          to={backLink.to}
-          params={backLink.params}
-          className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          {backLink.label}
-        </Link>
-      )}
       <div className="flex items-center justify-between">
         <div className="flex min-w-0 items-center gap-1">
           {titleLeading}
