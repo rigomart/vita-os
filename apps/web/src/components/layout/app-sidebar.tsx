@@ -1,14 +1,5 @@
 import { api } from "@convex/_generated/api";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@vita-os/ui/components/dropdown-menu";
 import { Kbd } from "@vita-os/ui/components/kbd";
 import {
   Sidebar,
@@ -26,14 +17,7 @@ import {
   SidebarMenuSubItem,
 } from "@vita-os/ui/components/sidebar";
 import { useQuery } from "convex-helpers/react/cache/hooks";
-import {
-  ChevronsUpDown,
-  CirclePlus,
-  Inbox,
-  LayoutDashboard,
-  LogOut,
-  Plus,
-} from "lucide-react";
+import { CirclePlus, Inbox, LayoutDashboard, Plus } from "lucide-react";
 
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
 import { AreaIcon } from "@/features/areas/components/area-icon";
@@ -46,6 +30,7 @@ import { useAreaThreadTree } from "@/hooks/use-area-thread-tree";
 import { authClient } from "@/lib/auth-client";
 
 import { InboxTaskCountBadge } from "./inbox-task-count-badge";
+import { SidebarUserMenu } from "./sidebar-user-menu";
 
 export function AppSidebar() {
   const { data: session } = authClient.useSession();
@@ -192,67 +177,10 @@ export function AppSidebar() {
         </SidebarContent>
 
         <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <SidebarMenuButton
-                      size="lg"
-                      tooltip={
-                        session?.user?.name ?? session?.user?.email ?? "Account"
-                      }
-                    />
-                  }
-                >
-                  <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    {(
-                      session?.user?.name?.[0] ??
-                      session?.user?.email?.[0] ??
-                      "?"
-                    ).toUpperCase()}
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">
-                      {session?.user?.name ?? session?.user?.email ?? "Account"}
-                    </span>
-                    {session?.user?.name && (
-                      <span className="truncate text-xs text-muted-foreground">
-                        {session.user.email}
-                      </span>
-                    )}
-                  </div>
-                  <ChevronsUpDown className="ml-auto size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-[--radix-dropdown-menu-trigger-width] min-w-56"
-                  side="top"
-                  align="start"
-                  sideOffset={4}
-                >
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col gap-1">
-                        {session?.user?.name && (
-                          <p className="text-sm font-medium leading-none">
-                            {session.user.name}
-                          </p>
-                        )}
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {session?.user?.email}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => authClient.signOut()}>
-                      <LogOut />
-                      Sign out
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          <SidebarUserMenu
+            user={session?.user}
+            onSignOut={() => authClient.signOut()}
+          />
         </SidebarFooter>
       </Sidebar>
 
