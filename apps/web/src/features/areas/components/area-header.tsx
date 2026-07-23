@@ -74,7 +74,6 @@ export function AreaHeader({
     <div>
       <PageHeader
         title={area.name}
-        backLink={{ label: "Dashboard", to: "/" }}
         titleLeading={
           <Popover
             open={iconPickerOpen}
