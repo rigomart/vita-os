@@ -1,26 +1,24 @@
 import { api } from "@convex/_generated/api";
-import { useNavigate } from "@tanstack/react-router";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 
 import { useRemoveThread } from "@/features/threads/use-remove-thread";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 import { useStableQuery } from "@/hooks/use-stable-query";
 
-import { ThreadLifecycleActions } from "./thread-lifecycle-actions";
+import { ThreadLifecycleMenu } from "./thread-lifecycle-menu";
 
 interface ThreadLifecycleActionsProps {
-  areaSlug: string;
   threadSlug: string;
+  onRequestClose: () => void;
 }
 
 export function ThreadLifecycleActionsSection({
-  areaSlug,
   threadSlug,
+  onRequestClose,
 }: ThreadLifecycleActionsProps) {
   const thread = useStableQuery(api.threads.getBySlug, {
     slug: threadSlug,
   });
-  const navigate = useNavigate();
   const updateThread = useUpdateThread(threadSlug);
   const removeThread = useRemoveThread({ threadSlug });
 
@@ -56,7 +54,7 @@ export function ThreadLifecycleActionsSection({
     if (!thread) return;
     void resolveThread(resolutionNote).then((result) => {
       if (result.ok) {
-        navigate({ to: "/$areaSlug", params: { areaSlug } });
+        onRequestClose();
       }
     });
   };
@@ -70,7 +68,7 @@ export function ThreadLifecycleActionsSection({
     if (!thread) return;
     void deleteThread().then((result) => {
       if (result.ok) {
-        navigate({ to: "/$areaSlug", params: { areaSlug } });
+        onRequestClose();
       }
     });
   };
@@ -78,7 +76,7 @@ export function ThreadLifecycleActionsSection({
   if (!thread) return null;
 
   return (
-    <ThreadLifecycleActions
+    <ThreadLifecycleMenu
       thread={thread}
       onResolve={handleResolve}
       onReopen={handleReopen}

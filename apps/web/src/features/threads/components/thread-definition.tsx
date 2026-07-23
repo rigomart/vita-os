@@ -1,8 +1,5 @@
-import type { ReactNode } from "react";
-
-import { CheckCircle2 } from "lucide-react";
-
 import { EditableField } from "@/components/ui/editable-field";
+import { cn } from "@/lib/utils";
 
 interface ThreadDefinitionProps {
   summary: string;
@@ -11,39 +8,23 @@ interface ThreadDefinitionProps {
 
 export function ThreadDefinition({ summary, onSave }: ThreadDefinitionProps) {
   return (
-    <div className="space-y-4">
-      <MetadataRow
-        icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-        label="Summary"
-      >
-        <EditableField
-          value={summary}
-          onSave={onSave}
-          variant="textarea"
-          placeholder="What is this thread about?"
-          className="text-sm"
-        />
-      </MetadataRow>
-    </div>
-  );
-}
-
-function MetadataRow({
-  icon,
-  label,
-  children,
-}: {
-  icon: ReactNode;
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="flex w-36 shrink-0 items-center gap-2 pt-1 text-xs text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <div className="min-w-0 flex-1">{children}</div>
+    <div data-slot="thread-summary" className="min-h-9">
+      <EditableField
+        value={summary}
+        onSave={onSave}
+        variant="textarea"
+        textareaRows={1}
+        inputAriaLabel="Thread summary"
+        placeholder="Add a summary…"
+        className="min-h-0 max-h-[4.5rem] overflow-y-auto py-1.5 text-sm leading-relaxed text-muted-foreground"
+        displayClassName={cn(
+          "border-b-0",
+          summary
+            ? "hover:bg-transparent"
+            : "h-7 w-fit cursor-pointer items-center rounded-4xl bg-secondary px-2.5 py-0 text-xs font-medium hover:bg-secondary/80",
+        )}
+        editorClassName="rounded-lg border border-border/60 bg-muted/20 px-2.5 hover:bg-muted/20 focus-visible:bg-muted/20"
+      />
     </div>
   );
 }

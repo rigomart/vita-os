@@ -50,6 +50,27 @@ describe("NextMove", () => {
     expect(onSet).toHaveBeenCalledWith("Call the clinic");
   });
 
+  it("calls onSet when a new next move loses focus", async () => {
+    const user = userEvent.setup();
+    const onSet = vi.fn();
+
+    render(
+      <NextMove
+        nextMove={undefined}
+        onSet={onSet}
+        onClear={vi.fn()}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Add a next move...");
+    await user.type(input, "  Call the clinic  ");
+    await user.tab();
+
+    expect(onSet).toHaveBeenCalledOnce();
+    expect(onSet).toHaveBeenCalledWith("Call the clinic");
+  });
+
   it("calls onComplete when the complete button is clicked", async () => {
     const user = userEvent.setup();
     const onComplete = vi.fn();

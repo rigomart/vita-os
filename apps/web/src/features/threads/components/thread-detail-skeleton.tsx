@@ -1,41 +1,47 @@
+import { Separator } from "@vita-os/ui/components/separator";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 
 export function ThreadDetailSkeleton() {
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
-      <div>
-        <Skeleton className="mb-2 h-3 w-16" />
-        <Skeleton className="h-7 w-48" />
-        <Skeleton className="mt-2 h-4 w-64" />
+    <div className="flex flex-col gap-5" data-testid="thread-detail-skeleton">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3 pr-24">
+          <Skeleton className="h-7 w-32" />
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <Skeleton className="h-8 w-2/3" />
+          <div className="flex min-h-9 items-center">
+            <Skeleton className="h-7 w-28 rounded-4xl" />
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
-        <div className="space-y-8">
-          <div className="space-y-3">
-            <Skeleton className="h-3 w-12" />
-            <Skeleton className="h-5 w-3/4" />
+      <div className="flex flex-col gap-5">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-9 w-full" />
           </div>
-          <div className="space-y-3">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-          </div>
-
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <Skeleton className="h-3 w-36" />
-                <Skeleton className="h-4 flex-1" />
-              </div>
-            ))}
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-9 w-full" />
           </div>
         </div>
+        <Separator />
+      </div>
 
-        <div className="space-y-4">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-9 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-10 w-full" />
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="flex items-start gap-3 py-2">
+            <Skeleton className="size-6 shrink-0" />
+            <div className="flex flex-1 flex-col gap-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -1,11 +1,46 @@
 import type { Doc } from "@convex/_generated/dataModel";
+import type { LucideIcon } from "lucide-react";
 
-import { Button } from "@vita-os/ui/components/button";
+import { Badge } from "@vita-os/ui/components/badge";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@vita-os/ui/components/empty";
+import { Field, FieldGroup, FieldLabel } from "@vita-os/ui/components/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from "@vita-os/ui/components/input-group";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from "@vita-os/ui/components/item";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
-import { Textarea } from "@vita-os/ui/components/textarea";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
-import { formatDistanceToNow } from "date-fns";
-import { MessageSquare, Pen } from "lucide-react";
+import { format, isToday, isYesterday } from "date-fns";
+import {
+  ArrowRight,
+  ArrowUp,
+  Bell,
+  CircleCheck,
+  Clock3,
+  Link2,
+  MapPin,
+  MessageSquareText,
+  PenLine,
+  RefreshCw,
+  Scale,
+} from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useState } from "react";
 
 import { getActivityLogEntryLabel } from "@/features/threads/activity-log-entry";
@@ -14,6 +49,25 @@ interface ActivityLogProps {
   logs: Doc<"activityLogs">[] | undefined;
   onAddNote: (text: string) => Promise<void> | void;
 }
+
+type ActivityLogEntry = Doc<"activityLogs">;
+type AutomaticActivityLogEntry = ActivityLogEntry & {
+  type: Exclude<ActivityLogEntry["type"], "note">;
+};
+
+const ACTIVITY_LOG_ICONS: Record<
+  AutomaticActivityLogEntry["type"],
+  LucideIcon
+> = {
+  status_change: RefreshCw,
+  next_action_change: ArrowRight,
+  state_change: CircleCheck,
+  decision: Scale,
+  reference: Link2,
+  waiting_change: Clock3,
+  follow_up_change: Bell,
+  area_move: MapPin,
+};
 
 export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
   const [noteText, setNoteText] = useState("");
@@ -26,9 +80,7 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
     if (!text || isPending) return;
 
     const result = await addNote(text);
-    if (result.ok) {
-      setNoteText("");
-    }
+    if (result.ok) setNoteText("");
   };
 
   const handleAddNote = (event: FormEvent) => {
@@ -44,37 +96,57 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
   };
 
   return (
-    <section>
-      <div className="mb-4 flex items-center gap-2.5">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-3">
-          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-        </div>
-        <h2 className="text-sm font-medium">Activity log</h2>
+    <section className="flex flex-col gap-3.5">
+      <div className="flex items-center gap-1">
+        <h2 className="text-[11px] font-medium text-muted-foreground">
+          Activity log
+        </h2>
         {logs && logs.length > 0 && (
-          <span className="text-xs text-muted-foreground">{logs.length}</span>
+          <Badge
+            variant="ghost"
+            className="h-4 px-1.5 text-[10px] text-muted-foreground"
+          >
+            {logs.length}
+          </Badge>
         )}
       </div>
 
-      <form onSubmit={handleAddNote} className="mb-5 flex gap-2">
-        <Textarea
-          value={noteText}
-          onChange={(event) => setNoteText(event.target.value)}
-          disabled={isPending}
-          aria-label="Activity log note"
-          placeholder="Add to activity log..."
-          className="min-h-9"
-          rows={1}
-          onKeyDown={handleNoteKeyDown}
-        />
-        <Button
-          type="submit"
-          size="sm"
-          disabled={!noteText.trim() || isPending}
-          aria-busy={isPending}
-          className="shrink-0"
-        >
-          Add
-        </Button>
+      <form onSubmit={handleAddNote}>
+        <FieldGroup className="gap-0">
+          <Field data-disabled={isPending || undefined}>
+            <FieldLabel htmlFor="activity-log-note" className="sr-only">
+              Activity log note
+            </FieldLabel>
+            <InputGroup>
+              <InputGroupTextarea
+                id="activity-log-note"
+                value={noteText}
+                onChange={(event) => setNoteText(event.target.value)}
+                disabled={isPending}
+                aria-label="Activity log note"
+                placeholder="Add a note about what happened…"
+                className="min-h-10 pr-10 py-2 text-[13px]"
+                rows={1}
+                onKeyDown={handleNoteKeyDown}
+              />
+              <InputGroupAddon
+                align="block-end"
+                className="absolute right-2 bottom-2 w-auto p-0"
+              >
+                <InputGroupButton
+                  type="submit"
+                  size="icon-xs"
+                  variant="secondary"
+                  disabled={!noteText.trim() || isPending}
+                  aria-label="Add note"
+                  aria-busy={isPending}
+                >
+                  <ArrowUp data-icon="inline-start" />
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </Field>
+        </FieldGroup>
       </form>
 
       <ActivityLogTimeline logs={logs} />
@@ -85,78 +157,180 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
 function ActivityLogTimeline({
   logs,
 }: {
-  logs: Doc<"activityLogs">[] | undefined;
+  logs: ActivityLogEntry[] | undefined;
 }) {
-  if (logs === undefined) {
-    return (
-      <div className="relative before:absolute before:left-[11px] before:top-0 before:bottom-0 before:w-px before:bg-border/50">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="relative py-2 pl-8">
-            <div className="absolute left-[7px] top-[13px] h-3 w-3 rounded-full bg-surface-3" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="mt-1.5 h-3 w-20" />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  if (logs === undefined) return <ActivityLogSkeleton />;
 
   if (logs.length === 0) {
     return (
-      <p className="py-6 text-center text-xs text-muted-foreground">
-        No activity yet
-      </p>
+      <Empty className="min-h-44 p-6">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <MessageSquareText />
+          </EmptyMedia>
+          <EmptyTitle>No activity yet</EmptyTitle>
+          <EmptyDescription>
+            Add a note to start the continuity record for this Thread.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   return (
-    <div className="relative before:absolute before:left-[11px] before:top-0 before:bottom-0 before:w-px before:bg-border/50">
-      {logs.map((log) =>
-        log.type === "note" ? (
-          <div key={log._id} className="relative py-2 pl-8">
-            <div className="absolute left-0 top-[17px] flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 ring-2 ring-surface-1">
-              <Pen className="h-3 w-3 text-primary" />
-            </div>
-            <div className="py-1">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                {log.content}
-              </p>
-              <ActivityLogTimestamp createdAt={log.createdAt} />
-            </div>
-          </div>
-        ) : (
-          <div key={log._id} className="relative py-1.5 pl-8">
-            <div className="absolute left-[7px] top-[13px] h-3 w-3 rounded-full border-2 border-border/60 bg-surface-1" />
-            <p className="text-xs font-medium text-muted-foreground">
-              {getActivityLogEntryLabel(log.type)}
-            </p>
-            <p className="text-xs text-muted-foreground italic">
-              {log.content}
-            </p>
-            <ActivityLogTimestamp createdAt={log.createdAt} compact />
-          </div>
-        ),
-      )}
+    <div className="flex flex-col gap-5">
+      {groupLogsByDay(logs).map((group) => {
+        const headingId = `activity-log-day-${group.key}`;
+
+        return (
+          <section
+            key={group.key}
+            aria-labelledby={headingId}
+            className="flex flex-col gap-1.5"
+          >
+            <h3
+              id={headingId}
+              className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase"
+            >
+              {group.label}
+            </h3>
+            <ItemGroup className="gap-0.5">
+              {group.logs.map((log) =>
+                isAutomaticActivityLogEntry(log) ? (
+                  <AutomaticChange key={log._id} log={log} />
+                ) : (
+                  <ManualNote key={log._id} log={log} />
+                ),
+              )}
+            </ItemGroup>
+          </section>
+        );
+      })}
     </div>
   );
 }
 
-function ActivityLogTimestamp({
-  createdAt,
-  compact,
-}: {
-  createdAt: number;
-  compact?: boolean;
-}) {
+function ManualNote({ log }: { log: ActivityLogEntry }) {
   return (
-    <p
-      className={
-        compact
-          ? "mt-0.5 text-xs text-muted-foreground/50"
-          : "mt-1.5 text-xs text-muted-foreground/70"
-      }
-    >
-      {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
-    </p>
+    <Item size="xs" className="px-1 py-1.5">
+      <ItemMedia variant="icon">
+        <PenLine className="size-3.5 text-muted-foreground/70" />
+      </ItemMedia>
+      <ItemContent>
+        <ItemTitle className="text-xs text-muted-foreground">Note</ItemTitle>
+        <p className="whitespace-pre-wrap text-[13px] leading-snug text-foreground/80">
+          {log.content}
+        </p>
+      </ItemContent>
+      <ItemActions className="self-start">
+        <ActivityLogTimestamp createdAt={log.createdAt} />
+      </ItemActions>
+    </Item>
   );
+}
+
+function AutomaticChange({ log }: { log: AutomaticActivityLogEntry }) {
+  const Icon = ACTIVITY_LOG_ICONS[log.type];
+
+  return (
+    <Item size="xs" className="px-1 py-1.5">
+      <ItemMedia variant="icon">
+        <Icon className="size-3.5 text-muted-foreground/70" />
+      </ItemMedia>
+      <ItemContent>
+        <ItemTitle className="text-xs font-normal text-muted-foreground">
+          {getActivityLogEntryLabel(log.type)}
+        </ItemTitle>
+        <ItemDescription className="text-xs leading-snug text-muted-foreground/80">
+          {getAutomaticChangeSummary(log)}
+        </ItemDescription>
+      </ItemContent>
+      <ItemActions className="self-start">
+        <ActivityLogTimestamp createdAt={log.createdAt} />
+      </ItemActions>
+    </Item>
+  );
+}
+
+function ActivityLogTimestamp({ createdAt }: { createdAt: number }) {
+  const date = new Date(createdAt);
+
+  return (
+    <time
+      dateTime={date.toISOString()}
+      title={format(date, "PPpp")}
+      className="shrink-0 text-[10px] text-muted-foreground/60"
+    >
+      {format(date, "h:mm a")}
+    </time>
+  );
+}
+
+function ActivityLogSkeleton() {
+  return (
+    <div className="flex flex-col gap-5" aria-label="Loading activity log">
+      {Array.from({ length: 2 }).map((_, groupIndex) => (
+        <div key={groupIndex} className="flex flex-col gap-2">
+          <Skeleton className="h-3 w-16" />
+          {Array.from({ length: groupIndex + 1 }).map((__, itemIndex) => (
+            <div key={itemIndex} className="flex items-start gap-2 py-1.5">
+              <Skeleton className="size-4 shrink-0 rounded" />
+              <div className="flex flex-1 flex-col gap-1.5">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-3/4" />
+              </div>
+              <Skeleton className="h-3 w-14" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function groupLogsByDay(logs: ActivityLogEntry[]) {
+  const groups = new Map<string, ActivityLogEntry[]>();
+
+  for (const log of [...logs].sort((a, b) => b.createdAt - a.createdAt)) {
+    const key = format(new Date(log.createdAt), "yyyy-MM-dd");
+    const group = groups.get(key) ?? [];
+    group.push(log);
+    groups.set(key, group);
+  }
+
+  return [...groups.entries()].map(([key, groupLogs]) => ({
+    key,
+    label: getDayLabel(groupLogs[0]!.createdAt),
+    logs: groupLogs,
+  }));
+}
+
+function getDayLabel(createdAt: number) {
+  const date = new Date(createdAt);
+  if (isToday(date)) return "Today";
+  if (isYesterday(date)) return "Yesterday";
+  return format(date, "MMMM d, yyyy");
+}
+
+function getAutomaticChangeSummary(log: AutomaticActivityLogEntry) {
+  if (log.previousValue && log.newValue) {
+    return `${log.previousValue} → ${log.newValue}`;
+  }
+
+  if (log.newValue) return `Set to ${log.newValue}`;
+
+  if (log.previousValue) {
+    return log.type === "next_action_change" &&
+      log.content.startsWith("Completed")
+      ? `Completed ${log.previousValue}`
+      : `Cleared ${log.previousValue}`;
+  }
+
+  return log.content;
+}
+
+function isAutomaticActivityLogEntry(
+  log: ActivityLogEntry,
+): log is AutomaticActivityLogEntry {
+  return log.type !== "note";
 }

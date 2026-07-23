@@ -1,6 +1,7 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 
 import userEvent from "@testing-library/user-event";
+import { subDays } from "date-fns";
 import { describe, expect, it, vi } from "vitest";
 
 import { render, screen, waitFor } from "@/test/render-with-providers";
@@ -34,6 +35,8 @@ const areaMove = {
   threadId: "thread1" as Id<"threads">,
   type: "area_move",
   content: 'Moved from "Health" to "Finances"',
+  previousValue: "Health",
+  newValue: "Finances",
   createdAt: now - 60_000,
 } satisfies Doc<"activityLogs">;
 
@@ -41,18 +44,28 @@ describe("ActivityLog", () => {
   it("shows Activity Log language and user-facing entry labels", () => {
     render(<ActivityLog logs={[note, areaMove]} onAddNote={vi.fn()} />);
 
-    expect(
-      screen.getByRole("heading", { name: "Activity log" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Called the clinic")).toBeInTheDocument();
-    expect(
-      screen.getByText('Moved from "Health" to "Finances"'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Activity log" })).toHaveClass(
+      "text-[11px]",
+      "text-muted-foreground",
+    );
+    expect(screen.getByText("Called the clinic")).toHaveClass(
+      "text-[13px]",
+      "text-foreground/80",
+    );
+    expect(screen.getByText("Health → Finances")).toHaveClass(
+      "text-xs",
+      "text-muted-foreground/80",
+    );
     expect(screen.getByText("Area")).toBeInTheDocument();
     expect(screen.queryByText("area_move")).not.toBeInTheDocument();
     expect(
       screen.getByRole("textbox", { name: "Activity log note" }),
-    ).toBeInTheDocument();
+    ).toHaveClass("min-h-10");
+    expect(screen.queryByText("Enter")).not.toBeInTheDocument();
+    expect(screen.queryByText("Shift + Enter")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add note" })).toHaveClass(
+      "bg-secondary",
+    );
   });
 
   it("submits a trimmed note and clears the field", async () => {
@@ -65,7 +78,7 @@ describe("ActivityLog", () => {
       name: "Activity log note",
     });
     await user.type(noteInput, "  Called the clinic  ");
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add note" }));
 
     expect(onAddNote).toHaveBeenCalledWith("Called the clinic");
     expect(noteInput).toHaveValue("");
@@ -77,7 +90,7 @@ describe("ActivityLog", () => {
 
     render(<ActivityLog logs={[]} onAddNote={onAddNote} />);
 
-    const addButton = screen.getByRole("button", { name: "Add" });
+    const addButton = screen.getByRole("button", { name: "Add note" });
     expect(addButton).toBeDisabled();
 
     await user.type(
@@ -123,12 +136,49 @@ describe("ActivityLog", () => {
     await user.keyboard("{Enter}{Enter}");
 
     expect(onAddNote).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add note" })).toBeDisabled();
     expect(noteInput).toBeDisabled();
     expect(noteInput).toHaveValue("Called the clinic");
 
     pendingAdd.resolve();
 
     await waitFor(() => expect(noteInput).toHaveValue(""));
+  });
+
+  it("groups entries by day with manual notes visually separated from changes", () => {
+    const currentTime = Date.now();
+    const yesterday = subDays(new Date(currentTime), 1).getTime();
+
+    render(
+      <ActivityLog
+        logs={[
+          { ...note, createdAt: currentTime },
+          { ...areaMove, createdAt: yesterday },
+        ]}
+        onAddNote={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Today" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Yesterday" }),
+    ).toBeInTheDocument();
+    const noteItem = screen
+      .getByText("Called the clinic")
+      .closest('[data-slot="item"]');
+    expect(noteItem).toHaveAttribute("data-variant", "default");
+    expect(noteItem).toHaveAttribute("data-size", "xs");
+    expect(screen.getByText("Health → Finances")).toBeInTheDocument();
+  });
+
+  it("uses a helpful continuity empty state", () => {
+    render(<ActivityLog logs={[]} onAddNote={vi.fn()} />);
+
+    expect(screen.getByText("No activity yet")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Add a note to start the continuity record for this Thread.",
+      ),
+    ).toBeInTheDocument();
   });
 });
