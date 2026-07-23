@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const EXIT_COMPLETION_FALLBACK_MS = 650;
 
-export function useDeferredOverlayClose(onClosed: () => void) {
+export function useDeferredRouteClose(onClosed: () => void) {
   const [open, setOpen] = useState(false);
   const closingRef = useRef(false);
   const completedRef = useRef(false);
