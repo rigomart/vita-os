@@ -33,9 +33,9 @@ export function NextMove({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <MoveRight className="h-3.5 w-3.5" />
+        <MoveRight className="size-3.5" />
         Next Move
       </div>
 
@@ -53,6 +53,7 @@ export function NextMove({
             type="text"
             value={addText}
             onChange={(e) => setAddText(e.target.value)}
+            onBlur={handleAdd}
             disabled={pending?.set}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
