@@ -96,13 +96,16 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
   };
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex items-center gap-1.5">
-        <h2 className="text-xs font-medium text-muted-foreground">
+    <section className="flex flex-col gap-3.5">
+      <div className="flex items-center gap-1">
+        <h2 className="text-[11px] font-medium text-muted-foreground">
           Activity log
         </h2>
         {logs && logs.length > 0 && (
-          <Badge variant="ghost" className="px-1.5 text-muted-foreground">
+          <Badge
+            variant="ghost"
+            className="h-4 px-1.5 text-[10px] text-muted-foreground"
+          >
             {logs.length}
           </Badge>
         )}
@@ -122,7 +125,7 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
                 disabled={isPending}
                 aria-label="Activity log note"
                 placeholder="Add a note about what happened…"
-                className="min-h-12 pr-12"
+                className="min-h-10 pr-10 py-2 text-[13px]"
                 rows={1}
                 onKeyDown={handleNoteKeyDown}
               />
@@ -132,7 +135,7 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
               >
                 <InputGroupButton
                   type="submit"
-                  size="icon-sm"
+                  size="icon-xs"
                   variant="secondary"
                   disabled={!noteText.trim() || isPending}
                   aria-label="Add note"
@@ -175,7 +178,7 @@ function ActivityLogTimeline({
   }
 
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-5">
       {groupLogsByDay(logs).map((group) => {
         const headingId = `activity-log-day-${group.key}`;
 
@@ -183,15 +186,15 @@ function ActivityLogTimeline({
           <section
             key={group.key}
             aria-labelledby={headingId}
-            className="flex flex-col gap-2.5"
+            className="flex flex-col gap-1.5"
           >
             <h3
               id={headingId}
-              className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+              className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase"
             >
               {group.label}
             </h3>
-            <ItemGroup className="gap-2">
+            <ItemGroup className="gap-0.5">
               {group.logs.map((log) =>
                 isAutomaticActivityLogEntry(log) ? (
                   <AutomaticChange key={log._id} log={log} />
@@ -209,13 +212,13 @@ function ActivityLogTimeline({
 
 function ManualNote({ log }: { log: ActivityLogEntry }) {
   return (
-    <Item size="sm">
+    <Item size="xs" className="px-1 py-1.5">
       <ItemMedia variant="icon">
-        <PenLine className="text-primary" />
+        <PenLine className="size-3.5 text-muted-foreground/70" />
       </ItemMedia>
       <ItemContent>
-        <ItemTitle>Note</ItemTitle>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed">
+        <ItemTitle className="text-xs text-muted-foreground">Note</ItemTitle>
+        <p className="whitespace-pre-wrap text-[13px] leading-snug text-foreground/80">
           {log.content}
         </p>
       </ItemContent>
@@ -230,13 +233,17 @@ function AutomaticChange({ log }: { log: AutomaticActivityLogEntry }) {
   const Icon = ACTIVITY_LOG_ICONS[log.type];
 
   return (
-    <Item size="xs">
+    <Item size="xs" className="px-1 py-1.5">
       <ItemMedia variant="icon">
-        <Icon className="text-muted-foreground" />
+        <Icon className="size-3.5 text-muted-foreground/70" />
       </ItemMedia>
       <ItemContent>
-        <ItemTitle>{getActivityLogEntryLabel(log.type)}</ItemTitle>
-        <ItemDescription>{getAutomaticChangeSummary(log)}</ItemDescription>
+        <ItemTitle className="text-xs font-normal text-muted-foreground">
+          {getActivityLogEntryLabel(log.type)}
+        </ItemTitle>
+        <ItemDescription className="text-xs leading-snug text-muted-foreground/80">
+          {getAutomaticChangeSummary(log)}
+        </ItemDescription>
       </ItemContent>
       <ItemActions className="self-start">
         <ActivityLogTimestamp createdAt={log.createdAt} />
@@ -252,7 +259,7 @@ function ActivityLogTimestamp({ createdAt }: { createdAt: number }) {
     <time
       dateTime={date.toISOString()}
       title={format(date, "PPpp")}
-      className="shrink-0 text-xs text-muted-foreground"
+      className="shrink-0 text-[10px] text-muted-foreground/60"
     >
       {format(date, "h:mm a")}
     </time>
@@ -261,15 +268,15 @@ function ActivityLogTimestamp({ createdAt }: { createdAt: number }) {
 
 function ActivityLogSkeleton() {
   return (
-    <div className="flex flex-col gap-6" aria-label="Loading activity log">
+    <div className="flex flex-col gap-5" aria-label="Loading activity log">
       {Array.from({ length: 2 }).map((_, groupIndex) => (
-        <div key={groupIndex} className="flex flex-col gap-3">
+        <div key={groupIndex} className="flex flex-col gap-2">
           <Skeleton className="h-3 w-16" />
           {Array.from({ length: groupIndex + 1 }).map((__, itemIndex) => (
-            <div key={itemIndex} className="flex items-start gap-3 py-2">
-              <Skeleton className="size-8 shrink-0 rounded-xl" />
-              <div className="flex flex-1 flex-col gap-2">
-                <Skeleton className="h-4 w-24" />
+            <div key={itemIndex} className="flex items-start gap-2 py-1.5">
+              <Skeleton className="size-4 shrink-0 rounded" />
+              <div className="flex flex-1 flex-col gap-1.5">
+                <Skeleton className="h-3 w-24" />
                 <Skeleton className="h-3 w-3/4" />
               </div>
               <Skeleton className="h-3 w-14" />

@@ -8,12 +8,12 @@ export function ThreadDetailSkeleton() {
         <div className="flex items-center gap-3 pr-24">
           <Skeleton className="h-7 w-32" />
         </div>
-        <Skeleton className="h-8 w-2/3" />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Skeleton className="h-3 w-16" />
-        <Skeleton className="h-4 w-3/5" />
+        <div className="flex flex-col gap-0.5">
+          <Skeleton className="h-8 w-2/3" />
+          <div className="flex min-h-9 items-center">
+            <Skeleton className="h-7 w-28 rounded-4xl" />
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-col gap-5">

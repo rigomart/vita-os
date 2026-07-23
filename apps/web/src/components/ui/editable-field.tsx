@@ -9,6 +9,9 @@ interface EditableFieldProps {
   variant?: "input" | "textarea";
   placeholder?: string;
   className?: string;
+  displayClassName?: string;
+  editorClassName?: string;
+  textareaRows?: number;
   startEditing?: boolean;
   disabled?: boolean;
   inputAriaLabel?: string;
@@ -27,6 +30,9 @@ export function EditableField({
   variant = "input",
   placeholder = "Click to edit...",
   className,
+  displayClassName: displayClassNameProp,
+  editorClassName,
+  textareaRows = 3,
   startEditing = false,
   disabled = false,
   inputAriaLabel,
@@ -93,7 +99,10 @@ export function EditableField({
   const displayClassName = cn(
     fieldClassName,
     "flex items-start justify-start font-inherit leading-inherit tracking-inherit",
+    displayClassNameProp,
   );
+
+  const editorFieldClassName = cn(fieldClassName, editorClassName);
 
   const displayValue = value || placeholder;
   const isPlaceholder = !value;
@@ -126,7 +135,7 @@ export function EditableField({
           <Textarea
             ref={textareaRef}
             variant="inline"
-            rows={3}
+            rows={textareaRows}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commit}
@@ -135,7 +144,7 @@ export function EditableField({
             disabled={disabled}
             aria-label={inputAriaLabel}
             aria-busy={disabled}
-            className={fieldClassName}
+            className={editorFieldClassName}
           />
         ) : (
           <Input
@@ -150,7 +159,7 @@ export function EditableField({
             disabled={disabled}
             aria-label={inputAriaLabel}
             aria-busy={disabled}
-            className={fieldClassName}
+            className={editorFieldClassName}
           />
         ))}
     </div>

@@ -208,6 +208,11 @@ describe("ThreadDetailSheet", () => {
         name: "Sister's front teeth",
       }),
     ).toBeVisible();
+    expect(
+      within(header).getByRole("button", {
+        name: "Waiting for the specialist's opinion.",
+      }),
+    ).toBeVisible();
     expect(within(attention).getByText("Next Move")).toBeVisible();
     expect(within(attention).getByText("Follow-up")).toBeVisible();
     expect(attention).not.toHaveAttribute("data-slot", "card");

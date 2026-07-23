@@ -214,7 +214,7 @@ function ThreadDetailContent({
       <header
         role="banner"
         aria-label="Thread header"
-        className="sticky top-0 z-10 flex flex-col gap-3 bg-popover pb-3"
+        className="sticky top-0 z-10 flex flex-col gap-3 bg-popover pb-1"
       >
         <div className="flex items-center gap-2 pr-24">
           <ThreadAreaSectionSection
@@ -223,10 +223,11 @@ function ThreadDetailContent({
           />
           {isResolved && <Badge variant="secondary">Resolved</Badge>}
         </div>
-        <ThreadHeaderSection areaSlug={areaSlug} threadSlug={threadSlug} />
+        <div className="flex flex-col gap-0.5">
+          <ThreadHeaderSection areaSlug={areaSlug} threadSlug={threadSlug} />
+          <ThreadDefinitionSection threadSlug={threadSlug} />
+        </div>
       </header>
-
-      <ThreadDefinitionSection threadSlug={threadSlug} />
 
       {!isResolved && (
         <section

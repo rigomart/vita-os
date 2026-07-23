@@ -45,16 +45,22 @@ describe("ActivityLog", () => {
     render(<ActivityLog logs={[note, areaMove]} onAddNote={vi.fn()} />);
 
     expect(screen.getByRole("heading", { name: "Activity log" })).toHaveClass(
-      "text-xs",
+      "text-[11px]",
       "text-muted-foreground",
     );
-    expect(screen.getByText("Called the clinic")).toBeInTheDocument();
-    expect(screen.getByText("Health → Finances")).toBeInTheDocument();
+    expect(screen.getByText("Called the clinic")).toHaveClass(
+      "text-[13px]",
+      "text-foreground/80",
+    );
+    expect(screen.getByText("Health → Finances")).toHaveClass(
+      "text-xs",
+      "text-muted-foreground/80",
+    );
     expect(screen.getByText("Area")).toBeInTheDocument();
     expect(screen.queryByText("area_move")).not.toBeInTheDocument();
     expect(
       screen.getByRole("textbox", { name: "Activity log note" }),
-    ).toBeInTheDocument();
+    ).toHaveClass("min-h-10");
     expect(screen.queryByText("Enter")).not.toBeInTheDocument();
     expect(screen.queryByText("Shift + Enter")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add note" })).toHaveClass(
@@ -161,6 +167,7 @@ describe("ActivityLog", () => {
       .getByText("Called the clinic")
       .closest('[data-slot="item"]');
     expect(noteItem).toHaveAttribute("data-variant", "default");
+    expect(noteItem).toHaveAttribute("data-size", "xs");
     expect(screen.getByText("Health → Finances")).toBeInTheDocument();
   });
 

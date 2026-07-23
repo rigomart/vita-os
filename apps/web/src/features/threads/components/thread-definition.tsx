@@ -1,4 +1,5 @@
 import { EditableField } from "@/components/ui/editable-field";
+import { cn } from "@/lib/utils";
 
 interface ThreadDefinitionProps {
   summary: string;
@@ -7,14 +8,22 @@ interface ThreadDefinitionProps {
 
 export function ThreadDefinition({ summary, onSave }: ThreadDefinitionProps) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium text-muted-foreground">Summary</span>
+    <div data-slot="thread-summary" className="min-h-9">
       <EditableField
         value={summary}
         onSave={onSave}
         variant="textarea"
-        placeholder="What is this thread about?"
-        className="min-h-0 py-1.5 text-sm leading-relaxed"
+        textareaRows={1}
+        inputAriaLabel="Thread summary"
+        placeholder="Add a summary…"
+        className="min-h-0 max-h-[4.5rem] overflow-y-auto py-1.5 text-sm leading-relaxed text-muted-foreground"
+        displayClassName={cn(
+          "border-b-0",
+          summary
+            ? "hover:bg-transparent"
+            : "h-7 w-fit cursor-pointer items-center rounded-4xl bg-secondary px-2.5 py-0 text-xs font-medium hover:bg-secondary/80",
+        )}
+        editorClassName="rounded-lg border border-border/60 bg-muted/20 px-2.5 hover:bg-muted/20 focus-visible:bg-muted/20"
       />
     </div>
   );
