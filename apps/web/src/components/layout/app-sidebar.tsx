@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -229,23 +230,25 @@ export function AppSidebar() {
                   align="start"
                   sideOffset={4}
                 >
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col gap-1">
-                      {session?.user?.name && (
-                        <p className="text-sm font-medium leading-none">
-                          {session.user.name}
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col gap-1">
+                        {session?.user?.name && (
+                          <p className="text-sm font-medium leading-none">
+                            {session.user.name}
+                          </p>
+                        )}
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {session?.user?.email}
                         </p>
-                      )}
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {session?.user?.email}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => authClient.signOut()}>
-                    <LogOut />
-                    Sign out
-                  </DropdownMenuItem>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => authClient.signOut()}>
+                      <LogOut />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
             </SidebarMenuItem>
