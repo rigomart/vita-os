@@ -12,16 +12,16 @@ import {
   within,
 } from "@/test/render-with-providers";
 
-import { ThreadDetailSheet } from "./thread-detail-sheet";
+import { ThreadDetailView } from "./thread-detail-view";
 
 const mocks = vi.hoisted(() => ({
-  isMobile: true,
+  showDesktopPane: false,
   navigate: vi.fn(),
   threadState: "open" as "open" | "resolved",
 }));
 
-vi.mock("@vita-os/ui/hooks/use-mobile", () => ({
-  useIsMobile: () => mocks.isMobile,
+vi.mock("@/hooks/use-thread-pane-viewport", () => ({
+  useThreadPaneViewport: () => mocks.showDesktopPane,
 }));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
@@ -75,20 +75,21 @@ vi.mock("convex/react", () => ({
   },
 }));
 
-describe("ThreadDetailSheet", () => {
+function renderThreadDetail(threadSlug = "sister-s-front-teeth") {
+  return render(
+    <ThreadDetailView areaSlug="family-health" threadSlug={threadSlug} />,
+  );
+}
+
+describe("ThreadDetailView", () => {
   beforeEach(() => {
-    mocks.isMobile = true;
+    mocks.showDesktopPane = false;
     mocks.navigate.mockReset();
     mocks.threadState = "open";
   });
 
-  it("opens Thread detail as a near-full bottom drawer on mobile", async () => {
-    render(
-      <ThreadDetailSheet
-        areaSlug="family-health"
-        threadSlug="sister-s-front-teeth"
-      />,
-    );
+  it("opens Thread detail as a near-full bottom drawer below the pane breakpoint", async () => {
+    renderThreadDetail();
 
     const drawer = await screen.findByRole("dialog", {
       name: "Sister's front teeth",
@@ -99,17 +100,10 @@ describe("ThreadDetailSheet", () => {
     expect(screen.getByRole("button", { name: "Close thread" })).toBeVisible();
   });
 
-  it("leaves the mobile Thread route after its programmatic close animation", async () => {
-    render(
-      <ThreadDetailSheet
-        areaSlug="family-health"
-        threadSlug="sister-s-front-teeth"
-      />,
-    );
+  it("leaves the narrow Thread route after its close animation", async () => {
+    renderThreadDetail();
 
-    await screen.findByRole("dialog", {
-      name: "Sister's front teeth",
-    });
+    await screen.findByRole("dialog", { name: "Sister's front teeth" });
     fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
 
     expect(mocks.navigate).not.toHaveBeenCalled();
@@ -123,19 +117,14 @@ describe("ThreadDetailSheet", () => {
     });
   });
 
-  it("opens a fresh shell when the Thread route changes", async () => {
-    const { rerender } = render(
-      <ThreadDetailSheet
-        areaSlug="family-health"
-        threadSlug="sister-s-front-teeth"
-      />,
-    );
+  it("opens a fresh Drawer shell when the Thread route changes", async () => {
+    const { rerender } = renderThreadDetail();
 
     await screen.findByRole("dialog", { name: "Sister's front teeth" });
     fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
 
     rerender(
-      <ThreadDetailSheet areaSlug="family-health" threadSlug="moms-legs" />,
+      <ThreadDetailView areaSlug="family-health" threadSlug="moms-legs" />,
     );
 
     await waitFor(() => {
@@ -145,33 +134,22 @@ describe("ThreadDetailSheet", () => {
     });
   });
 
-  it("opens a responsive desktop sheet over a soft contextual backdrop", async () => {
-    mocks.isMobile = false;
+  it("renders a non-modal complementary pane without a Sheet backdrop", async () => {
+    mocks.showDesktopPane = true;
+    renderThreadDetail();
 
-    render(
-      <ThreadDetailSheet
-        areaSlug="family-health"
-        threadSlug="sister-s-front-teeth"
-      />,
-    );
-
-    const sheet = await screen.findByRole("dialog", {
+    const pane = await screen.findByRole("complementary", {
       name: "Sister's front teeth",
     });
-    const backdrop = document.querySelector('[data-slot="sheet-overlay"]');
 
-    expect(sheet).toHaveClass(
-      "data-[side=right]:w-[clamp(35rem,45vw,45rem)]",
-      "data-[side=right]:sm:max-w-none",
-      "data-open:animate-in",
-      "data-open:slide-in-from-right-full",
-      "data-closed:animate-out",
-      "data-closed:slide-out-to-right-full",
-    );
-    expect(backdrop).toHaveClass(
-      "bg-black/20",
-      "supports-backdrop-filter:backdrop-blur-none",
-    );
+    await waitFor(() => expect(pane).toHaveAttribute("data-state", "open"));
+    expect(pane).toHaveClass("fixed", "inset-y-0", "h-dvh");
+    expect(
+      document.querySelector('[data-slot="thread-detail-pane-space"]'),
+    ).toHaveClass("data-[state=open]:w-[clamp(28rem,34vw,34rem)]");
+    expect(document.querySelector('[data-slot="sheet-overlay"]')).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+
     const controls = screen.getByRole("group", { name: "Thread controls" });
     expect(
       within(controls).getByRole("button", { name: "Thread actions" }),
@@ -181,17 +159,55 @@ describe("ThreadDetailSheet", () => {
     ).toBeVisible();
   });
 
-  it("restores orientation before presenting attention and continuity", async () => {
-    mocks.isMobile = false;
+  it("leaves the desktop Thread route after the pane width transition", async () => {
+    mocks.showDesktopPane = true;
+    renderThreadDetail();
 
-    render(
-      <ThreadDetailSheet
-        areaSlug="family-health"
-        threadSlug="sister-s-front-teeth"
-      />,
+    await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
+
+    expect(mocks.navigate).not.toHaveBeenCalled();
+
+    const paneSpace = document.querySelector(
+      '[data-slot="thread-detail-pane-space"]',
+    );
+    expect(paneSpace).toHaveAttribute("data-state", "closed");
+    fireEvent.transitionEnd(paneSpace as Element, { propertyName: "width" });
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/$areaSlug",
+      params: { areaSlug: "family-health" },
+      replace: true,
+    });
+  });
+
+  it("keeps the desktop pane open when the Thread route changes", async () => {
+    mocks.showDesktopPane = true;
+    const { rerender } = renderThreadDetail();
+    const pane = await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
+    await waitFor(() => expect(pane).toHaveAttribute("data-state", "open"));
+
+    rerender(
+      <ThreadDetailView areaSlug="family-health" threadSlug="moms-legs" />,
     );
 
-    await screen.findByRole("dialog", { name: "Sister's front teeth" });
+    expect(
+      screen.getByRole("complementary", { name: "Sister's front teeth" }),
+    ).toBe(pane);
+    expect(pane).toHaveAttribute("data-state", "open");
+  });
+
+  it("restores orientation before presenting attention and continuity", async () => {
+    mocks.showDesktopPane = true;
+    renderThreadDetail();
+
+    await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
 
     const header = screen.getByRole("banner", { name: "Thread header" });
     const summary = screen.getByText("Waiting for the specialist's opinion.");
@@ -204,9 +220,7 @@ describe("ThreadDetailSheet", () => {
       within(header).getByRole("button", { name: "Family Health" }),
     ).toBeVisible();
     expect(
-      within(header).getByRole("button", {
-        name: "Sister's front teeth",
-      }),
+      within(header).getByRole("button", { name: "Sister's front teeth" }),
     ).toBeVisible();
     expect(
       within(header).getByRole("button", {
@@ -227,17 +241,13 @@ describe("ThreadDetailSheet", () => {
   });
 
   it("keeps a Resolved Thread oriented without active attention controls", async () => {
-    mocks.isMobile = false;
+    mocks.showDesktopPane = true;
     mocks.threadState = "resolved";
+    renderThreadDetail();
 
-    render(
-      <ThreadDetailSheet
-        areaSlug="family-health"
-        threadSlug="sister-s-front-teeth"
-      />,
-    );
-
-    await screen.findByRole("dialog", { name: "Sister's front teeth" });
+    await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
 
     expect(screen.getByText("Resolved")).toBeVisible();
     expect(

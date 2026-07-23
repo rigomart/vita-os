@@ -12,9 +12,14 @@ function AreaLayoutRoute() {
   const { areaSlug } = Route.useParams();
 
   return (
-    <>
-      <AreaDetailScreen areaSlug={areaSlug} />
+    <div
+      data-slot="area-thread-workspace"
+      className="flex min-h-[calc(100dvh-7rem)] min-w-0 items-start gap-4"
+    >
+      <div data-slot="area-content" className="min-w-0 flex-1">
+        <AreaDetailScreen areaSlug={areaSlug} />
+      </div>
       <Outlet />
-    </>
+    </div>
   );
 }

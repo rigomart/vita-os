@@ -15,13 +15,6 @@ import {
   DrawerTitle,
 } from "@vita-os/ui/components/drawer";
 import { Separator } from "@vita-os/ui/components/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-} from "@vita-os/ui/components/sheet";
-import { useIsMobile } from "@vita-os/ui/hooks/use-mobile";
 import { X } from "lucide-react";
 
 import { FollowUpSection } from "@/features/threads/components/follow-up-section";
@@ -34,49 +27,34 @@ import { ThreadLifecycleActionsSection } from "@/features/threads/components/thr
 import { ActivityLogSection } from "@/features/threads/components/thread-log-section";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useStableQuery } from "@/hooks/use-stable-query";
+import { useThreadPaneViewport } from "@/hooks/use-thread-pane-viewport";
 
 import { ThreadNotFound } from "./thread-not-found";
-import { useDeferredOverlayClose } from "./use-deferred-overlay-close";
+import { useDeferredRouteClose } from "./use-deferred-route-close";
 
-interface ThreadDetailSheetProps {
+interface ThreadDetailViewProps {
   areaSlug: string;
   threadSlug: string;
 }
 
-export function ThreadDetailSheet({
+export function ThreadDetailView({
   areaSlug,
   threadSlug,
-}: ThreadDetailSheetProps) {
-  return (
-    <ThreadDetailSheetInstance
-      key={`${areaSlug}/${threadSlug}`}
-      areaSlug={areaSlug}
-      threadSlug={threadSlug}
-    />
-  );
-}
-
-function ThreadDetailSheetInstance({
-  areaSlug,
-  threadSlug,
-}: ThreadDetailSheetProps) {
-  const isMobile = useIsMobile();
+}: ThreadDetailViewProps) {
+  const showDesktopPane = useThreadPaneViewport();
   const navigate = useNavigate();
   const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
-  const thread = useStableQuery(api.threads.getBySlug, {
-    slug: threadSlug,
-  });
+  const thread = useStableQuery(api.threads.getBySlug, { slug: threadSlug });
 
   useDocumentTitle(thread?.title ?? "Thread");
 
-  const { open, requestClose, handleOpenChange, completeOpenChange } =
-    useDeferredOverlayClose(() => {
-      navigate({
-        to: "/$areaSlug",
-        params: { areaSlug },
-        replace: true,
-      });
+  const leaveThreadRoute = () => {
+    navigate({
+      to: "/$areaSlug",
+      params: { areaSlug },
+      replace: true,
     });
+  };
 
   const title = thread?.title ?? "Thread detail";
   const hasMatchingThread =
@@ -98,72 +76,131 @@ function ThreadDetailSheetInstance({
       />
     );
 
-  if (isMobile) {
+  if (!showDesktopPane) {
     return (
-      <Drawer
-        open={open}
-        direction="bottom"
-        onOpenChange={handleOpenChange}
-        onAnimationEnd={completeOpenChange}
+      <ThreadDetailDrawer
+        key={`${areaSlug}/${threadSlug}`}
+        title={title}
+        threadSlug={threadSlug}
+        showActions={hasMatchingThread}
+        onClosed={leaveThreadRoute}
       >
-        <DrawerContent
-          className="h-[90dvh] max-h-[90dvh] p-0 before:inset-0 before:rounded-t-4xl data-[vaul-drawer-direction=bottom]:max-h-[90dvh]"
-          onAnimationEndCapture={(event) => {
-            if (
-              event.target === event.currentTarget &&
-              event.currentTarget.dataset.state === "closed"
-            ) {
-              completeOpenChange(false);
-            }
-          }}
-        >
-          <DrawerTitle className="sr-only">{title}</DrawerTitle>
-          <DrawerDescription className="sr-only">
-            Review and update this Thread.
-          </DrawerDescription>
-          <ThreadOverlayControls
-            threadSlug={threadSlug}
-            showActions={hasMatchingThread}
-            onRequestClose={requestClose}
-          />
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
-            {content}
-          </div>
-        </DrawerContent>
-      </Drawer>
+        {content}
+      </ThreadDetailDrawer>
     );
   }
 
   return (
-    <Sheet
-      open={open}
-      onOpenChange={handleOpenChange}
-      onOpenChangeComplete={completeOpenChange}
+    <ThreadDetailPane
+      title={title}
+      threadSlug={threadSlug}
+      showActions={hasMatchingThread}
+      onClosed={leaveThreadRoute}
     >
-      <SheetContent
-        side="right"
-        showCloseButton={false}
-        overlayClassName="bg-black/20 supports-backdrop-filter:backdrop-blur-none data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
-        className="ease-[cubic-bezier(0.32,0.72,0,1)] data-open:animate-in data-open:slide-in-from-right-full data-closed:animate-out data-closed:slide-out-to-right-full data-[side=right]:w-[clamp(35rem,45vw,45rem)] data-[side=right]:sm:max-w-none"
-      >
-        <SheetTitle className="sr-only">{title}</SheetTitle>
-        <SheetDescription className="sr-only">
-          Review and update this Thread.
-        </SheetDescription>
-        <ThreadOverlayControls
-          threadSlug={threadSlug}
-          showActions={hasMatchingThread}
-          onRequestClose={requestClose}
-        />
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
-          {content}
-        </div>
-      </SheetContent>
-    </Sheet>
+      {content}
+    </ThreadDetailPane>
   );
 }
 
-function ThreadOverlayControls({
+interface ThreadShellProps {
+  title: string;
+  threadSlug: string;
+  showActions: boolean;
+  onClosed: () => void;
+  children: React.ReactNode;
+}
+
+function ThreadDetailDrawer({
+  title,
+  threadSlug,
+  showActions,
+  onClosed,
+  children,
+}: ThreadShellProps) {
+  const { open, requestClose, handleOpenChange, completeOpenChange } =
+    useDeferredRouteClose(onClosed);
+
+  return (
+    <Drawer
+      open={open}
+      direction="bottom"
+      onOpenChange={handleOpenChange}
+      onAnimationEnd={completeOpenChange}
+    >
+      <DrawerContent
+        className="h-[90dvh] max-h-[90dvh] p-0 before:inset-0 before:rounded-t-4xl data-[vaul-drawer-direction=bottom]:max-h-[90dvh]"
+        onAnimationEndCapture={(event) => {
+          if (
+            event.target === event.currentTarget &&
+            event.currentTarget.dataset.state === "closed"
+          ) {
+            completeOpenChange(false);
+          }
+        }}
+      >
+        <DrawerTitle className="sr-only">{title}</DrawerTitle>
+        <DrawerDescription className="sr-only">
+          Review and update this Thread.
+        </DrawerDescription>
+        <ThreadControls
+          threadSlug={threadSlug}
+          showActions={showActions}
+          onRequestClose={requestClose}
+        />
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+          {children}
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
+function ThreadDetailPane({
+  title,
+  threadSlug,
+  showActions,
+  onClosed,
+  children,
+}: ThreadShellProps) {
+  const { open, requestClose, completeOpenChange } =
+    useDeferredRouteClose(onClosed);
+
+  return (
+    <>
+      <div
+        data-slot="thread-detail-pane-space"
+        data-state={open ? "open" : "closed"}
+        className="relative w-0 min-w-0 shrink-0 transition-[width] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] data-[state=open]:w-[clamp(28rem,34vw,34rem)] motion-reduce:transition-none"
+        onTransitionEnd={(event) => {
+          if (
+            event.target === event.currentTarget &&
+            event.propertyName === "width" &&
+            !open
+          ) {
+            completeOpenChange(false);
+          }
+        }}
+      />
+      <aside
+        aria-label={title}
+        data-slot="thread-detail-pane"
+        data-state={open ? "open" : "closed"}
+        className="fixed inset-y-0 right-0 z-30 flex h-dvh w-[clamp(28rem,34vw,34rem)] translate-x-full flex-col border-l bg-popover text-sm text-popover-foreground shadow-xl transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] data-[state=open]:translate-x-0 motion-reduce:transition-none"
+      >
+        <ThreadControls
+          threadSlug={threadSlug}
+          showActions={showActions}
+          onRequestClose={requestClose}
+        />
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
+          {children}
+        </div>
+      </aside>
+    </>
+  );
+}
+
+function ThreadControls({
   threadSlug,
   showActions,
   onRequestClose,
@@ -198,7 +235,9 @@ function ThreadOverlayControls({
   );
 }
 
-interface ThreadDetailContentProps extends ThreadDetailSheetProps {
+interface ThreadDetailContentProps {
+  areaSlug: string;
+  threadSlug: string;
   thread: Doc<"threads">;
 }
 
@@ -235,7 +274,7 @@ function ThreadDetailContent({
           aria-label="Thread attention"
           className="flex flex-col gap-5"
         >
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(14rem,1fr))] gap-5">
             <NextMoveSection threadSlug={threadSlug} />
             <FollowUpSection threadSlug={threadSlug} />
           </div>

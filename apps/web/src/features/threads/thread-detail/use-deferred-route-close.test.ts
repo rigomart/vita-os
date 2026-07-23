@@ -1,9 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { useDeferredOverlayClose } from "./use-deferred-overlay-close";
+import { useDeferredRouteClose } from "./use-deferred-route-close";
 
-describe("useDeferredOverlayClose", () => {
+describe("useDeferredRouteClose", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
@@ -20,7 +20,7 @@ describe("useDeferredOverlayClose", () => {
     );
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
 
-    const { result } = renderHook(() => useDeferredOverlayClose(vi.fn()));
+    const { result } = renderHook(() => useDeferredRouteClose(vi.fn()));
 
     expect(result.current.open).toBe(false);
 
@@ -31,7 +31,7 @@ describe("useDeferredOverlayClose", () => {
 
   it("waits for the closing animation before leaving Thread detail", () => {
     const onClosed = vi.fn();
-    const { result } = renderHook(() => useDeferredOverlayClose(onClosed));
+    const { result } = renderHook(() => useDeferredRouteClose(onClosed));
 
     act(() => result.current.requestClose());
 
@@ -46,7 +46,7 @@ describe("useDeferredOverlayClose", () => {
   it("cannot strand the route when a primitive misses its completion callback", () => {
     vi.useFakeTimers();
     const onClosed = vi.fn();
-    const { result } = renderHook(() => useDeferredOverlayClose(onClosed));
+    const { result } = renderHook(() => useDeferredRouteClose(onClosed));
 
     act(() => result.current.requestClose());
     expect(onClosed).not.toHaveBeenCalled();
