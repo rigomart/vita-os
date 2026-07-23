@@ -4,7 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { render, screen, within } from "@/test/render-with-providers";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@/test/render-with-providers";
 
 import { ThreadDetailSheet } from "./thread-detail-sheet";
 
@@ -76,7 +82,7 @@ describe("ThreadDetailSheet", () => {
     mocks.threadState = "open";
   });
 
-  it("opens Thread detail as a near-full bottom drawer on mobile", () => {
+  it("opens Thread detail as a near-full bottom drawer on mobile", async () => {
     render(
       <ThreadDetailSheet
         areaSlug="family-health"
@@ -84,7 +90,7 @@ describe("ThreadDetailSheet", () => {
       />,
     );
 
-    const drawer = screen.getByRole("dialog", {
+    const drawer = await screen.findByRole("dialog", {
       name: "Sister's front teeth",
     });
 
@@ -93,7 +99,53 @@ describe("ThreadDetailSheet", () => {
     expect(screen.getByRole("button", { name: "Close thread" })).toBeVisible();
   });
 
-  it("opens a responsive desktop sheet over a soft contextual backdrop", () => {
+  it("leaves the mobile Thread route after its programmatic close animation", async () => {
+    render(
+      <ThreadDetailSheet
+        areaSlug="family-health"
+        threadSlug="sister-s-front-teeth"
+      />,
+    );
+
+    await screen.findByRole("dialog", {
+      name: "Sister's front teeth",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
+
+    expect(mocks.navigate).not.toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: "/$areaSlug",
+        params: { areaSlug: "family-health" },
+        replace: true,
+      });
+    });
+  });
+
+  it("opens a fresh shell when the Thread route changes", async () => {
+    const { rerender } = render(
+      <ThreadDetailSheet
+        areaSlug="family-health"
+        threadSlug="sister-s-front-teeth"
+      />,
+    );
+
+    await screen.findByRole("dialog", { name: "Sister's front teeth" });
+    fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
+
+    rerender(
+      <ThreadDetailSheet areaSlug="family-health" threadSlug="moms-legs" />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("dialog", { name: "Sister's front teeth" }),
+      ).toHaveAttribute("data-state", "open");
+    });
+  });
+
+  it("opens a responsive desktop sheet over a soft contextual backdrop", async () => {
     mocks.isMobile = false;
 
     render(
@@ -103,7 +155,7 @@ describe("ThreadDetailSheet", () => {
       />,
     );
 
-    const sheet = screen.getByRole("dialog", {
+    const sheet = await screen.findByRole("dialog", {
       name: "Sister's front teeth",
     });
     const backdrop = document.querySelector('[data-slot="sheet-overlay"]');
@@ -111,15 +163,25 @@ describe("ThreadDetailSheet", () => {
     expect(sheet).toHaveClass(
       "data-[side=right]:w-[clamp(35rem,45vw,45rem)]",
       "data-[side=right]:sm:max-w-none",
+      "data-open:animate-in",
+      "data-open:slide-in-from-right-full",
+      "data-closed:animate-out",
+      "data-closed:slide-out-to-right-full",
     );
     expect(backdrop).toHaveClass(
       "bg-black/20",
       "supports-backdrop-filter:backdrop-blur-none",
     );
-    expect(screen.getByRole("button", { name: "Close thread" })).toBeVisible();
+    const controls = screen.getByRole("group", { name: "Thread controls" });
+    expect(
+      within(controls).getByRole("button", { name: "Thread actions" }),
+    ).toBeVisible();
+    expect(
+      within(controls).getByRole("button", { name: "Close thread" }),
+    ).toBeVisible();
   });
 
-  it("restores orientation before presenting attention and continuity", () => {
+  it("restores orientation before presenting attention and continuity", async () => {
     mocks.isMobile = false;
 
     render(
@@ -128,6 +190,8 @@ describe("ThreadDetailSheet", () => {
         threadSlug="sister-s-front-teeth"
       />,
     );
+
+    await screen.findByRole("dialog", { name: "Sister's front teeth" });
 
     const header = screen.getByRole("banner", { name: "Thread header" });
     const summary = screen.getByText("Waiting for the specialist's opinion.");
@@ -146,6 +210,7 @@ describe("ThreadDetailSheet", () => {
     ).toBeVisible();
     expect(within(attention).getByText("Next Move")).toBeVisible();
     expect(within(attention).getByText("Follow-up")).toBeVisible();
+    expect(attention).not.toHaveAttribute("data-slot", "card");
     expect(
       summary.compareDocumentPosition(attention) &
         Node.DOCUMENT_POSITION_FOLLOWING,
@@ -166,6 +231,8 @@ describe("ThreadDetailSheet", () => {
         threadSlug="sister-s-front-teeth"
       />,
     );
+
+    await screen.findByRole("dialog", { name: "Sister's front teeth" });
 
     expect(screen.getByText("Resolved")).toBeVisible();
     expect(

@@ -5,18 +5,16 @@ import { useNavigate } from "@tanstack/react-router";
 import { Badge } from "@vita-os/ui/components/badge";
 import { Button } from "@vita-os/ui/components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@vita-os/ui/components/card";
+  ButtonGroup,
+  ButtonGroupSeparator,
+} from "@vita-os/ui/components/button-group";
 import {
   Drawer,
   DrawerContent,
   DrawerDescription,
   DrawerTitle,
 } from "@vita-os/ui/components/drawer";
+import { Separator } from "@vita-os/ui/components/separator";
 import {
   Sheet,
   SheetContent,
@@ -49,6 +47,19 @@ export function ThreadDetailSheet({
   areaSlug,
   threadSlug,
 }: ThreadDetailSheetProps) {
+  return (
+    <ThreadDetailSheetInstance
+      key={`${areaSlug}/${threadSlug}`}
+      areaSlug={areaSlug}
+      threadSlug={threadSlug}
+    />
+  );
+}
+
+function ThreadDetailSheetInstance({
+  areaSlug,
+  threadSlug,
+}: ThreadDetailSheetProps) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
@@ -68,6 +79,12 @@ export function ThreadDetailSheet({
     });
 
   const title = thread?.title ?? "Thread detail";
+  const hasMatchingThread =
+    area !== undefined &&
+    area !== null &&
+    thread !== undefined &&
+    thread !== null &&
+    thread.areaId === area._id;
   const content =
     area === undefined || thread === undefined ? (
       <ThreadDetailSkeleton />
@@ -78,7 +95,6 @@ export function ThreadDetailSheet({
         areaSlug={areaSlug}
         threadSlug={threadSlug}
         thread={thread}
-        onRequestClose={requestClose}
       />
     );
 
@@ -90,12 +106,26 @@ export function ThreadDetailSheet({
         onOpenChange={handleOpenChange}
         onAnimationEnd={completeOpenChange}
       >
-        <DrawerContent className="h-[90dvh] max-h-[90dvh] p-0 before:inset-0 before:rounded-t-4xl data-[vaul-drawer-direction=bottom]:max-h-[90dvh]">
+        <DrawerContent
+          className="h-[90dvh] max-h-[90dvh] p-0 before:inset-0 before:rounded-t-4xl data-[vaul-drawer-direction=bottom]:max-h-[90dvh]"
+          onAnimationEndCapture={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              event.currentTarget.dataset.state === "closed"
+            ) {
+              completeOpenChange(false);
+            }
+          }}
+        >
           <DrawerTitle className="sr-only">{title}</DrawerTitle>
           <DrawerDescription className="sr-only">
             Review and update this Thread.
           </DrawerDescription>
-          <ThreadCloseButton onClick={requestClose} />
+          <ThreadOverlayControls
+            threadSlug={threadSlug}
+            showActions={hasMatchingThread}
+            onRequestClose={requestClose}
+          />
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
             {content}
           </div>
@@ -113,14 +143,18 @@ export function ThreadDetailSheet({
       <SheetContent
         side="right"
         showCloseButton={false}
-        overlayClassName="bg-black/20 supports-backdrop-filter:backdrop-blur-none"
-        className="ease-[cubic-bezier(0.32,0.72,0,1)] data-[side=right]:w-[clamp(35rem,45vw,45rem)] data-[side=right]:sm:max-w-none data-[side=right]:data-ending-style:translate-x-full data-[side=right]:data-starting-style:translate-x-full"
+        overlayClassName="bg-black/20 supports-backdrop-filter:backdrop-blur-none data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
+        className="ease-[cubic-bezier(0.32,0.72,0,1)] data-open:animate-in data-open:slide-in-from-right-full data-closed:animate-out data-closed:slide-out-to-right-full data-[side=right]:w-[clamp(35rem,45vw,45rem)] data-[side=right]:sm:max-w-none"
       >
         <SheetTitle className="sr-only">{title}</SheetTitle>
         <SheetDescription className="sr-only">
           Review and update this Thread.
         </SheetDescription>
-        <ThreadCloseButton onClick={requestClose} />
+        <ThreadOverlayControls
+          threadSlug={threadSlug}
+          showActions={hasMatchingThread}
+          onRequestClose={requestClose}
+        />
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
           {content}
         </div>
@@ -129,52 +163,65 @@ export function ThreadDetailSheet({
   );
 }
 
-function ThreadCloseButton({ onClick }: { onClick: () => void }) {
+function ThreadOverlayControls({
+  threadSlug,
+  showActions,
+  onRequestClose,
+}: {
+  threadSlug: string;
+  showActions: boolean;
+  onRequestClose: () => void;
+}) {
   return (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      className="absolute right-4 top-4 z-20 bg-secondary"
-      onClick={onClick}
-      aria-label="Close thread"
+    <ButtonGroup
+      aria-label="Thread controls"
+      className="absolute right-4 top-4 z-20 rounded-4xl bg-secondary"
     >
-      <X data-icon="inline-start" />
-    </Button>
+      {showActions && (
+        <>
+          <ThreadLifecycleActionsSection
+            threadSlug={threadSlug}
+            onRequestClose={onRequestClose}
+          />
+          <ButtonGroupSeparator />
+        </>
+      )}
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={onRequestClose}
+        aria-label="Close thread"
+      >
+        <X data-icon="inline-start" />
+      </Button>
+    </ButtonGroup>
   );
 }
 
 interface ThreadDetailContentProps extends ThreadDetailSheetProps {
   thread: Doc<"threads">;
-  onRequestClose: () => void;
 }
 
 function ThreadDetailContent({
   areaSlug,
   threadSlug,
   thread,
-  onRequestClose,
 }: ThreadDetailContentProps) {
   const isResolved = thread.state === "resolved";
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <header
         role="banner"
         aria-label="Thread header"
-        className="sticky top-0 z-10 flex flex-col gap-3 bg-popover pb-4"
+        className="sticky top-0 z-10 flex flex-col gap-3 bg-popover pb-3"
       >
-        <div className="flex items-center gap-2 pr-10">
+        <div className="flex items-center gap-2 pr-24">
           <ThreadAreaSectionSection
             areaSlug={areaSlug}
             threadSlug={threadSlug}
           />
           {isResolved && <Badge variant="secondary">Resolved</Badge>}
-          <div className="ml-auto">
-            <ThreadLifecycleActionsSection
-              threadSlug={threadSlug}
-              onRequestClose={onRequestClose}
-            />
-          </div>
         </div>
         <ThreadHeaderSection areaSlug={areaSlug} threadSlug={threadSlug} />
       </header>
@@ -182,23 +229,17 @@ function ThreadDetailContent({
       <ThreadDefinitionSection threadSlug={threadSlug} />
 
       {!isResolved && (
-        <Card
+        <section
           role="region"
           aria-label="Thread attention"
-          size="sm"
-          className="gap-0"
+          className="flex flex-col gap-5"
         >
-          <CardHeader className="sr-only">
-            <CardTitle>Thread attention</CardTitle>
-            <CardDescription>
-              The next useful move and when to revisit this Thread.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2">
             <NextMoveSection threadSlug={threadSlug} />
             <FollowUpSection threadSlug={threadSlug} />
-          </CardContent>
-        </Card>
+          </div>
+          <Separator />
+        </section>
       )}
 
       <div>
