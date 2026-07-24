@@ -1,3 +1,4 @@
+import { Button } from "@vita-os/ui/components/button";
 import { useEffect, useState } from "react";
 
 import { EditableField } from "@/components/ui/editable-field";
@@ -26,38 +27,31 @@ export function AreaStandardCard({ standard, onSave }: AreaStandardCardProps) {
 
   if (!expanded) {
     return (
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="xs"
+        className="mt-1"
         onClick={() => {
           setExpanded(true);
           setStartEditing(true);
         }}
-        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
-        Add standard
-      </button>
+        Add a Standard…
+      </Button>
     );
   }
 
   return (
-    <div className="space-y-1.5">
-      <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        Standard
-        <span className="ml-1 font-normal normal-case tracking-normal text-muted-foreground/70">
-          (optional)
-        </span>
-      </h2>
-      <EditableField
-        value={standard}
-        onSave={handleSave}
-        variant="textarea"
-        startEditing={startEditing}
-        placeholder="What does 'good enough' look like for this area?"
-        className="text-sm leading-relaxed"
-      />
-      <p className="mt-2 text-xs text-muted-foreground">
-        The maintenance threshold, not an aspirational goal.
-      </p>
-    </div>
+    <EditableField
+      value={standard}
+      onSave={handleSave}
+      variant="textarea"
+      startEditing={startEditing}
+      placeholder="What does 'good enough' look like for this Area?"
+      className="text-sm leading-relaxed"
+      displayClassName="text-muted-foreground"
+      textareaRows={2}
+      inputAriaLabel="Area Standard"
+    />
   );
 }

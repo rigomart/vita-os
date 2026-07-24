@@ -29,17 +29,23 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-function renderHeader(onIconChange: (icon: AreaIcon) => Promise<void> | void) {
-  return render(
+function renderHeader(
+  onIconChange: (icon: AreaIcon) => Promise<void> | void,
+  actions: { onEdit?: () => void; onDelete?: () => void } = {},
+) {
+  const onEdit = actions.onEdit ?? vi.fn();
+  const onDelete = actions.onDelete ?? vi.fn();
+  const result = render(
     <AreaHeader
       area={area}
-      threadCount={0}
-      onEdit={vi.fn()}
-      onDelete={vi.fn()}
+      onEdit={onEdit}
+      onDelete={onDelete}
       onConditionChange={vi.fn()}
       onIconChange={onIconChange}
     />,
   );
+
+  return { ...result, onEdit, onDelete };
 }
 
 describe("AreaHeader icon picker", () => {
@@ -89,5 +95,34 @@ describe("AreaHeader icon picker", () => {
     expect(
       screen.getByRole("button", { name: "Change Area icon" }),
     ).toBeEnabled();
+  });
+});
+
+describe("AreaHeader actions", () => {
+  it("moves Edit into the Area actions menu", async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    renderHeader(vi.fn(), { onEdit });
+
+    await user.click(screen.getByRole("button", { name: "Area actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Edit" }));
+
+    expect(onEdit).toHaveBeenCalledOnce();
+  });
+
+  it("confirms Delete from the Area actions menu", async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    renderHeader(vi.fn(), { onDelete });
+
+    await user.click(screen.getByRole("button", { name: "Area actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(screen.getByText("Delete area?")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Delete area" }));
+
+    expect(onDelete).toHaveBeenCalledOnce();
   });
 });
