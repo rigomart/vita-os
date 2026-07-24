@@ -28,9 +28,9 @@ export function AreaStandardCard({ standard, onSave }: AreaStandardCardProps) {
   if (!expanded) {
     return (
       <Button
-        variant="secondary"
-        size="xs"
-        className="mt-1"
+        variant="ghost"
+        size="sm"
+        className="h-auto px-0 py-1 text-sm text-muted-foreground hover:bg-transparent hover:text-foreground"
         onClick={() => {
           setExpanded(true);
           setStartEditing(true);
@@ -48,9 +48,10 @@ export function AreaStandardCard({ standard, onSave }: AreaStandardCardProps) {
       variant="textarea"
       startEditing={startEditing}
       placeholder="What does 'good enough' look like for this Area?"
-      className="text-sm leading-relaxed"
-      displayClassName="text-muted-foreground"
-      textareaRows={2}
+      className="min-h-0 max-h-[4.5rem] overflow-y-auto border-0 py-0 text-sm leading-relaxed hover:border-0 hover:bg-transparent focus-visible:border-0 focus-visible:bg-transparent"
+      displayClassName="border-0 text-muted-foreground hover:border-0 hover:bg-transparent"
+      editorClassName="border-0 hover:border-0 hover:bg-transparent focus-visible:border-0 focus-visible:bg-transparent"
+      textareaRows={1}
       inputAriaLabel="Area Standard"
     />
   );

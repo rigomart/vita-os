@@ -1,7 +1,7 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import type { LucideIcon } from "lucide-react";
 
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,8 +46,6 @@ export function AreaThreads({
   onCreateThread,
   onRemoveThread,
 }: AreaThreadsProps) {
-  const { pathname } = useLocation();
-  const isThreadOpen = pathname !== `/${areaSlug}`;
   const scheduled = threads
     .filter((thread) => thread.followUp != null)
     .sort((a, b) => (a.followUp ?? 0) - (b.followUp ?? 0));
@@ -89,7 +87,6 @@ export function AreaThreads({
               key={thread._id}
               areaSlug={areaSlug}
               thread={thread}
-              compact={isThreadOpen}
               onRemoveThread={onRemoveThread}
             />
           ))}
@@ -153,12 +150,10 @@ function SectionHeading({
 function ScheduledThreadRow({
   areaSlug,
   thread,
-  compact,
   onRemoveThread,
 }: {
   areaSlug: string;
   thread: Doc<"threads">;
-  compact: boolean;
   onRemoveThread: (threadId: Id<"threads">) => void;
 }) {
   const followUp = thread.followUp;
@@ -171,9 +166,7 @@ function ScheduledThreadRow({
         params={{ areaSlug, threadSlug: thread.slug ?? thread._id }}
         className={cn(
           "grid min-w-0 flex-1 items-center gap-4 px-2 py-3",
-          compact
-            ? "grid-cols-[3.5rem_minmax(0,1fr)]"
-            : "grid-cols-[5rem_minmax(0,1fr)]",
+          "grid-cols-[3.5rem_minmax(0,1fr)]",
         )}
       >
         <time
@@ -224,15 +217,12 @@ function UndatedThreadRow({
 function ThreadNextMove({ thread }: { thread: Doc<"threads"> }) {
   const nextMove = thread.nextMove?.trim();
 
+  if (!nextMove) return null;
+
   return (
-    <p
-      className={cn(
-        "mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground",
-        !nextMove && "text-muted-foreground/60",
-      )}
-    >
+    <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
       <ArrowRight className="size-3 shrink-0" />
-      <span className="truncate">{nextMove || "No next move"}</span>
+      <span className="truncate">{nextMove}</span>
     </p>
   );
 }
