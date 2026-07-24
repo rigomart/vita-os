@@ -1,5 +1,6 @@
 import { api } from "@convex/_generated/api";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Button } from "@vita-os/ui/components/button";
 import { Kbd } from "@vita-os/ui/components/kbd";
 import {
   Sidebar,
@@ -15,6 +16,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarSeparator,
 } from "@vita-os/ui/components/sidebar";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { CirclePlus, Inbox, LayoutDashboard, Plus } from "lucide-react";
@@ -56,37 +58,54 @@ export function AppSidebar() {
   return (
     <>
       <Sidebar>
-        <SidebarHeader>
+        <SidebarHeader className="gap-3 p-3 group-data-[collapsible=icon]:p-2">
+          <Link
+            to="/"
+            aria-label="Vita OS home"
+            className="flex min-w-0 items-center gap-3 rounded-2xl outline-none ring-sidebar-ring transition-colors hover:bg-sidebar-accent focus-visible:ring-2 group-data-[collapsible=icon]:justify-center"
+          >
+            <img
+              src="/vita-logo.svg"
+              alt=""
+              className="size-10 shrink-0 rounded-2xl shadow-sm ring-1 ring-sidebar-border group-data-[collapsible=icon]:size-8"
+            />
+            <span className="flex min-w-0 flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
+              <span className="flex items-baseline gap-1.5 leading-none">
+                <span className="font-heading text-lg font-semibold tracking-tight">
+                  vita
+                </span>
+                <span className="text-[0.625rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                  OS
+                </span>
+              </span>
+              <span className="truncate text-xs text-muted-foreground">
+                Life, in view
+              </span>
+            </span>
+          </Link>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg" render={<Link to="/" />}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary font-semibold text-sidebar-primary-foreground">
-                  V
-                </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-medium">vita-os</span>
-                </div>
-              </SidebarMenuButton>
+              <Button
+                size="sm"
+                onClick={openNewTask}
+                className="w-full justify-start group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:px-0!"
+              >
+                <CirclePlus data-icon="inline-start" />
+                <span className="group-data-[collapsible=icon]:hidden">
+                  New task
+                </span>
+                <Kbd className="ml-auto group-data-[collapsible=icon]:hidden">
+                  Q
+                </Kbd>
+              </Button>
             </SidebarMenuItem>
           </SidebarMenu>
+          <SidebarSeparator className="mx-0" />
         </SidebarHeader>
 
         <SidebarContent>
           <SidebarGroup>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <button
-                  type="button"
-                  onClick={openNewTask}
-                  className="flex w-full items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  <CirclePlus className="size-4" />
-                  <span>New task</span>
-                  <Kbd className="ml-auto bg-primary-foreground/15 text-primary-foreground/70">
-                    Q
-                  </Kbd>
-                </button>
-              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={pathname === "/"}

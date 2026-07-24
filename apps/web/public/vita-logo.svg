@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title description">
+  <title id="title">Vita OS</title>
+  <desc id="description">Two leaves forming a V around a central point.</desc>
   <defs>
     <linearGradient id="tile" x1="8" y1="5" x2="40" y2="43" gradientUnits="userSpaceOnUse">
       <stop stop-color="#30261d"/>
