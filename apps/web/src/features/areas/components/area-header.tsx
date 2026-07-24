@@ -12,9 +12,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@vita-os/ui/components/alert-dialog";
 import { Button } from "@vita-os/ui/components/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@vita-os/ui/components/dropdown-menu";
 import {
   Popover,
   PopoverContent,
@@ -29,7 +36,7 @@ import {
   SelectValue,
 } from "@vita-os/ui/components/select";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
-import { Pencil, Trash2 } from "lucide-react";
+import { Ellipsis, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -40,7 +47,6 @@ import { AreaIconPicker } from "./area-icon-picker";
 
 interface AreaHeaderProps {
   area: Doc<"areas">;
-  threadCount: number;
   onEdit: () => void;
   onDelete: () => void;
   onConditionChange: (value: Doc<"areas">["condition"]) => void;
@@ -49,13 +55,13 @@ interface AreaHeaderProps {
 
 export function AreaHeader({
   area,
-  threadCount,
   onEdit,
   onDelete,
   onConditionChange,
   onIconChange,
 }: AreaHeaderProps) {
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const { run: saveIcon, isPending: isSavingIcon } =
     useGuardedAsyncAction(onIconChange);
   const selectedIcon = getAreaIcon(area.icon);
@@ -70,9 +76,15 @@ export function AreaHeader({
     await saveIcon(icon);
   };
 
+  const handleDelete = () => {
+    onDelete();
+    setDeleteOpen(false);
+  };
+
   return (
     <div>
       <PageHeader
+        className="mb-0"
         title={area.name}
         titleLeading={
           <Popover
@@ -102,28 +114,79 @@ export function AreaHeader({
             </PopoverContent>
           </Popover>
         }
+        titleAccessory={
+          <Select
+            items={CONDITION_OPTIONS}
+            value={area.condition}
+            onValueChange={(value) => {
+              if (isCondition(value)) onConditionChange(value);
+            }}
+          >
+            <SelectTrigger
+              className="ml-1 h-7 w-auto gap-2 border-none bg-surface-3/60 px-3 text-xs"
+              aria-label="Area condition"
+            >
+              <span
+                className={cn(
+                  "size-1.5 rounded-full",
+                  CONDITION_OPTIONS.find(
+                    (option) => option.value === area.condition,
+                  )?.color,
+                )}
+              />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {CONDITION_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={cn("h-2 w-2 rounded-full", option.color)}
+                      />
+                      {option.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        }
         actions={
           <>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={onEdit}
-              aria-label="Edit area"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger
+            <DropdownMenu>
+              <DropdownMenuTrigger
                 render={
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Delete area"
+                    aria-label="Area actions"
                   />
                 }
               >
-                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-              </AlertDialogTrigger>
+                <Ellipsis />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onClick={onEdit}>
+                    <Pencil />
+                    Edit
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    <Trash2 />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete area?</AlertDialogTitle>
@@ -135,10 +198,10 @@ export function AreaHeader({
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={onDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    variant="destructive"
+                    onClick={handleDelete}
                   >
-                    Delete
+                    Delete area
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -146,40 +209,6 @@ export function AreaHeader({
           </>
         }
       />
-
-      <div className="flex items-center gap-3">
-        <Select
-          items={CONDITION_OPTIONS}
-          value={area.condition}
-          onValueChange={(value) => {
-            if (isCondition(value)) onConditionChange(value);
-          }}
-        >
-          <SelectTrigger
-            className="h-7 w-auto gap-2 border-none bg-surface-3/60 px-3 text-xs"
-            aria-label="Area condition"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {CONDITION_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={cn("h-2 w-2 rounded-full", option.color)}
-                    />
-                    {option.label}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        <span className="text-xs text-muted-foreground">
-          {threadCount} {threadCount === 1 ? "thread" : "threads"}
-        </span>
-      </div>
     </div>
   );
 }

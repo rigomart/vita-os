@@ -10,6 +10,7 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => (
     <a href={to}>{children}</a>
   ),
+  useLocation: () => ({ pathname: "/admin" }),
 }));
 
 const today = new Date(2026, 4, 20, 12).getTime();
@@ -36,11 +37,14 @@ function thread(
 }
 
 describe("AreaThreads", () => {
-  it("lists threads under the area with Thread language", () => {
+  it("separates scheduled and undated Threads", () => {
     render(
       <AreaThreads
         areaSlug="admin"
-        threads={[thread("renew-passport", "Renew passport")]}
+        threads={[
+          thread("call-clinic", "Call clinic", { followUp: tomorrow }),
+          thread("renew-passport", "Renew passport"),
+        ]}
         currentDate={today}
         onCreateThread={vi.fn()}
         onRemoveThread={vi.fn()}
@@ -48,11 +52,15 @@ describe("AreaThreads", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Threads" }),
+      screen.getByRole("heading", { name: "Follow-up schedule" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "New thread" }),
+      screen.getByRole("heading", { name: "No Follow-up" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "New Thread" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Call clinic")).toBeInTheDocument();
     expect(screen.getByText("Renew passport")).toBeInTheDocument();
   });
 
@@ -70,11 +78,11 @@ describe("AreaThreads", () => {
 
     expect(screen.getByTestId("area-threads-skeleton")).toBeVisible();
     expect(
-      screen.queryByText("No threads in this area yet."),
+      screen.queryByText("No Follow-ups scheduled in this Area."),
     ).not.toBeInTheDocument();
   });
 
-  it("shows an empty state that invites creating a thread", () => {
+  it("shows empty states for both schedule sections", () => {
     render(
       <AreaThreads
         areaSlug="admin"
@@ -86,14 +94,14 @@ describe("AreaThreads", () => {
     );
 
     expect(
-      screen.getByText("No threads in this area yet."),
+      screen.getByText("No Follow-ups scheduled in this Area."),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Create thread" }),
+      screen.getByText("Every open Thread has a Follow-up."),
     ).toBeInTheDocument();
   });
 
-  it("marks Threads with a due Follow-up and shows the date for scheduled ones", () => {
+  it("shows each scheduled date once and a Next Move line on every Thread", () => {
     render(
       <AreaThreads
         areaSlug="admin"
@@ -108,9 +116,10 @@ describe("AreaThreads", () => {
       />,
     );
 
-    expect(screen.getByText("Follow-up due")).toBeVisible();
-    expect(screen.getByText("May 21")).toBeVisible();
-    // Ready/open Threads carry no attention badge on the Area page.
-    expect(screen.getAllByText(/follow-up due|may 21/i)).toHaveLength(2);
+    expect(screen.getAllByText("May")).toHaveLength(2);
+    expect(screen.getByText("19")).toBeVisible();
+    expect(screen.getByText("21")).toBeVisible();
+    expect(screen.getByText("Scan them")).toBeVisible();
+    expect(screen.getAllByText("No next move")).toHaveLength(2);
   });
 });

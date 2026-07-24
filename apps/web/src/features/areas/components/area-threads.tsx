@@ -1,6 +1,7 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { LucideIcon } from "lucide-react";
 
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,23 +13,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@vita-os/ui/components/alert-dialog";
-import { Badge } from "@vita-os/ui/components/badge";
 import { Button } from "@vita-os/ui/components/button";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
 import {
   ArrowRight,
-  CalendarClock,
+  CalendarDays,
   FolderOpen,
   Plus,
   Trash2,
 } from "lucide-react";
 
-import { getThreadStatus } from "@/features/threads/derived-status";
-import {
-  flatListClassName,
-  flatListRowHoverClassName,
-} from "@/lib/flat-surface";
+import { compareThreadsByStatusUrgency } from "@/features/threads/derived-status";
+import { flatListClassName } from "@/lib/flat-surface";
 
 import { AreaThreadsSkeleton } from "./area-threads-skeleton";
 
@@ -49,176 +46,235 @@ export function AreaThreads({
   onCreateThread,
   onRemoveThread,
 }: AreaThreadsProps) {
+  const { pathname } = useLocation();
+  const isThreadOpen = pathname !== `/${areaSlug}`;
+  const scheduled = threads
+    .filter((thread) => thread.followUp != null)
+    .sort((a, b) => (a.followUp ?? 0) - (b.followUp ?? 0));
+  const undated = [...threads]
+    .filter((thread) => thread.followUp == null)
+    .sort((a, b) => compareThreadsByStatusUrgency(a, b, currentDate));
+
   return (
     <section>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-surface-3">
-            <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <h2 className="text-sm font-medium">Threads</h2>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1.5 text-xs text-muted-foreground"
-          onClick={onCreateThread}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          New thread
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <AreaThreadsSkeleton />
-      ) : threads.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-12 text-center">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-3">
-            <FolderOpen className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            No threads in this area yet.
-          </p>
+      <SectionHeading
+        icon={CalendarDays}
+        title="Follow-up schedule"
+        count={scheduled.length}
+        action={
           <Button
             variant="ghost"
             size="sm"
+            className="h-7 gap-1.5 text-xs text-muted-foreground"
             onClick={onCreateThread}
-            className="gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground"
           >
-            <Plus className="h-3.5 w-3.5" />
-            Create thread
+            <Plus className="size-3.5" />
+            New Thread
           </Button>
+        }
+      />
+
+      {isLoading ? (
+        <div className="mt-3">
+          <AreaThreadsSkeleton />
         </div>
+      ) : scheduled.length === 0 ? (
+        <p className="mt-3 py-6 text-sm text-muted-foreground">
+          No Follow-ups scheduled in this Area.
+        </p>
       ) : (
-        <div className={flatListClassName}>
-          {threads.map((thread) => (
-            <AreaThreadRow
+        <div className="mt-3 divide-y divide-border/60 border-y border-border/70">
+          {scheduled.map((thread) => (
+            <ScheduledThreadRow
               key={thread._id}
               areaSlug={areaSlug}
               thread={thread}
-              currentDate={currentDate}
+              compact={isThreadOpen}
               onRemoveThread={onRemoveThread}
             />
           ))}
         </div>
       )}
+
+      <section className="mt-8">
+        <SectionHeading
+          icon={FolderOpen}
+          title="No Follow-up"
+          count={undated.length}
+        />
+        {!isLoading && undated.length === 0 ? (
+          <p className="mt-3 py-4 text-sm text-muted-foreground">
+            Every open Thread has a Follow-up.
+          </p>
+        ) : (
+          !isLoading && (
+            <div className={cn("mt-3", flatListClassName)}>
+              {undated.map((thread) => (
+                <UndatedThreadRow
+                  key={thread._id}
+                  areaSlug={areaSlug}
+                  thread={thread}
+                  onRemoveThread={onRemoveThread}
+                />
+              ))}
+            </div>
+          )
+        )}
+      </section>
     </section>
   );
 }
 
-function AreaThreadRow({
-  areaSlug,
-  thread,
-  currentDate,
-  onRemoveThread,
+function SectionHeading({
+  icon: Icon,
+  title,
+  count,
+  action,
 }: {
-  areaSlug: string;
-  thread: Doc<"threads">;
-  currentDate: number;
-  onRemoveThread: (threadId: Id<"threads">) => void;
+  icon: LucideIcon;
+  title: string;
+  count: number;
+  action?: React.ReactNode;
 }) {
-  const slug = thread.slug ?? thread._id;
-
   return (
-    <div className="group flex items-center">
-      <Link
-        to="/$areaSlug/$threadSlug"
-        params={{ areaSlug, threadSlug: slug }}
-        className={cn(
-          "flex min-w-0 flex-1 items-start gap-4 py-4",
-          flatListRowHoverClassName,
-        )}
-      >
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-medium">{thread.title}</p>
-            <AreaThreadAttentionBadge
-              thread={thread}
-              currentDate={currentDate}
-            />
-          </div>
-          <AreaThreadSubtitle thread={thread} />
-        </div>
-      </Link>
-      <AlertDialog>
-        <AlertDialogTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="mr-2 opacity-0 transition-opacity group-hover:opacity-100"
-              aria-label="Delete thread"
-            />
-          }
-        >
-          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete thread?</AlertDialogTitle>
-            <AlertDialogDescription>
-              &ldquo;{thread.title}&rdquo; will be permanently removed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => onRemoveThread(thread._id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-2">
+        <Icon className="size-3.5 text-muted-foreground" />
+        <h2 className="text-sm font-semibold">{title}</h2>
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {count}
+        </span>
+      </div>
+      {action}
     </div>
   );
 }
 
-function AreaThreadAttentionBadge({
+function ScheduledThreadRow({
+  areaSlug,
   thread,
-  currentDate,
+  compact,
+  onRemoveThread,
 }: {
+  areaSlug: string;
   thread: Doc<"threads">;
-  currentDate: number;
+  compact: boolean;
+  onRemoveThread: (threadId: Id<"threads">) => void;
 }) {
-  const status = getThreadStatus(thread, currentDate);
+  const followUp = thread.followUp;
+  if (!followUp) return null;
 
-  if (status === "follow_up_due") {
-    return (
-      <Badge
-        variant="outline"
-        className="shrink-0 gap-1 border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400"
+  return (
+    <div className="group flex items-center rounded-md transition-colors hover:bg-muted/50">
+      <Link
+        to="/$areaSlug/$threadSlug"
+        params={{ areaSlug, threadSlug: thread.slug ?? thread._id }}
+        className={cn(
+          "grid min-w-0 flex-1 items-center gap-4 px-2 py-3",
+          compact
+            ? "grid-cols-[3.5rem_minmax(0,1fr)]"
+            : "grid-cols-[5rem_minmax(0,1fr)]",
+        )}
       >
-        <CalendarClock className="h-3 w-3" />
-        Follow-up due
-      </Badge>
-    );
-  }
-
-  if (status === "scheduled" && thread.followUp != null) {
-    return (
-      <span className="flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
-        <CalendarClock className="h-3 w-3" />
-        {format(new Date(thread.followUp), "MMM d")}
-      </span>
-    );
-  }
-
-  return null;
+        <time
+          dateTime={new Date(followUp).toISOString()}
+          className="flex flex-col text-muted-foreground"
+        >
+          <span className="text-[10px] font-medium uppercase tracking-wider">
+            {format(new Date(followUp), "MMM")}
+          </span>
+          <span className="text-lg font-semibold leading-none text-foreground">
+            {format(new Date(followUp), "d")}
+          </span>
+        </time>
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-medium">{thread.title}</h3>
+          <ThreadNextMove thread={thread} />
+        </div>
+      </Link>
+      <ThreadDeleteAction thread={thread} onRemoveThread={onRemoveThread} />
+    </div>
+  );
 }
 
-function AreaThreadSubtitle({ thread }: { thread: Doc<"threads"> }) {
-  const nextAction = thread.nextMove;
+function UndatedThreadRow({
+  areaSlug,
+  thread,
+  onRemoveThread,
+}: {
+  areaSlug: string;
+  thread: Doc<"threads">;
+  onRemoveThread: (threadId: Id<"threads">) => void;
+}) {
+  return (
+    <div className="group flex items-center rounded-md transition-colors hover:bg-muted/50">
+      <Link
+        to="/$areaSlug/$threadSlug"
+        params={{ areaSlug, threadSlug: thread.slug ?? thread._id }}
+        className="min-w-0 flex-1 px-2 py-3"
+      >
+        <h3 className="truncate text-sm font-medium">{thread.title}</h3>
+        <ThreadNextMove thread={thread} />
+      </Link>
+      <ThreadDeleteAction thread={thread} onRemoveThread={onRemoveThread} />
+    </div>
+  );
+}
 
-  if (nextAction) {
-    return (
-      <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-        <ArrowRight className="h-3 w-3 shrink-0" />
-        {nextAction}
-      </p>
-    );
-  }
+function ThreadNextMove({ thread }: { thread: Doc<"threads"> }) {
+  const nextMove = thread.nextMove?.trim();
 
-  return null;
+  return (
+    <p
+      className={cn(
+        "mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground",
+        !nextMove && "text-muted-foreground/60",
+      )}
+    >
+      <ArrowRight className="size-3 shrink-0" />
+      <span className="truncate">{nextMove || "No next move"}</span>
+    </p>
+  );
+}
+
+function ThreadDeleteAction({
+  thread,
+  onRemoveThread,
+}: {
+  thread: Doc<"threads">;
+  onRemoveThread: (threadId: Id<"threads">) => void;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="mr-2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            aria-label="Delete thread"
+          />
+        }
+      >
+        <Trash2 className="size-3.5 text-muted-foreground" />
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete thread?</AlertDialogTitle>
+          <AlertDialogDescription>
+            &ldquo;{thread.title}&rdquo; will be permanently removed.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => onRemoveThread(thread._id)}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }

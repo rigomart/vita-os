@@ -3,7 +3,6 @@ import type { AreaIcon } from "@convex/lib/areaIcons";
 
 import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
-import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useMutation } from "convex/react";
 
 import {
@@ -21,10 +20,6 @@ interface AreaHeaderProps {
 
 export function AreaHeaderSection({ areaSlug, onEdit }: AreaHeaderProps) {
   const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
-  const threads = useQuery(
-    api.threads.listByArea,
-    area ? { areaId: area._id } : "skip",
-  );
   const navigate = useNavigate();
   const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
     (localStore, args) => {
@@ -58,7 +53,6 @@ export function AreaHeaderSection({ areaSlug, onEdit }: AreaHeaderProps) {
   return (
     <AreaHeader
       area={area}
-      threadCount={threads?.length ?? 0}
       onEdit={onEdit}
       onDelete={handleDelete}
       onConditionChange={handleConditionChange}

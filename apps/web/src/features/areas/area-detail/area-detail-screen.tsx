@@ -31,10 +31,16 @@ export function AreaDetailScreen({ areaSlug }: AreaDetailScreenProps) {
   if (area === null) return <AreaNotFound />;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <AreaHeaderSection areaSlug={areaSlug} onEdit={() => setShowEdit(true)} />
-
-      <AreaStandardCardSection areaSlug={areaSlug} />
+    <div className="mx-auto max-w-4xl space-y-8">
+      <div>
+        <AreaHeaderSection
+          areaSlug={areaSlug}
+          onEdit={() => setShowEdit(true)}
+        />
+        <div className="ml-9 min-h-8 max-w-2xl">
+          <AreaStandardCardSection areaSlug={areaSlug} />
+        </div>
+      </div>
 
       <AreaThreadsSection
         areaSlug={areaSlug}
