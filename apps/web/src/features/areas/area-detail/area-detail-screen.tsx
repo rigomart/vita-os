@@ -37,7 +37,7 @@ export function AreaDetailScreen({ areaSlug }: AreaDetailScreenProps) {
           areaSlug={areaSlug}
           onEdit={() => setShowEdit(true)}
         />
-        <div className="ml-9 min-h-8 max-w-2xl">
+        <div className="min-h-8 max-w-2xl">
           <AreaStandardCardSection areaSlug={areaSlug} />
         </div>
       </div>

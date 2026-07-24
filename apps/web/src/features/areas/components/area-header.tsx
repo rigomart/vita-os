@@ -114,46 +114,45 @@ export function AreaHeader({
             </PopoverContent>
           </Popover>
         }
-        titleAccessory={
-          <Select
-            items={CONDITION_OPTIONS}
-            value={area.condition}
-            onValueChange={(value) => {
-              if (isCondition(value)) onConditionChange(value);
-            }}
-          >
-            <SelectTrigger
-              className="ml-1 h-7 w-auto gap-2 border-none bg-surface-3/60 px-3 text-xs"
-              aria-label="Area condition"
-            >
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  CONDITION_OPTIONS.find(
-                    (option) => option.value === area.condition,
-                  )?.color,
-                )}
-              />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {CONDITION_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={cn("h-2 w-2 rounded-full", option.color)}
-                      />
-                      {option.label}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        }
         actions={
           <>
+            <Select
+              items={CONDITION_OPTIONS}
+              value={area.condition}
+              onValueChange={(value) => {
+                if (isCondition(value)) onConditionChange(value);
+              }}
+            >
+              <SelectTrigger
+                className="ml-1 h-7 w-auto gap-2 border-none bg-surface-3/60 px-3 text-xs"
+                aria-label="Area condition"
+              >
+                <span
+                  className={cn(
+                    "size-1.5 rounded-full",
+                    CONDITION_OPTIONS.find(
+                      (option) => option.value === area.condition,
+                    )?.color,
+                  )}
+                />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {CONDITION_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={cn("h-2 w-2 rounded-full", option.color)}
+                        />
+                        {option.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={

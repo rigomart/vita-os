@@ -101,7 +101,7 @@ describe("AreaThreads", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows each scheduled date once and a Next Move line on every Thread", () => {
+  it("shows each scheduled date once and hides empty Next Move lines", () => {
     render(
       <AreaThreads
         areaSlug="admin"
@@ -120,6 +120,6 @@ describe("AreaThreads", () => {
     expect(screen.getByText("19")).toBeVisible();
     expect(screen.getByText("21")).toBeVisible();
     expect(screen.getByText("Scan them")).toBeVisible();
-    expect(screen.getAllByText("No next move")).toHaveLength(2);
+    expect(screen.queryByText("No next move")).not.toBeInTheDocument();
   });
 });
