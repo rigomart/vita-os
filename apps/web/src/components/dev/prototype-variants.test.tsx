@@ -6,9 +6,15 @@ import {
   createRouter,
   RouterContextProvider,
 } from "@tanstack/react-router";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { PrototypeVariants, type PrototypeVariant } from "./prototype-variants";
 
@@ -30,6 +36,10 @@ function renderWithRouter(ui: ReactNode, initialEntry = "/") {
 }
 
 describe("PrototypeVariants", () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
+
   it("renders the first variant by default", () => {
     renderWithRouter(<PrototypeVariants variants={variants} />);
 
@@ -84,5 +94,38 @@ describe("PrototypeVariants", () => {
     input.blur();
     fireEvent.keyDown(window, { key: "ArrowRight" });
     await waitFor(() => expect(screen.getByText("Variant A")).toBeVisible());
+  });
+
+  it("moves the toolbar and remembers its position for the browser tab", async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<PrototypeVariants variants={variants} />);
+
+    expect(screen.queryByText("Prototype")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("complementary", { name: "Prototype variants" }),
+    ).toHaveAttribute("data-position", "bottom");
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Move prototype toolbar (currently bottom)",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Move toolbar to top" }),
+    );
+
+    expect(
+      screen.getByRole("complementary", { name: "Prototype variants" }),
+    ).toHaveAttribute("data-position", "top");
+    expect(
+      window.sessionStorage.getItem("vita-os:prototype-toolbar-position"),
+    ).toBe("top");
+
+    cleanup();
+    renderWithRouter(<PrototypeVariants variants={variants} />);
+
+    expect(
+      screen.getByRole("complementary", { name: "Prototype variants" }),
+    ).toHaveAttribute("data-position", "top");
   });
 });

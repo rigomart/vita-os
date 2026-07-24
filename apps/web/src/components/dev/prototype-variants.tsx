@@ -1,6 +1,19 @@
 import { useLocation, useRouter } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, FlaskConical } from "lucide-react";
-import { useCallback, useEffect, type ReactNode } from "react";
+import { Button } from "@vita-os/ui/components/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@vita-os/ui/components/popover";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  FlaskConical,
+} from "lucide-react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -22,6 +35,46 @@ interface PrototypeVariantSelectorProps {
   activeKey: string;
   onSelect: (key: string) => void;
   className?: string;
+}
+
+type ToolbarPosition = "bottom" | "left" | "right" | "top";
+
+const TOOLBAR_POSITION_STORAGE_KEY = "vita-os:prototype-toolbar-position";
+
+const toolbarPositionClasses: Record<ToolbarPosition, string> = {
+  bottom:
+    "bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2",
+  left: "top-1/2 left-[max(1rem,env(safe-area-inset-left))] -translate-y-1/2",
+  right:
+    "top-1/2 right-[max(1rem,env(safe-area-inset-right))] -translate-y-1/2",
+  top: "top-[max(1rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2",
+};
+
+const toolbarPositions = [
+  { value: "top", label: "Top", icon: ArrowUp },
+  { value: "right", label: "Right", icon: ArrowRight },
+  { value: "bottom", label: "Bottom", icon: ArrowDown },
+  { value: "left", label: "Left", icon: ArrowLeft },
+] satisfies readonly {
+  value: ToolbarPosition;
+  label: string;
+  icon: typeof ArrowUp;
+}[];
+
+function getInitialToolbarPosition(): ToolbarPosition {
+  try {
+    const storedPosition = window.sessionStorage.getItem(
+      TOOLBAR_POSITION_STORAGE_KEY,
+    );
+
+    if (toolbarPositions.some(({ value }) => value === storedPosition)) {
+      return storedPosition as ToolbarPosition;
+    }
+  } catch {
+    // Storage can be unavailable in privacy-restricted browser contexts.
+  }
+
+  return "bottom";
 }
 
 function canHandleArrowKey(target: EventTarget | null) {
@@ -82,6 +135,10 @@ export function PrototypeVariantSelector({
     0,
   );
   const activeVariant = variants[activeIndex];
+  const [toolbarPosition, setToolbarPosition] = useState<ToolbarPosition>(
+    getInitialToolbarPosition,
+  );
+  const [positionPickerOpen, setPositionPickerOpen] = useState(false);
 
   const cycle = useCallback(
     (offset: number) => {
@@ -109,23 +166,73 @@ export function PrototypeVariantSelector({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [cycle]);
 
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(
+        TOOLBAR_POSITION_STORAGE_KEY,
+        toolbarPosition,
+      );
+    } catch {
+      // The toolbar remains usable when storage is unavailable.
+    }
+  }, [toolbarPosition]);
+
   return (
     <aside
       aria-label="Prototype variants"
+      data-position={toolbarPosition}
       className={cn(
-        "fixed bottom-5 left-1/2 z-100 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-1 rounded-full border border-white/15 bg-zinc-950 p-1.5 text-zinc-50 shadow-2xl shadow-black/35",
+        "fixed z-100 flex max-w-[calc(100dvw-2rem)] items-center gap-1 rounded-full border border-white/15 bg-zinc-950 p-1.5 text-zinc-50 shadow-2xl shadow-black/35",
+        toolbarPositionClasses[toolbarPosition],
         className,
       )}
     >
-      <span className="flex items-center gap-1.5 px-2 text-xs font-medium text-zinc-400">
-        <FlaskConical aria-hidden="true" className="size-3.5" />
-        Prototype
-      </span>
+      <Popover open={positionPickerOpen} onOpenChange={setPositionPickerOpen}>
+        <PopoverTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Move prototype toolbar (currently ${toolbarPosition})`}
+              className="size-10 text-zinc-400 hover:bg-white/10 hover:text-white sm:size-8"
+            />
+          }
+        >
+          <FlaskConical aria-hidden="true" />
+        </PopoverTrigger>
+        <PopoverContent className="w-auto gap-2 p-2" sideOffset={8}>
+          <PopoverTitle className="sr-only">
+            Move prototype toolbar
+          </PopoverTitle>
+          <div
+            aria-label="Toolbar position"
+            className="grid grid-cols-2 gap-1"
+            role="group"
+          >
+            {toolbarPositions.map(({ value, label, icon: PositionIcon }) => (
+              <Button
+                key={value}
+                type="button"
+                size="icon-lg"
+                variant={toolbarPosition === value ? "secondary" : "ghost"}
+                aria-label={`Move toolbar to ${label.toLowerCase()}`}
+                aria-pressed={toolbarPosition === value}
+                onClick={() => {
+                  setToolbarPosition(value);
+                  setPositionPickerOpen(false);
+                }}
+              >
+                <PositionIcon aria-hidden="true" />
+              </Button>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
 
       <button
         type="button"
         aria-label="Previous prototype variant"
-        className="flex size-8 items-center justify-center rounded-full text-zinc-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="flex size-10 items-center justify-center rounded-full text-zinc-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:size-8"
         onClick={() => cycle(-1)}
       >
         <ArrowLeft aria-hidden="true" className="size-4" />
@@ -142,7 +249,7 @@ export function PrototypeVariantSelector({
               aria-label={`${variant.key} — ${variant.name}`}
               aria-pressed={isActive}
               className={cn(
-                "min-w-8 rounded-full px-2.5 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
+                "min-w-10 rounded-full px-2.5 py-3 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:min-w-8 sm:py-1.5",
                 isActive
                   ? "bg-white text-zinc-950"
                   : "text-zinc-400 hover:bg-white/10 hover:text-white",
@@ -158,13 +265,13 @@ export function PrototypeVariantSelector({
       <button
         type="button"
         aria-label="Next prototype variant"
-        className="flex size-8 items-center justify-center rounded-full text-zinc-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="flex size-10 items-center justify-center rounded-full text-zinc-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:size-8"
         onClick={() => cycle(1)}
       >
         <ArrowRight aria-hidden="true" className="size-4" />
       </button>
 
-      <span className="max-w-44 truncate pr-3 text-xs text-zinc-300">
+      <span className="hidden max-w-44 truncate pr-3 text-xs text-zinc-300 sm:block">
         {activeVariant.name}
       </span>
     </aside>
