@@ -5,7 +5,6 @@ import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useState } from "react";
 
-import { PageHeader } from "@/components/layout/page-header";
 import { InboxTaskList } from "@/features/inbox/components/inbox-task-list";
 import { ProcessTaskDialogContainer } from "@/features/tasks/process-task/process-task-dialog-container";
 
@@ -20,8 +19,7 @@ export function InboxScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <PageHeader title="Inbox" />
+    <>
       <InboxTaskList tasks={tasks} onProcess={setProcessingTask} />
 
       {processingTask && (
@@ -33,7 +31,7 @@ export function InboxScreen() {
           task={processingTask}
         />
       )}
-    </div>
+    </>
   );
 }
 
