@@ -5,15 +5,8 @@ import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useState } from "react";
 
-import {
-  PrototypeVariants,
-  type PrototypeVariant,
-} from "@/components/dev/prototype-variants";
-import {
-  InboxRedesignVariantA,
-  InboxRedesignVariantB,
-  InboxRedesignVariantC,
-} from "@/features/inbox/components/inbox-redesign-prototype-variants";
+import { PageHeader } from "@/components/layout/page-header";
+import { InboxTaskList } from "@/features/inbox/components/inbox-task-list";
 import { ProcessTaskDialogContainer } from "@/features/tasks/process-task/process-task-dialog-container";
 
 export function InboxScreen() {
@@ -26,33 +19,10 @@ export function InboxScreen() {
     return <InboxSkeleton />;
   }
 
-  const variants = [
-    {
-      key: "A",
-      name: "Queue",
-      render: () => (
-        <InboxRedesignVariantA tasks={tasks} onProcess={setProcessingTask} />
-      ),
-    },
-    {
-      key: "B",
-      name: "Triage desk",
-      render: () => (
-        <InboxRedesignVariantB tasks={tasks} onProcess={setProcessingTask} />
-      ),
-    },
-    {
-      key: "C",
-      name: "Inbox board",
-      render: () => (
-        <InboxRedesignVariantC tasks={tasks} onProcess={setProcessingTask} />
-      ),
-    },
-  ] satisfies readonly [PrototypeVariant, ...PrototypeVariant[]];
-
   return (
-    <>
-      <PrototypeVariants variants={variants} />
+    <div className="mx-auto max-w-3xl">
+      <PageHeader title="Inbox" />
+      <InboxTaskList tasks={tasks} onProcess={setProcessingTask} />
 
       {processingTask && (
         <ProcessTaskDialogContainer
@@ -63,7 +33,7 @@ export function InboxScreen() {
           task={processingTask}
         />
       )}
-    </>
+    </div>
   );
 }
 

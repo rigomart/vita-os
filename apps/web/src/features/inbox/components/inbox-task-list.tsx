@@ -63,7 +63,7 @@ export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
   );
 }
 
-export function InboxTaskRow({
+function InboxTaskRow({
   task,
   onProcess,
 }: {
