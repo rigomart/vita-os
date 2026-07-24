@@ -18,7 +18,6 @@ import {
   Item,
   ItemActions,
   ItemContent,
-  ItemDescription,
   ItemMedia,
 } from "@vita-os/ui/components/item";
 import {
@@ -98,7 +97,7 @@ export function TaskRow({
         />
       </ItemMedia>
       <ItemContent className="min-w-0 gap-1">
-        <div className="flex min-w-0 flex-1 items-start gap-1">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
           <EditableField
             value={task.text}
             onSave={(text) => {
@@ -115,59 +114,12 @@ export function TaskRow({
                 "text-muted-foreground/60 line-through decoration-muted-foreground/30",
             )}
           />
-          <ItemActions className="shrink-0 opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100 gap-1">
-            {onProcess && !isDone && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6"
-                onClick={onProcess}
-                aria-label="Process task"
-              >
-                <ArrowRight className="size-4 text-muted-foreground" />
-              </Button>
-            )}
-            <AlertDialog>
-              <AlertDialogTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6"
-                    aria-label="Discard task"
-                  >
-                    <Trash2 className="size-4 text-muted-foreground" />
-                  </Button>
-                }
-              />
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Discard task?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This task will be permanently removed from your Inbox. This
-                    action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      if (!isDiscardPending) {
-                        void onRemove();
-                      }
-                    }}
-                    disabled={isDiscardPending}
-                    aria-busy={isDiscardPending}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Discard
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </ItemActions>
+          <span className="shrink-0 pt-1 text-xs tabular-nums text-muted-foreground/50">
+            {timestamp}
+          </span>
         </div>
-        <ItemDescription className="flex w-full items-center justify-between gap-2 text-xs text-muted-foreground">
+
+        <div className="flex min-h-6 w-full items-center gap-2 text-xs text-muted-foreground">
           <Popover open={isWhenOpen} onOpenChange={setIsWhenOpen}>
             <PopoverTrigger
               render={
@@ -224,10 +176,59 @@ export function TaskRow({
               )}
             </PopoverContent>
           </Popover>
-          <span className="ml-auto shrink-0 tabular-nums text-muted-foreground/50">
-            {timestamp}
-          </span>
-        </ItemDescription>
+
+          <ItemActions className="ml-auto shrink-0 gap-1 opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100">
+            {onProcess && !isDone && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                onClick={onProcess}
+                aria-label="Process task"
+              >
+                <ArrowRight className="size-4 text-muted-foreground" />
+              </Button>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6"
+                    aria-label="Discard task"
+                  >
+                    <Trash2 className="size-4 text-muted-foreground" />
+                  </Button>
+                }
+              />
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Discard task?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This task will be permanently removed from your Inbox. This
+                    action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      if (!isDiscardPending) {
+                        void onRemove();
+                      }
+                    }}
+                    disabled={isDiscardPending}
+                    aria-busy={isDiscardPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Discard
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </ItemActions>
+        </div>
       </ItemContent>
     </Item>
   );
