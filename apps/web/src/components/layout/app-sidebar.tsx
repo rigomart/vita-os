@@ -27,6 +27,7 @@ import { useGlobalNewTaskShortcut } from "@/features/sidebar/use-global-new-task
 import { useSidebarDialogs } from "@/features/sidebar/use-sidebar-dialogs";
 import { NewTaskDialog } from "@/features/tasks/new-task/new-task-dialog";
 import { useCreateTask } from "@/features/tasks/use-create-task";
+import { useTheme } from "@/features/theme/theme-provider";
 import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread-dialog";
 import { useAreaThreadTree } from "@/hooks/use-area-thread-tree";
 import { authClient } from "@/lib/auth-client";
@@ -36,6 +37,7 @@ import { SidebarUserMenu } from "./sidebar-user-menu";
 
 export function AppSidebar() {
   const { data: session } = authClient.useSession();
+  const { theme, setTheme } = useTheme();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { areas, areaThreads } = useAreaThreadTree();
@@ -198,6 +200,8 @@ export function AppSidebar() {
         <SidebarFooter>
           <SidebarUserMenu
             user={session?.user}
+            theme={theme}
+            onThemeChange={setTheme}
             onSignOut={() => authClient.signOut()}
           />
         </SidebarFooter>

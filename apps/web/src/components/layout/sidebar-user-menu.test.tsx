@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { SidebarProvider } from "@vita-os/ui/components/sidebar";
 import { describe, expect, it, vi } from "vitest";
 
-import { render, screen } from "@/test/render-with-providers";
+import { fireEvent, render, screen } from "@/test/render-with-providers";
 
 import { SidebarUserMenu } from "./sidebar-user-menu";
 
@@ -15,6 +15,8 @@ describe("SidebarUserMenu", () => {
       <SidebarProvider>
         <SidebarUserMenu
           user={{ name: "Jane Doe", email: "jane@example.com" }}
+          theme="system"
+          onThemeChange={vi.fn()}
           onSignOut={onSignOut}
         />
       </SidebarProvider>,
@@ -31,6 +33,8 @@ describe("SidebarUserMenu", () => {
       <SidebarProvider>
         <SidebarUserMenu
           user={{ email: "jane@example.com" }}
+          theme="system"
+          onThemeChange={vi.fn()}
           onSignOut={vi.fn()}
         />
       </SidebarProvider>,
@@ -39,5 +43,27 @@ describe("SidebarUserMenu", () => {
     expect(
       screen.getByRole("button", { name: /jane@example.com/ }),
     ).toBeVisible();
+  });
+
+  it("changes the appearance preference", async () => {
+    const user = userEvent.setup();
+    const onThemeChange = vi.fn();
+
+    render(
+      <SidebarProvider>
+        <SidebarUserMenu
+          user={{ name: "Jane Doe", email: "jane@example.com" }}
+          theme="system"
+          onThemeChange={onThemeChange}
+          onSignOut={vi.fn()}
+        />
+      </SidebarProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Jane Doe/ }));
+    await user.click(screen.getByRole("menuitem", { name: "Appearance" }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "Dark" }));
+
+    expect(onThemeChange).toHaveBeenCalledWith("dark");
   });
 });

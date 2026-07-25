@@ -7,9 +7,16 @@ import { ConvexReactClient } from "convex/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import {
+  initializeTheme,
+  ThemeProvider,
+  useTheme,
+} from "./features/theme/theme-provider";
 import { authClient } from "./lib/auth-client";
 import { routeTree } from "./routeTree.gen";
 import "@vita-os/ui/globals.css";
+
+initializeTheme();
 
 if (!import.meta.env.VITE_CONVEX_URL) {
   throw new Error("VITE_CONVEX_URL is not set");
@@ -32,13 +39,20 @@ if (!root) throw new Error("Root element not found");
 
 createRoot(root).render(
   <StrictMode>
-    <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-      <ConvexQueryCacheProvider expiration={300_000}>
-        <FeedbackProvider>
-          <RouterProvider router={router} />
-          <Toaster />
-        </FeedbackProvider>
-      </ConvexQueryCacheProvider>
-    </ConvexBetterAuthProvider>
+    <ThemeProvider>
+      <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+        <ConvexQueryCacheProvider expiration={300_000}>
+          <FeedbackProvider>
+            <RouterProvider router={router} />
+            <ThemeAwareToaster />
+          </FeedbackProvider>
+        </ConvexQueryCacheProvider>
+      </ConvexBetterAuthProvider>
+    </ThemeProvider>
   </StrictMode>,
 );
+
+function ThemeAwareToaster() {
+  const { resolvedTheme } = useTheme();
+  return <Toaster theme={resolvedTheme} />;
+}
