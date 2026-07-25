@@ -46,10 +46,10 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "^5.1.1",
     "babel-plugin-react-compiler": "^1.0.0",
-    "jsdom": "^28.0.0",
+    "jsdom": "29.1.1",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "^7.3.1",
-    "vitest": "^4.0.18"
+    "vitest": "4.1.7"
   }
 }
