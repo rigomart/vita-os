@@ -4,7 +4,12 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@vita-os/ui/components/dropdown-menu";
 import {
@@ -12,7 +17,16 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@vita-os/ui/components/sidebar";
-import { ChevronsUpDown, LogOut } from "lucide-react";
+import {
+  ChevronsUpDown,
+  LogOut,
+  Monitor,
+  Moon,
+  Palette,
+  Sun,
+} from "lucide-react";
+
+import type { ThemePreference } from "@/features/theme/theme-provider";
 
 interface SidebarUser {
   name?: string | null;
@@ -20,11 +34,28 @@ interface SidebarUser {
 }
 
 interface SidebarUserMenuProps {
+  onThemeChange: (theme: ThemePreference) => void;
   user?: SidebarUser | null;
   onSignOut: () => void;
+  theme: ThemePreference;
 }
 
-export function SidebarUserMenu({ user, onSignOut }: SidebarUserMenuProps) {
+const themeOptions = [
+  { value: "system", label: "System", icon: Monitor },
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+] satisfies readonly {
+  value: ThemePreference;
+  label: string;
+  icon: typeof Monitor;
+}[];
+
+export function SidebarUserMenu({
+  user,
+  theme,
+  onThemeChange,
+  onSignOut,
+}: SidebarUserMenuProps) {
   const accountName = user?.name ?? user?.email ?? "Account";
   const initial = (user?.name?.[0] ?? user?.email?.[0] ?? "?").toUpperCase();
 
@@ -67,6 +98,28 @@ export function SidebarUserMenu({ user, onSignOut }: SidebarUserMenuProps) {
                   </p>
                 </div>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Palette />
+                  Appearance
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup
+                    value={theme}
+                    onValueChange={(value) =>
+                      onThemeChange(value as ThemePreference)
+                    }
+                  >
+                    {themeOptions.map(({ value, label, icon: ThemeIcon }) => (
+                      <DropdownMenuRadioItem key={value} value={value}>
+                        <ThemeIcon />
+                        {label}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onSignOut}>
                 <LogOut />
