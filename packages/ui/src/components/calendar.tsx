@@ -1,15 +1,15 @@
 import {
+  type DayButton,
+  DayPicker,
+  getDefaultClassNames,
+  type Locale,
+} from "@daypicker/react";
+import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react";
 import * as React from "react";
-import {
-  type DayButton,
-  DayPicker,
-  getDefaultClassNames,
-  type Locale,
-} from "react-day-picker";
 
 import { cn } from "../lib/utils";
 import { Button, buttonVariants } from "./button";
@@ -201,6 +201,7 @@ function CalendarDayButton({
 
   return (
     <Button
+      ref={ref}
       variant="ghost"
       size="icon"
       data-day={day.date.toLocaleDateString(locale?.code)}
