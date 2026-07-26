@@ -34,6 +34,7 @@
     "tailwind-merge": "catalog:"
   },
   "devDependencies": {
+    "@rolldown/plugin-babel": "0.2.3",
     "@tailwindcss/vite": "4.3.0",
     "@tanstack/react-router": "1.170.18",
     "@tanstack/react-router-devtools": "1.167.0",
@@ -44,12 +45,12 @@
     "@types/node": "^24.13.3",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "^5.1.1",
+    "@vitejs/plugin-react": "6.0.2",
     "babel-plugin-react-compiler": "^1.0.0",
     "jsdom": "29.1.1",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "vite": "^7.3.1",
+    "vite": "8.0.13",
     "vitest": "4.1.7"
   }
 }

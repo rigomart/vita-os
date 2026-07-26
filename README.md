@@ -13,6 +13,10 @@ The React Compiler is enabled on this template. See [this documentation](https:/
 
 Note: This will impact Vite dev & build performances.
 
+## Browser support
+
+Production builds support Safari 16.4+, Chrome and Edge 111+, and Firefox 114+.
+
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
