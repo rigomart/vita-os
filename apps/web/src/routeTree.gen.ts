@@ -9,42 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UnauthenticatedRouteRouteImport } from './routes/_unauthenticated/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as UnauthenticatedRouteRouteImport } from './routes/_unauthenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as UnauthenticatedSignUpRouteImport } from './routes/_unauthenticated/sign-up'
-import { Route as UnauthenticatedSignInRouteImport } from './routes/_unauthenticated/sign-in'
-import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
 import { Route as AuthenticatedAreaSlugRouteRouteImport } from './routes/_authenticated/$areaSlug/route'
+import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
+import { Route as UnauthenticatedSignInRouteImport } from './routes/_unauthenticated/sign-in'
+import { Route as UnauthenticatedSignUpRouteImport } from './routes/_unauthenticated/sign-up'
 import { Route as AuthenticatedAreaSlugIndexRouteImport } from './routes/_authenticated/$areaSlug/index'
 import { Route as AuthenticatedAreaSlugThreadSlugRouteImport } from './routes/_authenticated/$areaSlug/$threadSlug'
 
-const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
-  id: '/_unauthenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
+  id: '/_unauthenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const UnauthenticatedSignUpRoute = UnauthenticatedSignUpRouteImport.update({
-  id: '/sign-up',
-  path: '/sign-up',
-  getParentRoute: () => UnauthenticatedRouteRoute,
-} as any)
-const UnauthenticatedSignInRoute = UnauthenticatedSignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
-  getParentRoute: () => UnauthenticatedRouteRoute,
-} as any)
-const AuthenticatedInboxRoute = AuthenticatedInboxRouteImport.update({
-  id: '/inbox',
-  path: '/inbox',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAreaSlugRouteRoute =
@@ -53,6 +38,21 @@ const AuthenticatedAreaSlugRouteRoute =
     path: '/$areaSlug',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedInboxRoute = AuthenticatedInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const UnauthenticatedSignInRoute = UnauthenticatedSignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => UnauthenticatedRouteRoute,
+} as any)
+const UnauthenticatedSignUpRoute = UnauthenticatedSignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => UnauthenticatedRouteRoute,
+} as any)
 const AuthenticatedAreaSlugIndexRoute =
   AuthenticatedAreaSlugIndexRouteImport.update({
     id: '/',
@@ -133,18 +133,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_unauthenticated': {
-      id: '/_unauthenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof UnauthenticatedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_unauthenticated': {
+      id: '/_unauthenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof UnauthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -154,19 +154,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_unauthenticated/sign-up': {
-      id: '/_unauthenticated/sign-up'
-      path: '/sign-up'
-      fullPath: '/sign-up'
-      preLoaderRoute: typeof UnauthenticatedSignUpRouteImport
-      parentRoute: typeof UnauthenticatedRouteRoute
-    }
-    '/_unauthenticated/sign-in': {
-      id: '/_unauthenticated/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof UnauthenticatedSignInRouteImport
-      parentRoute: typeof UnauthenticatedRouteRoute
+    '/_authenticated/$areaSlug': {
+      id: '/_authenticated/$areaSlug'
+      path: '/$areaSlug'
+      fullPath: '/$areaSlug'
+      preLoaderRoute: typeof AuthenticatedAreaSlugRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/inbox': {
       id: '/_authenticated/inbox'
@@ -175,12 +168,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInboxRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/$areaSlug': {
-      id: '/_authenticated/$areaSlug'
-      path: '/$areaSlug'
-      fullPath: '/$areaSlug'
-      preLoaderRoute: typeof AuthenticatedAreaSlugRouteRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/_unauthenticated/sign-in': {
+      id: '/_unauthenticated/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof UnauthenticatedSignInRouteImport
+      parentRoute: typeof UnauthenticatedRouteRoute
+    }
+    '/_unauthenticated/sign-up': {
+      id: '/_unauthenticated/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof UnauthenticatedSignUpRouteImport
+      parentRoute: typeof UnauthenticatedRouteRoute
     }
     '/_authenticated/$areaSlug/': {
       id: '/_authenticated/$areaSlug/'
