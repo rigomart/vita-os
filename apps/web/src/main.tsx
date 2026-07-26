@@ -1,3 +1,5 @@
+import type { AuthClient } from "@convex-dev/better-auth/react";
+
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { Toaster } from "@vita-os/ui/components/sonner";
@@ -40,7 +42,12 @@ if (!root) throw new Error("Root element not found");
 createRoot(root).render(
   <StrictMode>
     <ThemeProvider>
-      <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+      <ConvexBetterAuthProvider
+        client={convex}
+        // The component's AuthClient union reduces useSession data to `never`
+        // under TypeScript 7, despite this matching its documented plugin setup.
+        authClient={authClient as unknown as AuthClient}
+      >
         <ConvexQueryCacheProvider expiration={300_000}>
           <FeedbackProvider>
             <RouterProvider router={router} />
