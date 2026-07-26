@@ -35,9 +35,9 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.0",
-    "@tanstack/react-router": "^1.159.5",
-    "@tanstack/react-router-devtools": "^1.160.2",
-    "@tanstack/router-plugin": "^1.159.5",
+    "@tanstack/react-router": "1.170.18",
+    "@tanstack/react-router-devtools": "1.167.0",
+    "@tanstack/router-plugin": "1.168.23",
     "@testing-library/jest-dom": "^6.10.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
