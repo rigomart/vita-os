@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef } from "react";
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -75,15 +75,24 @@ describe("DashboardOverview", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("group", { name: "Critical Life Areas" }),
-    ).toBeVisible();
-    expect(
-      screen.getByRole("group", { name: "Steady Life Areas" }),
-    ).toBeVisible();
-    expect(
-      screen.getByRole("group", { name: "Needs attention Life Areas" }),
-    ).toBeVisible();
+    const critical = screen.getByRole("group", {
+      name: "Critical Life Areas",
+    });
+    expect(critical).toBeVisible();
+    expect(critical.firstElementChild).toHaveClass("bg-condition-critical");
+    expect(within(critical).queryByText("1")).toBeNull();
+    const steady = screen.getByRole("group", { name: "Steady Life Areas" });
+    expect(steady).toBeVisible();
+    expect(steady.firstElementChild).toHaveClass("bg-condition-healthy");
+    expect(within(steady).queryByText("1")).toBeNull();
+    const needsAttention = screen.getByRole("group", {
+      name: "Needs attention Life Areas",
+    });
+    expect(needsAttention).toBeVisible();
+    expect(needsAttention.firstElementChild).toHaveClass(
+      "bg-condition-attention",
+    );
+    expect(within(needsAttention).queryByText("0")).toBeNull();
     expect(screen.getByText("None")).toBeVisible();
 
     const areaStrip = screen.getByRole("region", {

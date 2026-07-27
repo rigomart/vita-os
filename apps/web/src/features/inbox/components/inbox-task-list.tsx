@@ -1,5 +1,4 @@
 import type { Doc } from "@convex/_generated/dataModel";
-import type { LucideIcon } from "lucide-react";
 
 import { groupTasksByAttention } from "@convex/lib/attentionOrdering";
 import {
@@ -9,14 +8,7 @@ import {
 } from "@vita-os/ui/components/collapsible";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
-import {
-  CalendarClock,
-  CheckCircle2,
-  ChevronRight,
-  CircleDot,
-  Clock3,
-  Inbox,
-} from "lucide-react";
+import { CheckCircle2, ChevronRight } from "lucide-react";
 
 import { TaskRow } from "@/features/tasks/task-row/task-row";
 import { useTaskRowActions } from "@/features/tasks/task-row/use-task-row-actions";
@@ -38,18 +30,13 @@ export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
   return (
     <div className="mx-auto max-w-4xl pb-16">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-heading text-2xl font-semibold tracking-tight">
-              Inbox
-            </h1>
-            <span className="ml-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-              {openCount}
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Tasks waiting for a decision or action, ordered by attention.
-          </p>
+        <div className="flex items-center gap-2">
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            Inbox
+          </h1>
+          <span className="ml-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+            {openCount}
+          </span>
         </div>
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {format(new Date(), "EEEE, MMMM d")}
@@ -62,26 +49,22 @@ export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
         ) : (
           <>
             <TaskSection
-              icon={Clock3}
               title="Past due"
               tasks={groups.pastDue}
               onProcess={onProcess}
               tone="attention"
             />
             <TaskSection
-              icon={CircleDot}
               title="Today"
               tasks={groups.today}
               onProcess={onProcess}
             />
             <TaskSection
-              icon={Inbox}
               title="No date"
               tasks={groups.noDate}
               onProcess={onProcess}
             />
             <TaskSection
-              icon={CalendarClock}
               title="Coming up"
               tasks={groups.comingUp}
               onProcess={onProcess}
@@ -95,13 +78,11 @@ export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
 }
 
 function TaskSection({
-  icon,
   title,
   tasks,
   onProcess,
   tone,
 }: {
-  icon: LucideIcon;
   title: string;
   tasks: Doc<"tasks">[];
   onProcess?: (task: Doc<"tasks">) => void;
@@ -111,7 +92,7 @@ function TaskSection({
 
   return (
     <section>
-      <SectionHeading icon={icon} title={title} tone={tone} />
+      <SectionHeading title={title} tone={tone} />
       <div className={cn("mt-3", flatListClassName)}>
         {tasks.map((task) => (
           <InboxTaskRow key={task._id} task={task} onProcess={onProcess} />
@@ -144,24 +125,21 @@ function DoneTasks({ tasks }: { tasks: Doc<"tasks">[] }) {
 }
 
 function SectionHeading({
-  icon: Icon,
   title,
   tone,
 }: {
-  icon: LucideIcon;
   title: string;
   tone?: "attention";
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <Icon
-        className={cn(
-          "size-3.5 text-muted-foreground",
-          tone === "attention" && "text-condition-attention",
-        )}
-      />
-      <h2 className="text-sm font-semibold">{title}</h2>
-    </div>
+    <h2
+      className={cn(
+        "px-2 text-[11px] font-medium tracking-wide text-muted-foreground",
+        tone === "attention" && "text-condition-attention",
+      )}
+    >
+      {title}
+    </h2>
   );
 }
 

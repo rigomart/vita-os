@@ -119,6 +119,12 @@ describe("AreaThreads", () => {
     expect(screen.getAllByText("May")).toHaveLength(2);
     expect(screen.getByText("19")).toBeVisible();
     expect(screen.getByText("21")).toBeVisible();
+    expect(screen.getByText("19").closest("time")).toHaveClass(
+      "text-destructive",
+    );
+    expect(screen.getByText("21").closest("time")).not.toHaveClass(
+      "text-destructive",
+    );
     expect(screen.getByText("Scan them")).toBeVisible();
     expect(screen.queryByText("No next move")).not.toBeInTheDocument();
   });
@@ -143,22 +149,29 @@ describe("AreaThreads", () => {
       />,
     );
 
-    const due = screen.getByRole("heading", { name: "Overdue & today" });
-    const upcoming = screen.getByRole("heading", { name: "Upcoming" });
-    const nextMoves = screen.getByRole("heading", {
-      name: "Threads with Next Moves",
-    });
-    const open = screen.getByRole("heading", { name: "Open Threads" });
-
-    expect(due.compareDocumentPosition(upcoming)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-    expect(upcoming.compareDocumentPosition(nextMoves)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-    expect(nextMoves.compareDocumentPosition(open)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
+    expect(
+      screen.queryByRole("heading", { name: "Overdue & today" }),
+    ).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Upcoming" })).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: "Threads with Next Moves" }),
+    ).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Open Threads" })).toBeNull();
+    expect(
+      screen
+        .getByText("Overdue Follow-up")
+        .compareDocumentPosition(screen.getByText("Today Follow-up")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      screen
+        .getByText("Today Follow-up")
+        .compareDocumentPosition(screen.getByText("Future Follow-up")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      screen
+        .getByText("Future Follow-up")
+        .compareDocumentPosition(screen.getByText("Thread With Next Move")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(
       screen
         .getByText("Thread With Next Move")

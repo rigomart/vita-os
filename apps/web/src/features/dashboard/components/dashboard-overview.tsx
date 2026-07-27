@@ -16,13 +16,10 @@ import {
 import { cn } from "@vita-os/ui/lib/utils";
 import { format, formatDistance } from "date-fns";
 import {
-  CalendarDays,
   CalendarRange,
   ChevronRight,
-  ClockAlert,
   History,
   Inbox,
-  type LucideIcon,
   MessagesSquare,
 } from "lucide-react";
 
@@ -153,21 +150,18 @@ function OverviewTab({
           <>
             <ThreadSection
               heading="Overdue"
-              icon={ClockAlert}
               threads={groups.overdue}
               areaById={areaById}
               currentDate={currentDate}
             />
             <ThreadSection
               heading="Threads with Next Moves"
-              icon={MessagesSquare}
               threads={groups.withNextMoves}
               areaById={areaById}
               currentDate={currentDate}
             />
             <ThreadSection
               heading="Upcoming"
-              icon={CalendarDays}
               threads={groups.upcoming}
               areaById={areaById}
               currentDate={currentDate}
@@ -207,13 +201,11 @@ function OverviewTab({
 
 function ThreadSection({
   heading,
-  icon: Icon,
   threads,
   areaById,
   currentDate,
 }: {
   heading: string;
-  icon: LucideIcon;
   threads: DashboardThread[];
   areaById: Map<string, DashboardArea>;
   currentDate: number;
@@ -222,10 +214,9 @@ function ThreadSection({
 
   return (
     <section>
-      <div className="mb-2 flex items-center gap-2">
-        <Icon className="size-3.5 text-muted-foreground" />
-        <h2 className="text-sm font-semibold">{heading}</h2>
-      </div>
+      <h2 className="mb-1 px-2 text-[11px] font-medium tracking-wide text-muted-foreground">
+        {heading}
+      </h2>
       <div className={flatListClassName}>
         {threads.map((thread) => (
           <DashboardThreadRow

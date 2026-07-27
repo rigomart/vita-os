@@ -81,7 +81,7 @@ export function AreaThreads({
       ) : (
         <div className="mt-3">
           {groups.dueNow.length > 0 && (
-            <ThreadSubgroup title="Overdue & today">
+            <div className={flatListClassName}>
               {groups.dueNow.map((thread) => (
                 <ScheduledThreadRow
                   key={thread._id}
@@ -91,12 +91,15 @@ export function AreaThreads({
                   currentDate={currentDate}
                 />
               ))}
-            </ThreadSubgroup>
+            </div>
           )}
           {groups.upcoming.length > 0 && (
-            <ThreadSubgroup
-              title="Upcoming"
-              separated={groups.dueNow.length > 0}
+            <div
+              className={cn(
+                flatListClassName,
+                groups.dueNow.length > 0 &&
+                  "mt-4 border-t border-border/50 pt-3",
+              )}
             >
               {groups.upcoming.map((thread) => (
                 <ScheduledThreadRow
@@ -107,7 +110,7 @@ export function AreaThreads({
                   currentDate={currentDate}
                 />
               ))}
-            </ThreadSubgroup>
+            </div>
           )}
         </div>
       )}
@@ -126,7 +129,7 @@ export function AreaThreads({
           !isLoading && (
             <div className="mt-3">
               {groups.withNextMoves.length > 0 && (
-                <ThreadSubgroup title="Threads with Next Moves">
+                <div className={flatListClassName}>
                   {groups.withNextMoves.map((thread) => (
                     <UndatedThreadRow
                       key={thread._id}
@@ -135,12 +138,15 @@ export function AreaThreads({
                       onRemoveThread={onRemoveThread}
                     />
                   ))}
-                </ThreadSubgroup>
+                </div>
               )}
               {groups.open.length > 0 && (
-                <ThreadSubgroup
-                  title="Open Threads"
-                  separated={groups.withNextMoves.length > 0}
+                <div
+                  className={cn(
+                    flatListClassName,
+                    groups.withNextMoves.length > 0 &&
+                      "mt-3 border-t border-border/50 pt-2",
+                  )}
                 >
                   {groups.open.map((thread) => (
                     <UndatedThreadRow
@@ -150,31 +156,12 @@ export function AreaThreads({
                       onRemoveThread={onRemoveThread}
                     />
                   ))}
-                </ThreadSubgroup>
+                </div>
               )}
             </div>
           )
         )}
       </section>
-    </section>
-  );
-}
-
-function ThreadSubgroup({
-  title,
-  separated = false,
-  children,
-}: {
-  title: string;
-  separated?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={cn(separated && "mt-5 border-t border-border/50 pt-4")}>
-      <h3 className="px-2 text-[11px] font-medium tracking-wide text-muted-foreground">
-        {title}
-      </h3>
-      <div className={cn("mt-1", flatListClassName)}>{children}</div>
     </section>
   );
 }
@@ -219,10 +206,9 @@ function ScheduledThreadRow({
 }) {
   const followUp = thread.followUp;
   if (!followUp) return null;
-  const isOverdue = isBefore(
-    startOfDay(new Date(followUp)),
-    startOfDay(new Date(currentDate)),
-  );
+  const followUpDay = startOfDay(new Date(followUp));
+  const currentDay = startOfDay(new Date(currentDate));
+  const isOverdue = isBefore(followUpDay, currentDay);
 
   return (
     <div className="group flex items-center rounded-md transition-colors hover:bg-muted/50">
