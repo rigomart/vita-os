@@ -28,7 +28,7 @@ function AuthenticatedLayout() {
       <AppSidebar />
       <SidebarInset className="overflow-x-hidden">
         <AppHeader />
-        <main className="w-full px-4 py-8">
+        <main className="w-full px-4 pt-3 pb-8">
           <Outlet />
         </main>
       </SidebarInset>

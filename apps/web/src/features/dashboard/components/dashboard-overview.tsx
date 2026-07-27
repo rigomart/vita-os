@@ -1,4 +1,3 @@
-import { type Condition } from "@convex/lib/condition";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@vita-os/ui/components/badge";
 import { Button } from "@vita-os/ui/components/button";
@@ -30,6 +29,7 @@ import {
 import { AreaIcon } from "@/features/areas/components/area-icon";
 import { flatListClassName } from "@/lib/flat-surface";
 
+import { AreaConditionOverview } from "./area-condition-overview";
 import {
   type DashboardArea,
   type DashboardOverviewData,
@@ -46,26 +46,6 @@ interface DashboardOverviewProps {
   onCreateArea: () => void;
   overview: DashboardOverviewData;
 }
-
-const conditionOrder: Condition[] = ["critical", "needs_attention", "healthy"];
-
-const conditionLabels: Record<Condition, string> = {
-  critical: "Critical",
-  needs_attention: "Needs attention",
-  healthy: "Steady",
-};
-
-const conditionSurfaces: Record<Condition, string> = {
-  critical: "bg-condition-critical/5",
-  needs_attention: "bg-condition-attention/5",
-  healthy: "bg-condition-healthy/5",
-};
-
-const conditionBorders: Record<Condition, string> = {
-  critical: "border-t-condition-critical/70",
-  needs_attention: "border-t-condition-attention/70",
-  healthy: "border-t-condition-healthy/70",
-};
 
 export function DashboardOverview({
   overview,
@@ -96,7 +76,7 @@ export function DashboardOverview({
   return (
     <div className="flex flex-col gap-6">
       <DashboardHeader currentDate={currentDate} />
-      <AreaConditionMap areas={overview.areas} />
+      <AreaConditionOverview areas={overview.areas} />
 
       <Tabs defaultValue="overview" className="gap-5">
         <TabsList aria-label="Dashboard view">
@@ -124,73 +104,26 @@ export function DashboardOverview({
 }
 
 function DashboardHeader({ currentDate }: { currentDate: number }) {
+  const date = new Date(currentDate);
+
   return (
-    <header className="flex flex-wrap items-baseline justify-between gap-2">
+    <header className="flex flex-wrap items-center justify-between gap-3">
       <h1 className="font-heading text-xl font-semibold tracking-tight">
         Life Areas
       </h1>
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {format(new Date(currentDate), "EEEE, MMMM d")}
-      </p>
+      <time
+        dateTime={date.toISOString()}
+        title={format(date, "EEEE, MMMM d, yyyy")}
+        className="flex min-w-12 flex-col items-end text-muted-foreground"
+      >
+        <span className="text-[10px] font-medium uppercase tracking-wider">
+          {format(date, "MMM")}
+        </span>
+        <span className="text-lg font-semibold leading-none text-foreground">
+          {format(date, "d")}
+        </span>
+      </time>
     </header>
-  );
-}
-
-function AreaConditionMap({ areas }: { areas: DashboardArea[] }) {
-  return (
-    <section aria-label="Life Areas by condition">
-      <div className="flex flex-col gap-px overflow-hidden rounded-xl border bg-border/60 md:flex-row">
-        {conditionOrder.map((condition) => {
-          const matchingAreas = areas.filter(
-            (area) => area.condition === condition,
-          );
-          if (matchingAreas.length === 0) return null;
-
-          return (
-            <div
-              key={condition}
-              role="group"
-              aria-label={`${conditionLabels[condition]} Life Areas`}
-              className={cn(
-                "min-w-0 border-t-2 bg-background",
-                conditionBorders[condition],
-              )}
-              style={{ flexGrow: matchingAreas.length, flexBasis: 0 }}
-            >
-              <div
-                className={cn(
-                  "flex items-center justify-between px-3 py-1.5",
-                  conditionSurfaces[condition],
-                )}
-              >
-                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {conditionLabels[condition]}
-                </span>
-                <span className="text-[11px] tabular-nums text-muted-foreground">
-                  {matchingAreas.length}
-                </span>
-              </div>
-              <div className="flex min-w-0 divide-x divide-border/50">
-                {matchingAreas.map((area) => (
-                  <Link
-                    key={area.id}
-                    to="/$areaSlug"
-                    params={{ areaSlug: area.slug }}
-                    className="group flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium transition-colors hover:bg-muted/50"
-                  >
-                    <span className="flex min-w-0 items-center gap-2 truncate">
-                      <AreaIcon icon={area.icon} className="size-4 shrink-0" />
-                      <span className="truncate">{area.name}</span>
-                    </span>
-                    <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
   );
 }
 
@@ -218,14 +151,14 @@ function OverviewTab({
         ) : (
           <>
             <ThreadSection
-              heading="Overdue follow-ups"
+              heading="Overdue"
               icon={ClockAlert}
               threads={groups.overdue}
               areaById={areaById}
               currentDate={currentDate}
             />
             <ThreadSection
-              heading="Upcoming follow-ups"
+              heading="Upcoming"
               icon={CalendarDays}
               threads={groups.upcoming}
               areaById={areaById}
@@ -412,13 +345,17 @@ function InboxSection({
 
   return (
     <section>
-      <div className="mb-2 flex items-center gap-2">
+      <Link
+        to="/inbox"
+        className="group mb-2 flex items-center gap-2 rounded-md outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+      >
         <Inbox className="size-3.5 text-muted-foreground" />
         <h2 className="text-sm font-semibold">Inbox</h2>
         <span className="text-xs tabular-nums text-muted-foreground">
           {totalOpen}
         </span>
-      </div>
+        <ChevronRight className="ml-auto size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      </Link>
       {totalOpen === 0 ? (
         <p className="py-2 text-sm text-muted-foreground">Inbox is clear</p>
       ) : (

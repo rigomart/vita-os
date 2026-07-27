@@ -66,7 +66,7 @@ function dashboard(
 }
 
 describe("DashboardOverview", () => {
-  it("renders populated Area groups first and omits empty conditions", () => {
+  it("renders every Area condition, including clear conditions", () => {
     render(
       <DashboardOverview
         overview={dashboard()}
@@ -82,8 +82,9 @@ describe("DashboardOverview", () => {
       screen.getByRole("group", { name: "Steady Life Areas" }),
     ).toBeVisible();
     expect(
-      screen.queryByRole("group", { name: "Needs attention Life Areas" }),
-    ).toBeNull();
+      screen.getByRole("group", { name: "Needs attention Life Areas" }),
+    ).toBeVisible();
+    expect(screen.getByText("None")).toBeVisible();
 
     const areaStrip = screen.getByRole("region", {
       name: "Life Areas by condition",
@@ -119,6 +120,8 @@ describe("DashboardOverview", () => {
     expect(screen.getByText("Today")).toBeVisible();
     expect(screen.getByText("Tomorrow")).toBeVisible();
     expect(screen.getByText("Jul 20")).toBeVisible();
+    expect(screen.getByText("Upcoming")).toBeVisible();
+    expect(screen.queryByText("Upcoming follow-ups")).toBeNull();
     expect(screen.queryByRole("link", { name: /without date/i })).toBeNull();
 
     await user.click(screen.getByRole("button", { name: /open threads/i }));
@@ -167,6 +170,10 @@ describe("DashboardOverview", () => {
     );
 
     expect(screen.getByText("2 more Tasks in Inbox")).toBeVisible();
+    expect(screen.getByRole("link", { name: /inbox 3/i })).toHaveAttribute(
+      "href",
+      "/inbox",
+    );
     expect(screen.getByText("Recent activity")).toBeVisible();
     expect(screen.getByText(/clinic sent the report/i)).toBeVisible();
   });

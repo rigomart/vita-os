@@ -40,6 +40,7 @@ import { Ellipsis, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { BrandHexagon } from "@/components/ui/brand-hexagon";
 import { cn } from "@/lib/utils";
 
 import { AreaIcon } from "./area-icon";
@@ -100,10 +101,13 @@ export function AreaHeader({
                   size="icon-sm"
                   aria-label="Change Area icon"
                   disabled={isSavingIcon}
+                  className="size-9 hover:bg-transparent"
                 />
               }
             >
-              <AreaIcon icon={selectedIcon} className="size-4" />
+              <BrandHexagon className="size-8 bg-brand-ink text-brand-gold">
+                <AreaIcon icon={selectedIcon} />
+              </BrandHexagon>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-3" align="start">
               <AreaIconPicker
@@ -124,7 +128,7 @@ export function AreaHeader({
               }}
             >
               <SelectTrigger
-                className="ml-1 h-7 w-auto gap-2 border-none bg-surface-3/60 px-3 text-xs"
+                className="ml-1 h-7 w-auto gap-2 border border-brand-gold-strong/25 bg-brand-gold/12 px-3 text-xs"
                 aria-label="Area condition"
               >
                 <span

@@ -19,7 +19,7 @@ import {
   SidebarSeparator,
 } from "@vita-os/ui/components/sidebar";
 import { useQuery } from "convex-helpers/react/cache/hooks";
-import { CirclePlus, Inbox, LayoutDashboard, Plus } from "lucide-react";
+import { Inbox, LayoutDashboard, Plus } from "lucide-react";
 
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
 import { AreaIcon } from "@/features/areas/components/area-icon";
@@ -88,11 +88,10 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <Button
-                size="sm"
                 onClick={openNewTask}
                 className="w-full justify-start group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:px-0!"
               >
-                <CirclePlus data-icon="inline-start" />
+                <Plus data-icon="inline-start" />
                 <span className="group-data-[collapsible=icon]:hidden">
                   New task
                 </span>
