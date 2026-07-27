@@ -3,8 +3,6 @@ import type { Id } from "@convex/_generated/dataModel";
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
 
-import { isUnprocessedTask } from "./optimistic";
-
 export type CreateTaskValue = {
   text: string;
   when?: number;
@@ -30,10 +28,7 @@ export function useCreateTask() {
       }
 
       const count = localStore.getQuery(api.tasks.count, {});
-      if (
-        count !== undefined &&
-        isUnprocessedTask({ state: "open", when: args.when })
-      ) {
+      if (count !== undefined) {
         localStore.setQuery(api.tasks.count, {}, count + 1);
       }
     },

@@ -7,7 +7,14 @@ import { DashboardOverview } from "@/features/dashboard/components/dashboard-ove
 import { DashboardOverviewSkeleton } from "@/features/dashboard/components/dashboard-overview-skeleton";
 
 export function DashboardScreen() {
-  const overview = useQuery(api.dashboard.overview);
+  const [dateContext] = useState(() => {
+    const currentDate = Date.now();
+    return {
+      currentDate,
+      timezoneOffsetMinutes: new Date(currentDate).getTimezoneOffset(),
+    };
+  });
+  const overview = useQuery(api.dashboard.overview, dateContext);
   const [showCreateArea, setShowCreateArea] = useState(false);
 
   return (
@@ -17,7 +24,7 @@ export function DashboardScreen() {
       ) : (
         <DashboardOverview
           overview={overview}
-          currentDate={Date.now()}
+          currentDate={dateContext.currentDate}
           onCreateArea={() => setShowCreateArea(true)}
         />
       )}

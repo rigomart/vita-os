@@ -38,6 +38,7 @@ import {
   getScheduleSlots,
   getScheduleTarget,
   groupDashboardThreads,
+  startOfLocalDay,
   taskDateLabel,
 } from "./dashboard-model";
 
@@ -158,16 +159,16 @@ function OverviewTab({
               currentDate={currentDate}
             />
             <ThreadSection
-              heading="Upcoming"
-              icon={CalendarDays}
-              threads={groups.upcoming}
+              heading="Threads with Next Moves"
+              icon={MessagesSquare}
+              threads={groups.withNextMoves}
               areaById={areaById}
               currentDate={currentDate}
             />
             <ThreadSection
-              heading="Threads with Next Moves"
-              icon={MessagesSquare}
-              threads={groups.withNextMoves}
+              heading="Upcoming"
+              icon={CalendarDays}
+              threads={groups.upcoming}
               areaById={areaById}
               currentDate={currentDate}
             />
@@ -224,9 +225,6 @@ function ThreadSection({
       <div className="mb-2 flex items-center gap-2">
         <Icon className="size-3.5 text-muted-foreground" />
         <h2 className="text-sm font-semibold">{heading}</h2>
-        <span className="text-xs tabular-nums text-muted-foreground">
-          {threads.length}
-        </span>
       </div>
       <div className={flatListClassName}>
         {threads.map((thread) => (
@@ -275,7 +273,13 @@ function DashboardThreadRow({
         )}
       </div>
       {thread.followUp != null && (
-        <span className="shrink-0 pt-0.5 text-[11px] tabular-nums text-muted-foreground">
+        <span
+          className={cn(
+            "shrink-0 pt-0.5 text-[11px] tabular-nums text-muted-foreground",
+            startOfLocalDay(thread.followUp) < startOfLocalDay(currentDate) &&
+              "font-medium text-destructive",
+          )}
+        >
           {followUpDateLabel(thread.followUp, currentDate)}
         </span>
       )}

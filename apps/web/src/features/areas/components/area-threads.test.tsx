@@ -20,7 +20,7 @@ const tomorrow = new Date(2026, 4, 21, 12).getTime();
 function thread(
   id: string,
   title: string,
-  fields: Partial<Pick<Doc<"threads">, "followUp" | "nextMove">> = {},
+  fields: Partial<Pick<Doc<"threads">, "followUp" | "nextMove" | "order">> = {},
 ): Doc<"threads"> {
   return {
     _id: id as Id<"threads">,
@@ -121,5 +121,48 @@ describe("AreaThreads", () => {
     expect(screen.getByText("21")).toBeVisible();
     expect(screen.getByText("Scan them")).toBeVisible();
     expect(screen.queryByText("No next move")).not.toBeInTheDocument();
+  });
+
+  it("separates due Follow-ups and puts Next Move Threads before plain Open Threads", () => {
+    render(
+      <AreaThreads
+        areaSlug="admin"
+        threads={[
+          thread("future", "Future Follow-up", { followUp: tomorrow }),
+          thread("today", "Today Follow-up", { followUp: today }),
+          thread("overdue", "Overdue Follow-up", { followUp: yesterday }),
+          thread("open", "Plain Open Thread", { order: 0 }),
+          thread("next", "Thread With Next Move", {
+            nextMove: "Call the clinic",
+            order: 2,
+          }),
+        ]}
+        currentDate={today}
+        onCreateThread={vi.fn()}
+        onRemoveThread={vi.fn()}
+      />,
+    );
+
+    const due = screen.getByRole("heading", { name: "Overdue & today" });
+    const upcoming = screen.getByRole("heading", { name: "Upcoming" });
+    const nextMoves = screen.getByRole("heading", {
+      name: "Threads with Next Moves",
+    });
+    const open = screen.getByRole("heading", { name: "Open Threads" });
+
+    expect(due.compareDocumentPosition(upcoming)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(upcoming.compareDocumentPosition(nextMoves)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(nextMoves.compareDocumentPosition(open)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(
+      screen
+        .getByText("Thread With Next Move")
+        .compareDocumentPosition(screen.getByText("Plain Open Thread")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });

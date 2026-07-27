@@ -1,6 +1,8 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { AreaIcon } from "./areaIcons";
 
+import { compareTasksByAttention } from "./attentionOrdering";
+
 export interface DashboardArea {
   condition: Doc<"areas">["condition"];
   icon?: AreaIcon;
@@ -45,6 +47,8 @@ export interface DashboardSource {
 export function buildDashboardOverview(
   userId: string,
   source: DashboardSource,
+  currentDate = Date.now(),
+  timezoneOffsetMinutes?: number,
 ) {
   const areas = source.areas
     .filter((area) => area.userId === userId)
@@ -78,7 +82,9 @@ export function buildDashboardOverview(
 
   const openTasks = source.tasks
     .filter((task) => task.userId === userId && task.state === "open")
-    .sort(compareInboxTasks);
+    .sort((a, b) =>
+      compareTasksByAttention(a, b, currentDate, timezoneOffsetMinutes),
+    );
 
   const openThreadIds = new Set(openThreads.map((thread) => thread._id));
   const seenThreads = new Set<Id<"threads">>();
@@ -118,13 +124,4 @@ export function buildDashboardOverview(
     },
     recentActivity,
   };
-}
-
-export function compareInboxTasks(a: Doc<"tasks">, b: Doc<"tasks">) {
-  if (a.when != null && b.when != null) {
-    return a.when - b.when || b.createdAt - a.createdAt;
-  }
-  if (a.when != null) return -1;
-  if (b.when != null) return 1;
-  return b.createdAt - a.createdAt;
 }

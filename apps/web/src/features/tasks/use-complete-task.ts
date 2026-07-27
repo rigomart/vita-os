@@ -1,9 +1,10 @@
 import type { Id } from "@convex/_generated/dataModel";
 
 import { api } from "@convex/_generated/api";
+import { isOpenTask } from "@convex/lib/attentionOrdering";
 import { useMutation } from "convex/react";
 
-import { completeTaskInInbox, isUnprocessedTask } from "./optimistic";
+import { completeTaskInInbox } from "./optimistic";
 
 export function useCompleteTask() {
   const completeTask = useMutation(api.tasks.markDone).withOptimisticUpdate(
@@ -19,11 +20,7 @@ export function useCompleteTask() {
 
       const count = localStore.getQuery(api.tasks.count, {});
       const task = current?.find((task) => task._id === args.id);
-      if (
-        count !== undefined &&
-        task !== undefined &&
-        isUnprocessedTask(task)
-      ) {
+      if (count !== undefined && task !== undefined && isOpenTask(task)) {
         localStore.setQuery(api.tasks.count, {}, Math.max(0, count - 1));
       }
     },

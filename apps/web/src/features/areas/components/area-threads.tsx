@@ -1,6 +1,7 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import type { LucideIcon } from "lucide-react";
 
+import { groupAreaThreadsByAttention } from "@convex/lib/attentionOrdering";
 import { Link } from "@tanstack/react-router";
 import {
   AlertDialog,
@@ -25,7 +26,6 @@ import {
 } from "lucide-react";
 
 import { BrandHexagon } from "@/components/ui/brand-hexagon";
-import { compareThreadsByStatusUrgency } from "@/features/threads/derived-status";
 import { flatListClassName } from "@/lib/flat-surface";
 
 import { AreaThreadsSkeleton } from "./area-threads-skeleton";
@@ -47,19 +47,16 @@ export function AreaThreads({
   onCreateThread,
   onRemoveThread,
 }: AreaThreadsProps) {
-  const scheduled = threads
-    .filter((thread) => thread.followUp != null)
-    .sort((a, b) => (a.followUp ?? 0) - (b.followUp ?? 0));
-  const undated = [...threads]
-    .filter((thread) => thread.followUp == null)
-    .sort((a, b) => compareThreadsByStatusUrgency(a, b, currentDate));
+  const groups = groupAreaThreadsByAttention(threads, currentDate);
+  const scheduledCount = groups.dueNow.length + groups.upcoming.length;
+  const undatedCount = groups.withNextMoves.length + groups.open.length;
 
   return (
     <section>
       <SectionHeading
         icon={CalendarDays}
         title="Follow-up schedule"
-        count={scheduled.length}
+        count={scheduledCount}
         action={
           <Button
             variant="default"
@@ -77,54 +74,107 @@ export function AreaThreads({
         <div className="mt-3">
           <AreaThreadsSkeleton />
         </div>
-      ) : scheduled.length === 0 ? (
+      ) : scheduledCount === 0 ? (
         <p className="mt-3 py-6 text-sm text-muted-foreground">
           No Follow-ups scheduled in this Area.
         </p>
       ) : (
-        <div className="mt-3 divide-y divide-brand-gold-strong/16 border-y border-brand-gold-strong/25">
-          {scheduled.map((thread) => (
-            <ScheduledThreadRow
-              key={thread._id}
-              areaSlug={areaSlug}
-              thread={thread}
-              onRemoveThread={onRemoveThread}
-              currentDate={currentDate}
-            />
-          ))}
+        <div className="mt-3">
+          {groups.dueNow.length > 0 && (
+            <ThreadSubgroup title="Overdue & today">
+              {groups.dueNow.map((thread) => (
+                <ScheduledThreadRow
+                  key={thread._id}
+                  areaSlug={areaSlug}
+                  thread={thread}
+                  onRemoveThread={onRemoveThread}
+                  currentDate={currentDate}
+                />
+              ))}
+            </ThreadSubgroup>
+          )}
+          {groups.upcoming.length > 0 && (
+            <ThreadSubgroup
+              title="Upcoming"
+              separated={groups.dueNow.length > 0}
+            >
+              {groups.upcoming.map((thread) => (
+                <ScheduledThreadRow
+                  key={thread._id}
+                  areaSlug={areaSlug}
+                  thread={thread}
+                  onRemoveThread={onRemoveThread}
+                  currentDate={currentDate}
+                />
+              ))}
+            </ThreadSubgroup>
+          )}
         </div>
       )}
 
-      <section className="mt-8">
+      <section className="mt-8 border-t border-border/50 pt-6">
         <SectionHeading
           icon={FolderOpen}
           title="No Follow-up"
-          count={undated.length}
+          count={undatedCount}
         />
-        {!isLoading && undated.length === 0 ? (
+        {!isLoading && undatedCount === 0 ? (
           <p className="mt-3 py-4 text-sm text-muted-foreground">
             Every open Thread has a Follow-up.
           </p>
         ) : (
           !isLoading && (
-            <div
-              className={cn(
-                "mt-3 border-brand-gold-strong/20 bg-transparent",
-                flatListClassName,
+            <div className="mt-3">
+              {groups.withNextMoves.length > 0 && (
+                <ThreadSubgroup title="Threads with Next Moves">
+                  {groups.withNextMoves.map((thread) => (
+                    <UndatedThreadRow
+                      key={thread._id}
+                      areaSlug={areaSlug}
+                      thread={thread}
+                      onRemoveThread={onRemoveThread}
+                    />
+                  ))}
+                </ThreadSubgroup>
               )}
-            >
-              {undated.map((thread) => (
-                <UndatedThreadRow
-                  key={thread._id}
-                  areaSlug={areaSlug}
-                  thread={thread}
-                  onRemoveThread={onRemoveThread}
-                />
-              ))}
+              {groups.open.length > 0 && (
+                <ThreadSubgroup
+                  title="Open Threads"
+                  separated={groups.withNextMoves.length > 0}
+                >
+                  {groups.open.map((thread) => (
+                    <UndatedThreadRow
+                      key={thread._id}
+                      areaSlug={areaSlug}
+                      thread={thread}
+                      onRemoveThread={onRemoveThread}
+                    />
+                  ))}
+                </ThreadSubgroup>
+              )}
             </div>
           )
         )}
       </section>
+    </section>
+  );
+}
+
+function ThreadSubgroup({
+  title,
+  separated = false,
+  children,
+}: {
+  title: string;
+  separated?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={cn(separated && "mt-5 border-t border-border/50 pt-4")}>
+      <h3 className="px-2 text-[11px] font-medium tracking-wide text-muted-foreground">
+        {title}
+      </h3>
+      <div className={cn("mt-1", flatListClassName)}>{children}</div>
     </section>
   );
 }

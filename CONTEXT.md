@@ -92,14 +92,18 @@ _Avoid_: Task list, project board, backlog.
 - A **Task** has zero or one **When**.
 - **Done Tasks** remain available as collapsed **Inbox** history in the MVP.
 - The **Inbox** shows all visible **Tasks**; **When** affects emphasis, not whether the **Task** exists in the Inbox.
+- The **Inbox** orders groups as **Past due**, **Today**, **No date**, **Coming up**, then collapsed **Done Tasks**. Past and future **Tasks** follow **When** order, Today and No date are newest-first, and Done Tasks are most-recently-completed first.
+- Both the **Inbox** header and sidebar badge count every **Open Task**, whether or not it has a **When**.
 
 ## Thread Attention
 
-- The **Dashboard Overview** groups **Open Threads** as **Overdue Follow-ups**, **Upcoming Follow-ups**, **Threads with Next Moves**, and **Open Threads**.
+- The **Dashboard Overview** groups **Open Threads** as **Overdue Follow-ups**, **Threads with Next Moves**, **Upcoming Follow-ups**, and **Open Threads**.
 - **Overdue Follow-ups** have a **Follow-up** before today. **Upcoming Follow-ups** have a **Follow-up** today or later.
 - A **Follow-up** takes precedence when a **Thread** also has a **Next Move**.
 - **Threads with Next Moves** have a **Next Move** and no **Follow-up**.
 - The plain **Open Threads** group contains **Threads** with neither field and starts collapsed to keep the awareness surface compact.
+- An **Area** remains a local inventory: it separates overdue-or-today **Follow-ups** from upcoming **Follow-ups**, then shows undated **Threads with Next Moves** before plain **Open Threads**.
+- **Follow-ups** are ordered oldest-first when overdue and soonest-first when upcoming. The user's **Thread** order breaks ties and orders undated attention groups.
 - An **Open Thread** with no **Next Move** and no **Follow-up** is valid; it is not automatically overdue, stale, or broken.
 - Opening or reviewing a **Thread** does not clear its **Follow-up**; the user must clear, reschedule, or resolve it explicitly.
 

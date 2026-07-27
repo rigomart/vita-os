@@ -1,6 +1,7 @@
 import type { AreaIcon } from "@convex/lib/areaIcons";
 import type { Condition } from "@convex/lib/condition";
 
+import { groupThreadsByAttention } from "@convex/lib/attentionOrdering";
 import { addDays, format } from "date-fns";
 
 export const DAY = 24 * 60 * 60 * 1000;
@@ -75,31 +76,7 @@ export function groupDashboardThreads(
   threads: DashboardThread[],
   currentDate: number,
 ): DashboardThreadGroups {
-  const today = startOfLocalDay(currentDate);
-  const groups: DashboardThreadGroups = {
-    overdue: [],
-    upcoming: [],
-    withNextMoves: [],
-    open: [],
-  };
-
-  for (const thread of threads) {
-    if (thread.followUp != null) {
-      if (startOfLocalDay(thread.followUp) < today) {
-        groups.overdue.push(thread);
-      } else {
-        groups.upcoming.push(thread);
-      }
-    } else if (thread.nextMove) {
-      groups.withNextMoves.push(thread);
-    } else {
-      groups.open.push(thread);
-    }
-  }
-
-  groups.overdue.sort(compareFollowUps);
-  groups.upcoming.sort(compareFollowUps);
-  return groups;
+  return groupThreadsByAttention(threads, currentDate);
 }
 
 export function getScheduleSlots(currentDate: number): ScheduleSlot[] {
@@ -171,10 +148,6 @@ export function startOfLocalDay(timestamp: number) {
     date.getMonth(),
     date.getDate(),
   ).getTime();
-}
-
-function compareFollowUps(a: DashboardThread, b: DashboardThread) {
-  return (a.followUp ?? 0) - (b.followUp ?? 0);
 }
 
 function dayDifference(timestamp: number, currentDate: number) {

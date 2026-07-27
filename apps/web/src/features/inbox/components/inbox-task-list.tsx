@@ -1,13 +1,14 @@
 import type { Doc } from "@convex/_generated/dataModel";
 import type { LucideIcon } from "lucide-react";
 
+import { groupTasksByAttention } from "@convex/lib/attentionOrdering";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@vita-os/ui/components/collapsible";
 import { cn } from "@vita-os/ui/lib/utils";
-import { format, isBefore, isToday, startOfDay } from "date-fns";
+import { format } from "date-fns";
 import {
   CalendarClock,
   CheckCircle2,
@@ -27,22 +28,12 @@ interface InboxTaskListProps {
 }
 
 export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
-  const open = tasks.filter((task) => task.state === "open");
-  const done = tasks.filter((task) => task.state === "done");
-  const today = startOfDay(new Date());
-  const overdue = open.filter(
-    (task) => task.when !== undefined && isBefore(task.when, today),
-  );
-  const dueToday = open.filter(
-    (task) => task.when !== undefined && isToday(task.when),
-  );
-  const upcoming = open.filter(
-    (task) =>
-      task.when !== undefined &&
-      !isBefore(task.when, today) &&
-      !isToday(task.when),
-  );
-  const unscheduled = open.filter((task) => task.when === undefined);
+  const groups = groupTasksByAttention(tasks, Date.now());
+  const openCount =
+    groups.pastDue.length +
+    groups.today.length +
+    groups.noDate.length +
+    groups.comingUp.length;
 
   return (
     <div className="mx-auto max-w-4xl pb-16">
@@ -50,14 +41,14 @@ export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="font-heading text-2xl font-semibold tracking-tight">
-              Inbox schedule
+              Inbox
             </h1>
             <span className="ml-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-              {open.length}
+              {openCount}
             </span>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Captures arranged by when they need your attention.
+            Tasks waiting for a decision or action, ordered by attention.
           </p>
         </div>
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -65,38 +56,40 @@ export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
         </p>
       </header>
 
-      {open.length === 0 ? (
-        <InboxZero />
-      ) : (
-        <div className="flex flex-col gap-6">
-          <TaskSection
-            icon={Clock3}
-            title="Past due"
-            tasks={overdue}
-            onProcess={onProcess}
-            tone="attention"
-          />
-          <TaskSection
-            icon={CircleDot}
-            title="Today"
-            tasks={dueToday}
-            onProcess={onProcess}
-          />
-          <TaskSection
-            icon={CalendarClock}
-            title="Coming up"
-            tasks={upcoming}
-            onProcess={onProcess}
-          />
-          <TaskSection
-            icon={Inbox}
-            title="No date"
-            tasks={unscheduled}
-            onProcess={onProcess}
-          />
-          <DoneTasks tasks={done} />
-        </div>
-      )}
+      <div className="flex flex-col gap-6">
+        {openCount === 0 ? (
+          <InboxZero />
+        ) : (
+          <>
+            <TaskSection
+              icon={Clock3}
+              title="Past due"
+              tasks={groups.pastDue}
+              onProcess={onProcess}
+              tone="attention"
+            />
+            <TaskSection
+              icon={CircleDot}
+              title="Today"
+              tasks={groups.today}
+              onProcess={onProcess}
+            />
+            <TaskSection
+              icon={Inbox}
+              title="No date"
+              tasks={groups.noDate}
+              onProcess={onProcess}
+            />
+            <TaskSection
+              icon={CalendarClock}
+              title="Coming up"
+              tasks={groups.comingUp}
+              onProcess={onProcess}
+            />
+          </>
+        )}
+        <DoneTasks tasks={groups.completed} />
+      </div>
     </div>
   );
 }
@@ -118,12 +111,7 @@ function TaskSection({
 
   return (
     <section>
-      <SectionHeading
-        icon={icon}
-        title={title}
-        count={tasks.length}
-        tone={tone}
-      />
+      <SectionHeading icon={icon} title={title} tone={tone} />
       <div className={cn("mt-3", flatListClassName)}>
         {tasks.map((task) => (
           <InboxTaskRow key={task._id} task={task} onProcess={onProcess} />
@@ -158,12 +146,10 @@ function DoneTasks({ tasks }: { tasks: Doc<"tasks">[] }) {
 function SectionHeading({
   icon: Icon,
   title,
-  count,
   tone,
 }: {
   icon: LucideIcon;
   title: string;
-  count: number;
   tone?: "attention";
 }) {
   return (
@@ -175,9 +161,6 @@ function SectionHeading({
         )}
       />
       <h2 className="text-sm font-semibold">{title}</h2>
-      <span className="text-xs tabular-nums text-muted-foreground">
-        {count}
-      </span>
     </div>
   );
 }
