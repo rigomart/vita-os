@@ -131,7 +131,7 @@ export function TaskRow({
                   className={cn(
                     "h-6 gap-1 rounded-md px-1.5 transition-opacity",
                     whenIsEmphasized
-                      ? "border border-primary/20 bg-primary/5 text-primary/80 hover:bg-primary/10 hover:text-primary"
+                      ? "border border-condition-attention/25 bg-condition-attention/5 text-condition-attention hover:bg-condition-attention/10 hover:text-condition-attention"
                       : taskWhen
                         ? "border border-border-subtle bg-surface-3 text-muted-foreground hover:text-foreground"
                         : "text-muted-foreground hover:text-muted-foreground",

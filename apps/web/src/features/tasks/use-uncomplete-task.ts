@@ -3,7 +3,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
 
-import { isUnprocessedTask, uncompleteTaskInInbox } from "./optimistic";
+import { uncompleteTaskInInbox } from "./optimistic";
 
 export function useUncompleteTask() {
   const uncompleteTask = useMutation(api.tasks.markOpen).withOptimisticUpdate(
@@ -19,11 +19,7 @@ export function useUncompleteTask() {
 
       const task = current?.find((task) => task._id === args.id);
       const count = localStore.getQuery(api.tasks.count, {});
-      if (
-        count !== undefined &&
-        task !== undefined &&
-        isUnprocessedTask({ ...task, state: "open" })
-      ) {
+      if (count !== undefined && task !== undefined && task.state === "done") {
         localStore.setQuery(api.tasks.count, {}, count + 1);
       }
     },

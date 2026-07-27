@@ -99,9 +99,12 @@ export const attention = query({
 });
 
 export const overview = query({
-  args: {},
+  args: {
+    currentDate: v.number(),
+    timezoneOffsetMinutes: v.number(),
+  },
   returns: dashboardOverviewValidator,
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) {
       return {
@@ -136,12 +139,17 @@ export const overview = query({
         .take(50),
     ]);
 
-    return buildDashboardOverview(userId, {
-      areas,
-      threads,
-      tasks,
-      activityLogs,
-    });
+    return buildDashboardOverview(
+      userId,
+      {
+        areas,
+        threads,
+        tasks,
+        activityLogs,
+      },
+      args.currentDate,
+      args.timezoneOffsetMinutes,
+    );
   },
 });
 

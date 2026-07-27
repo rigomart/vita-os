@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 
 import { mutation, query } from "./_generated/server";
+import { isOpenTask } from "./lib/attentionOrdering";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
 import { processInboxTask } from "./lib/inboxProcessing";
 
@@ -31,9 +32,7 @@ export const count = query({
       .query("tasks")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
-    return all.filter(
-      (task) => task.state === "open" && task.when === undefined,
-    ).length;
+    return all.filter(isOpenTask).length;
   },
 });
 

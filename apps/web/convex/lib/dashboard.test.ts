@@ -102,24 +102,38 @@ describe("buildDashboardOverview", () => {
     ]);
   });
 
-  it("orders dated Inbox Tasks first and undated Tasks newest first", () => {
-    const result = buildDashboardOverview("user1", {
-      areas: [],
-      threads: [],
-      activityLogs: [],
-      tasks: [
-        task("future", { when: 300, createdAt: 1 }),
-        task("undated-new", { createdAt: 400 }),
-        task("overdue", { when: 100, createdAt: 2 }),
-        task("today", { when: 200, createdAt: 3 }),
-        task("undated-old", { createdAt: 10 }),
-      ],
-    });
+  it("uses the shared attention order for the Inbox preview", () => {
+    const currentDate = new Date(2026, 6, 17, 12).getTime();
+    const result = buildDashboardOverview(
+      "user1",
+      {
+        areas: [],
+        threads: [],
+        activityLogs: [],
+        tasks: [
+          task("future", {
+            when: new Date(2026, 6, 20).getTime(),
+            createdAt: 1,
+          }),
+          task("undated-new", { createdAt: 400 }),
+          task("overdue", {
+            when: new Date(2026, 6, 15).getTime(),
+            createdAt: 2,
+          }),
+          task("today", {
+            when: new Date(2026, 6, 17).getTime(),
+            createdAt: 3,
+          }),
+          task("undated-old", { createdAt: 10 }),
+        ],
+      },
+      currentDate,
+    );
 
     expect(result.inbox.items.map((item) => item.id)).toEqual([
       "overdue",
       "today",
-      "future",
+      "undated-new",
     ]);
     expect(result.inbox.totalOpen).toBe(5);
   });

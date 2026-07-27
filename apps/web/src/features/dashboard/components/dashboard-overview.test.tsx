@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef } from "react";
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -75,15 +75,24 @@ describe("DashboardOverview", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("group", { name: "Critical Life Areas" }),
-    ).toBeVisible();
-    expect(
-      screen.getByRole("group", { name: "Steady Life Areas" }),
-    ).toBeVisible();
-    expect(
-      screen.getByRole("group", { name: "Needs attention Life Areas" }),
-    ).toBeVisible();
+    const critical = screen.getByRole("group", {
+      name: "Critical Life Areas",
+    });
+    expect(critical).toBeVisible();
+    expect(critical.firstElementChild).toHaveClass("bg-condition-critical");
+    expect(within(critical).queryByText("1")).toBeNull();
+    const steady = screen.getByRole("group", { name: "Steady Life Areas" });
+    expect(steady).toBeVisible();
+    expect(steady.firstElementChild).toHaveClass("bg-condition-healthy");
+    expect(within(steady).queryByText("1")).toBeNull();
+    const needsAttention = screen.getByRole("group", {
+      name: "Needs attention Life Areas",
+    });
+    expect(needsAttention).toBeVisible();
+    expect(needsAttention.firstElementChild).toHaveClass(
+      "bg-condition-attention",
+    );
+    expect(within(needsAttention).queryByText("0")).toBeNull();
     expect(screen.getByText("None")).toBeVisible();
 
     const areaStrip = screen.getByRole("region", {
@@ -126,6 +135,44 @@ describe("DashboardOverview", () => {
 
     await user.click(screen.getByRole("button", { name: /open threads/i }));
     expect(screen.getByRole("link", { name: /without date/i })).toBeVisible();
+  });
+
+  it("places actionable Next Moves before upcoming Follow-ups", () => {
+    render(
+      <DashboardOverview
+        overview={dashboard({
+          threads: [
+            thread("Overdue thread", {
+              followUp: new Date(2026, 6, 16).getTime(),
+            }),
+            thread("Next Move thread", { nextMove: "Make the call" }),
+            thread("Upcoming thread", {
+              followUp: new Date(2026, 6, 18).getTime(),
+            }),
+            thread("Open thread"),
+          ],
+        })}
+        currentDate={currentDate}
+        onCreateArea={vi.fn()}
+      />,
+    );
+
+    const overdue = screen.getByRole("heading", { name: "Overdue" });
+    const nextMoves = screen.getByRole("heading", {
+      name: "Threads with Next Moves",
+    });
+    const upcoming = screen.getByRole("heading", { name: "Upcoming" });
+    const open = screen.getByRole("button", { name: /open threads/i });
+
+    expect(overdue.compareDocumentPosition(nextMoves)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(nextMoves.compareDocumentPosition(upcoming)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(upcoming.compareDocumentPosition(open)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
   it("handles Inbox clear, remaining Tasks, and optional Recent activity", () => {

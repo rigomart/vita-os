@@ -11,6 +11,7 @@ export function InboxTaskCountBadge({ taskCount }: InboxTaskCountBadgeProps) {
     <Badge
       variant="secondary"
       className="ml-auto h-5 min-w-5 justify-center px-1.5 text-[10px] tabular-nums"
+      aria-label={`${taskCount} Open ${taskCount === 1 ? "Task" : "Tasks"}`}
     >
       {taskCount}
     </Badge>

@@ -19,6 +19,6 @@ describe("InboxTaskCountBadge", () => {
   it("shows the Open Task count after it loads", () => {
     render(<InboxTaskCountBadge taskCount={3} />);
 
-    expect(screen.getByText("3")).toBeVisible();
+    expect(screen.getByLabelText("3 Open Tasks")).toHaveTextContent("3");
   });
 });

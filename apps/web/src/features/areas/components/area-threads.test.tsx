@@ -20,7 +20,7 @@ const tomorrow = new Date(2026, 4, 21, 12).getTime();
 function thread(
   id: string,
   title: string,
-  fields: Partial<Pick<Doc<"threads">, "followUp" | "nextMove">> = {},
+  fields: Partial<Pick<Doc<"threads">, "followUp" | "nextMove" | "order">> = {},
 ): Doc<"threads"> {
   return {
     _id: id as Id<"threads">,
@@ -119,7 +119,63 @@ describe("AreaThreads", () => {
     expect(screen.getAllByText("May")).toHaveLength(2);
     expect(screen.getByText("19")).toBeVisible();
     expect(screen.getByText("21")).toBeVisible();
+    expect(screen.getByText("19").closest("time")).toHaveClass(
+      "text-destructive",
+    );
+    expect(screen.getByText("21").closest("time")).not.toHaveClass(
+      "text-destructive",
+    );
     expect(screen.getByText("Scan them")).toBeVisible();
     expect(screen.queryByText("No next move")).not.toBeInTheDocument();
+  });
+
+  it("separates due Follow-ups and puts Next Move Threads before plain Open Threads", () => {
+    render(
+      <AreaThreads
+        areaSlug="admin"
+        threads={[
+          thread("future", "Future Follow-up", { followUp: tomorrow }),
+          thread("today", "Today Follow-up", { followUp: today }),
+          thread("overdue", "Overdue Follow-up", { followUp: yesterday }),
+          thread("open", "Plain Open Thread", { order: 0 }),
+          thread("next", "Thread With Next Move", {
+            nextMove: "Call the clinic",
+            order: 2,
+          }),
+        ]}
+        currentDate={today}
+        onCreateThread={vi.fn()}
+        onRemoveThread={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("heading", { name: "Overdue & today" }),
+    ).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Upcoming" })).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: "Threads with Next Moves" }),
+    ).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Open Threads" })).toBeNull();
+    expect(
+      screen
+        .getByText("Overdue Follow-up")
+        .compareDocumentPosition(screen.getByText("Today Follow-up")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      screen
+        .getByText("Today Follow-up")
+        .compareDocumentPosition(screen.getByText("Future Follow-up")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      screen
+        .getByText("Future Follow-up")
+        .compareDocumentPosition(screen.getByText("Thread With Next Move")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      screen
+        .getByText("Thread With Next Move")
+        .compareDocumentPosition(screen.getByText("Plain Open Thread")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });
