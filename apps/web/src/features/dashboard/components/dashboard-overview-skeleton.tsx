@@ -23,11 +23,11 @@ export function DashboardOverviewSkeleton() {
       <Skeleton className="h-8 w-40" />
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <main className="space-y-8">
+        <main className="flex flex-col gap-6">
           {Array.from({ length: 3 }).map((_, section) => (
             <section key={section}>
               <Skeleton className="mb-3 h-4 w-40" />
-              <div className="space-y-4">
+              <div className="flex flex-col gap-4">
                 {Array.from({ length: section === 0 ? 3 : 2 }).map((_, row) => (
                   <div key={row}>
                     <Skeleton className="h-4 w-48" />
@@ -38,7 +38,7 @@ export function DashboardOverviewSkeleton() {
             </section>
           ))}
         </main>
-        <aside className="space-y-5 xl:border-l xl:border-border/50 xl:pl-6">
+        <aside className="flex flex-col gap-6 xl:border-l xl:border-border/50 xl:pl-6">
           <Skeleton className="h-4 w-20" />
           {Array.from({ length: 3 }).map((_, row) => (
             <Skeleton key={row} className="h-4 w-full" />

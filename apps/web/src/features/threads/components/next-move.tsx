@@ -120,7 +120,7 @@ function NextMoveTask({
         onClick={onComplete}
         disabled={pending?.complete}
         aria-busy={pending?.complete}
-        className="rounded-full border border-green-500/40 text-green-600 hover:bg-green-500/10 hover:text-green-600"
+        className="rounded-full border border-condition-healthy/40 text-condition-healthy hover:bg-condition-healthy/10 hover:text-condition-healthy"
         aria-label="Complete next move"
       >
         <Check />

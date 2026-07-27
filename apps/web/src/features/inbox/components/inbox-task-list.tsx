@@ -45,8 +45,8 @@ export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
   const unscheduled = open.filter((task) => task.when === undefined);
 
   return (
-    <div className="mx-auto max-w-4xl pt-2 pb-16">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-3">
+    <div className="mx-auto max-w-4xl pb-16">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="font-heading text-2xl font-semibold tracking-tight">
@@ -68,7 +68,7 @@ export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
       {open.length === 0 ? (
         <InboxZero />
       ) : (
-        <div className="space-y-8">
+        <div className="flex flex-col gap-6">
           <TaskSection
             icon={Clock3}
             title="Past due"
@@ -137,7 +137,7 @@ function DoneTasks({ tasks }: { tasks: Doc<"tasks">[] }) {
   if (tasks.length === 0) return null;
 
   return (
-    <Collapsible className="mt-8">
+    <Collapsible>
       <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md py-2 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
         <ChevronRight className="size-4 transition-transform group-data-[state=open]:rotate-90" />
         <CheckCircle2 className="size-3.5" />

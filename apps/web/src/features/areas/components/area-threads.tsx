@@ -15,7 +15,7 @@ import {
 } from "@vita-os/ui/components/alert-dialog";
 import { Button } from "@vita-os/ui/components/button";
 import { cn } from "@vita-os/ui/lib/utils";
-import { format } from "date-fns";
+import { format, isBefore, startOfDay } from "date-fns";
 import {
   ArrowRight,
   CalendarDays,
@@ -24,6 +24,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { BrandHexagon } from "@/components/ui/brand-hexagon";
 import { compareThreadsByStatusUrgency } from "@/features/threads/derived-status";
 import { flatListClassName } from "@/lib/flat-surface";
 
@@ -61,12 +62,12 @@ export function AreaThreads({
         count={scheduled.length}
         action={
           <Button
-            variant="ghost"
+            variant="default"
             size="sm"
-            className="h-7 gap-1.5 text-xs text-muted-foreground"
+            className="h-8 gap-1.5 pr-3 pl-2 text-xs shadow-sm"
             onClick={onCreateThread}
           >
-            <Plus className="size-3.5" />
+            <Plus data-icon="inline-start" />
             New Thread
           </Button>
         }
@@ -81,13 +82,14 @@ export function AreaThreads({
           No Follow-ups scheduled in this Area.
         </p>
       ) : (
-        <div className="mt-3 divide-y divide-border/60 border-y border-border/70">
+        <div className="mt-3 divide-y divide-brand-gold-strong/16 border-y border-brand-gold-strong/25">
           {scheduled.map((thread) => (
             <ScheduledThreadRow
               key={thread._id}
               areaSlug={areaSlug}
               thread={thread}
               onRemoveThread={onRemoveThread}
+              currentDate={currentDate}
             />
           ))}
         </div>
@@ -105,7 +107,12 @@ export function AreaThreads({
           </p>
         ) : (
           !isLoading && (
-            <div className={cn("mt-3", flatListClassName)}>
+            <div
+              className={cn(
+                "mt-3 border-brand-gold-strong/20 bg-transparent",
+                flatListClassName,
+              )}
+            >
               {undated.map((thread) => (
                 <UndatedThreadRow
                   key={thread._id}
@@ -136,7 +143,9 @@ function SectionHeading({
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-2">
-        <Icon className="size-3.5 text-muted-foreground" />
+        <BrandHexagon className="size-6 bg-brand-gold/28 text-brand-accent-foreground">
+          <Icon className="size-3.5" />
+        </BrandHexagon>
         <h2 className="text-sm font-semibold">{title}</h2>
         <span className="text-xs tabular-nums text-muted-foreground">
           {count}
@@ -151,13 +160,19 @@ function ScheduledThreadRow({
   areaSlug,
   thread,
   onRemoveThread,
+  currentDate,
 }: {
   areaSlug: string;
   thread: Doc<"threads">;
   onRemoveThread: (threadId: Id<"threads">) => void;
+  currentDate: number;
 }) {
   const followUp = thread.followUp;
   if (!followUp) return null;
+  const isOverdue = isBefore(
+    startOfDay(new Date(followUp)),
+    startOfDay(new Date(currentDate)),
+  );
 
   return (
     <div className="group flex items-center rounded-md transition-colors hover:bg-muted/50">
@@ -171,12 +186,20 @@ function ScheduledThreadRow({
       >
         <time
           dateTime={new Date(followUp).toISOString()}
-          className="flex flex-col text-muted-foreground"
+          className={cn(
+            "flex flex-col text-brand-accent-foreground",
+            isOverdue && "text-destructive",
+          )}
         >
           <span className="text-[10px] font-medium uppercase tracking-wider">
             {format(new Date(followUp), "MMM")}
           </span>
-          <span className="text-lg font-semibold leading-none text-foreground">
+          <span
+            className={cn(
+              "text-lg font-semibold leading-none text-foreground",
+              isOverdue && "text-destructive",
+            )}
+          >
             {format(new Date(followUp), "d")}
           </span>
         </time>

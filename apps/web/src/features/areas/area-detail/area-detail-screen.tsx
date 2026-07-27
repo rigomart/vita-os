@@ -31,7 +31,7 @@ export function AreaDetailScreen({ areaSlug }: AreaDetailScreenProps) {
   if (area === null) return <AreaNotFound />;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="mx-auto flex max-w-4xl flex-col gap-6 border-t-2 border-brand-gold-strong/55 pt-3">
       <div>
         <AreaHeaderSection
           areaSlug={areaSlug}

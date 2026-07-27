@@ -11,7 +11,7 @@ export function DashboardScreen() {
   const [showCreateArea, setShowCreateArea] = useState(false);
 
   return (
-    <div className="mx-auto max-w-7xl pt-2 pb-16">
+    <div className="mx-auto max-w-7xl pb-16">
       {overview === undefined ? (
         <DashboardOverviewSkeleton />
       ) : (
