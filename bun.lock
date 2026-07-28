@@ -80,10 +80,6 @@
       },
     },
   },
-  "overrides": {
-    "date-fns": "4.2.1",
-    "vite": "8.0.13",
-  },
   "catalog": {
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
