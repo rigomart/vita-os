@@ -62,7 +62,7 @@ function dashboard(
 }
 
 describe("DashboardOverview", () => {
-	it("renders every Area condition, including clear conditions", () => {
+	it("gives attention-bearing Areas prominence and keeps healthy Areas quiet", () => {
 		render(
 			<DashboardOverview
 				overview={dashboard()}
@@ -71,34 +71,51 @@ describe("DashboardOverview", () => {
 			/>,
 		);
 
-		const critical = screen.getByRole("group", {
-			name: "Critical Life Areas",
-		});
-		expect(critical).toBeVisible();
-		expect(critical.firstElementChild).toHaveClass("bg-condition-critical");
-		expect(within(critical).queryByText("1")).toBeNull();
-		const steady = screen.getByRole("group", { name: "Steady Life Areas" });
-		expect(steady).toBeVisible();
-		expect(steady.firstElementChild).toHaveClass("bg-condition-healthy");
-		expect(within(steady).queryByText("1")).toBeNull();
-		const needsAttention = screen.getByRole("group", {
-			name: "Needs attention Life Areas",
-		});
-		expect(needsAttention).toBeVisible();
-		expect(needsAttention.firstElementChild).toHaveClass(
-			"bg-condition-attention",
-		);
-		expect(within(needsAttention).queryByText("0")).toBeNull();
-		expect(screen.getByText("None")).toBeVisible();
-
 		const areaStrip = screen.getByRole("region", {
 			name: "Life Areas by condition",
 		});
+
+		const criticalCard = within(areaStrip).getByRole("link", {
+			name: /Health/,
+		});
+		expect(criticalCard).toBeVisible();
+		expect(within(criticalCard).getByText("Needs you")).toBeVisible();
+
+		const healthyChip = within(areaStrip).getByRole("link", { name: "Home" });
+		expect(healthyChip).toBeVisible();
+		expect(within(healthyChip).queryByText("Steady")).toBeNull();
+
+		expect(
+			criticalCard.compareDocumentPosition(healthyChip) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+
 		const tabs = screen.getByRole("tablist", { name: "Dashboard view" });
 		expect(
 			areaStrip.compareDocumentPosition(tabs) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it("collapses to a steady line when every Area is healthy", () => {
+		const overview = dashboard();
+		render(
+			<DashboardOverview
+				overview={{
+					...overview,
+					areas: overview.areas.map((area) => ({
+						...area,
+						condition: "healthy" as const,
+					})),
+				}}
+				currentDate={currentDate}
+				onCreateArea={vi.fn()}
+			/>,
+		);
+
+		expect(screen.getByText("All areas steady.")).toBeVisible();
+		expect(screen.queryByText("Needs you")).toBeNull();
+		expect(screen.queryByText("Watch")).toBeNull();
 	});
 
 	it("shows date rails and keeps Open Threads inline", () => {
