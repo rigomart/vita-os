@@ -37,7 +37,7 @@ function thread(
 }
 
 describe("AreaThreads", () => {
-  it("separates scheduled and undated Threads", () => {
+  it("renders a flat thread list with header actions", () => {
     render(
       <AreaThreads
         areaSlug="admin"
@@ -52,10 +52,7 @@ describe("AreaThreads", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Follow-up schedule" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "No Follow-up" }),
+      screen.getByRole("heading", { name: "Threads" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "New Thread" }),
@@ -78,11 +75,11 @@ describe("AreaThreads", () => {
 
     expect(screen.getByTestId("area-threads-skeleton")).toBeVisible();
     expect(
-      screen.queryByText("No Follow-ups scheduled in this Area."),
+      screen.queryByText("No open Threads in this Area yet."),
     ).not.toBeInTheDocument();
   });
 
-  it("shows empty states for both schedule sections", () => {
+  it("shows an empty state when there are no Threads", () => {
     render(
       <AreaThreads
         areaSlug="admin"
@@ -94,10 +91,7 @@ describe("AreaThreads", () => {
     );
 
     expect(
-      screen.getByText("No Follow-ups scheduled in this Area."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Every open Thread has a Follow-up."),
+      screen.getByText("No open Threads in this Area yet."),
     ).toBeInTheDocument();
   });
 
@@ -119,17 +113,13 @@ describe("AreaThreads", () => {
     expect(screen.getAllByText("May")).toHaveLength(2);
     expect(screen.getByText("19")).toBeVisible();
     expect(screen.getByText("21")).toBeVisible();
-    expect(screen.getByText("19").closest("time")).toHaveClass(
-      "text-destructive",
-    );
-    expect(screen.getByText("21").closest("time")).not.toHaveClass(
-      "text-destructive",
-    );
+    expect(screen.getByText("19")).toHaveClass("text-condition-attention");
+    expect(screen.getByText("21")).not.toHaveClass("text-condition-attention");
     expect(screen.getByText("Scan them")).toBeVisible();
     expect(screen.queryByText("No next move")).not.toBeInTheDocument();
   });
 
-  it("separates due Follow-ups and puts Next Move Threads before plain Open Threads", () => {
+  it("orders due Follow-ups before Next Move Threads and plain Open Threads", () => {
     render(
       <AreaThreads
         areaSlug="admin"
@@ -149,14 +139,6 @@ describe("AreaThreads", () => {
       />,
     );
 
-    expect(
-      screen.queryByRole("heading", { name: "Overdue & today" }),
-    ).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Upcoming" })).toBeNull();
-    expect(
-      screen.queryByRole("heading", { name: "Threads with Next Moves" }),
-    ).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Open Threads" })).toBeNull();
     expect(
       screen
         .getByText("Overdue Follow-up")

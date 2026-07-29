@@ -54,22 +54,22 @@ describe("InboxTaskList", () => {
       />,
     );
 
-    const pastDue = screen.getByRole("heading", { name: "Past due" });
-    const todayHeading = screen.getByRole("heading", { name: "Today" });
-    const noDate = screen.getByRole("heading", { name: "No date" });
-    const comingUp = screen.getByRole("heading", { name: "Coming up" });
+    const pastDue = screen.getByRole("button", { name: "Past due" });
+    const todayTask = screen.getByRole("button", { name: "Today" });
+    const comingUp = screen.getByRole("button", { name: "Coming up" });
+    const noDate = screen.getByRole("button", { name: "No date" });
     const completed = screen.getByRole("button", { name: /completed/i });
 
-    expect(pastDue.compareDocumentPosition(todayHeading)).toBe(
+    expect(pastDue.compareDocumentPosition(todayTask)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
-    expect(todayHeading.compareDocumentPosition(noDate)).toBe(
+    expect(todayTask.compareDocumentPosition(comingUp)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
-    expect(noDate.compareDocumentPosition(comingUp)).toBe(
+    expect(comingUp.compareDocumentPosition(noDate)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
-    expect(comingUp.compareDocumentPosition(completed)).toBe(
+    expect(noDate.compareDocumentPosition(completed)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
   });

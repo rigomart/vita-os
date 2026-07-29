@@ -24,6 +24,12 @@ import {
 } from "lucide-react";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
+import {
+  AttentionEmpty,
+  AttentionList,
+  AttentionRow,
+  type AttentionRowModel,
+} from "@/features/attention-list";
 import { flatListClassName } from "@/lib/flat-surface";
 
 import { AreaConditionOverview } from "./area-condition-overview";
@@ -31,11 +37,9 @@ import {
   type DashboardArea,
   type DashboardOverviewData,
   type DashboardThread,
-  followUpDateLabel,
   getScheduleSlots,
   getScheduleTarget,
   groupDashboardThreads,
-  startOfLocalDay,
   taskDateLabel,
 } from "./dashboard-model";
 
@@ -134,45 +138,14 @@ function OverviewTab({
   areaById: Map<string, DashboardArea>;
   currentDate: number;
 }) {
-  const groups = groupDashboardThreads(overview.threads, currentDate);
-
   return (
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
       <main className="flex min-w-0 flex-col gap-6">
-        {overview.threads.length === 0 ? (
-          <section className="flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed px-6 text-center">
-            <h2 className="text-sm font-semibold">No open Threads</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Your Life Areas are clear for now.
-            </p>
-          </section>
-        ) : (
-          <>
-            <ThreadSection
-              heading="Overdue"
-              threads={groups.overdue}
-              areaById={areaById}
-              currentDate={currentDate}
-            />
-            <ThreadSection
-              heading="Threads with Next Moves"
-              threads={groups.withNextMoves}
-              areaById={areaById}
-              currentDate={currentDate}
-            />
-            <ThreadSection
-              heading="Upcoming"
-              threads={groups.upcoming}
-              areaById={areaById}
-              currentDate={currentDate}
-            />
-            <OpenThreads
-              threads={groups.open}
-              areaById={areaById}
-              currentDate={currentDate}
-            />
-          </>
-        )}
+        <DashboardThreadList
+          threads={overview.threads}
+          areaById={areaById}
+          currentDate={currentDate}
+        />
       </main>
 
       <aside className="flex flex-col gap-6 xl:border-l xl:border-border/50 xl:pl-6">
@@ -199,131 +172,45 @@ function OverviewTab({
   );
 }
 
-function ThreadSection({
-  heading,
-  threads,
+function DashboardThreadList({
   areaById,
   currentDate,
-}: {
-  heading: string;
-  threads: DashboardThread[];
-  areaById: Map<string, DashboardArea>;
-  currentDate: number;
-}) {
-  if (threads.length === 0) return null;
-
-  return (
-    <section>
-      <h2 className="mb-1 px-2 text-[11px] font-medium tracking-wide text-muted-foreground">
-        {heading}
-      </h2>
-      <div className={flatListClassName}>
-        {threads.map((thread) => (
-          <DashboardThreadRow
-            key={thread.id}
-            thread={thread}
-            area={areaById.get(thread.areaId)}
-            currentDate={currentDate}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function DashboardThreadRow({
-  thread,
-  area,
-  currentDate,
-}: {
-  thread: DashboardThread;
-  area?: DashboardArea;
-  currentDate: number;
-}) {
-  if (!area) return null;
-  const context = thread.nextMove ? `Next: ${thread.nextMove}` : thread.summary;
-
-  return (
-    <Link
-      to="/$areaSlug/$threadSlug"
-      params={{ areaSlug: area.slug, threadSlug: thread.slug }}
-      className="group flex items-start gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted/50"
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          <h3 className="text-sm font-medium">{thread.title}</h3>
-          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <AreaIcon icon={area.icon} className="size-3 shrink-0" />
-            {area.name}
-          </span>
-        </div>
-        {context && (
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {context}
-          </p>
-        )}
-      </div>
-      {thread.followUp != null && (
-        <span
-          className={cn(
-            "shrink-0 pt-0.5 text-[11px] tabular-nums text-muted-foreground",
-            startOfLocalDay(thread.followUp) < startOfLocalDay(currentDate) &&
-              "font-medium text-destructive",
-          )}
-        >
-          {followUpDateLabel(thread.followUp, currentDate)}
-        </span>
-      )}
-    </Link>
-  );
-}
-
-function OpenThreads({
   threads,
-  areaById,
-  currentDate,
 }: {
-  threads: DashboardThread[];
   areaById: Map<string, DashboardArea>;
   currentDate: number;
+  threads: DashboardThread[];
 }) {
-  if (threads.length === 0) return null;
+  if (threads.length === 0) {
+    return <AttentionEmpty>Your Life Areas are clear for now.</AttentionEmpty>;
+  }
+
+  const groups = groupDashboardThreads(threads, currentDate);
+  const flatThreads = [
+    ...groups.overdue,
+    ...groups.upcoming,
+    ...groups.withNextMoves,
+    ...groups.open,
+  ];
 
   return (
-    <Collapsible>
-      <CollapsibleTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-between"
-          />
-        }
-      >
-        <span className="flex items-center gap-2 text-muted-foreground">
-          <ChevronRight
-            data-icon="inline-start"
-            className="transition-transform group-data-[state=open]/button:rotate-90"
-          />
-          Open Threads
-        </span>
-        <span className="text-xs font-normal text-muted-foreground">
-          {threads.length}
-        </span>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="pt-2">
-        <div className={flatListClassName}>
-          {threads.map((thread) => (
-            <DashboardThreadRow
-              key={thread.id}
-              thread={thread}
-              area={areaById.get(thread.areaId)}
-              currentDate={currentDate}
-            />
-          ))}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+    <AttentionList>
+      {flatThreads.map((thread) => {
+        const area = areaById.get(thread.areaId);
+        if (!area) return null;
+
+        const row: AttentionRowModel = {
+          title: thread.title,
+          detail: thread.nextMove ?? thread.summary,
+          detailKind: thread.nextMove ? "next-move" : "summary",
+          area: { icon: area.icon, name: area.name },
+          when: thread.followUp,
+          linkTo: { areaSlug: area.slug, threadSlug: thread.slug },
+        };
+
+        return <AttentionRow key={thread.id} now={currentDate} row={row} />;
+      })}
+    </AttentionList>
   );
 }
 
