@@ -26,3 +26,7 @@ dist-ssr
 # Turborepo
 .turbo
 .codex
+
+# Claude Code
+.claude/worktrees/
+.claude/settings.local.json

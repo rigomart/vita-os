@@ -1,0 +1,9 @@
+{
+  "worktree": {
+    "symlinkDirectories": [
+      "node_modules",
+      "apps/web/node_modules",
+      "packages/ui/node_modules"
+    ]
+  }
+}
