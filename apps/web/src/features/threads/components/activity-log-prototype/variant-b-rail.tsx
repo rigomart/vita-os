@@ -154,7 +154,7 @@ function RailBody({ logs }: { logs: ActivityLogEntry[] | undefined }) {
   }
 
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-4">
       {groupLogsByDay(logs).map((group) => (
         <section
           key={group.key}
