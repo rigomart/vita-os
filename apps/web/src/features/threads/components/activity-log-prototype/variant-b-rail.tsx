@@ -29,8 +29,10 @@ import {
   useNoteComposer,
 } from "./shared";
 
-// Rail geometry: the line sits at this x-offset; entries pad past it.
+// Rail geometry: the 1px line spans left 11–12px, so its center is 11.5px.
+// Nodes use NODE_LEFT with -translate-x-1/2 to center exactly on the line.
 const RAIL_LEFT = "left-[11px]";
+const NODE_LEFT = "left-[11.5px]";
 const ENTRY_PAD = "pl-9";
 
 export function ActivityLogTimelineRail({
@@ -75,8 +77,8 @@ export function ActivityLogTimelineRail({
           <span
             aria-hidden
             className={cn(
-              "absolute top-3.5 size-2.5 -translate-x-1/2 rounded-full",
-              RAIL_LEFT,
+              "absolute top-[15px] size-2.5 -translate-x-1/2 rounded-full",
+              NODE_LEFT,
               "border border-(--brand-gold) bg-background",
             )}
           >
@@ -139,8 +141,8 @@ function RailBody({ logs }: { logs: ActivityLogEntry[] | undefined }) {
         <span
           aria-hidden
           className={cn(
-            "absolute top-1.5 size-2 -translate-x-1/2 rounded-full border border-border bg-background",
-            RAIL_LEFT,
+            "absolute top-1 size-2 -translate-x-1/2 rounded-full border border-border bg-background",
+            NODE_LEFT,
           )}
         />
         <p className="text-[13px] leading-snug text-muted-foreground">
@@ -173,24 +175,14 @@ function RailBody({ logs }: { logs: ActivityLogEntry[] | undefined }) {
   );
 }
 
-/** Small pill sitting ON the rail; its bg-background makes the line appear
- *  to pass behind it. */
+/** Day label to the right of the rail, directly above its log items; the
+ *  rail runs through uninterrupted. */
 function DayMarker({ label }: { label: string }) {
   return (
-    <div className="relative flex items-center py-2.5">
-      <span
-        className={cn(
-          "absolute -translate-x-1/2 rounded-full border border-border bg-background",
-          RAIL_LEFT,
-          "px-2 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase whitespace-nowrap",
-        )}
-      >
+    <div className={cn("pt-4 pb-1.5 first:pt-0", ENTRY_PAD)}>
+      <h3 className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
         {label}
-      </span>
-      {/* Reserve vertical space for the absolutely positioned pill. */}
-      <span className="invisible px-2 py-0.5 text-[10px] uppercase">
-        {label}
-      </span>
+      </h3>
     </div>
   );
 }
@@ -202,8 +194,8 @@ function NoteCard({ log }: { log: ActivityLogEntry }) {
       <span
         aria-hidden
         className={cn(
-          "absolute top-[15px] size-2.5 -translate-x-1/2 rounded-full",
-          RAIL_LEFT,
+          "absolute top-4 size-2.5 -translate-x-1/2 rounded-full",
+          NODE_LEFT,
           "border border-(--brand-gold)/60 bg-(--brand-gold)",
           "ring-2 ring-background",
         )}
@@ -233,7 +225,7 @@ function AutomaticTick({ log }: { log: AutomaticActivityLogEntry }) {
         aria-hidden
         className={cn(
           "absolute top-[9px] size-1.5 -translate-x-1/2 rounded-full border border-muted-foreground/40 bg-background",
-          RAIL_LEFT,
+          NODE_LEFT,
         )}
       />
       <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
@@ -272,7 +264,7 @@ function RailSkeleton() {
           <Skeleton
             className={cn(
               "absolute top-1 size-2 -translate-x-1/2 rounded-full",
-              RAIL_LEFT,
+              NODE_LEFT,
             )}
           />
           <Skeleton className={index % 2 === 0 ? "h-12 w-full" : "h-4 w-2/3"} />
