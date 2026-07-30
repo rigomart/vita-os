@@ -176,10 +176,11 @@ function RailBody({ logs }: { logs: ActivityLogEntry[] | undefined }) {
 }
 
 /** Day label to the right of the rail, directly above its log items; the
- *  rail runs through uninterrupted. */
+ *  rail runs through uninterrupted. Generous top padding so day groups
+ *  read as clearly separated chapters without costing horizontal space. */
 function DayMarker({ label }: { label: string }) {
   return (
-    <div className={cn("pt-4 pb-1.5 first:pt-0", ENTRY_PAD)}>
+    <div className={cn("pt-8 pb-2 first:pt-0", ENTRY_PAD)}>
       <h3 className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
         {label}
       </h3>
