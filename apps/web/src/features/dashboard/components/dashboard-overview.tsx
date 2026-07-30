@@ -191,14 +191,15 @@ function DashboardThreadList({
   }
 
   const groups = groupDashboardThreads(threads, currentDate);
-  const hiddenOpenCount = showAllOpen
-    ? 0
-    : Math.max(0, groups.open.length - OPEN_THREAD_CAP);
+  const visibleOpen = showAllOpen
+    ? groups.open
+    : groups.open.slice(0, OPEN_THREAD_CAP);
+  const hiddenOpenCount = groups.open.length - visibleOpen.length;
   const flatThreads = [
     ...groups.overdue,
     ...groups.upcoming,
     ...groups.withNextMoves,
-    ...groups.open.slice(0, groups.open.length - hiddenOpenCount),
+    ...visibleOpen,
   ];
 
   return (
@@ -222,7 +223,7 @@ function DashboardThreadList({
         <button
           type="button"
           onClick={() => setShowAllOpen(true)}
-          className="group flex w-full items-center gap-2 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="flex w-full items-center gap-2 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronRight className="size-3.5" />
           Show all
