@@ -1,7 +1,8 @@
-// PROTOTYPE — throwaway code. Three redesigns of the thread activity log,
+// PROTOTYPE — throwaway code. Redesigns of the thread activity log,
 // switchable via the `?variant=` search param on the existing thread route.
-// Plan: "Current" baseline plus variants A (Journal), B (Timeline rail),
-// C (Ledger), rendered in place of ActivityLog inside ActivityLogSection.
+// Round 1 verdict: Journal cut; Timeline rail most intuitive; Ledger's
+// structure + filter chips liked. Round 2 (D/E/F) explores combinations
+// of the rail's continuity with the ledger's discipline and filtering.
 import {
   PrototypeVariants,
   type PrototypeVariant,
@@ -10,9 +11,11 @@ import {
 import type { ActivityLogVariantProps } from "./shared";
 
 import { ActivityLog } from "../thread-log";
-import { ActivityLogJournal } from "./variant-a-journal";
 import { ActivityLogTimelineRail } from "./variant-b-rail";
 import { ActivityLogLedger } from "./variant-c-ledger";
+import { ActivityLogFilteredRail } from "./variant-d-filtered-rail";
+import { ActivityLogRailLedger } from "./variant-e-rail-ledger";
+import { ActivityLogDayDigest } from "./variant-f-day-digest";
 
 export function ActivityLogPrototype({
   logs,
@@ -25,11 +28,6 @@ export function ActivityLogPrototype({
       render: () => <ActivityLog logs={logs} onAddNote={onAddNote} />,
     },
     {
-      key: "A",
-      name: "Journal",
-      render: () => <ActivityLogJournal logs={logs} onAddNote={onAddNote} />,
-    },
-    {
       key: "B",
       name: "Timeline rail",
       render: () => (
@@ -40,6 +38,23 @@ export function ActivityLogPrototype({
       key: "C",
       name: "Ledger",
       render: () => <ActivityLogLedger logs={logs} onAddNote={onAddNote} />,
+    },
+    {
+      key: "D",
+      name: "Filtered rail",
+      render: () => (
+        <ActivityLogFilteredRail logs={logs} onAddNote={onAddNote} />
+      ),
+    },
+    {
+      key: "E",
+      name: "Rail ledger",
+      render: () => <ActivityLogRailLedger logs={logs} onAddNote={onAddNote} />,
+    },
+    {
+      key: "F",
+      name: "Day digest",
+      render: () => <ActivityLogDayDigest logs={logs} onAddNote={onAddNote} />,
     },
   ] satisfies readonly [PrototypeVariant, ...PrototypeVariant[]];
 
