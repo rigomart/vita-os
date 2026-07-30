@@ -97,7 +97,7 @@ _Avoid_: Task list, project board, backlog.
 
 ## Thread Attention
 
-- **Open Threads** across the **Dashboard Overview** and **Area** inventory share one flat attention-ordered list with no visible group headings. Attention groups survive as ordering only; a per-row state signal on each row's date rail replaces the headings. The rail's visual states are recorded in ADR 0005.
+- **Open Threads** across the **Dashboard Overview** and **Area** inventory share one flat attention-ordered list with no visible group headings. Attention groups survive as ordering only; a state signal on each row's date rail replaces the headings. The rail's visual states are recorded in ADR 0005.
 - The flat order is **Overdue Follow-ups**, **Upcoming Follow-ups**, **Threads with Next Moves**, then plain **Open Threads**. On the **Dashboard**, dated upcoming **Follow-ups** come before undated **Threads with Next Moves**.
 - **Overdue Follow-ups** have a **Follow-up** before today. **Upcoming Follow-ups** have a **Follow-up** today or later.
 - A **Follow-up** takes precedence when a **Thread** also has a **Next Move**.
