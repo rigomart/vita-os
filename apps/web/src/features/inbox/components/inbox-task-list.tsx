@@ -1,18 +1,18 @@
 import type { Doc } from "@convex/_generated/dataModel";
 
 import { groupTasksByAttention } from "@convex/lib/attentionOrdering";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@vita-os/ui/components/collapsible";
-import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
-import { CheckCircle2, ChevronRight } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 
-import { TaskRow } from "@/features/tasks/task-row/task-row";
+import {
+  AttentionCollapsed,
+  AttentionList,
+  AttentionRow,
+  type AttentionRowModel,
+  RowDeleteAction,
+  RowIconAction,
+} from "@/features/attention-list";
 import { useTaskRowActions } from "@/features/tasks/task-row/use-task-row-actions";
-import { flatListClassName } from "@/lib/flat-surface";
 
 interface InboxTaskListProps {
   tasks: Doc<"tasks">[];
@@ -20,12 +20,19 @@ interface InboxTaskListProps {
 }
 
 export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
-  const groups = groupTasksByAttention(tasks, Date.now());
+  const now = Date.now();
+  const groups = groupTasksByAttention(tasks, now);
   const openCount =
     groups.pastDue.length +
     groups.today.length +
     groups.noDate.length +
     groups.comingUp.length;
+  const openTasks = [
+    ...groups.pastDue,
+    ...groups.today,
+    ...groups.comingUp,
+    ...groups.noDate,
+  ];
 
   return (
     <div className="mx-auto max-w-4xl pb-16">
@@ -38,8 +45,8 @@ export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
             {openCount}
           </span>
         </div>
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          {format(new Date(), "EEEE, MMMM d")}
+        <p className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
+          {format(new Date(now), "EEEE, MMMM d")}
         </p>
       </header>
 
@@ -47,99 +54,29 @@ export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
         {openCount === 0 ? (
           <InboxZero />
         ) : (
-          <>
-            <TaskSection
-              title="Past due"
-              tasks={groups.pastDue}
-              onProcess={onProcess}
-              tone="attention"
-            />
-            <TaskSection
-              title="Today"
-              tasks={groups.today}
-              onProcess={onProcess}
-            />
-            <TaskSection
-              title="No date"
-              tasks={groups.noDate}
-              onProcess={onProcess}
-            />
-            <TaskSection
-              title="Coming up"
-              tasks={groups.comingUp}
-              onProcess={onProcess}
-            />
-          </>
+          <AttentionList>
+            {openTasks.map((task) => (
+              <InboxTaskRow
+                key={task._id}
+                task={task}
+                now={now}
+                onProcess={onProcess}
+              />
+            ))}
+          </AttentionList>
         )}
-        <DoneTasks tasks={groups.completed} />
+
+        {groups.completed.length > 0 && (
+          <AttentionCollapsed title="Completed" count={groups.completed.length}>
+            <AttentionList>
+              {groups.completed.map((task) => (
+                <InboxTaskRow key={task._id} task={task} now={now} />
+              ))}
+            </AttentionList>
+          </AttentionCollapsed>
+        )}
       </div>
     </div>
-  );
-}
-
-function TaskSection({
-  title,
-  tasks,
-  onProcess,
-  tone,
-}: {
-  title: string;
-  tasks: Doc<"tasks">[];
-  onProcess?: (task: Doc<"tasks">) => void;
-  tone?: "attention";
-}) {
-  if (tasks.length === 0) return null;
-
-  return (
-    <section>
-      <SectionHeading title={title} tone={tone} />
-      <div className={cn("mt-3", flatListClassName)}>
-        {tasks.map((task) => (
-          <InboxTaskRow key={task._id} task={task} onProcess={onProcess} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function DoneTasks({ tasks }: { tasks: Doc<"tasks">[] }) {
-  if (tasks.length === 0) return null;
-
-  return (
-    <Collapsible>
-      <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md py-2 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-        <ChevronRight className="size-4 transition-transform group-data-[state=open]:rotate-90" />
-        <CheckCircle2 className="size-3.5" />
-        <span>Completed</span>
-        <span className="ml-auto text-xs tabular-nums">{tasks.length}</span>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className={flatListClassName}>
-          {tasks.map((task) => (
-            <InboxTaskRow key={task._id} task={task} />
-          ))}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
-
-function SectionHeading({
-  title,
-  tone,
-}: {
-  title: string;
-  tone?: "attention";
-}) {
-  return (
-    <h2
-      className={cn(
-        "px-2 text-[11px] font-medium tracking-wide text-muted-foreground",
-        tone === "attention" && "text-condition-attention",
-      )}
-    >
-      {title}
-    </h2>
   );
 }
 
@@ -157,34 +94,55 @@ function InboxZero() {
 
 function InboxTaskRow({
   task,
+  now,
   onProcess,
 }: {
   task: Doc<"tasks">;
+  now: number;
   onProcess?: (task: Doc<"tasks">) => void;
 }) {
   const {
-    handleToggleComplete,
-    isTogglePending,
     handleRemove,
-    isDiscardPending,
+    handleToggleComplete,
     handleUpdateText,
-    isSavingText,
     handleUpdateWhen,
+    isDiscardPending,
+    isSavingText,
+    isTogglePending,
     isWhenPending,
   } = useTaskRowActions(task);
+  const done = task.state === "done";
 
-  return (
-    <TaskRow
-      task={task}
-      onToggleComplete={handleToggleComplete}
-      onRemove={handleRemove}
-      onUpdateText={handleUpdateText}
-      onUpdateWhen={handleUpdateWhen}
-      onProcess={onProcess ? () => onProcess(task) : undefined}
-      isTogglePending={isTogglePending}
-      isDiscardPending={isDiscardPending}
-      isSavingText={isSavingText}
-      isWhenPending={isWhenPending}
-    />
-  );
+  const row: AttentionRowModel = {
+    title: task.text,
+    done,
+    when: task.when,
+    onToggleDone: handleToggleComplete,
+    toggleBusy: isTogglePending,
+    onSetWhen: handleUpdateWhen,
+    whenBusy: isWhenPending,
+    onUpdateText: handleUpdateText,
+    isSavingText,
+    actions: (
+      <>
+        {onProcess && !done && (
+          <RowIconAction
+            icon={ArrowRight}
+            label="Process task"
+            onSelect={() => onProcess(task)}
+          />
+        )}
+        <RowDeleteAction
+          label="Discard task"
+          title="Discard task?"
+          description="This task will be permanently removed from your Inbox. This action cannot be undone."
+          confirmLabel="Discard"
+          busy={isDiscardPending}
+          onConfirm={handleRemove}
+        />
+      </>
+    ),
+  };
+
+  return <AttentionRow now={now} row={row} />;
 }

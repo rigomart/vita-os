@@ -1,86 +1,107 @@
-import { type Condition } from "@convex/lib/condition";
+import type { Condition } from "@convex/lib/condition";
+
 import { Link } from "@tanstack/react-router";
 import { cn } from "@vita-os/ui/lib/utils";
-import { ArrowUpRight } from "lucide-react";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
 
-import { type DashboardArea } from "./dashboard-model";
+import type { DashboardArea } from "./dashboard-model";
 
-const conditionOrder: Condition[] = ["critical", "needs_attention", "healthy"];
-
-const conditionLabels: Record<Condition, string> = {
-  critical: "Critical",
-  needs_attention: "Needs attention",
-  healthy: "Steady",
-};
-
-const conditionShortLabels: Record<Condition, string> = {
+const attentionLabels: Partial<Record<Condition, string>> = {
   critical: "Needs you",
   needs_attention: "Watch",
-  healthy: "Steady",
 };
 
-const conditionStrip: Record<Condition, string> = {
-  critical: "bg-condition-critical",
-  needs_attention: "bg-condition-attention",
-  healthy: "bg-condition-healthy",
+const blockToneClassName: Partial<Record<Condition, string>> = {
+  critical: "bg-condition-critical text-white",
+  needs_attention: "bg-condition-attention/15 text-condition-attention",
 };
+
+const labelToneClassName: Partial<Record<Condition, string>> = {
+  critical: "text-condition-critical",
+  needs_attention: "text-condition-attention",
+};
+
+function byOrder(a: DashboardArea, b: DashboardArea) {
+  return a.order - b.order;
+}
 
 export function AreaConditionOverview({ areas }: { areas: DashboardArea[] }) {
+  const critical = areas
+    .filter((area) => area.condition === "critical")
+    .sort(byOrder);
+  const attention = areas
+    .filter((area) => area.condition === "needs_attention")
+    .sort(byOrder);
+  const healthy = areas
+    .filter((area) => area.condition === "healthy")
+    .sort(byOrder);
+  const prominent = [...critical, ...attention];
+
   return (
     <section
       aria-label="Life Areas by condition"
-      className="grid gap-3 md:grid-cols-3 md:gap-6"
+      className="flex flex-col gap-4"
     >
-      {conditionOrder.map((condition) => {
-        const matchingAreas = areas.filter(
-          (area) => area.condition === condition,
-        );
+      {areas.length === 0 && (
+        <p className="text-sm text-muted-foreground">No Life Areas yet.</p>
+      )}
 
-        return (
-          <div
-            key={condition}
-            role="group"
-            aria-label={`${conditionLabels[condition]} Life Areas`}
-            className="flex min-w-0 items-stretch gap-3"
-          >
-            <span
-              aria-hidden="true"
-              className={cn(
-                "w-1 shrink-0 rounded-full",
-                conditionStrip[condition],
-              )}
-            />
-            <div className="flex min-w-0 flex-col gap-1 py-0.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {conditionShortLabels[condition]}
-              </span>
-              <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1">
-                {matchingAreas.length === 0 ? (
-                  <span className="text-xs text-muted-foreground">None</span>
-                ) : (
-                  matchingAreas.map((area) => (
-                    <Link
-                      key={area.id}
-                      to="/$areaSlug"
-                      params={{ areaSlug: area.slug }}
-                      className="group inline-flex min-w-0 items-center gap-1.5 text-sm font-medium hover:text-primary"
-                    >
-                      <AreaIcon
-                        icon={area.icon}
-                        className="size-3.5 shrink-0"
-                      />
-                      <span className="truncate">{area.name}</span>
-                      <ArrowUpRight className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                    </Link>
-                  ))
+      {prominent.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {prominent.map((area) => (
+            <Link
+              key={area.id}
+              to="/$areaSlug"
+              params={{ areaSlug: area.slug }}
+              className="flex items-center gap-3.5 rounded-xl bg-muted/40 py-3 pr-4 pl-3 transition-colors hover:bg-muted/70"
+            >
+              <span
+                className={cn(
+                  "flex size-11 shrink-0 items-center justify-center rounded-lg",
+                  blockToneClassName[area.condition],
                 )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
+              >
+                <AreaIcon icon={area.icon} className="size-5" />
+              </span>
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-base font-semibold">
+                  {area.name}
+                </span>
+                <span
+                  className={cn(
+                    "text-xs font-medium",
+                    labelToneClassName[area.condition],
+                  )}
+                >
+                  {attentionLabels[area.condition]}
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {healthy.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          {prominent.length === 0 && (
+            <span className="text-sm text-muted-foreground">
+              All areas steady.
+            </span>
+          )}
+          {healthy.map((area) => (
+            <Link
+              key={area.id}
+              to="/$areaSlug"
+              params={{ areaSlug: area.slug }}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <AreaIcon icon={area.icon} className="size-3.5" />
+              {area.name}
+            </Link>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

@@ -1,35 +1,35 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
-
 import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { render, screen } from "@/test/render-with-providers";
 
-import { TaskRow } from "./task-row";
+import type { AttentionRowModel } from "./attention-row-model";
 
-const task = {
-  _id: "task1" as Id<"tasks">,
-  _creationTime: 0,
-  userId: "user1",
-  text: "Buy milk",
-  state: "open",
-  createdAt: Date.now(),
-} satisfies Doc<"tasks">;
+import { AttentionRow } from "./attention-row";
 
-describe("TaskRow", () => {
+const now = Date.now();
+
+const baseRow: AttentionRowModel = {
+  title: "Buy milk",
+  onToggleDone: vi.fn(),
+  onUpdateText: vi.fn(),
+  onSetWhen: vi.fn(),
+};
+
+describe("AttentionRow", () => {
   it("disables the complete checkbox while a toggle is pending", async () => {
     const user = userEvent.setup();
-    const onToggleComplete = vi.fn();
+    const onToggleDone = vi.fn();
 
     render(
-      <TaskRow
-        task={task}
-        onToggleComplete={onToggleComplete}
-        onRemove={vi.fn()}
-        onUpdateText={vi.fn()}
-        onUpdateWhen={vi.fn()}
-        isTogglePending
+      <AttentionRow
+        now={now}
+        row={{
+          ...baseRow,
+          onToggleDone,
+          toggleBusy: true,
+        }}
       />,
     );
 
@@ -38,7 +38,7 @@ describe("TaskRow", () => {
     expect(checkbox).toHaveAttribute("aria-busy", "true");
 
     await user.click(checkbox);
-    expect(onToggleComplete).not.toHaveBeenCalled();
+    expect(onToggleDone).not.toHaveBeenCalled();
   });
 
   it("saves edited text once when pressing Enter then blurring", async () => {
@@ -46,16 +46,16 @@ describe("TaskRow", () => {
     const onUpdateText = vi.fn();
 
     render(
-      <TaskRow
-        task={task}
-        onToggleComplete={vi.fn()}
-        onRemove={vi.fn()}
-        onUpdateText={onUpdateText}
-        onUpdateWhen={vi.fn()}
+      <AttentionRow
+        now={now}
+        row={{
+          ...baseRow,
+          onUpdateText,
+        }}
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: task.text }));
+    await user.click(screen.getByRole("button", { name: baseRow.title }));
     const input = screen.getByRole("textbox", { name: "Edit task text" });
     fireEvent.change(input, { target: { value: "Buy oat milk" } });
     fireEvent.keyDown(input, { key: "Enter" });

@@ -4,10 +4,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  type DashboardOverviewData,
-  type DashboardThread,
-} from "./dashboard-model";
+import type { DashboardOverviewData, DashboardThread } from "./dashboard-model";
+
 import { DashboardOverview } from "./dashboard-overview";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -66,7 +64,7 @@ function dashboard(
 }
 
 describe("DashboardOverview", () => {
-  it("renders every Area condition, including clear conditions", () => {
+  it("gives attention-bearing Areas prominence and keeps healthy Areas quiet", () => {
     render(
       <DashboardOverview
         overview={dashboard()}
@@ -75,29 +73,25 @@ describe("DashboardOverview", () => {
       />,
     );
 
-    const critical = screen.getByRole("group", {
-      name: "Critical Life Areas",
-    });
-    expect(critical).toBeVisible();
-    expect(critical.firstElementChild).toHaveClass("bg-condition-critical");
-    expect(within(critical).queryByText("1")).toBeNull();
-    const steady = screen.getByRole("group", { name: "Steady Life Areas" });
-    expect(steady).toBeVisible();
-    expect(steady.firstElementChild).toHaveClass("bg-condition-healthy");
-    expect(within(steady).queryByText("1")).toBeNull();
-    const needsAttention = screen.getByRole("group", {
-      name: "Needs attention Life Areas",
-    });
-    expect(needsAttention).toBeVisible();
-    expect(needsAttention.firstElementChild).toHaveClass(
-      "bg-condition-attention",
-    );
-    expect(within(needsAttention).queryByText("0")).toBeNull();
-    expect(screen.getByText("None")).toBeVisible();
-
     const areaStrip = screen.getByRole("region", {
       name: "Life Areas by condition",
     });
+
+    const criticalCard = within(areaStrip).getByRole("link", {
+      name: /Health/,
+    });
+    expect(criticalCard).toBeVisible();
+    expect(within(criticalCard).getByText("Needs you")).toBeVisible();
+
+    const healthyChip = within(areaStrip).getByRole("link", { name: "Home" });
+    expect(healthyChip).toBeVisible();
+    expect(within(healthyChip).queryByText("Steady")).toBeNull();
+
+    expect(
+      criticalCard.compareDocumentPosition(healthyChip) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
     const tabs = screen.getByRole("tablist", { name: "Dashboard view" });
     expect(
       areaStrip.compareDocumentPosition(tabs) &
@@ -105,8 +99,28 @@ describe("DashboardOverview", () => {
     ).toBeTruthy();
   });
 
-  it("shows exact Follow-up labels and keeps Open Threads collapsed", async () => {
-    const user = userEvent.setup();
+  it("collapses to a steady line when every Area is healthy", () => {
+    const overview = dashboard();
+    render(
+      <DashboardOverview
+        overview={{
+          ...overview,
+          areas: overview.areas.map((area) => ({
+            ...area,
+            condition: "healthy" as const,
+          })),
+        }}
+        currentDate={currentDate}
+        onCreateArea={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("All areas steady.")).toBeVisible();
+    expect(screen.queryByText("Needs you")).toBeNull();
+    expect(screen.queryByText("Watch")).toBeNull();
+  });
+
+  it("shows date rails and keeps Open Threads inline", () => {
     render(
       <DashboardOverview
         overview={dashboard({
@@ -126,18 +140,13 @@ describe("DashboardOverview", () => {
       />,
     );
 
-    expect(screen.getByText("Today")).toBeVisible();
-    expect(screen.getByText("Tomorrow")).toBeVisible();
-    expect(screen.getByText("Jul 20")).toBeVisible();
-    expect(screen.getByText("Upcoming")).toBeVisible();
-    expect(screen.queryByText("Upcoming follow-ups")).toBeNull();
-    expect(screen.queryByRole("link", { name: /without date/i })).toBeNull();
-
-    await user.click(screen.getByRole("button", { name: /open threads/i }));
+    expect(screen.getByText("Due today")).toBeVisible();
+    expect(screen.getByText("18")).toBeVisible();
+    expect(screen.getByText("20")).toBeVisible();
     expect(screen.getByRole("link", { name: /without date/i })).toBeVisible();
   });
 
-  it("places actionable Next Moves before upcoming Follow-ups", () => {
+  it("places upcoming Follow-ups before Next Moves and Open Threads", () => {
     render(
       <DashboardOverview
         overview={dashboard({
@@ -157,20 +166,18 @@ describe("DashboardOverview", () => {
       />,
     );
 
-    const overdue = screen.getByRole("heading", { name: "Overdue" });
-    const nextMoves = screen.getByRole("heading", {
-      name: "Threads with Next Moves",
-    });
-    const upcoming = screen.getByRole("heading", { name: "Upcoming" });
-    const open = screen.getByRole("button", { name: /open threads/i });
+    const overdue = screen.getByText("Overdue thread");
+    const upcoming = screen.getByText("Upcoming thread");
+    const nextMoves = screen.getByText("Next Move thread");
+    const open = screen.getByText("Open thread");
 
-    expect(overdue.compareDocumentPosition(nextMoves)).toBe(
+    expect(overdue.compareDocumentPosition(upcoming)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
-    expect(nextMoves.compareDocumentPosition(upcoming)).toBe(
+    expect(upcoming.compareDocumentPosition(nextMoves)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
-    expect(upcoming.compareDocumentPosition(open)).toBe(
+    expect(nextMoves.compareDocumentPosition(open)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
   });
@@ -264,6 +271,8 @@ describe("DashboardOverview", () => {
         onCreateArea={onCreateArea}
       />,
     );
-    expect(screen.getByText("No open Threads")).toBeVisible();
+    expect(
+      screen.getByText("Your Life Areas are clear for now."),
+    ).toBeVisible();
   });
 });
