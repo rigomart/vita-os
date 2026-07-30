@@ -50,10 +50,9 @@ describe("ActivityLog", () => {
     );
     expect(screen.getByText("Called the clinic")).toHaveClass(
       "text-[13px]",
-      "text-foreground/80",
+      "text-foreground",
     );
     expect(screen.getByText("Health → Finances")).toHaveClass(
-      "text-xs",
       "text-muted-foreground/80",
     );
     expect(screen.getByText("Area")).toBeInTheDocument();
@@ -163,21 +162,20 @@ describe("ActivityLog", () => {
     expect(
       screen.getByRole("heading", { name: "Yesterday" }),
     ).toBeInTheDocument();
-    const noteItem = screen
-      .getByText("Called the clinic")
-      .closest('[data-slot="item"]');
-    expect(noteItem).toHaveAttribute("data-variant", "default");
-    expect(noteItem).toHaveAttribute("data-size", "xs");
-    expect(screen.getByText("Health → Finances")).toBeInTheDocument();
+    const noteCard = screen.getByText("Called the clinic").closest("div");
+    expect(noteCard).toHaveClass("rounded-md", "border-border");
+    expect(screen.getByText("Note")).toHaveClass("uppercase");
+    const changeRow = screen.getByText("Health → Finances").closest("div");
+    expect(changeRow).toHaveClass("text-muted-foreground");
+    expect(changeRow).not.toHaveClass("border-border");
   });
 
   it("uses a helpful continuity empty state", () => {
     render(<ActivityLog logs={[]} onAddNote={vi.fn()} />);
 
-    expect(screen.getByText("No activity yet")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Add a note to start the continuity record for this Thread.",
+        "Nothing on the timeline yet — the first note starts this Thread's continuity record.",
       ),
     ).toBeInTheDocument();
   });

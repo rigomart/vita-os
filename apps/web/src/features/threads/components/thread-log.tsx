@@ -2,13 +2,6 @@ import type { Doc } from "@convex/_generated/dataModel";
 import type { LucideIcon } from "lucide-react";
 
 import { Badge } from "@vita-os/ui/components/badge";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@vita-os/ui/components/empty";
 import { Field, FieldGroup, FieldLabel } from "@vita-os/ui/components/field";
 import {
   InputGroup,
@@ -16,15 +9,6 @@ import {
   InputGroupButton,
   InputGroupTextarea,
 } from "@vita-os/ui/components/input-group";
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemMedia,
-  ItemTitle,
-} from "@vita-os/ui/components/item";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { format, isToday, isYesterday } from "date-fns";
@@ -36,14 +20,13 @@ import {
   Clock3,
   Link2,
   MapPin,
-  MessageSquareText,
-  PenLine,
   RefreshCw,
   Scale,
 } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useState } from "react";
 
 import { getActivityLogEntryLabel } from "@/features/threads/activity-log-entry";
+import { cn } from "@/lib/utils";
 
 interface ActivityLogProps {
   logs: Doc<"activityLogs">[] | undefined;
@@ -68,6 +51,12 @@ const ACTIVITY_LOG_ICONS: Record<
   follow_up_change: Bell,
   area_move: MapPin,
 };
+
+// Rail geometry: the 1px line spans left 11–12px, so its center is 11.5px.
+// Nodes use NODE_LEFT with -translate-x-1/2 to center exactly on the line.
+const RAIL_LEFT = "left-[11px]";
+const NODE_LEFT = "left-[11.5px]";
+const ENTRY_PAD = "pl-9";
 
 export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
   const [noteText, setNoteText] = useState("");
@@ -111,45 +100,71 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
         )}
       </div>
 
-      <form onSubmit={handleAddNote}>
-        <FieldGroup className="gap-0">
-          <Field data-disabled={isPending || undefined}>
-            <FieldLabel htmlFor="activity-log-note" className="sr-only">
-              Activity log note
-            </FieldLabel>
-            <InputGroup>
-              <InputGroupTextarea
-                id="activity-log-note"
-                value={noteText}
-                onChange={(event) => setNoteText(event.target.value)}
-                disabled={isPending}
-                aria-label="Activity log note"
-                placeholder="Add a note about what happened…"
-                className="min-h-10 pr-10 py-2 text-[13px]"
-                rows={1}
-                onKeyDown={handleNoteKeyDown}
-              />
-              <InputGroupAddon
-                align="block-end"
-                className="absolute right-2 bottom-2 w-auto p-0"
-              >
-                <InputGroupButton
-                  type="submit"
-                  size="icon-xs"
-                  variant="secondary"
-                  disabled={!noteText.trim() || isPending}
-                  aria-label="Add note"
-                  aria-busy={isPending}
-                >
-                  <ArrowUp data-icon="inline-start" />
-                </InputGroupButton>
-              </InputGroupAddon>
-            </InputGroup>
-          </Field>
-        </FieldGroup>
-      </form>
+      <div className="relative">
+        {/* The continuous rail: fades in at the top (the "now" origin) and
+            fades out at the bottom past the oldest entry. */}
+        <div
+          aria-hidden
+          className={cn(
+            "absolute top-1 bottom-0 w-px",
+            RAIL_LEFT,
+            "bg-gradient-to-b from-transparent via-border to-transparent",
+          )}
+        />
 
-      <ActivityLogTimeline logs={logs} />
+        {/* Composer — the "now" node at the rail's origin. */}
+        <div className={cn("relative pb-5", ENTRY_PAD)}>
+          <span
+            aria-hidden
+            className={cn(
+              "absolute top-[15px] size-2.5 -translate-x-1/2 rounded-full",
+              NODE_LEFT,
+              "border border-(--brand-gold) bg-background",
+            )}
+          >
+            <span className="absolute inset-[3px] rounded-full bg-(--brand-gold)" />
+          </span>
+          <form onSubmit={handleAddNote}>
+            <FieldGroup className="gap-0">
+              <Field data-disabled={isPending || undefined}>
+                <FieldLabel htmlFor="activity-log-note" className="sr-only">
+                  Activity log note
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupTextarea
+                    id="activity-log-note"
+                    value={noteText}
+                    onChange={(event) => setNoteText(event.target.value)}
+                    disabled={isPending}
+                    aria-label="Activity log note"
+                    placeholder="Add a note about what happened…"
+                    className="min-h-10 pr-10 py-2 text-[13px]"
+                    rows={1}
+                    onKeyDown={handleNoteKeyDown}
+                  />
+                  <InputGroupAddon
+                    align="block-end"
+                    className="absolute right-2 bottom-2 w-auto p-0"
+                  >
+                    <InputGroupButton
+                      type="submit"
+                      size="icon-xs"
+                      variant="secondary"
+                      disabled={!noteText.trim() || isPending}
+                      aria-label="Add note"
+                      aria-busy={isPending}
+                    >
+                      <ArrowUp data-icon="inline-start" />
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
+            </FieldGroup>
+          </form>
+        </div>
+
+        <ActivityLogTimeline logs={logs} />
+      </div>
     </section>
   );
 }
@@ -163,92 +178,111 @@ function ActivityLogTimeline({
 
   if (logs.length === 0) {
     return (
-      <Empty className="min-h-44 p-6">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <MessageSquareText />
-          </EmptyMedia>
-          <EmptyTitle>No activity yet</EmptyTitle>
-          <EmptyDescription>
-            Add a note to start the continuity record for this Thread.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+      <div className={cn("relative pb-2", ENTRY_PAD)}>
+        <span
+          aria-hidden
+          className={cn(
+            "absolute top-1 size-2 -translate-x-1/2 rounded-full border border-border bg-background",
+            NODE_LEFT,
+          )}
+        />
+        <p className="text-[13px] leading-snug text-muted-foreground">
+          Nothing on the timeline yet — the first note starts this Thread's
+          continuity record.
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      {groupLogsByDay(logs).map((group) => {
-        const headingId = `activity-log-day-${group.key}`;
-
-        return (
-          <section
-            key={group.key}
-            aria-labelledby={headingId}
-            className="flex flex-col gap-1.5"
-          >
-            <h3
-              id={headingId}
-              className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase"
-            >
-              {group.label}
-            </h3>
-            <ItemGroup className="gap-0.5">
-              {group.logs.map((log) =>
-                isAutomaticActivityLogEntry(log) ? (
-                  <AutomaticChange key={log._id} log={log} />
-                ) : (
-                  <ManualNote key={log._id} log={log} />
-                ),
-              )}
-            </ItemGroup>
-          </section>
-        );
-      })}
+    <div className="flex flex-col gap-4">
+      {groupLogsByDay(logs).map((group) => (
+        <section
+          key={group.key}
+          aria-label={group.label}
+          className="flex flex-col"
+        >
+          <DayMarker label={group.label} />
+          {group.logs.map((log) =>
+            isAutomaticActivityLogEntry(log) ? (
+              <AutomaticChange key={log._id} log={log} />
+            ) : (
+              <ManualNote key={log._id} log={log} />
+            ),
+          )}
+        </section>
+      ))}
     </div>
   );
 }
 
-function ManualNote({ log }: { log: ActivityLogEntry }) {
+/** Day label to the right of the rail, directly above its log items; the
+ *  rail runs through uninterrupted. Group separation comes from the parent
+ *  column's gap, not from padding here. */
+function DayMarker({ label }: { label: string }) {
   return (
-    <Item size="xs" className="px-1 py-1.5">
-      <ItemMedia variant="icon">
-        <PenLine className="size-3.5 text-muted-foreground/70" />
-      </ItemMedia>
-      <ItemContent>
-        <ItemTitle className="text-xs text-muted-foreground">Note</ItemTitle>
-        <p className="whitespace-pre-wrap text-[13px] leading-snug text-foreground/80">
-          {log.content}
-        </p>
-      </ItemContent>
-      <ItemActions className="self-start">
-        <ActivityLogTimestamp createdAt={log.createdAt} />
-      </ItemActions>
-    </Item>
+    <div className={cn("pb-1.5", ENTRY_PAD)}>
+      <h3 className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
+        {label}
+      </h3>
+    </div>
   );
 }
 
+/** A note: gold filled node + raised card body. */
+function ManualNote({ log }: { log: ActivityLogEntry }) {
+  return (
+    <div className={cn("relative py-1.5", ENTRY_PAD)}>
+      <span
+        aria-hidden
+        className={cn(
+          "absolute top-4 size-2.5 -translate-x-1/2 rounded-full",
+          NODE_LEFT,
+          "border border-(--brand-gold)/60 bg-(--brand-gold)",
+          "ring-2 ring-background",
+        )}
+      />
+      <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <span className="text-[10px] font-medium tracking-wide text-(--brand-gold) uppercase">
+            Note
+          </span>
+          <ActivityLogTimestamp createdAt={log.createdAt} />
+        </div>
+        <p className="whitespace-pre-wrap text-[13px] leading-snug text-foreground">
+          {log.content}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** An automatic change: tiny hollow node, single compact muted line. */
 function AutomaticChange({ log }: { log: AutomaticActivityLogEntry }) {
   const Icon = ACTIVITY_LOG_ICONS[log.type];
 
   return (
-    <Item size="xs" className="px-1 py-1.5">
-      <ItemMedia variant="icon">
-        <Icon className="size-3.5 text-muted-foreground/70" />
-      </ItemMedia>
-      <ItemContent>
-        <ItemTitle className="text-xs font-normal text-muted-foreground">
+    <div className={cn("relative py-1", ENTRY_PAD)}>
+      <span
+        aria-hidden
+        className={cn(
+          "absolute top-[9px] size-1.5 -translate-x-1/2 rounded-full border border-muted-foreground/40 bg-background",
+          NODE_LEFT,
+        )}
+      />
+      <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+        <Icon className="size-3.5 shrink-0 text-muted-foreground/60" />
+        <span className="shrink-0 font-medium">
           {getActivityLogEntryLabel(log.type)}
-        </ItemTitle>
-        <ItemDescription className="text-xs leading-snug text-muted-foreground/80">
+        </span>
+        <span className="truncate text-muted-foreground/80">
           {getAutomaticChangeSummary(log)}
-        </ItemDescription>
-      </ItemContent>
-      <ItemActions className="self-start">
-        <ActivityLogTimestamp createdAt={log.createdAt} />
-      </ItemActions>
-    </Item>
+        </span>
+        <span className="ml-auto shrink-0 pl-2">
+          <ActivityLogTimestamp createdAt={log.createdAt} />
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -268,20 +302,16 @@ function ActivityLogTimestamp({ createdAt }: { createdAt: number }) {
 
 function ActivityLogSkeleton() {
   return (
-    <div className="flex flex-col gap-5" aria-label="Loading activity log">
-      {Array.from({ length: 2 }).map((_, groupIndex) => (
-        <div key={groupIndex} className="flex flex-col gap-2">
-          <Skeleton className="h-3 w-16" />
-          {Array.from({ length: groupIndex + 1 }).map((__, itemIndex) => (
-            <div key={itemIndex} className="flex items-start gap-2 py-1.5">
-              <Skeleton className="size-4 shrink-0 rounded" />
-              <div className="flex flex-1 flex-col gap-1.5">
-                <Skeleton className="h-3 w-24" />
-                <Skeleton className="h-3 w-3/4" />
-              </div>
-              <Skeleton className="h-3 w-14" />
-            </div>
-          ))}
+    <div className="flex flex-col gap-3" aria-label="Loading activity log">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className={cn("relative", ENTRY_PAD)}>
+          <Skeleton
+            className={cn(
+              "absolute top-1 size-2 -translate-x-1/2 rounded-full",
+              NODE_LEFT,
+            )}
+          />
+          <Skeleton className={index % 2 === 0 ? "h-12 w-full" : "h-4 w-2/3"} />
         </div>
       ))}
     </div>
