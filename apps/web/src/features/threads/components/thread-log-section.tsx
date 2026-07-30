@@ -4,7 +4,7 @@ import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useStableQuery } from "@/hooks/use-stable-query";
 
 import { useCreateActivityLog } from "../use-create-thread-log";
-import { ActivityLog } from "./thread-log";
+import { ActivityLogPrototype } from "./activity-log-prototype/activity-log-prototype";
 
 interface ActivityLogSectionProps {
   threadSlug: string;
@@ -21,7 +21,7 @@ export function ActivityLogSection({ threadSlug }: ActivityLogSectionProps) {
   const createLog = useCreateActivityLog();
 
   return (
-    <ActivityLog
+    <ActivityLogPrototype
       logs={logs}
       onAddNote={async (content) => {
         if (!thread) return;
