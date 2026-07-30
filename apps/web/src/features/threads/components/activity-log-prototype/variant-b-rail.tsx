@@ -154,7 +154,7 @@ function RailBody({ logs }: { logs: ActivityLogEntry[] | undefined }) {
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-7">
       {groupLogsByDay(logs).map((group) => (
         <section
           key={group.key}
@@ -176,11 +176,11 @@ function RailBody({ logs }: { logs: ActivityLogEntry[] | undefined }) {
 }
 
 /** Day label to the right of the rail, directly above its log items; the
- *  rail runs through uninterrupted. Generous top padding so day groups
- *  read as clearly separated chapters without costing horizontal space. */
+ *  rail runs through uninterrupted. Group separation comes from the parent
+ *  column's gap, not from padding here. */
 function DayMarker({ label }: { label: string }) {
   return (
-    <div className={cn("pt-8 pb-2 first:pt-0", ENTRY_PAD)}>
+    <div className={cn("pb-1.5", ENTRY_PAD)}>
       <h3 className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
         {label}
       </h3>
