@@ -103,6 +103,7 @@ _Avoid_: Task list, project board, backlog.
 - A **Follow-up** takes precedence when a **Thread** also has a **Next Move**.
 - **Threads with Next Moves** have a **Next Move** and no **Follow-up**.
 - Plain **Open Threads** have neither field and appear inline at the end of the flat run.
+- The **Dashboard Overview** shows at most five plain **Open Threads** inline; the rest sit behind a **Show all** control that extends the same flat run in place. Attention-bearing **Threads** are never capped, and the **Area** inventory always lists every **Thread**.
 - **Follow-ups** are ordered oldest-first when overdue and soonest-first when upcoming. The user's **Thread** order breaks ties and orders undated attention groups.
 - An **Open Thread** with no **Next Move** and no **Follow-up** is valid; it is not automatically overdue, stale, or broken.
 - Opening or reviewing a **Thread** does not clear its **Follow-up**; the user must clear, reschedule, or resolve it explicitly.

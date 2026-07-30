@@ -22,6 +22,7 @@ import {
   Inbox,
   MessagesSquare,
 } from "lucide-react";
+import { useState } from "react";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
 import {
@@ -172,6 +173,8 @@ function OverviewTab({
   );
 }
 
+const OPEN_THREAD_CAP = 5;
+
 function DashboardThreadList({
   areaById,
   currentDate,
@@ -181,16 +184,21 @@ function DashboardThreadList({
   currentDate: number;
   threads: DashboardThread[];
 }) {
+  const [showAllOpen, setShowAllOpen] = useState(false);
+
   if (threads.length === 0) {
     return <AttentionEmpty>Your Life Areas are clear for now.</AttentionEmpty>;
   }
 
   const groups = groupDashboardThreads(threads, currentDate);
+  const hiddenOpenCount = showAllOpen
+    ? 0
+    : Math.max(0, groups.open.length - OPEN_THREAD_CAP);
   const flatThreads = [
     ...groups.overdue,
     ...groups.upcoming,
     ...groups.withNextMoves,
-    ...groups.open,
+    ...groups.open.slice(0, groups.open.length - hiddenOpenCount),
   ];
 
   return (
@@ -210,6 +218,20 @@ function DashboardThreadList({
 
         return <AttentionRow key={thread.id} now={currentDate} row={row} />;
       })}
+      {hiddenOpenCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAllOpen(true)}
+          className="group flex w-full items-center gap-2 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronRight className="size-3.5" />
+          Show all
+          <span className="tabular-nums opacity-60">
+            {hiddenOpenCount} more
+          </span>
+          <div className="ml-1 h-px flex-1 bg-border/40" />
+        </button>
+      )}
     </AttentionList>
   );
 }

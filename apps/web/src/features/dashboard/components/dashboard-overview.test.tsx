@@ -182,6 +182,71 @@ describe("DashboardOverview", () => {
     );
   });
 
+  it("caps plain Open Threads behind a Show all control", async () => {
+    const user = userEvent.setup();
+    render(
+      <DashboardOverview
+        overview={dashboard({
+          threads: [
+            thread("Overdue thread", {
+              followUp: new Date(2026, 6, 16).getTime(),
+            }),
+            thread("Next Move thread", { nextMove: "Make the call" }),
+            ...Array.from({ length: 7 }, (_, index) =>
+              thread(`Open ${index + 1}`),
+            ),
+          ],
+        })}
+        currentDate={currentDate}
+        onCreateArea={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Overdue thread")).toBeVisible();
+    expect(screen.getByText("Next Move thread")).toBeVisible();
+    expect(screen.getByText("Open 5")).toBeVisible();
+    expect(screen.queryByText("Open 6")).toBeNull();
+
+    const showAll = screen.getByRole("button", { name: /show all/i });
+    expect(showAll).toHaveTextContent("2 more");
+
+    await user.click(showAll);
+
+    expect(screen.getByText("Open 6")).toBeVisible();
+    expect(screen.getByText("Open 7")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /show all/i })).toBeNull();
+    expect(
+      screen
+        .getByText("Open 5")
+        .compareDocumentPosition(screen.getByText("Open 6")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("never caps attention-bearing Threads and skips the control at the cap", () => {
+    render(
+      <DashboardOverview
+        overview={dashboard({
+          threads: [
+            ...Array.from({ length: 7 }, (_, index) =>
+              thread(`Overdue ${index + 1}`, {
+                followUp: new Date(2026, 6, 16).getTime(),
+              }),
+            ),
+            ...Array.from({ length: 5 }, (_, index) =>
+              thread(`Open ${index + 1}`),
+            ),
+          ],
+        })}
+        currentDate={currentDate}
+        onCreateArea={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Overdue 7")).toBeVisible();
+    expect(screen.getByText("Open 5")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /show all/i })).toBeNull();
+  });
+
   it("handles Inbox clear, remaining Tasks, and optional Recent activity", () => {
     const { rerender } = render(
       <DashboardOverview
