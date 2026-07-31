@@ -4,24 +4,23 @@ import { Input } from "@vita-os/ui/components/input";
 import { Label } from "@vita-os/ui/components/label";
 import { type SubmitEvent, useState } from "react";
 
-import { AuthCardShell } from "@/features/auth/auth-card-shell";
+import {
+  AuthCardShell,
+  type SocialProviderOption,
+} from "@/features/auth/auth-card-shell";
 
 interface SignInFormProps {
   error: string;
-  githubError: string;
-  githubLoading: boolean;
   loading: boolean;
+  providers: SocialProviderOption[];
   onSubmit: (value: { email: string; password: string }) => void;
-  onGitHub: () => void;
 }
 
 export function SignInForm({
   error,
-  githubError,
-  githubLoading,
   loading,
+  providers,
   onSubmit,
-  onGitHub,
 }: SignInFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,9 +34,7 @@ export function SignInForm({
     <AuthCardShell
       title="Sign In"
       description="Sign in to your account to continue"
-      githubError={githubError}
-      githubLoading={githubLoading}
-      onGitHub={onGitHub}
+      providers={providers}
       footer={
         <p className="text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}

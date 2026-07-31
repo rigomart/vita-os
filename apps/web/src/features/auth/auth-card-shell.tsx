@@ -10,24 +10,53 @@ import {
   CardTitle,
 } from "@vita-os/ui/components/card";
 
+import type { SocialProviderId } from "@/features/auth/use-social-sign-in";
+
+export interface SocialProviderOption {
+  id: SocialProviderId;
+  name: string;
+  error?: string;
+  loading?: boolean;
+  onClick: () => void;
+}
+
 interface AuthCardShellProps {
   title: string;
   description: string;
   children: ReactNode;
   footer: ReactNode;
-  githubError?: string;
-  githubLoading?: boolean;
-  onGitHub: () => void;
+  providers: SocialProviderOption[];
 }
+
+const providerIcons: Record<SocialProviderId, ReactNode> = {
+  github: (
+    <svg
+      className="mr-2 h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z" />
+    </svg>
+  ),
+  google: (
+    <svg
+      className="mr-2 h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M12.24 10.285v3.821h5.445c-.22 1.412-1.645 4.139-5.445 4.139-3.276 0-5.95-2.713-5.95-6.06s2.674-6.06 5.95-6.06c1.865 0 3.113.795 3.827 1.481l2.606-2.51C17 3.53 14.834 2.5 12.24 2.5 7.028 2.5 2.812 6.716 2.812 11.928c0 5.211 4.216 9.428 9.428 9.428 5.441 0 9.053-3.826 9.053-9.213 0-.619-.067-1.09-.148-1.559l-8.905-.299Z" />
+    </svg>
+  ),
+};
 
 export function AuthCardShell({
   title,
   description,
   children,
   footer,
-  githubError = "",
-  githubLoading = false,
-  onGitHub,
+  providers,
 }: AuthCardShellProps) {
   return (
     <div className="w-full max-w-md">
@@ -56,28 +85,31 @@ export function AuthCardShell({
               </span>
             </div>
           </div>
-          {githubError && (
-            <p role="alert" className="mb-4 text-sm text-destructive">
-              {githubError}
-            </p>
-          )}
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={onGitHub}
-            disabled={githubLoading}
-            aria-busy={githubLoading}
-          >
-            <svg
-              className="mr-2 h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z" />
-            </svg>
-            {githubLoading ? "Connecting to GitHub..." : "Continue with GitHub"}
-          </Button>
+          <div className="space-y-3">
+            {providers.map(
+              ({ id, name, error = "", loading = false, onClick }) => (
+                <div key={id}>
+                  {error && (
+                    <p role="alert" className="mb-4 text-sm text-destructive">
+                      {error}
+                    </p>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={onClick}
+                    disabled={loading}
+                    aria-busy={loading}
+                  >
+                    {providerIcons[id]}
+                    {loading
+                      ? `Connecting to ${name}...`
+                      : `Continue with ${name}`}
+                  </Button>
+                </div>
+              ),
+            )}
+          </div>
         </CardContent>
         <CardFooter className="justify-center">{footer}</CardFooter>
       </Card>
