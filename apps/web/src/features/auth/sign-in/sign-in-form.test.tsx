@@ -1,25 +1,45 @@
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import type { SocialProviderOption } from "@/features/auth/auth-card-shell";
+
 import { render, screen } from "@/test/render-with-providers";
 
 import { SignInForm } from "./sign-in-form";
+
+function buildProviders(
+  overrides: {
+    github?: Partial<SocialProviderOption>;
+    google?: Partial<SocialProviderOption>;
+  } = {},
+): SocialProviderOption[] {
+  return [
+    { id: "github", name: "GitHub", onClick: vi.fn(), ...overrides.github },
+    { id: "google", name: "Google", onClick: vi.fn(), ...overrides.google },
+  ];
+}
 
 describe("SignInForm", () => {
   it("submits the entered email and password", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
+    const providers = buildProviders();
 
     render(
       <SignInForm
         error=""
-        githubError=""
-        githubLoading={false}
         loading={false}
-        onGitHub={vi.fn()}
+        providers={providers}
         onSubmit={onSubmit}
       />,
     );
+
+    expect(
+      screen.getByRole("button", { name: "Continue with GitHub" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Continue with Google" }),
+    ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Email"), "rigo@example.com");
     await user.type(screen.getByLabelText("Password"), "password-123");
@@ -29,16 +49,27 @@ describe("SignInForm", () => {
       email: "rigo@example.com",
       password: "password-123",
     });
+
+    await user.click(
+      screen.getByRole("button", { name: "Continue with Google" }),
+    );
+    expect(providers[1]?.onClick).toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole("button", { name: "Continue with GitHub" }),
+    );
+    expect(providers[0]?.onClick).toHaveBeenCalled();
   });
 
-  it("shows email and GitHub pending states", () => {
+  it("shows email and social provider pending states", () => {
     render(
       <SignInForm
         error=""
-        githubError=""
-        githubLoading
         loading
-        onGitHub={vi.fn()}
+        providers={buildProviders({
+          github: { loading: true },
+          google: { loading: true },
+        })}
         onSubmit={vi.fn()}
       />,
     );
@@ -52,16 +83,23 @@ describe("SignInForm", () => {
     });
     expect(githubButton).toBeDisabled();
     expect(githubButton).toHaveAttribute("aria-busy", "true");
+
+    const googleButton = screen.getByRole("button", {
+      name: "Connecting to Google...",
+    });
+    expect(googleButton).toBeDisabled();
+    expect(googleButton).toHaveAttribute("aria-busy", "true");
   });
 
-  it("shows inline email and GitHub failures", () => {
+  it("shows inline email and social provider failures", () => {
     render(
       <SignInForm
         error="Invalid credentials"
-        githubError="GitHub is unavailable"
-        githubLoading={false}
         loading={false}
-        onGitHub={vi.fn()}
+        providers={buildProviders({
+          github: { error: "GitHub is unavailable" },
+          google: { error: "Google is unavailable" },
+        })}
         onSubmit={vi.fn()}
       />,
     );
@@ -71,6 +109,10 @@ describe("SignInForm", () => {
       "alert",
     );
     expect(screen.getByText("GitHub is unavailable")).toHaveAttribute(
+      "role",
+      "alert",
+    );
+    expect(screen.getByText("Google is unavailable")).toHaveAttribute(
       "role",
       "alert",
     );

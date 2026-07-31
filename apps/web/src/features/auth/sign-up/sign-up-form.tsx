@@ -4,24 +4,23 @@ import { Input } from "@vita-os/ui/components/input";
 import { Label } from "@vita-os/ui/components/label";
 import { type SubmitEvent, useState } from "react";
 
-import { AuthCardShell } from "@/features/auth/auth-card-shell";
+import {
+  AuthCardShell,
+  type SocialProviderOption,
+} from "@/features/auth/auth-card-shell";
 
 interface SignUpFormProps {
   error: string;
-  githubError: string;
-  githubLoading: boolean;
   loading: boolean;
+  providers: SocialProviderOption[];
   onSubmit: (value: { name: string; email: string; password: string }) => void;
-  onGitHub: () => void;
 }
 
 export function SignUpForm({
   error,
-  githubError,
-  githubLoading,
   loading,
+  providers,
   onSubmit,
-  onGitHub,
 }: SignUpFormProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -36,9 +35,7 @@ export function SignUpForm({
     <AuthCardShell
       title="Sign Up"
       description="Create a new account to get started"
-      githubError={githubError}
-      githubLoading={githubLoading}
-      onGitHub={onGitHub}
+      providers={providers}
       footer={
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
