@@ -30,11 +30,12 @@ export function AppTopBar({
     // Below the thread detail rail (z-30): the desktop rail pushes the chrome
     // aside, but the mobile drawer (and the rail mid-animation) overlay it.
     <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
-      <div className="flex h-12 items-center gap-3 px-4">
+      {/* Equal 1fr wings keep the search truly viewport-centered at md+. */}
+      <div className="flex h-12 items-center gap-3 px-4 md:grid md:grid-cols-[1fr_minmax(0,24rem)_1fr]">
         <Link
           to="/"
           aria-label="Vita OS home"
-          className="flex min-w-0 items-center gap-2 rounded-lg ring-ring outline-none transition-opacity hover:opacity-80 focus-visible:ring-2"
+          className="flex min-w-0 items-center gap-2 justify-self-start rounded-lg ring-ring outline-none transition-opacity hover:opacity-80 focus-visible:ring-2"
         >
           <img
             src="/vita-logo.svg"
@@ -55,14 +56,26 @@ export function AppTopBar({
         <button
           type="button"
           onClick={onOpenPalette}
-          className="mx-auto hidden h-8 w-full max-w-sm items-center gap-2 rounded-lg border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted md:flex"
+          className="hidden h-8 w-full items-center gap-2 rounded-lg border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted md:flex"
         >
           <Search className="size-4 shrink-0" />
           <span className="truncate">Jump anywhere…</span>
           <Kbd className="ml-auto">⌘K</Kbd>
         </button>
 
-        <div className="ml-auto flex items-center gap-2 md:ml-0">
+        <div className="ml-auto flex items-center gap-2 md:ml-0 md:justify-self-end">
+          {/* Compact icon-only below lg; full label + shortcut hint from lg up. */}
+          <Button
+            onClick={onNewTask}
+            aria-label="New task"
+            className="hidden w-9 px-0 md:inline-flex lg:w-auto lg:px-3"
+          >
+            <Plus />
+            <span className="hidden lg:inline">New task</span>
+            <Kbd className="hidden bg-primary-foreground/20 text-primary-foreground lg:inline-flex">
+              Q
+            </Kbd>
+          </Button>
           <Link
             to="/inbox"
             aria-label="Inbox"
@@ -78,18 +91,6 @@ export function AppTopBar({
               <InboxTaskCountBadge taskCount={taskCount} />
             </span>
           </Link>
-          {/* Compact icon-only below lg; full label + shortcut hint from lg up. */}
-          <Button
-            onClick={onNewTask}
-            aria-label="New task"
-            className="hidden w-9 px-0 md:inline-flex lg:w-auto lg:px-3"
-          >
-            <Plus />
-            <span className="hidden lg:inline">New task</span>
-            <Kbd className="hidden bg-primary-foreground/20 text-primary-foreground lg:inline-flex">
-              Q
-            </Kbd>
-          </Button>
           <UserMenu
             user={session?.user}
             theme={theme}
