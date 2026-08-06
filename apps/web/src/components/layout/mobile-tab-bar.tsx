@@ -25,7 +25,7 @@ export function MobileTabBar({
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-4 border-t bg-background/95 backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 grid h-16 grid-cols-4 border-t bg-background/95 backdrop-blur md:hidden"
     >
       <Link to="/" className={tabClassName(pathname === "/")}>
         <LayoutDashboard className="size-5" />

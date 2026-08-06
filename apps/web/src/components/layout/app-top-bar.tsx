@@ -27,7 +27,8 @@ export function AppTopBar({
   const { theme, setTheme } = useTheme();
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
+    // Below the thread detail rail (z-30) so slide-over panels cover the chrome.
+    <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
       <div className="flex h-12 items-center gap-3 px-4">
         <Link
           to="/"
