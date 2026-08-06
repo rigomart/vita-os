@@ -55,15 +55,15 @@ git commit -m "<type>(<scope>): <description>"
 
 ## Parallel work in worktrees
 
-Sessions and subagents can run in isolated git worktrees under `.claude/worktrees/`. Setup is already committed:
+Sessions and subagents can run in isolated git worktrees under `.claude/worktrees/`.
 
 - `.worktreeinclude` copies `apps/web/.env.local` into every new worktree.
-- `.claude/settings.json` symlinks the `node_modules` directories back to the main checkout, so no `bun install` is needed per worktree.
+- **Run `bun install` from the worktree root before dev/build/test.** Each worktree gets its own real `node_modules`; bun's global cache keeps repeat installs fast.
+- Do **not** symlink `node_modules` between worktrees or back to the main checkout. The root `node_modules` contains bun's workspace links (e.g. `@vita-os/ui -> packages/ui`), so a symlinked install silently resolves `@vita-os/*` imports to the main checkout's package source instead of the worktree's.
 
-Two rules when splitting work across worktrees:
+One rule when splitting work across worktrees:
 
 - **Serialize Convex changes.** There is a single Convex deployment. Never run two agents that both touch `apps/web/convex/schema.ts` or push functions — they overwrite each other's deployment. Parallelize UI and client-side logic only.
-- **One dependency change at a time.** `node_modules` is symlinked and therefore shared across worktrees, so a `bun add` in one worktree mutates all of them. Keep dependency changes to a single agent per batch.
 
 ## Agent skills
 
