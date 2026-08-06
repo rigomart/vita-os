@@ -4,6 +4,10 @@ import { Link } from "@tanstack/react-router";
 import { cn } from "@vita-os/ui/lib/utils";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
+import {
+  conditionIcons,
+  conditionTextClassName,
+} from "@/features/areas/condition-presentation";
 
 import type { DashboardArea } from "./dashboard-model";
 
@@ -15,11 +19,6 @@ const attentionLabels: Partial<Record<Condition, string>> = {
 const blockToneClassName: Partial<Record<Condition, string>> = {
   critical: "bg-condition-critical text-condition-critical-foreground",
   needs_attention: "bg-condition-attention/12 text-condition-attention",
-};
-
-const labelToneClassName: Partial<Record<Condition, string>> = {
-  critical: "text-condition-critical",
-  needs_attention: "text-condition-attention",
 };
 
 function byOrder(a: DashboardArea, b: DashboardArea) {
@@ -49,36 +48,40 @@ export function AreaConditionOverview({ areas }: { areas: DashboardArea[] }) {
 
       {prominent.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {prominent.map((area) => (
-            <Link
-              key={area.id}
-              to="/$areaSlug"
-              params={{ areaSlug: area.slug }}
-              className="flex items-center gap-3.5 rounded-xl bg-muted/40 py-3 pr-4 pl-3 transition-colors hover:bg-muted/70"
-            >
-              <span
-                className={cn(
-                  "flex size-11 shrink-0 items-center justify-center rounded-lg",
-                  blockToneClassName[area.condition],
-                )}
+          {prominent.map((area) => {
+            const StateIcon = conditionIcons[area.condition];
+            return (
+              <Link
+                key={area.id}
+                to="/$areaSlug"
+                params={{ areaSlug: area.slug }}
+                className="flex items-center gap-3.5 rounded-xl bg-muted/40 py-3 pr-4 pl-3 transition-colors hover:bg-muted/70"
               >
-                <AreaIcon icon={area.icon} className="size-5" />
-              </span>
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate text-base font-semibold">
-                  {area.name}
-                </span>
                 <span
                   className={cn(
-                    "text-xs font-medium",
-                    labelToneClassName[area.condition],
+                    "flex size-11 shrink-0 items-center justify-center rounded-lg",
+                    blockToneClassName[area.condition],
                   )}
                 >
-                  {attentionLabels[area.condition]}
+                  <AreaIcon icon={area.icon} className="size-5" />
                 </span>
-              </span>
-            </Link>
-          ))}
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-base font-semibold">
+                    {area.name}
+                  </span>
+                  <span
+                    className={cn(
+                      "flex items-center gap-1 text-xs font-medium",
+                      conditionTextClassName[area.condition],
+                    )}
+                  >
+                    <StateIcon aria-hidden className="size-3" />
+                    {attentionLabels[area.condition]}
+                  </span>
+                </span>
+              </Link>
+            );
+          })}
         </div>
       )}
 

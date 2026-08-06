@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   CONDITION_OPTIONS,
   CONDITIONS,
-  conditionColors,
   conditionLabels,
   DEFAULT_CONDITION,
   isCondition,
@@ -20,26 +19,13 @@ describe("Area Condition", () => {
 
   it("has display metadata for every Condition", () => {
     expect(CONDITION_OPTIONS).toEqual([
-      {
-        value: "healthy",
-        label: "Healthy",
-        color: "bg-condition-healthy",
-      },
-      {
-        value: "needs_attention",
-        label: "Needs attention",
-        color: "bg-condition-attention",
-      },
-      {
-        value: "critical",
-        label: "Critical",
-        color: "bg-condition-critical",
-      },
+      { value: "healthy", label: "Healthy" },
+      { value: "needs_attention", label: "Needs attention" },
+      { value: "critical", label: "Critical" },
     ]);
 
     for (const condition of CONDITIONS) {
       expect(conditionLabels[condition]).toBeTruthy();
-      expect(conditionColors[condition]).toMatch(/^bg-/);
     }
   });
 
