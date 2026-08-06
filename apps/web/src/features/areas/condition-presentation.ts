@@ -19,9 +19,9 @@ export const conditionTextClassName: Record<Condition, string> = {
 // the other two stay tinted so color marks state without shouting.
 export const conditionPillClassName: Record<Condition, string> = {
   healthy:
-    "border-condition-healthy/35 bg-condition-healthy/10 text-condition-healthy",
+    "border-condition-healthy/40 bg-condition-healthy/12 text-condition-healthy",
   needs_attention:
-    "border-condition-attention/35 bg-condition-attention/12 text-condition-attention",
+    "border-condition-attention/40 bg-condition-attention/12 text-condition-attention",
   critical:
     "border-condition-critical bg-condition-critical text-condition-critical-foreground",
 };
