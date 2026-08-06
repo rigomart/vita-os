@@ -78,13 +78,17 @@ export function AppTopBar({
               <InboxTaskCountBadge taskCount={taskCount} />
             </span>
           </Link>
+          {/* Compact icon-only below lg; full label + shortcut hint from lg up. */}
           <Button
             onClick={onNewTask}
-            size="icon"
             aria-label="New task"
-            className="hidden md:inline-flex"
+            className="hidden w-9 px-0 md:inline-flex lg:w-auto lg:px-3"
           >
             <Plus />
+            <span className="hidden lg:inline">New task</span>
+            <Kbd className="hidden bg-primary-foreground/20 text-primary-foreground lg:inline-flex">
+              Q
+            </Kbd>
           </Button>
           <UserMenu
             user={session?.user}
