@@ -280,6 +280,35 @@ describe("ThreadDetailView", () => {
     ).toBeTruthy();
   });
 
+  it("scrolls only the activity log, keeping header and attention fixed", async () => {
+    mocks.showDesktopPane = true;
+    renderThreadDetail();
+
+    const pane = await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
+
+    const composer = screen.getByRole("textbox", {
+      name: "Activity log note",
+    });
+    const scrollRegion = composer.closest(".overflow-y-auto");
+    expect(scrollRegion).not.toBeNull();
+    expect(pane.contains(scrollRegion)).toBe(true);
+
+    const header = screen.getByRole("banner", { name: "Thread header" });
+    const attention = screen.getByRole("region", { name: "Thread attention" });
+    expect(scrollRegion!.contains(header)).toBe(false);
+    expect(scrollRegion!.contains(attention)).toBe(false);
+    // The activity log heading stays visible while entries scroll beneath it.
+    expect(
+      scrollRegion!.contains(
+        screen.getByRole("heading", { name: "Activity log" }),
+      ),
+    ).toBe(false);
+    // No scroll container wraps the whole pane content anymore.
+    expect(header.closest(".overflow-y-auto")).toBeNull();
+  });
+
   it("keeps a Resolved Thread oriented without active attention controls", async () => {
     mocks.showDesktopPane = true;
     mocks.threadState = "resolved";

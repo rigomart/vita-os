@@ -85,8 +85,8 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
   };
 
   return (
-    <section className="flex flex-col gap-3.5">
-      <div className="flex items-center gap-1">
+    <section className="flex min-h-0 flex-1 flex-col gap-3.5">
+      <div className="flex shrink-0 items-center gap-1">
         <h2 className="text-[11px] font-medium text-muted-foreground">
           Activity log
         </h2>
@@ -100,70 +100,76 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
         )}
       </div>
 
-      <div className="relative">
-        {/* The continuous rail: fades in at the top (the "now" origin) and
+      {/* Only this region scrolls; the pane's header and attention sections
+          stay fixed above it. The rail's `relative` box must live inside the
+          scroll container so the absolute rail spans the full entry list
+          instead of being clipped to the visible height. */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="relative pb-6">
+          {/* The continuous rail: fades in at the top (the "now" origin) and
             fades out at the bottom past the oldest entry. */}
-        <div
-          aria-hidden
-          className={cn(
-            "absolute top-1 bottom-0 w-px",
-            RAIL_LEFT,
-            "bg-gradient-to-b from-transparent via-border to-transparent",
-          )}
-        />
-
-        {/* Composer — the "now" node at the rail's origin. */}
-        <div className={cn("relative pb-5", ENTRY_PAD)}>
-          <span
+          <div
             aria-hidden
             className={cn(
-              "absolute top-[15px] size-2.5 -translate-x-1/2 rounded-full",
-              NODE_LEFT,
-              "border border-(--brand-gold) bg-background",
+              "absolute top-1 bottom-0 w-px",
+              RAIL_LEFT,
+              "bg-gradient-to-b from-transparent via-border to-transparent",
             )}
-          >
-            <span className="absolute inset-[3px] rounded-full bg-(--brand-gold)" />
-          </span>
-          <form onSubmit={handleAddNote}>
-            <FieldGroup className="gap-0">
-              <Field data-disabled={isPending || undefined}>
-                <FieldLabel htmlFor="activity-log-note" className="sr-only">
-                  Activity log note
-                </FieldLabel>
-                <InputGroup>
-                  <InputGroupTextarea
-                    id="activity-log-note"
-                    value={noteText}
-                    onChange={(event) => setNoteText(event.target.value)}
-                    disabled={isPending}
-                    aria-label="Activity log note"
-                    placeholder="Add a note about what happened…"
-                    className="min-h-10 pr-10 py-2 text-[13px]"
-                    rows={1}
-                    onKeyDown={handleNoteKeyDown}
-                  />
-                  <InputGroupAddon
-                    align="block-end"
-                    className="absolute right-2 bottom-2 w-auto p-0"
-                  >
-                    <InputGroupButton
-                      type="submit"
-                      size="icon-xs"
-                      variant="secondary"
-                      disabled={!noteText.trim() || isPending}
-                      aria-label="Add note"
-                      aria-busy={isPending}
-                    >
-                      <ArrowUp data-icon="inline-start" />
-                    </InputGroupButton>
-                  </InputGroupAddon>
-                </InputGroup>
-              </Field>
-            </FieldGroup>
-          </form>
-        </div>
+          />
 
-        <ActivityLogTimeline logs={logs} />
+          {/* Composer — the "now" node at the rail's origin. */}
+          <div className={cn("relative pb-5", ENTRY_PAD)}>
+            <span
+              aria-hidden
+              className={cn(
+                "absolute top-[15px] size-2.5 -translate-x-1/2 rounded-full",
+                NODE_LEFT,
+                "border border-(--brand-gold) bg-background",
+              )}
+            >
+              <span className="absolute inset-[3px] rounded-full bg-(--brand-gold)" />
+            </span>
+            <form onSubmit={handleAddNote}>
+              <FieldGroup className="gap-0">
+                <Field data-disabled={isPending || undefined}>
+                  <FieldLabel htmlFor="activity-log-note" className="sr-only">
+                    Activity log note
+                  </FieldLabel>
+                  <InputGroup>
+                    <InputGroupTextarea
+                      id="activity-log-note"
+                      value={noteText}
+                      onChange={(event) => setNoteText(event.target.value)}
+                      disabled={isPending}
+                      aria-label="Activity log note"
+                      placeholder="Add a note about what happened…"
+                      className="min-h-10 pr-10 py-2 text-[13px]"
+                      rows={1}
+                      onKeyDown={handleNoteKeyDown}
+                    />
+                    <InputGroupAddon
+                      align="block-end"
+                      className="absolute right-2 bottom-2 w-auto p-0"
+                    >
+                      <InputGroupButton
+                        type="submit"
+                        size="icon-xs"
+                        variant="secondary"
+                        disabled={!noteText.trim() || isPending}
+                        aria-label="Add note"
+                        aria-busy={isPending}
+                      >
+                        <ArrowUp data-icon="inline-start" />
+                      </InputGroupButton>
+                    </InputGroupAddon>
+                  </InputGroup>
+                </Field>
+              </FieldGroup>
+            </form>
+          </div>
+
+          <ActivityLogTimeline logs={logs} />
+        </div>
       </div>
     </section>
   );
