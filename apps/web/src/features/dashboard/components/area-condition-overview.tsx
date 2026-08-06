@@ -17,8 +17,10 @@ const attentionLabels: Partial<Record<Condition, string>> = {
 };
 
 const blockToneClassName: Partial<Record<Condition, string>> = {
-  critical: "bg-condition-critical text-condition-critical-foreground",
-  needs_attention: "bg-condition-attention/15 text-condition-attention",
+  critical:
+    "bg-condition-critical-fill text-condition-critical-fill-foreground",
+  needs_attention:
+    "bg-condition-attention-fill text-condition-attention-fill-foreground",
 };
 
 function byOrder(a: DashboardArea, b: DashboardArea) {

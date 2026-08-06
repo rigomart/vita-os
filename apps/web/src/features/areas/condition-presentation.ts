@@ -15,13 +15,13 @@ export const conditionTextClassName: Record<Condition, string> = {
   critical: "text-condition-critical",
 };
 
-// Badge/trigger treatment: critical is a solid fill so it cannot be missed;
-// the other two stay tinted so color marks state without shouting.
+// Badge/trigger treatment: solid vivid fills — on the app's warm cream
+// surfaces, low-alpha tints disappear into the background.
 export const conditionPillClassName: Record<Condition, string> = {
   healthy:
-    "border-condition-healthy/40 bg-condition-healthy/12 text-condition-healthy",
+    "border-transparent bg-condition-healthy-fill text-condition-healthy-fill-foreground",
   needs_attention:
-    "border-condition-attention/40 bg-condition-attention/12 text-condition-attention",
+    "border-transparent bg-condition-attention-fill text-condition-attention-fill-foreground",
   critical:
-    "border-condition-critical bg-condition-critical text-condition-critical-foreground",
+    "border-transparent bg-condition-critical-fill text-condition-critical-fill-foreground",
 };

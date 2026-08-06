@@ -13,6 +13,16 @@ Values (light / dark):
 - `--condition-attention`: `oklch(0.55 0.135 56)` / `oklch(0.78 0.15 56)`
 - `--condition-critical`: `oklch(0.52 0.19 25)` / `oklch(0.7 0.17 25)`
 
+Those base tokens are text-safe (≥4.5:1 on their surfaces) and therefore
+mid-dark in light mode — which means they can never look vivid, and low-alpha
+tints of them disappear into the app's warm cream surfaces. Signal *surfaces*
+instead use a second set of vivid, theme-invariant fill tokens paired with a
+fixed foreground:
+
+- `--condition-healthy-fill`: `oklch(0.72 0.19 148)`, foreground `--brand-ink`
+- `--condition-attention-fill`: `oklch(0.74 0.16 65)`, foreground `--brand-ink`
+- `--condition-critical-fill`: `oklch(0.57 0.21 27)`, foreground `--brand-cream`
+
 Every text usage clears 4.5:1 on its surface, every `-foreground` clears 4.5:1 on its solid fill, and swatch dots clear 3:1 as non-text marks. All values stay inside the sRGB gamut. Dark-mode attention sits brighter than its siblings (0.78 vs 0.70–0.72) because it renders as text over its own 12% tint, which caps achievable contrast.
 
 ## Considered Options
@@ -22,7 +32,7 @@ Every text usage clears 4.5:1 on its surface, every `-foreground` clears 4.5:1 o
 
 ## Consequences
 
-- Tinted surfaces follow a two-step recipe: `bg-condition-*/12` wherever small text sits on the tint (condition pills, the date rail), because 12% is the highest alpha at which condition text on its own tint clears 4.5:1 in light mode; `bg-condition-*/15` for icon-only surfaces (the dashboard attention tile), which answer to the 3:1 non-text bar and can afford the richer fill.
-- Solid condition or destructive fills always pair with their `-foreground` token (`bg-condition-critical text-condition-critical-foreground`); hardcoded `text-white` on status fills is no longer used.
+- Division of labor: `-fill` tokens color signal surfaces (dashboard tiles, condition pills, the overdue date chip) and always pair with their `-fill-foreground`; the base `condition-*` tokens color text and icons sitting directly on app surfaces (state labels, dropdown option icons). Low-alpha condition tints are reserved for hover/affordance states, not primary signals.
+- Solid fills never hardcode a foreground (`text-white` is gone); every fill token ships with its foreground pair, verified ≥4.5:1.
 - Lateness still uses `condition-attention` rather than `destructive`, per ADR 0005.
 - Condition is never signaled by color alone: `apps/web/src/features/areas/condition-presentation.ts` pairs each condition with an icon (`CircleCheck` / `TriangleAlert` / `OctagonAlert`) and provides the pill treatment (solid fill for critical, tint for the others) used by the area header's condition select. That file is the home for condition Tailwind strings; `convex/lib/condition.ts` keeps only the domain vocabulary and labels.

@@ -12,7 +12,8 @@ import { AreaTag, RowCheckbox, RowShell, WhenPopover } from "./row-parts";
 
 const railToneClassName = {
   due: "bg-surface-3 text-brand-accent-foreground",
-  overdue: "bg-condition-attention/12 text-condition-attention",
+  overdue:
+    "bg-condition-attention-fill text-condition-attention-fill-foreground",
   scheduled: "text-muted-foreground",
   unscheduled: "text-muted-foreground/40",
 } as const;
@@ -131,7 +132,6 @@ function StateRail({ now, row }: { now: number; row: AttentionRowModel }) {
             className={cn(
               "mt-0.5 text-base leading-none font-semibold tabular-nums",
               tone === "scheduled" && "text-foreground",
-              tone === "overdue" && "text-condition-attention",
             )}
           >
             {format(date, "d")}

@@ -109,8 +109,12 @@ describe("AreaThreads", () => {
     expect(screen.getAllByText("May")).toHaveLength(2);
     expect(screen.getByText("19")).toBeVisible();
     expect(screen.getByText("21")).toBeVisible();
-    expect(screen.getByText("19")).toHaveClass("text-condition-attention");
-    expect(screen.getByText("21")).not.toHaveClass("text-condition-attention");
+    expect(screen.getByText("19").closest("time")?.parentElement).toHaveClass(
+      "bg-condition-attention-fill",
+    );
+    expect(
+      screen.getByText("21").closest("time")?.parentElement,
+    ).not.toHaveClass("bg-condition-attention-fill");
     expect(screen.getByText("Scan them")).toBeVisible();
     expect(screen.queryByText("No next move")).not.toBeInTheDocument();
   });
