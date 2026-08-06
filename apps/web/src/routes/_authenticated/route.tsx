@@ -1,11 +1,9 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
-import { SidebarInset, SidebarProvider } from "@vita-os/ui/components/sidebar";
 import { useConvexAuth } from "convex/react";
 
 import { AuthVerifyingLoader } from "@/components/auth/auth-verifying-loader";
 import { RouteErrorFallback } from "@/components/error-boundary";
-import { AppHeader } from "@/components/layout/app-header";
-import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppShell } from "@/components/layout/app-shell";
 
 export const Route = createFileRoute("/_authenticated")({
   errorComponent: RouteErrorFallback,
@@ -24,14 +22,8 @@ function AuthenticatedLayout() {
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="overflow-x-hidden">
-        <AppHeader />
-        <main className="w-full px-4 pt-3 pb-8">
-          <Outlet />
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <AppShell>
+      <Outlet />
+    </AppShell>
   );
 }

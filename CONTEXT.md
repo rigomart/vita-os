@@ -93,7 +93,7 @@ _Avoid_: Task list, project board, backlog.
 - **Done Tasks** remain available as collapsed **Inbox** history in the MVP.
 - The **Inbox** shows all visible **Tasks**; **When** affects emphasis, not whether the **Task** exists in the Inbox.
 - The **Inbox** orders **Open Tasks** in one flat run: **Past due**, **Today**, **Coming up**, then **No date**, then collapsed **Done Tasks**. Past and future **Tasks** follow **When** order, Today and No date are newest-first, and Done Tasks are most-recently-completed first.
-- Both the **Inbox** header and sidebar badge count every **Open Task**, whether or not it has a **When**.
+- Both the **Inbox** header and the navigation badge (top bar on desktop, tab bar on mobile) count every **Open Task**, whether or not it has a **When**.
 
 ## Thread Attention
 
