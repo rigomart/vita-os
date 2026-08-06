@@ -1,7 +1,6 @@
 import type { Doc } from "@convex/_generated/dataModel";
 
 import { api } from "@convex/_generated/api";
-import { useNavigate } from "@tanstack/react-router";
 import { Badge } from "@vita-os/ui/components/badge";
 import { Button } from "@vita-os/ui/components/button";
 import {
@@ -16,6 +15,7 @@ import {
 } from "@vita-os/ui/components/drawer";
 import { Separator } from "@vita-os/ui/components/separator";
 import { X } from "lucide-react";
+import { useMemo } from "react";
 
 import { FollowUpSection } from "@/features/threads/components/follow-up-section";
 import { NextMoveSection } from "@/features/threads/components/next-move-section";
@@ -29,61 +29,81 @@ import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useStableQuery } from "@/hooks/use-stable-query";
 import { useThreadPaneViewport } from "@/hooks/use-thread-pane-viewport";
 
+import type { ThreadLocation } from "./thread-pane-nav";
+
 import { ThreadNotFound } from "./thread-not-found";
+import { ThreadPaneNavContext } from "./thread-pane-nav";
 import { useDeferredRouteClose } from "./use-deferred-route-close";
 
 interface ThreadDetailViewProps {
-  areaSlug: string;
   threadSlug: string;
+  /**
+   * Present when the pane was opened via the /$areaSlug/$threadSlug deep
+   * link; the thread is then validated to belong to this area. Absent when
+   * opened via the `?thread` search param — the area is derived from the
+   * thread itself.
+   */
+  areaSlug?: string;
+  onClose: () => void;
+  onThreadLocationChange: (location: ThreadLocation) => void;
 }
 
 export function ThreadDetailView({
-  areaSlug,
   threadSlug,
+  areaSlug,
+  onClose,
+  onThreadLocationChange,
 }: ThreadDetailViewProps) {
   const showDesktopPane = useThreadPaneViewport();
-  const navigate = useNavigate();
-  const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
   const thread = useStableQuery(api.threads.getBySlug, { slug: threadSlug });
+  const areaBySlug = useStableQuery(
+    api.areas.getBySlug,
+    areaSlug !== undefined ? { slug: areaSlug } : "skip",
+  );
+  const areaById = useStableQuery(
+    api.areas.get,
+    areaSlug === undefined && thread ? { id: thread.areaId } : "skip",
+  );
+  const area = areaSlug !== undefined ? areaBySlug : areaById;
 
   useDocumentTitle(thread?.title ?? "Thread");
 
-  const leaveThreadRoute = () => {
-    navigate({
-      to: "/$areaSlug",
-      params: { areaSlug },
-      replace: true,
-    });
-  };
+  const paneNav = useMemo(
+    () => ({ onThreadLocationChange }),
+    [onThreadLocationChange],
+  );
 
   const title = thread?.title ?? "Thread detail";
+  const isLoading =
+    thread === undefined || (thread !== null && area === undefined);
   const hasMatchingThread =
-    area !== undefined &&
-    area !== null &&
-    thread !== undefined &&
+    !isLoading &&
     thread !== null &&
-    thread.areaId === area._id;
-  const content =
-    area === undefined || thread === undefined ? (
-      <ThreadDetailSkeleton />
-    ) : area === null || thread === null || thread.areaId !== area._id ? (
-      <ThreadNotFound areaSlug={areaSlug} />
-    ) : (
+    area !== null &&
+    area !== undefined &&
+    (areaSlug === undefined || thread.areaId === area._id);
+  const content = isLoading ? (
+    <ThreadDetailSkeleton />
+  ) : !hasMatchingThread ? (
+    <ThreadNotFound areaSlug={areaSlug} onClose={onClose} />
+  ) : (
+    <ThreadPaneNavContext.Provider value={paneNav}>
       <ThreadDetailContent
-        areaSlug={areaSlug}
+        areaSlug={area.slug ?? area._id}
         threadSlug={threadSlug}
         thread={thread}
       />
-    );
+    </ThreadPaneNavContext.Provider>
+  );
 
   if (!showDesktopPane) {
     return (
       <ThreadDetailDrawer
-        key={`${areaSlug}/${threadSlug}`}
+        key={threadSlug}
         title={title}
         threadSlug={threadSlug}
         showActions={hasMatchingThread}
-        onClosed={leaveThreadRoute}
+        onClosed={onClose}
       >
         {content}
       </ThreadDetailDrawer>
@@ -95,7 +115,7 @@ export function ThreadDetailView({
       title={title}
       threadSlug={threadSlug}
       showActions={hasMatchingThread}
-      onClosed={leaveThreadRoute}
+      onClosed={onClose}
     >
       {content}
     </ThreadDetailPane>

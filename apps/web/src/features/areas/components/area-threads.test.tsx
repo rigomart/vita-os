@@ -40,7 +40,6 @@ describe("AreaThreads", () => {
   it("renders a flat thread list with header actions", () => {
     render(
       <AreaThreads
-        areaSlug="admin"
         threads={[
           thread("call-clinic", "Call clinic", { followUp: tomorrow }),
           thread("renew-passport", "Renew passport"),
@@ -64,7 +63,6 @@ describe("AreaThreads", () => {
   it("shows a loading skeleton while Threads are still loading", () => {
     render(
       <AreaThreads
-        areaSlug="admin"
         threads={[]}
         currentDate={today}
         isLoading
@@ -82,7 +80,6 @@ describe("AreaThreads", () => {
   it("shows an empty state when there are no Threads", () => {
     render(
       <AreaThreads
-        areaSlug="admin"
         threads={[]}
         currentDate={today}
         onCreateThread={vi.fn()}
@@ -98,7 +95,6 @@ describe("AreaThreads", () => {
   it("shows each scheduled date once and hides empty Next Move lines", () => {
     render(
       <AreaThreads
-        areaSlug="admin"
         threads={[
           thread("call-clinic", "Call clinic", { followUp: yesterday }),
           thread("renew-passport", "Renew passport", { followUp: tomorrow }),
@@ -122,7 +118,6 @@ describe("AreaThreads", () => {
   it("orders due Follow-ups before Next Move Threads and plain Open Threads", () => {
     render(
       <AreaThreads
-        areaSlug="admin"
         threads={[
           thread("future", "Future Follow-up", { followUp: tomorrow }),
           thread("today", "Today Follow-up", { followUp: today }),

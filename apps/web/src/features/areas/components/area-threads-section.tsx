@@ -30,7 +30,6 @@ export function AreaThreadsSection({
 
   return (
     <AreaThreads
-      areaSlug={areaSlug}
       threads={threads ?? []}
       currentDate={Date.now()}
       isLoading={threads === undefined}

@@ -11,9 +11,10 @@ import { DashboardOverview } from "./dashboard-overview";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     to,
+    search: _search,
     children,
     ...props
-  }: ComponentPropsWithoutRef<"a"> & { to: string }) => (
+  }: ComponentPropsWithoutRef<"a"> & { to: string; search?: unknown }) => (
     <a href={to} {...props}>
       {children}
     </a>

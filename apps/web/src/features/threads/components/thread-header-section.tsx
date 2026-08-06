@@ -1,6 +1,6 @@
 import { api } from "@convex/_generated/api";
-import { useNavigate } from "@tanstack/react-router";
 
+import { useThreadPaneNav } from "@/features/threads/thread-detail/thread-pane-nav";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 import { useStableQuery } from "@/hooks/use-stable-query";
 
@@ -18,18 +18,14 @@ export function ThreadHeaderSection({
   const thread = useStableQuery(api.threads.getBySlug, {
     slug: threadSlug,
   });
-  const navigate = useNavigate();
+  const { onThreadLocationChange } = useThreadPaneNav();
   const updateThread = useUpdateThread(threadSlug);
 
   const handleTitleSave = async (title: string) => {
     if (!title || !thread) return;
     const result = await updateThread({ id: thread._id, title });
-    if (result?.slug) {
-      navigate({
-        to: "/$areaSlug/$threadSlug",
-        params: { areaSlug, threadSlug: result.slug },
-        replace: true,
-      });
+    if (result?.slug && result.slug !== threadSlug) {
+      onThreadLocationChange({ areaSlug, threadSlug: result.slug });
     }
   };
 

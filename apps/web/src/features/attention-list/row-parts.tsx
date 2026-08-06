@@ -38,14 +38,15 @@ export function RowShell({
   className?: string;
   row: AttentionRowModel;
 }) {
-  if (!row.linkTo) {
+  const linkTo = row.linkTo;
+  if (!linkTo) {
     return <div className={className}>{children}</div>;
   }
 
   return (
     <Link
-      to="/$areaSlug/$threadSlug"
-      params={row.linkTo}
+      to="."
+      search={(prev) => ({ ...prev, thread: linkTo.threadSlug })}
       className={cn("outline-none", className)}
     >
       {children}

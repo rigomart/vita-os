@@ -1,11 +1,11 @@
 import type { Id } from "@convex/_generated/dataModel";
 
 import { api } from "@convex/_generated/api";
-import { useNavigate } from "@tanstack/react-router";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 
 import { ThreadAreaSection } from "@/features/threads/components/thread-area-section";
+import { useThreadPaneNav } from "@/features/threads/thread-detail/thread-pane-nav";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 import { useStableQuery } from "@/hooks/use-stable-query";
 
@@ -22,7 +22,7 @@ export function ThreadAreaSectionSection({
   const thread = useStableQuery(api.threads.getBySlug, {
     slug: threadSlug,
   });
-  const navigate = useNavigate();
+  const { onThreadLocationChange } = useThreadPaneNav();
   const updateThread = useUpdateThread(threadSlug);
 
   const { run: moveThread, isPending: isMoving } = useGuardedAsyncAction(
@@ -45,11 +45,7 @@ export function ThreadAreaSectionSection({
 
       const nextAreaSlug = result.value.slug ?? result.value._id;
       if (nextAreaSlug !== areaSlug) {
-        navigate({
-          to: "/$areaSlug/$threadSlug",
-          params: { areaSlug: nextAreaSlug, threadSlug },
-          replace: true,
-        });
+        onThreadLocationChange({ areaSlug: nextAreaSlug, threadSlug });
       }
     });
   };

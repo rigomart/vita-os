@@ -112,34 +112,36 @@ export function CommandPalette({
         <CommandGroup heading="Threads">
           {(threads ?? []).map((thread) => {
             const area = areaById.get(thread.areaId);
-            if (!area) return null;
+            const meta = [
+              area?.name,
+              thread.state === "resolved" ? "resolved" : undefined,
+            ]
+              .filter(Boolean)
+              .join(" · ");
             return (
               <CommandItem
                 key={thread._id}
                 value={`thread-${thread._id}`}
-                keywords={[thread.title, area.name]}
+                keywords={area ? [thread.title, area.name] : [thread.title]}
                 onSelect={() =>
                   run(() =>
                     navigate({
-                      to: "/$areaSlug/$threadSlug",
-                      params: {
-                        areaSlug: area.slug ?? area._id,
-                        threadSlug: thread.slug ?? thread._id,
-                      },
+                      to: ".",
+                      search: (prev) => ({
+                        ...prev,
+                        thread: thread.slug ?? thread._id,
+                      }),
                     }),
                   )
                 }
               >
                 <MessageSquare />
                 <span className="min-w-0 flex-1 truncate">{thread.title}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {[
-                    area.name,
-                    thread.state === "resolved" ? "resolved" : undefined,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
+                {meta && (
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {meta}
+                  </span>
+                )}
               </CommandItem>
             );
           })}

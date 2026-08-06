@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
 
 import { api } from "@convex/_generated/api";
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import {
+  useLocation,
+  useMatch,
+  useNavigate,
+  useSearch,
+} from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useState } from "react";
 
@@ -11,6 +16,7 @@ import { useCreateDialogs } from "@/features/navigation/use-create-dialogs";
 import { useGlobalNewTaskShortcut } from "@/features/navigation/use-global-new-task-shortcut";
 import { NewTaskDialog } from "@/features/tasks/new-task/new-task-dialog";
 import { useCreateTask } from "@/features/tasks/use-create-task";
+import { ThreadDetailView } from "@/features/threads/thread-detail/thread-detail-view";
 import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread-dialog";
 
 import { AppTopBar } from "./app-top-bar";
@@ -30,6 +36,68 @@ export function AppShell({ children }: { children: ReactNode }) {
   useGlobalNewTaskShortcut(dialogs.openNewTask);
   useCommandPaletteShortcut(() => setPaletteOpen(true));
 
+  // The thread pane opens from two sources: the global `?thread=<slug>`
+  // search param (any page, in place) or the /$areaSlug/$threadSlug deep
+  // link. When both are present, the search param wins.
+  const { thread: searchThreadSlug } = useSearch({ from: "/_authenticated" });
+  const threadRouteMatch = useMatch({
+    from: "/_authenticated/$areaSlug/$threadSlug",
+    shouldThrow: false,
+  });
+  const routeAreaSlug = threadRouteMatch?.params.areaSlug;
+  const isSearchSource = searchThreadSlug !== undefined;
+  const openThreadSlug =
+    searchThreadSlug ?? threadRouteMatch?.params.threadSlug;
+
+  const openThreadInPlace = (slug: string) => {
+    navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, thread: slug }),
+    });
+  };
+
+  // Close must leave the thread route when one is matched underneath, even if
+  // the pane was showing a search-param thread on top of it — stripping only
+  // the param would let the route match reopen the pane with the stale thread.
+  const closeThreadPane = () => {
+    if (routeAreaSlug !== undefined) {
+      navigate({
+        to: "/$areaSlug",
+        params: { areaSlug: routeAreaSlug },
+        search: (prev) => ({ ...prev, thread: undefined }),
+        replace: true,
+      });
+    } else {
+      navigate({
+        to: ".",
+        search: (prev) => ({ ...prev, thread: undefined }),
+        replace: true,
+      });
+    }
+  };
+
+  const handleThreadLocationChange = ({
+    areaSlug,
+    threadSlug,
+  }: {
+    areaSlug: string;
+    threadSlug: string;
+  }) => {
+    if (isSearchSource) {
+      navigate({
+        to: ".",
+        search: (prev) => ({ ...prev, thread: threadSlug }),
+        replace: true,
+      });
+    } else {
+      navigate({
+        to: "/$areaSlug/$threadSlug",
+        params: { areaSlug, threadSlug },
+        replace: true,
+      });
+    }
+  };
+
   return (
     <div className="flex min-h-svh flex-col">
       <AppTopBar
@@ -38,7 +106,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         onNewTask={dialogs.openNewTask}
         onOpenPalette={() => setPaletteOpen(true)}
       />
-      <main className="w-full flex-1 px-4 pt-3 pb-24 md:pb-8">{children}</main>
+      <div className="flex min-w-0 flex-1">
+        <main className="w-full min-w-0 flex-1 px-4 pt-3 pb-24 md:pb-8">
+          {children}
+        </main>
+        {openThreadSlug !== undefined && (
+          <ThreadDetailView
+            threadSlug={openThreadSlug}
+            areaSlug={isSearchSource ? undefined : routeAreaSlug}
+            onClose={closeThreadPane}
+            onThreadLocationChange={handleThreadLocationChange}
+          />
+        )}
+      </div>
       <MobileTabBar
         taskCount={taskCount}
         onNewTask={dialogs.openNewTask}
@@ -60,14 +140,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         onOpenChange={dialogs.setShowCreateThread}
         areas={areas ?? []}
         defaultAreaId={dialogs.createForAreaId}
-        onCreated={({ slug, areaId }) => {
-          const area = (areas ?? []).find((a) => a._id === areaId);
-          if (area) {
-            navigate({
-              to: "/$areaSlug/$threadSlug",
-              params: { areaSlug: area.slug ?? area._id, threadSlug: slug },
-            });
-          }
+        onCreated={({ slug }) => {
+          openThreadInPlace(slug);
         }}
       />
       <NewTaskDialog

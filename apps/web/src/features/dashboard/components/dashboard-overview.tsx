@@ -214,7 +214,7 @@ function DashboardThreadList({
           detailKind: thread.nextMove ? "next-move" : "summary",
           area: { icon: area.icon, name: area.name },
           when: thread.followUp,
-          linkTo: { areaSlug: area.slug, threadSlug: thread.slug },
+          linkTo: { threadSlug: thread.slug },
         };
 
         return <AttentionRow key={thread.id} now={currentDate} row={row} />;
@@ -316,8 +316,8 @@ function RecentActivity({
           return (
             <Link
               key={entry.id}
-              to="/$areaSlug/$threadSlug"
-              params={{ areaSlug: area.slug, threadSlug: thread.slug }}
+              to="."
+              search={(prev) => ({ ...prev, thread: thread.slug })}
               className="block rounded-md px-1 py-2 transition-colors hover:bg-muted/50"
             >
               <div className="flex items-center gap-1.5">
@@ -431,8 +431,8 @@ function PlanThreadLink({
 
   return (
     <Link
-      to="/$areaSlug/$threadSlug"
-      params={{ areaSlug: area.slug, threadSlug: thread.slug }}
+      to="."
+      search={(prev) => ({ ...prev, thread: thread.slug })}
       className="inline-flex h-7 max-w-full items-center justify-center gap-1.5 rounded-md border bg-background px-2.5 text-xs font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground"
     >
       <MessagesSquare className="size-3.5 shrink-0" />
