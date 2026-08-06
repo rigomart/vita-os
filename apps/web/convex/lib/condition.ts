@@ -10,16 +10,9 @@ export const conditionLabels: Record<Condition, string> = {
   critical: "Critical",
 };
 
-export const conditionColors: Record<Condition, string> = {
-  healthy: "bg-condition-healthy",
-  needs_attention: "bg-condition-attention",
-  critical: "bg-condition-critical",
-};
-
 export const CONDITION_OPTIONS = CONDITIONS.map((value) => ({
   value,
   label: conditionLabels[value],
-  color: conditionColors[value],
 }));
 
 export function isCondition(value: unknown): value is Condition {

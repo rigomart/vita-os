@@ -38,6 +38,11 @@ import { useEffect, useState } from "react";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
 import { AreaIconPicker } from "@/features/areas/components/area-icon-picker";
+import {
+  conditionIcons,
+  conditionTextClassName,
+} from "@/features/areas/condition-presentation";
+import { cn } from "@/lib/utils";
 
 import type { AreaFormValue } from "./types";
 
@@ -47,6 +52,16 @@ interface AreaFormDialogProps {
   onOpenChange: (open: boolean) => void;
   initialValue?: AreaFormValue;
   onSubmit: (value: AreaFormValue) => Promise<void> | void;
+}
+
+function SelectedConditionIcon({ condition }: { condition: Condition }) {
+  const Icon = conditionIcons[condition];
+  return (
+    <Icon
+      aria-hidden
+      className={cn("size-4", conditionTextClassName[condition])}
+    />
+  );
 }
 
 function getAreaSaveError(error: unknown) {
@@ -182,20 +197,28 @@ export function AreaFormDialog({
               }}
             >
               <SelectTrigger id="area-condition">
+                <SelectedConditionIcon condition={condition} />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {CONDITION_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <span className="flex items-center gap-2">
-                        <span
-                          className={`h-2 w-2 rounded-full ${option.color}`}
-                        />
-                        {option.label}
-                      </span>
-                    </SelectItem>
-                  ))}
+                  {CONDITION_OPTIONS.map((option) => {
+                    const OptionIcon = conditionIcons[option.value];
+                    return (
+                      <SelectItem key={option.value} value={option.value}>
+                        <span className="flex items-center gap-2">
+                          <OptionIcon
+                            aria-hidden
+                            className={cn(
+                              "size-4",
+                              conditionTextClassName[option.value],
+                            )}
+                          />
+                          {option.label}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectGroup>
               </SelectContent>
             </Select>

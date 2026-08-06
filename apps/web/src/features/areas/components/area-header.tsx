@@ -41,10 +41,26 @@ import { useState } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { BrandHexagon } from "@/components/ui/brand-hexagon";
+import {
+  conditionIcons,
+  conditionPillClassName,
+  conditionTextClassName,
+} from "@/features/areas/condition-presentation";
 import { cn } from "@/lib/utils";
 
 import { AreaIcon } from "./area-icon";
 import { AreaIconPicker } from "./area-icon-picker";
+
+function ConditionStateIcon({
+  condition,
+  className,
+}: {
+  condition: Doc<"areas">["condition"];
+  className?: string;
+}) {
+  const Icon = conditionIcons[condition];
+  return <Icon aria-hidden className={className} />;
+}
 
 interface AreaHeaderProps {
   area: Doc<"areas">;
@@ -128,16 +144,15 @@ export function AreaHeader({
               }}
             >
               <SelectTrigger
-                className="ml-1 h-7 w-auto gap-2 border border-brand-gold-strong/25 bg-brand-gold/12 px-3 text-xs"
+                className={cn(
+                  "ml-1 h-7 w-auto gap-1.5 border px-2.5 text-xs font-medium [&_svg]:text-current",
+                  conditionPillClassName[area.condition],
+                )}
                 aria-label="Area condition"
               >
-                <span
-                  className={cn(
-                    "size-1.5 rounded-full",
-                    CONDITION_OPTIONS.find(
-                      (option) => option.value === area.condition,
-                    )?.color,
-                  )}
+                <ConditionStateIcon
+                  condition={area.condition}
+                  className="size-3.5"
                 />
                 <SelectValue />
               </SelectTrigger>
@@ -146,8 +161,12 @@ export function AreaHeader({
                   {CONDITION_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       <span className="flex items-center gap-2">
-                        <span
-                          className={cn("h-2 w-2 rounded-full", option.color)}
+                        <ConditionStateIcon
+                          condition={option.value}
+                          className={cn(
+                            "size-4",
+                            conditionTextClassName[option.value],
+                          )}
                         />
                         {option.label}
                       </span>

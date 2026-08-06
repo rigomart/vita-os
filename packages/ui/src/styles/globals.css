@@ -32,9 +32,21 @@
   --accent: var(--surface-3);
   --accent-foreground: var(--brand-ink);
   --destructive: oklch(0.53 0.15 24);
-  --condition-healthy: oklch(0.56 0.052 128);
-  --condition-attention: oklch(0.64 0.1 46);
-  --condition-critical: oklch(0.52 0.08 18);
+  --destructive-foreground: var(--brand-cream);
+  --condition-healthy: oklch(0.52 0.15 145);
+  --condition-healthy-foreground: var(--brand-cream);
+  --condition-attention: oklch(0.55 0.135 56);
+  --condition-attention-foreground: var(--brand-cream);
+  --condition-critical: oklch(0.52 0.19 25);
+  --condition-critical-foreground: var(--brand-cream);
+  /* Vivid fills for signal surfaces; theme-invariant, paired with a fixed
+     foreground. The base condition tokens above stay text-safe on surfaces. */
+  --condition-healthy-fill: oklch(0.7 0.13 148);
+  --condition-healthy-fill-foreground: var(--brand-ink);
+  --condition-attention-fill: oklch(0.75 0.125 62);
+  --condition-attention-fill-foreground: var(--brand-ink);
+  --condition-critical-fill: oklch(0.56 0.155 27);
+  --condition-critical-fill-foreground: var(--brand-cream);
   --border: oklch(0.85 0.022 72);
   --input: oklch(0.875 0.025 74);
   --ring: var(--brand-gold-strong);
@@ -73,9 +85,13 @@
   --accent: var(--surface-3);
   --accent-foreground: var(--brand-cream);
   --destructive: oklch(0.7 0.15 24);
-  --condition-healthy: oklch(0.7 0.052 128);
-  --condition-attention: oklch(0.74 0.1 46);
-  --condition-critical: oklch(0.68 0.08 18);
+  --destructive-foreground: var(--brand-ink);
+  --condition-healthy: oklch(0.72 0.16 145);
+  --condition-healthy-foreground: var(--brand-ink);
+  --condition-attention: oklch(0.78 0.15 56);
+  --condition-attention-foreground: var(--brand-ink);
+  --condition-critical: oklch(0.7 0.17 25);
+  --condition-critical-foreground: var(--brand-ink);
   --border: oklch(0.9 0.02 80 / 14%);
   --input: oklch(0.9 0.02 80 / 19%);
   --ring: var(--brand-gold);
@@ -117,9 +133,25 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-condition-healthy: var(--condition-healthy);
+  --color-condition-healthy-foreground: var(--condition-healthy-foreground);
   --color-condition-attention: var(--condition-attention);
+  --color-condition-attention-foreground: var(--condition-attention-foreground);
   --color-condition-critical: var(--condition-critical);
+  --color-condition-critical-foreground: var(--condition-critical-foreground);
+  --color-condition-healthy-fill: var(--condition-healthy-fill);
+  --color-condition-healthy-fill-foreground: var(
+    --condition-healthy-fill-foreground
+  );
+  --color-condition-attention-fill: var(--condition-attention-fill);
+  --color-condition-attention-fill-foreground: var(
+    --condition-attention-fill-foreground
+  );
+  --color-condition-critical-fill: var(--condition-critical-fill);
+  --color-condition-critical-fill-foreground: var(
+    --condition-critical-fill-foreground
+  );
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
