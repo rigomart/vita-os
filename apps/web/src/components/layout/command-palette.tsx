@@ -58,6 +58,8 @@ export function CommandPalette({
       title="Jump to"
       description="Jump to an area, thread, or action"
       showCloseButton={false}
+      // Sit high so the on-screen keyboard never covers the input on mobile.
+      className="top-[15%] translate-y-0"
     >
       <CommandInput placeholder="Jump to an area, thread, or action…" />
       <CommandList>

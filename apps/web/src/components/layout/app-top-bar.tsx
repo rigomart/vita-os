@@ -49,17 +49,18 @@ export function AppTopBar({
           </span>
         </Link>
 
+        {/* On mobile the search affordance lives in the tab bar instead. */}
         <button
           type="button"
           onClick={onOpenPalette}
-          className="mx-auto flex h-8 w-full max-w-xs items-center gap-2 rounded-lg border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted sm:max-w-sm"
+          className="mx-auto hidden h-8 w-full max-w-sm items-center gap-2 rounded-lg border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted md:flex"
         >
           <Search className="size-4 shrink-0" />
           <span className="truncate">Jump anywhere…</span>
-          <Kbd className="ml-auto hidden sm:inline-flex">⌘K</Kbd>
+          <Kbd className="ml-auto">⌘K</Kbd>
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 md:ml-0">
           <Link
             to="/inbox"
             aria-label="Inbox"

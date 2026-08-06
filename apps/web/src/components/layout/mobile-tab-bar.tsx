@@ -1,14 +1,19 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Inbox, LayoutDashboard, Plus } from "lucide-react";
+import { Inbox, LayoutDashboard, Plus, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 interface MobileTabBarProps {
   taskCount: number | undefined;
   onNewTask: () => void;
+  onOpenPalette: () => void;
 }
 
-export function MobileTabBar({ taskCount, onNewTask }: MobileTabBarProps) {
+export function MobileTabBar({
+  taskCount,
+  onNewTask,
+  onOpenPalette,
+}: MobileTabBarProps) {
   const { pathname } = useLocation();
 
   const tabClassName = (active: boolean) =>
@@ -20,12 +25,20 @@ export function MobileTabBar({ taskCount, onNewTask }: MobileTabBarProps) {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-3 border-t bg-background/95 backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-4 border-t bg-background/95 backdrop-blur md:hidden"
     >
       <Link to="/" className={tabClassName(pathname === "/")}>
         <LayoutDashboard className="size-5" />
         Dashboard
       </Link>
+      <button
+        type="button"
+        onClick={onOpenPalette}
+        className={tabClassName(false)}
+      >
+        <Search className="size-5" />
+        Search
+      </button>
       <Link to="/inbox" className={tabClassName(pathname === "/inbox")}>
         <span className="relative">
           <Inbox className="size-5" />

@@ -39,7 +39,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         onOpenPalette={() => setPaletteOpen(true)}
       />
       <main className="w-full flex-1 px-4 pt-3 pb-24 md:pb-8">{children}</main>
-      <MobileTabBar taskCount={taskCount} onNewTask={dialogs.openNewTask} />
+      <MobileTabBar
+        taskCount={taskCount}
+        onNewTask={dialogs.openNewTask}
+        onOpenPalette={() => setPaletteOpen(true)}
+      />
 
       <CommandPalette
         open={paletteOpen}

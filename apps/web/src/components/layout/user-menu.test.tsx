@@ -27,7 +27,9 @@ describe("UserMenu", () => {
 
     const trigger = screen.getByRole("button", { name: /Jane Doe/ });
     await user.click(trigger);
-    await user.click(await screen.findByRole("menuitem", { name: "Appearance" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Appearance" }),
+    );
     fireEvent.click(await screen.findByRole("menuitemradio", { name: "Dark" }));
 
     expect(onThemeChange).toHaveBeenCalledWith("dark");
