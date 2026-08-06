@@ -16,17 +16,14 @@ import { ThreadDetailView } from "./thread-detail-view";
 
 const mocks = vi.hoisted(() => ({
   showDesktopPane: false,
-  navigate: vi.fn(),
+  onClose: vi.fn(),
+  onThreadLocationChange: vi.fn(),
   threadState: "open" as "open" | "resolved",
+  threadExists: true,
 }));
 
 vi.mock("@/hooks/use-thread-pane-viewport", () => ({
   useThreadPaneViewport: () => mocks.showDesktopPane,
-}));
-
-vi.mock("@tanstack/react-router", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
-  useNavigate: () => mocks.navigate,
 }));
 
 const area = {
@@ -54,11 +51,14 @@ const thread = {
 } satisfies Doc<"threads">;
 
 vi.mock("convex-helpers/react/cache/hooks", () => ({
-  useQuery: (query: unknown) => {
+  useQuery: (query: unknown, args: unknown) => {
+    if (args === "skip") return undefined;
     const name = getFunctionName(query as never);
     if (name === "areas:getBySlug") return area;
+    if (name === "areas:get") return area;
     if (name === "areas:list") return [area];
     if (name === "threads:getBySlug") {
+      if (!mocks.threadExists) return null;
       return { ...thread, state: mocks.threadState };
     }
     if (name === "activityLogs:listByThread") return [];
@@ -75,17 +75,30 @@ vi.mock("convex/react", () => ({
   },
 }));
 
-function renderThreadDetail(threadSlug = "sister-s-front-teeth") {
+function renderThreadDetail(
+  props: { threadSlug?: string; areaSlug?: string } = {},
+) {
+  const threadSlug = props.threadSlug ?? "sister-s-front-teeth";
+  // Only default areaSlug when the key is absent, so tests can pass an
+  // explicit `areaSlug: undefined` to exercise the search-param source.
+  const areaSlug = "areaSlug" in props ? props.areaSlug : "family-health";
   return render(
-    <ThreadDetailView areaSlug="family-health" threadSlug={threadSlug} />,
+    <ThreadDetailView
+      areaSlug={areaSlug}
+      threadSlug={threadSlug}
+      onClose={mocks.onClose}
+      onThreadLocationChange={mocks.onThreadLocationChange}
+    />,
   );
 }
 
 describe("ThreadDetailView", () => {
   beforeEach(() => {
     mocks.showDesktopPane = false;
-    mocks.navigate.mockReset();
+    mocks.onClose.mockReset();
+    mocks.onThreadLocationChange.mockReset();
     mocks.threadState = "open";
+    mocks.threadExists = true;
   });
 
   it("opens Thread detail as a near-full bottom drawer below the pane breakpoint", async () => {
@@ -100,31 +113,32 @@ describe("ThreadDetailView", () => {
     expect(screen.getByRole("button", { name: "Close thread" })).toBeVisible();
   });
 
-  it("leaves the narrow Thread route after its close animation", async () => {
+  it("closes the narrow Thread pane after its close animation", async () => {
     renderThreadDetail();
 
     await screen.findByRole("dialog", { name: "Sister's front teeth" });
     fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
 
-    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(mocks.onClose).not.toHaveBeenCalled();
 
     await waitFor(() => {
-      expect(mocks.navigate).toHaveBeenCalledWith({
-        to: "/$areaSlug",
-        params: { areaSlug: "family-health" },
-        replace: true,
-      });
+      expect(mocks.onClose).toHaveBeenCalledTimes(1);
     });
   });
 
-  it("opens a fresh Drawer shell when the Thread route changes", async () => {
+  it("opens a fresh Drawer shell when the open Thread changes", async () => {
     const { rerender } = renderThreadDetail();
 
     await screen.findByRole("dialog", { name: "Sister's front teeth" });
     fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
 
     rerender(
-      <ThreadDetailView areaSlug="family-health" threadSlug="moms-legs" />,
+      <ThreadDetailView
+        areaSlug="family-health"
+        threadSlug="moms-legs"
+        onClose={mocks.onClose}
+        onThreadLocationChange={mocks.onThreadLocationChange}
+      />,
     );
 
     await waitFor(() => {
@@ -159,7 +173,7 @@ describe("ThreadDetailView", () => {
     ).toBeVisible();
   });
 
-  it("leaves the desktop Thread route after the pane width transition", async () => {
+  it("closes the desktop Thread pane after the pane width transition", async () => {
     mocks.showDesktopPane = true;
     renderThreadDetail();
 
@@ -168,7 +182,7 @@ describe("ThreadDetailView", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
 
-    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(mocks.onClose).not.toHaveBeenCalled();
 
     const paneSpace = document.querySelector(
       '[data-slot="thread-detail-pane-space"]',
@@ -176,14 +190,10 @@ describe("ThreadDetailView", () => {
     expect(paneSpace).toHaveAttribute("data-state", "closed");
     fireEvent.transitionEnd(paneSpace as Element, { propertyName: "width" });
 
-    expect(mocks.navigate).toHaveBeenCalledWith({
-      to: "/$areaSlug",
-      params: { areaSlug: "family-health" },
-      replace: true,
-    });
+    expect(mocks.onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the desktop pane open when the Thread route changes", async () => {
+  it("keeps the desktop pane open when the open Thread changes", async () => {
     mocks.showDesktopPane = true;
     const { rerender } = renderThreadDetail();
     const pane = await screen.findByRole("complementary", {
@@ -192,13 +202,43 @@ describe("ThreadDetailView", () => {
     await waitFor(() => expect(pane).toHaveAttribute("data-state", "open"));
 
     rerender(
-      <ThreadDetailView areaSlug="family-health" threadSlug="moms-legs" />,
+      <ThreadDetailView
+        areaSlug="family-health"
+        threadSlug="moms-legs"
+        onClose={mocks.onClose}
+        onThreadLocationChange={mocks.onThreadLocationChange}
+      />,
     );
 
     expect(
       screen.getByRole("complementary", { name: "Sister's front teeth" }),
     ).toBe(pane);
     expect(pane).toHaveAttribute("data-state", "open");
+  });
+
+  it("renders the Thread without an areaSlug by deriving the area from the thread", async () => {
+    mocks.showDesktopPane = true;
+    renderThreadDetail({ areaSlug: undefined });
+
+    await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
+
+    const header = screen.getByRole("banner", { name: "Thread header" });
+    expect(
+      within(header).getByRole("button", { name: "Family Health" }),
+    ).toBeVisible();
+  });
+
+  it("shows a closable not-found state for an unknown thread slug without an area", async () => {
+    mocks.showDesktopPane = true;
+    mocks.threadExists = false;
+    renderThreadDetail({ areaSlug: undefined, threadSlug: "nope" });
+
+    expect(await screen.findByText("Thread not found.")).toBeVisible();
+
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(mocks.onClose).toHaveBeenCalledTimes(1);
   });
 
   it("restores orientation before presenting attention and continuity", async () => {

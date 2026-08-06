@@ -27,7 +27,8 @@ export function AppTopBar({
   const { theme, setTheme } = useTheme();
 
   return (
-    // Below the thread detail rail (z-30) so slide-over panels cover the chrome.
+    // Below the thread detail rail (z-30): the desktop rail pushes the chrome
+    // aside, but the mobile drawer (and the rail mid-animation) overlay it.
     <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
       <div className="flex h-12 items-center gap-3 px-4">
         <Link

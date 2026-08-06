@@ -15,7 +15,6 @@ import {
 import { AreaThreadsSkeleton } from "./area-threads-skeleton";
 
 interface AreaThreadsProps {
-  areaSlug: string;
   threads: Doc<"threads">[];
   currentDate: number;
   isLoading?: boolean;
@@ -24,7 +23,6 @@ interface AreaThreadsProps {
 }
 
 export function AreaThreads({
-  areaSlug,
   threads,
   currentDate,
   isLoading = false,
@@ -66,7 +64,6 @@ export function AreaThreads({
           {flatThreads.map((thread) => (
             <AreaThreadRow
               key={thread._id}
-              areaSlug={areaSlug}
               thread={thread}
               now={currentDate}
               onRemoveThread={onRemoveThread}
@@ -79,12 +76,10 @@ export function AreaThreads({
 }
 
 function AreaThreadRow({
-  areaSlug,
   thread,
   now,
   onRemoveThread,
 }: {
-  areaSlug: string;
   thread: Doc<"threads">;
   now: number;
   onRemoveThread: (threadId: Id<"threads">) => void;
@@ -94,7 +89,7 @@ function AreaThreadRow({
     detail: thread.nextMove?.trim() || undefined,
     detailKind: "next-move",
     when: thread.followUp,
-    linkTo: { areaSlug, threadSlug: thread.slug ?? thread._id },
+    linkTo: { threadSlug: thread.slug ?? thread._id },
     actions: (
       <RowDeleteAction
         label="Delete thread"

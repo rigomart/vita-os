@@ -6,6 +6,12 @@ import { RouteErrorFallback } from "@/components/error-boundary";
 import { AppShell } from "@/components/layout/app-shell";
 
 export const Route = createFileRoute("/_authenticated")({
+  validateSearch: (search: Record<string, unknown>): { thread?: string } => ({
+    thread:
+      typeof search.thread === "string" && search.thread.length > 0
+        ? search.thread
+        : undefined,
+  }),
   errorComponent: RouteErrorFallback,
   component: AuthenticatedLayout,
 });

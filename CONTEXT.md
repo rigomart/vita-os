@@ -114,6 +114,7 @@ _Avoid_: Task list, project board, backlog.
 - **Overview** is the default view. It shows Thread attention groups alongside a compact **Inbox** preview and recent **Activity Log Entries** from distinct Open Threads.
 - **Plan** is a read-only time distribution of **Open Threads** based on **Follow-up**. Threads without a Follow-up appear in a collapsed No Date group.
 - **Plan** does not introduce a separate schedule or priority model. Rescheduling continues to mean changing the Thread's existing **Follow-up**.
+- Opening a **Thread** from any surface — **Dashboard**, **Inbox**, the palette, or an **Area** inventory — shows its detail pane in place over the current page rather than navigating to the **Area** page; closing the pane returns the user to where they were. The in-place behavior is recorded in ADR 0007.
 
 ## Task Handling
 

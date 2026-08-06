@@ -56,8 +56,8 @@ export function AreaDetailScreen({ areaSlug }: AreaDetailScreenProps) {
         defaultAreaId={area._id}
         onCreated={({ slug }) => {
           navigate({
-            to: "/$areaSlug/$threadSlug",
-            params: { areaSlug, threadSlug: slug },
+            to: ".",
+            search: (prev) => ({ ...prev, thread: slug }),
           });
         }}
       />

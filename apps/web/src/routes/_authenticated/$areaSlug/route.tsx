@@ -12,14 +12,10 @@ function AreaLayoutRoute() {
   const { areaSlug } = Route.useParams();
 
   return (
-    <div
-      data-slot="area-thread-workspace"
-      className="flex min-h-[calc(100dvh-5.25rem)] min-w-0 items-start gap-4"
-    >
-      <div data-slot="area-content" className="min-w-0 flex-1">
-        <AreaDetailScreen areaSlug={areaSlug} />
-      </div>
+    <>
+      <AreaDetailScreen areaSlug={areaSlug} />
+      {/* Child thread route renders null; the pane itself lives in AppShell. */}
       <Outlet />
-    </div>
+    </>
   );
 }
