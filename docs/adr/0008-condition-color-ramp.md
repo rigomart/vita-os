@@ -1,14 +1,14 @@
 # Condition color ramp
 
-The three condition tokens (`--condition-healthy`, `--condition-attention`, `--condition-critical`) had drifted apart: each carried its own lightness and chroma, healthy was so desaturated (chroma 0.052) it read as gray at swatch size, attention failed WCAG AA as text on light surfaces (3.3:1), and no token had a paired foreground — so solid critical fills hardcoded `text-white` (2.99:1 in dark mode) and the delete-confirm button referenced a `--destructive-foreground` that did not exist. We normalized the triad into one ramp — hues stay where they were (green 132, orange 46, red 20), lightness and chroma are aligned per mode — and added `-foreground` pairs for all three conditions plus `--destructive`, mapping to `--brand-cream` in light mode and `--brand-ink` in dark mode.
+The three condition tokens (`--condition-healthy`, `--condition-attention`, `--condition-critical`) had drifted apart: each carried its own lightness and chroma, healthy was so desaturated (chroma 0.052) it read as gray at swatch size, attention failed WCAG AA as text on light surfaces (3.3:1), and no token had a paired foreground — so solid critical fills hardcoded `text-white` (2.99:1 in dark mode) and the delete-confirm button referenced a `--destructive-foreground` that did not exist. The original hues were also too close to tell apart at a glance: critical (hue 20) and attention (hue 46) were 26° apart at low chroma, so both read as warm brown. We normalized the triad into one ramp with wider hue spacing and higher chroma — red 25, amber 58, green 145 — and added `-foreground` pairs for all three conditions plus `--destructive`, mapping to `--brand-cream` in light mode and `--brand-ink` in dark mode. Attention stops at hue 58 because `--brand-gold-strong` sits at hue 69; pushing further would make warnings read as brand accent.
 
 Values (light / dark):
 
-- `--condition-healthy`: `oklch(0.54 0.09 132)` / `oklch(0.74 0.09 132)`
-- `--condition-attention`: `oklch(0.55 0.12 46)` / `oklch(0.78 0.12 46)`
-- `--condition-critical`: `oklch(0.53 0.12 20)` / `oklch(0.72 0.12 20)`
+- `--condition-healthy`: `oklch(0.52 0.12 145)` / `oklch(0.72 0.12 145)`
+- `--condition-attention`: `oklch(0.55 0.13 58)` / `oklch(0.78 0.14 58)`
+- `--condition-critical`: `oklch(0.52 0.16 25)` / `oklch(0.7 0.16 25)`
 
-Every text usage clears 4.5:1 on its surface, every `-foreground` clears 4.5:1 on its solid fill, and swatch dots clear 3:1 as non-text marks. Dark-mode attention sits slightly brighter than its siblings (0.78 vs 0.72–0.74) because it renders as text over its own 12% tint, which caps achievable contrast.
+Every text usage clears 4.5:1 on its surface, every `-foreground` clears 4.5:1 on its solid fill, and swatch dots clear 3:1 as non-text marks. All values stay inside the sRGB gamut. Dark-mode attention sits brighter than its siblings (0.78 vs 0.70–0.72) because it renders as text over its own 12% tint, which caps achievable contrast.
 
 ## Considered Options
 
