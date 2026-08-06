@@ -99,31 +99,34 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-svh flex-col">
-      <AppTopBar
-        taskCount={taskCount}
-        inboxActive={pathname === "/inbox"}
-        onNewTask={dialogs.openNewTask}
-        onOpenPalette={() => setPaletteOpen(true)}
-      />
-      <div className="flex min-w-0 flex-1">
+    <div className="flex min-h-svh">
+      {/* The whole chrome column — topbar included — sits beside the thread
+          rail's width spacer, so an open rail pushes the topbar too instead
+          of sliding over it. */}
+      <div className="flex min-h-svh min-w-0 flex-1 flex-col">
+        <AppTopBar
+          taskCount={taskCount}
+          inboxActive={pathname === "/inbox"}
+          onNewTask={dialogs.openNewTask}
+          onOpenPalette={() => setPaletteOpen(true)}
+        />
         <main className="w-full min-w-0 flex-1 px-4 pt-3 pb-24 md:pb-8">
           {children}
         </main>
-        {openThreadSlug !== undefined && (
-          <ThreadDetailView
-            threadSlug={openThreadSlug}
-            areaSlug={isSearchSource ? undefined : routeAreaSlug}
-            onClose={closeThreadPane}
-            onThreadLocationChange={handleThreadLocationChange}
-          />
-        )}
+        <MobileTabBar
+          taskCount={taskCount}
+          onNewTask={dialogs.openNewTask}
+          onOpenPalette={() => setPaletteOpen(true)}
+        />
       </div>
-      <MobileTabBar
-        taskCount={taskCount}
-        onNewTask={dialogs.openNewTask}
-        onOpenPalette={() => setPaletteOpen(true)}
-      />
+      {openThreadSlug !== undefined && (
+        <ThreadDetailView
+          threadSlug={openThreadSlug}
+          areaSlug={isSearchSource ? undefined : routeAreaSlug}
+          onClose={closeThreadPane}
+          onThreadLocationChange={handleThreadLocationChange}
+        />
+      )}
 
       <CommandPalette
         open={paletteOpen}
