@@ -167,7 +167,7 @@ function ThreadDetailDrawer({
           showActions={showActions}
           onRequestClose={requestClose}
         />
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
           {children}
         </div>
       </DrawerContent>
@@ -212,7 +212,7 @@ function ThreadDetailPane({
           showActions={showActions}
           onRequestClose={requestClose}
         />
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-8">
           {children}
         </div>
       </aside>
@@ -269,11 +269,11 @@ function ThreadDetailContent({
   const isResolved = thread.state === "resolved";
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
       <header
         role="banner"
         aria-label="Thread header"
-        className="sticky top-0 z-10 flex flex-col gap-3 bg-popover pb-1"
+        className="flex shrink-0 flex-col gap-3 pb-1"
       >
         <div className="flex items-center gap-2 pr-24">
           <ThreadAreaSectionSection
@@ -292,7 +292,7 @@ function ThreadDetailContent({
         <section
           role="region"
           aria-label="Thread attention"
-          className="flex flex-col gap-5"
+          className="flex shrink-0 flex-col gap-5"
         >
           <div className="grid grid-cols-[repeat(auto-fit,minmax(14rem,1fr))] gap-5">
             <NextMoveSection threadSlug={threadSlug} />
@@ -302,7 +302,7 @@ function ThreadDetailContent({
         </section>
       )}
 
-      <div>
+      <div className="flex min-h-0 flex-1 flex-col">
         <ActivityLogSection threadSlug={threadSlug} />
       </div>
     </div>
