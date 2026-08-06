@@ -13,8 +13,8 @@ const attentionLabels: Partial<Record<Condition, string>> = {
 };
 
 const blockToneClassName: Partial<Record<Condition, string>> = {
-  critical: "bg-condition-critical text-white",
-  needs_attention: "bg-condition-attention/15 text-condition-attention",
+  critical: "bg-condition-critical text-condition-critical-foreground",
+  needs_attention: "bg-condition-attention/12 text-condition-attention",
 };
 
 const labelToneClassName: Partial<Record<Condition, string>> = {
