@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { SidebarProvider } from "@vita-os/ui/components/sidebar";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -9,28 +8,26 @@ import {
   waitFor,
 } from "@/test/render-with-providers";
 
-import { SidebarUserMenu } from "./sidebar-user-menu";
+import { UserMenu } from "./user-menu";
 
-describe("SidebarUserMenu", () => {
+describe("UserMenu", () => {
   it("changes appearance, reopens the account actions, and signs out", async () => {
     const user = userEvent.setup();
     const onSignOut = vi.fn();
     const onThemeChange = vi.fn();
 
     render(
-      <SidebarProvider>
-        <SidebarUserMenu
-          user={{ name: "Jane Doe", email: "jane@example.com" }}
-          theme="system"
-          onThemeChange={onThemeChange}
-          onSignOut={onSignOut}
-        />
-      </SidebarProvider>,
+      <UserMenu
+        user={{ name: "Jane Doe", email: "jane@example.com" }}
+        theme="system"
+        onThemeChange={onThemeChange}
+        onSignOut={onSignOut}
+      />,
     );
 
     const trigger = screen.getByRole("button", { name: /Jane Doe/ });
     await user.click(trigger);
-    await user.click(screen.getByRole("menuitem", { name: "Appearance" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Appearance" }));
     fireEvent.click(await screen.findByRole("menuitemradio", { name: "Dark" }));
 
     expect(onThemeChange).toHaveBeenCalledWith("dark");
@@ -50,14 +47,12 @@ describe("SidebarUserMenu", () => {
 
   it("uses the email when the account has no name", () => {
     render(
-      <SidebarProvider>
-        <SidebarUserMenu
-          user={{ email: "jane@example.com" }}
-          theme="system"
-          onThemeChange={vi.fn()}
-          onSignOut={vi.fn()}
-        />
-      </SidebarProvider>,
+      <UserMenu
+        user={{ email: "jane@example.com" }}
+        theme="system"
+        onThemeChange={vi.fn()}
+        onSignOut={vi.fn()}
+      />,
     );
 
     expect(

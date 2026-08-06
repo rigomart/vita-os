@@ -24,6 +24,7 @@
     "@vita-os/ui": "workspace:*",
     "better-auth": "1.6.25",
     "clsx": "catalog:",
+    "cmdk": "^1.1.1",
     "convex": "^1.42.3",
     "convex-helpers": "^0.1.120",
     "date-fns": "catalog:",
