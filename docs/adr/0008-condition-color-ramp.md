@@ -19,9 +19,14 @@ tints of them disappear into the app's warm cream surfaces. Signal *surfaces*
 instead use a second set of vivid, theme-invariant fill tokens paired with a
 fixed foreground:
 
-- `--condition-healthy-fill`: `oklch(0.72 0.19 148)`, foreground `--brand-ink`
-- `--condition-attention-fill`: `oklch(0.74 0.16 65)`, foreground `--brand-ink`
-- `--condition-critical-fill`: `oklch(0.57 0.21 27)`, foreground `--brand-cream`
+- `--condition-healthy-fill`: `oklch(0.7 0.13 148)`, foreground `--brand-ink`
+- `--condition-attention-fill`: `oklch(0.75 0.125 62)`, foreground `--brand-ink`
+- `--condition-critical-fill`: `oklch(0.56 0.155 27)`, foreground `--brand-cream`
+
+Fill chroma sits deliberately below the sRGB gamut edge (~0.125–0.155): at full
+saturation the fills read as traffic-light candy against the warm muted brand;
+these values keep the blocks unmistakable while staying in the app's register
+(honey amber, brick red, sage green).
 
 Every text usage clears 4.5:1 on its surface, every `-foreground` clears 4.5:1 on its solid fill, and swatch dots clear 3:1 as non-text marks. All values stay inside the sRGB gamut. Dark-mode attention sits brighter than its siblings (0.78 vs 0.70–0.72) because it renders as text over its own 12% tint, which caps achievable contrast.
 

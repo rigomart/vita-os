@@ -41,11 +41,11 @@
   --condition-critical-foreground: var(--brand-cream);
   /* Vivid fills for signal surfaces; theme-invariant, paired with a fixed
      foreground. The base condition tokens above stay text-safe on surfaces. */
-  --condition-healthy-fill: oklch(0.72 0.19 148);
+  --condition-healthy-fill: oklch(0.7 0.13 148);
   --condition-healthy-fill-foreground: var(--brand-ink);
-  --condition-attention-fill: oklch(0.74 0.16 65);
+  --condition-attention-fill: oklch(0.75 0.125 62);
   --condition-attention-fill-foreground: var(--brand-ink);
-  --condition-critical-fill: oklch(0.57 0.21 27);
+  --condition-critical-fill: oklch(0.56 0.155 27);
   --condition-critical-fill-foreground: var(--brand-cream);
   --border: oklch(0.85 0.022 72);
   --input: oklch(0.875 0.025 74);
