@@ -1,0 +1,153 @@
+import { describe, expect, it } from "vitest";
+
+import type { DragState, PlanItem } from "./plan-model";
+
+import {
+  buildAxis,
+  buildLanes,
+  dayAt,
+  INBOX_LANE_ID,
+  planDrop,
+  slotKeyFor,
+} from "./plan-model";
+
+const now = new Date(2026, 7, 6, 9).getTime();
+
+const items: PlanItem[] = [
+  {
+    areaId: "health",
+    date: dayAt(-3, now),
+    id: "t1",
+    kind: "thread",
+    title: "Late",
+  },
+  {
+    areaId: "home",
+    date: dayAt(2, now),
+    id: "t2",
+    kind: "thread",
+    title: "Soon",
+  },
+  { areaId: "home", id: "t3", kind: "thread", title: "Undated" },
+  { date: dayAt(1, now), id: "k1", kind: "task", title: "Task" },
+];
+
+const axis = buildAxis(items, now, "compact");
+
+function drop(over: Partial<DragState>, base: Partial<DragState> = {}) {
+  return planDrop(
+    {
+      itemId: "t2",
+      kind: "thread",
+      laneId: "home",
+      slotKey: "d2",
+      ...base,
+      ...over,
+    },
+    axis,
+    (id) => (id === INBOX_LANE_ID ? "Inbox" : "Home"),
+  );
+}
+
+describe("plan axis", () => {
+  it("opens occupied days and today, compresses the rest", () => {
+    const today = axis.days[0];
+    const occupied = axis.days.find((day) => day.offset === 2)!;
+    const empty = axis.days.find((day) => day.offset === 5)!;
+
+    expect(today.wide).toBe(true);
+    expect(occupied.wide).toBe(true);
+    expect(empty.wide).toBe(false);
+    expect(axis.hasOverdue).toBe(true);
+  });
+
+  it("files dates into columns, past into the waiting bay", () => {
+    const horizon = axis.days.length - 1;
+    expect(slotKeyFor(dayAt(-3, now), now, horizon)).toBe("overdue");
+    expect(slotKeyFor(dayAt(0, now), now, horizon)).toBe("d0");
+    expect(slotKeyFor(undefined, now, horizon)).toBe("none");
+  });
+});
+
+describe("plan lanes", () => {
+  it("orders Areas worst condition first and keeps Tasks in the Inbox", () => {
+    const { areaLanes, inbox } = buildLanes(
+      items,
+      [
+        {
+          condition: "healthy",
+          id: "home",
+          name: "Home",
+          order: 1,
+          slug: "home",
+        },
+        {
+          condition: "critical",
+          id: "health",
+          name: "Health",
+          order: 0,
+          slug: "health",
+        },
+      ],
+      now,
+      axis.days.length - 1,
+    );
+
+    expect(areaLanes.map((lane) => lane.id)).toEqual(["health", "home"]);
+    expect(areaLanes[0].overdue.map((item) => item.id)).toEqual(["t1"]);
+    expect(areaLanes[0].plannedCount).toBe(0);
+    expect(areaLanes[1].none.map((item) => item.id)).toEqual(["t3"]);
+    expect(inbox.byDay.get("d1")?.map((item) => item.id)).toEqual(["k1"]);
+  });
+});
+
+describe("planDrop", () => {
+  it("names the exact day a same-lane drop lands on", () => {
+    const plan = drop({ overLaneId: "home", overSlotKey: "d4" });
+
+    expect(plan).toMatchObject({
+      areaMove: undefined,
+      clears: false,
+      reschedule: true,
+      tone: "default",
+      valid: true,
+    });
+    expect(plan!.date).toBe(dayAt(4, now));
+    expect(plan!.caption).toMatch(/^\w{3} \d{1,2} \w{3}$/);
+  });
+
+  it("clears the date on the No-date bay", () => {
+    const plan = drop({ overLaneId: "home", overSlotKey: "none" });
+
+    expect(plan).toMatchObject({ clears: true, reschedule: true, valid: true });
+    expect(plan!.date).toBeUndefined();
+  });
+
+  it("moves the Area when the drag crosses lanes, keeping the day", () => {
+    const plan = drop({ overLaneId: "health", overSlotKey: "d2" });
+
+    expect(plan).toMatchObject({
+      areaMove: "health",
+      reschedule: false,
+      tone: "move",
+      valid: true,
+    });
+  });
+
+  it("refuses the past, the wrong lane, and a no-op drop", () => {
+    expect(drop({ overLaneId: "home", overSlotKey: "overdue" })).toMatchObject({
+      caption: "Can't plan into the past",
+      valid: false,
+    });
+    expect(
+      drop({ overLaneId: INBOX_LANE_ID, overSlotKey: "d3" }),
+    ).toMatchObject({ caption: "Threads live in Areas", valid: false });
+    expect(
+      drop(
+        { overLaneId: "home", overSlotKey: "d1" },
+        { itemId: "k1", kind: "task", laneId: INBOX_LANE_ID, slotKey: "d1" },
+      ),
+    ).toMatchObject({ caption: "Tasks stay in the Inbox", valid: false });
+    expect(drop({ overLaneId: "home", overSlotKey: "d2" })).toBeNull();
+  });
+});

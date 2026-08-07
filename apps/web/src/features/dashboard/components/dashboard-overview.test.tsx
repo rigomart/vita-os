@@ -21,6 +21,23 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
+// The Plan canvas is a live surface of its own — Convex mutations, drag and
+// drop, the Thread rail. Here we only care that the tab hands it the full
+// open set.
+vi.mock("@/features/dashboard/plan", () => ({
+  PlanCanvas: ({
+    tasks,
+    threads,
+  }: {
+    tasks: unknown[];
+    threads: unknown[];
+  }) => (
+    <div data-testid="plan-canvas">
+      {threads.length} Threads · {tasks.length} Tasks
+    </div>
+  ),
+}));
+
 const currentDate = new Date(2026, 6, 17, 12).getTime();
 
 function thread(
@@ -298,12 +315,25 @@ describe("DashboardOverview", () => {
     expect(screen.getByText(/clinic sent the report/i)).toBeVisible();
   });
 
-  it("switches to a read-only Plan made of Thread links", async () => {
+  it("gives the Plan tab every open Thread and Task", async () => {
     const user = userEvent.setup();
     render(
       <DashboardOverview
         overview={dashboard({
-          threads: [thread("Check renewal", { followUp: currentDate })],
+          threads: [
+            thread("Check renewal", { followUp: currentDate }),
+            thread("Without date"),
+          ],
+          inbox: {
+            items: [
+              {
+                id: "task",
+                text: "Renew passport",
+                createdAt: currentDate,
+              },
+            ],
+            totalOpen: 1,
+          },
         })}
         currentDate={currentDate}
         onCreateArea={vi.fn()}
@@ -311,9 +341,10 @@ describe("DashboardOverview", () => {
     );
 
     await user.click(screen.getByRole("tab", { name: "Plan" }));
-    const link = screen.getByRole("link", { name: /check renewal/i });
-    expect(screen.getByText("Schedule")).toBeVisible();
-    expect(link).not.toHaveAttribute("draggable");
+
+    expect(screen.getByTestId("plan-canvas")).toHaveTextContent(
+      "2 Threads · 1 Tasks",
+    );
   });
 
   it("preserves Area onboarding and the no-Thread state", async () => {

@@ -73,7 +73,7 @@ The single view for all visible **Tasks**, with **Open Tasks** first in a flat a
 _Avoid_: Backlog.
 
 **Dashboard**:
-The main awareness surface that starts with **Life Areas**, then offers an **Overview** of **Open Threads** and a read-only **Plan** of their **Follow-ups**. It also lightly surfaces **Open Tasks** and recent **Activity Log Entries**.
+The main awareness surface that starts with **Life Areas**, then offers an **Overview** of **Open Threads** and a **Plan** that lays them out on the days their **Follow-ups** fall on. It also lightly surfaces **Open Tasks** and recent **Activity Log Entries**.
 _Avoid_: Task list, project board, backlog.
 
 ## Relationships
@@ -112,8 +112,9 @@ _Avoid_: Task list, project board, backlog.
 
 - **Life Areas** appear before every Dashboard view and are grouped by **Condition** in Critical, Needs Attention, then Healthy order. The user's Area order is preserved inside each group.
 - **Overview** is the default view. It shows Thread attention groups alongside a compact **Inbox** preview and recent **Activity Log Entries** from distinct Open Threads.
-- **Plan** is a read-only time distribution of **Open Threads** based on **Follow-up**. Threads without a Follow-up appear in a collapsed No Date group.
-- **Plan** does not introduce a separate schedule or priority model. Rescheduling continues to mean changing the Thread's existing **Follow-up**.
+- **Plan** lays every **Area** out as a lane over one continuous day axis, worst **Condition** first, with a pinned **Inbox** lane for **Tasks**. A lane's chips sit on the exact day of their **Follow-up** or **When**; days nothing is planned on compress to ticks. Items already past dock in a waiting bay at the lane's left edge, and undated items in a No Date bay pinned right.
+- Dragging on **Plan** writes directly: along a lane or onto the day ruler sets that item's **Follow-up** (**Thread**) or **When** (**Task**) to the exact day, the No Date bay clears it, and across lanes moves the **Thread** to that **Area**. The past is never a drop target, **Tasks** stay in the **Inbox**, and **Threads** stay in **Areas**.
+- **Plan** does not introduce a separate schedule or priority model. Rescheduling continues to mean changing the Thread's existing **Follow-up**, so every change is an ordinary edit with the usual **Activity Log** entries and is reversible by dragging back.
 - Opening a **Thread** from any surface — **Dashboard**, **Inbox**, the palette, or an **Area** inventory — shows its detail pane in place over the current page rather than navigating to the **Area** page; closing the pane returns the user to where they were. The in-place behavior is recorded in ADR 0007.
 
 ## Task Handling
