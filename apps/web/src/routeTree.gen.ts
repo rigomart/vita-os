@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as UnauthenticatedRouteRouteImport } from './routes/_unauthenticated/route'
-import { Route as ProtoRouteImport } from './routes/proto'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedAreaSlugRouteRouteImport } from './routes/_authenticated/$areaSlug/route'
 import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
@@ -26,11 +25,6 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 } as any)
 const UnauthenticatedRouteRoute = UnauthenticatedRouteRouteImport.update({
   id: '/_unauthenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProtoRoute = ProtoRouteImport.update({
-  id: '/proto',
-  path: '/proto',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -74,7 +68,6 @@ const AuthenticatedAreaSlugThreadSlugRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
-  '/proto': typeof ProtoRoute
   '/$areaSlug': typeof AuthenticatedAreaSlugRouteRouteWithChildren
   '/inbox': typeof AuthenticatedInboxRoute
   '/sign-in': typeof UnauthenticatedSignInRoute
@@ -84,7 +77,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
-  '/proto': typeof ProtoRoute
   '/inbox': typeof AuthenticatedInboxRoute
   '/sign-in': typeof UnauthenticatedSignInRoute
   '/sign-up': typeof UnauthenticatedSignUpRoute
@@ -95,7 +87,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_unauthenticated': typeof UnauthenticatedRouteRouteWithChildren
-  '/proto': typeof ProtoRoute
   '/_authenticated/$areaSlug': typeof AuthenticatedAreaSlugRouteRouteWithChildren
   '/_authenticated/inbox': typeof AuthenticatedInboxRoute
   '/_unauthenticated/sign-in': typeof UnauthenticatedSignInRoute
@@ -108,7 +99,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/proto'
     | '/$areaSlug'
     | '/inbox'
     | '/sign-in'
@@ -118,7 +108,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/proto'
     | '/inbox'
     | '/sign-in'
     | '/sign-up'
@@ -128,7 +117,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/_unauthenticated'
-    | '/proto'
     | '/_authenticated/$areaSlug'
     | '/_authenticated/inbox'
     | '/_unauthenticated/sign-in'
@@ -141,7 +129,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   UnauthenticatedRouteRoute: typeof UnauthenticatedRouteRouteWithChildren
-  ProtoRoute: typeof ProtoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -158,13 +145,6 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof UnauthenticatedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/proto': {
-      id: '/proto'
-      path: '/proto'
-      fullPath: '/proto'
-      preLoaderRoute: typeof ProtoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -266,7 +246,6 @@ const UnauthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   UnauthenticatedRouteRoute: UnauthenticatedRouteRouteWithChildren,
-  ProtoRoute: ProtoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
