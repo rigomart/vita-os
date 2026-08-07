@@ -35,11 +35,14 @@ export function AxisHeader({
   areaCount,
   axis,
   drag,
+  narrow,
   totals,
 }: {
   areaCount: number;
   axis: Axis;
   drag: DragState | null;
+  /** The header column is at its compact width (see `HEADER_WIDTH_NARROW`). */
+  narrow: boolean;
   totals: SlotTotals;
 }) {
   return (
@@ -51,10 +54,18 @@ export function AxisHeader({
       }}
     >
       <div
-        className="sticky left-0 z-30 flex flex-col justify-end gap-1.5 border-r border-border bg-surface-1 px-3.5 pt-1.5 pb-2"
+        className={cn(
+          "sticky left-0 z-30 flex flex-col justify-end gap-1.5 border-r border-border bg-surface-1 pt-1.5 pb-2",
+          narrow ? "px-2.5" : "px-3.5",
+        )}
         style={{ gridColumn: 1, gridRow: "1 / 3" }}
       >
-        <span className="text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">
+        <span
+          className={cn(
+            "truncate font-semibold tracking-[0.06em] text-muted-foreground uppercase",
+            narrow ? "text-[10px]" : "text-[11px]",
+          )}
+        >
           <span className="tabular-nums">{areaCount}</span>{" "}
           {areaCount === 1 ? "Area" : "Areas"}
         </span>

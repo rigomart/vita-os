@@ -1,8 +1,13 @@
 import { useDroppable } from "@dnd-kit/core";
+import { Link } from "@tanstack/react-router";
 import { cn } from "@vita-os/ui/lib/utils";
 import { CircleDashed, CornerDownRight, Inbox } from "lucide-react";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
+import {
+  conditionIcons,
+  conditionTextClassName,
+} from "@/features/areas/condition-presentation";
 
 import type { SlotDropData } from "./plan-axis";
 import type {
@@ -28,6 +33,8 @@ export interface LaneChrome {
   axis: Axis;
   density: Density;
   drag: DragState | null;
+  /** Below the md breakpoint: the header column stacks icon over name. */
+  narrow: boolean;
   now: number;
   onOpen: (item: PlanItem) => void;
 }
@@ -73,9 +80,13 @@ export function LaneRow({
       <Tint className={tint} />
 
       {isInbox ? (
-        <InboxLaneHeader lane={lane} />
+        <InboxLaneHeader lane={lane} narrow={chrome.narrow} />
       ) : (
-        <AreaLaneHeader incoming={incoming} lane={lane} />
+        <AreaLaneHeader
+          incoming={incoming}
+          lane={lane}
+          narrow={chrome.narrow}
+        />
       )}
 
       {chrome.axis.columns.map((column, index) => {
@@ -134,8 +145,23 @@ function Tint({ className }: { className: string }) {
 
 /* --------------------------------------------------------------- headers -- */
 
-function AreaLaneHeader({ incoming, lane }: { incoming: boolean; lane: Lane }) {
+/**
+ * The whole header is a link to the Area page. Headers are never drag sources
+ * or drop targets — only chips are draggables — so navigation cannot collide
+ * with dnd-kit: a drag passing over the header keeps working, and a plain
+ * click navigates.
+ */
+function AreaLaneHeader({
+  incoming,
+  lane,
+  narrow,
+}: {
+  incoming: boolean;
+  lane: Lane;
+  narrow: boolean;
+}) {
   const area = lane.area!;
+  const ConditionIcon = conditionIcons[area.condition];
 
   return (
     <div
@@ -150,32 +176,80 @@ function AreaLaneHeader({ incoming, lane }: { incoming: boolean; lane: Lane }) {
           conditionRailTone[area.condition],
         )}
       />
-      <div className="relative flex items-start gap-2.5 py-2 pr-3 pl-3.5">
-        <span
-          className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-lg transition-shadow",
-            conditionIconTone[area.condition],
-            incoming && "ring-2 ring-foreground/30",
-          )}
-        >
-          <AreaIcon icon={area.icon} className="size-4" />
-        </span>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="truncate font-heading text-sm font-semibold tracking-tight">
+      <Link
+        to="/$areaSlug"
+        params={{ areaSlug: area.slug }}
+        aria-label={`Open ${area.name}`}
+        className={cn(
+          "group/lane relative outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+          narrow
+            ? "flex flex-col gap-1.5 py-2 pr-2 pl-2.5"
+            : "flex items-start gap-2.5 py-2 pr-3 pl-3.5",
+        )}
+      >
+        {narrow ? (
+          <>
+            <div className="flex w-full items-center justify-between gap-1">
+              <span
+                className={cn(
+                  "flex size-7 shrink-0 items-center justify-center rounded-lg transition-shadow",
+                  conditionIconTone[area.condition],
+                  incoming && "ring-2 ring-foreground/30",
+                )}
+              >
+                <AreaIcon icon={area.icon} className="size-3.5" />
+              </span>
+              <span className="flex shrink-0 items-center gap-1">
+                {area.condition !== "healthy" && (
+                  <ConditionIcon
+                    aria-label={conditionShort[area.condition]}
+                    className={cn(
+                      "size-3",
+                      conditionTextClassName[area.condition],
+                    )}
+                  />
+                )}
+                <span
+                  className="text-[10px] tabular-nums text-muted-foreground/70"
+                  title={`${lane.openCount} open Threads`}
+                >
+                  {lane.openCount}
+                </span>
+              </span>
+            </div>
+            <span className="line-clamp-2 font-heading text-xs leading-tight font-semibold tracking-tight transition-colors group-hover/lane:text-primary">
               {area.name}
             </span>
+          </>
+        ) : (
+          <>
             <span
-              className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70"
-              title={`${lane.openCount} open Threads`}
+              className={cn(
+                "flex size-8 shrink-0 items-center justify-center rounded-lg transition-shadow",
+                conditionIconTone[area.condition],
+                incoming && "ring-2 ring-foreground/30",
+              )}
             >
-              {lane.openCount}
+              <AreaIcon icon={area.icon} className="size-4" />
             </span>
-          </div>
-          <LaneStatus incoming={incoming} lane={lane} />
-        </div>
-      </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="truncate font-heading text-sm font-semibold tracking-tight transition-colors group-hover/lane:text-primary">
+                  {area.name}
+                </span>
+                <span
+                  className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70"
+                  title={`${lane.openCount} open Threads`}
+                >
+                  {lane.openCount}
+                </span>
+              </div>
+              <LaneStatus incoming={incoming} lane={lane} />
+            </div>
+          </>
+        )}
+      </Link>
     </div>
   );
 }
@@ -188,6 +262,49 @@ function LaneStatus({ incoming, lane }: { incoming: boolean; lane: Lane }) {
       <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-foreground">
         <CornerDownRight className="size-3" />
         Move to {area.name}
+      </span>
+    );
+  }
+
+  // A non-healthy Area always leads with its condition, even when the lane
+  // holds nothing — the condition never hides behind emptiness.
+  if (area.condition !== "healthy") {
+    const StateIcon = conditionIcons[area.condition];
+    const detail =
+      lane.openCount === 0
+        ? "No open Threads"
+        : lane.plannedCount === 0
+          ? "Nothing planned"
+          : lane.nearHorizon === 0
+            ? "Nothing this week"
+            : null;
+
+    return (
+      <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px]">
+        <span
+          className={cn(
+            "flex shrink-0 items-center gap-1 font-medium",
+            conditionTextClassName[area.condition],
+          )}
+        >
+          <StateIcon aria-hidden className="size-3" />
+          {conditionShort[area.condition]}
+        </span>
+        <span
+          className={cn(
+            "truncate",
+            detail === "Nothing this week"
+              ? "font-medium text-condition-attention"
+              : "text-muted-foreground/60",
+          )}
+        >
+          ·{" "}
+          {detail ?? (
+            <>
+              <span className="tabular-nums">{lane.plannedCount}</span> planned
+            </>
+          )}
+        </span>
       </span>
     );
   }
@@ -211,14 +328,7 @@ function LaneStatus({ incoming, lane }: { incoming: boolean; lane: Lane }) {
 
   if (lane.nearHorizon === 0) {
     return (
-      <span
-        className={cn(
-          "mt-0.5 block text-[11px]",
-          area.condition === "healthy"
-            ? "text-muted-foreground/60"
-            : "font-medium text-condition-attention",
-        )}
-      >
+      <span className="mt-0.5 block text-[11px] text-muted-foreground/60">
         Nothing this week
       </span>
     );
@@ -232,7 +342,30 @@ function LaneStatus({ incoming, lane }: { incoming: boolean; lane: Lane }) {
   );
 }
 
-function InboxLaneHeader({ lane }: { lane: Lane }) {
+function InboxLaneHeader({ lane, narrow }: { lane: Lane; narrow: boolean }) {
+  if (narrow) {
+    return (
+      <div
+        className="sticky left-0 z-20 border-r border-border bg-surface-1"
+        style={{ gridColumn: 1, gridRow: 1 }}
+      >
+        <div className="relative flex flex-col gap-1.5 py-2 pr-2 pl-2.5">
+          <div className="flex w-full items-center justify-between gap-1">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-surface-2 text-muted-foreground">
+              <Inbox className="size-3.5" />
+            </span>
+            <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/70">
+              {lane.openCount}
+            </span>
+          </div>
+          <span className="line-clamp-2 font-heading text-xs leading-tight font-semibold tracking-tight">
+            Inbox
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="sticky left-0 z-20 border-r border-border bg-surface-1"

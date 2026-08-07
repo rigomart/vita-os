@@ -140,7 +140,7 @@ describe("buildDashboardOverview", () => {
     expect(result.inbox.totalOpen).toBe(5);
   });
 
-  it("returns the latest entry from two distinct open Threads", () => {
+  it("returns the latest entry per distinct open Thread", () => {
     const result = buildDashboardOverview("user1", {
       areas: [],
       tasks: [],

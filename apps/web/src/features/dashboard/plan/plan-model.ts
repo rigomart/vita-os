@@ -126,6 +126,8 @@ const MIN_HORIZON = 27;
 const MAX_HORIZON = 90;
 
 export const HEADER_WIDTH = 178;
+/** Below the md breakpoint the lane header stacks icon over name and narrows. */
+export const HEADER_WIDTH_NARROW = 112;
 
 const TICK_NEAR = 26;
 const TICK_LATER = 20;
@@ -190,11 +192,15 @@ export interface Axis {
  *
  * `items` is the **visible** set: filtering an Area out collapses the days only
  * it occupied, which is the whole point of a compressing axis.
+ *
+ * `headerWidth` is the lane-header column: the component layer picks it from
+ * the viewport (`HEADER_WIDTH` or `HEADER_WIDTH_NARROW`) so this stays pure.
  */
 export function buildAxis(
   items: PlanItem[],
   now: number,
   density: Density,
+  headerWidth: number = HEADER_WIDTH,
 ): Axis {
   const planned: number[] = [];
   let hasOverdue = false;
@@ -265,9 +271,9 @@ export function buildAxis(
     hasOverdue,
     laterFrom: days.length > NEAR_DAYS ? dayFrom + NEAR_DAYS : undefined,
     minWidth:
-      HEADER_WIDTH + columns.reduce((total, column) => total + column.width, 0),
+      headerWidth + columns.reduce((total, column) => total + column.width, 0),
     monthSpans,
-    template: `${HEADER_WIDTH}px ${columns.map((column) => `${column.width}px`).join(" ")}`,
+    template: `${headerWidth}px ${columns.map((column) => `${column.width}px`).join(" ")}`,
   };
 }
 

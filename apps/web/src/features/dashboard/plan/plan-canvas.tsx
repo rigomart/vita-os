@@ -7,15 +7,16 @@ import type {
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
   pointerWithin,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@vita-os/ui/components/button";
 import { cn } from "@vita-os/ui/lib/utils";
-import { Ban, CornerDownRight } from "lucide-react";
+import { Ban, CornerDownRight, Rows2, Rows4 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import type {
@@ -23,6 +24,8 @@ import type {
   DashboardInboxTask,
   DashboardThread,
 } from "@/features/dashboard/components/dashboard-model";
+
+import { useIsMobile } from "@/hooks/use-mobile";
 
 import type { SlotDropData } from "./plan-axis";
 import type { ChipDragData } from "./plan-chip";
@@ -38,11 +41,21 @@ import {
   buildLanes,
   buildPlanItems,
   HEADER_WIDTH,
+  HEADER_WIDTH_NARROW,
   INBOX_LANE_ID,
   planDrop,
   slotTotals,
 } from "./plan-model";
 import { usePlanActions } from "./use-plan-actions";
+
+const DENSITY_OPTIONS: {
+  icon: typeof Rows2;
+  label: string;
+  value: Density;
+}[] = [
+  { icon: Rows2, label: "Comfortable", value: "comfortable" },
+  { icon: Rows4, label: "Compact", value: "compact" },
+];
 
 /**
  * Plan — the Area × day canvas.
@@ -77,7 +90,7 @@ export function PlanCanvas({
   const navigate = useNavigate();
   const { planTask, planThread } = usePlanActions();
 
-  const [density, setDensity] = useState<Density>("compact");
+  const [density, setDensity] = useState<Density>("comfortable");
   const [drag, setDrag] = useState<DragState | null>(null);
   const [activeAreas, setActiveAreas] = useState<ReadonlySet<string> | null>(
     null,
@@ -87,12 +100,17 @@ export function PlanCanvas({
   const [edges, setEdges] = useState({ end: false, start: false });
 
   /**
-   * Pointer-only, with a distance constraint. dnd-kit's KeyboardSensor claims
-   * Enter/Space on every draggable, which would stop the keyboard from opening
-   * the Thread rail — the more valuable affordance here.
+   * Mouse and touch each get their own guard: a mouse drag arms after 5px so a
+   * plain click still opens the chip, a touch drag arms only on a long-press
+   * so panning the canvas never lifts a chip. No KeyboardSensor on purpose —
+   * it claims Enter/Space on every draggable, which would stop the keyboard
+   * from opening the Thread rail, the more valuable affordance here.
    */
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 8 },
+    }),
   );
 
   const items = useMemo(() => buildPlanItems(threads, tasks), [threads, tasks]);
@@ -109,9 +127,12 @@ export function PlanCanvas({
     [items, activeAreas],
   );
 
+  const narrow = useIsMobile();
+  const headerWidth = narrow ? HEADER_WIDTH_NARROW : HEADER_WIDTH;
+
   const axis = useMemo(
-    () => buildAxis(visibleItems, now, density),
-    [visibleItems, now, density],
+    () => buildAxis(visibleItems, now, density, headerWidth),
+    [visibleItems, now, density, headerWidth],
   );
 
   const horizon = axis.days.length - 1;
@@ -142,6 +163,7 @@ export function PlanCanvas({
 
   const tally = useMemo(
     () => ({
+      inbox: inbox.openCount,
       open:
         lanes.reduce((sum, lane) => sum + lane.openCount, 0) + inbox.openCount,
       overdue: totals.overdue,
@@ -268,7 +290,7 @@ export function PlanCanvas({
   const draggingItem = drag && items.find((item) => item.id === drag.itemId);
   const dropPlan = drag ? planDrop(drag, axis, areaName) : null;
 
-  const chrome = { axis, density, drag, now, onOpen: openItem };
+  const chrome = { axis, density, drag, narrow, now, onOpen: openItem };
 
   /* ------------------------------------------------------------ render -- */
 
@@ -288,19 +310,23 @@ export function PlanCanvas({
           <span className="tabular-nums">{tally.today} today</span>
           <span aria-hidden>·</span>
           <span className="tabular-nums">{tally.undated} undated</span>
+          <span aria-hidden>·</span>
+          <span className="tabular-nums">{tally.inbox} in Inbox</span>
         </p>
 
         <div className="flex items-center gap-0.5 rounded-lg border border-border/70 p-0.5">
-          {(["compact", "comfortable"] satisfies Density[]).map((value) => (
+          {DENSITY_OPTIONS.map(({ icon: Icon, label, value }) => (
             <Button
               key={value}
               variant={density === value ? "secondary" : "ghost"}
               size="xs"
               aria-pressed={density === value}
-              className="rounded-md capitalize"
+              aria-label={`${label} density`}
+              title={`${label} density`}
+              className="rounded-md"
               onClick={() => setDensity(value)}
             >
-              {value}
+              <Icon className="size-3.5" />
             </Button>
           ))}
         </div>
@@ -337,6 +363,7 @@ export function PlanCanvas({
                 areaCount={lanes.length}
                 axis={axis}
                 drag={drag}
+                narrow={narrow}
                 totals={totals}
               />
 
@@ -361,7 +388,7 @@ export function PlanCanvas({
             style={{
               backgroundImage:
                 "linear-gradient(to right, var(--surface-1) 0 35%, transparent 100%)",
-              left: HEADER_WIDTH,
+              left: headerWidth,
               opacity: edges.start ? 1 : 0,
             }}
           />
