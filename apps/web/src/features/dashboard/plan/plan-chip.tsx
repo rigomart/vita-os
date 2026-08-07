@@ -112,10 +112,10 @@ export function ChipSurface({
  * A chip sitting on its day.
  *
  * Click — or Enter/Space while focused — opens the Thread rail in place; a Task
- * chip goes to the Inbox, the only place a Task can be edited. Dragging is
- * pointer-only (see the sensor note in `plan-canvas.tsx`), so the keyboard
- * never has to fight dnd-kit for the Enter key, and dnd-kit swallows the click
- * that follows a real drag.
+ * chip goes to the Inbox, the only place a Task can be edited. Dragging arms on
+ * mouse movement or a touch long-press (see the sensor note in
+ * `plan-canvas.tsx`), so the keyboard never has to fight dnd-kit for the Enter
+ * key, and dnd-kit swallows the click that follows a real drag.
  */
 export function PlanChip({
   density,
@@ -157,7 +157,9 @@ export function PlanChip({
       title={hint}
       onClick={() => onOpen(item)}
       className={cn(
-        "w-full cursor-grab touch-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/60 active:cursor-grabbing",
+        // `touch-manipulation`, not `touch-none`: a swipe starting on a chip
+        // must still scroll the canvas until the long-press arms the drag.
+        "w-full cursor-grab touch-manipulation rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/60 active:cursor-grabbing",
         isDragging && "opacity-30",
       )}
     >

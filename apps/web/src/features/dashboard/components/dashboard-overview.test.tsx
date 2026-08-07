@@ -22,8 +22,8 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 // The Plan canvas is a live surface of its own — Convex mutations, drag and
-// drop, the Thread rail. Here we only care that the tab hands it the full
-// open set.
+// drop, the Thread rail. Here we only care that the dashboard hands it the
+// full open set.
 vi.mock("@/features/dashboard/plan", () => ({
   PlanCanvas: ({
     tasks,
@@ -82,7 +82,7 @@ function dashboard(
 }
 
 describe("DashboardOverview", () => {
-  it("gives attention-bearing Areas prominence and keeps healthy Areas quiet", () => {
+  it("keeps attention-bearing Areas prominent in the condition strip", () => {
     render(
       <DashboardOverview
         overview={dashboard()}
@@ -91,30 +91,24 @@ describe("DashboardOverview", () => {
       />,
     );
 
-    const areaStrip = screen.getByRole("region", {
+    const strip = screen.getByRole("region", {
       name: "Life Areas by condition",
     });
 
-    const criticalCard = within(areaStrip).getByRole("link", {
-      name: /Health/,
-    });
-    expect(criticalCard).toBeVisible();
-    expect(within(criticalCard).getByText("Needs you")).toBeVisible();
+    const criticalPill = within(strip).getByRole("link", { name: /Health/ });
+    expect(criticalPill).toBeVisible();
+    expect(within(criticalPill).getByText("Needs you")).toBeVisible();
 
-    const healthyChip = within(areaStrip).getByRole("link", { name: "Home" });
-    expect(healthyChip).toBeVisible();
-    expect(within(healthyChip).queryByText("Steady")).toBeNull();
+    const healthyGlyph = within(strip).getByRole("link", { name: "Home" });
+    expect(within(healthyGlyph).queryByText("Needs you")).toBeNull();
+    expect(within(strip).getByText("1 steady")).toBeInTheDocument();
 
     expect(
-      criticalCard.compareDocumentPosition(healthyChip) &
+      criticalPill.compareDocumentPosition(healthyGlyph) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
 
-    const tabs = screen.getByRole("tablist", { name: "Dashboard view" });
-    expect(
-      areaStrip.compareDocumentPosition(tabs) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(screen.queryByRole("tablist")).toBeNull();
   });
 
   it("collapses to a steady line when every Area is healthy", () => {
@@ -136,6 +130,117 @@ describe("DashboardOverview", () => {
     expect(screen.getByText("All areas steady.")).toBeVisible();
     expect(screen.queryByText("Needs you")).toBeNull();
     expect(screen.queryByText("Watch")).toBeNull();
+
+    const strip = screen.getByRole("region", {
+      name: "Life Areas by condition",
+    });
+    expect(within(strip).getByRole("link", { name: "Health" })).toBeVisible();
+    expect(within(strip).getByRole("link", { name: "Home" })).toBeVisible();
+  });
+
+  it("hands the Plan canvas every open Thread and Task", () => {
+    render(
+      <DashboardOverview
+        overview={dashboard({
+          threads: [
+            thread("Check renewal", { followUp: currentDate }),
+            thread("Without date"),
+          ],
+          inbox: {
+            items: [
+              {
+                id: "task",
+                text: "Renew passport",
+                createdAt: currentDate,
+              },
+            ],
+            totalOpen: 1,
+          },
+        })}
+        currentDate={currentDate}
+        onCreateArea={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("plan-canvas")).toHaveTextContent(
+      "2 Threads · 1 Tasks",
+    );
+  });
+
+  it("renders Recent activity as a strip below the canvas", () => {
+    render(
+      <DashboardOverview
+        overview={dashboard({
+          threads: [thread("Insurance appeal")],
+          recentActivity: [
+            {
+              id: "activity",
+              threadId: "Insurance appeal",
+              content: "Clinic sent the report",
+              createdAt: currentDate,
+            },
+          ],
+        })}
+        currentDate={currentDate}
+        onCreateArea={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Recent activity")).toBeVisible();
+    expect(screen.getByText(/clinic sent the report/i)).toBeVisible();
+    expect(
+      screen
+        .getByTestId("plan-canvas")
+        .compareDocumentPosition(screen.getByText("Recent activity")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("omits Recent activity when there is none", () => {
+    render(
+      <DashboardOverview
+        overview={dashboard()}
+        currentDate={currentDate}
+        onCreateArea={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Recent activity")).toBeNull();
+  });
+
+  it("keeps the attention list and Inbox in the mobile-only block", () => {
+    render(
+      <DashboardOverview
+        overview={dashboard({
+          threads: [thread("Insurance appeal")],
+          inbox: {
+            items: [
+              {
+                id: "task",
+                text: "Renew passport",
+                when: currentDate,
+                createdAt: currentDate,
+              },
+            ],
+            totalOpen: 3,
+          },
+        })}
+        currentDate={currentDate}
+        onCreateArea={vi.fn()}
+      />,
+    );
+
+    const threadRow = screen.getByRole("link", { name: /insurance appeal/i });
+    expect(threadRow.closest(".sm\\:hidden")).not.toBeNull();
+
+    const inboxLink = screen.getByRole("link", { name: /inbox 3/i });
+    expect(inboxLink).toHaveAttribute("href", "/inbox");
+    expect(inboxLink.closest(".sm\\:hidden")).not.toBeNull();
+    expect(screen.getByText("2 more Tasks in Inbox")).toBeVisible();
+
+    expect(
+      screen.getByTestId("plan-canvas").closest(".sm\\:hidden"),
+    ).toBeNull();
   });
 
   it("shows date rails and keeps Open Threads inline", () => {
@@ -265,88 +370,6 @@ describe("DashboardOverview", () => {
     expect(screen.queryByRole("button", { name: /show all/i })).toBeNull();
   });
 
-  it("handles Inbox clear, remaining Tasks, and optional Recent activity", () => {
-    const { rerender } = render(
-      <DashboardOverview
-        overview={dashboard()}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("Inbox is clear")).toBeVisible();
-    expect(screen.queryByText("Recent activity")).toBeNull();
-
-    rerender(
-      <DashboardOverview
-        overview={dashboard({
-          threads: [thread("Insurance appeal")],
-          inbox: {
-            items: [
-              {
-                id: "task",
-                text: "Renew passport",
-                when: currentDate,
-                createdAt: currentDate,
-              },
-            ],
-            totalOpen: 3,
-          },
-          recentActivity: [
-            {
-              id: "activity",
-              threadId: "Insurance appeal",
-              content: "Clinic sent the report",
-              createdAt: currentDate,
-            },
-          ],
-        })}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("2 more Tasks in Inbox")).toBeVisible();
-    expect(screen.getByRole("link", { name: /inbox 3/i })).toHaveAttribute(
-      "href",
-      "/inbox",
-    );
-    expect(screen.getByText("Recent activity")).toBeVisible();
-    expect(screen.getByText(/clinic sent the report/i)).toBeVisible();
-  });
-
-  it("gives the Plan tab every open Thread and Task", async () => {
-    const user = userEvent.setup();
-    render(
-      <DashboardOverview
-        overview={dashboard({
-          threads: [
-            thread("Check renewal", { followUp: currentDate }),
-            thread("Without date"),
-          ],
-          inbox: {
-            items: [
-              {
-                id: "task",
-                text: "Renew passport",
-                createdAt: currentDate,
-              },
-            ],
-            totalOpen: 1,
-          },
-        })}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
-
-    await user.click(screen.getByRole("tab", { name: "Plan" }));
-
-    expect(screen.getByTestId("plan-canvas")).toHaveTextContent(
-      "2 Threads · 1 Tasks",
-    );
-  });
-
   it("preserves Area onboarding and the no-Thread state", async () => {
     const user = userEvent.setup();
     const onCreateArea = vi.fn();
@@ -371,5 +394,6 @@ describe("DashboardOverview", () => {
     expect(
       screen.getByText("Your Life Areas are clear for now."),
     ).toBeVisible();
+    expect(screen.getByText("Inbox is clear")).toBeVisible();
   });
 });

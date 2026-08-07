@@ -1,3 +1,5 @@
+import type { PropsWithChildren } from "react";
+
 import { api } from "@convex/_generated/api";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -19,6 +21,22 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    children,
+    params = {},
+    to,
+    ...props
+  }: PropsWithChildren<{ params?: Record<string, string>; to: string }>) => (
+    <a
+      href={Object.entries(params).reduce(
+        (path, [key, value]) => path.replace(`$${key}`, value),
+        to,
+      )}
+      {...props}
+    >
+      {children}
+    </a>
+  ),
   useNavigate: () => mocks.navigate,
 }));
 
@@ -50,6 +68,14 @@ const areas: DashboardArea[] = [
     name: "Family Health",
     order: 0,
     slug: "family-health",
+  },
+  // Deliberately empty: a critical lane must still declare its condition.
+  {
+    condition: "critical",
+    id: "finance",
+    name: "Finance",
+    order: 2,
+    slug: "finance",
   },
 ];
 
@@ -125,9 +151,31 @@ describe("PlanCanvas", () => {
     expect(screen.getByText("Garage clear-out")).toBeVisible();
     expect(screen.getByText("Renew passport")).toBeVisible();
 
-    // The tally reads off the same buckets the lanes do.
+    // The tally reads off the same buckets the lanes do, Inbox included.
     expect(within(canvas).getByText("1 waiting")).toBeVisible();
     expect(within(canvas).getByText("1 undated")).toBeVisible();
+    expect(within(canvas).getByText("1 in Inbox")).toBeVisible();
+  });
+
+  it("links each Area lane header to its Area page, Inbox staying plain", () => {
+    renderCanvas();
+
+    expect(
+      screen.getByRole("link", { name: "Open Family Health" }),
+    ).toHaveAttribute("href", "/family-health");
+    expect(screen.getByRole("link", { name: "Open Home" })).toHaveAttribute(
+      "href",
+      "/home",
+    );
+    expect(screen.queryByRole("link", { name: /Inbox/ })).toBeNull();
+  });
+
+  it("declares a non-healthy lane's condition even when it is empty", () => {
+    renderCanvas();
+
+    const header = screen.getByRole("link", { name: "Open Finance" });
+    expect(within(header).getByText("Critical")).toBeVisible();
+    expect(within(header).getByText(/No open Threads/)).toBeVisible();
   });
 
   it("opens a Thread in place and sends a Task to the Inbox", async () => {

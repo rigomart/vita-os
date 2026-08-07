@@ -1,13 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@vita-os/ui/components/badge";
 import { Button } from "@vita-os/ui/components/button";
-import { Separator } from "@vita-os/ui/components/separator";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@vita-os/ui/components/tabs";
 import { format, formatDistance } from "date-fns";
 import { ChevronRight, History, Inbox } from "lucide-react";
 import { useState } from "react";
@@ -22,7 +15,7 @@ import {
 import { PlanCanvas } from "@/features/dashboard/plan";
 import { flatListClassName } from "@/lib/flat-surface";
 
-import { AreaConditionOverview } from "./area-condition-overview";
+import { AreaConditionStrip } from "./area-condition-strip";
 import {
   type DashboardArea,
   type DashboardOverviewData,
@@ -66,30 +59,40 @@ export function DashboardOverview({
   return (
     <div className="flex flex-col gap-6">
       <DashboardHeader currentDate={currentDate} />
-      <AreaConditionOverview areas={overview.areas} />
+      <AreaConditionStrip areas={overview.areas} />
 
-      <Tabs defaultValue="overview" className="gap-5">
-        <TabsList aria-label="Dashboard view">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="plan">Plan</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview">
-          <OverviewTab
-            overview={overview}
+      <div className="hidden sm:flex sm:flex-col sm:gap-6">
+        <PlanCanvas
+          areas={overview.areas}
+          currentDate={currentDate}
+          tasks={overview.inbox.items}
+          threads={overview.threads}
+        />
+        {overview.recentActivity.length > 0 && (
+          <RecentActivity
+            entries={overview.recentActivity}
             areaById={areaById}
+            threadById={
+              new Map(overview.threads.map((thread) => [thread.id, thread]))
+            }
             currentDate={currentDate}
           />
-        </TabsContent>
-        <TabsContent value="plan">
-          <PlanCanvas
-            areas={overview.areas}
-            currentDate={currentDate}
-            tasks={overview.inbox.items}
-            threads={overview.threads}
-          />
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
+
+      {/* Interim mobile dashboard until the canvas adapts to small screens (#268). */}
+      <div className="flex flex-col gap-6 sm:hidden">
+        <DashboardThreadList
+          threads={overview.threads}
+          areaById={areaById}
+          currentDate={currentDate}
+        />
+        <InboxSection
+          items={overview.inbox.items}
+          totalOpen={overview.inbox.totalOpen}
+          currentDate={currentDate}
+        />
+      </div>
     </div>
   );
 }
@@ -115,49 +118,6 @@ function DashboardHeader({ currentDate }: { currentDate: number }) {
         </span>
       </time>
     </header>
-  );
-}
-
-function OverviewTab({
-  overview,
-  areaById,
-  currentDate,
-}: {
-  overview: DashboardOverviewData;
-  areaById: Map<string, DashboardArea>;
-  currentDate: number;
-}) {
-  return (
-    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
-      <main className="flex min-w-0 flex-col gap-6">
-        <DashboardThreadList
-          threads={overview.threads}
-          areaById={areaById}
-          currentDate={currentDate}
-        />
-      </main>
-
-      <aside className="flex flex-col gap-6 xl:border-l xl:border-border/50 xl:pl-6">
-        <InboxSection
-          items={overview.inbox.items}
-          totalOpen={overview.inbox.totalOpen}
-          currentDate={currentDate}
-        />
-        {overview.recentActivity.length > 0 && (
-          <>
-            <Separator />
-            <RecentActivity
-              entries={overview.recentActivity}
-              areaById={areaById}
-              threadById={
-                new Map(overview.threads.map((thread) => [thread.id, thread]))
-              }
-              currentDate={currentDate}
-            />
-          </>
-        )}
-      </aside>
-    </div>
   );
 }
 
@@ -226,9 +186,9 @@ function DashboardThreadList({
 }
 
 /**
- * The Overview keeps the Inbox to a glance; the Plan canvas is what needs the
- * full set of Tasks, so the query hands over every Open Task and the cap lives
- * here — the same arrangement plain Open Threads use above.
+ * The mobile dashboard keeps the Inbox to a glance; the Plan canvas is what
+ * needs the full set of Tasks, so the query hands over every Open Task and
+ * the cap lives here — the same arrangement plain Open Threads use above.
  */
 const INBOX_PREVIEW = 3;
 
@@ -298,12 +258,12 @@ function RecentActivity({
   currentDate: number;
 }) {
   return (
-    <section>
+    <section className="border-t border-border/50 pt-5">
       <div className="mb-2 flex items-center gap-2">
         <History className="size-3.5 text-muted-foreground" />
         <h2 className="text-sm font-semibold">Recent activity</h2>
       </div>
-      <div className={flatListClassName}>
+      <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2 xl:grid-cols-3">
         {entries.map((entry) => {
           const thread = threadById.get(entry.threadId);
           const area = thread ? areaById.get(thread.areaId) : undefined;
@@ -314,7 +274,7 @@ function RecentActivity({
               key={entry.id}
               to="."
               search={(prev) => ({ ...prev, thread: thread.slug })}
-              className="block rounded-md px-1 py-2 transition-colors hover:bg-muted/50"
+              className="block min-w-0 rounded-md px-1 py-2 transition-colors hover:bg-muted/50"
             >
               <div className="flex items-center gap-1.5">
                 <AreaIcon icon={area.icon} className="size-3.5 shrink-0" />

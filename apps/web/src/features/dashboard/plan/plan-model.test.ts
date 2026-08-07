@@ -6,6 +6,8 @@ import {
   buildAxis,
   buildLanes,
   dayAt,
+  HEADER_WIDTH,
+  HEADER_WIDTH_NARROW,
   INBOX_LANE_ID,
   planDrop,
   slotKeyFor,
@@ -66,6 +68,16 @@ describe("plan axis", () => {
     expect(slotKeyFor(dayAt(-3, now), now, horizon)).toBe("overdue");
     expect(slotKeyFor(dayAt(0, now), now, horizon)).toBe("d0");
     expect(slotKeyFor(undefined, now, horizon)).toBe("none");
+  });
+
+  it("narrows the header column when the component layer asks for it", () => {
+    const compact = buildAxis(items, now, "compact", HEADER_WIDTH_NARROW);
+
+    expect(compact.template.startsWith(`${HEADER_WIDTH_NARROW}px `)).toBe(true);
+    expect(axis.template.startsWith(`${HEADER_WIDTH}px `)).toBe(true);
+    expect(axis.minWidth - compact.minWidth).toBe(
+      HEADER_WIDTH - HEADER_WIDTH_NARROW,
+    );
   });
 });
 

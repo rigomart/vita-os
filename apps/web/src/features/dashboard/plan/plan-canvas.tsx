@@ -7,8 +7,9 @@ import type {
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
   pointerWithin,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -24,6 +25,8 @@ import type {
   DashboardThread,
 } from "@/features/dashboard/components/dashboard-model";
 
+import { useIsMobile } from "@/hooks/use-mobile";
+
 import type { SlotDropData } from "./plan-axis";
 import type { ChipDragData } from "./plan-chip";
 import type { Density, DragState, PlanItem } from "./plan-model";
@@ -38,6 +41,7 @@ import {
   buildLanes,
   buildPlanItems,
   HEADER_WIDTH,
+  HEADER_WIDTH_NARROW,
   INBOX_LANE_ID,
   planDrop,
   slotTotals,
@@ -87,12 +91,17 @@ export function PlanCanvas({
   const [edges, setEdges] = useState({ end: false, start: false });
 
   /**
-   * Pointer-only, with a distance constraint. dnd-kit's KeyboardSensor claims
-   * Enter/Space on every draggable, which would stop the keyboard from opening
-   * the Thread rail — the more valuable affordance here.
+   * Mouse and touch each get their own guard: a mouse drag arms after 5px so a
+   * plain click still opens the chip, a touch drag arms only on a long-press
+   * so panning the canvas never lifts a chip. No KeyboardSensor on purpose —
+   * it claims Enter/Space on every draggable, which would stop the keyboard
+   * from opening the Thread rail, the more valuable affordance here.
    */
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 8 },
+    }),
   );
 
   const items = useMemo(() => buildPlanItems(threads, tasks), [threads, tasks]);
@@ -109,9 +118,12 @@ export function PlanCanvas({
     [items, activeAreas],
   );
 
+  const narrow = useIsMobile();
+  const headerWidth = narrow ? HEADER_WIDTH_NARROW : HEADER_WIDTH;
+
   const axis = useMemo(
-    () => buildAxis(visibleItems, now, density),
-    [visibleItems, now, density],
+    () => buildAxis(visibleItems, now, density, headerWidth),
+    [visibleItems, now, density, headerWidth],
   );
 
   const horizon = axis.days.length - 1;
@@ -142,6 +154,7 @@ export function PlanCanvas({
 
   const tally = useMemo(
     () => ({
+      inbox: inbox.openCount,
       open:
         lanes.reduce((sum, lane) => sum + lane.openCount, 0) + inbox.openCount,
       overdue: totals.overdue,
@@ -268,7 +281,7 @@ export function PlanCanvas({
   const draggingItem = drag && items.find((item) => item.id === drag.itemId);
   const dropPlan = drag ? planDrop(drag, axis, areaName) : null;
 
-  const chrome = { axis, density, drag, now, onOpen: openItem };
+  const chrome = { axis, density, drag, narrow, now, onOpen: openItem };
 
   /* ------------------------------------------------------------ render -- */
 
@@ -288,6 +301,8 @@ export function PlanCanvas({
           <span className="tabular-nums">{tally.today} today</span>
           <span aria-hidden>·</span>
           <span className="tabular-nums">{tally.undated} undated</span>
+          <span aria-hidden>·</span>
+          <span className="tabular-nums">{tally.inbox} in Inbox</span>
         </p>
 
         <div className="flex items-center gap-0.5 rounded-lg border border-border/70 p-0.5">
@@ -337,6 +352,7 @@ export function PlanCanvas({
                 areaCount={lanes.length}
                 axis={axis}
                 drag={drag}
+                narrow={narrow}
                 totals={totals}
               />
 
@@ -361,7 +377,7 @@ export function PlanCanvas({
             style={{
               backgroundImage:
                 "linear-gradient(to right, var(--surface-1) 0 35%, transparent 100%)",
-              left: HEADER_WIDTH,
+              left: headerWidth,
               opacity: edges.start ? 1 : 0,
             }}
           />
