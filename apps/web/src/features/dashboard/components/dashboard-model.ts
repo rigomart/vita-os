@@ -2,7 +2,7 @@ import type { AreaIcon } from "@convex/lib/areaIcons";
 import type { Condition } from "@convex/lib/condition";
 
 import { groupThreadsByAttention } from "@convex/lib/attentionOrdering";
-import { addDays, format } from "date-fns";
+import { format } from "date-fns";
 
 export const DAY = 24 * 60 * 60 * 1000;
 
@@ -57,71 +57,11 @@ export interface DashboardThreadGroups {
   withNextMoves: DashboardThread[];
 }
 
-export type ScheduleTarget =
-  | "now"
-  | "tomorrow"
-  | "soon"
-  | "weekend"
-  | "next-week"
-  | "later"
-  | "undated";
-
-export interface ScheduleSlot {
-  date: number;
-  key: Exclude<ScheduleTarget, "undated">;
-  label: string;
-}
-
 export function groupDashboardThreads(
   threads: DashboardThread[],
   currentDate: number,
 ): DashboardThreadGroups {
   return groupThreadsByAttention(threads, currentDate);
-}
-
-export function getScheduleSlots(currentDate: number): ScheduleSlot[] {
-  const today = startOfLocalDay(currentDate);
-  const saturday = nextWeekday(today, 6);
-  const nextMonday = addDays(new Date(saturday), 2).getTime();
-
-  return [
-    { key: "now", label: "Now", date: today },
-    {
-      key: "tomorrow",
-      label: format(addDays(new Date(today), 1), "EEE d"),
-      date: addDays(new Date(today), 1).getTime(),
-    },
-    {
-      key: "soon",
-      label: format(addDays(new Date(today), 2), "EEE d"),
-      date: addDays(new Date(today), 2).getTime(),
-    },
-    { key: "weekend", label: "Weekend", date: saturday },
-    { key: "next-week", label: "Next week", date: nextMonday },
-    {
-      key: "later",
-      label: "Later",
-      date: addDays(new Date(today), 30).getTime(),
-    },
-  ];
-}
-
-export function getScheduleTarget(
-  timestamp: number | undefined,
-  currentDate: number,
-): ScheduleTarget {
-  if (timestamp == null) return "undated";
-
-  const slots = getScheduleSlots(currentDate);
-  const day = startOfLocalDay(timestamp);
-  const [, tomorrow, soon, , nextWeek] = slots;
-
-  if (day <= startOfLocalDay(currentDate)) return "now";
-  if (day <= tomorrow.date) return "tomorrow";
-  if (day <= soon.date) return "soon";
-  if (day < nextWeek.date) return "weekend";
-  if (day < nextWeek.date + 7 * DAY) return "next-week";
-  return "later";
 }
 
 export function followUpDateLabel(timestamp: number, currentDate: number) {
@@ -154,10 +94,4 @@ function dayDifference(timestamp: number, currentDate: number) {
   return Math.round(
     (startOfLocalDay(timestamp) - startOfLocalDay(currentDate)) / DAY,
   );
-}
-
-function nextWeekday(timestamp: number, weekday: number) {
-  const date = new Date(timestamp);
-  const offset = (weekday - date.getDay() + 7) % 7 || 7;
-  return addDays(date, offset).getTime();
 }

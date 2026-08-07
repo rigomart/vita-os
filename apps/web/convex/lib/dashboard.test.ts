@@ -102,7 +102,7 @@ describe("buildDashboardOverview", () => {
     ]);
   });
 
-  it("uses the shared attention order for the Inbox preview", () => {
+  it("returns every Open Task in the shared attention order", () => {
     const currentDate = new Date(2026, 6, 17, 12).getTime();
     const result = buildDashboardOverview(
       "user1",
@@ -134,6 +134,8 @@ describe("buildDashboardOverview", () => {
       "overdue",
       "today",
       "undated-new",
+      "undated-old",
+      "future",
     ]);
     expect(result.inbox.totalOpen).toBe(5);
   });

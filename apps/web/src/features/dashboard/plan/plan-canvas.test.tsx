@@ -1,0 +1,174 @@
+import { api } from "@convex/_generated/api";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
+import { getFunctionName } from "convex/server";
+import { describe, expect, it, vi } from "vitest";
+
+import type {
+  DashboardArea,
+  DashboardInboxTask,
+  DashboardThread,
+} from "@/features/dashboard/components/dashboard-model";
+
+import { PlanCanvas } from "./plan-canvas";
+
+const mocks = vi.hoisted(() => ({
+  mutations: new Map<string, ReturnType<typeof vi.fn>>(),
+  navigate: vi.fn(),
+}));
+
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => mocks.navigate,
+}));
+
+vi.mock("convex/react", () => ({
+  useMutation: (reference: Parameters<typeof getFunctionName>[0]) => {
+    const name = getFunctionName(reference);
+    const existing = mocks.mutations.get(name);
+    const mutation =
+      existing ?? vi.fn(() => Promise.resolve(undefined as unknown));
+    mocks.mutations.set(name, mutation);
+    return Object.assign(mutation, { withOptimisticUpdate: () => mutation });
+  },
+}));
+
+const now = new Date(2026, 7, 6, 9).getTime();
+const day = (offset: number) => new Date(2026, 7, 6 + offset).getTime();
+
+const areas: DashboardArea[] = [
+  {
+    condition: "healthy",
+    id: "home",
+    name: "Home",
+    order: 1,
+    slug: "home",
+  },
+  {
+    condition: "critical",
+    id: "health",
+    name: "Family Health",
+    order: 0,
+    slug: "family-health",
+  },
+];
+
+const threads: DashboardThread[] = [
+  {
+    areaId: "health",
+    followUp: day(-3),
+    id: "t1",
+    order: 0,
+    slug: "dads-cardiologist",
+    title: "Dad's cardiologist",
+  },
+  {
+    areaId: "home",
+    followUp: day(2),
+    id: "t2",
+    order: 1,
+    slug: "kitchen-faucet",
+    title: "Kitchen faucet",
+  },
+  {
+    areaId: "home",
+    id: "t3",
+    order: 2,
+    slug: "garage-clear-out",
+    title: "Garage clear-out",
+  },
+];
+
+const tasks: DashboardInboxTask[] = [
+  { createdAt: day(-1), id: "k1", text: "Renew passport", when: day(1) },
+];
+
+function renderCanvas() {
+  return render(
+    <FeedbackProvider feedback={{ error: vi.fn(), success: vi.fn() }}>
+      <PlanCanvas
+        areas={areas}
+        currentDate={now}
+        tasks={tasks}
+        threads={threads}
+      />
+    </FeedbackProvider>,
+  );
+}
+
+describe("PlanCanvas", () => {
+  it("lays Areas out worst condition first over a day axis, Inbox last", () => {
+    renderCanvas();
+
+    const canvas = screen.getByRole("region", { name: "Plan" });
+    expect(within(canvas).getByText("Today")).toBeVisible();
+    expect(within(canvas).getByText("Waiting")).toBeVisible();
+    expect(within(canvas).getByText("No date")).toBeVisible();
+
+    // The Area names appear on the filter chips too; the lane headings are the
+    // last of each.
+    const critical = screen.getAllByText("Family Health").at(-1)!;
+    const healthy = screen.getAllByText("Home").at(-1)!;
+    const inbox = screen.getByText("Inbox");
+
+    expect(
+      critical.compareDocumentPosition(healthy) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      healthy.compareDocumentPosition(inbox) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    // Every open item is on the canvas, dated or not.
+    expect(screen.getByText("Dad's cardiologist")).toBeVisible();
+    expect(screen.getByText("Kitchen faucet")).toBeVisible();
+    expect(screen.getByText("Garage clear-out")).toBeVisible();
+    expect(screen.getByText("Renew passport")).toBeVisible();
+
+    // The tally reads off the same buckets the lanes do.
+    expect(within(canvas).getByText("1 waiting")).toBeVisible();
+    expect(within(canvas).getByText("1 undated")).toBeVisible();
+  });
+
+  it("opens a Thread in place and sends a Task to the Inbox", async () => {
+    const user = userEvent.setup();
+    renderCanvas();
+
+    await user.click(screen.getByText("Kitchen faucet"));
+
+    const [threadCall] = mocks.navigate.mock.calls.at(-1) as [
+      { search: (previous: object) => object; to: string },
+    ];
+    expect(threadCall.to).toBe(".");
+    expect(threadCall.search({ other: 1 })).toEqual({
+      other: 1,
+      thread: "kitchen-faucet",
+    });
+
+    await user.click(screen.getByText("Renew passport"));
+    expect(mocks.navigate).toHaveBeenLastCalledWith({ to: "/inbox" });
+  });
+
+  it("isolates an Area on the first filter click, Inbox always in view", async () => {
+    const user = userEvent.setup();
+    renderCanvas();
+
+    await user.click(screen.getByRole("button", { name: /Family Health/ }));
+
+    expect(screen.getByText("Dad's cardiologist")).toBeVisible();
+    expect(screen.queryByText("Kitchen faucet")).toBeNull();
+    expect(screen.queryByText("Garage clear-out")).toBeNull();
+    expect(screen.getByText("Renew passport")).toBeVisible();
+  });
+
+  it("wires both writes to the app's own mutations", () => {
+    renderCanvas();
+
+    expect([...mocks.mutations.keys()]).toEqual(
+      expect.arrayContaining([
+        getFunctionName(api.threads.update),
+        getFunctionName(api.tasks.updateWhen),
+      ]),
+    );
+  });
+});

@@ -112,7 +112,9 @@ export function buildDashboardOverview(
     areas,
     threads,
     inbox: {
-      items: openTasks.slice(0, 3).map(
+      // Every Open Task, in attention order: the Dashboard Overview shows a
+      // preview of the first few, while the Plan canvas plans the whole set.
+      items: openTasks.map(
         (task): DashboardInboxTask => ({
           id: task._id,
           text: task.text,
