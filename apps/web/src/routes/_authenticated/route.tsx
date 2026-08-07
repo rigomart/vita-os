@@ -5,11 +5,19 @@ import { AuthVerifyingLoader } from "@/components/auth/auth-verifying-loader";
 import { RouteErrorFallback } from "@/components/error-boundary";
 import { AppShell } from "@/components/layout/app-shell";
 
+// PROTOTYPE: `variant` gates the throwaway dashboard direction prototypes
+// (?variant=a|b|c on "/"). Remove together with the prototype folder.
 export const Route = createFileRoute("/_authenticated")({
-  validateSearch: (search: Record<string, unknown>): { thread?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { thread?: string; variant?: "a" | "b" | "c" } => ({
     thread:
       typeof search.thread === "string" && search.thread.length > 0
         ? search.thread
+        : undefined,
+    variant:
+      search.variant === "a" || search.variant === "b" || search.variant === "c"
+        ? search.variant
         : undefined,
   }),
   errorComponent: RouteErrorFallback,

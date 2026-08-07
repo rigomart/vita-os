@@ -94,7 +94,9 @@ export function DashboardOverview({
   );
 }
 
-function DashboardHeader({ currentDate }: { currentDate: number }) {
+// Exported for the throwaway dashboard direction prototypes under
+// ../prototype/ — revert to module-private when the prototype is removed.
+export function DashboardHeader({ currentDate }: { currentDate: number }) {
   const date = new Date(currentDate);
 
   return (
@@ -118,7 +120,9 @@ function DashboardHeader({ currentDate }: { currentDate: number }) {
   );
 }
 
-function OverviewTab({
+// Exported for the throwaway dashboard direction prototypes under
+// ../prototype/ — revert to module-private when the prototype is removed.
+export function OverviewTab({
   overview,
   areaById,
   currentDate,
