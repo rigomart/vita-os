@@ -23,10 +23,17 @@ export interface PlanPrototype {
  */
 export const prototypes: PlanPrototype[] = [
   {
+    key: "lane-flow",
+    title: "Lane flow — chosen",
+    blurb:
+      "The chosen direction: Area lanes over a continuous compressed day axis, day-column-style headers, and drops that always land on an exact date.",
+    component: LaneFlowPlan,
+  },
+  {
     key: "final",
     title: "Lane view — base",
     blurb:
-      "The Area × time lane view: Areas as rows worst-condition-first, threads as compact chips, the thread sidebar for editing. The base the variations below iterate on.",
+      "The Area × time lane view: Areas as rows worst-condition-first, threads as compact chips, the thread sidebar for editing. The base the variations iterate on.",
     component: FinalPlan,
   },
   {
@@ -35,13 +42,6 @@ export const prototypes: PlanPrototype[] = [
     blurb:
       "Every column is a real day. Overdue, Today, then each of the next days individually — a drop always lands on the exact date you chose.",
     component: DayColumnsPlan,
-  },
-  {
-    key: "lane-flow",
-    title: "Lane flow",
-    blurb:
-      "Each Area lane carries its own compact 14-day axis. Chips sit on their exact day and drag anywhere along the flow.",
-    component: LaneFlowPlan,
   },
   {
     key: "zoom-horizons",

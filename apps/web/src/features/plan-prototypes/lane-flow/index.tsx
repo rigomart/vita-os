@@ -33,6 +33,7 @@ import {
   INBOX_LANE_ID,
   planDrop,
   quickDate,
+  slotTotals,
 } from "./model";
 import { currentNotice, initialPlanState, planReducer } from "./plan-state";
 
@@ -113,19 +114,21 @@ export function LaneFlowPlan() {
     return counts;
   }, [areaLanes]);
 
-  const tally = useMemo(() => {
-    const shown = [...lanes, inbox];
-    const todayKey = axis.days[0]?.key;
-    return {
-      overdue: shown.reduce((sum, lane) => sum + lane.overdue.length, 0),
-      today: shown.reduce(
-        (sum, lane) => sum + (lane.byDay.get(todayKey ?? "")?.length ?? 0),
-        0,
-      ),
-      undated: shown.reduce((sum, lane) => sum + lane.none.length, 0),
+  /**
+   * One pass over the lanes actually on screen, feeding both the summary line
+   * and every count in the axis header — so the two can never disagree.
+   */
+  const totals = useMemo(() => slotTotals([...lanes, inbox]), [lanes, inbox]);
+
+  const tally = useMemo(
+    () => ({
       open: lanes.reduce((sum, lane) => sum + lane.openCount, 0),
-    };
-  }, [lanes, inbox, axis.days]);
+      overdue: totals.overdue,
+      today: totals.byDay.get(axis.days[0]?.key ?? "") ?? 0,
+      undated: totals.none,
+    }),
+    [lanes, totals, axis.days],
+  );
 
   const selected = state.items.find((item) => item.id === selectedId);
   const notice = currentNotice(state);
@@ -347,6 +350,7 @@ export function LaneFlowPlan() {
                     areaCount={lanes.length}
                     axis={axis}
                     drag={drag}
+                    totals={totals}
                   />
 
                   {lanes.map((lane, index) => (

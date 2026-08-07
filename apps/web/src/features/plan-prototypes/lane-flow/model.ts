@@ -164,10 +164,16 @@ export interface DaySlot {
   isWeekStart: boolean;
   isWeekend: boolean;
   key: string;
-  /** Something is planned here, so the slot opens to full width. */
+  /** Something is planned here. */
   occupied: boolean;
   offset: number;
   region: "later" | "near";
+  /**
+   * The slot is open to full width, so it carries a full day header. Occupied
+   * days earn it; today keeps it unconditionally — the present never collapses
+   * to a tick, however empty the filters leave it.
+   */
+  wide: boolean;
   width: number;
 }
 
@@ -207,7 +213,7 @@ export function buildAxis(
   now: number,
   density: Density,
 ): Axis {
-  const occupied = new Set<number>();
+  const planned: number[] = [];
   let hasOverdue = false;
   let furthest = 0;
 
@@ -218,12 +224,15 @@ export function buildAxis(
       hasOverdue = true;
       continue;
     }
-    occupied.add(offset);
+    planned.push(offset);
     if (offset > furthest) furthest = offset;
   }
 
   const horizon = Math.min(MAX_HORIZON, Math.max(MIN_HORIZON, furthest));
   const slotWidth = SLOT_WIDTH[density];
+  // Anything past the horizon piles into the last day, exactly as `slotKeyFor`
+  // files it — otherwise that day would show a count but stay tick-narrow.
+  const occupied = new Set(planned.map((offset) => Math.min(offset, horizon)));
 
   const days: DaySlot[] = [];
   for (let offset = 0; offset <= horizon; offset += 1) {
@@ -232,6 +241,7 @@ export function buildAxis(
     const weekday = date.getDay();
     const isOccupied = occupied.has(offset);
     const region = offset < NEAR_DAYS ? "near" : "later";
+    const wide = isOccupied || offset === 0;
 
     days.push({
       at,
@@ -243,11 +253,8 @@ export function buildAxis(
       occupied: isOccupied,
       offset,
       region,
-      width: isOccupied
-        ? slotWidth
-        : region === "near"
-          ? TICK_NEAR
-          : TICK_LATER,
+      wide,
+      width: wide ? slotWidth : region === "near" ? TICK_NEAR : TICK_LATER,
     });
   }
 
@@ -403,6 +410,43 @@ function byDateThenTitle(a: PlanItem, b: PlanItem): number {
   const right = b.date ?? 0;
   if (left !== right) return left - right;
   return a.title.localeCompare(b.title);
+}
+
+/* ---------------------------------------------------------------- totals -- */
+
+export interface SlotTotals {
+  /** Items per day slot, summed across the lanes actually on screen. */
+  byDay: Map<string, number>;
+  none: number;
+  overdue: number;
+  /** The busiest single day — the scale the header bars are drawn against. */
+  peak: number;
+}
+
+/**
+ * What each column of the axis is holding *right now*.
+ *
+ * Pass only the visible lanes: the header counts have to agree with what the
+ * canvas below them shows, so filtering an Area out has to take its work out of
+ * the day headers too.
+ */
+export function slotTotals(lanes: Lane[]): SlotTotals {
+  const byDay = new Map<string, number>();
+  let none = 0;
+  let overdue = 0;
+
+  for (const lane of lanes) {
+    for (const [key, bucket] of lane.byDay) {
+      byDay.set(key, (byDay.get(key) ?? 0) + bucket.length);
+    }
+    none += lane.none.length;
+    overdue += lane.overdue.length;
+  }
+
+  let peak = 1;
+  for (const count of byDay.values()) if (count > peak) peak = count;
+
+  return { byDay, none, overdue, peak };
 }
 
 /* ------------------------------------------------------------------ drop -- */

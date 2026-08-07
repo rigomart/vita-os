@@ -298,7 +298,7 @@ function DayCell({
       style={{ gridColumn, gridRow: 1 }}
       className={cn(
         "relative flex min-h-[2.75rem] flex-col justify-center gap-1 py-1.5 transition-colors",
-        day.occupied ? "px-1.5" : "px-0",
+        day.wide ? "px-1.5" : "px-0",
         isLaterStart
           ? "border-l border-border/60"
           : day.isWeekStart
