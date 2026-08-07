@@ -7,7 +7,7 @@ import {
 } from "@vita-os/ui/components/collapsible";
 import { cn } from "@vita-os/ui/lib/utils";
 import { CalendarPlus, ChevronRight, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { type MouseEvent, type PointerEvent, useRef, useState } from "react";
 
 import type { PlanActions } from "./item-parts";
 import type { PlanItem, TrayGroup } from "./model";
@@ -156,16 +156,39 @@ function TrayRow({
   now: number;
 }) {
   const [open, setOpen] = useState(false);
+  const pressedAt = useRef<{ x: number; y: number } | null>(null);
   const { attributes, isDragging, listeners, setNodeRef } = useDraggable({
     data: { item },
     id: item.id,
   });
+
+  // The row body is the primary way into the editor; the icon button is only
+  // the popover's anchor. A press that never travels past the sensor's 6px
+  // activation distance was a click, not a drag, so it opens the editor.
+  function onPointerDown(event: PointerEvent<HTMLDivElement>) {
+    pressedAt.current = { x: event.clientX, y: event.clientY };
+    listeners?.onPointerDown?.(event);
+  }
+
+  function onClick(event: MouseEvent<HTMLDivElement>) {
+    const start = pressedAt.current;
+    pressedAt.current = null;
+    if (!start) return;
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) >= 6) {
+      return;
+    }
+    // The icon button is the trigger and toggles itself — don't fight it.
+    if ((event.target as HTMLElement).closest("[data-editor-trigger]")) return;
+    setOpen(true);
+  }
 
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      onClick={onClick}
+      onPointerDown={onPointerDown}
       className={cn(
         "group/tray flex cursor-grab items-start gap-2 rounded-lg py-1.5 pr-1 pl-1.5 transition-colors hover:bg-surface-3/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none",
         isDragging && "opacity-40",
@@ -198,6 +221,7 @@ function TrayRow({
             variant="ghost"
             size="icon-xs"
             aria-label={`Plan ${item.title}`}
+            data-editor-trigger=""
             className={cn(
               "mt-0.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/tray:opacity-100 group-focus-within/tray:opacity-100",
               open && "opacity-100",

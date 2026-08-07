@@ -129,14 +129,19 @@ export function AreaGridRow({
   density,
   dispatch,
   drag,
+  editorId,
   now,
+  onEditorOpenChange,
   row,
 }: {
   columns: PlanColumn[];
   density: Density;
   dispatch: (action: PlanAction) => void;
   drag: DragState | null;
+  /** Thread whose in-place editor is open, owned by the board. */
+  editorId: string | null;
   now: number;
+  onEditorOpenChange: (threadId: string, open: boolean) => void;
   row: AreaRow;
 }) {
   const incoming =
@@ -179,7 +184,9 @@ export function AreaGridRow({
           density={density}
           dispatch={dispatch}
           drag={drag}
+          editorId={editorId}
           now={now}
+          onEditorOpenChange={onEditorOpenChange}
           row={row}
         />
       ))}
@@ -297,7 +304,9 @@ function GridCell({
   density,
   dispatch,
   drag,
+  editorId,
   now,
+  onEditorOpenChange,
   row,
 }: {
   column: PlanColumn;
@@ -305,7 +314,9 @@ function GridCell({
   density: Density;
   dispatch: (action: PlanAction) => void;
   drag: DragState | null;
+  editorId: string | null;
   now: number;
+  onEditorOpenChange: (threadId: string, open: boolean) => void;
   row: AreaRow;
 }) {
   const droppable = column.drop !== null;
@@ -359,6 +370,8 @@ function GridCell({
             density={density}
             dispatch={dispatch}
             now={now}
+            onOpenChange={(open) => onEditorOpenChange(thread.id, open)}
+            open={editorId === thread.id}
             thread={thread}
           />
         ))}

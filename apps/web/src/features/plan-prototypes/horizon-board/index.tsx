@@ -5,7 +5,6 @@ import {
   DragOverlay,
   type DragEndEvent,
   type DragStartEvent,
-  KeyboardSensor,
   PointerSensor,
   pointerWithin,
   useSensor,
@@ -45,7 +44,6 @@ import { ThreadCard } from "./thread-card";
 
 const RESOLVE_EXIT_MS = 260;
 const LANDED_FLASH_MS = 1100;
-const NOTICE_MS = 3800;
 
 /** Pointer-first so column hit areas feel exact; keyboard drags fall back. */
 const collisionDetection: CollisionDetection = (args) => {
@@ -73,9 +71,10 @@ export function HorizonBoardPlan() {
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<BoardNotice | null>(null);
 
+  // Pointer only. A KeyboardSensor would swallow Enter/Space on a focused card
+  // to start a keyboard drag, and those keys belong to the card editor here.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor),
   );
 
   const areaCounts = useMemo(() => {
@@ -114,12 +113,6 @@ export function HorizonBoardPlan() {
     }, RESOLVE_EXIT_MS);
     return () => clearTimeout(timer);
   }, [resolvingId]);
-
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => setNotice(null), NOTICE_MS);
-    return () => clearTimeout(timer);
-  }, [notice]);
 
   function announce(
     text: string,
@@ -329,7 +322,9 @@ export function HorizonBoardPlan() {
         </DndContext>
       )}
 
-      {notice && <NoticePill notice={notice} />}
+      {notice && (
+        <NoticePill notice={notice} onDismiss={() => setNotice(null)} />
+      )}
     </section>
   );
 }

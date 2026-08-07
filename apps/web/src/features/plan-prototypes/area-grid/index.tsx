@@ -7,7 +7,6 @@ import type {
 import {
   DndContext,
   DragOverlay,
-  KeyboardSensor,
   PointerSensor,
   pointerWithin,
   useSensor,
@@ -16,8 +15,15 @@ import {
 import { Button } from "@vita-os/ui/components/button";
 import { TooltipProvider } from "@vita-os/ui/components/tooltip";
 import { cn } from "@vita-os/ui/lib/utils";
-import { CornerDownRight, Undo2, X } from "lucide-react";
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { ChevronRight, CornerDownRight, Undo2, X } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 
 import type { CellDropData, DragState } from "./grid";
 import type { NoticeTone } from "./plan-state";
@@ -55,10 +61,12 @@ export function AreaGridPlan() {
   const [density, setDensity] = useState<Density>("comfortable");
   const [focusMode, setFocusMode] = useState(false);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [editorId, setEditorId] = useState<string | null>(null);
 
+  // Pointer only. A KeyboardSensor would take Enter/Space on a focused chip to
+  // start a keyboard drag, and those keys have to open the chip editor instead.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor),
   );
 
   const rows = useMemo(
@@ -95,6 +103,7 @@ export function AreaGridPlan() {
   function handleDragStart(event: DragStartEvent) {
     const data = event.active.data.current as ChipDragData | undefined;
     if (!data) return;
+    setEditorId(null);
     setDrag({
       areaId: data.areaId,
       column: data.column,
@@ -133,6 +142,26 @@ export function AreaGridPlan() {
 
   const undated = state.threads.filter((thread) => thread.followUp == null);
 
+  // Below ~1200px the right-hand columns (No date especially) fall off the
+  // scrollport with nothing saying so, so the edges are given a fade + hint.
+  const scrollport = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ end: false, start: false });
+
+  const syncEdges = useCallback(() => {
+    const node = scrollport.current;
+    if (!node) return;
+    setEdges({
+      end: node.scrollLeft + node.clientWidth < node.scrollWidth - 4,
+      start: node.scrollLeft > 4,
+    });
+  }, []);
+
+  useEffect(() => {
+    syncEdges();
+    window.addEventListener("resize", syncEdges);
+    return () => window.removeEventListener("resize", syncEdges);
+  }, [syncEdges, columns.length, visibleRows.length]);
+
   return (
     <TooltipProvider delay={350}>
       <section className="flex flex-col gap-4">
@@ -147,6 +176,12 @@ export function AreaGridPlan() {
               Areas · <span className="tabular-nums">{undated.length}</span>{" "}
               with no Follow-up
             </p>
+            {edges.end && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                Scroll sideways — more columns, ending in No date
+                <ChevronRight className="size-3" />
+              </p>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -189,39 +224,56 @@ export function AreaGridPlan() {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
           onDragCancel={() => setDrag(null)}
-          accessibility={{
-            screenReaderInstructions: {
-              draggable:
-                "Press space to pick up this Thread. Use the arrow keys to move it across time columns to change its Follow-up, or into another Area row to move the Thread. Press space to drop, escape to cancel.",
-            },
-          }}
         >
-          {/* No horizontal padding: the sticky Area column pins to `left-0` of
-              this scrollport, and padding would let chips bleed past it. */}
-          <div className="overflow-x-auto pb-1">
-            <div style={{ minWidth: gridMinWidth(columns.length) }}>
-              <ColumnHeaderRow
-                areaCount={visibleRows.length}
-                columns={columns}
-                totals={totals}
-              />
-
-              {visibleRows.map((row) => (
-                <AreaGridRow
-                  key={row.area.id}
+          <div className="relative">
+            {/* No horizontal padding: the sticky Area column pins to `left-0`
+                of this scrollport, and padding would let chips bleed past it. */}
+            <div
+              ref={scrollport}
+              onScroll={syncEdges}
+              className="overflow-x-auto pb-1"
+            >
+              <div style={{ minWidth: gridMinWidth(columns.length) }}>
+                <ColumnHeaderRow
+                  areaCount={visibleRows.length}
                   columns={columns}
-                  density={density}
-                  dispatch={dispatch}
-                  drag={drag}
-                  now={now}
-                  row={row}
+                  totals={totals}
                 />
-              ))}
 
-              {visibleRows.length === 0 && (
-                <EmptyGrid columnCount={columns.length} />
-              )}
+                {visibleRows.map((row) => (
+                  <AreaGridRow
+                    key={row.area.id}
+                    columns={columns}
+                    density={density}
+                    dispatch={dispatch}
+                    drag={drag}
+                    editorId={editorId}
+                    now={now}
+                    onEditorOpenChange={(threadId, open) =>
+                      setEditorId(open ? threadId : null)
+                    }
+                    row={row}
+                  />
+                ))}
+
+                {visibleRows.length === 0 && (
+                  <EmptyGrid columnCount={columns.length} />
+                )}
+              </div>
             </div>
+
+            {edges.start && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 left-[212px] w-6 bg-gradient-to-r from-surface-1 to-transparent"
+              />
+            )}
+            {edges.end && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-surface-1 to-transparent"
+              />
+            )}
           </div>
 
           <DragOverlay dropAnimation={null}>

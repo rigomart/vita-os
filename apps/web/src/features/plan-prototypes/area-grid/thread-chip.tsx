@@ -11,7 +11,6 @@ import {
 } from "@vita-os/ui/components/tooltip";
 import { cn } from "@vita-os/ui/lib/utils";
 import { CornerDownRight } from "lucide-react";
-import { useState } from "react";
 
 import type { MockArea, MockThread } from "../mock-data";
 import type { ColumnKey } from "./model";
@@ -116,12 +115,19 @@ export function ChipSurface({
   );
 }
 
+/**
+ * `open` is owned by the board, not by the chip: retargeting a Follow-up moves
+ * the chip into a different cell, which unmounts this component. Local state
+ * would die with it and the editor would snap shut after every date change.
+ */
 export function ThreadChip({
   area,
   column,
   density,
   dispatch,
   now,
+  onOpenChange,
+  open,
   thread,
 }: {
   area: MockArea | undefined;
@@ -129,9 +135,10 @@ export function ThreadChip({
   density: Density;
   dispatch: (action: PlanAction) => void;
   now: number;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
   thread: MockThread;
 }) {
-  const [open, setOpen] = useState(false);
   const { attributes, isDragging, listeners, setActivatorNodeRef, setNodeRef } =
     useDraggable({
       id: thread.id,
@@ -159,7 +166,7 @@ export function ThreadChip({
       className={cn("w-full", isDragging && "opacity-35")}
       data-chip={thread.id}
     >
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={onOpenChange}>
         <PopoverTrigger render={trigger}>
           {density === "compact" && thread.nextMove ? (
             <Tooltip>
@@ -183,7 +190,7 @@ export function ThreadChip({
             area={area}
             dispatch={dispatch}
             now={now}
-            onClose={() => setOpen(false)}
+            onClose={() => onOpenChange(false)}
             thread={thread}
           />
         </PopoverContent>

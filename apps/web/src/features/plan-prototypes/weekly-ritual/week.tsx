@@ -9,7 +9,12 @@ import type { PlanItem, WeekModel } from "./model";
 
 import { ItemEditor } from "./item-editor";
 import { ItemGlyph } from "./item-parts";
-import { BEYOND_TARGET, dayTarget, SOMEDAY_TARGET } from "./model";
+import {
+  BEYOND_TARGET,
+  beyondTimestamp,
+  dayTarget,
+  SOMEDAY_TARGET,
+} from "./model";
 
 /**
  * The right pane: seven days you can drop onto, plus the two places a soft
@@ -68,6 +73,7 @@ export function WeekPanel({
           icon={<Telescope className="size-4" />}
           items={week.beyond}
           label="Beyond this week"
+          landing={`lands ${format(beyondTimestamp(), "EEE d")}`}
           now={now}
           target={BEYOND_TARGET}
         />
@@ -188,6 +194,7 @@ function OverflowRow({
   icon,
   items,
   label,
+  landing,
   now,
   target,
 }: {
@@ -195,6 +202,8 @@ function OverflowRow({
   icon: React.ReactNode;
   items: PlanItem[];
   label: string;
+  /** The day a drop here writes, so the row is not a mystery bucket. */
+  landing: string;
   now: number;
   target: string;
 }) {
@@ -213,9 +222,17 @@ function OverflowRow({
         {icon}
       </span>
       <div className="flex min-h-9 min-w-0 flex-1 flex-col justify-center gap-1.5 py-1">
-        <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+        <span className="flex items-baseline gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
           {label}
-          <span className="ml-1.5 tabular-nums opacity-70">{items.length}</span>
+          <span className="tabular-nums opacity-70">{items.length}</span>
+          <span
+            className={cn(
+              "ml-auto pr-1 text-[11px] normal-case tabular-nums",
+              isOver ? "text-foreground" : "text-muted-foreground/60",
+            )}
+          >
+            {isOver ? `Drop — ${landing}` : landing}
+          </span>
         </span>
         {items.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">

@@ -4,6 +4,7 @@ import {
   CalendarOff,
   CircleCheckBig,
   Undo2,
+  X,
 } from "lucide-react";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
@@ -99,8 +100,17 @@ const noticeIcon: Record<NoticeTone, typeof Undo2> = {
   resolved: CircleCheckBig,
 };
 
-/** Transient confirmation for the last board action. */
-export function NoticePill({ notice }: { notice: BoardNotice }) {
+/**
+ * Confirmation for the last board action. It stays until dismissed: an Undo
+ * that expires on a timer is an Undo you cannot rely on.
+ */
+export function NoticePill({
+  notice,
+  onDismiss,
+}: {
+  notice: BoardNotice;
+  onDismiss: () => void;
+}) {
   const Icon = noticeIcon[notice.tone];
 
   return (
@@ -127,6 +137,14 @@ export function NoticePill({ notice }: { notice: BoardNotice }) {
             Undo
           </button>
         )}
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className="flex size-6 shrink-0 items-center justify-center rounded-full text-surface-1/60 transition-colors hover:bg-surface-1/10 hover:text-surface-1"
+        >
+          <X className="size-3.5" />
+        </button>
       </div>
     </div>
   );

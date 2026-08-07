@@ -9,7 +9,14 @@ import {
   PopoverTrigger,
 } from "@vita-os/ui/components/popover";
 import { cn } from "@vita-os/ui/lib/utils";
-import { CalendarOff, Check, CircleCheckBig, Undo2 } from "lucide-react";
+import {
+  CalendarDays,
+  CalendarOff,
+  Check,
+  ChevronDown,
+  CircleCheckBig,
+  Undo2,
+} from "lucide-react";
 import { useState } from "react";
 
 import type { PlanActions } from "./item-parts";
@@ -41,6 +48,7 @@ export function ItemEditor({
   trigger: ReactElement;
 }) {
   const [draft, setDraft] = useState(item.nextMove ?? "");
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const selected = item.when === undefined ? undefined : new Date(item.when);
   const isThread = item.kind === "thread";
 
@@ -55,6 +63,7 @@ export function ItemEditor({
       onOpenChange={(next) => {
         if (!next) commitDraft();
         else setDraft(item.nextMove ?? "");
+        setCalendarOpen(false);
         onOpenChange(next);
       }}
     >
@@ -142,18 +151,38 @@ export function ItemEditor({
           />
         </div>
 
+        {/* Collapsed by default: an always-open calendar pushed this popover
+            past 800px, putting Resolve out of reach on a laptop. */}
         <div className="border-t border-border/60">
-          <Calendar
-            mode="single"
-            className="p-2.5 [--cell-size:--spacing(7.5)]"
-            selected={selected}
-            defaultMonth={selected}
-            onSelect={(date) => {
-              if (!date) return;
-              actions.setWhen(item.id, date.getTime());
-              onOpenChange(false);
-            }}
-          />
+          <button
+            type="button"
+            onClick={() => setCalendarOpen((value) => !value)}
+            aria-expanded={calendarOpen}
+            className="flex w-full items-center gap-1.5 px-3.5 py-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-surface-3/70 hover:text-foreground"
+          >
+            <CalendarDays className="size-3.5" />
+            Pick an exact date
+            <ChevronDown
+              className={cn(
+                "ml-auto size-3.5 transition-transform",
+                calendarOpen && "rotate-180",
+              )}
+            />
+          </button>
+
+          {calendarOpen && (
+            <Calendar
+              mode="single"
+              className="border-t border-border/60 p-2.5 [--cell-size:--spacing(7.5)]"
+              selected={selected}
+              defaultMonth={selected}
+              onSelect={(date) => {
+                if (!date) return;
+                actions.setWhen(item.id, date.getTime());
+                onOpenChange(false);
+              }}
+            />
+          )}
         </div>
 
         <div className="flex flex-col gap-0.5 border-t border-border/60 p-1.5">

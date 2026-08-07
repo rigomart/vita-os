@@ -92,12 +92,22 @@ export function FlowTimelinePlan() {
     setSelectedId(nextId);
   };
 
-  const setDate = (id: string, date: number | undefined) => {
+  /**
+   * Rescheduling is a sweep, not a chase: the row teleports to its new day, so
+   * following it would drag the reader across the timeline after every edit.
+   * `advance` (keyboard and rail chips) hands the selection to whatever was
+   * next in the pre-move order; a drag leaves the selection alone entirely.
+   */
+  const setDate = (id: string, date: number | undefined, advance = false) => {
+    const index = order.indexOf(id);
     dispatch({ date, id, kind: "set-date" });
-    setSelectedId(id);
-    // Let the row land in its new day before scrolling to it.
+    if (!advance) return;
+
+    const nextId = order[index + 1] ?? order[index - 1] ?? id;
+    setSelectedId(nextId);
+    // Let the list settle into its new order before scrolling.
     requestAnimationFrame(() => {
-      reveal(id);
+      reveal(nextId);
     });
   };
 
@@ -150,12 +160,12 @@ export function FlowTimelinePlan() {
       const key = event.key.toLowerCase();
       if (key in quick) {
         event.preventDefault();
-        setDate(selectedId, quickDate(quick[key], now));
+        setDate(selectedId, quickDate(quick[key], now), true);
         return;
       }
       if (key === "x") {
         event.preventDefault();
-        setDate(selectedId, undefined);
+        setDate(selectedId, undefined, true);
         return;
       }
       if (key === "r") {
@@ -239,7 +249,11 @@ export function FlowTimelinePlan() {
           setDraggingId(undefined);
         }}
       >
-        <div className="relative flex h-[min(660px,calc(100svh_-_22rem))] min-h-[420px] gap-4">
+        {/* Both panes share this height, and the rail's own content (follow-up,
+            next move, last activity) is the taller of the two — so the budget
+            has to leave it enough room to reach Last activity on a 900px
+            laptop rather than cutting it mid-section. */}
+        <div className="relative flex h-[min(720px,calc(100svh_-_17rem))] min-h-[420px] gap-4">
           <div className="-mx-1.5 min-w-0 flex-1 overflow-y-auto px-1.5 pb-10">
             {sections.map((section) => (
               <SectionBlock
@@ -265,7 +279,9 @@ export function FlowTimelinePlan() {
                 setSelectedId(undefined);
               },
               onRemove: remove,
-              onSetDate: setDate,
+              onSetDate: (id, date) => {
+                setDate(id, date, true);
+              },
               onSetNextMove: (id, nextMove) => {
                 dispatch({ id, kind: "set-next-move", nextMove });
               },

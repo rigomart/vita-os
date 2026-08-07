@@ -71,9 +71,11 @@ export function ChipEditor({
     { label: "Next week", at: atMorning(nextWeekStart) },
   ];
 
+  // Date edits keep the editor open so a mis-click can be corrected and a date
+  // can be chained with a Next Move rewrite. Only the two terminal actions —
+  // Resolve and Move to Area — close it.
   function setFollowUp(followUp: number | undefined) {
     dispatch({ followUp, threadId: thread.id, type: "set-follow-up" });
-    onClose();
   }
 
   function commitDraft() {
@@ -81,7 +83,9 @@ export function ChipEditor({
   }
 
   return (
-    <div className="flex flex-col">
+    // Capped and scrollable: with the calendar expanded this stack is taller
+    // than a short viewport, and the Resolve action must stay reachable.
+    <div className="flex max-h-[70vh] flex-col overflow-y-auto">
       <header className="px-3.5 pt-3.5 pb-3">
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <AreaIcon icon={area?.icon} className="size-3" />
@@ -115,7 +119,7 @@ export function ChipEditor({
               if (event.key === "Enter") {
                 event.preventDefault();
                 commitDraft();
-                onClose();
+                event.currentTarget.blur();
               }
             }}
           />
@@ -134,7 +138,6 @@ export function ChipEditor({
                       type: "complete-next-move",
                     });
                     setDraft("");
-                    onClose();
                   }}
                 />
               }

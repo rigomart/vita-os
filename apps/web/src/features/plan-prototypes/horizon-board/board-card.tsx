@@ -62,12 +62,15 @@ export function BoardCard({
     <Popover open={editorOpen} onOpenChange={onEditorOpenChange}>
       <PopoverTrigger
         render={
-          <div
+          // A real <button>: Base UI's trigger expects a native button, and it
+          // is what makes Enter/Space open the editor from the keyboard.
+          <button
+            type="button"
             ref={setNodeRef}
             {...listeners}
             {...attributes}
             aria-label={`${thread.title} — open editor, or drag to reschedule`}
-            className="cursor-grab touch-none rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+            className="block w-full cursor-grab touch-none rounded-xl text-left outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
           >
             <ThreadCard
               area={area}
@@ -80,7 +83,7 @@ export function BoardCard({
               selected={editorOpen}
               thread={thread}
             />
-          </div>
+          </button>
         }
       />
       <PopoverContent

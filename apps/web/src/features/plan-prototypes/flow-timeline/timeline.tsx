@@ -434,7 +434,9 @@ export function ItemRow({
 /** Ghost shown under the cursor while dragging a row. */
 export function DragGhost({ area, item }: { area?: MockArea; item: PlanItem }) {
   return (
-    <div className="flex h-9 max-w-md items-center gap-2 rounded-md border border-border bg-surface-2 pr-3 pl-2.5 shadow-lg">
+    // Compact on purpose: a full-width bar covers the very day row you are
+    // aiming at, so the ghost is only wide enough to name what you are holding.
+    <div className="flex h-9 w-fit max-w-[280px] items-center gap-2 rounded-md border border-border bg-surface-2 pr-3 pl-2.5 shadow-lg">
       {item.kind === "task" ? (
         <Inbox className="size-3.5 shrink-0 text-muted-foreground/70" />
       ) : area ? (

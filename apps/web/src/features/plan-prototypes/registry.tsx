@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import { AreaGridPlan } from "./area-grid";
+import { FinalPlan } from "./final";
 import { FlowTimelinePlan } from "./flow-timeline";
 import { HorizonBoardPlan } from "./horizon-board";
 import { StatusQuoPlan } from "./status-quo";
@@ -23,6 +24,13 @@ export interface PlanPrototype {
  * here. Nothing else is wired by hand.
  */
 export const prototypes: PlanPrototype[] = [
+  {
+    key: "final",
+    title: "Final — recommended",
+    blurb:
+      "The converged design: the Area × time grid as the canvas, a persistent editing rail, and a guided card-by-card Review mode. Built from the strongest parts of the four directions below.",
+    component: FinalPlan,
+  },
   {
     key: "status-quo",
     title: "Status quo",

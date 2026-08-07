@@ -243,6 +243,20 @@ export function buildWeek(items: PlanItem[], now: number): WeekModel {
 export const BEYOND_TARGET = "beyond";
 export const SOMEDAY_TARGET = "someday";
 
+const MONDAY = 1;
+
+/**
+ * Where "Beyond this week" lands: the first Monday strictly after the seven
+ * days on screen. A named day the reader can picture beats "+7", and starting
+ * the next week is what "beyond this one" actually means.
+ */
+export function beyondTimestamp(): number {
+  const today = new Date(NOW);
+  let offset = WEEK_LENGTH;
+  while (addDays(today, offset).getDay() !== MONDAY) offset += 1;
+  return dayTimestamp(offset);
+}
+
 export function dayTarget(index: number): string {
   return `day:${index}`;
 }
@@ -252,7 +266,7 @@ export function targetWhen(
   target: string,
 ): { when: number | undefined } | undefined {
   if (target === SOMEDAY_TARGET) return { when: undefined };
-  if (target === BEYOND_TARGET) return { when: dayTimestamp(WEEK_LENGTH) };
+  if (target === BEYOND_TARGET) return { when: beyondTimestamp() };
   if (target.startsWith("day:")) {
     const index = Number(target.slice(4));
     if (Number.isInteger(index)) return { when: dayTimestamp(index) };
