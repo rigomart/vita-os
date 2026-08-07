@@ -90,6 +90,10 @@ export function buildDashboardOverview(
   const seenThreads = new Set<Id<"threads">>();
   const recentActivity: DashboardActivity[] = [];
 
+  // One entry per distinct Open Thread, enough to fill the Dashboard's
+  // full-width activity strip at two rows of three.
+  const recentActivityCap = 6;
+
   for (const entry of source.activityLogs
     .filter((activity) => activity.userId === userId)
     .sort((a, b) => b.createdAt - a.createdAt)
@@ -105,7 +109,7 @@ export function buildDashboardOverview(
       createdAt: entry.createdAt,
     });
     seenThreads.add(entry.threadId);
-    if (recentActivity.length === 2) break;
+    if (recentActivity.length === recentActivityCap) break;
   }
 
   return {

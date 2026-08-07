@@ -16,7 +16,7 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@vita-os/ui/components/button";
 import { cn } from "@vita-os/ui/lib/utils";
-import { Ban, CornerDownRight } from "lucide-react";
+import { Ban, CornerDownRight, Rows2, Rows4 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import type {
@@ -47,6 +47,15 @@ import {
   slotTotals,
 } from "./plan-model";
 import { usePlanActions } from "./use-plan-actions";
+
+const DENSITY_OPTIONS: {
+  icon: typeof Rows2;
+  label: string;
+  value: Density;
+}[] = [
+  { icon: Rows2, label: "Comfortable", value: "comfortable" },
+  { icon: Rows4, label: "Compact", value: "compact" },
+];
 
 /**
  * Plan — the Area × day canvas.
@@ -81,7 +90,7 @@ export function PlanCanvas({
   const navigate = useNavigate();
   const { planTask, planThread } = usePlanActions();
 
-  const [density, setDensity] = useState<Density>("compact");
+  const [density, setDensity] = useState<Density>("comfortable");
   const [drag, setDrag] = useState<DragState | null>(null);
   const [activeAreas, setActiveAreas] = useState<ReadonlySet<string> | null>(
     null,
@@ -306,16 +315,18 @@ export function PlanCanvas({
         </p>
 
         <div className="flex items-center gap-0.5 rounded-lg border border-border/70 p-0.5">
-          {(["compact", "comfortable"] satisfies Density[]).map((value) => (
+          {DENSITY_OPTIONS.map(({ icon: Icon, label, value }) => (
             <Button
               key={value}
               variant={density === value ? "secondary" : "ghost"}
               size="xs"
               aria-pressed={density === value}
-              className="rounded-md capitalize"
+              aria-label={`${label} density`}
+              title={`${label} density`}
+              className="rounded-md"
               onClick={() => setDensity(value)}
             >
-              {value}
+              <Icon className="size-3.5" />
             </Button>
           ))}
         </div>
