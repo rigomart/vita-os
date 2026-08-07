@@ -1,6 +1,6 @@
 import type { Condition } from "@convex/lib/condition";
 
-import { addDays, format, startOfDay } from "date-fns";
+import { format, startOfDay } from "date-fns";
 
 import type { MockActivity, MockArea } from "../mock-data";
 
@@ -366,86 +366,6 @@ export function columnTotals(
   return totals;
 }
 
-/* ------------------------------------------------------ the review queue -- */
-
-export type QueueGroupKey = "inbox" | "ready" | "retriage" | "undecided";
-
-export interface QueueGroup {
-  /** The decision this pile is actually asking for. */
-  hint: string;
-  items: PlanItem[];
-  key: QueueGroupKey;
-  label: string;
-}
-
-const QUEUE_META: Record<QueueGroupKey, { hint: string; label: string }> = {
-  retriage: {
-    hint: "These dates passed without you re-engaging.",
-    label: "Needs re-triage",
-  },
-  ready: {
-    hint: "A move is ready. It just has no day.",
-    label: "Ready, unscheduled",
-  },
-  undecided: {
-    hint: "No move, no date. Does this still matter?",
-    label: "Open, undecided",
-  },
-  inbox: {
-    hint: "Loose tasks waiting for a when.",
-    label: "Inbox tasks",
-  },
-};
-
-const QUEUE_ORDER: QueueGroupKey[] = [
-  "retriage",
-  "ready",
-  "undecided",
-  "inbox",
-];
-
-/**
- * Everything still waiting on a decision, grouped by the decision being asked.
- * Anything already sitting on a future day is planned, so it stays out.
- */
-export function buildQueue(items: PlanItem[], now: number): QueueGroup[] {
-  const buckets: Record<QueueGroupKey, PlanItem[]> = {
-    inbox: [],
-    ready: [],
-    retriage: [],
-    undecided: [],
-  };
-
-  for (const item of items) {
-    const overdue = item.date != null && dayDelta(item.date, now) < 0;
-
-    if (item.kind === "task") {
-      if (overdue || item.date == null) buckets.inbox.push(item);
-      continue;
-    }
-    if (overdue) {
-      buckets.retriage.push(item);
-      continue;
-    }
-    if (item.date != null) continue;
-    if (item.nextMove) buckets.ready.push(item);
-    else buckets.undecided.push(item);
-  }
-
-  buckets.retriage.sort((a, b) => (a.date ?? 0) - (b.date ?? 0));
-  buckets.inbox.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
-
-  return QUEUE_ORDER.map((key) => ({
-    ...QUEUE_META[key],
-    items: buckets[key],
-    key,
-  }));
-}
-
-export function queueIds(groups: QueueGroup[]): string[] {
-  return groups.flatMap((group) => group.items.map((item) => item.id));
-}
-
 /* --------------------------------------------------------- copy register -- */
 
 export type DateTone = "attention" | "muted" | "today";
@@ -572,17 +492,3 @@ export const dateToneClass: Record<DateTone, string> = {
   muted: "text-muted-foreground",
   today: "text-brand-accent-foreground",
 };
-
-/** Seven days from today, for the review's schedule row. */
-export const REVIEW_WEEK = 7;
-
-export function reviewDays(items: PlanItem[], now: number) {
-  const base = startOfDay(new Date(now));
-  return Array.from({ length: REVIEW_WEEK }, (_, index) => {
-    const date = addDays(base, index);
-    const load = items.filter(
-      (item) => item.date != null && dayDelta(item.date, now) === index,
-    ).length;
-    return { date, index, load };
-  });
-}

@@ -91,9 +91,7 @@ export function ColumnHeaderRow({
           {areaCount === 1 ? "Area" : "Areas"}
         </span>
         <span className="h-[3px]" />
-        <span className="truncate text-[10px] text-muted-foreground/60">
-          worst condition first
-        </span>
+        <span className="h-[15px]" />
       </div>
 
       {columns.map((column) => {
@@ -495,17 +493,11 @@ function PlanNudge({
         Plan something
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[20rem] gap-0 p-0">
-        <header className="px-3.5 pt-3.5 pb-2.5">
-          <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <AreaIcon icon={row.area.icon} className="size-3" />
-            {row.area.name}
-          </span>
-          <h3 className="mt-1 font-heading text-sm leading-snug font-semibold">
-            Nothing on the near horizon
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {conditionLabels[row.area.condition]} — pull one Thread forward.
-          </p>
+        <header className="flex items-center gap-1.5 px-3.5 pt-3 pb-2.5 text-[11px] text-muted-foreground">
+          <AreaIcon icon={row.area.icon} className="size-3" />
+          {row.area.name}
+          <span aria-hidden>·</span>
+          {conditionLabels[row.area.condition]}
         </header>
 
         <div className="max-h-64 overflow-y-auto border-t border-border/60">

@@ -1,11 +1,9 @@
 import type { ComponentType } from "react";
 
-import { AreaGridPlan } from "./area-grid";
+import { DayColumnsPlan } from "./day-columns";
 import { FinalPlan } from "./final";
-import { FlowTimelinePlan } from "./flow-timeline";
-import { HorizonBoardPlan } from "./horizon-board";
-import { StatusQuoPlan } from "./status-quo";
-import { WeeklyRitualPlan } from "./weekly-ritual";
+import { LaneFlowPlan } from "./lane-flow";
+import { ZoomHorizonsPlan } from "./zoom-horizons";
 
 export interface PlanPrototype {
   /** URL-safe identifier; also the `?p=` search value on `/proto`. */
@@ -26,45 +24,31 @@ export interface PlanPrototype {
 export const prototypes: PlanPrototype[] = [
   {
     key: "final",
-    title: "Final — recommended",
+    title: "Lane view — base",
     blurb:
-      "The converged design: the Area × time grid as the canvas, a persistent editing rail, and a guided card-by-card Review mode. Built from the strongest parts of the four directions below.",
+      "The Area × time lane view: Areas as rows worst-condition-first, threads as compact chips, the thread sidebar for editing. The base the variations below iterate on.",
     component: FinalPlan,
   },
   {
-    key: "status-quo",
-    title: "Status quo",
+    key: "day-columns",
+    title: "Day columns",
     blurb:
-      "The Plan tab as it ships today: six fixed schedule columns of Thread chips, with undated Threads folded away underneath. The baseline everything else is measured against.",
-    component: StatusQuoPlan,
+      "Every column is a real day. Overdue, Today, then each of the next days individually — a drop always lands on the exact date you chose.",
+    component: DayColumnsPlan,
   },
   {
-    key: "horizon-board",
-    title: "Horizon board",
+    key: "lane-flow",
+    title: "Lane flow",
     blurb:
-      "A kanban across fuzzy time horizons: drag Threads between Today, Tomorrow, This week, Next week, and Later to reschedule their Follow-ups; edit in place from each card.",
-    component: HorizonBoardPlan,
+      "Each Area lane carries its own compact 14-day axis. Chips sit on their exact day and drag anywhere along the flow.",
+    component: LaneFlowPlan,
   },
   {
-    key: "area-grid",
-    title: "Area × time grid",
+    key: "zoom-horizons",
+    title: "Zoom horizons",
     blurb:
-      "A matrix of Life Areas against time horizons that shows where attention is going — and which Areas are neglected. Drag chips across cells to reschedule.",
-    component: AreaGridPlan,
-  },
-  {
-    key: "weekly-ritual",
-    title: "Weekly ritual",
-    blurb:
-      "A two-pane weekly review: a Needs-planning tray on the left, the week on the right, and a guided card-by-card review mode for triaging everything unplanned.",
-    component: WeeklyRitualPlan,
-  },
-  {
-    key: "flow-timeline",
-    title: "Flow timeline",
-    blurb:
-      "A continuous agenda of the next two weeks with a sticky editing rail: select any Thread to reschedule, rewrite its Next Move, or resolve it without leaving the flow.",
-    component: FlowTimelinePlan,
+      "Fuzzy columns for glanceability that split into per-day drop slots the moment you drag — precision on demand.",
+    component: ZoomHorizonsPlan,
   },
 ];
 

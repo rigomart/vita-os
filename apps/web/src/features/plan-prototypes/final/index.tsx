@@ -13,19 +13,18 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { Button } from "@vita-os/ui/components/button";
-import { Kbd } from "@vita-os/ui/components/kbd";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
-import { Ban, CornerDownRight, Sparkles, Undo2, X } from "lucide-react";
+import { Ban, CornerDownRight, Undo2, X } from "lucide-react";
 import { useEffect, useMemo, useReducer, useState } from "react";
 
 import type { ChipDragData, Density } from "./chip";
 import type { DragState } from "./grid";
 import type { ColumnKey, PlanColumn, QuickTarget } from "./model";
 import type { NoticeTone } from "./plan-state";
-import type { ReviewEntry } from "./review";
 
 import { mockAreaById, mockAreas, NOW } from "../mock-data";
+import { ThreadRailMock } from "../thread-rail-mock";
 import { ChipSurface } from "./chip";
 import { AreaFilterChips } from "./filters";
 import {
@@ -41,29 +40,25 @@ import {
   buildAreaRows,
   buildColumns,
   buildInboxCells,
-  buildQueue,
   columnTotals,
   INBOX_ROW_ID,
   landedLabel,
   quickDate,
 } from "./model";
 import { currentNotice, initialPlanState, planReducer } from "./plan-state";
-import { PlanRail } from "./rail";
-import { ReviewMode } from "./review";
 
 /**
  * Plan — the converged design.
  *
- * Three surfaces over one local state:
+ * One surface: an Area × time canvas. Rows are Life Areas worst condition
+ * first plus a pinned Inbox row for Tasks; columns are fuzzy horizons that
+ * publish the exact date a drop will assign. Dragging sideways retargets the
+ * soft date, dragging into another row moves the Thread's Area.
  *
- * - **The grid** is an Area × time canvas. Rows are Life Areas worst condition
- *   first plus a pinned Inbox row for Tasks; columns are fuzzy horizons that
- *   publish the exact date a drop will assign. Dragging sideways retargets the
- *   soft date, dragging into another row moves the Thread's Area.
- * - **The rail** is a persistent editor. Selecting a chip opens it and it stays
- *   open across every edit, so a planning pass is one continuous motion.
- * - **Review** turns the same state into a guided, card-at-a-time pass over
- *   everything still waiting on a decision.
+ * Opening a chip opens the app's Thread sidebar (mocked in
+ * `../thread-rail-mock`, since the real one is Convex-wired) — the same pane
+ * the rest of the app uses, so Plan adds no second editor of its own. It stays
+ * open across chained edits.
  *
  * Every mutation pushes an undo snapshot. The confirmation strip never expires.
  */
@@ -76,38 +71,23 @@ export function FinalPlan() {
   );
   const [density, setDensity] = useState<Density>("compact");
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
-  const [focusSignal, setFocusSignal] = useState(0);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [activeAreas, setActiveAreas] = useState<ReadonlySet<string> | null>(
     null,
   );
-  const [review, setReview] = useState<ReviewEntry[] | undefined>(undefined);
 
-  // A callback ref, not a plain one: Review mode unmounts the grid, and the
-  // effect below has to re-attach to the *new* scrollport when it comes back.
   const [scrollNode, setScrollNode] = useState<HTMLDivElement | null>(null);
   const [edges, setEdges] = useState({ end: false, start: false });
 
   /**
    * Pointer-only, with a distance constraint. dnd-kit's KeyboardSensor claims
    * Enter/Space on every draggable, which would stop the keyboard from opening
-   * the rail — the more valuable affordance here. Keyboard *drag* is therefore
-   * deliberately unsupported in this mockup; rescheduling from the keyboard
-   * goes through the rail's presets (T / M / E / W) instead.
+   * the sidebar — the more valuable affordance here. Keyboard *drag* is
+   * therefore deliberately unsupported in this mockup; rescheduling from the
+   * keyboard goes through the sidebar or the quick keys.
    */
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  );
-
-  const visibleItems = useMemo(
-    () =>
-      state.items.filter(
-        (item) =>
-          item.kind === "task" ||
-          activeAreas == null ||
-          (item.areaId != null && activeAreas.has(item.areaId)),
-      ),
-    [state.items, activeAreas],
   );
 
   const allRows = useMemo(
@@ -141,23 +121,6 @@ export function FinalPlan() {
     return counts;
   }, [allRows]);
 
-  const queueGroups = useMemo(
-    () => buildQueue(visibleItems, now),
-    [visibleItems, now],
-  );
-  const queue = useMemo<ReviewEntry[]>(
-    () =>
-      queueGroups.flatMap((group) =>
-        group.items.map((item) => ({
-          groupHint: group.hint,
-          groupKey: group.key,
-          groupLabel: group.label,
-          id: item.id,
-        })),
-      ),
-    [queueGroups],
-  );
-
   const overdueCount = totals.overdue;
   const todayCount = totals.today;
   const undatedCount = totals.none;
@@ -166,30 +129,6 @@ export function FinalPlan() {
 
   const selected = state.items.find((item) => item.id === selectedId);
   const notice = currentNotice(state);
-
-  /** Reading order across the grid: rows top to bottom, columns left to right. */
-  const flatOrder = useMemo(() => {
-    const keys = columns.map((column) => column.key);
-    const ids: string[] = [];
-    for (const row of rows) {
-      for (const key of keys) {
-        for (const item of row.cells[key]) ids.push(item.id);
-      }
-    }
-    for (const key of keys) {
-      for (const item of inboxCells[key]) ids.push(item.id);
-    }
-    return ids;
-  }, [rows, inboxCells, columns]);
-
-  function resolveItem(id: string) {
-    // Selection advances to the next thing needing attention; it never chases
-    // an item that merely moved.
-    const index = flatOrder.indexOf(id);
-    const next = flatOrder[index + 1] ?? flatOrder[index - 1];
-    dispatch({ itemId: id, type: "resolve" });
-    setSelectedId(next);
-  }
 
   /* ------------------------------------------- horizontal scroll edges -- */
 
@@ -220,9 +159,11 @@ export function FinalPlan() {
 
   /* --------------------------------------------------------- keyboard -- */
 
+  /**
+   * Quick keys, deliberately unadvertised: they work for whoever finds them,
+   * but the canvas does not spend a strip of chrome explaining itself.
+   */
   useEffect(() => {
-    if (review) return;
-
     function onKeyDown(event: KeyboardEvent) {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
 
@@ -239,14 +180,6 @@ export function FinalPlan() {
         return;
       }
       if (!selectedId) return;
-
-      // Enter on a focused chip is the browser's click — let it through.
-      if (event.key === "Enter") {
-        if (target?.tagName === "BUTTON") return;
-        event.preventDefault();
-        setFocusSignal((value) => value + 1);
-        return;
-      }
 
       const quick: Record<string, QuickTarget> = {
         e: "weekend",
@@ -272,13 +205,14 @@ export function FinalPlan() {
       }
       if (key === "r") {
         event.preventDefault();
-        resolveItem(selectedId);
+        dispatch({ itemId: selectedId, type: "resolve" });
+        setSelectedId(undefined);
       }
     }
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  });
+  }, [now, selectedId]);
 
   /* ------------------------------------------------------------- drag -- */
 
@@ -325,7 +259,6 @@ export function FinalPlan() {
       toRowId: over.rowId,
       type: "drop",
     });
-    setSelectedId(active.itemId);
   }
 
   const draggingItem =
@@ -333,19 +266,6 @@ export function FinalPlan() {
   const dropCaption = describeDrop(drag, columns);
 
   /* ------------------------------------------------------------ render -- */
-
-  if (review) {
-    return (
-      <ReviewMode
-        areaById={mockAreaById}
-        dispatch={dispatch}
-        items={state.items}
-        now={now}
-        onExit={() => setReview(undefined)}
-        queue={review}
-      />
-    );
-  }
 
   return (
     <section aria-label="Plan" className="flex flex-col gap-3">
@@ -361,7 +281,7 @@ export function FinalPlan() {
           </span>
           <div>
             <h2 className="font-heading text-xl leading-tight font-semibold tracking-tight">
-              Where your attention is going
+              Plan
             </h2>
             <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
               <span
@@ -380,32 +300,19 @@ export function FinalPlan() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-0.5 rounded-lg border border-border/70 p-0.5">
-            {(["compact", "comfortable"] satisfies Density[]).map((value) => (
-              <Button
-                key={value}
-                variant={density === value ? "secondary" : "ghost"}
-                size="xs"
-                aria-pressed={density === value}
-                className="rounded-md capitalize"
-                onClick={() => setDensity(value)}
-              >
-                {value}
-              </Button>
-            ))}
-          </div>
-
-          <Button
-            disabled={queue.length === 0}
-            onClick={() => setReview(queue)}
-          >
-            <Sparkles data-icon="inline-start" />
-            Start review
-            <span className="ml-0.5 tabular-nums opacity-70">
-              {queue.length}
-            </span>
-          </Button>
+        <div className="flex items-center gap-0.5 rounded-lg border border-border/70 p-0.5">
+          {(["compact", "comfortable"] satisfies Density[]).map((value) => (
+            <Button
+              key={value}
+              variant={density === value ? "secondary" : "ghost"}
+              size="xs"
+              aria-pressed={density === value}
+              className="rounded-md capitalize"
+              onClick={() => setDensity(value)}
+            >
+              {value}
+            </Button>
+          ))}
         </div>
       </header>
 
@@ -426,7 +333,7 @@ export function FinalPlan() {
         accessibility={{
           screenReaderInstructions: {
             draggable:
-              "Drag this chip sideways to retarget its date, or into another Area row to move the Thread. To use the keyboard instead, press Enter to open the editor.",
+              "Drag sideways to retarget the date, or into another Area row to move the Thread. Press Enter to open it instead.",
           },
         }}
       >
@@ -501,52 +408,36 @@ export function FinalPlan() {
             </div>
 
             {threadCount === 0 && (
-              <EmptyPlan
-                title={
-                  taskCount === 0 ? "Nothing left waiting" : "No open Threads"
-                }
-                body={
-                  taskCount === 0
-                    ? "Every Thread is resolved and the Inbox is clear. Undo below if that was one step too far."
-                    : activeAreas == null
-                      ? "Every Thread is resolved. The Inbox row still holds your loose Tasks."
-                      : "Nothing open in the Areas you're looking at. The Inbox row still holds your loose Tasks."
-                }
-              />
+              <p className="mt-3 rounded-2xl border border-dashed border-border p-10 text-center font-heading text-sm font-semibold">
+                {taskCount === 0 ? "Nothing left waiting" : "No open Threads"}
+              </p>
             )}
-
-            <p className="mt-2 text-[11px] text-muted-foreground/70">
-              Drag sideways to retarget a date · into another row to move the
-              Area · the Area and No date columns stay pinned
-            </p>
-            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground/60">
-              <Hint keys={["↵"]} label="edit Next Move" />
-              <Hint keys={["T"]} label="today" />
-              <Hint keys={["M"]} label="tomorrow" />
-              <Hint keys={["E"]} label="weekend" />
-              <Hint keys={["W"]} label="next week" />
-              <Hint keys={["X"]} label="clear date" />
-              <Hint keys={["R"]} label="resolve" />
-              <Hint keys={["Esc"]} label="close editor" />
-            </p>
           </div>
 
-          <PlanRail
-            areaById={mockAreaById}
-            areas={mockAreas}
-            dispatch={dispatch}
-            focusSignal={focusSignal}
-            item={selected}
-            now={now}
-            onClose={() => setSelectedId(undefined)}
-            className={cn(
-              // Below xl the rail floats over the grid, pinned to the viewport
-              // so nothing in it can fall below the fold; at xl it takes its
-              // own column and sticks alongside the grid.
-              "fixed inset-y-4 right-4 z-50 shadow-xl xl:sticky xl:inset-auto xl:top-4 xl:z-auto xl:max-h-[calc(100svh-4rem)] xl:self-start xl:shadow-none",
-              !selected && "hidden xl:flex",
-            )}
-          />
+          {selected && (
+            <ThreadRailMock
+              areaById={mockAreaById}
+              item={selected}
+              now={now}
+              onClose={() => setSelectedId(undefined)}
+              onMoveArea={(itemId, toAreaId) =>
+                dispatch({ itemId, toAreaId, type: "move-area" })
+              }
+              onResolve={(itemId) => {
+                dispatch({ itemId, type: "resolve" });
+                setSelectedId(undefined);
+              }}
+              onSetDate={(itemId, date) =>
+                dispatch({ date, itemId, type: "set-date" })
+              }
+              onSetNextMove={(itemId, text) =>
+                dispatch({ itemId, text, type: "set-next-move" })
+              }
+              onToggleNextMoveDone={(itemId) =>
+                dispatch({ itemId, type: "complete-next-move" })
+              }
+            />
+          )}
         </div>
 
         <DragOverlay dropAnimation={null}>
@@ -636,30 +527,6 @@ const noticeDot: Record<NoticeTone, string> = {
   move: "bg-foreground",
   resolve: "bg-condition-healthy",
 };
-
-function Hint({ keys, label }: { keys: string[]; label: string }) {
-  return (
-    <span className="flex items-center gap-1">
-      {keys.map((key) => (
-        <Kbd key={key} className="h-4.5 min-w-4.5 text-[10px]">
-          {key}
-        </Kbd>
-      ))}
-      <span>{label}</span>
-    </span>
-  );
-}
-
-function EmptyPlan({ body, title }: { body: string; title: string }) {
-  return (
-    <div className="mt-3 rounded-2xl border border-dashed border-border p-10 text-center">
-      <p className="font-heading text-sm font-semibold">{title}</p>
-      <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-        {body}
-      </p>
-    </div>
-  );
-}
 
 /** The caption pill riding under the drag ghost. */
 function describeDrop(
