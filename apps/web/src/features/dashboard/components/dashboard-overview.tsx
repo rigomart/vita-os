@@ -15,9 +15,9 @@ import {
 } from "@/features/attention-list";
 import { PlanCanvas } from "@/features/dashboard/plan";
 import { PlanVariantCalendar } from "@/features/dashboard/prototype/variant-b2-calendar";
-import { PlanVariantWeekStrip } from "@/features/dashboard/prototype/variant-b3-weekstrip";
-import { PlanVariantMonthGrid } from "@/features/dashboard/prototype/variant-b4-monthgrid";
-import { PlanVariantMultiDay } from "@/features/dashboard/prototype/variant-b5-multiday";
+import { PlanVariantGlance } from "@/features/dashboard/prototype/variant-b2a-glance";
+import { PlanVariantBlocks } from "@/features/dashboard/prototype/variant-b2b-blocks";
+import { PlanVariantWeeks } from "@/features/dashboard/prototype/variant-b2c-weeks";
 import { flatListClassName } from "@/lib/flat-surface";
 
 import { AreaConditionStrip } from "./area-condition-strip";
@@ -122,10 +122,10 @@ export function DashboardOverview({
               ),
             },
             {
-              key: "b3",
-              name: "Week strip",
+              key: "b2a",
+              name: "Glanceable schedule",
               render: () => (
-                <PlanVariantWeekStrip
+                <PlanVariantGlance
                   areas={overview.areas}
                   currentDate={currentDate}
                   tasks={overview.inbox.items}
@@ -134,10 +134,10 @@ export function DashboardOverview({
               ),
             },
             {
-              key: "b4",
-              name: "Month grid",
+              key: "b2b",
+              name: "Event blocks",
               render: () => (
-                <PlanVariantMonthGrid
+                <PlanVariantBlocks
                   areas={overview.areas}
                   currentDate={currentDate}
                   tasks={overview.inbox.items}
@@ -146,10 +146,10 @@ export function DashboardOverview({
               ),
             },
             {
-              key: "b5",
-              name: "Multi-day columns",
+              key: "b2c",
+              name: "Week sections",
               render: () => (
-                <PlanVariantMultiDay
+                <PlanVariantWeeks
                   areas={overview.areas}
                   currentDate={currentDate}
                   tasks={overview.inbox.items}
