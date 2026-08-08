@@ -14,8 +14,10 @@ import {
   type AttentionRowModel,
 } from "@/features/attention-list";
 import { PlanCanvas } from "@/features/dashboard/plan";
-import { PlanVariantAgenda } from "@/features/dashboard/prototype/variant-b-agenda";
 import { PlanVariantCalendar } from "@/features/dashboard/prototype/variant-b2-calendar";
+import { PlanVariantWeekStrip } from "@/features/dashboard/prototype/variant-b3-weekstrip";
+import { PlanVariantMonthGrid } from "@/features/dashboard/prototype/variant-b4-monthgrid";
+import { PlanVariantMultiDay } from "@/features/dashboard/prototype/variant-b5-multiday";
 import { flatListClassName } from "@/lib/flat-surface";
 
 import { AreaConditionStrip } from "./area-condition-strip";
@@ -108,10 +110,10 @@ export function DashboardOverview({
               ),
             },
             {
-              key: "b",
-              name: "Agenda",
+              key: "b2",
+              name: "Calendar schedule",
               render: () => (
-                <PlanVariantAgenda
+                <PlanVariantCalendar
                   areas={overview.areas}
                   currentDate={currentDate}
                   tasks={overview.inbox.items}
@@ -120,10 +122,34 @@ export function DashboardOverview({
               ),
             },
             {
-              key: "b2",
-              name: "Calendar schedule",
+              key: "b3",
+              name: "Week strip",
               render: () => (
-                <PlanVariantCalendar
+                <PlanVariantWeekStrip
+                  areas={overview.areas}
+                  currentDate={currentDate}
+                  tasks={overview.inbox.items}
+                  threads={overview.threads}
+                />
+              ),
+            },
+            {
+              key: "b4",
+              name: "Month grid",
+              render: () => (
+                <PlanVariantMonthGrid
+                  areas={overview.areas}
+                  currentDate={currentDate}
+                  tasks={overview.inbox.items}
+                  threads={overview.threads}
+                />
+              ),
+            },
+            {
+              key: "b5",
+              name: "Multi-day columns",
+              render: () => (
+                <PlanVariantMultiDay
                   areas={overview.areas}
                   currentDate={currentDate}
                   tasks={overview.inbox.items}
