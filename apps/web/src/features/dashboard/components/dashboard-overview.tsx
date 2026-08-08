@@ -14,9 +14,8 @@ import {
   type AttentionRowModel,
 } from "@/features/attention-list";
 import { PlanCanvas } from "@/features/dashboard/plan";
-import { PlanVariantTransposed } from "@/features/dashboard/prototype/variant-a-transposed";
 import { PlanVariantAgenda } from "@/features/dashboard/prototype/variant-b-agenda";
-import { PlanVariantPager } from "@/features/dashboard/prototype/variant-c-pager";
+import { PlanVariantCalendar } from "@/features/dashboard/prototype/variant-b2-calendar";
 import { flatListClassName } from "@/lib/flat-surface";
 
 import { AreaConditionStrip } from "./area-condition-strip";
@@ -109,18 +108,6 @@ export function DashboardOverview({
               ),
             },
             {
-              key: "a",
-              name: "Transposed grid",
-              render: () => (
-                <PlanVariantTransposed
-                  areas={overview.areas}
-                  currentDate={currentDate}
-                  tasks={overview.inbox.items}
-                  threads={overview.threads}
-                />
-              ),
-            },
-            {
               key: "b",
               name: "Agenda",
               render: () => (
@@ -133,10 +120,10 @@ export function DashboardOverview({
               ),
             },
             {
-              key: "c",
-              name: "One-lane pager",
+              key: "b2",
+              name: "Calendar schedule",
               render: () => (
-                <PlanVariantPager
+                <PlanVariantCalendar
                   areas={overview.areas}
                   currentDate={currentDate}
                   tasks={overview.inbox.items}
