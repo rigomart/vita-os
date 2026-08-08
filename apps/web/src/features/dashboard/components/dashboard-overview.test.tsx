@@ -19,6 +19,10 @@ vi.mock("@tanstack/react-router", () => ({
       {children}
     </a>
   ),
+  // The prototype variant harness (#268) reads the router directly; stub it so
+  // the default "current" variant renders, which is what these tests assert.
+  useLocation: () => ({ searchStr: "", pathname: "/", hash: "" }),
+  useRouter: () => ({ navigate: () => {} }),
 }));
 
 // The Plan canvas is a live surface of its own — Convex mutations, drag and

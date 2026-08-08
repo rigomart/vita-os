@@ -5,6 +5,7 @@ import { format, formatDistance } from "date-fns";
 import { ChevronRight, History, Inbox } from "lucide-react";
 import { useState } from "react";
 
+import { PrototypeVariants } from "@/components/dev/prototype-variants";
 import { AreaIcon } from "@/features/areas/components/area-icon";
 import {
   AttentionEmpty,
@@ -13,6 +14,9 @@ import {
   type AttentionRowModel,
 } from "@/features/attention-list";
 import { PlanCanvas } from "@/features/dashboard/plan";
+import { PlanVariantTransposed } from "@/features/dashboard/prototype/variant-a-transposed";
+import { PlanVariantAgenda } from "@/features/dashboard/prototype/variant-b-agenda";
+import { PlanVariantPager } from "@/features/dashboard/prototype/variant-c-pager";
 import { flatListClassName } from "@/lib/flat-surface";
 
 import { AreaConditionStrip } from "./area-condition-strip";
@@ -80,17 +84,67 @@ export function DashboardOverview({
         )}
       </div>
 
-      {/* Interim mobile dashboard until the canvas adapts to small screens (#268). */}
+      {/* PROTOTYPE — throwaway (issue #268): structural layout variants for the
+          < sm plan view, switchable via ?variant=. "current" is the interim
+          list that shipped with #269. See features/dashboard/prototype/README.md. */}
       <div className="flex flex-col gap-6 sm:hidden">
-        <DashboardThreadList
-          threads={overview.threads}
-          areaById={areaById}
-          currentDate={currentDate}
-        />
-        <InboxSection
-          items={overview.inbox.items}
-          totalOpen={overview.inbox.totalOpen}
-          currentDate={currentDate}
+        <PrototypeVariants
+          variants={[
+            {
+              key: "current",
+              name: "Current list",
+              render: () => (
+                <div className="flex flex-col gap-6">
+                  <DashboardThreadList
+                    threads={overview.threads}
+                    areaById={areaById}
+                    currentDate={currentDate}
+                  />
+                  <InboxSection
+                    items={overview.inbox.items}
+                    totalOpen={overview.inbox.totalOpen}
+                    currentDate={currentDate}
+                  />
+                </div>
+              ),
+            },
+            {
+              key: "a",
+              name: "Transposed grid",
+              render: () => (
+                <PlanVariantTransposed
+                  areas={overview.areas}
+                  currentDate={currentDate}
+                  tasks={overview.inbox.items}
+                  threads={overview.threads}
+                />
+              ),
+            },
+            {
+              key: "b",
+              name: "Agenda",
+              render: () => (
+                <PlanVariantAgenda
+                  areas={overview.areas}
+                  currentDate={currentDate}
+                  tasks={overview.inbox.items}
+                  threads={overview.threads}
+                />
+              ),
+            },
+            {
+              key: "c",
+              name: "One-lane pager",
+              render: () => (
+                <PlanVariantPager
+                  areas={overview.areas}
+                  currentDate={currentDate}
+                  tasks={overview.inbox.items}
+                  threads={overview.threads}
+                />
+              ),
+            },
+          ]}
         />
       </div>
     </div>
