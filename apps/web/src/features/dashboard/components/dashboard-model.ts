@@ -1,7 +1,6 @@
 import type { AreaIcon } from "@convex/lib/areaIcons";
 import type { Condition } from "@convex/lib/condition";
 
-import { groupThreadsByAttention } from "@convex/lib/attentionOrdering";
 import { format } from "date-fns";
 
 export const DAY = 24 * 60 * 60 * 1000;
@@ -50,34 +49,10 @@ export interface DashboardOverviewData {
   threads: DashboardThread[];
 }
 
-export interface DashboardThreadGroups {
-  open: DashboardThread[];
-  overdue: DashboardThread[];
-  upcoming: DashboardThread[];
-  withNextMoves: DashboardThread[];
-}
-
-export function groupDashboardThreads(
-  threads: DashboardThread[],
-  currentDate: number,
-): DashboardThreadGroups {
-  return groupThreadsByAttention(threads, currentDate);
-}
-
 export function followUpDateLabel(timestamp: number, currentDate: number) {
   const difference = dayDifference(timestamp, currentDate);
   if (difference === 0) return "Today";
   if (difference === 1) return "Tomorrow";
-  return format(new Date(timestamp), "MMM d");
-}
-
-export function taskDateLabel(timestamp: number, currentDate: number) {
-  const difference = dayDifference(timestamp, currentDate);
-  if (difference === 0) return "Today";
-  if (difference === 1) return "Tomorrow";
-  if (difference === -1) return "Yesterday";
-  if (difference < 0) return `${Math.abs(difference)} days ago`;
-  if (difference <= 7) return `In ${difference} days`;
   return format(new Date(timestamp), "MMM d");
 }
 

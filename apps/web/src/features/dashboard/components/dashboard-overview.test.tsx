@@ -2,7 +2,7 @@ import type { ComponentPropsWithoutRef } from "react";
 
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DashboardOverviewData, DashboardThread } from "./dashboard-model";
 
@@ -21,24 +21,33 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-// The Plan canvas is a live surface of its own — Convex mutations, drag and
-// drop, the Thread rail. Here we only care that the dashboard hands it the
-// full open set.
-vi.mock("@/features/dashboard/plan", () => ({
-  PlanCanvas: ({
-    tasks,
-    threads,
-  }: {
-    tasks: unknown[];
-    threads: unknown[];
-  }) => (
-    <div data-testid="plan-canvas">
-      {threads.length} Threads · {tasks.length} Tasks
-    </div>
-  ),
-}));
+// Both Plan surfaces are live surfaces of their own — Convex mutations, drag
+// and drop, the Thread rail. Here we only care which one the dashboard mounts
+// and that it hands it the full open set.
+vi.mock("@/features/dashboard/plan", () => {
+  const stub =
+    (testId: string) =>
+    ({ tasks, threads }: { tasks: unknown[]; threads: unknown[] }) => (
+      <div data-testid={testId}>
+        {threads.length} Threads · {tasks.length} Tasks
+      </div>
+    );
+  return {
+    PlanCanvas: stub("plan-canvas"),
+    PlanSchedule: stub("plan-schedule"),
+  };
+});
 
 const currentDate = new Date(2026, 6, 17, 12).getTime();
+
+/** `useIsCompact` reads `innerWidth`; jsdom's default is a desktop width. */
+function compactViewport() {
+  vi.stubGlobal("innerWidth", 390);
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 function thread(
   id: string,
@@ -165,6 +174,38 @@ describe("DashboardOverview", () => {
     expect(screen.getByTestId("plan-canvas")).toHaveTextContent(
       "2 Threads · 1 Tasks",
     );
+    expect(screen.queryByTestId("plan-schedule")).toBeNull();
+  });
+
+  it("swaps the canvas for the schedule on a phone-sized viewport", () => {
+    compactViewport();
+    render(
+      <DashboardOverview
+        overview={dashboard({
+          threads: [
+            thread("Check renewal", { followUp: currentDate }),
+            thread("Without date"),
+          ],
+          inbox: {
+            items: [
+              {
+                id: "task",
+                text: "Renew passport",
+                createdAt: currentDate,
+              },
+            ],
+            totalOpen: 1,
+          },
+        })}
+        currentDate={currentDate}
+        onCreateArea={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("plan-schedule")).toHaveTextContent(
+      "2 Threads · 1 Tasks",
+    );
+    expect(screen.queryByTestId("plan-canvas")).toBeNull();
   });
 
   it("renders Recent activity as a strip below the canvas", () => {
@@ -208,169 +249,7 @@ describe("DashboardOverview", () => {
     expect(screen.queryByText("Recent activity")).toBeNull();
   });
 
-  it("keeps the attention list and Inbox in the mobile-only block", () => {
-    render(
-      <DashboardOverview
-        overview={dashboard({
-          threads: [thread("Insurance appeal")],
-          inbox: {
-            items: [
-              {
-                id: "task",
-                text: "Renew passport",
-                when: currentDate,
-                createdAt: currentDate,
-              },
-            ],
-            totalOpen: 3,
-          },
-        })}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
-
-    const threadRow = screen.getByRole("link", { name: /insurance appeal/i });
-    expect(threadRow.closest(".sm\\:hidden")).not.toBeNull();
-
-    const inboxLink = screen.getByRole("link", { name: /inbox 3/i });
-    expect(inboxLink).toHaveAttribute("href", "/inbox");
-    expect(inboxLink.closest(".sm\\:hidden")).not.toBeNull();
-    expect(screen.getByText("2 more Tasks in Inbox")).toBeVisible();
-
-    expect(
-      screen.getByTestId("plan-canvas").closest(".sm\\:hidden"),
-    ).toBeNull();
-  });
-
-  it("shows date rails and keeps Open Threads inline", () => {
-    render(
-      <DashboardOverview
-        overview={dashboard({
-          threads: [
-            thread("Due today", { followUp: currentDate }),
-            thread("Due tomorrow", {
-              followUp: new Date(2026, 6, 18, 12).getTime(),
-            }),
-            thread("Due later", {
-              followUp: new Date(2026, 6, 20, 12).getTime(),
-            }),
-            thread("Without date"),
-          ],
-        })}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("Due today")).toBeVisible();
-    expect(screen.getByText("18")).toBeVisible();
-    expect(screen.getByText("20")).toBeVisible();
-    expect(screen.getByRole("link", { name: /without date/i })).toBeVisible();
-  });
-
-  it("places upcoming Follow-ups before Next Moves and Open Threads", () => {
-    render(
-      <DashboardOverview
-        overview={dashboard({
-          threads: [
-            thread("Overdue thread", {
-              followUp: new Date(2026, 6, 16).getTime(),
-            }),
-            thread("Next Move thread", { nextMove: "Make the call" }),
-            thread("Upcoming thread", {
-              followUp: new Date(2026, 6, 18).getTime(),
-            }),
-            thread("Open thread"),
-          ],
-        })}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
-
-    const overdue = screen.getByText("Overdue thread");
-    const upcoming = screen.getByText("Upcoming thread");
-    const nextMoves = screen.getByText("Next Move thread");
-    const open = screen.getByText("Open thread");
-
-    expect(overdue.compareDocumentPosition(upcoming)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-    expect(upcoming.compareDocumentPosition(nextMoves)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-    expect(nextMoves.compareDocumentPosition(open)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-  });
-
-  it("caps plain Open Threads behind a Show all control", async () => {
-    const user = userEvent.setup();
-    render(
-      <DashboardOverview
-        overview={dashboard({
-          threads: [
-            thread("Overdue thread", {
-              followUp: new Date(2026, 6, 16).getTime(),
-            }),
-            thread("Next Move thread", { nextMove: "Make the call" }),
-            ...Array.from({ length: 7 }, (_, index) =>
-              thread(`Open ${index + 1}`),
-            ),
-          ],
-        })}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("Overdue thread")).toBeVisible();
-    expect(screen.getByText("Next Move thread")).toBeVisible();
-    expect(screen.getByText("Open 5")).toBeVisible();
-    expect(screen.queryByText("Open 6")).toBeNull();
-
-    const showAll = screen.getByRole("button", { name: /show all/i });
-    expect(showAll).toHaveTextContent("2 more");
-
-    await user.click(showAll);
-
-    expect(screen.getByText("Open 6")).toBeVisible();
-    expect(screen.getByText("Open 7")).toBeVisible();
-    expect(screen.queryByRole("button", { name: /show all/i })).toBeNull();
-    expect(
-      screen
-        .getByText("Open 5")
-        .compareDocumentPosition(screen.getByText("Open 6")),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-  });
-
-  it("never caps attention-bearing Threads and skips the control at the cap", () => {
-    render(
-      <DashboardOverview
-        overview={dashboard({
-          threads: [
-            ...Array.from({ length: 7 }, (_, index) =>
-              thread(`Overdue ${index + 1}`, {
-                followUp: new Date(2026, 6, 16).getTime(),
-              }),
-            ),
-            ...Array.from({ length: 5 }, (_, index) =>
-              thread(`Open ${index + 1}`),
-            ),
-          ],
-        })}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("Overdue 7")).toBeVisible();
-    expect(screen.getByText("Open 5")).toBeVisible();
-    expect(screen.queryByRole("button", { name: /show all/i })).toBeNull();
-  });
-
-  it("preserves Area onboarding and the no-Thread state", async () => {
+  it("preserves Area onboarding until the first Area exists", async () => {
     const user = userEvent.setup();
     const onCreateArea = vi.fn();
     const { rerender } = render(
@@ -383,6 +262,7 @@ describe("DashboardOverview", () => {
 
     await user.click(screen.getByRole("button", { name: "Create Life Area" }));
     expect(onCreateArea).toHaveBeenCalledOnce();
+    expect(screen.queryByTestId("plan-canvas")).toBeNull();
 
     rerender(
       <DashboardOverview
@@ -392,8 +272,10 @@ describe("DashboardOverview", () => {
       />,
     );
     expect(
-      screen.getByText("Your Life Areas are clear for now."),
-    ).toBeVisible();
-    expect(screen.getByText("Inbox is clear")).toBeVisible();
+      screen.queryByRole("button", { name: "Create Life Area" }),
+    ).toBeNull();
+    expect(screen.getByTestId("plan-canvas")).toHaveTextContent(
+      "0 Threads · 0 Tasks",
+    );
   });
 });
