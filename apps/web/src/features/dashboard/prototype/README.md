@@ -30,6 +30,16 @@ that pages the strip backwards under the finger). `b4` fails the issue's width c
 when expanded (57% chrome) and force-expands during every drag. Verified: all three share
 a byte-identical agenda core with three small seams, so navigators remain additive later.
 
+## Round 5 (2026-08-08): b2 consistency polish (in place)
+
+User feedback on canon b2: occupied vs empty day rows used two different rail styles
+(jarring) and today stacked four cues. Polished `variant-b2-calendar.tsx` in place: one
+unified rail for every day (identical layout/typography; empty rows differ only in muting
+and a hairline content column; uniform 40px row minimum), today = filled disc + faint row
+wash only, and a file-wide sweep onto a 9/10/11/13px type scale, a 3-step muting ladder,
+one structural hairline value, and gold as the single "drag in flight" tone. Note:
+`b2b`/`b2c` forked before this polish and keep the old styling.
+
 ## Round 4 (2026-08-08): b2 is canon; styling/structure derivatives
 
 `b2` stays as the canon reference. Three derivatives explore styling and light structure

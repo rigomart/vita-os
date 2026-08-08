@@ -1,4 +1,5 @@
 // PROTOTYPE — throwaway (issue #268). Variant B2: calendar-schedule — variant B restyled as a mobile calendar agenda.
+// Polish pass (issue #268): one rail system for every day, a single calm today marker, and one small-type scale / muting ladder / hairline alpha throughout.
 
 import type {
   DragEndEvent,
@@ -64,11 +65,12 @@ import {
  * lane headers do on desktop — what changes is the *date furniture*.
  *
  * A day is no longer a banner across the top of its chips: it is a **48px rail**
- * down the left, weekday over day number, with today's number in a filled accent
- * disc. Months announce themselves in a slim band that sticks under the app bar.
- * The near horizon prints every day, empty ones included, as a hairline row you
- * can still drop onto — an empty Thursday is a place, not an absence — and only
- * the quiet stretches past that horizon fold into a tappable "N quiet days".
+ * down the left, weekday over day number, drawn identically on every rendered
+ * day. Months announce themselves in a slim band that sticks under the app bar.
+ * The near horizon prints every day, empty ones included — an empty Thursday
+ * keeps its whole rail and loses only its chips, so it reads as a place, not an
+ * absence — and only the quiet stretches past that horizon fold into a tappable
+ * "N quiet days".
  *
  * The list opens on today (mount scroll) and keeps a floating **Today** pill for
  * when you have wandered off it. This is a prototype: drops write to a local
@@ -326,9 +328,9 @@ export function PlanVariantCalendar({
               {caption && (
                 <span
                   className={cn(
-                    "mt-1.5 inline-flex max-w-full items-center gap-1 truncate rounded-full px-2 py-0.5 text-[10px] font-medium shadow-sm",
+                    "mt-1.5 ml-1 inline-flex max-w-full items-center gap-1 truncate rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm",
                     caption.blocked
-                      ? "bg-surface-2 text-muted-foreground/70 ring-1 ring-border/60"
+                      ? cn("bg-surface-2 ring-1 ring-border/50", MUTE_SOFT)
                       : "bg-foreground text-surface-1",
                   )}
                 >
@@ -362,7 +364,12 @@ export function PlanVariantCalendar({
       )}
 
       {schedule.total === 0 && (
-        <p className="mt-3 rounded-2xl border border-dashed border-border p-10 text-center font-heading text-sm font-semibold">
+        <p
+          className={cn(
+            "mt-3 rounded-2xl border border-dashed p-10 text-center font-heading text-[13px] font-semibold",
+            HAIRLINE,
+          )}
+        >
           Nothing to plan
         </p>
       )}
@@ -406,8 +413,39 @@ const MAX_HORIZON = 90;
 /** Sticky app bar (48px) plus the month band that pins under it. */
 const TOP_INSET = 80;
 
-/** The date rail. Wide enough for "WED" over a two-digit day at 15px. */
+/** The date rail. Wide enough for "WED" over a two-digit day in a 24px disc. */
 const RAIL = "w-12 shrink-0";
+
+/**
+ * Every day row clears the rail: 4px lead + 9px weekday + 2px gap + 24px disc
+ * is 39px, rounded to 40. Empty days are the same 40px — the rail sets the
+ * floor, which also makes an empty day a fingertip-sized drop target.
+ */
+const ROW_MIN = "min-h-10";
+
+/* -- The knobs below are the whole visual vocabulary of this variant. -- */
+
+/**
+ * Three fixed muting steps. Every faint tone in this view picks one of these
+ * rather than inventing an alpha, so "quiet" reads as a ladder, not as noise.
+ */
+const MUTE = "text-muted-foreground";
+const MUTE_SOFT = "text-muted-foreground/70";
+const MUTE_FAINT = "text-muted-foreground/40";
+
+/** One hairline for row separators, gap rows, section borders and rules. */
+const HAIRLINE = "border-border/50";
+const HAIRLINE_BG = "bg-border/50";
+
+/** Chips are objects, not structure, so their edge sits one step above the
+ *  hairline — but it is still a single value shared by both chip kinds. */
+const CHIP_EDGE = "border-border/70";
+
+/** One tracking value for every uppercase micro-label. */
+const CAPS = "font-semibold tracking-[0.1em] uppercase";
+
+/** Gold means "in flight or about to receive" — ghost, armed row, armed section. */
+const ARMED = "bg-brand-gold-strong/15";
 
 interface Schedule {
   byDay: Map<string, PlanItem[]>;
@@ -525,86 +563,65 @@ function dropCaption(
 function MonthBand({ label }: { label: string }) {
   return (
     <div className="sticky top-12 z-10 -mx-1 flex items-center gap-2 bg-surface-1/95 px-1 pt-3 pb-1.5 backdrop-blur-sm">
-      <span className="font-heading text-[11px] font-semibold tracking-[0.09em] text-muted-foreground uppercase">
+      <span className={cn("font-heading text-[11px]", CAPS, MUTE)}>
         {label}
       </span>
-      <span aria-hidden className="h-px flex-1 bg-border/60" />
+      <span aria-hidden className={cn("h-px flex-1", HAIRLINE_BG)} />
     </div>
   );
 }
 
 /**
- * The date marker of the whole variant: weekday over day number, in a fixed
- * 48px column. Today's number sits in a filled accent disc — the phone-calendar
- * idiom, and the same accent the desktop ruler paints its now-rule with.
+ * The date marker of the whole variant, and the only one.
+ *
+ * Weekday over day number in a fixed 48px column, with *identical* layout,
+ * type and x-alignment on every rendered day — occupied, empty, weekend, today.
+ * A quieter day changes only its tone; nothing shifts, nothing shrinks, so a
+ * run of empty Thursdays still scans as the same column of dates.
+ *
+ * Every day number already sits in a 24px disc; today is the one where the disc
+ * is filled. That is the whole today treatment — the phone-calendar idiom, in
+ * the same accent the desktop ruler paints its now-rule with.
  */
 function DayRail({
-  compact,
   date,
+  empty,
   isToday,
   isWeekend,
 }: {
-  compact?: boolean;
   date: Date;
+  empty: boolean;
   isToday: boolean;
   isWeekend: boolean;
 }) {
-  if (compact) {
-    return (
-      <div
-        className={cn(
-          RAIL,
-          "flex items-baseline justify-center gap-1 pt-1 text-[10px] leading-none",
-        )}
-      >
-        <span
-          className={cn(
-            "font-medium tracking-[0.06em] uppercase",
-            isWeekend ? "text-muted-foreground/35" : "text-muted-foreground/50",
-          )}
-        >
-          {format(date, "EEE")}
-        </span>
-        <span
-          className={cn(
-            "tabular-nums",
-            isWeekend ? "text-muted-foreground/35" : "text-muted-foreground/50",
-          )}
-        >
-          {format(date, "d")}
-        </span>
-      </div>
-    );
-  }
+  /** One step down for a weekend, two for a day with nothing on it. */
+  const dim = isToday ? "none" : empty ? "faint" : isWeekend ? "soft" : "none";
 
   return (
-    <div className={cn(RAIL, "flex flex-col items-center gap-1 pt-2")}>
+    <div className={cn(RAIL, "flex flex-col items-center gap-0.5 pt-1")}>
       <span
         className={cn(
-          "text-[9px] leading-none font-semibold tracking-[0.1em] uppercase",
-          isToday
-            ? "text-brand-accent-foreground"
-            : isWeekend
-              ? "text-muted-foreground/45"
-              : "text-muted-foreground/70",
+          "text-[9px] leading-none",
+          CAPS,
+          dim === "faint" ? MUTE_FAINT : dim === "soft" ? MUTE_SOFT : MUTE,
         )}
       >
         {format(date, "EEE")}
       </span>
-      {isToday ? (
-        <span className="flex size-7 items-center justify-center rounded-full bg-brand-accent-foreground text-[14px] leading-none font-semibold tabular-nums text-surface-1">
-          {format(date, "d")}
-        </span>
-      ) : (
-        <span
-          className={cn(
-            "flex size-7 items-center justify-center text-[15px] leading-none font-semibold tabular-nums",
-            isWeekend ? "text-muted-foreground/55" : "text-foreground/75",
-          )}
-        >
-          {format(date, "d")}
-        </span>
-      )}
+      <span
+        className={cn(
+          "flex size-6 items-center justify-center rounded-full text-[13px] leading-none font-semibold tabular-nums",
+          isToday
+            ? "bg-brand-accent-foreground text-surface-1"
+            : dim === "faint"
+              ? MUTE_FAINT
+              : dim === "soft"
+                ? MUTE_SOFT
+                : "text-foreground",
+        )}
+      >
+        {format(date, "d")}
+      </span>
     </div>
   );
 }
@@ -616,8 +633,11 @@ const EMPTY: PlanItem[] = [];
 /**
  * One calendar day: rail on the left, chips stacked to its right.
  *
- * An empty day keeps the row and loses only the chips — the content column
- * becomes a hairline, so the day stays a visible, droppable place.
+ * An empty day keeps the row, the rail and the hairline, and loses only the
+ * chips — so the day stays a visible, droppable place roughly a fingertip tall.
+ * Today is the same row, marked: the filled disc in the rail, plus one faint
+ * wash so it can be found while scrolling. Nothing else — no accent rule, no
+ * extra height, no borrowed border colour.
  */
 function DayRow({
   chrome,
@@ -650,23 +670,15 @@ function DayRow({
         if (rowRef) rowRef.current = node;
       }}
       className={cn(
-        "relative flex items-stretch rounded-md transition-colors",
+        "flex items-stretch rounded-md transition-colors",
+        ROW_MIN,
         isToday && "bg-brand-accent-foreground/[0.05]",
-        armed && "bg-brand-gold-strong/15",
+        armed && ARMED,
       )}
     >
-      {isToday && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-0 w-[2px] rounded-full bg-brand-accent-foreground/70"
-        />
-      )}
-
-      {/* Today keeps the full rail however empty the filters leave it — the
-          present never shrinks to a hairline date. */}
       <DayRail
-        compact={empty && !isToday}
         date={date}
+        empty={empty}
         isToday={isToday}
         isWeekend={isWeekend}
       />
@@ -674,12 +686,8 @@ function DayRow({
       <div
         className={cn(
           "min-w-0 flex-1 border-t pr-0.5 pl-1",
-          armed
-            ? "border-dashed border-foreground/40"
-            : isToday
-              ? "border-brand-accent-foreground/25"
-              : "border-border/45",
-          empty ? "h-6" : "flex flex-col gap-1 py-1.5",
+          armed ? "border-dashed border-brand-gold-strong/70" : HAIRLINE,
+          !empty && "flex flex-col gap-1 py-1.5",
         )}
       >
         {items.map((item) => (
@@ -723,18 +731,23 @@ function GapRow({
         type="button"
         aria-expanded={open}
         onClick={onToggle}
-        className="flex items-center border-t border-dashed border-border/50 py-1.5 text-left"
+        className={cn(
+          "flex items-center border-t border-dashed py-2 text-left",
+          HAIRLINE,
+        )}
       >
         <span
           aria-hidden
-          className={cn(
-            RAIL,
-            "text-center text-[10px] text-muted-foreground/35",
-          )}
+          className={cn(RAIL, "text-center text-[10px]", MUTE_FAINT)}
         >
           ···
         </span>
-        <span className="flex flex-1 items-center gap-1 pl-1 text-[10px] text-muted-foreground/55">
+        <span
+          className={cn(
+            "flex flex-1 items-center gap-1 pl-1 text-[10px]",
+            MUTE_SOFT,
+          )}
+        >
           <span className="tabular-nums">{count}</span>
           {count === 1 ? "quiet day" : "quiet days"}
           {open ? (
@@ -783,11 +796,16 @@ function OverdueSection({
       )}
     >
       <div className="flex items-center gap-2 px-2.5 pt-2 pb-1.5">
-        <span className="font-heading text-[11px] font-semibold tracking-[0.09em] text-condition-attention uppercase">
+        <span
+          className={cn(
+            "font-heading text-[11px] text-condition-attention",
+            CAPS,
+          )}
+        >
           Waiting
         </span>
-        <span aria-hidden className="h-px flex-1 bg-condition-attention/20" />
-        <span className="text-[10px] tabular-nums text-condition-attention">
+        <span aria-hidden className="h-px flex-1 bg-condition-attention/25" />
+        <span className="text-[10px] font-semibold tabular-nums text-condition-attention">
           {items.length}
         </span>
       </div>
@@ -827,8 +845,8 @@ function NoDateSection({
     <div
       ref={setNodeRef}
       className={cn(
-        "mt-2 rounded-xl border border-border/70 transition-colors",
-        armed && "border-transparent bg-brand-gold-strong/15",
+        "mt-2 rounded-xl border transition-colors",
+        armed ? cn("border-brand-gold-strong/50", ARMED) : HAIRLINE,
       )}
     >
       <button
@@ -837,24 +855,29 @@ function NoDateSection({
         onClick={onToggle}
         className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
       >
-        <span className="font-heading text-[11px] font-semibold tracking-[0.09em] text-muted-foreground uppercase">
+        <span className={cn("font-heading text-[11px]", CAPS, MUTE)}>
           No date
         </span>
-        <span className="rounded-full bg-surface-3 px-1.5 text-[10px] tabular-nums text-muted-foreground">
+        <span
+          className={cn(
+            "rounded-full bg-surface-3 px-1.5 text-[10px] font-semibold tabular-nums",
+            MUTE,
+          )}
+        >
           {items.length}
         </span>
-        <span aria-hidden className="h-px flex-1 bg-border/40" />
+        <span aria-hidden className={cn("h-px flex-1", HAIRLINE_BG)} />
         {open ? (
-          <ChevronUp className="size-3.5 text-muted-foreground/60" />
+          <ChevronUp className={cn("size-3.5", MUTE_SOFT)} />
         ) : (
-          <ChevronDown className="size-3.5 text-muted-foreground/60" />
+          <ChevronDown className={cn("size-3.5", MUTE_SOFT)} />
         )}
       </button>
 
       {open && (
         <div className="flex flex-col gap-1 px-1.5 pb-2">
           {items.length === 0 ? (
-            <p className="py-1 pl-1 text-[11px] text-muted-foreground/40">
+            <p className={cn("py-1 pl-1 text-[11px]", MUTE_FAINT)}>
               Everything has a day
             </p>
           ) : (
@@ -906,11 +929,13 @@ function ChipSurface({
       className={cn(
         "relative flex w-full items-start gap-2 overflow-hidden rounded-lg border py-2 pr-2 pl-2.5 text-left",
         isTask
-          ? "border-dashed border-border bg-surface-2/60"
-          : "border-border/70 bg-surface-2",
+          ? cn("border-dashed bg-surface-2/60", CHIP_EDGE)
+          : cn("bg-surface-2", CHIP_EDGE),
         waiting && "border-condition-attention/30 bg-condition-attention/8",
+        // The lifted ghost wears the same gold the armed row does, so what is in
+        // flight and where it would land read as one gesture.
         lifted &&
-          "border-border bg-surface-2 shadow-lg ring-1 ring-foreground/10",
+          "border-transparent bg-surface-2 shadow-lg ring-1 ring-brand-gold-strong/50",
       )}
     >
       <span
@@ -929,7 +954,7 @@ function ChipSurface({
         className={cn(
           "mt-px flex size-6 shrink-0 items-center justify-center rounded-md",
           isTask
-            ? "border border-dashed border-border bg-surface-2 text-muted-foreground"
+            ? cn("border border-dashed bg-surface-2", CHIP_EDGE, MUTE)
             : conditionIconTone[area?.condition ?? "healthy"],
         )}
       >
@@ -944,13 +969,18 @@ function ChipSurface({
         <span
           className={cn(
             "line-clamp-2 text-[13px] leading-snug",
-            isTask ? "font-normal text-foreground/90" : "font-medium",
+            isTask ? "font-normal" : "font-medium",
           )}
         >
           {item.title}
         </span>
 
-        <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] leading-snug text-muted-foreground/60">
+        <span
+          className={cn(
+            "mt-0.5 flex min-w-0 items-center gap-1 text-[10px] leading-snug",
+            MUTE_SOFT,
+          )}
+        >
           {ConditionIcon && area && area.condition !== "healthy" && (
             <ConditionIcon
               aria-hidden
@@ -969,7 +999,7 @@ function ChipSurface({
       </span>
 
       {waiting && (
-        <span className="mt-px shrink-0 text-[10px] font-medium tabular-nums text-condition-attention">
+        <span className="mt-px shrink-0 text-[10px] font-semibold tabular-nums text-condition-attention">
           {waitingLabel(item.date!, now)}
         </span>
       )}
