@@ -1,6 +1,6 @@
-import type { Doc } from "@convex/_generated/dataModel";
-
+import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "convex-helpers/react/cache/hooks";
 import {
   FolderPlus,
   Inbox,
@@ -24,8 +24,6 @@ import { AreaIcon } from "@/features/areas/components/area-icon";
 interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  areas: Doc<"areas">[] | undefined;
-  threads: Doc<"threads">[] | undefined;
   onNewTask: () => void;
   onNewThread: () => void;
   onNewArea: () => void;
@@ -34,13 +32,15 @@ interface CommandPaletteProps {
 export function CommandPalette({
   open,
   onOpenChange,
-  areas,
-  threads,
   onNewTask,
   onNewThread,
   onNewArea,
 }: CommandPaletteProps) {
   const navigate = useNavigate();
+  // The palette is mounted only while it is open, so these subscriptions live
+  // exactly as long as the surface that reads them.
+  const areas = useQuery(api.areas.list, open ? {} : "skip");
+  const threads = useQuery(api.threads.list, open ? {} : "skip");
   const areaById = useMemo(
     () => new Map((areas ?? []).map((area) => [area._id, area])),
     [areas],

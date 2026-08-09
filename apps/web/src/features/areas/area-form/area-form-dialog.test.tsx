@@ -45,6 +45,33 @@ describe("AreaFormDialog", () => {
     });
   });
 
+  it("starts blank on Compass when remounted for a new Area", async () => {
+    const user = userEvent.setup();
+    const props = {
+      mode: "create",
+      open: true,
+      onOpenChange: vi.fn(),
+      onSubmit: vi.fn(),
+    } as const;
+
+    // AppShell mounts the create dialog only while it is open, so a reopen is
+    // a remount rather than a prop flip.
+    const { unmount } = render(<AreaFormDialog {...props} />);
+    await user.click(
+      screen.getByRole("button", { name: "Choose Area icon: Compass" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Finances" }));
+    await user.type(screen.getByLabelText("Name"), "Family Health");
+    unmount();
+
+    render(<AreaFormDialog {...props} />);
+
+    expect(screen.getByLabelText("Name")).toHaveValue("");
+    expect(
+      screen.getByRole("button", { name: "Choose Area icon: Compass" }),
+    ).toBeInTheDocument();
+  });
+
   it("does not change the selected icon when the Area name changes", async () => {
     const user = userEvent.setup();
 

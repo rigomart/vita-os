@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { AppErrorFallback } from "@/components/error-boundary";
 import { SignInScreen } from "@/features/auth/screens/sign-in-screen";
 
 export const Route = createFileRoute("/_unauthenticated/sign-in")({
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/_unauthenticated/sign-in")({
       },
     ],
   }),
+  errorComponent: AppErrorFallback,
   component: SignInRoute,
 });
 

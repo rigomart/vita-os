@@ -24,14 +24,19 @@ import { CommandPalette } from "./command-palette";
 import { MobileTabBar } from "./mobile-tab-bar";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const areas = useQuery(api.areas.list);
-  const threads = useQuery(api.threads.list);
   const taskCount = useQuery(api.tasks.count);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const createTask = useCreateTask();
   const dialogs = useCreateDialogs();
   const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // The area list is only read by the create-thread dialog here; the palette
+  // subscribes for itself while it is mounted.
+  const createThreadAreas = useQuery(
+    api.areas.list,
+    dialogs.showCreateThread ? {} : "skip",
+  );
 
   useGlobalNewTaskShortcut(dialogs.openNewTask);
   useCommandPaletteShortcut(() => setPaletteOpen(true));
@@ -128,37 +133,42 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       )}
 
-      <CommandPalette
-        open={paletteOpen}
-        onOpenChange={setPaletteOpen}
-        areas={areas}
-        threads={threads}
-        onNewTask={dialogs.openNewTask}
-        onNewThread={() => dialogs.openCreateThread()}
-        onNewArea={dialogs.openCreateArea}
-      />
+      {/* Mounted on demand: each surface holds form state and subscriptions
+          that should not exist — or survive a close — while it is hidden. */}
+      {paletteOpen && (
+        <CommandPalette
+          open
+          onOpenChange={setPaletteOpen}
+          onNewTask={dialogs.openNewTask}
+          onNewThread={() => dialogs.openCreateThread()}
+          onNewArea={dialogs.openCreateArea}
+        />
+      )}
 
-      <CreateThreadDialog
-        open={dialogs.showCreateThread}
-        onOpenChange={dialogs.setShowCreateThread}
-        areas={areas ?? []}
-        defaultAreaId={dialogs.createForAreaId}
-        onCreated={({ slug }) => {
-          openThreadInPlace(slug);
-        }}
-      />
-      <NewTaskDialog
-        open={dialogs.showNewTask}
-        onOpenChange={dialogs.setShowNewTask}
-        onSubmit={async (value) => {
-          await createTask(value);
-          dialogs.setShowNewTask(false);
-        }}
-      />
-      <CreateAreaDialog
-        open={dialogs.showCreateArea}
-        onOpenChange={dialogs.setShowCreateArea}
-      />
+      {dialogs.showCreateThread && (
+        <CreateThreadDialog
+          open
+          onOpenChange={dialogs.setShowCreateThread}
+          areas={createThreadAreas ?? []}
+          defaultAreaId={dialogs.createForAreaId}
+          onCreated={({ slug }) => {
+            openThreadInPlace(slug);
+          }}
+        />
+      )}
+      {dialogs.showNewTask && (
+        <NewTaskDialog
+          open
+          onOpenChange={dialogs.setShowNewTask}
+          onSubmit={async (value) => {
+            await createTask(value);
+            dialogs.setShowNewTask(false);
+          }}
+        />
+      )}
+      {dialogs.showCreateArea && (
+        <CreateAreaDialog open onOpenChange={dialogs.setShowCreateArea} />
+      )}
     </div>
   );
 }

@@ -49,6 +49,29 @@ describe("ThreadFormDialog", () => {
     ).toBeInTheDocument();
   });
 
+  it("starts fresh on the default Area when remounted for a new thread", async () => {
+    const user = userEvent.setup();
+    const props = {
+      mode: "create",
+      open: true,
+      onOpenChange: vi.fn(),
+      areas,
+      defaultAreaId: areas[0]._id,
+      onSubmit: vi.fn(),
+    } as const;
+
+    // AppShell mounts the create dialog only while it is open, so a reopen is
+    // a remount rather than a prop flip.
+    const { unmount } = render(<ThreadFormDialog {...props} />);
+    await user.type(screen.getByLabelText("Title"), "Draft title");
+    unmount();
+
+    render(<ThreadFormDialog {...props} />);
+
+    expect(screen.getByLabelText("Title")).toHaveValue("");
+    expect(screen.getByRole("button", { name: /Health/ })).toBeInTheDocument();
+  });
+
   it("prevents duplicate thread creates while saving", async () => {
     const user = userEvent.setup();
     const pendingCreate = deferred();
