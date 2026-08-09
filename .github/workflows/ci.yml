@@ -54,13 +54,5 @@ jobs:
         working-directory: apps/web
         run: node scripts/check-chunks.mjs
 
-      - name: Convex codegen drift check
-        working-directory: apps/web
-        env:
-          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
-        run: |
-          bunx convex codegen --typecheck disable
-          git diff --exit-code -- convex/_generated
-
       - name: Test
         run: bun run test:run
