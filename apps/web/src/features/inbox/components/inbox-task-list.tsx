@@ -13,6 +13,7 @@ import {
   RowIconAction,
 } from "@/features/attention-list";
 import { useTaskRowActions } from "@/features/tasks/task-row/use-task-row-actions";
+import { useAttentionClock } from "@/hooks/use-attention-clock";
 
 interface InboxTaskListProps {
   tasks: Doc<"tasks">[];
@@ -20,7 +21,7 @@ interface InboxTaskListProps {
 }
 
 export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
-  const now = Date.now();
+  const now = useAttentionClock();
   const groups = groupTasksByAttention(tasks, now);
   const openCount =
     groups.pastDue.length +
