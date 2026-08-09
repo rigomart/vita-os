@@ -1,9 +1,14 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
+  "globalDependencies": ["bun.lock", "oxlint.config.ts", "oxfmt.config.ts"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "env": ["VITE_CONVEX_URL", "VITE_CONVEX_SITE_URL", "VITE_SITE_URL"],
       "outputs": ["dist/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
     },
     "dev": {
       "cache": false,

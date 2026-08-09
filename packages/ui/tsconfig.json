@@ -8,6 +8,7 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "paths": {
       "@vita-os/ui/*": ["./src/*"]
     }

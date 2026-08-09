@@ -40,8 +40,27 @@ jobs:
       - name: Lint (check only)
         run: bun run lint:check
 
+      - name: Typecheck (app, node, convex backend, ui package)
+        run: bun run typecheck
+
       - name: Build
         run: bun run build
+        env:
+          VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
+          VITE_CONVEX_SITE_URL: ${{ vars.VITE_CONVEX_SITE_URL }}
+          VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
+
+      - name: Route-split chunk check
+        working-directory: apps/web
+        run: node scripts/check-chunks.mjs
+
+      - name: Convex codegen drift check
+        working-directory: apps/web
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: |
+          bunx convex codegen --typecheck disable
+          git diff --exit-code -- convex/_generated
 
       - name: Test
         run: bun run test:run

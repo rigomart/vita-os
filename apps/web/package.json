@@ -10,6 +10,7 @@
     "lint:check": "oxlint --deny-warnings . && oxfmt --check .",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
+    "typecheck": "tsc -b && tsc -p convex/tsconfig.json --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
     "preview": "vite preview",
