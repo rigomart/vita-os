@@ -29,6 +29,7 @@
     "format:check": "oxfmt --check .",
     "test": "turbo run test",
     "test:run": "turbo run test:run",
+    "typecheck": "turbo run typecheck",
     "convex": "turbo run convex --filter=@vita-os/web"
   },
   "workspaces": [

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import type { DashboardArea } from "@/features/dashboard/components/dashboard-model";
+
 import type { DragState, PlanItem } from "./plan-model";
 
 import {
@@ -110,6 +112,72 @@ describe("plan lanes", () => {
     expect(areaLanes[0].plannedCount).toBe(0);
     expect(areaLanes[1].none.map((item) => item.id)).toEqual(["t3"]);
     expect(inbox.byDay.get("d1")?.map((item) => item.id)).toEqual(["k1"]);
+  });
+});
+
+describe("day rollover", () => {
+  const tomorrow = new Date(2026, 7, 7, 9).getTime();
+
+  const home: DashboardArea[] = [
+    { condition: "healthy", id: "home", name: "Home", order: 0, slug: "home" },
+  ];
+
+  const dated: PlanItem[] = [
+    {
+      areaId: "home",
+      date: dayAt(0, now),
+      id: "today",
+      kind: "thread",
+      title: "Today",
+    },
+    {
+      areaId: "home",
+      date: dayAt(1, now),
+      id: "next",
+      kind: "thread",
+      title: "Next",
+    },
+    {
+      areaId: "home",
+      date: dayAt(9, now),
+      id: "far",
+      kind: "thread",
+      title: "Far",
+    },
+    { areaId: "home", id: "undated", kind: "thread", title: "Undated" },
+  ];
+
+  function planAt(clock: number) {
+    const at = buildAxis(dated, clock, "compact");
+    const { areaLanes } = buildLanes(dated, home, clock, at.days.length - 1);
+    return { axis: at, lane: areaLanes[0] };
+  }
+
+  const ids = (bucket: PlanItem[] | undefined) =>
+    bucket?.map((item) => item.id);
+
+  it("re-places every item when the clock steps onto the next day", () => {
+    const before = planAt(now);
+
+    expect(before.axis.hasOverdue).toBe(false);
+    expect(ids(before.lane.byDay.get("d0"))).toEqual(["today"]);
+    expect(ids(before.lane.byDay.get("d1"))).toEqual(["next"]);
+    expect(ids(before.lane.byDay.get("d9"))).toEqual(["far"]);
+    expect(ids(before.lane.none)).toEqual(["undated"]);
+
+    const after = planAt(tomorrow);
+
+    // Yesterday's Today is a debt; the day behind it is the new Today.
+    expect(after.axis.hasOverdue).toBe(true);
+    expect(ids(after.lane.overdue)).toEqual(["today"]);
+    expect(ids(after.lane.byDay.get("d0"))).toEqual(["next"]);
+
+    // A future Thread keeps its exact calendar day, one slot nearer.
+    expect(ids(after.lane.byDay.get("d8"))).toEqual(["far"]);
+    expect(after.axis.days[8].at).toBe(dayAt(9, now));
+
+    // And an undated one is still undated.
+    expect(ids(after.lane.none)).toEqual(["undated"]);
   });
 });
 

@@ -209,6 +209,38 @@ describe("PlanCanvas", () => {
     expect(screen.getByText("Renew passport")).toBeVisible();
   });
 
+  it("rebuilds the axis when the attention clock rolls the day over", () => {
+    const laneThreads: DashboardThread[] = [
+      {
+        areaId: "home",
+        followUp: day(0),
+        id: "t9",
+        order: 0,
+        slug: "water-plants",
+        title: "Water plants",
+      },
+    ];
+    const view = (clock: number) => (
+      <FeedbackProvider feedback={{ error: vi.fn(), success: vi.fn() }}>
+        <PlanCanvas
+          areas={areas}
+          currentDate={clock}
+          tasks={[]}
+          threads={laneThreads}
+        />
+      </FeedbackProvider>
+    );
+    const canvas = () => screen.getByRole("region", { name: "Plan" });
+
+    const { rerender } = render(view(now));
+    expect(within(canvas()).queryByText("Waiting")).toBeNull();
+
+    rerender(view(new Date(2026, 7, 7, 9).getTime()));
+
+    expect(within(canvas()).getByText("Waiting")).toBeVisible();
+    expect(within(canvas()).getByText("1 waiting")).toBeVisible();
+  });
+
   it("wires both writes to the app's own mutations", () => {
     renderCanvas();
 

@@ -1,6 +1,6 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -72,6 +72,28 @@ describe("InboxTaskList", () => {
     expect(noDate.compareDocumentPosition(completed)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
+  });
+
+  it("re-dates its header and ages today's Task at local midnight", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 17, 23, 30));
+
+    render(
+      <InboxTaskList
+        tasks={[task("Today", { when: new Date(2026, 6, 17).getTime() })]}
+      />,
+    );
+
+    const rail = () =>
+      screen.getByRole("button", { name: "Change when" }).firstElementChild;
+
+    expect(screen.getByText("Friday, July 17")).toBeVisible();
+    expect(rail()).toHaveClass("bg-surface-3");
+
+    act(() => vi.advanceTimersByTime(30 * 60_000));
+
+    expect(screen.getByText("Saturday, July 18")).toBeVisible();
+    expect(rail()).toHaveClass("bg-condition-attention-fill");
   });
 
   it("keeps Completed Tasks collapsed when the Open Inbox is clear", async () => {

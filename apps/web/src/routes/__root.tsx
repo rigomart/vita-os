@@ -1,6 +1,8 @@
 import { createRootRoute, HeadContent, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
+import { AppErrorFallback } from "@/components/error-boundary";
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -11,6 +13,7 @@ export const Route = createRootRoute({
       },
     ],
   }),
+  errorComponent: AppErrorFallback,
   component: RootLayout,
 });
 

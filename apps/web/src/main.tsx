@@ -10,6 +10,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import {
+  AppErrorBoundary,
+  RouteErrorFallback,
+} from "./components/error-boundary";
+import {
   initializeTheme,
   ThemeProvider,
   useTheme,
@@ -28,7 +32,12 @@ const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL, {
   expectAuth: true,
 });
 
-const router = createRouter({ routeTree });
+// Every match gets a branded boundary; routes that own the whole viewport
+// override this with the full-page `AppErrorFallback`.
+const router = createRouter({
+  routeTree,
+  defaultErrorComponent: RouteErrorFallback,
+});
 
 declare module "@tanstack/react-router" {
   interface Register {
@@ -41,21 +50,23 @@ if (!root) throw new Error("Root element not found");
 
 createRoot(root).render(
   <StrictMode>
-    <ThemeProvider>
-      <ConvexBetterAuthProvider
-        client={convex}
-        // The component's AuthClient union reduces useSession data to `never`
-        // under TypeScript 7, despite this matching its documented plugin setup.
-        authClient={authClient as unknown as AuthClient}
-      >
-        <ConvexQueryCacheProvider expiration={300_000}>
-          <FeedbackProvider>
-            <RouterProvider router={router} />
-            <ThemeAwareToaster />
-          </FeedbackProvider>
-        </ConvexQueryCacheProvider>
-      </ConvexBetterAuthProvider>
-    </ThemeProvider>
+    <AppErrorBoundary>
+      <ThemeProvider>
+        <ConvexBetterAuthProvider
+          client={convex}
+          // The component's AuthClient union reduces useSession data to `never`
+          // under TypeScript 7, despite this matching its documented plugin setup.
+          authClient={authClient as unknown as AuthClient}
+        >
+          <ConvexQueryCacheProvider expiration={300_000}>
+            <FeedbackProvider>
+              <RouterProvider router={router} />
+              <ThemeAwareToaster />
+            </FeedbackProvider>
+          </ConvexQueryCacheProvider>
+        </ConvexBetterAuthProvider>
+      </ThemeProvider>
+    </AppErrorBoundary>
   </StrictMode>,
 );
 
