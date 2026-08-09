@@ -121,9 +121,10 @@ export type Density = "comfortable" | "compact";
 
 /** Days shown at full tick density before the axis coarsens into "Later". */
 export const NEAR_DAYS = 14;
-/** The axis always reaches this far so there is somewhere to plan into. */
-const MIN_HORIZON = 27;
-const MAX_HORIZON = 90;
+/** Every day surface reaches this far so there is somewhere to plan into. */
+export const MIN_HORIZON = 27;
+/** And no further, however distant the furthest planned day is. */
+export const MAX_HORIZON = 90;
 
 export const HEADER_WIDTH = 178;
 /** Below the md breakpoint the lane header stacks icon over name and narrows. */
@@ -394,7 +395,8 @@ export function buildLanes(
   return { areaLanes, inbox };
 }
 
-function byDateThenTitle(a: PlanItem, b: PlanItem): number {
+/** Reading order inside any one slot: earliest first, then alphabetical. */
+export function byDateThenTitle(a: PlanItem, b: PlanItem): number {
   const left = a.date ?? 0;
   const right = b.date ?? 0;
   if (left !== right) return left - right;
@@ -465,12 +467,65 @@ export interface DropPlan {
   valid: boolean;
 }
 
+/** The date half of a drop, with nothing said about lanes or Areas. */
+export interface DayDropPlan {
+  /** Names the exact day, "No date", or why the drop is refused. */
+  caption: string;
+  /** The drop takes the date off the item. */
+  clears: boolean;
+  /** The day the drop writes; undefined when it clears. */
+  date?: number;
+  /** The item is not already sitting in the slot it would land in. */
+  reschedule: boolean;
+  valid: boolean;
+}
+
+/**
+ * What a drop means *as a date* — the one rule every Plan surface shares.
+ *
+ * `from` and `to` are slot keys: a day key (`d3`), `"none"`, or `"overdue"`.
+ * `dayAtKey` resolves a day key to the timestamp that slot writes, which is
+ * all a surface has to supply — the canvas looks it up on its axis, the phone
+ * schedule counts days off `now`.
+ *
+ * The past is not a target: a waiting bay shows a debt, it does not accept new
+ * plans. A no-op drop still comes back as a plan (`reschedule: false`) rather
+ * than as nothing, so a caller that has its own reason to act on it — the
+ * canvas moving a Thread's Area without touching its day — can.
+ */
+export function planDayDrop(
+  from: string,
+  to: string,
+  dayAtKey: (key: string) => number | undefined,
+): DayDropPlan | null {
+  if (to === "overdue") {
+    return {
+      caption: "Can't plan into the past",
+      clears: false,
+      reschedule: false,
+      valid: false,
+    };
+  }
+
+  const clears = to === "none";
+  const date = clears ? undefined : dayAtKey(to);
+  // A day the surface does not carry is not a drop at all.
+  if (!clears && date == null) return null;
+
+  return {
+    caption: clears ? "No date" : dayCaption(date!),
+    clears,
+    date,
+    reschedule: to !== from,
+    valid: true,
+  };
+}
+
 /**
  * What would happen if the drag ended right now.
  *
- * The caption always names the exact calendar day — never a horizon, never
- * "somewhere next week". The past is not a target: a lane's waiting bay shows
- * a debt, it does not accept new plans.
+ * The date half is `planDayDrop`'s; what this adds is the lane half — the
+ * Area a Thread would land in, and the two crossings the canvas refuses.
  */
 export function planDrop(
   drag: DragState,
@@ -479,6 +534,13 @@ export function planDrop(
 ): DropPlan | null {
   const { overLaneId, overSlotKey } = drag;
   if (!overLaneId || !overSlotKey) return null;
+
+  const day = planDayDrop(
+    drag.slotKey,
+    overSlotKey,
+    (key) => axis.days.find((entry) => entry.key === key)?.at,
+  );
+  if (!day) return null;
 
   const blocked = (caption: string): DropPlan => ({
     caption,
@@ -490,7 +552,7 @@ export function planDrop(
     valid: false,
   });
 
-  if (overSlotKey === "overdue") return blocked("Can't plan into the past");
+  if (!day.valid) return blocked(day.caption);
 
   const wrongLane =
     drag.kind === "task"
@@ -504,29 +566,20 @@ export function planDrop(
     );
   }
 
-  const clears = overSlotKey === "none";
-  const day = clears
-    ? undefined
-    : axis.days.find((entry) => entry.key === overSlotKey);
-  if (!clears && !day) return null;
-
-  const reschedule = overSlotKey !== drag.slotKey;
   const movedLane = overLaneId !== drag.laneId;
-  const when = clears ? "No date" : dayCaption(day!.at);
-
-  if (!reschedule && !movedLane) return null;
+  if (!day.reschedule && !movedLane) return null;
 
   return {
     areaMove: movedLane ? overLaneId : undefined,
     caption: movedLane
-      ? reschedule
-        ? `${areaName(overLaneId)} · ${when}`
+      ? day.reschedule
+        ? `${areaName(overLaneId)} · ${day.caption}`
         : areaName(overLaneId)
-      : when,
-    clears,
-    date: day?.at,
+      : day.caption,
+    clears: day.clears,
+    date: day.date,
     laneId: overLaneId,
-    reschedule,
+    reschedule: day.reschedule,
     slotKey: overSlotKey,
     tone: movedLane ? "move" : "default",
     valid: true,
