@@ -66,12 +66,18 @@ function activity(
   };
 }
 
+/**
+ * Fixtures follow the `DashboardSource` contract: only Open Threads and Open
+ * Tasks, and Activity Logs already newest-first and already capped. The query
+ * layer guarantees all of that through its indexes, so nothing here feeds the
+ * builder input it is entitled to trust.
+ */
 describe("buildDashboardOverview", () => {
-  it("returns open Threads and Tasks only", () => {
+  it("returns the caller's Areas, Threads and Tasks", () => {
     const result = buildDashboardOverview({
       areas: [area("mine")],
-      threads: [thread("open"), thread("resolved", { state: "resolved" })],
-      tasks: [task("open"), task("done", { state: "done" })],
+      threads: [thread("open")],
+      tasks: [task("open")],
       activityLogs: [],
     });
 
@@ -79,6 +85,17 @@ describe("buildDashboardOverview", () => {
     expect(result.threads.map((item) => item.id)).toEqual(["open"]);
     expect(result.inbox.items.map((item) => item.id)).toEqual(["open"]);
     expect(result.inbox.totalOpen).toBe(1);
+  });
+
+  it("orders Threads by their manual order", () => {
+    const result = buildDashboardOverview({
+      areas: [],
+      threads: [thread("second", { order: 1 }), thread("first", { order: 0 })],
+      tasks: [],
+      activityLogs: [],
+    });
+
+    expect(result.threads.map((item) => item.id)).toEqual(["first", "second"]);
   });
 
   it("includes an Area Icon when one is stored", () => {
@@ -132,20 +149,17 @@ describe("buildDashboardOverview", () => {
   });
 
   it("returns the latest entry per distinct open Thread", () => {
+    // Activity Logs span every Thread the user has, so entries can point at a
+    // Thread missing from `threads` — a resolved one. Those are dropped.
     const result = buildDashboardOverview({
       areas: [],
       tasks: [],
-      threads: [
-        thread("a"),
-        thread("b"),
-        thread("resolved", { state: "resolved" }),
-      ],
+      threads: [thread("a"), thread("b")],
       activityLogs: [
-        activity("a-old", "a", 10),
         activity("resolved-log", "resolved", 50),
-        activity("deleted-log", "deleted", 45),
         activity("a-new", "a", 40),
         activity("b-new", "b", 30),
+        activity("a-old", "a", 10),
       ],
     });
 

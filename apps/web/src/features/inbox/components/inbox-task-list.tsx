@@ -1,8 +1,9 @@
 import type { Doc } from "@convex/_generated/dataModel";
 
 import { groupTasksByAttention } from "@convex/lib/attentionOrdering";
+import { Button } from "@vita-os/ui/components/button";
 import { format } from "date-fns";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 
 import {
   AttentionCollapsed,
@@ -18,9 +19,29 @@ import { useAttentionClock } from "@/hooks/use-attention-clock";
 interface InboxTaskListProps {
   tasks: Doc<"tasks">[];
   onProcess?: (task: Doc<"tasks">) => void;
+  /** Done Tasks loaded so far from `tasks.listDone`. */
+  doneTasks?: Doc<"tasks">[];
+  /** Whether the Done page has been paginated to its end. Defaults to
+   *  `true` so callers that don't paginate keep the old "only render when
+   *  non-empty" behavior for the Completed section. */
+  isDoneExhausted?: boolean;
+  /** Whether another page of Done Tasks is available to fetch. */
+  canLoadMoreDone?: boolean;
+  /** Whether a Done Task load-more request is currently in flight. */
+  isLoadingMoreDone?: boolean;
+  /** Fetches the next page of Done Tasks. */
+  onLoadMoreDone?: () => void;
 }
 
-export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
+export function InboxTaskList({
+  tasks,
+  onProcess,
+  doneTasks = [],
+  isDoneExhausted = true,
+  canLoadMoreDone = false,
+  isLoadingMoreDone = false,
+  onLoadMoreDone,
+}: InboxTaskListProps) {
   const now = useAttentionClock();
   const groups = groupTasksByAttention(tasks, now);
   const openCount =
@@ -34,6 +55,7 @@ export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
     ...groups.comingUp,
     ...groups.noDate,
   ];
+  const showCompleted = doneTasks.length > 0 || !isDoneExhausted;
 
   return (
     <div className="mx-auto max-w-4xl pb-16">
@@ -67,13 +89,38 @@ export function InboxTaskList({ tasks, onProcess }: InboxTaskListProps) {
           </AttentionList>
         )}
 
-        {groups.completed.length > 0 && (
-          <AttentionCollapsed title="Completed" count={groups.completed.length}>
+        {showCompleted && (
+          <AttentionCollapsed title="Completed" count={doneTasks.length}>
             <AttentionList>
-              {groups.completed.map((task) => (
+              {doneTasks.map((task) => (
                 <InboxTaskRow key={task._id} task={task} now={now} />
               ))}
             </AttentionList>
+            {(canLoadMoreDone || isLoadingMoreDone) && (
+              <div className="flex justify-center pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  disabled={isLoadingMoreDone}
+                  aria-busy={isLoadingMoreDone || undefined}
+                  onClick={onLoadMoreDone}
+                >
+                  {isLoadingMoreDone ? (
+                    <>
+                      <Loader2
+                        data-icon="inline-start"
+                        className="size-3.5 animate-spin"
+                      />
+                      Loading…
+                    </>
+                  ) : (
+                    "Load more"
+                  )}
+                </Button>
+              </div>
+            )}
           </AttentionCollapsed>
         )}
       </div>

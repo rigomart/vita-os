@@ -49,8 +49,8 @@ describe("InboxTaskList", () => {
           task("No date", { createdAt: 4 }),
           task("Today", { when: new Date(2026, 6, 17).getTime() }),
           task("Past due", { when: new Date(2026, 6, 16).getTime() }),
-          task("Done", { state: "done", completedAt: 8 }),
         ]}
+        doneTasks={[task("Done", { state: "done", completedAt: 8 })]}
       />,
     );
 
@@ -101,7 +101,8 @@ describe("InboxTaskList", () => {
 
     render(
       <InboxTaskList
-        tasks={[
+        tasks={[]}
+        doneTasks={[
           task("Finished Task", {
             state: "done",
             completedAt: today,
@@ -116,5 +117,36 @@ describe("InboxTaskList", () => {
     await user.click(screen.getByRole("button", { name: /completed/i }));
 
     expect(screen.getByText("Finished Task")).toBeVisible();
+  });
+
+  it("hides the Completed section once the empty Done page is confirmed", () => {
+    render(<InboxTaskList tasks={[]} doneTasks={[]} isDoneExhausted={true} />);
+
+    expect(screen.queryByRole("button", { name: /completed/i })).toBeNull();
+  });
+
+  it("shows the Completed section while the Done page is still loading", () => {
+    render(<InboxTaskList tasks={[]} doneTasks={[]} isDoneExhausted={false} />);
+
+    expect(screen.getByRole("button", { name: /completed/i })).toBeVisible();
+  });
+
+  it("offers to load more Done Tasks when another page is available", async () => {
+    const user = userEvent.setup();
+    const onLoadMoreDone = vi.fn();
+
+    render(
+      <InboxTaskList
+        tasks={[]}
+        doneTasks={[task("Finished Task", { state: "done", completedAt: 8 })]}
+        canLoadMoreDone
+        onLoadMoreDone={onLoadMoreDone}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /completed/i }));
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+
+    expect(onLoadMoreDone).toHaveBeenCalledTimes(1);
   });
 });

@@ -61,7 +61,6 @@ vi.mock("convex-helpers/react/cache/hooks", () => ({
       if (!mocks.threadExists) return null;
       return { ...thread, state: mocks.threadState };
     }
-    if (name === "activityLogs:listByThread") return [];
     return undefined;
   },
 }));
@@ -73,6 +72,12 @@ vi.mock("convex/react", () => ({
       withOptimisticUpdate: () => mutation,
     });
   },
+  usePaginatedQuery: () => ({
+    results: [],
+    status: "Exhausted",
+    loadMore: vi.fn(),
+    isLoading: false,
+  }),
 }));
 
 function renderThreadDetail(

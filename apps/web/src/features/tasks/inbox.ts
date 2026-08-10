@@ -32,43 +32,12 @@ export function isTaskWhenEmphasized(
   return isTaskWhenDue(task.when, referenceDate);
 }
 
-export function sortInboxTasks<T extends Pick<Task, "state" | "createdAt">>(
-  tasks: T[],
-): T[] {
-  return [...tasks].sort((a, b) => {
-    if (a.state !== b.state) {
-      return a.state === "done" ? 1 : -1;
-    }
-
-    return b.createdAt - a.createdAt;
-  });
-}
-
-export function completeTaskInInbox<T extends Task>(
-  tasks: T[],
-  id: Id<"tasks">,
-  completedAt: number,
-): T[] {
-  return sortInboxTasks(
-    tasks.map((task) =>
-      task._id === id ? { ...task, state: "done", completedAt } : task,
-    ),
-  );
-}
-
-export function uncompleteTaskInInbox<T extends Task>(
-  tasks: T[],
-  id: Id<"tasks">,
-): T[] {
-  return sortInboxTasks(
-    tasks.map((task) =>
-      task._id === id
-        ? { ...task, state: "open", completedAt: undefined }
-        : task,
-    ),
-  );
-}
-
+/**
+ * Removes a Task from the open Inbox list. Used both when discarding a Task
+ * and when completing one: `tasks.list` holds Open Tasks only, so a Task
+ * that's done no longer belongs in this cache at all — it lives on the
+ * separate `tasks.listDone` page instead.
+ */
 export function removeTaskFromInbox<T extends Task>(
   tasks: T[],
   id: Id<"tasks">,

@@ -2,6 +2,7 @@ import type { Doc } from "@convex/_generated/dataModel";
 import type { LucideIcon } from "lucide-react";
 
 import { Badge } from "@vita-os/ui/components/badge";
+import { Button } from "@vita-os/ui/components/button";
 import { Field, FieldGroup, FieldLabel } from "@vita-os/ui/components/field";
 import {
   InputGroup,
@@ -19,6 +20,7 @@ import {
   CircleCheck,
   Clock3,
   Link2,
+  Loader2,
   MapPin,
   RefreshCw,
   Scale,
@@ -31,6 +33,12 @@ import { cn } from "@/lib/utils";
 interface ActivityLogProps {
   logs: Doc<"activityLogs">[] | undefined;
   onAddNote: (text: string) => Promise<void> | void;
+  /** Whether another page of older entries is available to fetch. */
+  canLoadMore?: boolean;
+  /** Whether a load-more request is currently in flight. */
+  isLoadingMore?: boolean;
+  /** Fetches the next page of older entries. */
+  onLoadMore?: () => void;
 }
 
 type ActivityLogEntry = Doc<"activityLogs">;
@@ -58,7 +66,13 @@ const RAIL_LEFT = "left-[11px]";
 const NODE_LEFT = "left-[11.5px]";
 const ENTRY_PAD = "pl-9";
 
-export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
+export function ActivityLog({
+  logs,
+  onAddNote,
+  canLoadMore,
+  isLoadingMore,
+  onLoadMore,
+}: ActivityLogProps) {
   const [noteText, setNoteText] = useState("");
   const { run: addNote, isPending } = useGuardedAsyncAction(onAddNote, {
     errorToast: true,
@@ -168,7 +182,12 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
             </form>
           </div>
 
-          <ActivityLogTimeline logs={logs} />
+          <ActivityLogTimeline
+            logs={logs}
+            canLoadMore={canLoadMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={onLoadMore}
+          />
         </div>
       </div>
     </section>
@@ -177,8 +196,14 @@ export function ActivityLog({ logs, onAddNote }: ActivityLogProps) {
 
 function ActivityLogTimeline({
   logs,
+  canLoadMore,
+  isLoadingMore,
+  onLoadMore,
 }: {
   logs: ActivityLogEntry[] | undefined;
+  canLoadMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
 }) {
   if (logs === undefined) return <ActivityLogSkeleton />;
 
@@ -218,6 +243,31 @@ function ActivityLogTimeline({
           )}
         </section>
       ))}
+      {(canLoadMore || isLoadingMore) && (
+        <div className={cn("flex justify-center pt-1", ENTRY_PAD)}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            disabled={isLoadingMore}
+            aria-busy={isLoadingMore || undefined}
+            onClick={onLoadMore}
+          >
+            {isLoadingMore ? (
+              <>
+                <Loader2
+                  data-icon="inline-start"
+                  className="size-3.5 animate-spin"
+                />
+                Loading…
+              </>
+            ) : (
+              "Show earlier"
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

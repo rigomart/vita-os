@@ -3,13 +3,25 @@ import type { Doc } from "@convex/_generated/dataModel";
 import { api } from "@convex/_generated/api";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useQuery } from "convex-helpers/react/cache/hooks";
+import { usePaginatedQuery } from "convex/react";
 import { useState } from "react";
 
 import { InboxTaskList } from "@/features/inbox/components/inbox-task-list";
 import { ProcessTaskDialogContainer } from "@/features/tasks/process-task/process-task-dialog-container";
 
+const DONE_PAGE_SIZE = 10;
+
 export function InboxScreen() {
   const tasks = useQuery(api.tasks.list);
+  const {
+    results: doneTasks,
+    status: doneStatus,
+    loadMore: loadMoreDone,
+  } = usePaginatedQuery(
+    api.tasks.listDone,
+    {},
+    { initialNumItems: DONE_PAGE_SIZE },
+  );
   const [processingTask, setProcessingTask] = useState<
     Doc<"tasks"> | undefined
   >(undefined);
@@ -20,7 +32,15 @@ export function InboxScreen() {
 
   return (
     <>
-      <InboxTaskList tasks={tasks} onProcess={setProcessingTask} />
+      <InboxTaskList
+        tasks={tasks}
+        onProcess={setProcessingTask}
+        doneTasks={doneTasks}
+        isDoneExhausted={doneStatus === "Exhausted"}
+        canLoadMoreDone={doneStatus === "CanLoadMore"}
+        isLoadingMoreDone={doneStatus === "LoadingMore"}
+        onLoadMoreDone={() => loadMoreDone(DONE_PAGE_SIZE)}
+      />
 
       {processingTask && (
         <ProcessTaskDialogContainer
