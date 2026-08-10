@@ -45,9 +45,7 @@ export default defineSchema({
     state: v.union(v.literal("open"), v.literal("done")),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
-  })
-    .index("by_user_created", ["userId", "createdAt"])
-    .index("by_user_inbox", ["userId", "state", "createdAt"]),
+  }).index("by_user_inbox", ["userId", "state", "createdAt"]),
 
   activityLogs: defineTable({
     userId: v.string(),
