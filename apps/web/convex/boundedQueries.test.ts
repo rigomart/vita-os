@@ -1,6 +1,8 @@
+import type { PaginationResult } from "convex/server";
+
 import { beforeEach, describe, expect, it } from "vitest";
 
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { SignedIn, TestApi } from "./test.helpers";
 
 import { api } from "./_generated/api";
@@ -108,9 +110,10 @@ describe("bounded queries", () => {
       let pages = 0;
 
       for (;;) {
-        const page = await owner.query(api.tasks.listDone, {
-          paginationOpts: { numItems: 2, cursor },
-        });
+        const page: PaginationResult<Doc<"tasks">> = await owner.query(
+          api.tasks.listDone,
+          { paginationOpts: { numItems: 2, cursor } },
+        );
         pages += 1;
         seen.push(...page.page.map((task) => task._id));
         if (page.isDone) break;
@@ -227,10 +230,13 @@ describe("bounded queries", () => {
       let pages = 0;
 
       for (;;) {
-        const page = await owner.query(api.activityLogs.listByThread, {
-          threadId: fixture.threadId,
-          paginationOpts: { numItems: 2, cursor },
-        });
+        const page: PaginationResult<Doc<"activityLogs">> = await owner.query(
+          api.activityLogs.listByThread,
+          {
+            threadId: fixture.threadId,
+            paginationOpts: { numItems: 2, cursor },
+          },
+        );
         pages += 1;
         seen.push(...page.page.map((log) => log._id));
         if (page.isDone) break;
