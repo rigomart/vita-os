@@ -52,11 +52,6 @@ export default defineSchema({
     .index("by_user_created", ["userId", "createdAt"])
     .index("by_user_inbox", ["userId", "state", "createdAt"]),
 
-  userSettings: defineTable({
-    userId: v.string(),
-    lastReviewDate: v.optional(v.number()),
-  }).index("by_user", ["userId"]),
-
   activityLogs: defineTable({
     userId: v.string(),
     threadId: v.id("threads"),

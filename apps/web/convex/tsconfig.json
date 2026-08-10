@@ -9,7 +9,9 @@
     "strict": true,
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
-    "types": ["node"],
+    /* "vite/client" types `import.meta.glob`, which the convex-test suite
+     * uses to hand Convex function modules to `convexTest`. */
+    "types": ["node", "vite/client"],
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
 

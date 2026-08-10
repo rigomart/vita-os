@@ -67,19 +67,11 @@ function activity(
 }
 
 describe("buildDashboardOverview", () => {
-  it("isolates authenticated user data and returns open Threads and Tasks only", () => {
-    const result = buildDashboardOverview("user1", {
-      areas: [area("mine"), area("theirs", { userId: "user2" })],
-      threads: [
-        thread("open"),
-        thread("resolved", { state: "resolved" }),
-        thread("foreign", { userId: "user2" }),
-      ],
-      tasks: [
-        task("open"),
-        task("done", { state: "done" }),
-        task("foreign", { userId: "user2" }),
-      ],
+  it("returns open Threads and Tasks only", () => {
+    const result = buildDashboardOverview({
+      areas: [area("mine")],
+      threads: [thread("open"), thread("resolved", { state: "resolved" })],
+      tasks: [task("open"), task("done", { state: "done" })],
       activityLogs: [],
     });
 
@@ -90,7 +82,7 @@ describe("buildDashboardOverview", () => {
   });
 
   it("includes an Area Icon when one is stored", () => {
-    const result = buildDashboardOverview("user1", {
+    const result = buildDashboardOverview({
       areas: [area("health", { icon: "HeartPulse" })],
       threads: [],
       tasks: [],
@@ -105,7 +97,6 @@ describe("buildDashboardOverview", () => {
   it("returns every Open Task in the shared attention order", () => {
     const currentDate = new Date(2026, 6, 17, 12).getTime();
     const result = buildDashboardOverview(
-      "user1",
       {
         areas: [],
         threads: [],
@@ -141,7 +132,7 @@ describe("buildDashboardOverview", () => {
   });
 
   it("returns the latest entry per distinct open Thread", () => {
-    const result = buildDashboardOverview("user1", {
+    const result = buildDashboardOverview({
       areas: [],
       tasks: [],
       threads: [
@@ -155,7 +146,6 @@ describe("buildDashboardOverview", () => {
         activity("deleted-log", "deleted", 45),
         activity("a-new", "a", 40),
         activity("b-new", "b", 30),
-        activity("foreign", "b", 60, { userId: "user2" }),
       ],
     });
 

@@ -36,6 +36,7 @@
     "tailwind-merge": "catalog:"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "5.0.0",
     "@rolldown/plugin-babel": "0.2.3",
     "@tailwindcss/vite": "4.3.0",
     "@tanstack/react-router": "1.170.18",
@@ -49,6 +50,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "6.0.2",
     "babel-plugin-react-compiler": "^1.0.0",
+    "convex-test": "0.0.54",
     "jsdom": "29.1.1",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",

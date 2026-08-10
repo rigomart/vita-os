@@ -25,11 +25,36 @@ export default defineConfig({
     },
   },
   test: {
-    globals: true,
-    environment: "jsdom",
-    setupFiles: ["./src/test/setup.ts"],
-    css: true,
     passWithNoTests: true,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "web",
+          include: ["src/**/*.test.{ts,tsx}"],
+          globals: true,
+          environment: "jsdom",
+          setupFiles: ["./src/test/setup.ts"],
+          css: true,
+        },
+      },
+      {
+        // Convex functions run in the Convex runtime, which convex-test
+        // approximates with the edge runtime rather than jsdom.
+        extends: true,
+        test: {
+          name: "convex",
+          include: ["convex/**/*.test.ts"],
+          globals: true,
+          environment: "edge-runtime",
+          server: {
+            // Both ship raw TypeScript that Vite has to transform, and
+            // `@convex-dev/better-auth/test` needs `import.meta.glob`.
+            deps: { inline: ["convex-test", "@convex-dev/better-auth"] },
+          },
+        },
+      },
+    ],
   },
   preview: {
     port: 5173,
