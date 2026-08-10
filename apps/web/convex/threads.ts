@@ -165,19 +165,3 @@ export const completeNextMoveMutation = mutation({
     await completeNextMove(ctx, { userId, thread });
   },
 });
-
-export const backfillSlugs = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const threads = await ctx.db.query("threads").collect();
-    let count = 0;
-    for (const thread of threads) {
-      if (!thread.slug) {
-        const slug = generateSlug(thread.title);
-        await ctx.db.patch(thread._id, { slug });
-        count++;
-      }
-    }
-    return { backfilled: count };
-  },
-});

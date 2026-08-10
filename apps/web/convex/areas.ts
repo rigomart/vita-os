@@ -124,20 +124,3 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
-
-export const reorder = mutation({
-  args: {
-    tasks: v.array(v.object({ id: v.id("areas"), order: v.number() })),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-
-    for (const task of args.tasks) {
-      const area = await ctx.db.get(task.id);
-      if (!area || area.userId !== userId) {
-        throw new Error("Area not found");
-      }
-      await ctx.db.patch(task.id, { order: task.order });
-    }
-  },
-});
