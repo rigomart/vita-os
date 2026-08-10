@@ -3,27 +3,16 @@ import type { Id } from "@convex/_generated/dataModel";
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
 
-import { uncompleteTaskInInbox } from "./optimistic";
-
+/**
+ * Reopening a Task moves it from the `tasks.listDone` page back onto
+ * `tasks.list`. Neither cache can be patched optimistically here: the Done
+ * Task was never in `tasks.list` (Open Tasks only) to begin with, and
+ * reconstructing its full doc to insert one would need a hook signature
+ * change that's out of scope for now (see #254). Server reactivity moves
+ * the Task between the two caches once the mutation lands.
+ */
 export function useUncompleteTask() {
-  const uncompleteTask = useMutation(api.tasks.markOpen).withOptimisticUpdate(
-    (localStore, args) => {
-      const current = localStore.getQuery(api.tasks.list, {});
-      if (current !== undefined) {
-        localStore.setQuery(
-          api.tasks.list,
-          {},
-          uncompleteTaskInInbox(current, args.id),
-        );
-      }
-
-      const task = current?.find((task) => task._id === args.id);
-      const count = localStore.getQuery(api.tasks.count, {});
-      if (count !== undefined && task !== undefined && task.state === "done") {
-        localStore.setQuery(api.tasks.count, {}, count + 1);
-      }
-    },
-  );
+  const uncompleteTask = useMutation(api.tasks.markOpen);
 
   return (id: Id<"tasks">) => uncompleteTask({ id });
 }

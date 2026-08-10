@@ -18,7 +18,6 @@ export default defineSchema({
     order: v.number(),
     createdAt: v.number(),
   })
-    .index("by_user", ["userId"])
     .index("by_user_order", ["userId", "order"])
     .index("by_user_slug", ["userId", "slug"]),
 
@@ -34,11 +33,10 @@ export default defineSchema({
     followUp: v.optional(v.number()),
     createdAt: v.number(),
   })
-    .index("by_user", ["userId"])
     .index("by_user_order", ["userId", "order"])
     .index("by_user_slug", ["userId", "slug"])
     .index("by_user_state", ["userId", "state"])
-    .index("by_area", ["areaId"]),
+    .index("by_user_area_state", ["userId", "areaId", "state"]),
 
   tasks: defineTable({
     userId: v.string(),
@@ -47,10 +45,7 @@ export default defineSchema({
     state: v.union(v.literal("open"), v.literal("done")),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_created", ["userId", "createdAt"])
-    .index("by_user_inbox", ["userId", "state", "createdAt"]),
+  }).index("by_user_inbox", ["userId", "state", "createdAt"]),
 
   activityLogs: defineTable({
     userId: v.string(),
@@ -61,6 +56,6 @@ export default defineSchema({
     newValue: v.optional(v.string()),
     createdAt: v.number(),
   })
-    .index("by_thread", ["threadId", "createdAt"])
+    .index("by_user_thread", ["userId", "threadId", "createdAt"])
     .index("by_user_created", ["userId", "createdAt"]),
 });

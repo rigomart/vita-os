@@ -1,121 +1,15 @@
-import type { TestConvex, TestConvexForDataModel } from "convex-test";
-import type { DataModelFromSchemaDefinition } from "convex/server";
-
-import betterAuthTest from "@convex-dev/better-auth/test";
-import { convexTest } from "convex-test";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import type { Id } from "./_generated/dataModel";
+import type { Fixture, SignedIn, TestApi } from "./test.helpers";
 
-import { api, components } from "./_generated/api";
-import schema from "./schema";
+import { api } from "./_generated/api";
+import { FIRST_PAGE, seed, setupTest, signIn } from "./test.helpers";
 
 /**
  * Authorization tests for every public Convex function, exercised through
- * `api.*` exactly as a client would.
- *
- * Auth is real, not stubbed: the Better Auth component is registered with
- * `@convex-dev/better-auth/test` (its documented `register` helper), and
- * `signIn` seeds a `user` + non-expired `session` through the component's own
- * `adapter.create` mutation. `authComponent.getAuthUser` then resolves the
- * identity the same way it does in production — `ctx.auth.getUserIdentity()`,
- * then a session lookup by `identity.sessionId` and a user lookup by
- * `identity.subject` against the component's tables.
+ * `api.*` exactly as a client would. Sign-in and fixtures come from
+ * `test.helpers`, which stands up a real Better Auth session.
  */
-
-const modules = import.meta.glob("./**/*.ts");
-
-type Schema = typeof schema;
-type TestApi = TestConvex<Schema>;
-type SignedIn = TestConvexForDataModel<DataModelFromSchemaDefinition<Schema>>;
-
-const HOUR_MS = 60 * 60 * 1000;
-
-function setupTest(): TestApi {
-  const t = convexTest(schema, modules);
-  betterAuthTest.register(t);
-  return t;
-}
-
-/**
- * Create a Better Auth user with a live session and return a `t` bound to
- * that identity.
- */
-async function signIn(t: TestApi, email: string): Promise<SignedIn> {
-  const now = Date.now();
-
-  const user = await t.run((ctx) =>
-    ctx.runMutation(components.betterAuth.adapter.create, {
-      input: {
-        model: "user",
-        data: {
-          name: email,
-          email,
-          emailVerified: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-      },
-    }),
-  );
-
-  const session = await t.run((ctx) =>
-    ctx.runMutation(components.betterAuth.adapter.create, {
-      input: {
-        model: "session",
-        data: {
-          userId: user._id,
-          token: `token-${email}`,
-          expiresAt: now + HOUR_MS,
-          createdAt: now,
-          updatedAt: now,
-        },
-      },
-    }),
-  );
-
-  return t.withIdentity({ subject: user._id, sessionId: session._id });
-}
-
-interface Fixture {
-  areaId: Id<"areas">;
-  areaSlug: string;
-  logId: Id<"activityLogs">;
-  taskId: Id<"tasks">;
-  threadId: Id<"threads">;
-  threadSlug: string;
-}
-
-/** One Area, Thread, Task and Activity Log, all created through `api.*`. */
-async function seed(as: SignedIn): Promise<Fixture> {
-  const area = await as.mutation(api.areas.create, {
-    name: "Family Health",
-    condition: "healthy",
-    icon: "HeartPulse",
-  });
-  const thread = await as.mutation(api.threads.create, {
-    title: "Book checkup",
-    areaId: area.id,
-  });
-  await as.mutation(api.threads.update, {
-    id: thread.id,
-    nextMove: "Call the clinic",
-  });
-  const taskId = await as.mutation(api.tasks.create, { text: "Buy vitamins" });
-  const logId = await as.mutation(api.activityLogs.create, {
-    threadId: thread.id,
-    content: "Left a voicemail",
-  });
-
-  return {
-    areaId: area.id,
-    areaSlug: area.slug,
-    threadId: thread.id,
-    threadSlug: thread.slug,
-    taskId,
-    logId,
-  };
-}
 
 describe("owned-document authorization", () => {
   let t: TestApi;
@@ -275,6 +169,26 @@ describe("owned-document authorization", () => {
 
   describe("tasks", () => {
     it("hides another user's Task from every read", async () => {
+      await owner.mutation(api.tasks.markDone, { id: owned.taskId });
+
+      expect(
+        (
+          await owner.query(api.tasks.listDone, {
+            paginationOpts: FIRST_PAGE,
+          })
+        ).page.map((task) => task._id),
+      ).toEqual([owned.taskId]);
+
+      expect(
+        (
+          await intruder.query(api.tasks.listDone, {
+            paginationOpts: FIRST_PAGE,
+          })
+        ).page,
+      ).toEqual([]);
+
+      await owner.mutation(api.tasks.markOpen, { id: owned.taskId });
+
       expect(
         (await owner.query(api.tasks.list, {})).map((task) => task._id),
       ).toEqual([owned.taskId]);
@@ -374,14 +288,18 @@ describe("owned-document authorization", () => {
         (
           await owner.query(api.activityLogs.listByThread, {
             threadId: owned.threadId,
+            paginationOpts: FIRST_PAGE,
           })
-        ).map((log) => log._id),
+        ).page.map((log) => log._id),
       ).toContain(owned.logId);
 
       expect(
-        await intruder.query(api.activityLogs.listByThread, {
-          threadId: owned.threadId,
-        }),
+        (
+          await intruder.query(api.activityLogs.listByThread, {
+            threadId: owned.threadId,
+            paginationOpts: FIRST_PAGE,
+          })
+        ).page,
       ).toEqual([]);
     });
 
@@ -395,9 +313,10 @@ describe("owned-document authorization", () => {
 
       const logs = await owner.query(api.activityLogs.listByThread, {
         threadId: owned.threadId,
+        paginationOpts: FIRST_PAGE,
       });
-      expect(logs.map((log) => log._id)).toContain(owned.logId);
-      expect(logs.map((log) => log.content)).not.toContain("Injected");
+      expect(logs.page.map((log) => log._id)).toContain(owned.logId);
+      expect(logs.page.map((log) => log.content)).not.toContain("Injected");
     });
 
     it("refuses unauthenticated mutations", async () => {

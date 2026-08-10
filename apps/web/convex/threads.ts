@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import { mutation, query } from "./_generated/server";
-import { listThreadsInAreaForUser } from "./lib/areaThreads";
+import { listOpenThreadsInAreaForUser } from "./lib/areaThreads";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { getOwned, getOwnedBySlug, requireOwned } from "./lib/ownedAccess";
 import { nullsToUndefined } from "./lib/patch";
@@ -12,6 +12,13 @@ import {
   sanitizeThreadPatch,
 } from "./lib/threadChanges";
 
+/**
+ * Every Open Thread, in the user's manual order.
+ *
+ * The index selects the Open ones; `order` is a per-user ranking that no
+ * index can combine with `state`, so the sort happens here — over a set the
+ * user themselves keeps small by resolving Threads.
+ */
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -19,9 +26,11 @@ export const list = query({
     if (!userId) return [];
     const threads = await ctx.db
       .query("threads")
-      .withIndex("by_user_order", (q) => q.eq("userId", userId))
+      .withIndex("by_user_state", (q) =>
+        q.eq("userId", userId).eq("state", "open"),
+      )
       .collect();
-    return threads.filter((thread) => thread.state === "open");
+    return threads.sort((a, b) => a.order - b.order);
   },
 });
 
@@ -51,11 +60,7 @@ export const listByArea = query({
     const area = await getOwned(ctx, "areas", { userId, id: args.areaId });
     if (!area) return [];
 
-    const threads = await listThreadsInAreaForUser(ctx, {
-      userId,
-      areaId: area._id,
-    });
-    return threads.filter((thread) => thread.state === "open");
+    return listOpenThreadsInAreaForUser(ctx, { userId, areaId: area._id });
   },
 });
 
@@ -129,6 +134,13 @@ export const update = mutation({
   },
 });
 
+/**
+ * Delete a Thread and the Activity Log it accumulated.
+ *
+ * Activity Log entries exist only as a Thread's history, so they go with it —
+ * left behind they would be unreachable rows that still count against every
+ * user-scoped read, including the Dashboard's recent-activity strip.
+ */
 export const remove = mutation({
   args: { id: v.id("threads") },
   handler: async (ctx, args) => {
@@ -138,6 +150,14 @@ export const remove = mutation({
       userId,
       id: args.id,
     });
+
+    const logs = await ctx.db
+      .query("activityLogs")
+      .withIndex("by_user_thread", (q) =>
+        q.eq("userId", userId).eq("threadId", thread._id),
+      )
+      .collect();
+    await Promise.all(logs.map((log) => ctx.db.delete(log._id)));
 
     await ctx.db.delete(thread._id);
   },

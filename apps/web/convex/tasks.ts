@@ -1,26 +1,49 @@
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 
+import type { Doc } from "./_generated/dataModel";
+
 import { mutation, query } from "./_generated/server";
-import { isOpenTask } from "./lib/attentionOrdering";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
 import { processInboxTask } from "./lib/inboxProcessing";
 import { requireOwned } from "./lib/ownedAccess";
+import { emptyPage } from "./lib/pagination";
 
+/**
+ * Every Open Task, newest first.
+ *
+ * Bounded by the Inbox itself: an Open Task is one the user still has to deal
+ * with, so this set is what they are willing to look at. Done Tasks grow
+ * without limit and are paginated by `listDone` instead.
+ */
 export const list = query({
   args: {},
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return [];
-    const all = await ctx.db
+    return ctx.db
       .query("tasks")
-      .withIndex("by_user_created", (q) => q.eq("userId", userId))
+      .withIndex("by_user_inbox", (q) =>
+        q.eq("userId", userId).eq("state", "open"),
+      )
       .order("desc")
       .collect();
+  },
+});
 
-    return [
-      ...all.filter((task) => task.state === "open"),
-      ...all.filter((task) => task.state === "done"),
-    ];
+/** Done Tasks, newest first, one page at a time. */
+export const listDone = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return emptyPage<Doc<"tasks">>();
+    return ctx.db
+      .query("tasks")
+      .withIndex("by_user_inbox", (q) =>
+        q.eq("userId", userId).eq("state", "done"),
+      )
+      .order("desc")
+      .paginate(args.paginationOpts);
   },
 });
 
@@ -29,11 +52,13 @@ export const count = query({
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return 0;
-    const all = await ctx.db
+    const open = await ctx.db
       .query("tasks")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_user_inbox", (q) =>
+        q.eq("userId", userId).eq("state", "open"),
+      )
       .collect();
-    return all.filter(isOpenTask).length;
+    return open.length;
   },
 });
 

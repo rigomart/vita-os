@@ -37,6 +37,17 @@ export interface DashboardActivity {
   threadId: Id<"threads">;
 }
 
+/**
+ * What `buildDashboardOverview` is handed, and what it trusts about it.
+ *
+ * Every field is the result of a user-scoped, state-scoped index read, so the
+ * builder re-checks none of it:
+ * - `areas`: the caller's Areas.
+ * - `threads`: the caller's **Open** Threads only.
+ * - `tasks`: the caller's **Open** Tasks only.
+ * - `activityLogs`: the caller's most recent entries, already newest-first
+ *   and already capped by the query (`take`), across all their Threads.
+ */
 export interface DashboardSource {
   activityLogs: Doc<"activityLogs">[];
   areas: Doc<"areas">[];
@@ -47,7 +58,8 @@ export interface DashboardSource {
 /**
  * Shape the Dashboard payload from documents the caller has already read
  * through user-scoped indexes. This is pure presentation: it does no
- * ownership filtering, because every input is already the caller's own.
+ * ownership, state or recency filtering, because `DashboardSource` says the
+ * query layer has done all three.
  */
 export function buildDashboardOverview(
   source: DashboardSource,
@@ -67,9 +79,7 @@ export function buildDashboardOverview(
       }),
     );
 
-  const openThreads = source.threads
-    .filter((thread) => thread.state === "open")
-    .sort((a, b) => a.order - b.order);
+  const openThreads = [...source.threads].sort((a, b) => a.order - b.order);
   const threads = openThreads.map(
     (thread): DashboardThread => ({
       id: thread._id,
@@ -83,11 +93,9 @@ export function buildDashboardOverview(
     }),
   );
 
-  const openTasks = source.tasks
-    .filter((task) => task.state === "open")
-    .sort((a, b) =>
-      compareTasksByAttention(a, b, currentDate, timezoneOffsetMinutes),
-    );
+  const openTasks = [...source.tasks].sort((a, b) =>
+    compareTasksByAttention(a, b, currentDate, timezoneOffsetMinutes),
+  );
 
   const openThreadIds = new Set(openThreads.map((thread) => thread._id));
   const seenThreads = new Set<Id<"threads">>();
@@ -97,9 +105,7 @@ export function buildDashboardOverview(
   // full-width activity strip at two rows of three.
   const recentActivityCap = 6;
 
-  for (const entry of [...source.activityLogs]
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .slice(0, 50)) {
+  for (const entry of source.activityLogs) {
     if (!openThreadIds.has(entry.threadId) || seenThreads.has(entry.threadId)) {
       continue;
     }

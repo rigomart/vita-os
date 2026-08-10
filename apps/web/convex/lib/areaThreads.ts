@@ -4,36 +4,47 @@ import type { DataModel, Doc, Id } from "../_generated/dataModel";
 
 type ReadCtx = GenericMutationCtx<DataModel> | GenericQueryCtx<DataModel>;
 
-export function getAreaDeletionBlocker(
-  threads: Array<Doc<"threads">>,
-): Doc<"threads"> | null {
-  return threads[0] ?? null;
-}
-
 /**
- * Threads filed under an Area, restricted to one owner.
+ * Open Threads filed under an Area, in creation order.
  *
- * The `by_area` index is not user-scoped, so unlike a read through
- * `ownedAccess` this one has to drop foreign Threads itself.
+ * The `by_user_area_state` index carries the owner, so this reads exactly the
+ * caller's Open Threads in that Area — no ownership or state filtering in JS,
+ * and no scan of Threads belonging to anyone else.
  */
-export async function listThreadsInAreaForUser(
+export async function listOpenThreadsInAreaForUser(
   ctx: ReadCtx,
   args: { userId: string; areaId: Id<"areas"> },
 ): Promise<Array<Doc<"threads">>> {
-  const threads = await ctx.db
+  return ctx.db
     .query("threads")
-    .withIndex("by_area", (q) => q.eq("areaId", args.areaId))
+    .withIndex("by_user_area_state", (q) =>
+      q.eq("userId", args.userId).eq("areaId", args.areaId).eq("state", "open"),
+    )
     .collect();
+}
 
-  return threads.filter((thread) => thread.userId === args.userId);
+/**
+ * The Thread that stops an Area from being deleted, or `null` when the Area
+ * is empty. Threads of any state block deletion, so this reads the index
+ * range for the Area without pinning `state`, and stops at the first hit.
+ */
+export async function findAreaDeletionBlocker(
+  ctx: ReadCtx,
+  args: { userId: string; areaId: Id<"areas"> },
+): Promise<Doc<"threads"> | null> {
+  return ctx.db
+    .query("threads")
+    .withIndex("by_user_area_state", (q) =>
+      q.eq("userId", args.userId).eq("areaId", args.areaId),
+    )
+    .first();
 }
 
 export async function assertAreaCanBeDeleted(
   ctx: ReadCtx,
   args: { userId: string; areaId: Id<"areas"> },
 ): Promise<void> {
-  const threads = await listThreadsInAreaForUser(ctx, args);
-  if (getAreaDeletionBlocker(threads)) {
+  if (await findAreaDeletionBlocker(ctx, args)) {
     throw new Error(
       "Cannot delete an area that has threads. Move or delete the threads first.",
     );

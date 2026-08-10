@@ -22,6 +22,7 @@ import type * as lib_dashboard from "../lib/dashboard.js";
 import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_inboxProcessing from "../lib/inboxProcessing.js";
 import type * as lib_ownedAccess from "../lib/ownedAccess.js";
+import type * as lib_pagination from "../lib/pagination.js";
 import type * as lib_patch from "../lib/patch.js";
 import type * as lib_slugs from "../lib/slugs.js";
 import type * as lib_threadChanges from "../lib/threadChanges.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   "lib/helpers": typeof lib_helpers;
   "lib/inboxProcessing": typeof lib_inboxProcessing;
   "lib/ownedAccess": typeof lib_ownedAccess;
+  "lib/pagination": typeof lib_pagination;
   "lib/patch": typeof lib_patch;
   "lib/slugs": typeof lib_slugs;
   "lib/threadChanges": typeof lib_threadChanges;

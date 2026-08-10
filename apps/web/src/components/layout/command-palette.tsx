@@ -112,12 +112,7 @@ export function CommandPalette({
         <CommandGroup heading="Threads">
           {(threads ?? []).map((thread) => {
             const area = areaById.get(thread.areaId);
-            const meta = [
-              area?.name,
-              thread.state === "resolved" ? "resolved" : undefined,
-            ]
-              .filter(Boolean)
-              .join(" · ");
+            const meta = area?.name ?? "";
             return (
               <CommandItem
                 key={thread._id}
