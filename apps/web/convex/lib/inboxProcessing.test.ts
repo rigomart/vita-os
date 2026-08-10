@@ -93,7 +93,8 @@ describe("processInboxTask", () => {
     };
     const ctx = {
       db: {
-        get: async (id: string) => (id === areaId ? area : null),
+        get: async (_table: string, id: string) =>
+          id === areaId ? area : null,
         query: () => ({
           withIndex: () => ({
             order: () => ({
@@ -161,7 +162,8 @@ describe("processInboxTask", () => {
     const deleted: string[] = [];
     const ctx = {
       db: {
-        get: async (id: string) => (id === thread._id ? thread : null),
+        get: async (_table: string, id: string) =>
+          id === thread._id ? thread : null,
         insert: async (table: string, value: unknown) => {
           inserted.push({ table, value });
           return "inserted";
@@ -202,7 +204,8 @@ describe("processInboxTask", () => {
     const deleted: string[] = [];
     const ctx = {
       db: {
-        get: async (id: string) => (id === thread._id ? thread : null),
+        get: async (_table: string, id: string) =>
+          id === thread._id ? thread : null,
         insert: async (table: string, value: unknown) => {
           inserted.push({ table, value });
           return "inserted";

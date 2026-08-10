@@ -1,15 +1,8 @@
-import type { GenericMutationCtx } from "convex/server";
+import type { GenericMutationCtx, GenericQueryCtx } from "convex/server";
 
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
 
-type MutationCtx = GenericMutationCtx<DataModel>;
-
-export function areaBelongsToUser(
-  area: Doc<"areas"> | null,
-  userId: string,
-): area is Doc<"areas"> {
-  return area !== null && area.userId === userId;
-}
+type ReadCtx = GenericMutationCtx<DataModel> | GenericQueryCtx<DataModel>;
 
 export function getAreaDeletionBlocker(
   threads: Array<Doc<"threads">>,
@@ -17,19 +10,14 @@ export function getAreaDeletionBlocker(
   return threads[0] ?? null;
 }
 
-export async function getAreaForUser(
-  ctx: MutationCtx,
-  args: { userId: string; areaId: Id<"areas"> },
-): Promise<Doc<"areas">> {
-  const area = await ctx.db.get(args.areaId);
-  if (!areaBelongsToUser(area, args.userId)) {
-    throw new Error("Area not found");
-  }
-  return area;
-}
-
+/**
+ * Threads filed under an Area, restricted to one owner.
+ *
+ * The `by_area` index is not user-scoped, so unlike a read through
+ * `ownedAccess` this one has to drop foreign Threads itself.
+ */
 export async function listThreadsInAreaForUser(
-  ctx: MutationCtx,
+  ctx: ReadCtx,
   args: { userId: string; areaId: Id<"areas"> },
 ): Promise<Array<Doc<"threads">>> {
   const threads = await ctx.db
@@ -41,7 +29,7 @@ export async function listThreadsInAreaForUser(
 }
 
 export async function assertAreaCanBeDeleted(
-  ctx: MutationCtx,
+  ctx: ReadCtx,
   args: { userId: string; areaId: Id<"areas"> },
 ): Promise<void> {
   const threads = await listThreadsInAreaForUser(ctx, args);

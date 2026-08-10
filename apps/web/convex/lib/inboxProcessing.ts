@@ -2,8 +2,8 @@ import type { GenericMutationCtx } from "convex/server";
 
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
 
-import { getAreaForUser } from "./areaThreads";
 import { getNextOrder } from "./helpers";
+import { requireOwned } from "./ownedAccess";
 import { generateSlug } from "./slugs";
 import { applyThreadPatch } from "./threadChanges";
 
@@ -59,9 +59,9 @@ export async function processInboxTask(
   },
 ): Promise<InboxProcessingResult> {
   if (args.action.type === "create_thread") {
-    await getAreaForUser(ctx, {
+    await requireOwned(ctx, "areas", {
       userId: args.userId,
-      areaId: args.action.areaId,
+      id: args.action.areaId,
     });
 
     const nextOrder = await getNextOrder(ctx, "threads", args.userId);
@@ -93,9 +93,9 @@ export async function processInboxTask(
   }
 
   if (args.action.type === "add_activity_log_entry") {
-    const thread = await getThreadForProcessing(ctx, {
+    const thread = await requireOwned(ctx, "threads", {
       userId: args.userId,
-      threadId: args.action.threadId,
+      id: args.action.threadId,
     });
 
     await copyTaskToActivityLog(ctx, {
@@ -108,9 +108,9 @@ export async function processInboxTask(
   }
 
   if (args.action.type === "set_next_move") {
-    const thread = await getThreadForProcessing(ctx, {
+    const thread = await requireOwned(ctx, "threads", {
       userId: args.userId,
-      threadId: args.action.threadId,
+      id: args.action.threadId,
     });
 
     await applyThreadPatch(ctx, {
@@ -124,17 +124,6 @@ export async function processInboxTask(
 
   await ctx.db.delete(args.task._id);
   return { type: "discarded" };
-}
-
-async function getThreadForProcessing(
-  ctx: MutationCtx,
-  args: { userId: string; threadId: Id<"threads"> },
-): Promise<Doc<"threads">> {
-  const thread = await ctx.db.get(args.threadId);
-  if (!thread || thread.userId !== args.userId) {
-    throw new Error("Thread not found");
-  }
-  return thread;
 }
 
 async function copyTaskToActivityLog(

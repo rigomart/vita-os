@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server";
 import { isOpenTask } from "./lib/attentionOrdering";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
 import { processInboxTask } from "./lib/inboxProcessing";
+import { requireOwned } from "./lib/ownedAccess";
 
 export const list = query({
   args: {},
@@ -59,10 +60,7 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    const task = await ctx.db.get(args.id);
-    if (!task || task.userId !== userId) {
-      throw new Error("Task not found");
-    }
+    await requireOwned(ctx, "tasks", { userId, id: args.id });
 
     await ctx.db.delete(args.id);
   },
@@ -73,10 +71,7 @@ export const updateText = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    const task = await ctx.db.get(args.id);
-    if (!task || task.userId !== userId) {
-      throw new Error("Task not found");
-    }
+    await requireOwned(ctx, "tasks", { userId, id: args.id });
 
     await ctx.db.patch(args.id, { text: args.text });
   },
@@ -87,10 +82,7 @@ export const updateWhen = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    const task = await ctx.db.get(args.id);
-    if (!task || task.userId !== userId) {
-      throw new Error("Task not found");
-    }
+    await requireOwned(ctx, "tasks", { userId, id: args.id });
 
     await ctx.db.patch(args.id, { when: args.when });
   },
@@ -101,10 +93,7 @@ export const markDone = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    const task = await ctx.db.get(args.id);
-    if (!task || task.userId !== userId) {
-      throw new Error("Task not found");
-    }
+    await requireOwned(ctx, "tasks", { userId, id: args.id });
 
     await ctx.db.patch(args.id, {
       state: "done",
@@ -118,10 +107,7 @@ export const markOpen = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    const task = await ctx.db.get(args.id);
-    if (!task || task.userId !== userId) {
-      throw new Error("Task not found");
-    }
+    await requireOwned(ctx, "tasks", { userId, id: args.id });
 
     await ctx.db.patch(args.id, {
       state: "open",
@@ -156,10 +142,7 @@ export const process = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    const task = await ctx.db.get(args.id);
-    if (!task || task.userId !== userId) {
-      throw new Error("Task not found");
-    }
+    const task = await requireOwned(ctx, "tasks", { userId, id: args.id });
 
     return processInboxTask(ctx, { userId, task, action: args.action });
   },

@@ -1,8 +1,9 @@
 import { v } from "convex/values";
 
 import { mutation, query } from "./_generated/server";
-import { getAreaForUser } from "./lib/areaThreads";
+import { listThreadsInAreaForUser } from "./lib/areaThreads";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
+import { getOwned, getOwnedBySlug, requireOwned } from "./lib/ownedAccess";
 import { nullsToUndefined } from "./lib/patch";
 import { generateSlug } from "./lib/slugs";
 import {
@@ -29,9 +30,7 @@ export const get = query({
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return null;
-    const thread = await ctx.db.get(args.id);
-    if (!thread || thread.userId !== userId) return null;
-    return thread;
+    return getOwned(ctx, "threads", { userId, id: args.id });
   },
 });
 
@@ -40,14 +39,7 @@ export const getBySlug = query({
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return null;
-    const thread = await ctx.db
-      .query("threads")
-      .withIndex("by_user_slug", (q) =>
-        q.eq("userId", userId).eq("slug", args.slug),
-      )
-      .unique();
-    if (!thread || thread.userId !== userId) return null;
-    return thread;
+    return getOwnedBySlug(ctx, "threads", { userId, slug: args.slug });
   },
 });
 
@@ -56,13 +48,14 @@ export const listByArea = query({
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return [];
-    const threads = await ctx.db
-      .query("threads")
-      .withIndex("by_area", (q) => q.eq("areaId", args.areaId))
-      .collect();
-    return threads.filter(
-      (thread) => thread.userId === userId && thread.state === "open",
-    );
+    const area = await getOwned(ctx, "areas", { userId, id: args.areaId });
+    if (!area) return [];
+
+    const threads = await listThreadsInAreaForUser(ctx, {
+      userId,
+      areaId: area._id,
+    });
+    return threads.filter((thread) => thread.state === "open");
   },
 });
 
@@ -74,7 +67,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    await getAreaForUser(ctx, { userId, areaId: args.areaId });
+    await requireOwned(ctx, "areas", { userId, id: args.areaId });
 
     const nextOrder = await getNextOrder(ctx, "threads", userId);
     const slug = generateSlug(args.title);
@@ -109,13 +102,10 @@ export const update = mutation({
     const userId = await getAuthUserId(ctx);
     const { id, resolutionNote, ...rest } = args;
 
-    const thread = await ctx.db.get(id);
-    if (!thread || thread.userId !== userId) {
-      throw new Error("Thread not found");
-    }
+    const thread = await requireOwned(ctx, "threads", { userId, id });
 
     if (rest.areaId !== undefined) {
-      await getAreaForUser(ctx, { userId, areaId: rest.areaId });
+      await requireOwned(ctx, "areas", { userId, id: rest.areaId });
     }
 
     let newSlug: string | undefined;
@@ -144,10 +134,10 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    const thread = await ctx.db.get(args.id);
-    if (!thread || thread.userId !== userId) {
-      throw new Error("Thread not found");
-    }
+    const thread = await requireOwned(ctx, "threads", {
+      userId,
+      id: args.id,
+    });
 
     await ctx.db.delete(thread._id);
   },
@@ -157,10 +147,10 @@ export const completeNextMoveMutation = mutation({
   args: { id: v.id("threads") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const thread = await ctx.db.get(args.id);
-    if (!thread || thread.userId !== userId) {
-      throw new Error("Thread not found");
-    }
+    const thread = await requireOwned(ctx, "threads", {
+      userId,
+      id: args.id,
+    });
 
     await completeNextMove(ctx, { userId, thread });
   },

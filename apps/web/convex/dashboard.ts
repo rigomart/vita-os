@@ -91,7 +91,6 @@ export const overview = query({
     ]);
 
     return buildDashboardOverview(
-      userId,
       {
         areas,
         threads,

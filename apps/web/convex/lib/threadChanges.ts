@@ -6,6 +6,7 @@ import {
   type AutoActivityLogEntry,
   buildAreaMoveLogEntry,
 } from "./activityLog";
+import { getOwned } from "./ownedAccess";
 
 type MutationCtx = GenericMutationCtx<DataModel>;
 
@@ -177,8 +178,14 @@ export async function applyThreadPatch(
     writePatch.areaId !== undefined &&
     writePatch.areaId !== args.thread.areaId
   ) {
-    const fromArea = await ctx.db.get(args.thread.areaId);
-    const toArea = await ctx.db.get(writePatch.areaId);
+    const fromArea = await getOwned(ctx, "areas", {
+      userId: args.userId,
+      id: args.thread.areaId,
+    });
+    const toArea = await getOwned(ctx, "areas", {
+      userId: args.userId,
+      id: writePatch.areaId,
+    });
     if (fromArea && toArea) {
       areaMoveNames = {
         fromAreaName: fromArea.name,

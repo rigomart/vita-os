@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { assertAreaCanBeDeleted } from "./lib/areaThreads";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
+import { getOwned, getOwnedBySlug, requireOwned } from "./lib/ownedAccess";
 import { nullsToUndefined } from "./lib/patch";
 import { generateSlug } from "./lib/slugs";
 import { validateAreaName } from "./lib/validation";
@@ -25,9 +26,7 @@ export const get = query({
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return null;
-    const area = await ctx.db.get(args.id);
-    if (!area || area.userId !== userId) return null;
-    return area;
+    return getOwned(ctx, "areas", { userId, id: args.id });
   },
 });
 
@@ -36,12 +35,7 @@ export const getBySlug = query({
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return null;
-    return ctx.db
-      .query("areas")
-      .withIndex("by_user_slug", (q) =>
-        q.eq("userId", userId).eq("slug", args.slug),
-      )
-      .unique();
+    return getOwnedBySlug(ctx, "areas", { userId, slug: args.slug });
   },
 });
 
@@ -86,10 +80,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    const area = await ctx.db.get(args.id);
-    if (!area || area.userId !== userId) {
-      throw new Error("Area not found");
-    }
+    const area = await requireOwned(ctx, "areas", { userId, id: args.id });
 
     const { id, ...rest } = args;
     if (rest.name !== undefined) {
@@ -114,10 +105,7 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    const area = await ctx.db.get(args.id);
-    if (!area || area.userId !== userId) {
-      throw new Error("Area not found");
-    }
+    await requireOwned(ctx, "areas", { userId, id: args.id });
 
     await assertAreaCanBeDeleted(ctx, { userId, areaId: args.id });
 

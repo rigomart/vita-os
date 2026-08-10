@@ -44,14 +44,17 @@ export interface DashboardSource {
   threads: Doc<"threads">[];
 }
 
+/**
+ * Shape the Dashboard payload from documents the caller has already read
+ * through user-scoped indexes. This is pure presentation: it does no
+ * ownership filtering, because every input is already the caller's own.
+ */
 export function buildDashboardOverview(
-  userId: string,
   source: DashboardSource,
   currentDate = Date.now(),
   timezoneOffsetMinutes?: number,
 ) {
-  const areas = source.areas
-    .filter((area) => area.userId === userId)
+  const areas = [...source.areas]
     .sort((a, b) => a.order - b.order)
     .map(
       (area): DashboardArea => ({
@@ -65,7 +68,7 @@ export function buildDashboardOverview(
     );
 
   const openThreads = source.threads
-    .filter((thread) => thread.userId === userId && thread.state === "open")
+    .filter((thread) => thread.state === "open")
     .sort((a, b) => a.order - b.order);
   const threads = openThreads.map(
     (thread): DashboardThread => ({
@@ -81,7 +84,7 @@ export function buildDashboardOverview(
   );
 
   const openTasks = source.tasks
-    .filter((task) => task.userId === userId && task.state === "open")
+    .filter((task) => task.state === "open")
     .sort((a, b) =>
       compareTasksByAttention(a, b, currentDate, timezoneOffsetMinutes),
     );
@@ -94,8 +97,7 @@ export function buildDashboardOverview(
   // full-width activity strip at two rows of three.
   const recentActivityCap = 6;
 
-  for (const entry of source.activityLogs
-    .filter((activity) => activity.userId === userId)
+  for (const entry of [...source.activityLogs]
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 50)) {
     if (!openThreadIds.has(entry.threadId) || seenThreads.has(entry.threadId)) {
