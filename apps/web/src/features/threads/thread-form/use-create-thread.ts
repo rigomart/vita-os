@@ -12,9 +12,7 @@ export function useCreateThread() {
   const createThread = useMutation(api.threads.create).withOptimisticUpdate(
     (localStore, args) => {
       optimisticallyCreateThreadInList(localStore, args);
-      optimisticallyCreateThreadInArea(localStore, args, {
-        areaId: args.areaId,
-      });
+      optimisticallyCreateThreadInArea(localStore, args);
     },
   );
 

@@ -1,4 +1,4 @@
-import type { Id } from "@convex/_generated/dataModel";
+import type { Doc, Id } from "@convex/_generated/dataModel";
 
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
@@ -16,10 +16,10 @@ export type UpdateThreadValue = {
   resolutionNote?: string;
 };
 
-export function useUpdateThread(threadSlug: string) {
+export function useUpdateThread(thread: Doc<"threads">) {
   const updateThread = useMutation(api.threads.update).withOptimisticUpdate(
     (localStore, args) => {
-      optimisticallyUpdateThread(localStore, args, { threadSlug });
+      optimisticallyUpdateThread(localStore, args, { thread });
     },
   );
 

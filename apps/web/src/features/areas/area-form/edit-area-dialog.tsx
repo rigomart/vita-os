@@ -16,8 +16,7 @@ export function EditAreaDialog({
   open,
   onOpenChange,
 }: EditAreaDialogProps) {
-  const areaSlug = area.slug ?? area._id;
-  const updateArea = useUpdateArea(areaSlug);
+  const updateArea = useUpdateArea();
 
   return (
     <AreaFormDialog

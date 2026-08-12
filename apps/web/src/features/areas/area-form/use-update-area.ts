@@ -8,11 +8,11 @@ import { optimisticallyUpdateArea } from "@/features/areas/optimistic";
 
 import type { AreaFormValue } from "./types";
 
-export function useUpdateArea(areaSlug: string) {
+export function useUpdateArea() {
   const navigate = useNavigate();
   const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
     (localStore, args) => {
-      optimisticallyUpdateArea(localStore, args, { areaSlug });
+      optimisticallyUpdateArea(localStore, args);
     },
   );
 
