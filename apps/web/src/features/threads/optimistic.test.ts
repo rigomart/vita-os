@@ -1,9 +1,9 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
-import type { OptimisticLocalStore } from "convex/browser";
 
 import { api } from "@convex/_generated/api";
-import { getFunctionName } from "convex/server";
 import { describe, expect, it } from "vitest";
+
+import { createLocalStore } from "@/test/optimistic-local-store";
 
 import {
   buildOptimisticThread,
@@ -22,44 +22,6 @@ function makeThread(overrides: Partial<Doc<"threads">> = {}): Doc<"threads"> {
     state: "open",
     createdAt: 0,
     ...overrides,
-  };
-}
-
-function createLocalStore() {
-  const entries: Array<{
-    query: unknown;
-    args: unknown;
-    value: unknown;
-  }> = [];
-
-  const queryKey = (query: unknown) => getFunctionName(query as never);
-  const findEntry = (query: unknown, args: unknown) =>
-    entries.find(
-      (entry) =>
-        entry.query === queryKey(query) &&
-        JSON.stringify(entry.args) === JSON.stringify(args),
-    );
-
-  return {
-    store: {
-      getQuery(query: unknown, args: unknown) {
-        return findEntry(query, args)?.value;
-      },
-      setQuery(query: unknown, args: unknown, value: unknown) {
-        const entry = findEntry(query, args);
-        if (entry) {
-          entry.value = value;
-        } else {
-          entries.push({ query: queryKey(query), args, value });
-        }
-      },
-    } as OptimisticLocalStore,
-    set(query: unknown, args: unknown, value: unknown) {
-      entries.push({ query: queryKey(query), args, value });
-    },
-    get(query: unknown, args: unknown) {
-      return findEntry(query, args)?.value;
-    },
   };
 }
 
