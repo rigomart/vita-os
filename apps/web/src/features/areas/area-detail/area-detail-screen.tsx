@@ -10,7 +10,6 @@ import { AreaStandardCardSection } from "@/features/areas/components/area-standa
 import { AreaThreadsSection } from "@/features/areas/components/area-threads-section";
 import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread-dialog";
 import { useDocumentTitle } from "@/hooks/use-document-title";
-import { useStableQuery } from "@/hooks/use-stable-query";
 
 import { AreaNotFound } from "./area-not-found";
 
@@ -19,31 +18,33 @@ interface AreaDetailScreenProps {
 }
 
 export function AreaDetailScreen({ areaSlug }: AreaDetailScreenProps) {
-  const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
-  const areas = useQuery(api.areas.list);
+  const detail = useQuery(api.areas.detailBySlug, { slug: areaSlug });
   const navigate = useNavigate();
   const [showEdit, setShowEdit] = useState(false);
   const [showCreateThread, setShowCreateThread] = useState(false);
 
-  useDocumentTitle(area?.name ?? "Area");
+  // Picker data for the create-thread dialog only; the page itself renders
+  // from the composite.
+  const areas = useQuery(api.areas.list, showCreateThread ? {} : "skip");
 
-  if (area === undefined) return <AreaDetailSkeleton />;
-  if (area === null) return <AreaNotFound />;
+  useDocumentTitle(detail?.area.name ?? "Area");
+
+  if (detail === undefined) return <AreaDetailSkeleton />;
+  if (detail === null) return <AreaNotFound />;
+
+  const { area, threads } = detail;
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6 border-t-2 border-brand-gold-strong/55 pt-3">
       <div>
-        <AreaHeaderSection
-          areaSlug={areaSlug}
-          onEdit={() => setShowEdit(true)}
-        />
+        <AreaHeaderSection area={area} onEdit={() => setShowEdit(true)} />
         <div className="min-h-8 max-w-2xl">
-          <AreaStandardCardSection areaSlug={areaSlug} />
+          <AreaStandardCardSection area={area} />
         </div>
       </div>
 
       <AreaThreadsSection
-        areaSlug={areaSlug}
+        threads={threads}
         onCreateThread={() => setShowCreateThread(true)}
       />
 

@@ -9,46 +9,39 @@ import {
   optimisticallyRemoveArea,
   optimisticallyUpdateArea,
 } from "@/features/areas/optimistic";
-import { useStableQuery } from "@/hooks/use-stable-query";
 
 import { AreaHeader } from "./area-header";
 
 interface AreaHeaderProps {
-  areaSlug: string;
+  area: Doc<"areas">;
   onEdit: () => void;
 }
 
-export function AreaHeaderSection({ areaSlug, onEdit }: AreaHeaderProps) {
-  const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
+export function AreaHeaderSection({ area, onEdit }: AreaHeaderProps) {
   const navigate = useNavigate();
   const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
     (localStore, args) => {
-      optimisticallyUpdateArea(localStore, args, { areaSlug });
+      optimisticallyUpdateArea(localStore, args);
     },
   );
   const removeArea = useMutation(api.areas.remove).withOptimisticUpdate(
     (localStore, args) => {
-      optimisticallyRemoveArea(localStore, args, { areaSlug });
+      optimisticallyRemoveArea(localStore, args);
     },
   );
 
   const handleDelete = async () => {
-    if (!area) return;
     await removeArea({ id: area._id });
     navigate({ to: "/" });
   };
 
   const handleConditionChange = (value: Doc<"areas">["condition"]) => {
-    if (!area) return;
     updateArea({ id: area._id, condition: value });
   };
 
   const handleIconChange = async (icon: AreaIcon) => {
-    if (!area) return;
     await updateArea({ id: area._id, icon });
   };
-
-  if (!area) return null;
 
   return (
     <AreaHeader
