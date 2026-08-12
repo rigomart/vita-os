@@ -24,7 +24,10 @@ export function DashboardScreen() {
   const areaDocs = useQuery(api.areas.list);
   const threadDocs = useQuery(api.threads.list);
   const taskDocs = useQuery(api.tasks.list);
-  const planActions = usePlanActions({ threads: threadDocs ?? [] });
+  const planActions = usePlanActions({
+    areas: areaDocs ?? [],
+    threads: threadDocs ?? [],
+  });
   const [showCreateArea, setShowCreateArea] = useState(false);
 
   // Explicit memos: the Plan surfaces memo on these arrays by reference.

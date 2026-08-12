@@ -50,18 +50,22 @@ export function AreaDetailScreen({ areaSlug }: AreaDetailScreenProps) {
 
       <EditAreaDialog open={showEdit} onOpenChange={setShowEdit} area={area} />
 
-      <CreateThreadDialog
-        open={showCreateThread}
-        onOpenChange={setShowCreateThread}
-        areas={areas ?? []}
-        defaultAreaId={area._id}
-        onCreated={({ slug }) => {
-          navigate({
-            to: ".",
-            search: (prev) => ({ ...prev, thread: slug }),
-          });
-        }}
-      />
+      {/* Held until the gated list resolves: the dialog must never open on
+          an empty, unselected picker. */}
+      {showCreateThread && areas !== undefined && (
+        <CreateThreadDialog
+          open
+          onOpenChange={setShowCreateThread}
+          areas={areas}
+          defaultAreaId={area._id}
+          onCreated={({ slug }) => {
+            navigate({
+              to: ".",
+              search: (prev) => ({ ...prev, thread: slug }),
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

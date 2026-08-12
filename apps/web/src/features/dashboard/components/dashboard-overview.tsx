@@ -58,7 +58,12 @@ export function DashboardOverview({
     );
   }
 
-  const entries = recentActivity(threads);
+  // Rows resolve their Area before the section gates on emptiness, so a
+  // dangling areaId can never leave the heading over an empty grid.
+  const entries = recentActivity(threads).flatMap((thread) => {
+    const area = areaById.get(thread.areaId);
+    return area ? [{ area, thread }] : [];
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -86,11 +91,7 @@ export function DashboardOverview({
             threads={threads}
           />
           {entries.length > 0 && (
-            <RecentActivity
-              entries={entries}
-              areaById={areaById}
-              currentDate={currentDate}
-            />
+            <RecentActivity entries={entries} currentDate={currentDate} />
           )}
         </>
       )}
@@ -124,11 +125,9 @@ function DashboardHeader({ currentDate }: { currentDate: number }) {
 
 function RecentActivity({
   entries,
-  areaById,
   currentDate,
 }: {
-  entries: DashboardThreadWithActivity[];
-  areaById: Map<string, DashboardArea>;
+  entries: Array<{ area: DashboardArea; thread: DashboardThreadWithActivity }>;
   currentDate: number;
 }) {
   return (
@@ -138,32 +137,27 @@ function RecentActivity({
         <h2 className="text-sm font-semibold">Recent activity</h2>
       </div>
       <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2 xl:grid-cols-3">
-        {entries.map((thread) => {
-          const area = areaById.get(thread.areaId);
-          if (!area) return null;
-
-          return (
-            <Link
-              key={thread.id}
-              to="."
-              search={(prev) => ({ ...prev, thread: thread.slug })}
-              className="block min-w-0 rounded-md px-1 py-2 transition-colors hover:bg-muted/50"
-            >
-              <div className="flex items-center gap-1.5">
-                <AreaIcon icon={area.icon} className="size-3.5 shrink-0" />
-                <p className="truncate text-sm font-medium">{thread.title}</p>
-              </div>
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {thread.lastActivityContent} ·{" "}
-                {formatDistance(
-                  new Date(thread.lastActivityAt),
-                  new Date(currentDate),
-                  { addSuffix: true },
-                )}
-              </p>
-            </Link>
-          );
-        })}
+        {entries.map(({ area, thread }) => (
+          <Link
+            key={thread.id}
+            to="."
+            search={(prev) => ({ ...prev, thread: thread.slug })}
+            className="block min-w-0 rounded-md px-1 py-2 transition-colors hover:bg-muted/50"
+          >
+            <div className="flex items-center gap-1.5">
+              <AreaIcon icon={area.icon} className="size-3.5 shrink-0" />
+              <p className="truncate text-sm font-medium">{thread.title}</p>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {thread.lastActivityContent} ·{" "}
+              {formatDistance(
+                new Date(thread.lastActivityAt),
+                new Date(currentDate),
+                { addSuffix: true },
+              )}
+            </p>
+          </Link>
+        ))}
       </div>
     </section>
   );

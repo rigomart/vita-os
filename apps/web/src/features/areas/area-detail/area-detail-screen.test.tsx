@@ -4,13 +4,15 @@ import userEvent from "@testing-library/user-event";
 import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { render, screen } from "@/test/render-with-providers";
+import { render, screen, within } from "@/test/render-with-providers";
 
 import { AreaDetailScreen } from "./area-detail-screen";
 
 const mocks = vi.hoisted(() => ({
   /** Slugs the composite resolves; anything else stays loading. */
   knownSlugs: ["family-health"],
+  /** Whether a non-skipped `areas.list` subscription has resolved yet. */
+  listLoaded: true,
   calls: [] as Array<{ name: string; args: unknown }>,
 }));
 
@@ -30,7 +32,7 @@ vi.mock("convex-helpers/react/cache/hooks", () => ({
     const name = getFunctionName(query as never);
     mocks.calls.push({ name, args });
     if (args === "skip") return undefined;
-    if (name === "areas:list") return [area];
+    if (name === "areas:list") return mocks.listLoaded ? [area] : undefined;
     if (name === "areas:detailBySlug") {
       const { slug } = args as { slug: string };
       if (!mocks.knownSlugs.includes(slug)) return undefined;
@@ -56,6 +58,7 @@ function renderScreen(areaSlug = "family-health") {
 describe("AreaDetailScreen", () => {
   beforeEach(() => {
     mocks.knownSlugs = ["family-health"];
+    mocks.listLoaded = true;
     mocks.calls = [];
   });
 
@@ -80,6 +83,23 @@ describe("AreaDetailScreen", () => {
 
     const listCalls = mocks.calls.filter(({ name }) => name === "areas:list");
     expect(listCalls.at(-1)?.args).not.toBe("skip");
+  });
+
+  it("holds the create-thread dialog until the Area list resolves, then preselects this Area", async () => {
+    mocks.listLoaded = false;
+    const user = userEvent.setup();
+    const { rerender } = renderScreen();
+
+    await user.click(screen.getByRole("button", { name: /New Thread/ }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    mocks.listLoaded = true;
+    rerender(<AreaDetailScreen areaSlug="family-health" />);
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("button", { name: /Family Health/ }),
+    ).toBeVisible();
   });
 
   it("shows the skeleton, not the previous Area, while a new slug loads", () => {

@@ -145,11 +145,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       )}
 
-      {dialogs.showCreateThread && (
+      {/* Also held until the gated list resolves — never an empty picker. */}
+      {dialogs.showCreateThread && createThreadAreas !== undefined && (
         <CreateThreadDialog
           open
           onOpenChange={dialogs.setShowCreateThread}
-          areas={createThreadAreas ?? []}
+          areas={createThreadAreas}
           defaultAreaId={dialogs.createForAreaId}
           onCreated={({ slug }) => {
             openThreadInPlace(slug);

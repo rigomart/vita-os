@@ -94,8 +94,10 @@ describe("usePlanActions", () => {
   it("moves a Thread across cached Area pages from the caller's copy", () => {
     const area1 = makeArea("area1", "family-health");
     const area2 = makeArea("area2", "work");
-    const thread = makeThread();
-    const { result } = renderHook(() => usePlanActions({ threads: [thread] }));
+    const thread = makeThread({ slug: "book-checkup" });
+    const { result } = renderHook(() =>
+      usePlanActions({ areas: [area1, area2], threads: [thread] }),
+    );
 
     result.current.planThread(thread._id, { areaId: area2._id });
 
@@ -116,25 +118,35 @@ describe("usePlanActions", () => {
       { slug: "work" },
       { area: area2, threads: [] },
     );
+    localStore.set(
+      api.threads.detailBySlug,
+      { slug: "book-checkup" },
+      { thread, area: area1 },
+    );
 
     optimisticFor("threads:update")(localStore.store, {
       id: thread._id,
       areaId: area2._id,
     });
 
+    const moved = { ...thread, areaId: area2._id };
     expect(
       localStore.get(api.areas.detailBySlug, { slug: "family-health" }),
     ).toEqual({ area: area1, threads: [] });
     expect(localStore.get(api.areas.detailBySlug, { slug: "work" })).toEqual({
       area: area2,
-      threads: [{ ...thread, areaId: area2._id }],
+      threads: [moved],
     });
+    // The rail follows the move: its embedded Area becomes the destination.
+    expect(
+      localStore.get(api.threads.detailBySlug, { slug: "book-checkup" }),
+    ).toEqual({ thread: moved, area: area2 });
   });
 
   it("inserts into the destination even when the previous Area page is uncached", () => {
     const area2 = makeArea("area2", "work");
     const thread = makeThread();
-    renderHook(() => usePlanActions({ threads: [thread] }));
+    renderHook(() => usePlanActions({ areas: [area2], threads: [thread] }));
 
     const localStore = createLocalStore();
     localStore.set(
@@ -155,7 +167,9 @@ describe("usePlanActions", () => {
   });
 
   it("skips a Thread drop the source no longer holds", () => {
-    const { result } = renderHook(() => usePlanActions({ threads: [] }));
+    const { result } = renderHook(() =>
+      usePlanActions({ areas: [], threads: [] }),
+    );
 
     result.current.planThread("gone", { followUp: 123 });
 
@@ -165,7 +179,9 @@ describe("usePlanActions", () => {
   it("plans a Task's When in place, leaving Threads and the count alone", () => {
     const task = makeTask();
     const thread = makeThread();
-    const { result } = renderHook(() => usePlanActions({ threads: [thread] }));
+    const { result } = renderHook(() =>
+      usePlanActions({ areas: [], threads: [thread] }),
+    );
     const when = new Date(2026, 6, 20).getTime();
 
     result.current.planTask(task._id, when);

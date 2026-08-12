@@ -162,7 +162,7 @@ describe("Thread optimistic updates", () => {
     optimisticallyUpdateThread(
       localStore.store,
       { id: thread._id, areaId: area2._id },
-      { thread },
+      { thread, destinationArea: area2 },
     );
 
     const moved = { ...thread, areaId: area2._id };
@@ -174,9 +174,111 @@ describe("Thread optimistic updates", () => {
       threads: [other, moved],
     });
     expect(localStore.get(api.threads.list, {})).toEqual([moved]);
+    // The rail's embedded Area follows the move, so a rename in the window
+    // before the round-trip lands navigates to the destination's slug.
     expect(
       localStore.get(api.threads.detailBySlug, { slug: "book-checkup" }),
-    ).toEqual({ thread: moved, area: area1 });
+    ).toEqual({ thread: moved, area: area2 });
+  });
+
+  it("leaves the rail's Area alone when the destination document is not provided", () => {
+    const area1 = makeArea("area1", "family-health");
+    const area2 = makeArea("area2", "work");
+    const thread = makeThread({ slug: "book-checkup", areaId: area1._id });
+    const localStore = createLocalStore();
+
+    localStore.set(
+      api.threads.detailBySlug,
+      { slug: "book-checkup" },
+      { thread, area: area1 },
+    );
+
+    optimisticallyUpdateThread(
+      localStore.store,
+      { id: thread._id, areaId: area2._id },
+      { thread },
+    );
+
+    expect(
+      localStore.get(api.threads.detailBySlug, { slug: "book-checkup" }),
+    ).toEqual({ thread: { ...thread, areaId: area2._id }, area: area1 });
+  });
+
+  it("reopens a resolved Thread back into the open-only caches, in order", () => {
+    const area = makeArea("area1", "family-health");
+    const before = makeThread({
+      _id: "thread0" as Id<"threads">,
+      order: 0,
+      createdAt: 10,
+    });
+    const after = makeThread({
+      _id: "thread2" as Id<"threads">,
+      order: 2,
+      createdAt: 30,
+    });
+    const thread = makeThread({
+      slug: "book-checkup",
+      state: "resolved",
+      order: 1,
+      createdAt: 20,
+    });
+    const localStore = createLocalStore();
+
+    localStore.set(api.threads.list, {}, [before, after]);
+    localStore.set(
+      api.areas.detailBySlug,
+      { slug: "family-health" },
+      { area, threads: [before, after] },
+    );
+    localStore.set(
+      api.threads.detailBySlug,
+      { slug: "book-checkup" },
+      { thread, area },
+    );
+
+    optimisticallyUpdateThread(
+      localStore.store,
+      { id: thread._id, state: "open" },
+      { thread },
+    );
+
+    const reopened = { ...thread, state: "open" };
+    expect(localStore.get(api.threads.list, {})).toEqual([
+      before,
+      reopened,
+      after,
+    ]);
+    expect(
+      localStore.get(api.areas.detailBySlug, { slug: "family-health" }),
+    ).toEqual({ area, threads: [before, reopened, after] });
+    expect(
+      localStore.get(api.threads.detailBySlug, { slug: "book-checkup" }),
+    ).toEqual({ thread: reopened, area });
+  });
+
+  it("does not resurrect a missing Thread on an ordinary field patch", () => {
+    const area = makeArea("area1", "family-health");
+    const other = makeThread({ _id: "thread2" as Id<"threads"> });
+    const thread = makeThread({ slug: "book-checkup" });
+    const localStore = createLocalStore();
+
+    localStore.set(api.threads.list, {}, [other]);
+    localStore.set(
+      api.areas.detailBySlug,
+      { slug: "family-health" },
+      { area, threads: [other] },
+    );
+
+    optimisticallyUpdateThread(
+      localStore.store,
+      { id: thread._id, nextMove: "Call clinic" },
+      { thread },
+    );
+
+    expect(localStore.get(api.threads.list, {})).toEqual([other]);
+    expect(
+      localStore.get(api.areas.detailBySlug, { slug: "family-health" }),
+    ).toEqual({ area, threads: [other] });
   });
 
   it("inserts into the destination Area page when the previous one is uncached", () => {

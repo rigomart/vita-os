@@ -13,8 +13,9 @@ interface ActivityLogSectionProps {
 const PAGE_SIZE = 20;
 
 export function ActivityLogSection({ threadId }: ActivityLogSectionProps) {
-  // Keyed by `threadId`, not slug: `usePaginatedQuery` drops its loaded pages
-  // when the args change, and a rename regenerates the slug.
+  // `usePaginatedQuery` keys its page cache by args, so the args must be the
+  // Thread's stable identity for as long as this section stays mounted — the
+  // `_id`, never the slug.
   const { results, status, loadMore } = usePaginatedQuery(
     api.activityLogs.listByThread,
     { threadId },

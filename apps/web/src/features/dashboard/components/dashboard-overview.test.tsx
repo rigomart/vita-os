@@ -205,6 +205,20 @@ describe("DashboardOverview", () => {
     expect(screen.queryByText("Recent activity")).toBeNull();
   });
 
+  it("omits Recent activity when no entry's Area is known", () => {
+    renderOverview({
+      threads: [
+        thread("Orphaned", {
+          areaId: "gone",
+          lastActivityAt: currentDate,
+          lastActivityContent: "note",
+        }),
+      ],
+    });
+
+    expect(screen.queryByText("Recent activity")).toBeNull();
+  });
+
   it("preserves Area onboarding until the first Area exists", async () => {
     const user = userEvent.setup();
     const onCreateArea = vi.fn();

@@ -29,12 +29,14 @@ export interface PlanActions {
 }
 
 /**
- * `source.threads` is the live `threads.list` result the Plan renders,
- * caller-provided: the previous Area for a cross-Area drop comes from it,
- * never from a cache lookup. A drop naming a Thread the source no longer
- * holds is skipped outright rather than half-applied.
+ * `source` holds the live `areas.list`/`threads.list` results the Plan
+ * renders, caller-provided: the previous Area for a cross-Area drop comes
+ * from the Thread document, the destination Area from the Area list — never
+ * from a cache lookup. A drop naming a Thread the source no longer holds is
+ * skipped outright rather than half-applied.
  */
 export function usePlanActions(source: {
+  areas: Doc<"areas">[];
   threads: Doc<"threads">[];
 }): PlanActions {
   const feedback = useFeedback();
@@ -43,7 +45,11 @@ export function usePlanActions(source: {
     (localStore, args) => {
       const thread = source.threads.find(({ _id }) => _id === args.id);
       if (!thread) return;
-      optimisticallyUpdateThread(localStore, args, { thread });
+      const destinationArea =
+        args.areaId === undefined
+          ? undefined
+          : source.areas.find((area) => area._id === args.areaId);
+      optimisticallyUpdateThread(localStore, args, { thread, destinationArea });
     },
   );
 

@@ -20,7 +20,7 @@ export function ThreadAreaSectionSection({
   // Picker data; deduped with the palette's subscription.
   const areas = useQuery(api.areas.list);
   const { onThreadLocationChange } = useThreadPaneNav();
-  const updateThread = useUpdateThread(thread);
+  const updateThread = useUpdateThread(thread, { areas: areas ?? [] });
 
   const { run: moveThread, isPending: isMoving } = useGuardedAsyncAction(
     async (areaId: Id<"areas">) => {
