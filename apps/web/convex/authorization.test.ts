@@ -92,10 +92,13 @@ describe("owned-document authorization", () => {
         await owner.query(api.threads.getBySlug, { slug: owned.threadSlug }),
       ).toEqual(expect.objectContaining({ _id: owned.threadId }));
       expect(
-        (
-          await owner.query(api.threads.listByArea, { areaId: owned.areaId })
-        ).map((thread) => thread._id),
-      ).toEqual([owned.threadId]);
+        await owner.query(api.threads.detailBySlug, { slug: owned.threadSlug }),
+      ).toEqual(
+        expect.objectContaining({
+          thread: expect.objectContaining({ _id: owned.threadId }),
+          area: expect.objectContaining({ _id: owned.areaId }),
+        }),
+      );
 
       expect(await intruder.query(api.threads.list, {})).toEqual([]);
       expect(
@@ -105,8 +108,10 @@ describe("owned-document authorization", () => {
         await intruder.query(api.threads.getBySlug, { slug: owned.threadSlug }),
       ).toBe(null);
       expect(
-        await intruder.query(api.threads.listByArea, { areaId: owned.areaId }),
-      ).toEqual([]);
+        await intruder.query(api.threads.detailBySlug, {
+          slug: owned.threadSlug,
+        }),
+      ).toBe(null);
     });
 
     it("refuses another user's Thread in every mutation", async () => {
@@ -329,40 +334,33 @@ describe("owned-document authorization", () => {
     });
   });
 
-  describe("dashboard", () => {
+  describe("composite details", () => {
     it("shows another user nothing of the owner's data", async () => {
-      const mine = await owner.query(api.dashboard.overview, {
-        currentDate: Date.now(),
-        timezoneOffsetMinutes: 0,
+      const areaDetail = await owner.query(api.areas.detailBySlug, {
+        slug: owned.areaSlug,
       });
-      expect(mine.areas.map((area) => area.id)).toEqual([owned.areaId]);
-      expect(mine.threads.map((thread) => thread.id)).toEqual([owned.threadId]);
-      expect(mine.inbox.items.map((item) => item.id)).toEqual([owned.taskId]);
-      expect(mine.recentActivity.map((entry) => entry.id)).toContain(
-        owned.logId,
-      );
+      expect(areaDetail?.area._id).toBe(owned.areaId);
+      expect(areaDetail?.threads.map((thread) => thread._id)).toEqual([
+        owned.threadId,
+      ]);
 
-      const overview = await intruder.query(api.dashboard.overview, {
-        currentDate: Date.now(),
-        timezoneOffsetMinutes: 0,
-      });
-
-      expect(overview).toEqual({
-        areas: [],
-        threads: [],
-        inbox: { items: [], totalOpen: 0 },
-        recentActivity: [],
-      });
+      expect(
+        await intruder.query(api.areas.detailBySlug, { slug: owned.areaSlug }),
+      ).toBe(null);
+      expect(
+        await intruder.query(api.threads.detailBySlug, {
+          slug: owned.threadSlug,
+        }),
+      ).toBe(null);
     });
 
     it("shows an unauthenticated caller nothing", async () => {
-      const overview = await t.query(api.dashboard.overview, {
-        currentDate: Date.now(),
-        timezoneOffsetMinutes: 0,
-      });
-
-      expect(overview.areas).toEqual([]);
-      expect(overview.threads).toEqual([]);
+      expect(
+        await t.query(api.areas.detailBySlug, { slug: owned.areaSlug }),
+      ).toBe(null);
+      expect(
+        await t.query(api.threads.detailBySlug, { slug: owned.threadSlug }),
+      ).toBe(null);
     });
   });
 

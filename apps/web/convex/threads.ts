@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 
 import { mutation, query } from "./_generated/server";
-import { listOpenThreadsInAreaForUser } from "./lib/areaThreads";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { getOwned, getOwnedBySlug, requireOwned } from "./lib/ownedAccess";
 import { nullsToUndefined } from "./lib/patch";
@@ -52,15 +51,25 @@ export const getBySlug = query({
   },
 });
 
-export const listByArea = query({
-  args: { areaId: v.id("areas") },
+/**
+ * Everything the Thread rail renders, in one subscription: the Thread and the
+ * Area it is filed under. `area` is null only when the Area is gone mid-flight
+ * — the rail treats that as not found.
+ */
+export const detailBySlug = query({
+  args: { slug: v.string() },
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
-    if (!userId) return [];
-    const area = await getOwned(ctx, "areas", { userId, id: args.areaId });
-    if (!area) return [];
+    if (!userId) return null;
 
-    return listOpenThreadsInAreaForUser(ctx, { userId, areaId: area._id });
+    const thread = await getOwnedBySlug(ctx, "threads", {
+      userId,
+      slug: args.slug,
+    });
+    if (!thread) return null;
+
+    const area = await getOwned(ctx, "areas", { userId, id: thread.areaId });
+    return { thread, area };
   },
 });
 
@@ -139,7 +148,7 @@ export const update = mutation({
  *
  * Activity Log entries exist only as a Thread's history, so they go with it —
  * left behind they would be unreachable rows that still count against every
- * user-scoped read, including the Dashboard's recent-activity strip.
+ * user-scoped read.
  */
 export const remove = mutation({
   args: { id: v.id("threads") },

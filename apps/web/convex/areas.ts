@@ -1,7 +1,10 @@
 import { v } from "convex/values";
 
 import { mutation, query } from "./_generated/server";
-import { assertAreaCanBeDeleted } from "./lib/areaThreads";
+import {
+  assertAreaCanBeDeleted,
+  listOpenThreadsInAreaForUser,
+} from "./lib/areaThreads";
 import { getAuthUserId, getNextOrder, safeGetAuthUserId } from "./lib/helpers";
 import { getOwned, getOwnedBySlug, requireOwned } from "./lib/ownedAccess";
 import { nullsToUndefined } from "./lib/patch";
@@ -36,6 +39,30 @@ export const getBySlug = query({
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return null;
     return getOwnedBySlug(ctx, "areas", { userId, slug: args.slug });
+  },
+});
+
+/**
+ * Everything the Area page renders, in one subscription: the Area and its
+ * Open Threads. Keyed by slug because that is what the URL carries.
+ */
+export const detailBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await safeGetAuthUserId(ctx);
+    if (!userId) return null;
+
+    const area = await getOwnedBySlug(ctx, "areas", {
+      userId,
+      slug: args.slug,
+    });
+    if (!area) return null;
+
+    const threads = await listOpenThreadsInAreaForUser(ctx, {
+      userId,
+      areaId: area._id,
+    });
+    return { area, threads };
   },
 });
 

@@ -11,14 +11,13 @@
 import type * as activityLogs from "../activityLogs.js";
 import type * as areas from "../areas.js";
 import type * as auth from "../auth.js";
-import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
 import type * as lib_activityLog from "../lib/activityLog.js";
+import type * as lib_activityWrites from "../lib/activityWrites.js";
 import type * as lib_areaIcons from "../lib/areaIcons.js";
 import type * as lib_areaThreads from "../lib/areaThreads.js";
 import type * as lib_attentionOrdering from "../lib/attentionOrdering.js";
 import type * as lib_condition from "../lib/condition.js";
-import type * as lib_dashboard from "../lib/dashboard.js";
 import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_inboxProcessing from "../lib/inboxProcessing.js";
 import type * as lib_ownedAccess from "../lib/ownedAccess.js";
@@ -28,6 +27,7 @@ import type * as lib_slugs from "../lib/slugs.js";
 import type * as lib_threadChanges from "../lib/threadChanges.js";
 import type * as lib_validation from "../lib/validation.js";
 import type * as lib_validators from "../lib/validators.js";
+import type * as migrations from "../migrations.js";
 import type * as tasks from "../tasks.js";
 import type * as threads from "../threads.js";
 
@@ -41,14 +41,13 @@ declare const fullApi: ApiFromModules<{
   activityLogs: typeof activityLogs;
   areas: typeof areas;
   auth: typeof auth;
-  dashboard: typeof dashboard;
   http: typeof http;
   "lib/activityLog": typeof lib_activityLog;
+  "lib/activityWrites": typeof lib_activityWrites;
   "lib/areaIcons": typeof lib_areaIcons;
   "lib/areaThreads": typeof lib_areaThreads;
   "lib/attentionOrdering": typeof lib_attentionOrdering;
   "lib/condition": typeof lib_condition;
-  "lib/dashboard": typeof lib_dashboard;
   "lib/helpers": typeof lib_helpers;
   "lib/inboxProcessing": typeof lib_inboxProcessing;
   "lib/ownedAccess": typeof lib_ownedAccess;
@@ -58,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   "lib/threadChanges": typeof lib_threadChanges;
   "lib/validation": typeof lib_validation;
   "lib/validators": typeof lib_validators;
+  migrations: typeof migrations;
   tasks: typeof tasks;
   threads: typeof threads;
 }>;
