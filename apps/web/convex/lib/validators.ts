@@ -1,4 +1,8 @@
+import type { Infer } from "convex/values";
+
 import { v } from "convex/values";
+
+import type { Doc } from "../_generated/dataModel";
 
 import { AREA_ICONS } from "./areaIcons";
 import { CONDITIONS } from "./condition";
@@ -27,14 +31,153 @@ export const conditionValidator = v.union(
   v.literal(CONDITIONS[2]),
 );
 
+/**
+ * Every kind of Activity Log entry the app writes — `note` by hand, the rest
+ * automatically from a Thread change. Adding a member here is how a new kind
+ * becomes writable; there are no variants kept "for later".
+ */
 export const activityLogEntryTypeValidator = v.union(
   v.literal("note"),
-  v.literal("status_change"),
+  v.literal("area_move"),
   v.literal("next_action_change"),
   v.literal("state_change"),
-  v.literal("decision"),
-  v.literal("reference"),
-  v.literal("waiting_change"),
   v.literal("follow_up_change"),
-  v.literal("area_move"),
 );
+
+/**
+ * What a query hands back, as opposed to what a table stores.
+ *
+ * Each table below has one projection, declared once and reused by every
+ * query that returns that kind of document. Two things follow from that.
+ *
+ * `userId` never leaves the server. A caller only ever reads their own
+ * documents — `lib/ownedAccess` sees to that — so the field answers a
+ * question the client already knows the answer to, and shipping it would put
+ * an internal identifier on the wire for no one to read.
+ *
+ * And because the projection is shared, documents stay interchangeable
+ * between queries. The client's optimistic cache copies a Thread from
+ * `threads.list` into `threads.detailBySlug` and both `areas.detailBySlug`
+ * pages; were those three shapes to drift apart, the copy would write a value
+ * the destination's own validator rejects.
+ *
+ * Each validator is paired with the function that produces it, so a field
+ * cannot be declared without being projected, or projected without being
+ * declared: `Infer` ties the two together at the type level.
+ */
+
+export const projectedAreaValidator = v.object({
+  _id: v.id("areas"),
+  name: v.string(),
+  slug: v.string(),
+  standard: v.optional(v.string()),
+  condition: conditionValidator,
+  icon: areaIconValidator,
+  order: v.number(),
+  createdAt: v.number(),
+});
+
+export type ProjectedArea = Infer<typeof projectedAreaValidator>;
+
+export function projectArea(area: Doc<"areas">): ProjectedArea {
+  return {
+    _id: area._id,
+    name: area.name,
+    slug: area.slug,
+    standard: area.standard,
+    condition: area.condition,
+    icon: area.icon,
+    order: area.order,
+    createdAt: area.createdAt,
+  };
+}
+
+export const projectedThreadValidator = v.object({
+  _id: v.id("threads"),
+  title: v.string(),
+  slug: v.string(),
+  summary: v.optional(v.string()),
+  areaId: v.id("areas"),
+  order: v.number(),
+  state: v.union(v.literal("open"), v.literal("resolved")),
+  nextMove: v.optional(v.string()),
+  followUp: v.optional(v.number()),
+  lastActivityAt: v.optional(v.number()),
+  lastActivityContent: v.optional(v.string()),
+  createdAt: v.number(),
+});
+
+export type ProjectedThread = Infer<typeof projectedThreadValidator>;
+
+export function projectThread(thread: Doc<"threads">): ProjectedThread {
+  return {
+    _id: thread._id,
+    title: thread.title,
+    slug: thread.slug,
+    summary: thread.summary,
+    areaId: thread.areaId,
+    order: thread.order,
+    state: thread.state,
+    nextMove: thread.nextMove,
+    followUp: thread.followUp,
+    lastActivityAt: thread.lastActivityAt,
+    lastActivityContent: thread.lastActivityContent,
+    createdAt: thread.createdAt,
+  };
+}
+
+/**
+ * Tasks keep `_creationTime`: the Inbox sorts by `createdAt` and breaks ties
+ * on it, so unlike everywhere else it is a field the client genuinely reads.
+ */
+export const projectedTaskValidator = v.object({
+  _id: v.id("tasks"),
+  _creationTime: v.number(),
+  text: v.string(),
+  when: v.optional(v.number()),
+  state: v.union(v.literal("open"), v.literal("done")),
+  completedAt: v.optional(v.number()),
+  createdAt: v.number(),
+});
+
+export type ProjectedTask = Infer<typeof projectedTaskValidator>;
+
+export function projectTask(task: Doc<"tasks">): ProjectedTask {
+  return {
+    _id: task._id,
+    _creationTime: task._creationTime,
+    text: task.text,
+    when: task.when,
+    state: task.state,
+    completedAt: task.completedAt,
+    createdAt: task.createdAt,
+  };
+}
+
+/**
+ * `threadId` is dropped as well as `userId`: an entry is only ever read
+ * through the Thread it belongs to, which the caller named in the arguments.
+ */
+export const projectedActivityLogValidator = v.object({
+  _id: v.id("activityLogs"),
+  type: activityLogEntryTypeValidator,
+  content: v.string(),
+  previousValue: v.optional(v.string()),
+  newValue: v.optional(v.string()),
+  createdAt: v.number(),
+});
+
+export type ProjectedActivityLog = Infer<typeof projectedActivityLogValidator>;
+
+export function projectActivityLog(
+  log: Doc<"activityLogs">,
+): ProjectedActivityLog {
+  return {
+    _id: log._id,
+    type: log.type,
+    content: log.content,
+    previousValue: log.previousValue,
+    newValue: log.newValue,
+    createdAt: log.createdAt,
+  };
+}

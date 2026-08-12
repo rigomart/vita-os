@@ -1,7 +1,6 @@
-import type { Doc } from "@convex/_generated/dataModel";
 import type { AreaIcon as AreaIconName } from "@convex/lib/areaIcons";
+import type { ProjectedArea } from "@convex/lib/validators";
 
-import { getAreaIcon } from "@convex/lib/areaIcons";
 import { CONDITION_OPTIONS, isCondition } from "@convex/lib/condition";
 import {
   AlertDialog,
@@ -55,7 +54,7 @@ function ConditionStateIcon({
   condition,
   className,
 }: {
-  condition: Doc<"areas">["condition"];
+  condition: ProjectedArea["condition"];
   className?: string;
 }) {
   const Icon = conditionIcons[condition];
@@ -63,10 +62,10 @@ function ConditionStateIcon({
 }
 
 interface AreaHeaderProps {
-  area: Doc<"areas">;
+  area: ProjectedArea;
   onEdit: () => void;
   onDelete: () => void;
-  onConditionChange: (value: Doc<"areas">["condition"]) => void;
+  onConditionChange: (value: ProjectedArea["condition"]) => void;
   onIconChange: (value: AreaIconName) => Promise<void> | void;
 }
 
@@ -81,7 +80,7 @@ export function AreaHeader({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { run: saveIcon, isPending: isSavingIcon } =
     useGuardedAsyncAction(onIconChange);
-  const selectedIcon = getAreaIcon(area.icon);
+  const selectedIcon = area.icon;
 
   const handleIconSelect = async (icon: AreaIconName) => {
     if (icon === selectedIcon) {

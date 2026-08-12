@@ -1,11 +1,11 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedThread } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
 
 import { optimisticallyCompleteNextMove } from "@/features/threads/optimistic";
 
-export function useCompleteNextMove(thread: Doc<"threads">) {
+export function useCompleteNextMove(thread: ProjectedThread) {
   const completeNextMoveMutation = useMutation(
     api.threads.completeNextMoveMutation,
   ).withOptimisticUpdate((localStore, args) => {

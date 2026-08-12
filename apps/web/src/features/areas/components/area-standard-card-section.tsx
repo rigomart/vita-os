@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedArea } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
@@ -8,7 +8,7 @@ import { optimisticallyUpdateArea } from "@/features/areas/optimistic";
 import { AreaStandardCard } from "./area-standard-card";
 
 interface AreaStandardCardSectionProps {
-  area: Doc<"areas">;
+  area: ProjectedArea;
 }
 
 export function AreaStandardCardSection({

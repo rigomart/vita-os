@@ -1,11 +1,11 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedThread } from "@convex/lib/validators";
 
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 
 import { ThreadDefinition } from "./thread-definition";
 
 interface ThreadDefinitionSectionProps {
-  thread: Doc<"threads">;
+  thread: ProjectedThread;
 }
 
 export function ThreadDefinitionSection({

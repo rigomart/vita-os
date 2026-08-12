@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedTask } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { describe, expect, it } from "vitest";
@@ -16,11 +17,10 @@ import {
   updateTaskWhenInInbox,
 } from "./optimistic";
 
-function makeTask(overrides: Partial<Doc<"tasks">> = {}): Doc<"tasks"> {
+function makeTask(overrides: Partial<ProjectedTask> = {}): ProjectedTask {
   return {
     _id: "task1" as Id<"tasks">,
     _creationTime: 0,
-    userId: "user1",
     text: "Call clinic",
     state: "open",
     createdAt: 0,
@@ -264,7 +264,7 @@ describe("optimisticallyReopenTask", () => {
     );
 
     expect(
-      (get(api.tasks.list, {}) as Array<Doc<"tasks">>).map((task) => task._id),
+      (get(api.tasks.list, {}) as Array<ProjectedTask>).map((task) => task._id),
     ).toEqual(["newest", "middle", "oldest"]);
   });
 
@@ -292,7 +292,7 @@ describe("optimisticallyReopenTask", () => {
     );
 
     expect(
-      (get(api.tasks.list, {}) as Array<Doc<"tasks">>).map((task) => task._id),
+      (get(api.tasks.list, {}) as Array<ProjectedTask>).map((task) => task._id),
     ).toEqual(["third", "second", "first"]);
   });
 
@@ -323,7 +323,7 @@ describe("optimisticallyReopenTask", () => {
     );
     optimisticallyReopenTask(store, { ...first, state: "done" });
 
-    const list = get(api.tasks.list, {}) as Array<Doc<"tasks">>;
+    const list = get(api.tasks.list, {}) as Array<ProjectedTask>;
     expect(list.map((task) => task._id)).toEqual(["third", "first"]);
     expect(get(api.tasks.count, {})).toBe(list.length);
   });

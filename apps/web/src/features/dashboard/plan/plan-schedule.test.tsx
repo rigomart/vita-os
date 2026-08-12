@@ -56,6 +56,7 @@ const NEAR_WEEKDAYS = [
 const areas: DashboardArea[] = [
   {
     condition: "healthy",
+    icon: "Home",
     id: "home",
     name: "Home",
     order: 1,
@@ -63,6 +64,7 @@ const areas: DashboardArea[] = [
   },
   {
     condition: "critical",
+    icon: "HeartPulse",
     id: "health",
     name: "Family Health",
     order: 0,

@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedTask } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
@@ -23,7 +23,7 @@ export function InboxScreen() {
     { initialNumItems: DONE_PAGE_SIZE },
   );
   const [processingTask, setProcessingTask] = useState<
-    Doc<"tasks"> | undefined
+    ProjectedTask | undefined
   >(undefined);
 
   if (tasks === undefined) {

@@ -10,6 +10,13 @@ import {
   completeNextMove,
   sanitizeThreadPatch,
 } from "./lib/threadChanges";
+import { requireTitle } from "./lib/validation";
+import {
+  projectArea,
+  projectedAreaValidator,
+  projectedThreadValidator,
+  projectThread,
+} from "./lib/validators";
 
 /**
  * Every Open Thread, in the user's manual order.
@@ -20,6 +27,7 @@ import {
  */
 export const list = query({
   args: {},
+  returns: v.array(projectedThreadValidator),
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return [];
@@ -29,25 +37,32 @@ export const list = query({
         q.eq("userId", userId).eq("state", "open"),
       )
       .collect();
-    return threads.sort((a, b) => a.order - b.order);
+    return threads.sort((a, b) => a.order - b.order).map(projectThread);
   },
 });
 
 export const get = query({
   args: { id: v.id("threads") },
+  returns: v.union(projectedThreadValidator, v.null()),
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return null;
-    return getOwned(ctx, "threads", { userId, id: args.id });
+    const thread = await getOwned(ctx, "threads", { userId, id: args.id });
+    return thread && projectThread(thread);
   },
 });
 
 export const getBySlug = query({
   args: { slug: v.string() },
+  returns: v.union(projectedThreadValidator, v.null()),
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return null;
-    return getOwnedBySlug(ctx, "threads", { userId, slug: args.slug });
+    const thread = await getOwnedBySlug(ctx, "threads", {
+      userId,
+      slug: args.slug,
+    });
+    return thread && projectThread(thread);
   },
 });
 
@@ -58,6 +73,13 @@ export const getBySlug = query({
  */
 export const detailBySlug = query({
   args: { slug: v.string() },
+  returns: v.union(
+    v.object({
+      thread: projectedThreadValidator,
+      area: v.union(projectedAreaValidator, v.null()),
+    }),
+    v.null(),
+  ),
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return null;
@@ -69,7 +91,7 @@ export const detailBySlug = query({
     if (!thread) return null;
 
     const area = await getOwned(ctx, "areas", { userId, id: thread.areaId });
-    return { thread, area };
+    return { thread: projectThread(thread), area: area && projectArea(area) };
   },
 });
 
@@ -83,12 +105,14 @@ export const create = mutation({
     const userId = await getAuthUserId(ctx);
     await requireOwned(ctx, "areas", { userId, id: args.areaId });
 
+    const title = requireTitle(args.title, "Thread title");
+
     const nextOrder = await getNextOrder(ctx, "threads", userId);
-    const slug = generateSlug(args.title);
+    const slug = generateSlug(title);
 
     const id = await ctx.db.insert("threads", {
       userId,
-      title: args.title,
+      title,
       slug,
       summary: args.summary,
       areaId: args.areaId,
@@ -122,13 +146,19 @@ export const update = mutation({
       await requireOwned(ctx, "areas", { userId, id: rest.areaId });
     }
 
+    const title =
+      rest.title === undefined
+        ? undefined
+        : requireTitle(rest.title, "Thread title");
+
     let newSlug: string | undefined;
-    if (rest.title && rest.title !== thread.title) {
-      newSlug = generateSlug(rest.title);
+    if (title !== undefined && title !== thread.title) {
+      newSlug = generateSlug(title);
     }
 
     const patch = sanitizeThreadPatch({
       ...nullsToUndefined(rest),
+      ...(title !== undefined && { title }),
       ...(newSlug && { slug: newSlug }),
     });
 

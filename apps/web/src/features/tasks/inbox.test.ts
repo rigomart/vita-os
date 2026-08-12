@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedTask } from "@convex/lib/validators";
 
 import { describe, expect, it } from "vitest";
 
@@ -10,11 +11,10 @@ import {
   updateTaskWhenInInbox,
 } from "./inbox";
 
-function makeTask(overrides: Partial<Doc<"tasks">> = {}): Doc<"tasks"> {
+function makeTask(overrides: Partial<ProjectedTask> = {}): ProjectedTask {
   return {
     _id: "task1" as Id<"tasks">,
     _creationTime: 0,
-    userId: "user1",
     text: "Call clinic",
     state: "open",
     createdAt: 0,

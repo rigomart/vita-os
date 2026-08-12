@@ -1,4 +1,9 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type {
+  ProjectedArea,
+  ProjectedTask,
+  ProjectedThread,
+} from "@convex/lib/validators";
 
 import { Button } from "@vita-os/ui/components/button";
 import { Checkbox } from "@vita-os/ui/components/checkbox";
@@ -36,9 +41,9 @@ type ProcessingMode = "add_activity_log_entry" | "set_next_move";
 interface ProcessTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  task: Doc<"tasks">;
-  areas: Doc<"areas">[];
-  threads: Doc<"threads">[];
+  task: ProjectedTask;
+  areas: ProjectedArea[];
+  threads: ProjectedThread[];
   isLoading?: boolean;
   onProcess: (
     taskId: Id<"tasks">,
@@ -48,7 +53,7 @@ interface ProcessTaskDialogProps {
 
 function getProcessSuccessMessage(
   action: ProcessTaskAction,
-  threads: Doc<"threads">[],
+  threads: ProjectedThread[],
 ): string {
   if (action.type === "create_thread") {
     return `Created thread · ${action.title}`;
@@ -268,7 +273,7 @@ export function ProcessTaskDialog({
   );
 }
 
-function InboxTaskPreview({ task }: { task: Doc<"tasks"> }) {
+function InboxTaskPreview({ task }: { task: ProjectedTask }) {
   const timestamp = formatDistanceToNow(new Date(task.createdAt), {
     addSuffix: true,
   });
@@ -304,7 +309,7 @@ function AreaChoice({
   selectedAreaId,
   onSelect,
 }: {
-  areas: Doc<"areas">[];
+  areas: ProjectedArea[];
   selectedAreaId: string | undefined;
   onSelect: (id: string) => void;
 }) {

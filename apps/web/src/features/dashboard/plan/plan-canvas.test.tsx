@@ -42,6 +42,7 @@ const day = (offset: number) => new Date(2026, 7, 6 + offset).getTime();
 const areas: DashboardArea[] = [
   {
     condition: "healthy",
+    icon: "Home",
     id: "home",
     name: "Home",
     order: 1,
@@ -49,6 +50,7 @@ const areas: DashboardArea[] = [
   },
   {
     condition: "critical",
+    icon: "HeartPulse",
     id: "health",
     name: "Family Health",
     order: 0,
@@ -57,6 +59,7 @@ const areas: DashboardArea[] = [
   // Deliberately empty: a critical lane must still declare its condition.
   {
     condition: "critical",
+    icon: "WalletCards",
     id: "finance",
     name: "Finance",
     order: 2,

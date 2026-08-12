@@ -1,9 +1,9 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedThread } from "@convex/lib/validators";
 
 import { EditableField } from "@/components/ui/editable-field";
 
 interface ThreadHeaderProps {
-  thread: Doc<"threads">;
+  thread: ProjectedThread;
   onTitleSave: (title: string) => void;
 }
 

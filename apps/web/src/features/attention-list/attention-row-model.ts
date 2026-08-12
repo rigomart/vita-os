@@ -1,8 +1,9 @@
+import type { AreaIcon } from "@convex/lib/areaIcons";
 import type { ReactNode } from "react";
 
 export interface AttentionRowModel {
   actions?: ReactNode;
-  area?: { icon?: unknown; name: string };
+  area?: { icon: AreaIcon; name: string };
   detail?: string;
   detailKind?: "next-move" | "summary";
   done?: boolean;

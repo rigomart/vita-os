@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedThread } from "@convex/lib/validators";
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -6,11 +7,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ThreadLifecycleMenu } from "./thread-lifecycle-menu";
 
-function makeThread(overrides: Partial<Doc<"threads">> = {}): Doc<"threads"> {
+function makeThread(overrides: Partial<ProjectedThread> = {}): ProjectedThread {
   return {
     _id: "thread1" as Id<"threads">,
-    _creationTime: 0,
-    userId: "user1",
     title: "Renew passport",
     slug: "renew-passport",
     areaId: "area1" as Id<"areas">,

@@ -371,6 +371,7 @@ describe("owned-document authorization", () => {
           userId: (await ctx.db.get("areas", owned.areaId))?.userId ?? "",
           slug: "shared-slug",
           condition: "healthy" as const,
+          icon: "Compass" as const,
           createdAt: 0,
         };
         const first = await ctx.db.insert("areas", {

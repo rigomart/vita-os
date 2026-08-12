@@ -1,4 +1,9 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type {
+  ProjectedArea,
+  ProjectedTask,
+  ProjectedThread,
+} from "@convex/lib/validators";
 import type { OptimisticLocalStore } from "convex/browser";
 
 import { api } from "@convex/_generated/api";
@@ -40,12 +45,11 @@ vi.mock("@vita-os/ui/lib/feedback", () => ({
   useFeedback: () => ({ error: vi.fn(), success: vi.fn() }),
 }));
 
-function makeThread(overrides: Partial<Doc<"threads">> = {}): Doc<"threads"> {
+function makeThread(overrides: Partial<ProjectedThread> = {}): ProjectedThread {
   return {
     _id: "thread1" as Id<"threads">,
-    _creationTime: 0,
-    userId: "user1",
     title: "Book checkup",
+    slug: "book-checkup",
     areaId: "area1" as Id<"areas">,
     order: 0,
     state: "open",
@@ -54,24 +58,22 @@ function makeThread(overrides: Partial<Doc<"threads">> = {}): Doc<"threads"> {
   };
 }
 
-function makeArea(id: string, slug: string): Doc<"areas"> {
+function makeArea(id: string, slug: string): ProjectedArea {
   return {
     _id: id as Id<"areas">,
-    _creationTime: 0,
-    userId: "user1",
     name: id,
     slug,
+    icon: "Compass",
     condition: "healthy",
     order: 0,
     createdAt: 0,
   };
 }
 
-function makeTask(overrides: Partial<Doc<"tasks">> = {}): Doc<"tasks"> {
+function makeTask(overrides: Partial<ProjectedTask> = {}): ProjectedTask {
   return {
     _id: "task1" as Id<"tasks">,
     _creationTime: 0,
-    userId: "user1",
     text: "Renew passport",
     state: "open",
     createdAt: 0,

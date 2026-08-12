@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
@@ -9,8 +10,8 @@ import { useThreadPaneNav } from "@/features/threads/thread-detail/thread-pane-n
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 
 interface ThreadAreaSectionSectionProps {
-  thread: Doc<"threads">;
-  area: Doc<"areas">;
+  thread: ProjectedThread;
+  area: ProjectedArea;
 }
 
 export function ThreadAreaSectionSection({
@@ -40,11 +41,11 @@ export function ThreadAreaSectionSection({
     void moveThread(areaId).then((result) => {
       if (!result.ok || !result.value) return;
 
-      const nextAreaSlug = result.value.slug ?? result.value._id;
-      if (nextAreaSlug !== (area.slug ?? area._id)) {
+      const nextAreaSlug = result.value.slug;
+      if (nextAreaSlug !== area.slug) {
         onThreadLocationChange({
           areaSlug: nextAreaSlug,
-          threadSlug: thread.slug ?? thread._id,
+          threadSlug: thread.slug,
         });
       }
     });

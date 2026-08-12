@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedThread } from "@convex/lib/validators";
 import type { ReactNode } from "react";
 
 import { render, screen } from "@testing-library/react";
@@ -20,12 +21,12 @@ const tomorrow = new Date(2026, 4, 21, 12).getTime();
 function thread(
   id: string,
   title: string,
-  fields: Partial<Pick<Doc<"threads">, "followUp" | "nextMove" | "order">> = {},
-): Doc<"threads"> {
+  fields: Partial<
+    Pick<ProjectedThread, "followUp" | "nextMove" | "order">
+  > = {},
+): ProjectedThread {
   return {
     _id: id as Id<"threads">,
-    _creationTime: 0,
-    userId: "user1",
     title,
     slug: id,
     areaId: "area1" as Id<"areas">,

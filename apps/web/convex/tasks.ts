@@ -1,13 +1,18 @@
-import { paginationOptsValidator } from "convex/server";
+import {
+  paginationOptsValidator,
+  paginationResultValidator,
+} from "convex/server";
 import { v } from "convex/values";
 
-import type { Doc } from "./_generated/dataModel";
+import type { ProjectedTask } from "./lib/validators";
 
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
 import { processInboxTask } from "./lib/inboxProcessing";
 import { requireOwned } from "./lib/ownedAccess";
 import { emptyPage } from "./lib/pagination";
+import { requireTitle } from "./lib/validation";
+import { projectedTaskValidator, projectTask } from "./lib/validators";
 
 /**
  * Every Open Task, newest first.
@@ -18,37 +23,42 @@ import { emptyPage } from "./lib/pagination";
  */
 export const list = query({
   args: {},
+  returns: v.array(projectedTaskValidator),
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return [];
-    return ctx.db
+    const tasks = await ctx.db
       .query("tasks")
       .withIndex("by_user_inbox", (q) =>
         q.eq("userId", userId).eq("state", "open"),
       )
       .order("desc")
       .collect();
+    return tasks.map(projectTask);
   },
 });
 
 /** Done Tasks, newest first, one page at a time. */
 export const listDone = query({
   args: { paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(projectedTaskValidator),
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
-    if (!userId) return emptyPage<Doc<"tasks">>();
-    return ctx.db
+    if (!userId) return emptyPage<ProjectedTask>();
+    const page = await ctx.db
       .query("tasks")
       .withIndex("by_user_inbox", (q) =>
         q.eq("userId", userId).eq("state", "done"),
       )
       .order("desc")
       .paginate(args.paginationOpts);
+    return { ...page, page: page.page.map(projectTask) };
   },
 });
 
 export const count = query({
   args: {},
+  returns: v.number(),
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return 0;
@@ -72,7 +82,7 @@ export const create = mutation({
 
     return ctx.db.insert("tasks", {
       userId,
-      text: args.text,
+      text: requireTitle(args.text, "Task text"),
       when: args.when,
       state: "open",
       createdAt: Date.now(),
@@ -98,7 +108,9 @@ export const updateText = mutation({
 
     await requireOwned(ctx, "tasks", { userId, id: args.id });
 
-    await ctx.db.patch(args.id, { text: args.text });
+    await ctx.db.patch(args.id, {
+      text: requireTitle(args.text, "Task text"),
+    });
   },
 });
 

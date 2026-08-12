@@ -1,10 +1,11 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 
 import { AreaPicker } from "@/features/areas/components/area-picker";
 
 interface ThreadAreaSectionProps {
-  areas: Doc<"areas">[];
-  thread: Doc<"threads">;
+  areas: ProjectedArea[];
+  thread: ProjectedThread;
   onMove: (areaId: Id<"areas">) => void;
   isMoving?: boolean;
 }

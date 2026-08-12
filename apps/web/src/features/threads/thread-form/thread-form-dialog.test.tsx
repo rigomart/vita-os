@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea } from "@convex/lib/validators";
 
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -10,15 +11,14 @@ import { ThreadFormDialog } from "./thread-form-dialog";
 const areas = [
   {
     _id: "area1" as Id<"areas">,
-    _creationTime: 0,
-    userId: "user1",
     name: "Health",
     slug: "health",
+    icon: "HeartPulse",
     condition: "healthy",
     order: 0,
     createdAt: 0,
   },
-] satisfies Doc<"areas">[];
+] satisfies ProjectedArea[];
 
 function deferred() {
   let resolve!: () => void;

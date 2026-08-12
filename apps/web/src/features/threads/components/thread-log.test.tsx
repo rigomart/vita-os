@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedActivityLog } from "@convex/lib/validators";
 
 import userEvent from "@testing-library/user-event";
 import { subDays } from "date-fns";
@@ -20,25 +21,19 @@ function deferred() {
 
 const note = {
   _id: "log1" as Id<"activityLogs">,
-  _creationTime: 0,
-  userId: "user1",
-  threadId: "thread1" as Id<"threads">,
   type: "note",
   content: "Called the clinic",
   createdAt: now,
-} satisfies Doc<"activityLogs">;
+} satisfies ProjectedActivityLog;
 
 const areaMove = {
   _id: "log2" as Id<"activityLogs">,
-  _creationTime: 0,
-  userId: "user1",
-  threadId: "thread1" as Id<"threads">,
   type: "area_move",
   content: 'Moved from "Health" to "Finances"',
   previousValue: "Health",
   newValue: "Finances",
   createdAt: now - 60_000,
-} satisfies Doc<"activityLogs">;
+} satisfies ProjectedActivityLog;
 
 describe("ActivityLog", () => {
   it("shows Activity Log language and user-facing entry labels", () => {

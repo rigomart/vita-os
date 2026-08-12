@@ -7,6 +7,7 @@ import { getNextOrder } from "./helpers";
 import { requireOwned } from "./ownedAccess";
 import { generateSlug } from "./slugs";
 import { applyThreadPatch } from "./threadChanges";
+import { requireTitle } from "./validation";
 
 type MutationCtx = GenericMutationCtx<DataModel>;
 
@@ -65,12 +66,14 @@ export async function processInboxTask(
       id: args.action.areaId,
     });
 
+    const title = requireTitle(args.action.title, "Thread title");
+
     const nextOrder = await getNextOrder(ctx, "threads", args.userId);
-    const slug = generateSlug(args.action.title);
+    const slug = generateSlug(title);
 
     const thread: Omit<Doc<"threads">, "_id" | "_creationTime"> = {
       userId: args.userId,
-      title: args.action.title,
+      title,
       slug,
       areaId: args.action.areaId,
       order: nextOrder,

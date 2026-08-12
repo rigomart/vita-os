@@ -1,9 +1,11 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea } from "@convex/lib/validators";
 import type { OptimisticLocalStore } from "convex/browser";
 import type { FunctionReturnType } from "convex/server";
 
 import { api } from "@convex/_generated/api";
 import { nullsToUndefined } from "@convex/lib/patch";
+import { generateSlug } from "@convex/lib/slugs";
 
 import {
   nextOrder,
@@ -13,8 +15,6 @@ import {
   removeById,
 } from "@/features/shared/optimistic";
 
-type Area = Doc<"areas">;
-
 type AreaDetail = NonNullable<
   FunctionReturnType<typeof api.areas.detailBySlug>
 >;
@@ -22,8 +22,8 @@ type AreaDetail = NonNullable<
 type CreateAreaArgs = {
   name: string;
   standard?: string;
-  condition: Area["condition"];
-  icon: NonNullable<Area["icon"]>;
+  condition: ProjectedArea["condition"];
+  icon: ProjectedArea["icon"];
 };
 
 type NullablePatch<T> = {
@@ -31,18 +31,24 @@ type NullablePatch<T> = {
 };
 
 type AreaPatch = NullablePatch<
-  Pick<Area, "name" | "standard" | "condition" | "icon">
+  Pick<ProjectedArea, "name" | "standard" | "condition" | "icon">
 >;
 
+/**
+ * The pending Area, shaped like the one the server will send back. Its slug
+ * is a placeholder minted with the server's pattern but a different random
+ * suffix, so it will NOT match the real slug — a link built from it only
+ * resolves after navigation re-reads the slug the mutation returned, exactly
+ * as with the pre-required-slug fallback.
+ */
 export function buildOptimisticArea(
   args: CreateAreaArgs,
   options: { id: Id<"areas">; now: number; order: number },
-): Area {
+): ProjectedArea {
   return {
     _id: options.id,
-    _creationTime: options.now,
-    userId: "",
     name: args.name,
+    slug: generateSlug(args.name),
     standard: args.standard,
     condition: args.condition,
     icon: args.icon,

@@ -2,7 +2,8 @@ import type { PaginationResult } from "convex/server";
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
+import type { ProjectedActivityLog, ProjectedTask } from "./lib/validators";
 import type { SignedIn, TestApi } from "./test.helpers";
 
 import { api } from "./_generated/api";
@@ -116,7 +117,7 @@ describe("bounded queries", () => {
       let pages = 0;
 
       for (;;) {
-        const page: PaginationResult<Doc<"tasks">> = await owner.query(
+        const page: PaginationResult<ProjectedTask> = await owner.query(
           api.tasks.listDone,
           { paginationOpts: { numItems: 2, cursor } },
         );
@@ -238,7 +239,7 @@ describe("bounded queries", () => {
       let pages = 0;
 
       for (;;) {
-        const page: PaginationResult<Doc<"activityLogs">> = await owner.query(
+        const page: PaginationResult<ProjectedActivityLog> = await owner.query(
           api.activityLogs.listByThread,
           {
             threadId: fixture.threadId,

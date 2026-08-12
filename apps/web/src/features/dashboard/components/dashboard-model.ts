@@ -1,6 +1,10 @@
-import type { Doc } from "@convex/_generated/dataModel";
 import type { AreaIcon } from "@convex/lib/areaIcons";
 import type { Condition } from "@convex/lib/condition";
+import type {
+  ProjectedArea,
+  ProjectedTask,
+  ProjectedThread,
+} from "@convex/lib/validators";
 
 import { format } from "date-fns";
 
@@ -8,7 +12,7 @@ export const DAY = 24 * 60 * 60 * 1000;
 
 export interface DashboardArea {
   condition: Condition;
-  icon?: AreaIcon;
+  icon: AreaIcon;
   id: string;
   name: string;
   order: number;
@@ -41,22 +45,22 @@ export type DashboardThreadWithActivity = DashboardThread & {
   lastActivityContent: string;
 };
 
-export function toDashboardArea(doc: Doc<"areas">): DashboardArea {
+export function toDashboardArea(doc: ProjectedArea): DashboardArea {
   return {
     id: doc._id,
     name: doc.name,
-    slug: doc.slug ?? doc._id,
+    slug: doc.slug,
     condition: doc.condition,
     icon: doc.icon,
     order: doc.order,
   };
 }
 
-export function toDashboardThread(doc: Doc<"threads">): DashboardThread {
+export function toDashboardThread(doc: ProjectedThread): DashboardThread {
   return {
     id: doc._id,
     title: doc.title,
-    slug: doc.slug ?? doc._id,
+    slug: doc.slug,
     summary: doc.summary,
     areaId: doc.areaId,
     nextMove: doc.nextMove,
@@ -67,7 +71,7 @@ export function toDashboardThread(doc: Doc<"threads">): DashboardThread {
   };
 }
 
-export function toDashboardTask(doc: Doc<"tasks">): DashboardInboxTask {
+export function toDashboardTask(doc: ProjectedTask): DashboardInboxTask {
   return {
     id: doc._id,
     text: doc.text,

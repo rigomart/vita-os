@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { describe, expect, it } from "vitest";
@@ -12,12 +13,11 @@ import {
   optimisticallyUpdateThread,
 } from "./optimistic";
 
-function makeThread(overrides: Partial<Doc<"threads">> = {}): Doc<"threads"> {
+function makeThread(overrides: Partial<ProjectedThread> = {}): ProjectedThread {
   return {
     _id: "thread1" as Id<"threads">,
-    _creationTime: 0,
-    userId: "user1",
     title: "Book checkup",
+    slug: "book-checkup",
     areaId: "area1" as Id<"areas">,
     order: 0,
     state: "open",
@@ -26,13 +26,12 @@ function makeThread(overrides: Partial<Doc<"threads">> = {}): Doc<"threads"> {
   };
 }
 
-function makeArea(id: string, slug: string): Doc<"areas"> {
+function makeArea(id: string, slug: string): ProjectedArea {
   return {
     _id: id as Id<"areas">,
-    _creationTime: 0,
-    userId: "user1",
     name: id,
     slug,
+    icon: "Compass",
     condition: "healthy",
     order: 0,
     createdAt: 0,
@@ -40,21 +39,23 @@ function makeArea(id: string, slug: string): Doc<"areas"> {
 }
 
 describe("Thread optimistic updates", () => {
-  it("builds optimistic Threads without inventing a slug", () => {
-    expect(
-      buildOptimisticThread(
-        {
-          title: "Book checkup",
-          summary: "Appointment scheduled",
-          areaId: "area1" as Id<"areas">,
-        },
-        { id: "thread1" as Id<"threads">, now: 123, order: 4 },
-      ),
-    ).toEqual({
+  it("builds optimistic Threads with a server-shaped temporary slug", () => {
+    const thread = buildOptimisticThread(
+      {
+        title: "Book checkup",
+        summary: "Appointment scheduled",
+        areaId: "area1" as Id<"areas">,
+      },
+      { id: "thread1" as Id<"threads">, now: 123, order: 4 },
+    );
+
+    // The suffix is random, so the slug is asserted by shape: the same
+    // `slugified-title-8hex` the server mints.
+    expect(thread.slug).toMatch(/^book-checkup-[0-9a-f]{8}$/);
+    expect(thread).toEqual({
       _id: "thread1",
-      _creationTime: 123,
-      userId: "",
       title: "Book checkup",
+      slug: thread.slug,
       summary: "Appointment scheduled",
       areaId: "area1",
       order: 4,

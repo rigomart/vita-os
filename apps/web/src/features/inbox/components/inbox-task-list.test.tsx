@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedTask } from "@convex/lib/validators";
 
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -21,11 +22,10 @@ vi.mock("@/features/tasks/task-row/use-task-row-actions", () => ({
 
 const today = new Date(2026, 6, 17, 12).getTime();
 
-function task(id: string, fields: Partial<Doc<"tasks">> = {}): Doc<"tasks"> {
+function task(id: string, fields: Partial<ProjectedTask> = {}): ProjectedTask {
   return {
     _id: id as Id<"tasks">,
     _creationTime: 0,
-    userId: "user1",
     text: id,
     state: "open",
     createdAt: 0,

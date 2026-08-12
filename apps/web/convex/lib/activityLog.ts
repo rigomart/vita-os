@@ -1,23 +1,19 @@
-export type ActivityLogEntryType =
-  | "note"
-  | "status_change"
-  | "next_action_change"
-  | "state_change"
-  | "decision"
-  | "reference"
-  | "waiting_change"
-  | "follow_up_change"
-  | "area_move";
+import type { Infer } from "convex/values";
 
+import type { activityLogEntryTypeValidator } from "./validators";
+
+/**
+ * Derived from the schema's validator so the two cannot drift: a type the
+ * database would reject is not expressible here.
+ */
+export type ActivityLogEntryType = Infer<typeof activityLogEntryTypeValidator>;
+
+/** Every entry type written by a Thread change rather than by the user. */
 export const AUTO_ACTIVITY_LOG_ENTRY_TYPES = [
-  "status_change",
+  "area_move",
   "next_action_change",
   "state_change",
-  "decision",
-  "reference",
-  "waiting_change",
   "follow_up_change",
-  "area_move",
 ] as const satisfies readonly Exclude<ActivityLogEntryType, "note">[];
 
 export type AutoActivityLogEntry = {

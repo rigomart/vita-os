@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { describe, expect, it } from "vitest";
@@ -11,13 +12,12 @@ import {
   optimisticallyUpdateArea,
 } from "./optimistic";
 
-function makeArea(overrides: Partial<Doc<"areas">> = {}): Doc<"areas"> {
+function makeArea(overrides: Partial<ProjectedArea> = {}): ProjectedArea {
   return {
     _id: "area1" as Id<"areas">,
-    _creationTime: 0,
-    userId: "user1",
     name: "Family Health",
     slug: "family-health",
+    icon: "HeartPulse",
     condition: "healthy",
     order: 0,
     createdAt: 0,
@@ -26,22 +26,24 @@ function makeArea(overrides: Partial<Doc<"areas">> = {}): Doc<"areas"> {
 }
 
 describe("Area optimistic updates", () => {
-  it("builds optimistic Areas without inventing a slug", () => {
-    expect(
-      buildOptimisticArea(
-        {
-          name: "Family Health",
-          standard: "Appointments are current",
-          condition: "healthy",
-          icon: "HeartPulse",
-        },
-        { id: "area1" as Id<"areas">, now: 123, order: 4 },
-      ),
-    ).toEqual({
+  it("builds optimistic Areas with a server-shaped temporary slug", () => {
+    const area = buildOptimisticArea(
+      {
+        name: "Family Health",
+        standard: "Appointments are current",
+        condition: "healthy",
+        icon: "HeartPulse",
+      },
+      { id: "area1" as Id<"areas">, now: 123, order: 4 },
+    );
+
+    // The suffix is random, so the slug is asserted by shape: the same
+    // `slugified-name-8hex` the server mints.
+    expect(area.slug).toMatch(/^family-health-[0-9a-f]{8}$/);
+    expect(area).toEqual({
       _id: "area1",
-      _creationTime: 123,
-      userId: "",
       name: "Family Health",
+      slug: area.slug,
       standard: "Appointments are current",
       condition: "healthy",
       icon: "HeartPulse",

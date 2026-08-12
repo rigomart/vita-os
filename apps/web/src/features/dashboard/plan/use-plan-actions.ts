@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
@@ -36,8 +37,8 @@ export interface PlanActions {
  * skipped outright rather than half-applied.
  */
 export function usePlanActions(source: {
-  areas: Doc<"areas">[];
-  threads: Doc<"threads">[];
+  areas: ProjectedArea[];
+  threads: ProjectedThread[];
 }): PlanActions {
   const feedback = useFeedback();
 

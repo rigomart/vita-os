@@ -11,10 +11,10 @@ export default defineSchema({
   areas: defineTable({
     userId: v.string(),
     name: v.string(),
-    slug: v.optional(v.string()),
+    slug: v.string(),
     standard: v.optional(v.string()),
     condition: conditionValidator,
-    icon: v.optional(areaIconValidator),
+    icon: areaIconValidator,
     order: v.number(),
     createdAt: v.number(),
   })
@@ -24,7 +24,7 @@ export default defineSchema({
   threads: defineTable({
     userId: v.string(),
     title: v.string(),
-    slug: v.optional(v.string()),
+    slug: v.string(),
     summary: v.optional(v.string()),
     areaId: v.id("areas"),
     order: v.number(),

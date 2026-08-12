@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedTask } from "@convex/lib/validators";
 import type { OptimisticLocalStore } from "convex/browser";
 
 import { api } from "@convex/_generated/api";
@@ -15,7 +16,7 @@ export {
   updateTaskWhenInInbox,
 } from "@/features/tasks/inbox";
 
-type Task = Doc<"tasks">;
+type Task = ProjectedTask;
 
 export function updateTaskTextInInbox<T extends Task>(
   tasks: T[],

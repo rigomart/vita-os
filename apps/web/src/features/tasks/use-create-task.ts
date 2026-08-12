@@ -18,7 +18,6 @@ export function useCreateTask() {
       optimisticallyAddToOpenTasks(localStore, {
         _id: crypto.randomUUID() as Id<"tasks">,
         _creationTime: now,
-        userId: "",
         text: args.text,
         when: args.when,
         state: "open",

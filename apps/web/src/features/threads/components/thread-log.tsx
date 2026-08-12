@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedActivityLog } from "@convex/lib/validators";
 import type { LucideIcon } from "lucide-react";
 
 import { Badge } from "@vita-os/ui/components/badge";
@@ -18,12 +18,8 @@ import {
   ArrowUp,
   Bell,
   CircleCheck,
-  Clock3,
-  Link2,
   Loader2,
   MapPin,
-  RefreshCw,
-  Scale,
 } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useState } from "react";
 
@@ -31,7 +27,7 @@ import { getActivityLogEntryLabel } from "@/features/threads/activity-log-entry"
 import { cn } from "@/lib/utils";
 
 interface ActivityLogProps {
-  logs: Doc<"activityLogs">[] | undefined;
+  logs: ProjectedActivityLog[] | undefined;
   onAddNote: (text: string) => Promise<void> | void;
   /** Whether another page of older entries is available to fetch. */
   canLoadMore?: boolean;
@@ -41,7 +37,7 @@ interface ActivityLogProps {
   onLoadMore?: () => void;
 }
 
-type ActivityLogEntry = Doc<"activityLogs">;
+type ActivityLogEntry = ProjectedActivityLog;
 type AutomaticActivityLogEntry = ActivityLogEntry & {
   type: Exclude<ActivityLogEntry["type"], "note">;
 };
@@ -50,12 +46,8 @@ const ACTIVITY_LOG_ICONS: Record<
   AutomaticActivityLogEntry["type"],
   LucideIcon
 > = {
-  status_change: RefreshCw,
   next_action_change: ArrowRight,
   state_change: CircleCheck,
-  decision: Scale,
-  reference: Link2,
-  waiting_change: Clock3,
   follow_up_change: Bell,
   area_move: MapPin,
 };

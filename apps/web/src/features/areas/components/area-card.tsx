@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedArea } from "@convex/lib/validators";
 
 import { Link } from "@tanstack/react-router";
 import { cn } from "@vita-os/ui/lib/utils";
@@ -9,7 +9,7 @@ import { flatListRowHoverClassName } from "@/lib/flat-surface";
 import { AreaIcon } from "./area-icon";
 
 interface AreaCardProps {
-  area: Doc<"areas">;
+  area: ProjectedArea;
   threadCount: number;
   attentionCount: number;
 }
@@ -18,7 +18,7 @@ export function AreaCard({ area, threadCount, attentionCount }: AreaCardProps) {
   return (
     <Link
       to="/$areaSlug"
-      params={{ areaSlug: area.slug ?? area._id }}
+      params={{ areaSlug: area.slug }}
       className={cn("block py-4", flatListRowHoverClassName)}
     >
       <div className="flex items-center gap-2.5">

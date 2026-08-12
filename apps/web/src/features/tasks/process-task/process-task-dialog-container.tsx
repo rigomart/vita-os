@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedTask } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex-helpers/react/cache/hooks";
@@ -10,7 +10,7 @@ import { ProcessTaskDialog } from "./process-task-dialog";
 interface ProcessTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  task: Doc<"tasks">;
+  task: ProjectedTask;
 }
 
 export function ProcessTaskDialogContainer({

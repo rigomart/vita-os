@@ -1,5 +1,5 @@
-import type { Doc } from "@convex/_generated/dataModel";
 import type { AreaIcon } from "@convex/lib/areaIcons";
+import type { ProjectedArea } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
@@ -13,7 +13,7 @@ import {
 import { AreaHeader } from "./area-header";
 
 interface AreaHeaderProps {
-  area: Doc<"areas">;
+  area: ProjectedArea;
   onEdit: () => void;
 }
 
@@ -35,7 +35,7 @@ export function AreaHeaderSection({ area, onEdit }: AreaHeaderProps) {
     navigate({ to: "/" });
   };
 
-  const handleConditionChange = (value: Doc<"areas">["condition"]) => {
+  const handleConditionChange = (value: ProjectedArea["condition"]) => {
     updateArea({ id: area._id, condition: value });
   };
 
