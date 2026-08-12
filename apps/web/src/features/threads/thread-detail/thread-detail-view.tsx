@@ -14,6 +14,7 @@ import {
   DrawerTitle,
 } from "@vita-os/ui/components/drawer";
 import { Separator } from "@vita-os/ui/components/separator";
+import { useQuery } from "convex-helpers/react/cache/hooks";
 import { X } from "lucide-react";
 import { useMemo } from "react";
 
@@ -26,7 +27,6 @@ import { ThreadHeaderSection } from "@/features/threads/components/thread-header
 import { ThreadLifecycleActionsSection } from "@/features/threads/components/thread-lifecycle-actions-section";
 import { ActivityLogSection } from "@/features/threads/components/thread-log-section";
 import { useDocumentTitle } from "@/hooks/use-document-title";
-import { useStableQuery } from "@/hooks/use-stable-query";
 import { useThreadPaneViewport } from "@/hooks/use-thread-pane-viewport";
 
 import type { ThreadLocation } from "./thread-pane-nav";
@@ -55,44 +55,31 @@ export function ThreadDetailView({
   onThreadLocationChange,
 }: ThreadDetailViewProps) {
   const showDesktopPane = useThreadPaneViewport();
-  const thread = useStableQuery(api.threads.getBySlug, { slug: threadSlug });
-  const areaBySlug = useStableQuery(
-    api.areas.getBySlug,
-    areaSlug !== undefined ? { slug: areaSlug } : "skip",
-  );
-  const areaById = useStableQuery(
-    api.areas.get,
-    areaSlug === undefined && thread ? { id: thread.areaId } : "skip",
-  );
-  const area = areaSlug !== undefined ? areaBySlug : areaById;
+  // One subscription serves both URL forms: `?thread=` reads the Area straight
+  // off the composite, the canonical deep link validates against it.
+  const detail = useQuery(api.threads.detailBySlug, { slug: threadSlug });
 
-  useDocumentTitle(thread?.title ?? "Thread");
+  useDocumentTitle(detail?.thread.title ?? "Thread");
 
   const paneNav = useMemo(
     () => ({ onThreadLocationChange }),
     [onThreadLocationChange],
   );
 
-  const title = thread?.title ?? "Thread detail";
-  const isLoading =
-    thread === undefined || (thread !== null && area === undefined);
+  const title = detail?.thread.title ?? "Thread detail";
+  const isLoading = detail === undefined;
   const hasMatchingThread =
-    !isLoading &&
-    thread !== null &&
-    area !== null &&
-    area !== undefined &&
-    (areaSlug === undefined || thread.areaId === area._id);
+    detail != null &&
+    detail.area != null &&
+    (areaSlug === undefined ||
+      (detail.area.slug ?? detail.area._id) === areaSlug);
   const content = isLoading ? (
     <ThreadDetailSkeleton />
   ) : !hasMatchingThread ? (
     <ThreadNotFound areaSlug={areaSlug} onClose={onClose} />
   ) : (
     <ThreadPaneNavContext.Provider value={paneNav}>
-      <ThreadDetailContent
-        areaSlug={area.slug ?? area._id}
-        threadSlug={threadSlug}
-        thread={thread}
-      />
+      <ThreadDetailContent thread={detail.thread} area={detail.area} />
     </ThreadPaneNavContext.Provider>
   );
 
@@ -101,7 +88,7 @@ export function ThreadDetailView({
       <ThreadDetailDrawer
         key={threadSlug}
         title={title}
-        threadSlug={threadSlug}
+        thread={hasMatchingThread ? detail.thread : null}
         showActions={hasMatchingThread}
         onClosed={onClose}
       >
@@ -113,7 +100,7 @@ export function ThreadDetailView({
   return (
     <ThreadDetailPane
       title={title}
-      threadSlug={threadSlug}
+      thread={hasMatchingThread ? detail.thread : null}
       showActions={hasMatchingThread}
       onClosed={onClose}
     >
@@ -124,7 +111,7 @@ export function ThreadDetailView({
 
 interface ThreadShellProps {
   title: string;
-  threadSlug: string;
+  thread: Doc<"threads"> | null;
   showActions: boolean;
   onClosed: () => void;
   children: React.ReactNode;
@@ -132,7 +119,7 @@ interface ThreadShellProps {
 
 function ThreadDetailDrawer({
   title,
-  threadSlug,
+  thread,
   showActions,
   onClosed,
   children,
@@ -163,7 +150,7 @@ function ThreadDetailDrawer({
           Review and update this Thread.
         </DrawerDescription>
         <ThreadControls
-          threadSlug={threadSlug}
+          thread={thread}
           showActions={showActions}
           onRequestClose={requestClose}
         />
@@ -177,7 +164,7 @@ function ThreadDetailDrawer({
 
 function ThreadDetailPane({
   title,
-  threadSlug,
+  thread,
   showActions,
   onClosed,
   children,
@@ -208,7 +195,7 @@ function ThreadDetailPane({
         className="fixed inset-y-0 right-0 z-30 flex h-dvh w-[clamp(28rem,34vw,34rem)] translate-x-full flex-col border-l bg-popover text-sm text-popover-foreground shadow-xl transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] data-[state=open]:translate-x-0 motion-reduce:transition-none"
       >
         <ThreadControls
-          threadSlug={threadSlug}
+          thread={thread}
           showActions={showActions}
           onRequestClose={requestClose}
         />
@@ -221,11 +208,11 @@ function ThreadDetailPane({
 }
 
 function ThreadControls({
-  threadSlug,
+  thread,
   showActions,
   onRequestClose,
 }: {
-  threadSlug: string;
+  thread: Doc<"threads"> | null;
   showActions: boolean;
   onRequestClose: () => void;
 }) {
@@ -234,10 +221,10 @@ function ThreadControls({
       aria-label="Thread controls"
       className="absolute right-4 top-4 z-20 rounded-4xl bg-secondary"
     >
-      {showActions && (
+      {showActions && thread && (
         <>
           <ThreadLifecycleActionsSection
-            threadSlug={threadSlug}
+            thread={thread}
             onRequestClose={onRequestClose}
           />
           <ButtonGroupSeparator />
@@ -256,17 +243,13 @@ function ThreadControls({
 }
 
 interface ThreadDetailContentProps {
-  areaSlug: string;
-  threadSlug: string;
   thread: Doc<"threads">;
+  area: Doc<"areas">;
 }
 
-function ThreadDetailContent({
-  areaSlug,
-  threadSlug,
-  thread,
-}: ThreadDetailContentProps) {
+function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
   const isResolved = thread.state === "resolved";
+  const areaSlug = area.slug ?? area._id;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">
@@ -276,15 +259,12 @@ function ThreadDetailContent({
         className="flex shrink-0 flex-col gap-3 pb-1"
       >
         <div className="flex items-center gap-2 pr-24">
-          <ThreadAreaSectionSection
-            areaSlug={areaSlug}
-            threadSlug={threadSlug}
-          />
+          <ThreadAreaSectionSection thread={thread} area={area} />
           {isResolved && <Badge variant="secondary">Resolved</Badge>}
         </div>
         <div className="flex flex-col gap-0.5">
-          <ThreadHeaderSection areaSlug={areaSlug} threadSlug={threadSlug} />
-          <ThreadDefinitionSection threadSlug={threadSlug} />
+          <ThreadHeaderSection thread={thread} areaSlug={areaSlug} />
+          <ThreadDefinitionSection thread={thread} />
         </div>
       </header>
 
@@ -295,15 +275,15 @@ function ThreadDetailContent({
           className="flex shrink-0 flex-col gap-5"
         >
           <div className="grid grid-cols-[repeat(auto-fit,minmax(14rem,1fr))] gap-5">
-            <NextMoveSection threadSlug={threadSlug} />
-            <FollowUpSection threadSlug={threadSlug} />
+            <NextMoveSection thread={thread} />
+            <FollowUpSection thread={thread} />
           </div>
           <Separator />
         </section>
       )}
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <ActivityLogSection threadSlug={threadSlug} />
+        <ActivityLogSection threadId={thread._id} />
       </div>
     </div>
   );

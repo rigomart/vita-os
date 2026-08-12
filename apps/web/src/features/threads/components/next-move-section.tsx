@@ -1,26 +1,22 @@
-import { api } from "@convex/_generated/api";
+import type { Doc } from "@convex/_generated/dataModel";
+
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 
 import { useCompleteNextMove } from "@/features/threads/use-complete-next-move";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
-import { useStableQuery } from "@/hooks/use-stable-query";
 
 import { NextMove } from "./next-move";
 
 interface NextMoveSectionProps {
-  threadSlug: string;
+  thread: Doc<"threads">;
 }
 
-export function NextMoveSection({ threadSlug }: NextMoveSectionProps) {
-  const thread = useStableQuery(api.threads.getBySlug, {
-    slug: threadSlug,
-  });
-  const updateThread = useUpdateThread(threadSlug);
-  const completeNextMove = useCompleteNextMove(threadSlug);
+export function NextMoveSection({ thread }: NextMoveSectionProps) {
+  const updateThread = useUpdateThread(thread);
+  const completeNextMove = useCompleteNextMove(thread);
 
   const { run: setNextMove, isPending: isSetPending } = useGuardedAsyncAction(
     async (text: string) => {
-      if (!thread) return;
       await updateThread({ id: thread._id, nextMove: text });
     },
     { errorToast: true },
@@ -29,7 +25,6 @@ export function NextMoveSection({ threadSlug }: NextMoveSectionProps) {
   const { run: clearNextMove, isPending: isClearPending } =
     useGuardedAsyncAction(
       async () => {
-        if (!thread) return;
         await updateThread({ id: thread._id, nextMove: null });
       },
       { errorToast: true },
@@ -38,33 +33,17 @@ export function NextMoveSection({ threadSlug }: NextMoveSectionProps) {
   const { run: completeNextMoveOnce, isPending: isCompletePending } =
     useGuardedAsyncAction(
       async () => {
-        if (!thread) return;
-        await completeNextMove(thread._id);
+        await completeNextMove();
       },
       { errorToast: true },
     );
 
-  const handleSet = (text: string) => {
-    if (!thread) return;
-    void setNextMove(text);
-  };
-
-  const handleClear = () => {
-    if (!thread) return;
-    void clearNextMove();
-  };
-
-  const handleComplete = () => {
-    if (!thread) return;
-    void completeNextMoveOnce();
-  };
-
   return (
     <NextMove
-      nextMove={thread?.nextMove ?? undefined}
-      onSet={handleSet}
-      onClear={handleClear}
-      onComplete={handleComplete}
+      nextMove={thread.nextMove ?? undefined}
+      onSet={(text) => void setNextMove(text)}
+      onClear={() => void clearNextMove()}
+      onComplete={() => void completeNextMoveOnce()}
       pending={{
         set: isSetPending,
         clear: isClearPending,

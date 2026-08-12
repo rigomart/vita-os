@@ -1,35 +1,26 @@
-import { api } from "@convex/_generated/api";
+import type { Doc } from "@convex/_generated/dataModel";
 
 import { useThreadPaneNav } from "@/features/threads/thread-detail/thread-pane-nav";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
-import { useStableQuery } from "@/hooks/use-stable-query";
 
 import { ThreadHeader } from "./thread-header";
 
 interface ThreadHeaderProps {
+  thread: Doc<"threads">;
   areaSlug: string;
-  threadSlug: string;
 }
 
-export function ThreadHeaderSection({
-  areaSlug,
-  threadSlug,
-}: ThreadHeaderProps) {
-  const thread = useStableQuery(api.threads.getBySlug, {
-    slug: threadSlug,
-  });
+export function ThreadHeaderSection({ thread, areaSlug }: ThreadHeaderProps) {
   const { onThreadLocationChange } = useThreadPaneNav();
-  const updateThread = useUpdateThread(threadSlug);
+  const updateThread = useUpdateThread(thread);
 
   const handleTitleSave = async (title: string) => {
-    if (!title || !thread) return;
+    if (!title) return;
     const result = await updateThread({ id: thread._id, title });
-    if (result?.slug && result.slug !== threadSlug) {
+    if (result?.slug && result.slug !== thread.slug) {
       onThreadLocationChange({ areaSlug, threadSlug: result.slug });
     }
   };
-
-  if (!thread) return null;
 
   return <ThreadHeader thread={thread} onTitleSave={handleTitleSave} />;
 }
