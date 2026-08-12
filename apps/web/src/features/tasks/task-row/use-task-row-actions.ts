@@ -22,7 +22,7 @@ export function useTaskRowActions(task: Doc<"tasks">) {
     useGuardedAsyncAction(
       async (intent: "complete" | "reopen") => {
         if (intent === "reopen") {
-          await uncompleteTask(task._id);
+          await uncompleteTask(task);
         } else {
           await completeTask(task._id);
         }
