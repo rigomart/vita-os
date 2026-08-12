@@ -59,10 +59,10 @@ describe("migrations.backfillThreadLastActivity", () => {
     let cursor: string | null = null;
     let pages = 0;
     for (;;) {
-      const page = await t.mutation(
-        internal.migrations.backfillThreadLastActivity,
-        { paginationOpts: { numItems: 1, cursor } },
-      );
+      const page: { isDone: boolean; continueCursor: string } =
+        await t.mutation(internal.migrations.backfillThreadLastActivity, {
+          paginationOpts: { numItems: 1, cursor },
+        });
       pages += 1;
       if (page.isDone) break;
       cursor = page.continueCursor;
