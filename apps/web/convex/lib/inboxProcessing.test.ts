@@ -80,6 +80,7 @@ describe("processInboxTask", () => {
     const task = makeTask({ text: "Schedule a physical" });
     const inserted: Array<{ table: string; value: Record<string, unknown> }> =
       [];
+    const patched: Array<{ id: string; patch: unknown }> = [];
     const deleted: string[] = [];
     const area = {
       _id: areaId,
@@ -105,6 +106,9 @@ describe("processInboxTask", () => {
         insert: async (table: string, value: Record<string, unknown>) => {
           inserted.push({ table, value });
           return table === "threads" ? threadId : "log1";
+        },
+        patch: async (id: string, patch: unknown) => {
+          patched.push({ id, patch });
         },
         delete: async (id: string) => {
           deleted.push(id);
@@ -152,6 +156,15 @@ describe("processInboxTask", () => {
     ]);
     expect(inserted[0]?.value).not.toHaveProperty("nextMove");
     expect(inserted[0]?.value).not.toHaveProperty("actionQueue");
+    expect(patched).toEqual([
+      {
+        id: threadId,
+        patch: {
+          lastActivityAt: expect.any(Number),
+          lastActivityContent: "Schedule a physical",
+        },
+      },
+    ]);
     expect(deleted).toEqual([task._id]);
   });
 
@@ -159,6 +172,7 @@ describe("processInboxTask", () => {
     const task = makeTask();
     const thread = makeThread();
     const inserted: Array<{ table: string; value: unknown }> = [];
+    const patched: Array<{ id: string; patch: unknown }> = [];
     const deleted: string[] = [];
     const ctx = {
       db: {
@@ -167,6 +181,9 @@ describe("processInboxTask", () => {
         insert: async (table: string, value: unknown) => {
           inserted.push({ table, value });
           return "inserted";
+        },
+        patch: async (id: string, patch: unknown) => {
+          patched.push({ id, patch });
         },
         delete: async (id: string) => {
           deleted.push(id);
@@ -190,6 +207,15 @@ describe("processInboxTask", () => {
           type: "note",
           content: "Call clinic",
           createdAt: expect.any(Number),
+        },
+      },
+    ]);
+    expect(patched).toEqual([
+      {
+        id: thread._id,
+        patch: {
+          lastActivityAt: expect.any(Number),
+          lastActivityContent: "Call clinic",
         },
       },
     ]);
@@ -228,6 +254,13 @@ describe("processInboxTask", () => {
     expect(result).toEqual({ type: "set_next_move" });
     expect(patched).toEqual([
       { id: thread._id, patch: { nextMove: "Call clinic" } },
+      {
+        id: thread._id,
+        patch: {
+          lastActivityAt: expect.any(Number),
+          lastActivityContent: 'Next move set to "Call clinic"',
+        },
+      },
     ]);
     expect(inserted).toEqual([
       {

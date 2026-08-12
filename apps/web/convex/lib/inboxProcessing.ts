@@ -2,6 +2,7 @@ import type { GenericMutationCtx } from "convex/server";
 
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
 
+import { recordActivity } from "./activityWrites";
 import { getNextOrder } from "./helpers";
 import { requireOwned } from "./ownedAccess";
 import { generateSlug } from "./slugs";
@@ -135,11 +136,10 @@ async function copyTaskToActivityLog(
   },
 ): Promise<void> {
   const note = buildThreadNoteFromTask(args.task);
-  await ctx.db.insert("activityLogs", {
+  await recordActivity(ctx, {
     userId: args.userId,
     threadId: args.threadId,
-    type: note.type,
-    content: note.content,
+    entry: note,
     createdAt: Date.now(),
   });
 }

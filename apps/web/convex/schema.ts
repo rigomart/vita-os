@@ -31,6 +31,11 @@ export default defineSchema({
     state: v.union(v.literal("open"), v.literal("resolved")),
     nextMove: v.optional(v.string()),
     followUp: v.optional(v.number()),
+    // Denormalized copy of the Thread's newest Activity Log entry, written by
+    // `lib/activityWrites.recordActivity`. Optional: `undefined` means "no
+    // entries yet" (or a pre-backfill document).
+    lastActivityAt: v.optional(v.number()),
+    lastActivityContent: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_user_order", ["userId", "order"])
@@ -55,7 +60,5 @@ export default defineSchema({
     previousValue: v.optional(v.string()),
     newValue: v.optional(v.string()),
     createdAt: v.number(),
-  })
-    .index("by_user_thread", ["userId", "threadId", "createdAt"])
-    .index("by_user_created", ["userId", "createdAt"]),
+  }).index("by_user_thread", ["userId", "threadId", "createdAt"]),
 });
