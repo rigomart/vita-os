@@ -7,6 +7,7 @@ import {
   buildCompleteNextMoveChange,
   buildThreadLifecyclePatch,
   buildThreadPatchLogEntries,
+  completeNextMove,
 } from "./threadChanges";
 
 function makeThread(overrides: Partial<Doc<"threads">> = {}): Doc<"threads"> {
@@ -302,5 +303,31 @@ describe("buildCompleteNextMoveChange", () => {
 
   it("does nothing when there is no next move", () => {
     expect(buildCompleteNextMoveChange(undefined)).toBeNull();
+  });
+});
+
+describe("completeNextMove", () => {
+  it("stamps the Thread's last activity with the completion entry", async () => {
+    const thread = makeThread({ nextMove: "Call clinic" });
+    const db = {
+      get: vi.fn(),
+      insert: vi.fn(),
+      patch: vi.fn(),
+    };
+    const ctx = { db } as unknown as Parameters<typeof completeNextMove>[0];
+
+    await completeNextMove(ctx, { userId: "user1", thread });
+
+    expect(db.patch.mock.calls[0]).toEqual([
+      thread._id,
+      { nextMove: undefined },
+    ]);
+    expect(db.patch.mock.calls[1]).toEqual([
+      thread._id,
+      {
+        lastActivityAt: expect.any(Number),
+        lastActivityContent: 'Completed "Call clinic" — next move cleared',
+      },
+    ]);
   });
 });
