@@ -26,12 +26,13 @@ export function updateTaskTextInInbox<T extends Task>(
 }
 
 /**
- * Membership changes to the Open Tasks go through here. `tasks.count` is the
- * length of `tasks.list` on the server — the same index read two ways — so the
- * count is derived from the patched list rather than counted up and down on
- * its own. With no cached list there is nothing to derive from, and the count
- * is left for the server to reconcile, except where the delta is knowable on
- * its own (see `optimisticallyAddToOpenTasks`).
+ * Every patch to the cached Open Tasks goes through here, membership changes
+ * and in-place edits alike. `tasks.count` is the length of `tasks.list` on the
+ * server — the same index read two ways — so the count is derived from the
+ * patched list rather than counted up and down on its own. With no cached list
+ * there is nothing to derive from, and the count is left for the server to
+ * reconcile, except where the delta is knowable on its own (see
+ * `optimisticallyAddToOpenTasks`).
  */
 export function patchOpenTasks(
   localStore: OptimisticLocalStore,

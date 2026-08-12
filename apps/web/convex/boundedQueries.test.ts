@@ -42,9 +42,15 @@ async function createLog(
     threadId: spec.threadId,
     content: spec.content,
   });
-  await t.run((ctx) =>
-    ctx.db.patch("activityLogs", id, { createdAt: spec.createdAt }),
-  );
+  // Back-dating the entry has to back-date the Thread's denormalized stamp
+  // too, or last-activity assertions would read the real clock.
+  await t.run(async (ctx) => {
+    await ctx.db.patch("activityLogs", id, { createdAt: spec.createdAt });
+    await ctx.db.patch("threads", spec.threadId, {
+      lastActivityAt: spec.createdAt,
+      lastActivityContent: spec.content,
+    });
+  });
   return id;
 }
 
@@ -164,8 +170,8 @@ describe("bounded queries", () => {
     });
   });
 
-  describe("threads.listByArea", () => {
-    it("returns the Area's Open Threads only", async () => {
+  describe("areas.detailBySlug", () => {
+    it("returns the Area with its Open Threads only", async () => {
       const fixture = await seed(owner);
       const otherArea = await owner.mutation(api.areas.create, {
         name: "Work",
@@ -185,19 +191,21 @@ describe("bounded queries", () => {
         state: "resolved",
       });
 
-      expect(
-        (
-          await owner.query(api.threads.listByArea, { areaId: fixture.areaId })
-        ).map((thread) => thread._id),
-      ).toEqual([fixture.threadId]);
+      const detail = await owner.query(api.areas.detailBySlug, {
+        slug: fixture.areaSlug,
+      });
+      expect(detail?.area._id).toBe(fixture.areaId);
+      expect(detail?.threads.map((thread) => thread._id)).toEqual([
+        fixture.threadId,
+      ]);
     });
 
-    it("returns nothing for another user's Area", async () => {
+    it("returns null for another user's Area", async () => {
       const fixture = await seed(owner);
 
       expect(
-        await other.query(api.threads.listByArea, { areaId: fixture.areaId }),
-      ).toEqual([]);
+        await other.query(api.areas.detailBySlug, { slug: fixture.areaSlug }),
+      ).toBe(null);
     });
   });
 
@@ -343,38 +351,71 @@ describe("bounded queries", () => {
     });
   });
 
-  describe("dashboard.overview", () => {
-    it("shows Open Threads and Tasks with the latest entry per Thread", async () => {
+  describe("threads.detailBySlug", () => {
+    it("returns the Thread with the Area it is filed under", async () => {
       const fixture = await seed(owner);
-      await createTask(t, owner, { text: "done", createdAt: 10, done: true });
-      const resolved = await owner.mutation(api.threads.create, {
-        title: "Resolved",
+
+      const detail = await owner.query(api.threads.detailBySlug, {
+        slug: fixture.threadSlug,
+      });
+      expect(detail?.thread._id).toBe(fixture.threadId);
+      expect(detail?.area?._id).toBe(fixture.areaId);
+    });
+
+    it("returns null for another user's Thread", async () => {
+      const fixture = await seed(owner);
+
+      expect(
+        await other.query(api.threads.detailBySlug, {
+          slug: fixture.threadSlug,
+        }),
+      ).toBe(null);
+    });
+  });
+
+  describe("thread last activity", () => {
+    const threadDoc = (id: Id<"threads">) =>
+      t.run((ctx) => ctx.db.get("threads", id));
+
+    it("starts unset on a Thread with no entries", async () => {
+      const fixture = await seed(owner);
+      const fresh = await owner.mutation(api.threads.create, {
+        title: "Quiet",
         areaId: fixture.areaId,
       });
-      await createLog(t, owner, {
-        threadId: resolved.id,
-        content: "resolved note",
-        createdAt: 99,
+
+      const thread = await threadDoc(fresh.id);
+      expect(thread?.lastActivityAt).toBeUndefined();
+      expect(thread?.lastActivityContent).toBeUndefined();
+    });
+
+    it("is stamped by activityLogs.create", async () => {
+      const fixture = await seed(owner);
+
+      await owner.mutation(api.activityLogs.create, {
+        threadId: fixture.threadId,
+        content: "Called the clinic back",
       });
+
+      const thread = await threadDoc(fixture.threadId);
+      expect(thread?.lastActivityContent).toBe("Called the clinic back");
+      expect(thread?.lastActivityAt).toEqual(expect.any(Number));
+    });
+
+    it("keeps the last entry when one update writes several", async () => {
+      const fixture = await seed(owner);
+
+      // nextMove logs before followUp, so the follow-up entry must win.
       await owner.mutation(api.threads.update, {
-        id: resolved.id,
-        state: "resolved",
+        id: fixture.threadId,
+        nextMove: "Book the appointment",
+        followUp: new Date("2026-05-20").getTime(),
       });
 
-      const overview = await owner.query(api.dashboard.overview, {
-        currentDate: Date.now(),
-        timezoneOffsetMinutes: 0,
-      });
-
-      expect(overview.threads.map((thread) => thread.id)).toEqual([
-        fixture.threadId,
-      ]);
-      expect(overview.inbox.items.map((item) => item.id)).toEqual([
-        fixture.taskId,
-      ]);
-      expect(overview.recentActivity.map((entry) => entry.threadId)).toEqual([
-        fixture.threadId,
-      ]);
+      const thread = await threadDoc(fixture.threadId);
+      expect(thread?.lastActivityContent).toBe(
+        'Follow-up set to "May 20, 2026"',
+      );
     });
   });
 });

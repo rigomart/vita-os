@@ -1,11 +1,12 @@
 import type { GenericMutationCtx } from "convex/server";
 
-import type { DataModel, Doc, Id } from "../_generated/dataModel";
+import type { DataModel, Doc } from "../_generated/dataModel";
 
 import {
   type AutoActivityLogEntry,
   buildAreaMoveLogEntry,
 } from "./activityLog";
+import { recordActivity } from "./activityWrites";
 import { getOwned } from "./ownedAccess";
 
 type MutationCtx = GenericMutationCtx<DataModel>;
@@ -202,10 +203,10 @@ export async function applyThreadPatch(
     lifecycleLog: lifecycleChange?.log,
   });
   for (const log of logs) {
-    await insertAutoActivityLog(ctx, {
+    await recordActivity(ctx, {
       userId: args.userId,
       threadId: args.thread._id,
-      log,
+      entry: log,
       createdAt: now,
     });
   }
@@ -254,10 +255,10 @@ export async function completeNextMove(
   if (!change) return;
 
   await ctx.db.patch(args.thread._id, { nextMove: undefined });
-  await insertAutoActivityLog(ctx, {
+  await recordActivity(ctx, {
     userId: args.userId,
     threadId: args.thread._id,
-    log: change.log,
+    entry: change.log,
     createdAt: Date.now(),
   });
 }
@@ -275,24 +276,4 @@ export function buildCompleteNextMoveChange(
       newValue: undefined,
     },
   };
-}
-
-async function insertAutoActivityLog(
-  ctx: MutationCtx,
-  args: {
-    userId: string;
-    threadId: Id<"threads">;
-    log: AutoActivityLog;
-    createdAt: number;
-  },
-): Promise<void> {
-  await ctx.db.insert("activityLogs", {
-    userId: args.userId,
-    threadId: args.threadId,
-    type: args.log.type,
-    content: args.log.content,
-    previousValue: args.log.previousValue,
-    newValue: args.log.newValue,
-    createdAt: args.createdAt,
-  });
 }

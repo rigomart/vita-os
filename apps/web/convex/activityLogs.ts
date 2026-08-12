@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
 import { mutation, query } from "./_generated/server";
+import { recordActivity } from "./lib/activityWrites";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
 import { getOwned, requireOwned } from "./lib/ownedAccess";
 import { emptyPage } from "./lib/pagination";
@@ -49,11 +50,10 @@ export const create = mutation({
 
     await requireOwned(ctx, "threads", { userId, id: args.threadId });
 
-    return ctx.db.insert("activityLogs", {
+    return recordActivity(ctx, {
       userId,
       threadId: args.threadId,
-      type: "note",
-      content: args.content,
+      entry: { type: "note", content: args.content },
       createdAt: Date.now(),
     });
   },

@@ -1,24 +1,24 @@
+import type { Id } from "@convex/_generated/dataModel";
+
 import { api } from "@convex/_generated/api";
 import { usePaginatedQuery } from "convex/react";
-
-import { useStableQuery } from "@/hooks/use-stable-query";
 
 import { useCreateActivityLog } from "../use-create-thread-log";
 import { ActivityLog } from "./thread-log";
 
 interface ActivityLogSectionProps {
-  threadSlug: string;
+  threadId: Id<"threads">;
 }
 
 const PAGE_SIZE = 20;
 
-export function ActivityLogSection({ threadSlug }: ActivityLogSectionProps) {
-  const thread = useStableQuery(api.threads.getBySlug, {
-    slug: threadSlug,
-  });
+export function ActivityLogSection({ threadId }: ActivityLogSectionProps) {
+  // `usePaginatedQuery` keys its page cache by args, so the args must be the
+  // Thread's stable identity for as long as this section stays mounted — the
+  // `_id`, never the slug.
   const { results, status, loadMore } = usePaginatedQuery(
     api.activityLogs.listByThread,
-    thread ? { threadId: thread._id } : "skip",
+    { threadId },
     { initialNumItems: PAGE_SIZE },
   );
   const createLog = useCreateActivityLog();
@@ -30,8 +30,7 @@ export function ActivityLogSection({ threadSlug }: ActivityLogSectionProps) {
       isLoadingMore={status === "LoadingMore"}
       onLoadMore={() => loadMore(PAGE_SIZE)}
       onAddNote={async (content) => {
-        if (!thread) return;
-        await createLog({ threadId: thread._id, content });
+        await createLog({ threadId, content });
       }}
     />
   );

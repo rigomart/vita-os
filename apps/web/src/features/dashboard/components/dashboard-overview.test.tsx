@@ -1,10 +1,10 @@
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, ComponentProps } from "react";
 
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { DashboardOverviewData, DashboardThread } from "./dashboard-model";
+import type { DashboardThread } from "./dashboard-model";
 
 import { DashboardOverview } from "./dashboard-overview";
 
@@ -63,10 +63,10 @@ function thread(
   };
 }
 
-function dashboard(
-  overrides: Partial<DashboardOverviewData> = {},
-): DashboardOverviewData {
-  return {
+type OverviewProps = ComponentProps<typeof DashboardOverview>;
+
+function renderOverview(overrides: Partial<OverviewProps> = {}) {
+  const props: OverviewProps = {
     areas: [
       {
         id: "health",
@@ -84,21 +84,18 @@ function dashboard(
       },
     ],
     threads: [],
-    inbox: { items: [], totalOpen: 0 },
-    recentActivity: [],
+    tasks: [],
+    currentDate,
+    onCreateArea: vi.fn(),
+    planActions: { planTask: vi.fn(), planThread: vi.fn() },
     ...overrides,
   };
+  return { ...render(<DashboardOverview {...props} />), props };
 }
 
 describe("DashboardOverview", () => {
   it("keeps attention-bearing Areas prominent in the condition strip", () => {
-    render(
-      <DashboardOverview
-        overview={dashboard()}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
+    renderOverview();
 
     const strip = screen.getByRole("region", {
       name: "Life Areas by condition",
@@ -121,20 +118,24 @@ describe("DashboardOverview", () => {
   });
 
   it("collapses to a steady line when every Area is healthy", () => {
-    const overview = dashboard();
-    render(
-      <DashboardOverview
-        overview={{
-          ...overview,
-          areas: overview.areas.map((area) => ({
-            ...area,
-            condition: "healthy" as const,
-          })),
-        }}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
+    renderOverview({
+      areas: [
+        {
+          id: "health",
+          name: "Health",
+          slug: "health",
+          condition: "healthy",
+          order: 0,
+        },
+        {
+          id: "home",
+          name: "Home",
+          slug: "home",
+          condition: "healthy",
+          order: 1,
+        },
+      ],
+    });
 
     expect(screen.getByText("All areas steady.")).toBeVisible();
     expect(screen.queryByText("Needs you")).toBeNull();
@@ -148,28 +149,13 @@ describe("DashboardOverview", () => {
   });
 
   it("hands the Plan canvas every open Thread and Task", () => {
-    render(
-      <DashboardOverview
-        overview={dashboard({
-          threads: [
-            thread("Check renewal", { followUp: currentDate }),
-            thread("Without date"),
-          ],
-          inbox: {
-            items: [
-              {
-                id: "task",
-                text: "Renew passport",
-                createdAt: currentDate,
-              },
-            ],
-            totalOpen: 1,
-          },
-        })}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
+    renderOverview({
+      threads: [
+        thread("Check renewal", { followUp: currentDate }),
+        thread("Without date"),
+      ],
+      tasks: [{ id: "task", text: "Renew passport", createdAt: currentDate }],
+    });
 
     expect(screen.getByTestId("plan-canvas")).toHaveTextContent(
       "2 Threads · 1 Tasks",
@@ -179,28 +165,13 @@ describe("DashboardOverview", () => {
 
   it("swaps the canvas for the schedule on a phone-sized viewport", () => {
     compactViewport();
-    render(
-      <DashboardOverview
-        overview={dashboard({
-          threads: [
-            thread("Check renewal", { followUp: currentDate }),
-            thread("Without date"),
-          ],
-          inbox: {
-            items: [
-              {
-                id: "task",
-                text: "Renew passport",
-                createdAt: currentDate,
-              },
-            ],
-            totalOpen: 1,
-          },
-        })}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
+    renderOverview({
+      threads: [
+        thread("Check renewal", { followUp: currentDate }),
+        thread("Without date"),
+      ],
+      tasks: [{ id: "task", text: "Renew passport", createdAt: currentDate }],
+    });
 
     expect(screen.getByTestId("plan-schedule")).toHaveTextContent(
       "2 Threads · 1 Tasks",
@@ -209,23 +180,14 @@ describe("DashboardOverview", () => {
   });
 
   it("renders Recent activity as a strip below the canvas", () => {
-    render(
-      <DashboardOverview
-        overview={dashboard({
-          threads: [thread("Insurance appeal")],
-          recentActivity: [
-            {
-              id: "activity",
-              threadId: "Insurance appeal",
-              content: "Clinic sent the report",
-              createdAt: currentDate,
-            },
-          ],
-        })}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
+    renderOverview({
+      threads: [
+        thread("Insurance appeal", {
+          lastActivityAt: currentDate,
+          lastActivityContent: "Clinic sent the report",
+        }),
+      ],
+    });
 
     expect(screen.getByText("Recent activity")).toBeVisible();
     expect(screen.getByText(/clinic sent the report/i)).toBeVisible();
@@ -238,13 +200,21 @@ describe("DashboardOverview", () => {
   });
 
   it("omits Recent activity when there is none", () => {
-    render(
-      <DashboardOverview
-        overview={dashboard()}
-        currentDate={currentDate}
-        onCreateArea={vi.fn()}
-      />,
-    );
+    renderOverview({ threads: [thread("Quiet thread")] });
+
+    expect(screen.queryByText("Recent activity")).toBeNull();
+  });
+
+  it("omits Recent activity when no entry's Area is known", () => {
+    renderOverview({
+      threads: [
+        thread("Orphaned", {
+          areaId: "gone",
+          lastActivityAt: currentDate,
+          lastActivityContent: "note",
+        }),
+      ],
+    });
 
     expect(screen.queryByText("Recent activity")).toBeNull();
   });
@@ -252,13 +222,7 @@ describe("DashboardOverview", () => {
   it("preserves Area onboarding until the first Area exists", async () => {
     const user = userEvent.setup();
     const onCreateArea = vi.fn();
-    const { rerender } = render(
-      <DashboardOverview
-        overview={dashboard({ areas: [] })}
-        currentDate={currentDate}
-        onCreateArea={onCreateArea}
-      />,
-    );
+    const { rerender, props } = renderOverview({ areas: [], onCreateArea });
 
     await user.click(screen.getByRole("button", { name: "Create Life Area" }));
     expect(onCreateArea).toHaveBeenCalledOnce();
@@ -266,9 +230,16 @@ describe("DashboardOverview", () => {
 
     rerender(
       <DashboardOverview
-        overview={dashboard()}
-        currentDate={currentDate}
-        onCreateArea={onCreateArea}
+        {...props}
+        areas={[
+          {
+            id: "health",
+            name: "Health",
+            slug: "health",
+            condition: "critical",
+            order: 0,
+          },
+        ]}
       />,
     );
     expect(

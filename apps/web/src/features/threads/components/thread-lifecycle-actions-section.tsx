@@ -1,30 +1,26 @@
-import { api } from "@convex/_generated/api";
+import type { Doc } from "@convex/_generated/dataModel";
+
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 
 import { useRemoveThread } from "@/features/threads/use-remove-thread";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
-import { useStableQuery } from "@/hooks/use-stable-query";
 
 import { ThreadLifecycleMenu } from "./thread-lifecycle-menu";
 
 interface ThreadLifecycleActionsProps {
-  threadSlug: string;
+  thread: Doc<"threads">;
   onRequestClose: () => void;
 }
 
 export function ThreadLifecycleActionsSection({
-  threadSlug,
+  thread,
   onRequestClose,
 }: ThreadLifecycleActionsProps) {
-  const thread = useStableQuery(api.threads.getBySlug, {
-    slug: threadSlug,
-  });
-  const updateThread = useUpdateThread(threadSlug);
-  const removeThread = useRemoveThread({ threadSlug });
+  const updateThread = useUpdateThread(thread);
+  const removeThread = useRemoveThread(thread);
 
   const { run: resolveThread, isPending: isResolving } = useGuardedAsyncAction(
     async (resolutionNote?: string) => {
-      if (!thread) return;
       await updateThread({
         id: thread._id,
         state: "resolved",
@@ -36,7 +32,6 @@ export function ThreadLifecycleActionsSection({
 
   const { run: reopenThread, isPending: isReopening } = useGuardedAsyncAction(
     async () => {
-      if (!thread) return;
       await updateThread({ id: thread._id, state: "open" });
     },
     { successMessage: "Thread reopened", errorToast: true },
@@ -44,14 +39,12 @@ export function ThreadLifecycleActionsSection({
 
   const { run: deleteThread, isPending: isDeleting } = useGuardedAsyncAction(
     async () => {
-      if (!thread) return;
-      await removeThread(thread._id);
+      await removeThread();
     },
     { successMessage: "Thread deleted", errorToast: true },
   );
 
   const handleResolve = (resolutionNote?: string) => {
-    if (!thread) return;
     void resolveThread(resolutionNote).then((result) => {
       if (result.ok) {
         onRequestClose();
@@ -59,13 +52,7 @@ export function ThreadLifecycleActionsSection({
     });
   };
 
-  const handleReopen = () => {
-    if (!thread) return;
-    void reopenThread();
-  };
-
   const handleDelete = () => {
-    if (!thread) return;
     void deleteThread().then((result) => {
       if (result.ok) {
         onRequestClose();
@@ -73,13 +60,11 @@ export function ThreadLifecycleActionsSection({
     });
   };
 
-  if (!thread) return null;
-
   return (
     <ThreadLifecycleMenu
       thread={thread}
       onResolve={handleResolve}
-      onReopen={handleReopen}
+      onReopen={() => void reopenThread()}
       onDelete={handleDelete}
       isResolving={isResolving}
       isReopening={isReopening}

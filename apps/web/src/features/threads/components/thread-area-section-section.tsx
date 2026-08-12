@@ -1,4 +1,4 @@
-import type { Id } from "@convex/_generated/dataModel";
+import type { Doc, Id } from "@convex/_generated/dataModel";
 
 import { api } from "@convex/_generated/api";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
@@ -7,35 +7,32 @@ import { useQuery } from "convex-helpers/react/cache/hooks";
 import { ThreadAreaSection } from "@/features/threads/components/thread-area-section";
 import { useThreadPaneNav } from "@/features/threads/thread-detail/thread-pane-nav";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
-import { useStableQuery } from "@/hooks/use-stable-query";
 
 interface ThreadAreaSectionSectionProps {
-  areaSlug: string;
-  threadSlug: string;
+  thread: Doc<"threads">;
+  area: Doc<"areas">;
 }
 
 export function ThreadAreaSectionSection({
-  areaSlug,
-  threadSlug,
+  thread,
+  area,
 }: ThreadAreaSectionSectionProps) {
+  // Picker data; deduped with the palette's subscription.
   const areas = useQuery(api.areas.list);
-  const thread = useStableQuery(api.threads.getBySlug, {
-    slug: threadSlug,
-  });
   const { onThreadLocationChange } = useThreadPaneNav();
-  const updateThread = useUpdateThread(threadSlug);
+  const updateThread = useUpdateThread(thread, { areas: areas ?? [] });
 
   const { run: moveThread, isPending: isMoving } = useGuardedAsyncAction(
     async (areaId: Id<"areas">) => {
-      if (!areas || !thread || areaId === thread.areaId) return null;
+      if (!areas || areaId === thread.areaId) return null;
 
       await updateThread({ id: thread._id, areaId });
-      return areas.find((area) => area._id === areaId) ?? null;
+      return areas.find((candidate) => candidate._id === areaId) ?? null;
     },
     { successMessage: "Thread moved", errorToast: true },
   );
 
-  if (!areas || !thread) return null;
+  if (!areas) return null;
 
   const handleMove = (areaId: Id<"areas">) => {
     if (areaId === thread.areaId) return;
@@ -44,8 +41,11 @@ export function ThreadAreaSectionSection({
       if (!result.ok || !result.value) return;
 
       const nextAreaSlug = result.value.slug ?? result.value._id;
-      if (nextAreaSlug !== areaSlug) {
-        onThreadLocationChange({ areaSlug: nextAreaSlug, threadSlug });
+      if (nextAreaSlug !== (area.slug ?? area._id)) {
+        onThreadLocationChange({
+          areaSlug: nextAreaSlug,
+          threadSlug: thread.slug ?? thread._id,
+        });
       }
     });
   };

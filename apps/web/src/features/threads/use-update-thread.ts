@@ -1,4 +1,4 @@
-import type { Id } from "@convex/_generated/dataModel";
+import type { Doc, Id } from "@convex/_generated/dataModel";
 
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
@@ -16,10 +16,23 @@ export type UpdateThreadValue = {
   resolutionNote?: string;
 };
 
-export function useUpdateThread(threadSlug: string) {
+/**
+ * `options.areas` lets a caller that moves the Thread hand the destination
+ * Area document to the optimistic layer, keeping the rail's embedded Area in
+ * step; callers that never pass `areaId` can omit it.
+ */
+export function useUpdateThread(
+  thread: Doc<"threads">,
+  options: { areas?: Doc<"areas">[] } = {},
+) {
+  const { areas } = options;
   const updateThread = useMutation(api.threads.update).withOptimisticUpdate(
     (localStore, args) => {
-      optimisticallyUpdateThread(localStore, args, { threadSlug });
+      const destinationArea =
+        args.areaId === undefined
+          ? undefined
+          : areas?.find((area) => area._id === args.areaId);
+      optimisticallyUpdateThread(localStore, args, { thread, destinationArea });
     },
   );
 

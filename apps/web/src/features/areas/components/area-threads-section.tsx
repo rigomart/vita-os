@@ -1,40 +1,36 @@
+import type { Doc } from "@convex/_generated/dataModel";
+
 import { api } from "@convex/_generated/api";
-import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useMutation } from "convex/react";
 
 import { optimisticallyRemoveThread } from "@/features/threads/optimistic";
 import { useAttentionClock } from "@/hooks/use-attention-clock";
-import { useStableQuery } from "@/hooks/use-stable-query";
 
 import { AreaThreads } from "./area-threads";
 
 interface AreaThreadsSectionProps {
-  areaSlug: string;
+  threads: Doc<"threads">[];
   onCreateThread: () => void;
 }
 
 export function AreaThreadsSection({
-  areaSlug,
+  threads,
   onCreateThread,
 }: AreaThreadsSectionProps) {
   const currentDate = useAttentionClock();
-  const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
-  const threads = useQuery(
-    api.threads.listByArea,
-    area ? { areaId: area._id } : "skip",
-  );
   const removeThread = useMutation(api.threads.remove).withOptimisticUpdate(
     (localStore, args) => {
-      if (!area) return;
-      optimisticallyRemoveThread(localStore, args, { areaId: area._id });
+      const thread = threads.find(({ _id }) => _id === args.id);
+      if (!thread) return;
+      optimisticallyRemoveThread(localStore, args, { thread });
     },
   );
 
   return (
     <AreaThreads
-      threads={threads ?? []}
+      threads={threads}
       currentDate={currentDate}
-      isLoading={threads === undefined}
+      isLoading={false}
       onCreateThread={onCreateThread}
       onRemoveThread={(threadId) => removeThread({ id: threadId })}
     />

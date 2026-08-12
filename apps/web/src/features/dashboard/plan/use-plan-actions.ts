@@ -1,14 +1,14 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { OptimisticLocalStore } from "convex/browser";
+import type { Doc, Id } from "@convex/_generated/dataModel";
 
 import { api } from "@convex/_generated/api";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
 import { useMutation } from "convex/react";
 
-import { updateTaskWhenInInbox } from "@/features/tasks/optimistic";
+import {
+  patchOpenTasks,
+  updateTaskWhenInInbox,
+} from "@/features/tasks/optimistic";
 import { optimisticallyUpdateThread } from "@/features/threads/optimistic";
-
-import { optimisticallyPlanTask, optimisticallyPlanThread } from "./optimistic";
 
 /**
  * The two writes the Plan canvas can make.
@@ -28,39 +28,36 @@ export interface PlanActions {
   ) => void;
 }
 
-/** The Thread rail keeps its copy keyed by slug; the local cache knows it. */
-function cachedThreadSlug(
-  localStore: OptimisticLocalStore,
-  id: Id<"threads">,
-): string | undefined {
-  const threads = localStore.getQuery(api.threads.list, {});
-  return threads?.find((thread) => thread._id === id)?.slug;
-}
-
-export function usePlanActions(): PlanActions {
+/**
+ * `source` holds the live `areas.list`/`threads.list` results the Plan
+ * renders, caller-provided: the previous Area for a cross-Area drop comes
+ * from the Thread document, the destination Area from the Area list — never
+ * from a cache lookup. A drop naming a Thread the source no longer holds is
+ * skipped outright rather than half-applied.
+ */
+export function usePlanActions(source: {
+  areas: Doc<"areas">[];
+  threads: Doc<"threads">[];
+}): PlanActions {
   const feedback = useFeedback();
 
   const updateThread = useMutation(api.threads.update).withOptimisticUpdate(
     (localStore, args) => {
-      optimisticallyPlanThread(localStore, args);
-      const slug = cachedThreadSlug(localStore, args.id);
-      if (slug !== undefined) {
-        optimisticallyUpdateThread(localStore, args, { threadSlug: slug });
-      }
+      const thread = source.threads.find(({ _id }) => _id === args.id);
+      if (!thread) return;
+      const destinationArea =
+        args.areaId === undefined
+          ? undefined
+          : source.areas.find((area) => area._id === args.areaId);
+      optimisticallyUpdateThread(localStore, args, { thread, destinationArea });
     },
   );
 
   const updateTaskWhen = useMutation(api.tasks.updateWhen).withOptimisticUpdate(
     (localStore, args) => {
-      optimisticallyPlanTask(localStore, args);
-      const tasks = localStore.getQuery(api.tasks.list, {});
-      if (tasks !== undefined) {
-        localStore.setQuery(
-          api.tasks.list,
-          {},
-          updateTaskWhenInInbox(tasks, args.id, args.when),
-        );
-      }
+      patchOpenTasks(localStore, (tasks) =>
+        updateTaskWhenInInbox(tasks, args.id, args.when),
+      );
     },
   );
 
@@ -73,6 +70,7 @@ export function usePlanActions(): PlanActions {
       void updateTaskWhen({ id: id as Id<"tasks">, when }).catch(report);
     },
     planThread: (id, change) => {
+      if (!source.threads.some((thread) => thread._id === id)) return;
       void updateThread({
         id: id as Id<"threads">,
         ...(change.areaId !== undefined && {

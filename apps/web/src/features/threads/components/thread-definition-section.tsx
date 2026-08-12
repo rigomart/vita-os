@@ -1,24 +1,19 @@
-import { api } from "@convex/_generated/api";
+import type { Doc } from "@convex/_generated/dataModel";
 
 import { useUpdateThread } from "@/features/threads/use-update-thread";
-import { useStableQuery } from "@/hooks/use-stable-query";
 
 import { ThreadDefinition } from "./thread-definition";
 
 interface ThreadDefinitionSectionProps {
-  threadSlug: string;
+  thread: Doc<"threads">;
 }
 
 export function ThreadDefinitionSection({
-  threadSlug,
+  thread,
 }: ThreadDefinitionSectionProps) {
-  const thread = useStableQuery(api.threads.getBySlug, {
-    slug: threadSlug,
-  });
-  const updateThread = useUpdateThread(threadSlug);
+  const updateThread = useUpdateThread(thread);
 
   const handleSave = (summary: string) => {
-    if (!thread) return;
     updateThread({
       id: thread._id,
       summary: summary || null,
@@ -26,6 +21,6 @@ export function ThreadDefinitionSection({
   };
 
   return (
-    <ThreadDefinition summary={thread?.summary ?? ""} onSave={handleSave} />
+    <ThreadDefinition summary={thread.summary ?? ""} onSave={handleSave} />
   );
 }

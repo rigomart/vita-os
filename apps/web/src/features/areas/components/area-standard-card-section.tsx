@@ -1,26 +1,24 @@
+import type { Doc } from "@convex/_generated/dataModel";
+
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
 
 import { optimisticallyUpdateArea } from "@/features/areas/optimistic";
-import { useStableQuery } from "@/hooks/use-stable-query";
 
 import { AreaStandardCard } from "./area-standard-card";
 
 interface AreaStandardCardSectionProps {
-  areaSlug: string;
+  area: Doc<"areas">;
 }
 
 export function AreaStandardCardSection({
-  areaSlug,
+  area,
 }: AreaStandardCardSectionProps) {
-  const area = useStableQuery(api.areas.getBySlug, { slug: areaSlug });
   const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
     (localStore, args) => {
-      optimisticallyUpdateArea(localStore, args, { areaSlug });
+      optimisticallyUpdateArea(localStore, args);
     },
   );
-
-  if (!area) return null;
 
   const handleSave = (standard: string) => {
     updateArea({

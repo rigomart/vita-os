@@ -1,17 +1,23 @@
 import type { Doc, Id } from "@convex/_generated/dataModel";
 import type { OptimisticLocalStore } from "convex/browser";
+import type { FunctionReturnType } from "convex/server";
 
 import { api } from "@convex/_generated/api";
 import { nullsToUndefined } from "@convex/lib/patch";
 
 import {
   nextOrder,
+  patchAllQueries,
   patchById,
   patchQuery,
   removeById,
 } from "@/features/shared/optimistic";
 
 type Area = Doc<"areas">;
+
+type AreaDetail = NonNullable<
+  FunctionReturnType<typeof api.areas.detailBySlug>
+>;
 
 type CreateAreaArgs = {
   name: string;
@@ -45,6 +51,21 @@ export function buildOptimisticArea(
   };
 }
 
+/**
+ * Patch every cached `areas.detailBySlug` holding this Area. The composite is
+ * keyed by slug while mutations name their target by `_id`, so the match runs
+ * on the cached document instead of the args.
+ */
+export function patchAreaDetail(
+  localStore: OptimisticLocalStore,
+  areaId: Id<"areas">,
+  patch: (detail: AreaDetail) => AreaDetail,
+): void {
+  patchAllQueries(localStore, api.areas.detailBySlug, (detail) =>
+    detail.area._id === areaId ? patch(detail) : detail,
+  );
+}
+
 export function optimisticallyCreateArea(
   localStore: OptimisticLocalStore,
   args: CreateAreaArgs,
@@ -62,7 +83,6 @@ export function optimisticallyCreateArea(
 export function optimisticallyUpdateArea(
   localStore: OptimisticLocalStore,
   args: { id: Id<"areas"> } & AreaPatch,
-  options: { areaSlug: string },
 ): void {
   const { id, ...updates } = args;
   const patch = nullsToUndefined(updates);
@@ -70,26 +90,20 @@ export function optimisticallyUpdateArea(
   patchQuery(localStore, api.areas.list, {}, (areas) =>
     patchById(areas, id, patch),
   );
-  patchQuery(localStore, api.areas.get, { id }, (area) => ({
-    ...area,
-    ...patch,
+  patchAreaDetail(localStore, id, (detail) => ({
+    ...detail,
+    area: { ...detail.area, ...patch },
   }));
-  patchQuery(
-    localStore,
-    api.areas.getBySlug,
-    { slug: options.areaSlug },
-    (area) => ({ ...area, ...patch }),
-  );
 }
 
 export function optimisticallyRemoveArea(
   localStore: OptimisticLocalStore,
   args: { id: Id<"areas"> },
-  options: { areaSlug: string },
 ): void {
   patchQuery(localStore, api.areas.list, {}, (areas) =>
     removeById(areas, args.id),
   );
-  localStore.setQuery(api.areas.get, { id: args.id }, null);
-  localStore.setQuery(api.areas.getBySlug, { slug: options.areaSlug }, null);
+  patchAllQueries(localStore, api.areas.detailBySlug, (detail) =>
+    detail.area._id === args.id ? null : detail,
+  );
 }

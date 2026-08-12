@@ -3,32 +3,43 @@ import { Button } from "@vita-os/ui/components/button";
 import { format, formatDistance } from "date-fns";
 import { History } from "lucide-react";
 
+import type { PlanActions } from "@/features/dashboard/plan/use-plan-actions";
+
 import { AreaIcon } from "@/features/areas/components/area-icon";
 import { PlanCanvas, PlanSchedule } from "@/features/dashboard/plan";
 import { useIsCompact } from "@/hooks/use-mobile";
 
-import { AreaConditionStrip } from "./area-condition-strip";
-import {
-  type DashboardArea,
-  type DashboardOverviewData,
-  type DashboardThread,
+import type {
+  DashboardArea,
+  DashboardInboxTask,
+  DashboardThread,
+  DashboardThreadWithActivity,
 } from "./dashboard-model";
 
+import { AreaConditionStrip } from "./area-condition-strip";
+import { recentActivity } from "./dashboard-model";
+
 interface DashboardOverviewProps {
+  areas: DashboardArea[];
   currentDate: number;
   onCreateArea: () => void;
-  overview: DashboardOverviewData;
+  planActions: PlanActions;
+  tasks: DashboardInboxTask[];
+  threads: DashboardThread[];
 }
 
 export function DashboardOverview({
-  overview,
+  areas,
+  threads,
+  tasks,
   currentDate,
   onCreateArea,
+  planActions,
 }: DashboardOverviewProps) {
-  const areaById = new Map(overview.areas.map((area) => [area.id, area]));
+  const areaById = new Map(areas.map((area) => [area.id, area]));
   const compact = useIsCompact();
 
-  if (overview.areas.length === 0) {
+  if (areas.length === 0) {
     return (
       <div className="flex flex-col gap-6">
         <DashboardHeader currentDate={currentDate} />
@@ -47,38 +58,40 @@ export function DashboardOverview({
     );
   }
 
+  // Rows resolve their Area before the section gates on emptiness, so a
+  // dangling areaId can never leave the heading over an empty grid.
+  const entries = recentActivity(threads).flatMap((thread) => {
+    const area = areaById.get(thread.areaId);
+    return area ? [{ area, thread }] : [];
+  });
+
   return (
     <div className="flex flex-col gap-6">
       <DashboardHeader currentDate={currentDate} />
-      <AreaConditionStrip areas={overview.areas} />
+      <AreaConditionStrip areas={areas} />
 
       {/* Two shapes of the same Plan. A phone gets the vertical schedule; the
           branch is real, not a CSS switch, so only the mounted one runs its
           scroll and observer effects. */}
       {compact ? (
         <PlanSchedule
-          areas={overview.areas}
+          areas={areas}
           currentDate={currentDate}
-          tasks={overview.inbox.items}
-          threads={overview.threads}
+          planActions={planActions}
+          tasks={tasks}
+          threads={threads}
         />
       ) : (
         <>
           <PlanCanvas
-            areas={overview.areas}
+            areas={areas}
             currentDate={currentDate}
-            tasks={overview.inbox.items}
-            threads={overview.threads}
+            planActions={planActions}
+            tasks={tasks}
+            threads={threads}
           />
-          {overview.recentActivity.length > 0 && (
-            <RecentActivity
-              entries={overview.recentActivity}
-              areaById={areaById}
-              threadById={
-                new Map(overview.threads.map((thread) => [thread.id, thread]))
-              }
-              currentDate={currentDate}
-            />
+          {entries.length > 0 && (
+            <RecentActivity entries={entries} currentDate={currentDate} />
           )}
         </>
       )}
@@ -112,13 +125,9 @@ function DashboardHeader({ currentDate }: { currentDate: number }) {
 
 function RecentActivity({
   entries,
-  threadById,
-  areaById,
   currentDate,
 }: {
-  entries: DashboardOverviewData["recentActivity"];
-  threadById: Map<string, DashboardThread>;
-  areaById: Map<string, DashboardArea>;
+  entries: Array<{ area: DashboardArea; thread: DashboardThreadWithActivity }>;
   currentDate: number;
 }) {
   return (
@@ -128,33 +137,27 @@ function RecentActivity({
         <h2 className="text-sm font-semibold">Recent activity</h2>
       </div>
       <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2 xl:grid-cols-3">
-        {entries.map((entry) => {
-          const thread = threadById.get(entry.threadId);
-          const area = thread ? areaById.get(thread.areaId) : undefined;
-          if (!thread || !area) return null;
-
-          return (
-            <Link
-              key={entry.id}
-              to="."
-              search={(prev) => ({ ...prev, thread: thread.slug })}
-              className="block min-w-0 rounded-md px-1 py-2 transition-colors hover:bg-muted/50"
-            >
-              <div className="flex items-center gap-1.5">
-                <AreaIcon icon={area.icon} className="size-3.5 shrink-0" />
-                <p className="truncate text-sm font-medium">{thread.title}</p>
-              </div>
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {entry.content} ·{" "}
-                {formatDistance(
-                  new Date(entry.createdAt),
-                  new Date(currentDate),
-                  { addSuffix: true },
-                )}
-              </p>
-            </Link>
-          );
-        })}
+        {entries.map(({ area, thread }) => (
+          <Link
+            key={thread.id}
+            to="."
+            search={(prev) => ({ ...prev, thread: thread.slug })}
+            className="block min-w-0 rounded-md px-1 py-2 transition-colors hover:bg-muted/50"
+          >
+            <div className="flex items-center gap-1.5">
+              <AreaIcon icon={area.icon} className="size-3.5 shrink-0" />
+              <p className="truncate text-sm font-medium">{thread.title}</p>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {thread.lastActivityContent} ·{" "}
+              {formatDistance(
+                new Date(thread.lastActivityAt),
+                new Date(currentDate),
+                { addSuffix: true },
+              )}
+            </p>
+          </Link>
+        ))}
       </div>
     </section>
   );

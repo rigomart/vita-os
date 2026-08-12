@@ -1,19 +1,16 @@
-import type { Id } from "@convex/_generated/dataModel";
+import type { Doc } from "@convex/_generated/dataModel";
 
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
 
 import { optimisticallyRemoveThread } from "@/features/threads/optimistic";
 
-export function useRemoveThread(options: {
-  threadSlug?: string;
-  areaId?: Id<"areas">;
-}) {
+export function useRemoveThread(thread: Doc<"threads">) {
   const removeThread = useMutation(api.threads.remove).withOptimisticUpdate(
     (localStore, args) => {
-      optimisticallyRemoveThread(localStore, args, options);
+      optimisticallyRemoveThread(localStore, args, { thread });
     },
   );
 
-  return (id: Id<"threads">) => removeThread({ id });
+  return () => removeThread({ id: thread._id });
 }
