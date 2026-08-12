@@ -33,6 +33,27 @@ In both sub-shapes the floating bottom bar is identical.
 
 ## Process
 
+### Vita OS setup already available
+
+Do not rebuild the variant plumbing in this repository. Import `PrototypeVariants` and its type from `@/components/dev/prototype-variants`. It renders only the selected variant and provides the development-only floating selector, direct variant buttons, `?variant=` deep links, preserved search params, and safe left/right keyboard shortcuts.
+
+```tsx
+import {
+  PrototypeVariants,
+  type PrototypeVariant,
+} from "@/components/dev/prototype-variants";
+
+const variants = [
+  { key: "A", name: "Focus", render: () => <VariantA /> },
+  { key: "B", name: "Timeline", render: () => <VariantB /> },
+  { key: "C", name: "Command center", render: () => <VariantC /> },
+] satisfies readonly [PrototypeVariant, ...PrototypeVariant[]];
+
+return <PrototypeVariants variants={variants} />;
+```
+
+Pass live route data through each `render` closure. Use `defaultVariant` when A should not be the fallback, or `searchParam` when the page already uses `variant` for something else.
+
 ### 1. State the question and pick N
 
 Default to **3 variants**. More than 5 stops being radically different and starts being noise — cap there.
@@ -76,7 +97,7 @@ For sub-shape B (new page): the throwaway route under `/prototype/<name>` mounts
 
 ### 4. Build the floating switcher
 
-Skip this step when the repository already provides the switcher. Otherwise, build a small fixed-position bar at the bottom-centre of the screen with three pieces:
+Skip this step when the repository already provides the switcher, as Vita OS does. Otherwise, build a small fixed-position bar at the bottom-centre of the screen with three pieces:
 
 - **Left arrow** — cycles to the previous variant (wraps around).
 - **Variant label** — shows the current variant key and, if the variant exports a name, that name too. e.g. `B — Sidebar layout`.
