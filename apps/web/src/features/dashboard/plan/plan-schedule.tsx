@@ -23,6 +23,7 @@ import {
   Ban,
   ChevronDown,
   ChevronUp,
+  Compass,
   CornerDownRight,
   Inbox,
 } from "lucide-react";
@@ -878,8 +879,10 @@ function ChipSurface({
       >
         {isTask ? (
           <Inbox aria-hidden className="size-3" />
+        ) : area ? (
+          <AreaIcon icon={area.icon} className="size-3.5" />
         ) : (
-          <AreaIcon icon={area?.icon} className="size-3.5" />
+          <Compass aria-hidden className="size-3.5" />
         )}
       </span>
 

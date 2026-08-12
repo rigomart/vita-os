@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedArea } from "@convex/lib/validators";
 
 import { Button } from "@vita-os/ui/components/button";
 import {
@@ -6,12 +6,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@vita-os/ui/components/popover";
+import { Compass } from "lucide-react";
 import { useState } from "react";
 
 import { AreaIcon } from "./area-icon";
 
 interface AreaPickerProps {
-  areas: Doc<"areas">[];
+  areas: ProjectedArea[];
   selectedAreaId: string | undefined;
   onSelect: (id: string) => void;
   disabled?: boolean;
@@ -38,7 +39,11 @@ export function AreaPicker({
           />
         }
       >
-        <AreaIcon icon={selected?.icon} className="h-3 w-3" />
+        {selected ? (
+          <AreaIcon icon={selected.icon} className="h-3 w-3" />
+        ) : (
+          <Compass aria-hidden className="h-3 w-3" />
+        )}
         {selected ? selected.name : "Area"}
       </PopoverTrigger>
       <PopoverContent className="w-48 p-1" align="start">

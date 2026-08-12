@@ -1,6 +1,41 @@
 import { describe, expect, it } from "vitest";
 
-import { RESERVED_AREA_SLUGS, validateAreaName } from "./validation";
+import {
+  requireTitle,
+  RESERVED_AREA_SLUGS,
+  validateAreaName,
+} from "./validation";
+
+describe("requireTitle", () => {
+  it("returns the trimmed value", () => {
+    expect(requireTitle("  Book checkup  ", "Thread title")).toBe(
+      "Book checkup",
+    );
+  });
+
+  it("leaves an already-trimmed value alone", () => {
+    expect(requireTitle("Book checkup", "Thread title")).toBe("Book checkup");
+  });
+
+  it("keeps the whitespace inside", () => {
+    expect(requireTitle(" a  b ", "Thread title")).toBe("a  b");
+  });
+
+  it("rejects an empty value, naming the field", () => {
+    expect(() => requireTitle("", "Task text")).toThrow(
+      "Task text cannot be empty",
+    );
+  });
+
+  it.each(["   ", "\t", "\n", " \t\n "])(
+    "rejects whitespace-only %j",
+    (value) => {
+      expect(() => requireTitle(value, "Area name")).toThrow(
+        "Area name cannot be empty",
+      );
+    },
+  );
+});
 
 describe("RESERVED_AREA_SLUGS", () => {
   it("contains expected reserved slugs", () => {
@@ -13,7 +48,21 @@ describe("RESERVED_AREA_SLUGS", () => {
 
 describe("validateAreaName", () => {
   it("accepts a normal area name", () => {
-    expect(() => validateAreaName("Work")).not.toThrow();
+    expect(validateAreaName("Work")).toBe("Work");
+  });
+
+  it("returns the trimmed name", () => {
+    expect(validateAreaName("  Work  ")).toBe("Work");
+  });
+
+  it("rejects a blank name", () => {
+    expect(() => validateAreaName("  ")).toThrow("Area name cannot be empty");
+  });
+
+  it("checks the reserved list against the trimmed name", () => {
+    expect(() => validateAreaName("  Threads  ")).toThrow(
+      '"Threads" is reserved',
+    );
   });
 
   it("accepts names that slugify differently from reserved words", () => {

@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
@@ -22,8 +23,8 @@ export type UpdateThreadValue = {
  * step; callers that never pass `areaId` can omit it.
  */
 export function useUpdateThread(
-  thread: Doc<"threads">,
-  options: { areas?: Doc<"areas">[] } = {},
+  thread: ProjectedThread,
+  options: { areas?: ProjectedArea[] } = {},
 ) {
   const { areas } = options;
   const updateThread = useMutation(api.threads.update).withOptimisticUpdate(

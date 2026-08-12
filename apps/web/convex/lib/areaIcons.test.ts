@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  AREA_ICONS,
-  DEFAULT_AREA_ICON,
-  getAreaIcon,
-  isAreaIcon,
-} from "./areaIcons";
+import { AREA_ICONS, areaIconLabels, DEFAULT_AREA_ICON } from "./areaIcons";
 
 describe("Area Icons", () => {
   it("uses the complete, duplicate-free curated set", () => {
@@ -29,15 +24,14 @@ describe("Area Icons", () => {
     expect(new Set(AREA_ICONS).size).toBe(AREA_ICONS.length);
   });
 
-  it("defaults missing and unknown values to Compass", () => {
+  // The icon an Area gets when nobody has chosen one: what `backfillAreaIcons`
+  // stamps on pre-existing Areas, and what the new-Area form opens on.
+  it("starts from Compass", () => {
     expect(DEFAULT_AREA_ICON).toBe("Compass");
-    expect(getAreaIcon()).toBe("Compass");
-    expect(getAreaIcon("Unknown")).toBe("Compass");
+    expect(AREA_ICONS).toContain(DEFAULT_AREA_ICON);
   });
 
-  it("recognizes only allowed icon values", () => {
-    expect(isAreaIcon("HeartPulse")).toBe(true);
-    expect(isAreaIcon("Unknown")).toBe(false);
-    expect(isAreaIcon(undefined)).toBe(false);
+  it("labels every icon", () => {
+    expect(Object.keys(areaIconLabels).sort()).toEqual([...AREA_ICONS].sort());
   });
 });

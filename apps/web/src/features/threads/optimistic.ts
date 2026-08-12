@@ -1,9 +1,11 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 import type { OptimisticLocalStore } from "convex/browser";
 import type { FunctionReturnType } from "convex/server";
 
 import { api } from "@convex/_generated/api";
 import { nullsToUndefined } from "@convex/lib/patch";
+import { generateSlug } from "@convex/lib/slugs";
 
 import { patchAreaDetail } from "@/features/areas/optimistic";
 import {
@@ -13,8 +15,6 @@ import {
   patchQuery,
   removeById,
 } from "@/features/shared/optimistic";
-
-type Thread = Doc<"threads">;
 
 type ThreadDetail = NonNullable<
   FunctionReturnType<typeof api.threads.detailBySlug>
@@ -32,20 +32,26 @@ type NullablePatch<T> = {
 
 type ThreadPatch = NullablePatch<
   Pick<
-    Thread,
+    ProjectedThread,
     "title" | "summary" | "areaId" | "nextMove" | "followUp" | "state"
   >
 >;
 
+/**
+ * The pending Thread, shaped like the one the server will send back. Its slug
+ * is a placeholder minted with the server's pattern but a different random
+ * suffix, so it will NOT match the real slug — a link built from it only
+ * resolves after navigation re-reads the slug the mutation returned, exactly
+ * as with the pre-required-slug fallback.
+ */
 export function buildOptimisticThread(
   args: CreateThreadArgs,
   options: { id: Id<"threads">; now: number; order: number },
-): Thread {
+): ProjectedThread {
   return {
     _id: options.id,
-    _creationTime: options.now,
-    userId: "",
     title: args.title,
+    slug: generateSlug(args.title),
     summary: args.summary,
     areaId: args.areaId,
     order: options.order,
@@ -121,7 +127,7 @@ function insertOrdered<T>(items: T[], item: T, key: (item: T) => number): T[] {
 export function optimisticallyUpdateThread(
   localStore: OptimisticLocalStore,
   args: { id: Id<"threads">; resolutionNote?: string } & ThreadPatch,
-  context: { thread: Thread; destinationArea?: Doc<"areas"> },
+  context: { thread: ProjectedThread; destinationArea?: ProjectedArea },
 ): void {
   const { id, resolutionNote: _resolutionNote, ...updates } = args;
   const patch = nullsToUndefined(updates);
@@ -142,9 +148,9 @@ export function optimisticallyUpdateThread(
   // would silently no-op: it is inserted where the list's ordering puts it.
   // Ordinary field patches never insert — a missing id stays missing.
   const patchOpenList = (
-    threads: Thread[],
-    key: (thread: Thread) => number,
-  ): Thread[] => {
+    threads: ProjectedThread[],
+    key: (thread: ProjectedThread) => number,
+  ): ProjectedThread[] => {
     if (threads.some((thread) => thread._id === id)) {
       return patchById(threads, id, threadPatch);
     }
@@ -186,7 +192,7 @@ export function optimisticallyUpdateThread(
 export function optimisticallyRemoveThread(
   localStore: OptimisticLocalStore,
   args: { id: Id<"threads"> },
-  context: { thread: Thread },
+  context: { thread: ProjectedThread },
 ): void {
   patchQuery(localStore, api.threads.list, {}, (threads) =>
     removeById(threads, args.id),
@@ -201,7 +207,7 @@ export function optimisticallyRemoveThread(
 export function optimisticallyCompleteNextMove(
   localStore: OptimisticLocalStore,
   args: { id: Id<"threads"> },
-  context: { thread: Thread },
+  context: { thread: ProjectedThread },
 ): void {
   const clear = <T extends { _id: string; nextMove?: string }>(threads: T[]) =>
     threads.map((thread) =>

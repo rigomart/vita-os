@@ -90,6 +90,7 @@ describe("plan lanes", () => {
       [
         {
           condition: "healthy",
+          icon: "Home",
           id: "home",
           name: "Home",
           order: 1,
@@ -97,6 +98,7 @@ describe("plan lanes", () => {
         },
         {
           condition: "critical",
+          icon: "HeartPulse",
           id: "health",
           name: "Health",
           order: 0,
@@ -119,7 +121,14 @@ describe("day rollover", () => {
   const tomorrow = new Date(2026, 7, 7, 9).getTime();
 
   const home: DashboardArea[] = [
-    { condition: "healthy", id: "home", name: "Home", order: 0, slug: "home" },
+    {
+      condition: "healthy",
+      icon: "Home",
+      id: "home",
+      name: "Home",
+      order: 0,
+      slug: "home",
+    },
   ];
 
   const dated: PlanItem[] = [

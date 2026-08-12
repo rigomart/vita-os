@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedTask } from "@convex/lib/validators";
 
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
@@ -10,7 +10,7 @@ import { useUncompleteTask } from "@/features/tasks/use-uncomplete-task";
 import { useUpdateTaskText } from "@/features/tasks/use-update-task-text";
 import { useUpdateTaskWhen } from "@/features/tasks/use-update-task-when";
 
-export function useTaskRowActions(task: Doc<"tasks">) {
+export function useTaskRowActions(task: ProjectedTask) {
   const feedback = useFeedback();
   const completeTask = useCompleteTask();
   const uncompleteTask = useUncompleteTask();

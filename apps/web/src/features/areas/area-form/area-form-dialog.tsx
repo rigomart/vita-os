@@ -1,7 +1,6 @@
 import {
-  DEFAULT_AREA_ICON,
-  getAreaIcon,
   type AreaIcon as AreaIconName,
+  DEFAULT_AREA_ICON,
 } from "@convex/lib/areaIcons";
 import {
   CONDITION_OPTIONS,
@@ -84,7 +83,7 @@ export function AreaFormDialog({
     initialValue?.condition ?? DEFAULT_CONDITION,
   );
   const [icon, setIcon] = useState<AreaIconName>(
-    getAreaIcon(initialValue?.icon),
+    initialValue?.icon ?? DEFAULT_AREA_ICON,
   );
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
@@ -92,7 +91,7 @@ export function AreaFormDialog({
     if (!open) return;
     setName(initialValue?.name ?? "");
     setCondition(initialValue?.condition ?? DEFAULT_CONDITION);
-    setIcon(getAreaIcon(initialValue?.icon));
+    setIcon(initialValue?.icon ?? DEFAULT_AREA_ICON);
     setIconPickerOpen(false);
   }, [open, initialValue]);
 

@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedThread } from "@convex/lib/validators";
 
 import { groupAreaThreadsByAttention } from "@convex/lib/attentionOrdering";
 import { Button } from "@vita-os/ui/components/button";
@@ -15,7 +16,7 @@ import {
 import { AreaThreadsSkeleton } from "./area-threads-skeleton";
 
 interface AreaThreadsProps {
-  threads: Doc<"threads">[];
+  threads: ProjectedThread[];
   currentDate: number;
   isLoading?: boolean;
   onCreateThread: () => void;
@@ -80,7 +81,7 @@ function AreaThreadRow({
   now,
   onRemoveThread,
 }: {
-  thread: Doc<"threads">;
+  thread: ProjectedThread;
   now: number;
   onRemoveThread: (threadId: Id<"threads">) => void;
 }) {
@@ -89,7 +90,7 @@ function AreaThreadRow({
     detail: thread.nextMove?.trim() || undefined,
     detailKind: "next-move",
     when: thread.followUp,
-    linkTo: { threadSlug: thread.slug ?? thread._id },
+    linkTo: { threadSlug: thread.slug },
     actions: (
       <RowDeleteAction
         label="Delete thread"

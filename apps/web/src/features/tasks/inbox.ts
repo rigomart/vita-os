@@ -1,8 +1,9 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedTask } from "@convex/lib/validators";
 
 import { patchById, removeById } from "@/features/shared/optimistic";
 
-type Task = Doc<"tasks">;
+type Task = ProjectedTask;
 
 function startOfDayMs(timestamp: number): number {
   const date = new Date(timestamp);

@@ -10,35 +10,51 @@ import { getOwned, getOwnedBySlug, requireOwned } from "./lib/ownedAccess";
 import { nullsToUndefined } from "./lib/patch";
 import { generateSlug } from "./lib/slugs";
 import { validateAreaName } from "./lib/validation";
-import { areaIconValidator, conditionValidator } from "./lib/validators";
+import {
+  areaIconValidator,
+  conditionValidator,
+  projectArea,
+  projectedAreaValidator,
+  projectedThreadValidator,
+  projectThread,
+} from "./lib/validators";
 
 export const list = query({
   args: {},
+  returns: v.array(projectedAreaValidator),
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return [];
-    return ctx.db
+    const areas = await ctx.db
       .query("areas")
       .withIndex("by_user_order", (q) => q.eq("userId", userId))
       .collect();
+    return areas.map(projectArea);
   },
 });
 
 export const get = query({
   args: { id: v.id("areas") },
+  returns: v.union(projectedAreaValidator, v.null()),
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return null;
-    return getOwned(ctx, "areas", { userId, id: args.id });
+    const area = await getOwned(ctx, "areas", { userId, id: args.id });
+    return area && projectArea(area);
   },
 });
 
 export const getBySlug = query({
   args: { slug: v.string() },
+  returns: v.union(projectedAreaValidator, v.null()),
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return null;
-    return getOwnedBySlug(ctx, "areas", { userId, slug: args.slug });
+    const area = await getOwnedBySlug(ctx, "areas", {
+      userId,
+      slug: args.slug,
+    });
+    return area && projectArea(area);
   },
 });
 
@@ -48,6 +64,13 @@ export const getBySlug = query({
  */
 export const detailBySlug = query({
   args: { slug: v.string() },
+  returns: v.union(
+    v.object({
+      area: projectedAreaValidator,
+      threads: v.array(projectedThreadValidator),
+    }),
+    v.null(),
+  ),
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return null;
@@ -62,7 +85,7 @@ export const detailBySlug = query({
       userId,
       areaId: area._id,
     });
-    return { area, threads };
+    return { area: projectArea(area), threads: threads.map(projectThread) };
   },
 });
 
@@ -76,14 +99,14 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    validateAreaName(args.name);
+    const name = validateAreaName(args.name);
 
     const nextOrder = await getNextOrder(ctx, "areas", userId);
-    const slug = generateSlug(args.name);
+    const slug = generateSlug(name);
 
     const id = await ctx.db.insert("areas", {
       userId,
-      name: args.name,
+      name,
       slug,
       standard: args.standard,
       condition: args.condition,
@@ -110,16 +133,17 @@ export const update = mutation({
     const area = await requireOwned(ctx, "areas", { userId, id: args.id });
 
     const { id, ...rest } = args;
-    if (rest.name !== undefined) {
-      validateAreaName(rest.name);
-    }
+    const name =
+      rest.name === undefined ? undefined : validateAreaName(rest.name);
+
     let newSlug: string | undefined;
-    if (rest.name && rest.name !== area.name) {
-      newSlug = generateSlug(rest.name);
+    if (name !== undefined && name !== area.name) {
+      newSlug = generateSlug(name);
     }
 
     await ctx.db.patch(id, {
       ...nullsToUndefined(rest),
+      ...(name !== undefined && { name }),
       ...(newSlug && { slug: newSlug }),
     });
 

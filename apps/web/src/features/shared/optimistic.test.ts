@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedThread } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { describe, expect, it } from "vitest";
@@ -28,12 +29,11 @@ function makeRecord(overrides: Partial<TestRecord> = {}): TestRecord {
   };
 }
 
-function makeThread(overrides: Partial<Doc<"threads">> = {}): Doc<"threads"> {
+function makeThread(overrides: Partial<ProjectedThread> = {}): ProjectedThread {
   return {
     _id: "thread1" as Id<"threads">,
-    _creationTime: 0,
-    userId: "user1",
     title: "Book checkup",
+    slug: "book-checkup",
     areaId: "area1" as Id<"areas">,
     order: 0,
     state: "open",

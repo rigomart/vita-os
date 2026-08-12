@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea } from "@convex/lib/validators";
 
 import type { CreatedThreadResult } from "./types";
 
@@ -8,7 +9,7 @@ import { useCreateThread } from "./use-create-thread";
 interface CreateThreadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  areas: Doc<"areas">[];
+  areas: ProjectedArea[];
   defaultAreaId?: Id<"areas">;
   onCreated?: (thread: CreatedThreadResult) => void;
 }

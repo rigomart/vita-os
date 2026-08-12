@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -8,37 +9,33 @@ import { ThreadAreaSection } from "./thread-area-section";
 
 const healthArea = {
   _id: "area1" as Id<"areas">,
-  _creationTime: 0,
-  userId: "user1",
   name: "Health",
   slug: "health",
+  icon: "HeartPulse",
   condition: "healthy",
   order: 0,
   createdAt: 0,
-} satisfies Doc<"areas">;
+} satisfies ProjectedArea;
 
 const financesArea = {
   _id: "area2" as Id<"areas">,
-  _creationTime: 0,
-  userId: "user1",
   name: "Finances",
   slug: "finances",
+  icon: "WalletCards",
   condition: "healthy",
   order: 1,
   createdAt: 0,
-} satisfies Doc<"areas">;
+} satisfies ProjectedArea;
 
 const thread = {
   _id: "thread1" as Id<"threads">,
-  _creationTime: 0,
-  userId: "user1",
   title: "Renew passport",
   slug: "renew-passport",
   areaId: healthArea._id,
   state: "open",
   order: 0,
   createdAt: 0,
-} satisfies Doc<"threads">;
+} satisfies ProjectedThread;
 
 describe("ThreadAreaSection", () => {
   it("lets the user move a thread to another area", async () => {

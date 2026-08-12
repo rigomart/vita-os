@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedTask } from "@convex/lib/validators";
 
 import { groupTasksByAttention } from "@convex/lib/attentionOrdering";
 import { Button } from "@vita-os/ui/components/button";
@@ -17,10 +17,10 @@ import { useTaskRowActions } from "@/features/tasks/task-row/use-task-row-action
 import { useAttentionClock } from "@/hooks/use-attention-clock";
 
 interface InboxTaskListProps {
-  tasks: Doc<"tasks">[];
-  onProcess?: (task: Doc<"tasks">) => void;
+  tasks: ProjectedTask[];
+  onProcess?: (task: ProjectedTask) => void;
   /** Done Tasks loaded so far from `tasks.listDone`. */
-  doneTasks?: Doc<"tasks">[];
+  doneTasks?: ProjectedTask[];
   /** Whether the Done page has been paginated to its end. Defaults to
    *  `true` so callers that don't paginate keep the old "only render when
    *  non-empty" behavior for the Completed section. */
@@ -145,9 +145,9 @@ function InboxTaskRow({
   now,
   onProcess,
 }: {
-  task: Doc<"tasks">;
+  task: ProjectedTask;
   now: number;
-  onProcess?: (task: Doc<"tasks">) => void;
+  onProcess?: (task: ProjectedTask) => void;
 }) {
   const {
     handleRemove,

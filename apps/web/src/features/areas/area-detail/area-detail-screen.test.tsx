@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea } from "@convex/lib/validators";
 
 import userEvent from "@testing-library/user-event";
 import { getFunctionName } from "convex/server";
@@ -18,14 +19,13 @@ const mocks = vi.hoisted(() => ({
 
 const area = {
   _id: "area1" as Id<"areas">,
-  _creationTime: 0,
-  userId: "user1",
   name: "Family Health",
   slug: "family-health",
+  icon: "HeartPulse",
   condition: "healthy",
   order: 0,
   createdAt: 0,
-} satisfies Doc<"areas">;
+} satisfies ProjectedArea;
 
 vi.mock("convex-helpers/react/cache/hooks", () => ({
   useQuery: (query: unknown, args: unknown) => {

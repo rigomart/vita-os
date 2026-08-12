@@ -1,6 +1,5 @@
 import type { AreaIcon as AreaIconName } from "@convex/lib/areaIcons";
 
-import { getAreaIcon } from "@convex/lib/areaIcons";
 import {
   BookOpen,
   BriefcaseBusiness,
@@ -39,11 +38,11 @@ const areaIconComponents: Record<AreaIconName, LucideIcon> = {
 };
 
 interface AreaIconProps {
-  icon?: unknown;
+  icon: AreaIconName;
   className?: string;
 }
 
 export function AreaIcon({ icon, className }: AreaIconProps) {
-  const Icon = areaIconComponents[getAreaIcon(icon)];
+  const Icon = areaIconComponents[icon];
   return <Icon className={className} aria-hidden="true" />;
 }

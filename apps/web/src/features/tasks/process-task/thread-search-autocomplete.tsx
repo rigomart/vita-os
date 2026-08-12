@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 
 import {
   Combobox,
@@ -17,15 +17,15 @@ import {
 import { Sparkles } from "lucide-react";
 import { useMemo } from "react";
 
-export type ThreadOption = Doc<"threads"> & { areaName: string };
+export type ThreadOption = ProjectedThread & { areaName: string };
 
 export type ThreadChoice =
   | { kind: "thread"; thread: ThreadOption }
   | { kind: "create"; title: string };
 
 interface ThreadSearchAutocompleteProps {
-  areas: Doc<"areas">[];
-  threads: Doc<"threads">[];
+  areas: ProjectedArea[];
+  threads: ProjectedThread[];
   isLoading?: boolean;
   value: ThreadChoice | null;
   inputValue: string;

@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea } from "@convex/lib/validators";
 
 import { Button } from "@vita-os/ui/components/button";
 import { Input } from "@vita-os/ui/components/input";
@@ -22,7 +23,7 @@ interface ThreadFormDialogProps {
   mode: "create" | "edit";
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  areas: Doc<"areas">[];
+  areas: ProjectedArea[];
   defaultAreaId?: Id<"areas">;
   initialValue?: Partial<ThreadFormValue>;
   onSubmit: (value: ThreadFormValue) => Promise<void> | void;

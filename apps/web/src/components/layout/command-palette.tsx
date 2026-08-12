@@ -99,7 +99,7 @@ export function CommandPalette({
                 run(() =>
                   navigate({
                     to: "/$areaSlug",
-                    params: { areaSlug: area.slug ?? area._id },
+                    params: { areaSlug: area.slug },
                   }),
                 )
               }
@@ -124,7 +124,7 @@ export function CommandPalette({
                       to: ".",
                       search: (prev) => ({
                         ...prev,
-                        thread: thread.slug ?? thread._id,
+                        thread: thread.slug,
                       }),
                     }),
                   )

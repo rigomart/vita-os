@@ -1,13 +1,20 @@
-import { paginationOptsValidator } from "convex/server";
+import {
+  paginationOptsValidator,
+  paginationResultValidator,
+} from "convex/server";
 import { v } from "convex/values";
 
-import type { Doc } from "./_generated/dataModel";
+import type { ProjectedActivityLog } from "./lib/validators";
 
 import { mutation, query } from "./_generated/server";
 import { recordActivity } from "./lib/activityWrites";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
 import { getOwned, requireOwned } from "./lib/ownedAccess";
 import { emptyPage } from "./lib/pagination";
+import {
+  projectActivityLog,
+  projectedActivityLogValidator,
+} from "./lib/validators";
 
 /**
  * One Thread's Activity Log, newest first, one page at a time.
@@ -20,23 +27,25 @@ export const listByThread = query({
     threadId: v.id("threads"),
     paginationOpts: paginationOptsValidator,
   },
+  returns: paginationResultValidator(projectedActivityLogValidator),
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
-    if (!userId) return emptyPage<Doc<"activityLogs">>();
+    if (!userId) return emptyPage<ProjectedActivityLog>();
 
     const thread = await getOwned(ctx, "threads", {
       userId,
       id: args.threadId,
     });
-    if (!thread) return emptyPage<Doc<"activityLogs">>();
+    if (!thread) return emptyPage<ProjectedActivityLog>();
 
-    return ctx.db
+    const page = await ctx.db
       .query("activityLogs")
       .withIndex("by_user_thread", (q) =>
         q.eq("userId", userId).eq("threadId", thread._id),
       )
       .order("desc")
       .paginate(args.paginationOpts);
+    return { ...page, page: page.page.map(projectActivityLog) };
   },
 });
 

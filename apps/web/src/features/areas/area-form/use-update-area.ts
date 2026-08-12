@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedArea } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
@@ -16,7 +16,7 @@ export function useUpdateArea() {
     },
   );
 
-  return async (area: Doc<"areas">, value: AreaFormValue) => {
+  return async (area: ProjectedArea, value: AreaFormValue) => {
     const result = await updateArea({
       id: area._id,
       name: value.name,

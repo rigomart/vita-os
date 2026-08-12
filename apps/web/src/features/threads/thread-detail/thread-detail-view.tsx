@@ -1,4 +1,4 @@
-import type { Doc } from "@convex/_generated/dataModel";
+import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
 import { Badge } from "@vita-os/ui/components/badge";
@@ -72,7 +72,7 @@ export function ThreadDetailView({
   const hasMatchingThread =
     detail != null &&
     area !== null &&
-    (areaSlug === undefined || (area.slug ?? area._id) === areaSlug);
+    (areaSlug === undefined || area.slug === areaSlug);
   const content = isLoading ? (
     <ThreadDetailSkeleton />
   ) : !hasMatchingThread ? (
@@ -111,7 +111,7 @@ export function ThreadDetailView({
 
 interface ThreadShellProps {
   title: string;
-  thread: Doc<"threads"> | null;
+  thread: ProjectedThread | null;
   showActions: boolean;
   onClosed: () => void;
   children: React.ReactNode;
@@ -212,7 +212,7 @@ function ThreadControls({
   showActions,
   onRequestClose,
 }: {
-  thread: Doc<"threads"> | null;
+  thread: ProjectedThread | null;
   showActions: boolean;
   onRequestClose: () => void;
 }) {
@@ -243,13 +243,13 @@ function ThreadControls({
 }
 
 interface ThreadDetailContentProps {
-  thread: Doc<"threads">;
-  area: Doc<"areas">;
+  thread: ProjectedThread;
+  area: ProjectedArea;
 }
 
 function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
   const isResolved = thread.state === "resolved";
-  const areaSlug = area.slug ?? area._id;
+  const areaSlug = area.slug;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">

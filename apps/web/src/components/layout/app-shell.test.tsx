@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 
 import userEvent from "@testing-library/user-event";
 import { getFunctionName } from "convex/server";
@@ -10,26 +11,23 @@ import { AppShell } from "./app-shell";
 
 const area = {
   _id: "area1" as Id<"areas">,
-  _creationTime: 0,
-  userId: "user1",
   name: "Family Health",
   slug: "family-health",
+  icon: "HeartPulse",
   condition: "needs_attention",
   order: 0,
   createdAt: 0,
-} satisfies Doc<"areas">;
+} satisfies ProjectedArea;
 
 const thread = {
   _id: "thread1" as Id<"threads">,
-  _creationTime: 0,
-  userId: "user1",
   title: "Sister's front teeth",
   slug: "sister-s-front-teeth",
   areaId: area._id,
   state: "open",
   order: 0,
   createdAt: 0,
-} satisfies Doc<"threads">;
+} satisfies ProjectedThread;
 
 // cmdk observes and scrolls its list container; jsdom provides neither.
 globalThis.ResizeObserver ??= class {

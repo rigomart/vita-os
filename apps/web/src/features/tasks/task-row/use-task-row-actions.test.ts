@@ -1,4 +1,5 @@
-import type { Doc, Id } from "@convex/_generated/dataModel";
+import type { Id } from "@convex/_generated/dataModel";
+import type { ProjectedTask } from "@convex/lib/validators";
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
@@ -45,17 +46,16 @@ function deferred() {
 const openTask = {
   _id: "task1" as Id<"tasks">,
   _creationTime: 0,
-  userId: "user1",
   text: "Buy milk",
   state: "open",
   createdAt: Date.now(),
-} satisfies Doc<"tasks">;
+} satisfies ProjectedTask;
 
 const doneTask = {
   ...openTask,
   state: "done",
   completedAt: Date.now(),
-} satisfies Doc<"tasks">;
+} satisfies ProjectedTask;
 
 describe("useTaskRowActions", () => {
   beforeEach(() => {
