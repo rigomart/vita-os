@@ -4,7 +4,10 @@ import { flatListClassName } from "@/lib/flat-surface";
 
 export function AreaDetailSkeleton() {
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 border-t-2 border-brand-gold-strong/55 pt-3">
+    <div
+      className="mx-auto flex max-w-4xl flex-col gap-6 border-t-2 border-brand-gold-strong/55 pt-3"
+      data-testid="area-detail-skeleton"
+    >
       <div>
         <Skeleton className="mb-2 h-3 w-20" />
         <Skeleton className="h-7 w-40" />

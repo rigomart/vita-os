@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   onThreadLocationChange: vi.fn(),
   threadState: "open" as "open" | "resolved",
   threadExists: true,
+  /** Slugs the composite resolves; null lets every slug resolve. */
+  knownSlugs: null as string[] | null,
+  seen: [] as string[],
 }));
 
 vi.mock("@/hooks/use-thread-pane-viewport", () => ({
@@ -52,14 +55,17 @@ const thread = {
 
 vi.mock("convex-helpers/react/cache/hooks", () => ({
   useQuery: (query: unknown, args: unknown) => {
-    if (args === "skip") return undefined;
     const name = getFunctionName(query as never);
-    if (name === "areas:getBySlug") return area;
-    if (name === "areas:get") return area;
+    mocks.seen.push(name);
+    if (args === "skip") return undefined;
     if (name === "areas:list") return [area];
-    if (name === "threads:getBySlug") {
+    if (name === "threads:detailBySlug") {
+      const { slug } = args as { slug: string };
+      if (mocks.knownSlugs !== null && !mocks.knownSlugs.includes(slug)) {
+        return undefined;
+      }
       if (!mocks.threadExists) return null;
-      return { ...thread, state: mocks.threadState };
+      return { thread: { ...thread, state: mocks.threadState }, area };
     }
     return undefined;
   },
@@ -104,6 +110,8 @@ describe("ThreadDetailView", () => {
     mocks.onThreadLocationChange.mockReset();
     mocks.threadState = "open";
     mocks.threadExists = true;
+    mocks.knownSlugs = null;
+    mocks.seen = [];
   });
 
   it("opens Thread detail as a near-full bottom drawer below the pane breakpoint", async () => {
@@ -221,6 +229,46 @@ describe("ThreadDetailView", () => {
     expect(pane).toHaveAttribute("data-state", "open");
   });
 
+  it("subscribes once: the composite plus the shared Area picker list", async () => {
+    mocks.showDesktopPane = true;
+    renderThreadDetail();
+
+    await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
+
+    expect(new Set(mocks.seen)).toEqual(
+      new Set(["threads:detailBySlug", "areas:list"]),
+    );
+  });
+
+  it("shows a skeleton, not the previous Thread, while a new slug loads", async () => {
+    mocks.showDesktopPane = true;
+    mocks.knownSlugs = ["sister-s-front-teeth"];
+    const { rerender } = renderThreadDetail();
+
+    await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
+
+    rerender(
+      <ThreadDetailView
+        areaSlug="family-health"
+        threadSlug="moms-legs"
+        onClose={mocks.onClose}
+        onThreadLocationChange={mocks.onThreadLocationChange}
+      />,
+    );
+
+    expect(screen.getByTestId("thread-detail-skeleton")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Sister's front teeth" }),
+    ).toBeNull();
+    expect(
+      screen.queryByText("Waiting for the specialist's opinion."),
+    ).toBeNull();
+  });
+
   it("renders the Thread without an areaSlug by deriving the area from the thread", async () => {
     mocks.showDesktopPane = true;
     renderThreadDetail({ areaSlug: undefined });
@@ -233,6 +281,13 @@ describe("ThreadDetailView", () => {
     expect(
       within(header).getByRole("button", { name: "Family Health" }),
     ).toBeVisible();
+  });
+
+  it("shows not-found when the deep link's Area does not hold the thread", async () => {
+    mocks.showDesktopPane = true;
+    renderThreadDetail({ areaSlug: "another-area" });
+
+    expect(await screen.findByText("Thread not found.")).toBeVisible();
   });
 
   it("shows a closable not-found state for an unknown thread slug without an area", async () => {

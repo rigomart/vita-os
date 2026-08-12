@@ -68,18 +68,18 @@ export function ThreadDetailView({
 
   const title = detail?.thread.title ?? "Thread detail";
   const isLoading = detail === undefined;
+  const area = detail?.area ?? null;
   const hasMatchingThread =
     detail != null &&
-    detail.area != null &&
-    (areaSlug === undefined ||
-      (detail.area.slug ?? detail.area._id) === areaSlug);
+    area !== null &&
+    (areaSlug === undefined || (area.slug ?? area._id) === areaSlug);
   const content = isLoading ? (
     <ThreadDetailSkeleton />
   ) : !hasMatchingThread ? (
     <ThreadNotFound areaSlug={areaSlug} onClose={onClose} />
   ) : (
     <ThreadPaneNavContext.Provider value={paneNav}>
-      <ThreadDetailContent thread={detail.thread} area={detail.area} />
+      <ThreadDetailContent thread={detail.thread} area={area} />
     </ThreadPaneNavContext.Provider>
   );
 

@@ -42,6 +42,11 @@ function makeThread(overrides: Partial<Doc<"threads">> = {}): Doc<"threads"> {
   };
 }
 
+/** A slug-keyed composite: the one query cached under several argument sets. */
+function makeDetail(slug: string, title = "Book checkup") {
+  return { thread: makeThread({ slug, title }), area: null };
+}
+
 describe("optimistic update helpers", () => {
   it("patches an task by id without mutating other tasks", () => {
     const record = makeRecord();
@@ -110,76 +115,65 @@ describe("patchQuery", () => {
 
   it("patches only the argument set it was given", () => {
     const { store, get } = createLocalStore();
-    const area1 = "area1" as Id<"areas">;
-    const area2 = "area2" as Id<"areas">;
-    store.setQuery(api.threads.listByArea, { areaId: area1 }, []);
-    store.setQuery(api.threads.listByArea, { areaId: area2 }, []);
+    store.setQuery(api.threads.detailBySlug, { slug: "a" }, makeDetail("a"));
+    store.setQuery(api.threads.detailBySlug, { slug: "b" }, makeDetail("b"));
 
-    patchQuery(store, api.threads.listByArea, { areaId: area1 }, (threads) => [
-      ...threads,
-      makeThread({ areaId: area1 }),
-    ]);
+    patchQuery(store, api.threads.detailBySlug, { slug: "a" }, (detail) => ({
+      ...detail,
+      thread: { ...detail.thread, title: "Book labs" },
+    }));
 
-    expect(get(api.threads.listByArea, { areaId: area1 })).toHaveLength(1);
-    expect(get(api.threads.listByArea, { areaId: area2 })).toEqual([]);
+    expect(get(api.threads.detailBySlug, { slug: "a" })).toEqual(
+      makeDetail("a", "Book labs"),
+    );
+    expect(get(api.threads.detailBySlug, { slug: "b" })).toEqual(
+      makeDetail("b"),
+    );
   });
 });
 
 describe("patchAllQueries", () => {
   it("patches every cached argument set and passes each its arguments", () => {
     const { store, get } = createLocalStore();
-    const area1 = "area1" as Id<"areas">;
-    const area2 = "area2" as Id<"areas">;
-    store.setQuery(api.threads.listByArea, { areaId: area1 }, [
-      makeThread({ _id: "thread1" as Id<"threads">, areaId: area1 }),
-    ]);
-    store.setQuery(api.threads.listByArea, { areaId: area2 }, [
-      makeThread({ _id: "thread2" as Id<"threads">, areaId: area2 }),
-    ]);
+    store.setQuery(api.threads.detailBySlug, { slug: "a" }, makeDetail("a"));
+    store.setQuery(api.threads.detailBySlug, { slug: "b" }, makeDetail("b"));
 
-    patchAllQueries(store, api.threads.listByArea, (threads, args) =>
-      threads.map((thread) => ({ ...thread, title: args.areaId })),
+    patchAllQueries(store, api.threads.detailBySlug, (detail, args) => ({
+      ...detail,
+      thread: { ...detail.thread, title: args.slug },
+    }));
+
+    expect(get(api.threads.detailBySlug, { slug: "a" })).toEqual(
+      makeDetail("a", "a"),
     );
-
-    expect(get(api.threads.listByArea, { areaId: area1 })).toEqual([
-      makeThread({
-        _id: "thread1" as Id<"threads">,
-        areaId: area1,
-        title: area1,
-      }),
-    ]);
-    expect(get(api.threads.listByArea, { areaId: area2 })).toEqual([
-      makeThread({
-        _id: "thread2" as Id<"threads">,
-        areaId: area2,
-        title: area2,
-      }),
-    ]);
+    expect(get(api.threads.detailBySlug, { slug: "b" })).toEqual(
+      makeDetail("b", "b"),
+    );
   });
 
   it("skips argument sets the client is still loading", () => {
     const { store, get } = createLocalStore();
-    const area1 = "area1" as Id<"areas">;
-    const area2 = "area2" as Id<"areas">;
-    store.setQuery(api.threads.listByArea, { areaId: area1 }, []);
-    store.setQuery(api.threads.listByArea, { areaId: area2 }, undefined);
+    store.setQuery(api.threads.detailBySlug, { slug: "a" }, makeDetail("a"));
+    store.setQuery(api.threads.detailBySlug, { slug: "b" }, undefined);
 
-    patchAllQueries(store, api.threads.listByArea, (threads) => [
-      ...threads,
-      makeThread(),
-    ]);
+    patchAllQueries(store, api.threads.detailBySlug, (detail) => ({
+      ...detail,
+      thread: { ...detail.thread, title: "patched" },
+    }));
 
-    expect(get(api.threads.listByArea, { areaId: area1 })).toHaveLength(1);
-    expect(get(api.threads.listByArea, { areaId: area2 })).toBeUndefined();
+    expect(get(api.threads.detailBySlug, { slug: "a" })).toEqual(
+      makeDetail("a", "patched"),
+    );
+    expect(get(api.threads.detailBySlug, { slug: "b" })).toBeUndefined();
   });
 
   it("does nothing when no argument set is cached", () => {
     const { store } = createLocalStore();
     let patched = false;
 
-    patchAllQueries(store, api.threads.listByArea, (threads) => {
+    patchAllQueries(store, api.threads.detailBySlug, (detail) => {
       patched = true;
-      return threads;
+      return detail;
     });
 
     expect(patched).toBe(false);

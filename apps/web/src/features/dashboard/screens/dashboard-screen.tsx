@@ -3,13 +3,13 @@ import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useMemo, useState } from "react";
 
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
-import { DashboardOverview } from "@/features/dashboard/components/dashboard-overview";
-import { DashboardOverviewSkeleton } from "@/features/dashboard/components/dashboard-overview-skeleton";
 import {
   toDashboardArea,
   toDashboardTask,
   toDashboardThread,
 } from "@/features/dashboard/components/dashboard-model";
+import { DashboardOverview } from "@/features/dashboard/components/dashboard-overview";
+import { DashboardOverviewSkeleton } from "@/features/dashboard/components/dashboard-overview-skeleton";
 import { usePlanActions } from "@/features/dashboard/plan/use-plan-actions";
 import { useAttentionClock } from "@/hooks/use-attention-clock";
 
@@ -28,18 +28,23 @@ export function DashboardScreen() {
   const [showCreateArea, setShowCreateArea] = useState(false);
 
   // Explicit memos: the Plan surfaces memo on these arrays by reference.
-  const areas = useMemo(() => (areaDocs ?? []).map(toDashboardArea), [
-    areaDocs,
-  ]);
-  const threads = useMemo(() => (threadDocs ?? []).map(toDashboardThread), [
-    threadDocs,
-  ]);
-  const tasks = useMemo(() => (taskDocs ?? []).map(toDashboardTask), [
-    taskDocs,
-  ]);
+  const areas = useMemo(
+    () => (areaDocs ?? []).map(toDashboardArea),
+    [areaDocs],
+  );
+  const threads = useMemo(
+    () => (threadDocs ?? []).map(toDashboardThread),
+    [threadDocs],
+  );
+  const tasks = useMemo(
+    () => (taskDocs ?? []).map(toDashboardTask),
+    [taskDocs],
+  );
 
   const loading =
-    areaDocs === undefined || threadDocs === undefined || taskDocs === undefined;
+    areaDocs === undefined ||
+    threadDocs === undefined ||
+    taskDocs === undefined;
 
   return (
     <div className="mx-auto max-w-7xl pb-16">

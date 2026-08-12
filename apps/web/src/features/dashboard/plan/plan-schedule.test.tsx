@@ -1,8 +1,5 @@
-import { api } from "@convex/_generated/api";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
-import { getFunctionName } from "convex/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import type {
@@ -14,23 +11,11 @@ import type {
 import { PlanSchedule } from "./plan-schedule";
 
 const mocks = vi.hoisted(() => ({
-  mutations: new Map<string, ReturnType<typeof vi.fn>>(),
   navigate: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
-}));
-
-vi.mock("convex/react", () => ({
-  useMutation: (reference: Parameters<typeof getFunctionName>[0]) => {
-    const name = getFunctionName(reference);
-    const existing = mocks.mutations.get(name);
-    const mutation =
-      existing ?? vi.fn(() => Promise.resolve(undefined as unknown));
-    mocks.mutations.set(name, mutation);
-    return Object.assign(mutation, { withOptimisticUpdate: () => mutation });
-  },
 }));
 
 /**
@@ -116,16 +101,19 @@ const tasks: DashboardInboxTask[] = [
 ];
 
 function renderSchedule() {
-  return render(
-    <FeedbackProvider feedback={{ error: vi.fn(), success: vi.fn() }}>
+  const planActions = { planTask: vi.fn(), planThread: vi.fn() };
+  return {
+    ...render(
       <PlanSchedule
         areas={areas}
         currentDate={now}
+        planActions={planActions}
         tasks={tasks}
         threads={threads}
-      />
-    </FeedbackProvider>,
-  );
+      />,
+    ),
+    planActions,
+  };
 }
 
 /** True when `first` sits before `second` in document order. */
@@ -222,16 +210,5 @@ describe("PlanSchedule", () => {
     await user.click(screen.getByRole("button", { name: /No date/ }));
 
     expect(screen.getByText("Garage clear-out")).toBeVisible();
-  });
-
-  it("wires both writes to the app's own mutations", () => {
-    renderSchedule();
-
-    expect([...mocks.mutations.keys()]).toEqual(
-      expect.arrayContaining([
-        getFunctionName(api.threads.update),
-        getFunctionName(api.tasks.updateWhen),
-      ]),
-    );
   });
 });

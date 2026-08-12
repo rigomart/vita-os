@@ -1,10 +1,7 @@
 import type { PropsWithChildren } from "react";
 
-import { api } from "@convex/_generated/api";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
-import { getFunctionName } from "convex/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type {
@@ -16,7 +13,6 @@ import type {
 import { PlanCanvas } from "./plan-canvas";
 
 const mocks = vi.hoisted(() => ({
-  mutations: new Map<string, ReturnType<typeof vi.fn>>(),
   navigate: vi.fn(),
 }));
 
@@ -38,17 +34,6 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
   useNavigate: () => mocks.navigate,
-}));
-
-vi.mock("convex/react", () => ({
-  useMutation: (reference: Parameters<typeof getFunctionName>[0]) => {
-    const name = getFunctionName(reference);
-    const existing = mocks.mutations.get(name);
-    const mutation =
-      existing ?? vi.fn(() => Promise.resolve(undefined as unknown));
-    mocks.mutations.set(name, mutation);
-    return Object.assign(mutation, { withOptimisticUpdate: () => mutation });
-  },
 }));
 
 const now = new Date(2026, 7, 6, 9).getTime();
@@ -110,16 +95,19 @@ const tasks: DashboardInboxTask[] = [
 ];
 
 function renderCanvas() {
-  return render(
-    <FeedbackProvider feedback={{ error: vi.fn(), success: vi.fn() }}>
+  const planActions = { planTask: vi.fn(), planThread: vi.fn() };
+  return {
+    ...render(
       <PlanCanvas
         areas={areas}
         currentDate={now}
+        planActions={planActions}
         tasks={tasks}
         threads={threads}
-      />
-    </FeedbackProvider>,
-  );
+      />,
+    ),
+    planActions,
+  };
 }
 
 describe("PlanCanvas", () => {
@@ -221,14 +209,13 @@ describe("PlanCanvas", () => {
       },
     ];
     const view = (clock: number) => (
-      <FeedbackProvider feedback={{ error: vi.fn(), success: vi.fn() }}>
-        <PlanCanvas
-          areas={areas}
-          currentDate={clock}
-          tasks={[]}
-          threads={laneThreads}
-        />
-      </FeedbackProvider>
+      <PlanCanvas
+        areas={areas}
+        currentDate={clock}
+        planActions={{ planTask: vi.fn(), planThread: vi.fn() }}
+        tasks={[]}
+        threads={laneThreads}
+      />
     );
     const canvas = () => screen.getByRole("region", { name: "Plan" });
 
@@ -239,16 +226,5 @@ describe("PlanCanvas", () => {
 
     expect(within(canvas()).getByText("Waiting")).toBeVisible();
     expect(within(canvas()).getByText("1 waiting")).toBeVisible();
-  });
-
-  it("wires both writes to the app's own mutations", () => {
-    renderCanvas();
-
-    expect([...mocks.mutations.keys()]).toEqual(
-      expect.arrayContaining([
-        getFunctionName(api.threads.update),
-        getFunctionName(api.tasks.updateWhen),
-      ]),
-    );
   });
 });
