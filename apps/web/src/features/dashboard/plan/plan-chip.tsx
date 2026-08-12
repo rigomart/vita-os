@@ -109,13 +109,9 @@ export function ChipSurface({
 }
 
 /**
- * A chip sitting on its day.
- *
- * Click — or Enter/Space while focused — opens the Thread rail in place; a Task
- * chip goes to the Inbox, the only place a Task can be edited. Dragging arms on
- * mouse movement or a touch long-press (see the sensor note in
- * `plan-canvas.tsx`), so the keyboard never has to fight dnd-kit for the Enter
- * key, and dnd-kit swallows the click that follows a real drag.
+ * A chip sitting on its day. Click — or Enter/Space while focused — opens the
+ * Thread rail in place; a Task chip goes to the Inbox, the only place a Task
+ * can be edited. Dragging arms per the sensor note in `plan-canvas.tsx`.
  */
 export function PlanChip({
   density,

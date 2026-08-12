@@ -42,9 +42,7 @@ export const backfillThreadLastActivity = internalMutation({
 
 /**
  * Give every Area an `icon`, so the field can stop being optional. Run
- * manually from the Convex dashboard, passing pages of e.g.
- * `{ "paginationOpts": { "numItems": 100, "cursor": null } }` and feeding
- * `continueCursor` back until `isDone`.
+ * manually from the Convex dashboard, paged like `backfillThreadLastActivity`.
  *
  * REQUIRED before deploying the schema that makes `areas.icon` required:
  * that deploy validates every existing document, and an Area without an icon
@@ -83,16 +81,9 @@ const LIVE_ACTIVITY_LOG_ENTRY_TYPES = new Set<string>([
  * Retype the Activity Log entries left behind by retired entry kinds, so the
  * type union can shrink to what the app actually writes.
  *
- * Nothing has written `status_change`, `reference`, `waiting_change` or
- * `decision` since the Thread storage cutover, but the legacy Project import
- * minted them and those rows are still there. Every entry is insert-only
- * prose, so retyping is lossless for the reader: `content`,
- * `previousValue` and `newValue` are untouched and the Thread rail renders
- * the same words either way — only the icon beside them changes.
- *
- * `status_change` becomes `state_change`: it recorded a Thread's health
- * moving, which is the nearest thing the app still models. The others were
- * only ever preserved prose, so they become plain notes.
+ * Retyping is lossless — `content`/`previousValue`/`newValue` are untouched,
+ * only the icon changes. `status_change` becomes `state_change`; the rest
+ * become notes.
  *
  * REQUIRED before deploying the schema that prunes the type union, alongside
  * `backfillAreaIcons`: that deploy validates every existing document, and an

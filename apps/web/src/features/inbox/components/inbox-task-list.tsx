@@ -21,15 +21,10 @@ interface InboxTaskListProps {
   onProcess?: (task: ProjectedTask) => void;
   /** Done Tasks loaded so far from `tasks.listDone`. */
   doneTasks?: ProjectedTask[];
-  /** Whether the Done page has been paginated to its end. Defaults to
-   *  `true` so callers that don't paginate keep the old "only render when
-   *  non-empty" behavior for the Completed section. */
+  /** Defaults to `true`: non-paginating callers render Completed only when non-empty. */
   isDoneExhausted?: boolean;
-  /** Whether another page of Done Tasks is available to fetch. */
   canLoadMoreDone?: boolean;
-  /** Whether a Done Task load-more request is currently in flight. */
   isLoadingMoreDone?: boolean;
-  /** Fetches the next page of Done Tasks. */
   onLoadMoreDone?: () => void;
 }
 

@@ -29,11 +29,8 @@ import { cn } from "@/lib/utils";
 interface ActivityLogProps {
   logs: ProjectedActivityLog[] | undefined;
   onAddNote: (text: string) => Promise<void> | void;
-  /** Whether another page of older entries is available to fetch. */
   canLoadMore?: boolean;
-  /** Whether a load-more request is currently in flight. */
   isLoadingMore?: boolean;
-  /** Fetches the next page of older entries. */
   onLoadMore?: () => void;
 }
 

@@ -8,15 +8,9 @@ export const RESERVED_AREA_SLUGS = new Set([
 ]);
 
 /**
- * The trimmed form of a name the user typed, or a thrown error when trimming
- * leaves nothing.
- *
- * Every surface that titles something — an Area, a Thread, a Task — names it
- * through here, so `"  "` is refused identically everywhere and what reaches
- * the database is what the user would recognize, without the stray
- * whitespace that leading and trailing spaces would otherwise preserve.
- *
- * `label` names the field in the error, e.g. `"Area name cannot be empty"`.
+ * The trimmed name, or a thrown "<label> cannot be empty". Every surface that
+ * titles something names it through here, so blanks are refused identically
+ * everywhere.
  */
 export function requireTitle(value: string, label: string): string {
   const trimmed = value.trim();
@@ -27,12 +21,9 @@ export function requireTitle(value: string, label: string): string {
 }
 
 /**
- * The Area name to store: trimmed, non-blank, and not one of the words the
- * router already owns as a top-level path.
- *
- * Returning the trimmed name rather than validating in place is what keeps
- * the reserved-slug check honest — a caller cannot check one string and then
- * store a differently-trimmed one.
+ * The Area name to store. Returning the trimmed name rather than validating
+ * in place keeps the reserved-slug check honest — a caller cannot check one
+ * string and store a differently-trimmed one.
  */
 export function validateAreaName(name: string): string {
   const trimmed = requireTitle(name, "Area name");

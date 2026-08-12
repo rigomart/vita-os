@@ -58,22 +58,14 @@ const DENSITY_OPTIONS: {
 ];
 
 /**
- * Plan — the Area × day canvas.
+ * Plan — the Area × day canvas. One shared compressing day ruler; every Area is
+ * a band beneath it, every chip on its exact calendar day.
  *
- * One shared, continuous day ruler across the top; every Area is a horizontal
- * band beneath it and every chip sits on its exact calendar day. The axis
- * *compresses*: days nothing is planned on shrink to a tick, so a fortnight of
- * real dates costs about as much width as a handful of fuzzy horizon columns —
- * and a drop is always a specific date, never a bucket the app resolves for you.
- *
- * Dragging along a lane retargets the day (a Thread's Follow-up, a Task's
- * When). Dragging across lanes moves the Thread's Area. Dragging up onto the
- * ruler retargets the day without leaving the lane. Every drop writes straight
- * through the app's own mutations, so it is logged and reversible by dragging
- * back — the canvas keeps no staged state of its own.
- *
- * Opening a chip opens the Thread rail in place via `?thread=<slug>`; Plan adds
- * no second editor.
+ * Dragging along a lane retargets the day, across lanes moves the Thread's
+ * Area, up onto the ruler retargets the day without leaving the lane. Every
+ * drop writes straight through the app's own mutations — no staged state, and
+ * dragging back is the undo. Opening a chip opens the Thread rail via
+ * `?thread=<slug>`.
  */
 export function PlanCanvas({
   areas,
@@ -175,8 +167,6 @@ export function PlanCanvas({
     [lanes, inbox, totals, axis.days],
   );
 
-  /* ------------------------------------------- horizontal scroll edges -- */
-
   useEffect(() => {
     const node = scrollNode;
     if (!node || typeof ResizeObserver === "undefined") return;
@@ -202,8 +192,6 @@ export function PlanCanvas({
     };
   }, [scrollNode, axis.minWidth, lanes.length]);
 
-  /* ------------------------------------------------------------- open -- */
-
   function openItem(item: PlanItem) {
     // Tasks have no rail of their own; the Inbox is where a Task is handled.
     if (item.kind === "task") {
@@ -216,8 +204,6 @@ export function PlanCanvas({
       search: (previous) => ({ ...previous, thread: item.slug }),
     });
   }
-
-  /* ------------------------------------------------------------- drag -- */
 
   function areaName(laneId: string): string {
     if (laneId === INBOX_LANE_ID) return "Inbox";
@@ -293,8 +279,6 @@ export function PlanCanvas({
   const dropPlan = drag ? planDrop(drag, axis, areaName) : null;
 
   const chrome = { axis, density, drag, narrow, now, onOpen: openItem };
-
-  /* ------------------------------------------------------------ render -- */
 
   return (
     <section aria-label="Plan" className="flex flex-col gap-3">

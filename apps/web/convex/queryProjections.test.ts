@@ -6,14 +6,10 @@ import { api } from "./_generated/api";
 import { FIRST_PAGE, seed, setupTest, signIn } from "./test.helpers";
 
 /**
- * Public queries return a projection of a document, not the document.
- *
- * The `returns:` validators are what enforce that — `convex-test` runs them,
- * so every other test in this directory would already fail if a handler let
- * an undeclared field through. What these tests add is the half a validator
- * cannot state on its own: that the projections *agree* on which fields they
- * keep, and that the one field no query may ever carry is absent from all of
- * them at once, including from the composites that nest documents two deep.
+ * The `returns:` validators already stop an undeclared field escaping. What
+ * these add is that the projections *agree* on which fields they keep, and
+ * that `userId` is absent from all of them at once — composites that nest
+ * documents two deep included.
  */
 
 /** Every object anywhere in a query result, including nested ones. */

@@ -363,7 +363,7 @@ describe("ThreadDetailView", () => {
         screen.getByRole("heading", { name: "Activity log" }),
       ),
     ).toBe(false);
-    // No scroll container wraps the whole pane content anymore.
+    // No scroll container wraps the whole pane content.
     expect(header.closest(".overflow-y-auto")).toBeNull();
   });
 

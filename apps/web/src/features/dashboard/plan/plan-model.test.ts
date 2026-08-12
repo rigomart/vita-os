@@ -185,7 +185,6 @@ describe("day rollover", () => {
     expect(ids(after.lane.byDay.get("d8"))).toEqual(["far"]);
     expect(after.axis.days[8].at).toBe(dayAt(9, now));
 
-    // And an undated one is still undated.
     expect(ids(after.lane.none)).toEqual(["undated"]);
   });
 });

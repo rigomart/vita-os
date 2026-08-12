@@ -1,7 +1,3 @@
-/**
- * Slugifies a string: lowercase, replace non-alphanumeric with hyphens,
- * collapse consecutive hyphens, trim leading/trailing hyphens.
- */
 export function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -10,10 +6,7 @@ export function slugify(text: string): string {
     .replace(/^-|-$/g, "");
 }
 
-/**
- * Generates a Notion-style slug: slugified-name-8charsuffix.
- * The suffix is 8 hex characters from crypto.getRandomValues.
- */
+/** Notion-style slug: `slugified-name-8hex`. */
 export function generateSlug(name: string): string {
   const base = slugify(name);
   const bytes = new Uint8Array(4);
