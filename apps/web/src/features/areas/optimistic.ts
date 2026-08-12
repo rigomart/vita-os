@@ -4,7 +4,12 @@ import type { OptimisticLocalStore } from "convex/browser";
 import { api } from "@convex/_generated/api";
 import { nullsToUndefined } from "@convex/lib/patch";
 
-import { nextOrder, patchById, removeById } from "@/features/shared/optimistic";
+import {
+  nextOrder,
+  patchById,
+  patchQuery,
+  removeById,
+} from "@/features/shared/optimistic";
 
 type Area = Doc<"areas">;
 
@@ -44,15 +49,12 @@ export function optimisticallyCreateArea(
   localStore: OptimisticLocalStore,
   args: CreateAreaArgs,
 ): void {
-  const current = localStore.getQuery(api.areas.list, {});
-  if (current === undefined) return;
-
-  localStore.setQuery(api.areas.list, {}, [
-    ...current,
+  patchQuery(localStore, api.areas.list, {}, (areas) => [
+    ...areas,
     buildOptimisticArea(args, {
       id: crypto.randomUUID() as Id<"areas">,
       now: Date.now(),
-      order: nextOrder(current),
+      order: nextOrder(areas),
     }),
   ]);
 }
@@ -65,29 +67,19 @@ export function optimisticallyUpdateArea(
   const { id, ...updates } = args;
   const patch = nullsToUndefined(updates);
 
-  const current = localStore.getQuery(api.areas.list, {});
-  if (current !== undefined) {
-    localStore.setQuery(api.areas.list, {}, patchById(current, id, patch));
-  }
-
-  const single = localStore.getQuery(api.areas.get, { id });
-  if (single !== undefined && single !== null) {
-    localStore.setQuery(api.areas.get, { id }, { ...single, ...patch });
-  }
-
-  const bySlug = localStore.getQuery(api.areas.getBySlug, {
-    slug: options.areaSlug,
-  });
-  if (bySlug !== undefined && bySlug !== null) {
-    localStore.setQuery(
-      api.areas.getBySlug,
-      { slug: options.areaSlug },
-      {
-        ...bySlug,
-        ...patch,
-      },
-    );
-  }
+  patchQuery(localStore, api.areas.list, {}, (areas) =>
+    patchById(areas, id, patch),
+  );
+  patchQuery(localStore, api.areas.get, { id }, (area) => ({
+    ...area,
+    ...patch,
+  }));
+  patchQuery(
+    localStore,
+    api.areas.getBySlug,
+    { slug: options.areaSlug },
+    (area) => ({ ...area, ...patch }),
+  );
 }
 
 export function optimisticallyRemoveArea(
@@ -95,10 +87,9 @@ export function optimisticallyRemoveArea(
   args: { id: Id<"areas"> },
   options: { areaSlug: string },
 ): void {
-  const current = localStore.getQuery(api.areas.list, {});
-  if (current !== undefined) {
-    localStore.setQuery(api.areas.list, {}, removeById(current, args.id));
-  }
+  patchQuery(localStore, api.areas.list, {}, (areas) =>
+    removeById(areas, args.id),
+  );
   localStore.setQuery(api.areas.get, { id: args.id }, null);
   localStore.setQuery(api.areas.getBySlug, { slug: options.areaSlug }, null);
 }

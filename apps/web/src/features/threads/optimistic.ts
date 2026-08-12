@@ -4,7 +4,12 @@ import type { OptimisticLocalStore } from "convex/browser";
 import { api } from "@convex/_generated/api";
 import { nullsToUndefined } from "@convex/lib/patch";
 
-import { nextOrder, patchById, removeById } from "@/features/shared/optimistic";
+import {
+  nextOrder,
+  patchById,
+  patchQuery,
+  removeById,
+} from "@/features/shared/optimistic";
 
 type Thread = Doc<"threads">;
 
@@ -52,15 +57,12 @@ export function optimisticallyCreateThreadInList(
   localStore: OptimisticLocalStore,
   args: CreateThreadArgs,
 ): void {
-  const current = localStore.getQuery(api.threads.list, {});
-  if (current === undefined) return;
-
-  localStore.setQuery(api.threads.list, {}, [
-    ...current,
+  patchQuery(localStore, api.threads.list, {}, (threads) => [
+    ...threads,
     buildOptimisticThread(args, {
       id: crypto.randomUUID() as Id<"threads">,
       now: Date.now(),
-      order: nextOrder(current),
+      order: nextOrder(threads),
     }),
   ]);
 }
@@ -70,19 +72,19 @@ export function optimisticallyCreateThreadInArea(
   args: CreateThreadArgs,
   options: { areaId: Id<"areas"> },
 ): void {
-  const current = localStore.getQuery(api.threads.listByArea, {
-    areaId: options.areaId,
-  });
-  if (current === undefined) return;
-
-  localStore.setQuery(api.threads.listByArea, { areaId: options.areaId }, [
-    ...current,
-    buildOptimisticThread(args, {
-      id: crypto.randomUUID() as Id<"threads">,
-      now: Date.now(),
-      order: nextOrder(current),
-    }),
-  ]);
+  patchQuery(
+    localStore,
+    api.threads.listByArea,
+    { areaId: options.areaId },
+    (threads) => [
+      ...threads,
+      buildOptimisticThread(args, {
+        id: crypto.randomUUID() as Id<"threads">,
+        now: Date.now(),
+        order: nextOrder(threads),
+      }),
+    ],
+  );
 }
 
 export function optimisticallyUpdateThread(
@@ -97,32 +99,27 @@ export function optimisticallyUpdateThread(
       ? { ...patch, nextMove: undefined, followUp: undefined }
       : patch;
 
-  const current = localStore.getQuery(api.threads.list, {});
-  if (current !== undefined) {
-    localStore.setQuery(
-      api.threads.list,
-      {},
-      threadPatch.state === "resolved"
-        ? removeById(current, id)
-        : patchById(current, id, threadPatch),
-    );
-  }
-
-  const single = localStore.getQuery(api.threads.get, { id });
-  if (single !== undefined && single !== null) {
-    localStore.setQuery(api.threads.get, { id }, { ...single, ...threadPatch });
-  }
-
   const bySlug = localStore.getQuery(api.threads.getBySlug, {
     slug: options.threadSlug,
   });
-  if (bySlug !== undefined && bySlug !== null) {
-    localStore.setQuery(
-      api.threads.getBySlug,
-      { slug: options.threadSlug },
-      { ...bySlug, ...threadPatch },
-    );
-  }
+
+  patchQuery(localStore, api.threads.list, {}, (threads) =>
+    threadPatch.state === "resolved"
+      ? removeById(threads, id)
+      : patchById(threads, id, threadPatch),
+  );
+
+  patchQuery(localStore, api.threads.get, { id }, (thread) => ({
+    ...thread,
+    ...threadPatch,
+  }));
+
+  patchQuery(
+    localStore,
+    api.threads.getBySlug,
+    { slug: options.threadSlug },
+    (thread) => ({ ...thread, ...threadPatch }),
+  );
 
   if (
     (threadPatch.areaId !== undefined || threadPatch.state === "resolved") &&
@@ -134,31 +131,23 @@ export function optimisticallyUpdateThread(
       previousAreaId !== threadPatch.areaId ||
       threadPatch.state === "resolved"
     ) {
-      const previousAreaThreads = localStore.getQuery(api.threads.listByArea, {
-        areaId: previousAreaId,
-      });
-      if (previousAreaThreads !== undefined) {
-        localStore.setQuery(
-          api.threads.listByArea,
-          { areaId: previousAreaId },
-          removeById(previousAreaThreads, id),
-        );
-      }
+      patchQuery(
+        localStore,
+        api.threads.listByArea,
+        { areaId: previousAreaId },
+        (threads) => removeById(threads, id),
+      );
 
       if (
         threadPatch.areaId !== undefined &&
         threadPatch.state !== "resolved"
       ) {
-        const nextAreaThreads = localStore.getQuery(api.threads.listByArea, {
-          areaId: threadPatch.areaId,
-        });
-        if (nextAreaThreads !== undefined) {
-          localStore.setQuery(
-            api.threads.listByArea,
-            { areaId: threadPatch.areaId },
-            [...nextAreaThreads, { ...bySlug, ...threadPatch }],
-          );
-        }
+        patchQuery(
+          localStore,
+          api.threads.listByArea,
+          { areaId: threadPatch.areaId },
+          (threads) => [...threads, { ...bySlug, ...threadPatch }],
+        );
       }
     }
   }
@@ -169,22 +158,17 @@ export function optimisticallyRemoveThread(
   args: { id: Id<"threads"> },
   options: { threadSlug?: string; areaId?: Id<"areas"> } = {},
 ): void {
-  const current = localStore.getQuery(api.threads.list, {});
-  if (current !== undefined) {
-    localStore.setQuery(api.threads.list, {}, removeById(current, args.id));
-  }
+  patchQuery(localStore, api.threads.list, {}, (threads) =>
+    removeById(threads, args.id),
+  );
 
   if (options.areaId !== undefined) {
-    const areaThreads = localStore.getQuery(api.threads.listByArea, {
-      areaId: options.areaId,
-    });
-    if (areaThreads !== undefined) {
-      localStore.setQuery(
-        api.threads.listByArea,
-        { areaId: options.areaId },
-        removeById(areaThreads, args.id),
-      );
-    }
+    patchQuery(
+      localStore,
+      api.threads.listByArea,
+      { areaId: options.areaId },
+      (threads) => removeById(threads, args.id),
+    );
   }
 
   localStore.setQuery(api.threads.get, { id: args.id }, null);
@@ -202,34 +186,18 @@ export function optimisticallyCompleteNextMove(
   args: { id: Id<"threads"> },
   options: { threadSlug: string },
 ): void {
-  const current = localStore.getQuery(api.threads.list, {});
-  if (current !== undefined) {
-    localStore.setQuery(
-      api.threads.list,
-      {},
-      current.map((thread) =>
-        thread._id === args.id ? completeNextMove(thread) : thread,
-      ),
-    );
-  }
+  patchQuery(localStore, api.threads.list, {}, (threads) =>
+    threads.map((thread) =>
+      thread._id === args.id ? completeNextMove(thread) : thread,
+    ),
+  );
 
-  const single = localStore.getQuery(api.threads.get, { id: args.id });
-  if (single !== undefined && single !== null) {
-    localStore.setQuery(
-      api.threads.get,
-      { id: args.id },
-      completeNextMove(single),
-    );
-  }
+  patchQuery(localStore, api.threads.get, { id: args.id }, completeNextMove);
 
-  const bySlug = localStore.getQuery(api.threads.getBySlug, {
-    slug: options.threadSlug,
-  });
-  if (bySlug !== undefined && bySlug !== null) {
-    localStore.setQuery(
-      api.threads.getBySlug,
-      { slug: options.threadSlug },
-      completeNextMove(bySlug),
-    );
-  }
+  patchQuery(
+    localStore,
+    api.threads.getBySlug,
+    { slug: options.threadSlug },
+    completeNextMove,
+  );
 }
