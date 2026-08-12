@@ -48,7 +48,6 @@ jobs:
         env:
           VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
           VITE_CONVEX_SITE_URL: ${{ vars.VITE_CONVEX_SITE_URL }}
-          VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
 
       - name: Route-split chunk check
         working-directory: apps/web

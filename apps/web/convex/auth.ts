@@ -7,8 +7,6 @@ import type { DataModel } from "./_generated/dataModel";
 import { components } from "./_generated/api";
 import authConfig from "./auth.config";
 
-const siteUrl = process.env.SITE_URL ?? "";
-
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
@@ -22,8 +20,12 @@ function requireEnv(name: string): string {
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
+  // Read lazily: module scope runs during Convex function analysis, before
+  // deployment env vars are guaranteed to be set.
+  const siteUrl = requireEnv("SITE_URL");
+
   return betterAuth({
-    baseURL: process.env.CONVEX_SITE_URL,
+    baseURL: requireEnv("CONVEX_SITE_URL"),
     trustedOrigins: [siteUrl],
     database: authComponent.adapter(ctx),
     emailAndPassword: {

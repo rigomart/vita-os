@@ -2,6 +2,22 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Environment
+
+Client variables live in `apps/web/.env.local`. Copy `apps/web/.env.example` to start; `bunx convex dev` writes `VITE_CONVEX_URL` (and `CONVEX_DEPLOYMENT`) for you, while `VITE_CONVEX_SITE_URL` is set by hand — the same host with a `.site` TLD:
+
+- `VITE_CONVEX_URL` — Convex deployment URL (`…convex.cloud`), used by the Convex React client.
+- `VITE_CONVEX_SITE_URL` — Convex site URL (`…convex.site`), used as the Better Auth client `baseURL`.
+
+Backend variables live in the Convex deployment, not in any file. Set each with `npx convex env set <NAME> <value>`:
+
+- `SITE_URL` — the web app's origin; used for Better Auth trusted origins and cross-domain cookies.
+- `CONVEX_SITE_URL` — the Convex site URL (`…convex.site`); Better Auth's server `baseURL`. Convex provides this automatically; you only set it manually if you override it.
+- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` — GitHub OAuth app credentials.
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — Google OAuth client credentials.
+
+Missing variables throw at startup naming the variable, on both the client and the Convex backend.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh

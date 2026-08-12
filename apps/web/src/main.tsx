@@ -19,16 +19,13 @@ import {
   useTheme,
 } from "./features/theme/theme-provider";
 import { authClient } from "./lib/auth-client";
+import { CONVEX_URL } from "./lib/env";
 import { routeTree } from "./routeTree.gen";
 import "@vita-os/ui/globals.css";
 
 initializeTheme();
 
-if (!import.meta.env.VITE_CONVEX_URL) {
-  throw new Error("VITE_CONVEX_URL is not set");
-}
-
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL, {
+const convex = new ConvexReactClient(CONVEX_URL, {
   expectAuth: true,
 });
 
