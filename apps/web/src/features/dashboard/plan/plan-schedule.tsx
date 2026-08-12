@@ -60,24 +60,13 @@ import {
 } from "./plan-schedule-model";
 
 /**
- * Plan — the phone schedule.
- *
- * The canvas's model in the shape every phone already knows: a vertical agenda.
- * Area collapses from a lane into a chip attribute (condition rail, icon pill,
- * meta line) and the filter chips do the narrowing lane headers do on desktop —
- * what changes is the *date furniture*.
- *
- * A day is not a banner across the top of its chips: it is a rail down the
- * left, weekday over day number, drawn identically on every rendered day.
- * Months announce themselves in a slim band that pins under the app bar. The
- * near horizon prints every day, empty ones included — an empty Thursday keeps
- * its whole rail and loses only its chips, so it reads as a place, not an
- * absence — and only the quiet stretches past that horizon fold into a tappable
+ * Plan — the phone schedule: the canvas's model as a vertical agenda. Area
+ * collapses from a lane into a chip attribute; the near horizon prints every
+ * day, empty ones included, and quiet stretches past it fold into a tappable
  * "N quiet days".
  *
- * The list opens on today and keeps a floating **Today** pill for when you have
- * wandered off it. A long-press lifts a chip; dropping it on a day writes the
- * date straight through the app's own mutations, exactly as the canvas does.
+ * Opens on today. A long-press lifts a chip; dropping it writes the date
+ * through the app's own mutations, as the canvas does.
  */
 export function PlanSchedule({
   areas,
@@ -147,8 +136,6 @@ export function PlanSchedule({
     return counts;
   }, [items]);
 
-  /* ------------------------------------------------------------ today -- */
-
   /**
    * How much of the top of the viewport is already spoken for. The app bar is
    * fixed, but the month band under it is type that reflows, so it is measured
@@ -188,8 +175,6 @@ export function PlanSchedule({
     return () => observer.disconnect();
   }, [topInset]);
 
-  /* ------------------------------------------------------------- open -- */
-
   function openItem(item: PlanItem) {
     // Tasks have no rail of their own; the Inbox is where a Task is handled.
     if (item.kind === "task") {
@@ -202,8 +187,6 @@ export function PlanSchedule({
       search: (previous) => ({ ...previous, thread: item.slug }),
     });
   }
-
-  /* ------------------------------------------------------------- drag -- */
 
   function handleDragStart(event: DragStartEvent) {
     const data = event.active.data.current as ScheduleDragData | undefined;
@@ -218,11 +201,7 @@ export function PlanSchedule({
     );
   }
 
-  /**
-   * The write is decided from the event alone, never from `drag` state: a drop
-   * that lands in the same frame as the last move would otherwise read a stale
-   * hover target and plan the wrong day.
-   */
+  /** Decided from the event alone, never from `drag` state — see the note in `plan-canvas.tsx`. */
   function handleDragEnd(event: DragEndEvent) {
     setDrag(null);
 
@@ -262,8 +241,6 @@ export function PlanSchedule({
 
   const chrome: ScheduleChrome = { areaById, drag, now, onOpen: openItem };
   const firstBandKey = schedule.rows.find((row) => row.kind === "month")?.key;
-
-  /* ------------------------------------------------------------ render -- */
 
   return (
     <section aria-label="Plan" className="flex flex-col gap-2.5">
@@ -440,12 +417,7 @@ const RAIL = "w-12 shrink-0";
  */
 const ROW_MIN = "min-h-10";
 
-/* -- The knobs below are the whole visual vocabulary of this surface. -- */
-
-/**
- * Three fixed muting steps. Every faint tone here picks one of them rather than
- * inventing an alpha, so "quiet" reads as a ladder, not as noise.
- */
+/** The three muting steps. Faint tones pick one rather than inventing an alpha. */
 const MUTE = "text-muted-foreground";
 const MUTE_SOFT = "text-muted-foreground/70";
 const MUTE_FAINT = "text-muted-foreground/40";
@@ -454,10 +426,7 @@ const MUTE_FAINT = "text-muted-foreground/40";
 const HAIRLINE = "border-border/50";
 const HAIRLINE_BG = "bg-border/50";
 
-/**
- * Chips are objects, not structure, so their edge sits one step above the
- * hairline — but it is still a single value shared by both chip kinds.
- */
+/** One step above the hairline; shared by both chip kinds. */
 const CHIP_EDGE = "border-border/70";
 
 /** One tracking value for every uppercase micro-label. */
@@ -491,16 +460,9 @@ function MonthBand({
 }
 
 /**
- * The date marker of the whole surface, and the only one.
- *
- * Weekday over day number in a fixed rail, with *identical* layout, type and
- * x-alignment on every rendered day — occupied, empty, weekend, today. A
- * quieter day changes only its tone; nothing shifts, nothing shrinks, so a run
- * of empty Thursdays still scans as the same column of dates.
- *
- * Every day number already sits in a 24px disc; today is the one where the disc
- * is filled. That is the whole today treatment — the phone-calendar idiom, in
- * the same accent the desktop ruler paints its now-rule with.
+ * The date rail: weekday over day number, with *identical* layout, type and
+ * x-alignment on every rendered day — a quieter day changes only its tone.
+ * Today is the one day whose 24px disc is filled.
  */
 function DayRail({
   date,
@@ -550,13 +512,9 @@ function DayRail({
 const NO_ITEMS: PlanItem[] = [];
 
 /**
- * One calendar day: rail on the left, chips stacked to its right.
- *
- * An empty day keeps the row, the rail and the hairline, and loses only the
- * chips — so the day stays a visible, droppable place roughly a fingertip tall.
- * Today is the same row, marked: the filled disc in the rail, plus one faint
- * wash so it can be found while scrolling. Nothing else — no accent rule, no
- * extra height, no borrowed border colour.
+ * One calendar day: rail left, chips right. An empty day keeps its row, rail
+ * and hairline so it stays a visible, fingertip-tall drop target. Today adds
+ * a filled disc and one faint wash — nothing else.
  */
 function DayRow({
   chrome,
@@ -818,12 +776,10 @@ function NoDateSection({
 /* ------------------------------------------------------------------ chip -- */
 
 /**
- * Presentation only, so the lifted ghost is identical to the row it left.
- *
- * The chip *is* the Area label: a condition rail down its left edge and the
- * Area's icon in a condition-toned pill — a calendar event block that happens
- * to carry an Area instead of a colour-coded calendar. An inbox Task wears a
- * dashed pill and the Inbox glyph instead; it has no Area to wear.
+ * Presentation only, so the lifted ghost is identical to the row it left. The
+ * chip *is* the Area label: a condition rail down its left edge and the
+ * Area's icon in a condition-toned pill. An inbox Task wears a dashed pill and
+ * the Inbox glyph.
  */
 function ChipSurface({
   areaById,

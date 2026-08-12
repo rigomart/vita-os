@@ -4,10 +4,7 @@ import type { DataModel } from "../_generated/dataModel";
 
 import { authComponent } from "../auth";
 
-/**
- * Get the authenticated user's ID (throws if not authenticated).
- * Use in mutations.
- */
+/** Throws when the caller is not authenticated. */
 export async function getAuthUserId(
   ctx: GenericMutationCtx<DataModel>,
 ): Promise<string> {
@@ -15,10 +12,6 @@ export async function getAuthUserId(
   return String(user._id);
 }
 
-/**
- * Get the authenticated user's ID or null.
- * Use in queries.
- */
 export async function safeGetAuthUserId(
   ctx: GenericQueryCtx<DataModel>,
 ): Promise<string | null> {
@@ -29,9 +22,6 @@ export async function safeGetAuthUserId(
 
 type OrderedTable = "areas" | "threads";
 
-/**
- * Get the next order value for a table with a by_user_order index.
- */
 export async function getNextOrder(
   ctx: GenericQueryCtx<DataModel> | GenericMutationCtx<DataModel>,
   table: OrderedTable,

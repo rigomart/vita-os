@@ -19,17 +19,11 @@ export interface SlotDropData {
 }
 
 /**
- * The shared day axis, in two tiers.
+ * The shared day axis: a band naming the regions over a header of one cell per
+ * column, each with a bar drawn against the busiest day on screen.
  *
- * The **band** on top names the regions — the waiting bay, the months the near
- * days fall in, the coarse Later stretch, the No-date bay. The **header** below
- * it is one cell per column: an open day prints its weekday, its date and how
- * much is planned on it, over a bar drawn against the busiest day on screen; a
- * day nobody planned into keeps only its number and an empty length of the same
- * bar, so the axis compresses without changing species.
- *
- * The header row is also a drop target, so a chip can be dragged straight up to
- * a date without leaving its lane.
+ * The header row is also a drop target, so a chip can be dragged straight up
+ * to a date without leaving its lane.
  */
 export function AxisHeader({
   areaCount,

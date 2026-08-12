@@ -14,17 +14,12 @@ import {
 } from "./plan-model";
 
 /**
- * Model for the Plan schedule — the phone's vertical agenda.
+ * Model for the Plan schedule — the phone's vertical agenda. Where the canvas
+ * compresses sideways, this folds: the near horizon prints every day, empty
+ * ones included, and only the quiet stretches past it collapse into one
+ * "N quiet days" row.
  *
- * The canvas compresses its day axis sideways; a phone has no sideways to
- * spend, so this one runs down the screen and compresses by *folding*: the near
- * horizon prints every day, empty ones included — a calendar that hides
- * Thursday because nothing is on it stops being a calendar — and only the quiet
- * stretches past it collapse into a single "N quiet days" row.
- *
- * Same dates, same day keys and the same drop rules as the canvas: everything
- * here is pure, and the view rebuilds it from the dashboard query on every
- * render.
+ * Same dates, day keys and drop rules as the canvas; all pure.
  */
 
 /* -------------------------------------------------------------- schedule -- */

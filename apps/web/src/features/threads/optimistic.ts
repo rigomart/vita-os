@@ -41,8 +41,7 @@ type ThreadPatch = NullablePatch<
  * The pending Thread, shaped like the one the server will send back. Its slug
  * is a placeholder minted with the server's pattern but a different random
  * suffix, so it will NOT match the real slug — a link built from it only
- * resolves after navigation re-reads the slug the mutation returned, exactly
- * as with the pre-required-slug fallback.
+ * resolves after navigation re-reads the slug the mutation returned.
  */
 export function buildOptimisticThread(
   args: CreateThreadArgs,

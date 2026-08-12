@@ -13,15 +13,9 @@ import { setupTest, signIn } from "./test.helpers";
 const modules = import.meta.glob("./**/*.ts");
 
 /**
- * The schema as it stood before the tightening: `areas.icon` still optional,
- * and the Activity Log's type union still holding the four kinds nothing has
- * written since the Thread storage cutover.
- *
- * A migration exists precisely for documents the current schema rejects, so
- * its fixtures cannot be inserted under it — neither the type checker nor
- * `convex-test`'s validation would allow the shapes these migrations are
- * there to repair. Restating the loosened tables is what lets the tests seed
- * them; every other table comes from the real schema unchanged.
+ * The pre-tightening schema. A migration's whole purpose is documents the
+ * current schema rejects, so its fixtures cannot be seeded under it; only the
+ * loosened tables are restated, the rest come from the real schema.
  */
 const legacyActivityLogEntryTypeValidator = v.union(
   v.literal("note"),

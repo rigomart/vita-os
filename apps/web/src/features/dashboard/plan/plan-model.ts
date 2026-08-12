@@ -11,16 +11,12 @@ import type {
 import { DAY } from "@/features/dashboard/components/dashboard-model";
 
 /**
- * Model for the Plan canvas — the Area × *day* surface.
+ * Model for the Plan canvas — the Area × *day* surface. The day axis
+ * **compresses**: an unplanned day shrinks to a hairline tick, a day holding
+ * work opens to a full slot, so the axis stays short without losing day
+ * resolution.
  *
- * Where a horizon view buckets time into fuzzy columns, this one keeps a single
- * continuous day axis and lets it **compress**: a day nobody has planned into
- * shrinks to a hairline tick, a day that holds work opens to a full slot. The
- * axis therefore stays short without ever losing day resolution — every drop
- * still names an exact calendar day.
- *
- * Everything here is pure: the view rebuilds the whole axis from the dashboard
- * query on every render, and nothing it is handed is ever mutated.
+ * Everything here is pure; nothing handed in is mutated.
  */
 
 /* ----------------------------------------------------------------- items -- */
@@ -151,7 +147,6 @@ export interface DaySlot {
   isWeekStart: boolean;
   isWeekend: boolean;
   key: string;
-  /** Something is planned here. */
   occupied: boolean;
   offset: number;
   region: "later" | "near";

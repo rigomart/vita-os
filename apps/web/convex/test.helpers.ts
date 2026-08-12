@@ -15,10 +15,7 @@ import schema from "./schema";
  * Auth is real, not stubbed: the Better Auth component is registered with
  * `@convex-dev/better-auth/test` (its documented `register` helper), and
  * `signIn` seeds a `user` + non-expired `session` through the component's own
- * `adapter.create` mutation. `authComponent.getAuthUser` then resolves the
- * identity the same way it does in production — `ctx.auth.getUserIdentity()`,
- * then a session lookup by `identity.sessionId` and a user lookup by
- * `identity.subject` against the component's tables.
+ * `adapter.create` mutation.
  *
  * The double-dotted filename keeps this out of a Convex deploy: the CLI skips
  * every file in `convex/` whose name contains more than one dot.

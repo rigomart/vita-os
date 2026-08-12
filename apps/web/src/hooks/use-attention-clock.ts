@@ -1,17 +1,13 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * The attention clock — one "now" for every surface that reads a date.
+ * The attention clock — one "now" for every surface that reads a date. Inbox
+ * ordering, Thread grouping, the Dashboard date and the Plan axis all classify
+ * by *day*, so they share a timestamp that holds still for the local day and
+ * steps forward at local midnight.
  *
- * Inbox ordering, Thread attention grouping, the Dashboard date and the Plan
- * axis all classify by *day*, so they read a single timestamp that holds still
- * for the whole local day and steps forward once, at local midnight. Nothing
- * has to remount for the day to turn over, and no surface drifts onto its own
- * idea of today by reading the wall clock as it renders.
- *
- * The clock is a module-level store rather than per-component state so that
- * every consumer sees the same instant and the app arms one timer, not one per
- * mounted list.
+ * A module-level store, not per-component state: every consumer sees the same
+ * instant and the app arms one timer.
  */
 
 /** The midnight that opens the local calendar day after `at`. */

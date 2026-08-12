@@ -45,25 +45,12 @@ export const activityLogEntryTypeValidator = v.union(
 );
 
 /**
- * What a query hands back, as opposed to what a table stores.
+ * What a query hands back, as opposed to what a table stores. One projection
+ * per table, reused by every query returning that kind of document.
  *
- * Each table below has one projection, declared once and reused by every
- * query that returns that kind of document. Two things follow from that.
- *
- * `userId` never leaves the server. A caller only ever reads their own
- * documents — `lib/ownedAccess` sees to that — so the field answers a
- * question the client already knows the answer to, and shipping it would put
- * an internal identifier on the wire for no one to read.
- *
- * And because the projection is shared, documents stay interchangeable
- * between queries. The client's optimistic cache copies a Thread from
- * `threads.list` into `threads.detailBySlug` and both `areas.detailBySlug`
- * pages; were those three shapes to drift apart, the copy would write a value
- * the destination's own validator rejects.
- *
- * Each validator is paired with the function that produces it, so a field
- * cannot be declared without being projected, or projected without being
- * declared: `Infer` ties the two together at the type level.
+ * `userId` never leaves the server. And because the projection is shared,
+ * the optimistic cache can copy a document between queries without the
+ * destination's validator rejecting it.
  */
 
 export const projectedAreaValidator = v.object({
