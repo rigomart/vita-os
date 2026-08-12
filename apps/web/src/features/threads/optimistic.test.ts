@@ -92,4 +92,67 @@ describe("Thread optimistic updates", () => {
       followUp: undefined,
     });
   });
+
+  it("moves a Thread between the two Area lists it belongs to", () => {
+    const area1 = "area1" as Id<"areas">;
+    const area2 = "area2" as Id<"areas">;
+    const thread = makeThread({ slug: "book-checkup", areaId: area1 });
+    const other = makeThread({
+      _id: "thread2" as Id<"threads">,
+      areaId: area2,
+    });
+    const localStore = createLocalStore();
+
+    localStore.set(api.threads.list, {}, [thread]);
+    localStore.set(api.threads.listByArea, { areaId: area1 }, [thread]);
+    localStore.set(api.threads.listByArea, { areaId: area2 }, [other]);
+    localStore.set(api.threads.getBySlug, { slug: "book-checkup" }, thread);
+
+    optimisticallyUpdateThread(
+      localStore.store,
+      { id: thread._id, areaId: area2 },
+      { threadSlug: "book-checkup" },
+    );
+
+    const moved = { ...thread, areaId: area2 };
+    expect(localStore.get(api.threads.listByArea, { areaId: area1 })).toEqual(
+      [],
+    );
+    expect(localStore.get(api.threads.listByArea, { areaId: area2 })).toEqual([
+      other,
+      moved,
+    ]);
+    expect(localStore.get(api.threads.list, {})).toEqual([moved]);
+    expect(
+      localStore.get(api.threads.getBySlug, { slug: "book-checkup" }),
+    ).toEqual(moved);
+  });
+
+  it("resolves a Thread out of its Area list without landing it in another", () => {
+    const area1 = "area1" as Id<"areas">;
+    const area2 = "area2" as Id<"areas">;
+    const thread = makeThread({ slug: "book-checkup", areaId: area1 });
+    const other = makeThread({
+      _id: "thread2" as Id<"threads">,
+      areaId: area2,
+    });
+    const localStore = createLocalStore();
+
+    localStore.set(api.threads.listByArea, { areaId: area1 }, [thread]);
+    localStore.set(api.threads.listByArea, { areaId: area2 }, [other]);
+    localStore.set(api.threads.getBySlug, { slug: "book-checkup" }, thread);
+
+    optimisticallyUpdateThread(
+      localStore.store,
+      { id: thread._id, state: "resolved" },
+      { threadSlug: "book-checkup" },
+    );
+
+    expect(localStore.get(api.threads.listByArea, { areaId: area1 })).toEqual(
+      [],
+    );
+    expect(localStore.get(api.threads.listByArea, { areaId: area2 })).toEqual([
+      other,
+    ]);
+  });
 });

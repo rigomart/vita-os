@@ -7,6 +7,7 @@ import { createLocalStore } from "@/test/optimistic-local-store";
 
 import {
   isUnprocessedTask,
+  optimisticallyAddToOpenTasks,
   optimisticallyRemoveFromOpenTasks,
   optimisticallyReopenTask,
   patchOpenTasks,
@@ -125,6 +126,40 @@ describe("patchOpenTasks", () => {
   });
 });
 
+describe("optimisticallyAddToOpenTasks", () => {
+  it("adds the Task to tasks.list and derives tasks.count", () => {
+    const { store, get } = createLocalStore();
+    const existing = makeTask({ _id: "existing" as Id<"tasks">, createdAt: 1 });
+    store.setQuery(api.tasks.list, {}, [existing]);
+    store.setQuery(api.tasks.count, {}, 1);
+
+    const created = makeTask({ _id: "created" as Id<"tasks">, createdAt: 2 });
+    optimisticallyAddToOpenTasks(store, created);
+
+    expect(get(api.tasks.list, {})).toEqual([created, existing]);
+    expect(get(api.tasks.count, {})).toBe(2);
+  });
+
+  it("steps tasks.count up when only the count is cached", () => {
+    const { store, get } = createLocalStore();
+    store.setQuery(api.tasks.count, {}, 3);
+
+    optimisticallyAddToOpenTasks(store, makeTask());
+
+    expect(get(api.tasks.list, {})).toBeUndefined();
+    expect(get(api.tasks.count, {})).toBe(4);
+  });
+
+  it("is a no-op when neither cache has been populated yet", () => {
+    const { store, get } = createLocalStore();
+
+    optimisticallyAddToOpenTasks(store, makeTask());
+
+    expect(get(api.tasks.list, {})).toBeUndefined();
+    expect(get(api.tasks.count, {})).toBeUndefined();
+  });
+});
+
 describe("optimisticallyRemoveFromOpenTasks", () => {
   it("removes the Task from tasks.list and derives tasks.count", () => {
     const { store, get } = createLocalStore();
@@ -139,15 +174,28 @@ describe("optimisticallyRemoveFromOpenTasks", () => {
     expect(get(api.tasks.count, {})).toBe(1);
   });
 
-  it("never drops tasks.count below zero", () => {
+  it("re-derives a stale tasks.count instead of stepping it down", () => {
     const { store, get } = createLocalStore();
     const completing = makeTask({ _id: "completing" as Id<"tasks"> });
-    store.setQuery(api.tasks.list, {}, [completing]);
-    store.setQuery(api.tasks.count, {}, 0);
+    store.setQuery(api.tasks.list, {}, [
+      completing,
+      makeTask({ _id: "second" as Id<"tasks"> }),
+      makeTask({ _id: "third" as Id<"tasks"> }),
+    ]);
+    store.setQuery(api.tasks.count, {}, 5);
 
     optimisticallyRemoveFromOpenTasks(store, { id: completing._id });
 
-    expect(get(api.tasks.count, {})).toBe(0);
+    expect(get(api.tasks.count, {})).toBe(2);
+  });
+
+  it("leaves tasks.count alone when only the count is cached", () => {
+    const { store, get } = createLocalStore();
+    store.setQuery(api.tasks.count, {}, 3);
+
+    optimisticallyRemoveFromOpenTasks(store, { id: "task1" as Id<"tasks"> });
+
+    expect(get(api.tasks.count, {})).toBe(3);
   });
 
   it("leaves tasks.list alone when the Task isn't in the cached open list", () => {
@@ -269,10 +317,10 @@ describe("optimisticallyReopenTask", () => {
 
     optimisticallyRemoveFromOpenTasks(store, { id: first._id });
     optimisticallyRemoveFromOpenTasks(store, { id: second._id });
-    patchOpenTasks(store, (tasks) => [
+    optimisticallyAddToOpenTasks(
+      store,
       makeTask({ _id: "third" as Id<"tasks">, createdAt: 300 }),
-      ...tasks,
-    ]);
+    );
     optimisticallyReopenTask(store, { ...first, state: "done" });
 
     const list = get(api.tasks.list, {}) as Array<Doc<"tasks">>;

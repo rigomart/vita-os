@@ -10,9 +10,14 @@ type QueryValue<Query extends FunctionReference<"query">> = NonNullable<
 >;
 
 /**
- * Rewrite one cached query result. A query the client has no answer for yet —
- * never loaded, or loaded as a missing document — is left alone: there is
- * nothing to patch, and the server sends the real value soon enough.
+ * Rewrite one cached query result. A query the client has no answer for is
+ * left alone: `undefined` covers one never loaded, one still in flight, and
+ * one whose last result was an error, and `null` covers a document that isn't
+ * there. In each case there is nothing to patch and the server settles it.
+ *
+ * `patch` must be total. Convex replays optimistic updates from its server
+ * ingest loop, which doesn't guard them, so a throw from here propagates out
+ * and stops every query update until the page is reloaded.
  */
 export function patchQuery<Query extends FunctionReference<"query">>(
   localStore: OptimisticLocalStore,
