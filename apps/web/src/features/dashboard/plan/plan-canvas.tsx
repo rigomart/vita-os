@@ -30,6 +30,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import type { SlotDropData } from "./plan-axis";
 import type { ChipDragData } from "./plan-chip";
 import type { Density, DragState, PlanItem } from "./plan-model";
+import type { PlanActions } from "./use-plan-actions";
 
 import { AxisHeader } from "./plan-axis";
 import { ChipSurface } from "./plan-chip";
@@ -46,7 +47,6 @@ import {
   planDrop,
   slotTotals,
 } from "./plan-model";
-import { usePlanActions } from "./use-plan-actions";
 
 const DENSITY_OPTIONS: {
   icon: typeof Rows2;
@@ -78,17 +78,19 @@ const DENSITY_OPTIONS: {
 export function PlanCanvas({
   areas,
   currentDate,
+  planActions,
   tasks,
   threads,
 }: {
   areas: DashboardArea[];
   currentDate: number;
+  planActions: PlanActions;
   tasks: DashboardInboxTask[];
   threads: DashboardThread[];
 }) {
   const now = currentDate;
   const navigate = useNavigate();
-  const { planTask, planThread } = usePlanActions();
+  const { planTask, planThread } = planActions;
 
   const [density, setDensity] = useState<Density>("comfortable");
   const [drag, setDrag] = useState<DragState | null>(null);

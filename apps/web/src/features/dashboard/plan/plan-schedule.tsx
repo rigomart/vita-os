@@ -41,6 +41,7 @@ import {
 } from "@/features/areas/condition-presentation";
 
 import type { PlanItem, PlanItemKind } from "./plan-model";
+import type { PlanActions } from "./use-plan-actions";
 
 import { AreaFilterChips } from "./plan-filters";
 import {
@@ -56,7 +57,6 @@ import {
   monthLabel,
   planScheduleDrop,
 } from "./plan-schedule-model";
-import { usePlanActions } from "./use-plan-actions";
 
 /**
  * Plan — the phone schedule.
@@ -81,17 +81,19 @@ import { usePlanActions } from "./use-plan-actions";
 export function PlanSchedule({
   areas,
   currentDate,
+  planActions,
   tasks,
   threads,
 }: {
   areas: DashboardArea[];
   currentDate: number;
+  planActions: PlanActions;
   tasks: DashboardInboxTask[];
   threads: DashboardThread[];
 }) {
   const now = currentDate;
   const navigate = useNavigate();
-  const { planTask, planThread } = usePlanActions();
+  const { planTask, planThread } = planActions;
 
   const [activeAreas, setActiveAreas] = useState<ReadonlySet<string> | null>(
     null,
