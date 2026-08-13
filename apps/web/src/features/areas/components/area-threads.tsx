@@ -17,7 +17,7 @@ import {
   Plus,
   TriangleAlert,
 } from "lucide-react";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import {
   AttentionEmpty,
@@ -98,6 +98,17 @@ export function AreaThreads({
   ];
   const filledLanes = lanes.filter((lane) => lane.threads.length > 0);
   const total = filledLanes.reduce((sum, lane) => sum + lane.threads.length, 0);
+
+  // A lane that empties out resets to expanded, so it can never reappear
+  // pre-collapsed later without a user action.
+  const filledLaneKey = filledLanes.map((lane) => lane.id).join(" ");
+  useEffect(() => {
+    setCollapsedIds((previous) => {
+      const filled = new Set(filledLaneKey.split(" "));
+      const kept = [...previous].filter((id) => filled.has(id));
+      return kept.length === previous.size ? previous : new Set(kept);
+    });
+  }, [filledLaneKey]);
 
   const setLaneOpen = (id: string, open: boolean) => {
     setCollapsedIds((previous) => {

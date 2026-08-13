@@ -11,10 +11,10 @@ The **Inbox**, the **Dashboard Overview** thread column and the **Area** thread 
 
 ## Consequences
 
-- No visible group headings on any of the three lists. The attention groups survive as ordering only, expressed through row position and the rail.
+- No visible group headings on any of the three lists. The attention groups survive as ordering only, expressed through row position and the rail. (Superseded for the **Area** inventory by ADR 0009, which reintroduces visible attention lanes there; the Inbox and Dashboard stay flat.)
 - The **Dashboard** no longer collapses plain **Open Threads**; they sit inline at the end of the run.
 - The **Dashboard** puts dated **Upcoming Follow-ups** before undated **Threads with Next Moves**, reversing the previous group order, so the rail's dates stay in sequence.
-- The **Area** loses its "Follow-up schedule" and "No Follow-up" split in favour of one list under a Threads header.
+- The **Area** loses its "Follow-up schedule" and "No Follow-up" split in favour of one list under a Threads header. (Superseded by ADR 0009: the Area now groups the same order into collapsible attention lanes under a census line.)
 - **Task** rows drop the relative created-at timestamp; the rail is the only temporal signal on a row.
 - Lateness uses `condition-attention` everywhere rather than `destructive`.
 - **Done Tasks** stay in a collapsed disclosure. Completion is a different concern from attention.
