@@ -1,15 +1,12 @@
 // PROTOTYPE(thread-view) — throwaway. Variant B, "Command deck": the Next
-// Move is the hero; identity and definition are demoted to a compact strip.
+// Move is the hero. Everything else stays readable without a single click —
+// identity, full definition, state and follow-up are all on the surface.
 import type { Id } from "@convex/_generated/dataModel";
 import type { ProjectedThread } from "@convex/lib/validators";
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
-import { Badge } from "@vita-os/ui/components/badge";
 import { Button } from "@vita-os/ui/components/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@vita-os/ui/components/collapsible";
 import { DatePicker } from "@vita-os/ui/components/date-picker";
 import {
   InputGroup,
@@ -18,13 +15,13 @@ import {
   InputGroupTextarea,
 } from "@vita-os/ui/components/input-group";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
-import { isToday } from "date-fns";
+import { format, isToday } from "date-fns";
 import {
   ArrowUp,
   Bell,
   Check,
-  ChevronDown,
   CircleCheck,
+  History,
   Loader2,
   MoveRight,
   Plus,
@@ -40,7 +37,6 @@ import {
 
 import { EditableField } from "@/components/ui/editable-field";
 import { ThreadAreaSectionSection } from "@/features/threads/components/thread-area-section-section";
-import { ThreadDefinitionSection } from "@/features/threads/components/thread-definition-section";
 import {
   ActivityLogTimeline,
   ENTRY_PAD,
@@ -56,32 +52,145 @@ import type { ThreadVariantProps } from "./prototype-gate";
 
 import { useThreadActivity } from "./use-thread-activity";
 
-const EYEBROW = "text-[10px] font-medium tracking-[0.09em] uppercase";
+/** The app's micro-label and count-pill vocabulary (AttentionLane, PlanAxis). */
+const CAPS =
+  "font-heading text-[11px] font-semibold tracking-[0.08em] uppercase";
+const PILL = "rounded-full px-2 py-0.5 text-[11px] font-medium";
 
 export function VariantB({ thread, area }: ThreadVariantProps) {
   const isResolved = thread.state === "resolved";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <IdentityStrip thread={thread} area={area} />
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
+      <IdentityBlock thread={thread} area={area} isResolved={isResolved} />
 
       {isResolved ? (
-        <ResolvedHero />
+        <ResolvedDeck thread={thread} />
       ) : (
-        <>
-          <NextMoveHero thread={thread} />
+        <div className="flex shrink-0 flex-col gap-3">
+          <NextMoveDeck thread={thread} />
           <FollowUpStrip thread={thread} />
-        </>
+        </div>
       )}
 
-      <DeckLog threadId={thread._id} />
+      <ActivityDeck threadId={thread._id} />
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ hero */
+/* --------------------------------------------------------------- shared */
 
-function NextMoveHero({ thread }: { thread: ProjectedThread }) {
+/** Label + hairline rule: the same heading row the Area lanes use. */
+function DeckHeading({
+  icon: Icon,
+  label,
+  tone = "muted",
+  children,
+}: {
+  icon: LucideIcon;
+  label: string;
+  tone?: "muted" | "accent" | "healthy";
+  children?: ReactNode;
+}) {
+  const textClassName = {
+    muted: "text-muted-foreground",
+    accent: "text-brand-accent-foreground",
+    healthy: "text-condition-healthy",
+  }[tone];
+  const ruleClassName = {
+    muted: "bg-border/50",
+    accent: "bg-(--brand-gold-strong)/30",
+    healthy: "bg-condition-healthy/25",
+  }[tone];
+
+  return (
+    <div className="flex items-center gap-2">
+      <Icon aria-hidden className={cn("size-3.5 shrink-0", textClassName)} />
+      <h2 className={cn(CAPS, textClassName)}>{label}</h2>
+      {children}
+      <span aria-hidden className={cn("h-px flex-1", ruleClassName)} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------- identity */
+
+/**
+ * Everything that names the Thread, all of it visible: Area, state, title and
+ * the definition in full. Clicks are only ever needed to edit.
+ */
+function IdentityBlock({
+  thread,
+  area,
+  isResolved,
+}: {
+  thread: ProjectedThread;
+  area: ThreadVariantProps["area"];
+  isResolved: boolean;
+}) {
+  const { onThreadLocationChange } = useThreadPaneNav();
+  const updateThread = useUpdateThread(thread);
+
+  const handleTitleSave = async (title: string) => {
+    if (!title) return;
+    const result = await updateThread({ id: thread._id, title });
+    if (result?.slug && result.slug !== thread.slug) {
+      onThreadLocationChange({ areaSlug: area.slug, threadSlug: result.slug });
+    }
+  };
+
+  const handleSummarySave = (summary: string) => {
+    void updateThread({ id: thread._id, summary: summary || null });
+  };
+
+  return (
+    <header
+      aria-label="Thread identity"
+      className="flex shrink-0 flex-col gap-1.5"
+    >
+      {/* Clears the pane's floating lifecycle + close cluster. */}
+      <div className="flex min-h-7 items-center gap-2 pr-24">
+        <ThreadAreaSectionSection thread={thread} area={area} />
+        <span
+          className={cn(
+            PILL,
+            "shrink-0",
+            isResolved
+              ? "bg-condition-healthy-fill text-condition-healthy-fill-foreground"
+              : "bg-surface-3 text-muted-foreground",
+          )}
+        >
+          {isResolved ? "Resolved" : "Open"}
+        </span>
+      </div>
+
+      <EditableField
+        value={thread.title}
+        onSave={handleTitleSave}
+        inputAriaLabel="Thread title"
+        className="min-h-0 py-0 font-heading text-[15px] font-semibold tracking-tight"
+        displayClassName="block border-transparent"
+      />
+
+      {/* The definition in full — never clamped, never behind a disclosure. */}
+      <EditableField
+        value={thread.summary ?? ""}
+        onSave={handleSummarySave}
+        variant="textarea"
+        textareaRows={2}
+        inputAriaLabel="Thread definition"
+        placeholder="Add a definition…"
+        className="min-h-0 py-0.5 text-[13px] leading-relaxed text-muted-foreground"
+        displayClassName="border-transparent whitespace-pre-wrap"
+        editorClassName="rounded-md bg-muted/30 px-1.5"
+      />
+    </header>
+  );
+}
+
+/* ----------------------------------------------------------- next move */
+
+function NextMoveDeck({ thread }: { thread: ProjectedThread }) {
   const updateThread = useUpdateThread(thread);
   const completeNextMove = useCompleteNextMove(thread);
 
@@ -109,6 +218,7 @@ function NextMoveHero({ thread }: { thread: ProjectedThread }) {
   const move = thread.nextMove ?? "";
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(move);
+  const [newMove, setNewMove] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -118,15 +228,6 @@ function NextMoveHero({ thread }: { thread: ProjectedThread }) {
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
-
-  if (!move) {
-    return (
-      <EmptyNextMoveHero
-        onSet={(text) => setNextMove(text)}
-        isPending={isSetting}
-      />
-    );
-  }
 
   const commit = () => {
     if (isSetting) return;
@@ -139,171 +240,131 @@ function NextMoveHero({ thread }: { thread: ProjectedThread }) {
     }
   };
 
-  return (
-    <section
-      aria-label="Next move"
-      className="shrink-0 rounded-3xl border border-(--brand-gold-strong)/30 bg-gradient-to-b from-(--brand-gold)/15 to-transparent px-4 pt-3 pb-3.5"
-    >
-      <div className="flex items-center gap-1.5">
-        <MoveRight className="size-3.5 shrink-0 text-brand-accent-foreground" />
-        <h2 className={cn(EYEBROW, "text-brand-accent-foreground")}>
-          Next move
-        </h2>
-      </div>
+  const submitNew = async () => {
+    const trimmed = newMove.trim();
+    if (!trimmed || isSetting) return;
+    const result = await setNextMove(trimmed);
+    if (result.ok) setNewMove("");
+  };
 
-      <div className="mt-1.5">
-        {editing ? (
+  return (
+    <section aria-label="Next move" className="flex flex-col gap-2">
+      <DeckHeading
+        icon={MoveRight}
+        label="Next move"
+        tone={move ? "accent" : "muted"}
+      />
+
+      {move ? (
+        // Gold reads as a single accent edge, not a wash: the app's surfaces
+        // stay flat and the emphasis comes from the rule, the bar and the CTA.
+        <div className="rounded-lg border-l-2 border-(--brand-gold-strong) bg-surface-3/70 py-2.5 pr-2 pl-3">
+          {editing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={draft}
+              aria-label="Next move"
+              disabled={isSetting}
+              onChange={(event) => setDraft(event.target.value)}
+              onBlur={commit}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  commit();
+                }
+                if (event.key === "Escape") {
+                  setEditing(false);
+                  setDraft(move);
+                }
+              }}
+              className="-mx-1 w-full rounded-md bg-transparent px-1 py-0.5 font-heading text-[17px] font-semibold tracking-tight text-foreground outline-none ring-1 ring-ring"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="-mx-1 w-full cursor-text rounded-md px-1 py-0.5 text-left font-heading text-[17px] leading-snug font-semibold tracking-tight text-balance text-foreground transition-colors hover:bg-muted/60"
+            >
+              {move}
+            </button>
+          )}
+
+          <div className="mt-2.5 flex items-center gap-1">
+            <Button
+              size="sm"
+              onClick={() => void completeMove()}
+              disabled={isCompleting}
+              aria-busy={isCompleting}
+            >
+              {isCompleting ? (
+                <Loader2 data-icon="inline-start" className="animate-spin" />
+              ) : (
+                <Check data-icon="inline-start" />
+              )}
+              Mark it done
+            </Button>
+            {!editing && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() => setEditing(true)}
+              >
+                Edit
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="ml-auto text-muted-foreground/50 hover:text-destructive"
+              onClick={() => void clearNextMove()}
+              disabled={isClearing}
+              aria-busy={isClearing}
+              aria-label="Clear next move"
+            >
+              <X />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitNew();
+          }}
+          className="rounded-lg border border-dashed border-border py-2.5 pr-2 pl-3"
+        >
           <input
-            ref={inputRef}
             type="text"
-            value={draft}
+            value={newMove}
             aria-label="Next move"
             disabled={isSetting}
-            onChange={(event) => setDraft(event.target.value)}
-            onBlur={commit}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                commit();
-              }
-              if (event.key === "Escape") {
-                setEditing(false);
-                setDraft(move);
-              }
-            }}
-            className="-mx-1 w-full rounded-md bg-transparent px-1 py-0.5 font-heading text-[17px] font-semibold leading-snug tracking-tight text-foreground outline-none ring-1 ring-ring"
+            placeholder="What moves this forward?"
+            onChange={(event) => setNewMove(event.target.value)}
+            className="-mx-1 w-full rounded-md bg-transparent px-1 py-0.5 font-heading text-[17px] font-semibold tracking-tight text-foreground outline-none placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring"
           />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="-mx-1 w-full cursor-text rounded-md px-1 py-0.5 text-left font-heading text-[17px] font-semibold leading-snug tracking-tight text-balance text-foreground transition-colors hover:bg-foreground/5"
-          >
-            {move}
-          </button>
-        )}
-      </div>
-
-      <div className="mt-3 flex items-center gap-1">
-        <Button
-          size="sm"
-          onClick={() => void completeMove()}
-          disabled={isCompleting}
-          aria-busy={isCompleting}
-        >
-          {isCompleting ? (
-            <Loader2 data-icon="inline-start" className="animate-spin" />
-          ) : (
-            <Check data-icon="inline-start" />
-          )}
-          Mark it done
-        </Button>
-        {!editing && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground"
-            onClick={() => setEditing(true)}
-          >
-            Edit
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="ml-auto text-muted-foreground/50 hover:text-destructive"
-          onClick={() => void clearNextMove()}
-          disabled={isClearing}
-          aria-busy={isClearing}
-          aria-label="Clear next move"
-        >
-          <X />
-        </Button>
-      </div>
+          <div className="mt-2.5 flex items-center gap-2">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!newMove.trim() || isSetting}
+              aria-busy={isSetting}
+            >
+              <Plus data-icon="inline-start" />
+              Set next move
+            </Button>
+            <span className="text-[11px] text-muted-foreground">
+              One concrete step — nothing else.
+            </span>
+          </div>
+        </form>
+      )}
     </section>
   );
 }
 
-function EmptyNextMoveHero({
-  onSet,
-  isPending,
-}: {
-  onSet: (text: string) => Promise<{ ok: boolean }>;
-  isPending: boolean;
-}) {
-  const [text, setText] = useState("");
-
-  const submit = async () => {
-    const trimmed = text.trim();
-    if (!trimmed || isPending) return;
-    const result = await onSet(trimmed);
-    if (result.ok) setText("");
-  };
-
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    void submit();
-  };
-
-  return (
-    <section
-      aria-label="Next move"
-      className="shrink-0 rounded-3xl border border-dashed border-border bg-muted/25 px-4 pt-3 pb-3.5"
-    >
-      <div className="flex items-center gap-1.5">
-        <MoveRight className="size-3.5 shrink-0 text-muted-foreground" />
-        <h2 className={cn(EYEBROW, "text-muted-foreground")}>Next move</h2>
-      </div>
-
-      <form onSubmit={handleSubmit} className="mt-1.5">
-        <input
-          type="text"
-          value={text}
-          aria-label="Next move"
-          disabled={isPending}
-          placeholder="What moves this forward?"
-          onChange={(event) => setText(event.target.value)}
-          className="-mx-1 w-full rounded-md bg-transparent px-1 py-0.5 font-heading text-[17px] font-semibold leading-snug tracking-tight text-foreground outline-none placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring"
-        />
-        <div className="mt-3 flex items-center gap-2">
-          <Button
-            type="submit"
-            size="sm"
-            disabled={!text.trim() || isPending}
-            aria-busy={isPending}
-          >
-            <Plus data-icon="inline-start" />
-            Set next move
-          </Button>
-          <span className="text-[11px] text-muted-foreground">
-            One concrete step — nothing else.
-          </span>
-        </div>
-      </form>
-    </section>
-  );
-}
-
-function ResolvedHero() {
-  return (
-    <section
-      aria-label="Thread resolved"
-      className="shrink-0 rounded-3xl border border-border bg-muted/30 px-4 py-3.5"
-    >
-      <div className="flex items-center gap-2">
-        <CircleCheck className="size-4 shrink-0 text-condition-healthy" />
-        <h2 className="font-heading text-[15px] font-semibold tracking-tight">
-          Resolved
-        </h2>
-      </div>
-      <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
-        Nothing is pending here. What's below is the record of how it closed.
-      </p>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------- follow-up */
+/* ------------------------------------------------------------ follow-up */
 
 function FollowUpStrip({ thread }: { thread: ProjectedThread }) {
   const updateThread = useUpdateThread(thread);
@@ -324,105 +385,89 @@ function FollowUpStrip({ thread }: { thread: ProjectedThread }) {
     <div
       role="group"
       aria-label="Follow-up"
-      className="flex shrink-0 items-center gap-2 rounded-2xl border border-border/70 bg-muted/25 py-1 pr-1 pl-3"
+      className="flex h-8 items-center gap-2 rounded-lg pr-1 pl-0.5 transition-colors hover:bg-muted/50"
     >
-      <Bell className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="text-[11px] font-medium text-muted-foreground">
+      <Bell
+        aria-hidden
+        className={cn(
+          "size-3.5 shrink-0",
+          overdue ? "text-condition-attention" : "text-muted-foreground",
+        )}
+      />
+      <span
+        className={cn(
+          "text-[11px] font-medium",
+          overdue ? "text-condition-attention" : "text-muted-foreground",
+        )}
+      >
         Follow-up
       </span>
-      {overdue && (
-        <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
-          Overdue
-        </Badge>
+      {(overdue || dueToday) && (
+        <span
+          className={cn(
+            PILL,
+            "shrink-0",
+            overdue
+              ? "bg-condition-attention-fill text-condition-attention-fill-foreground"
+              : "bg-surface-3 text-brand-accent-foreground",
+          )}
+        >
+          {overdue ? "Overdue" : "Today"}
+        </span>
       )}
-      {dueToday && (
-        <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-          Today
-        </Badge>
-      )}
-      <div className="ml-auto">
-        <DatePicker
-          value={date}
-          onChange={(next) => void saveFollowUp(next ? next.getTime() : null)}
-          placeholder="Set a date"
-          disabled={isPending}
-        />
-      </div>
+      <DatePicker
+        value={date}
+        onChange={(next) => void saveFollowUp(next ? next.getTime() : null)}
+        placeholder="No date set"
+        disabled={isPending}
+        className="ml-auto"
+      />
     </div>
   );
 }
 
-/* -------------------------------------------------------------- identity */
+/* -------------------------------------------------------------- resolved */
 
-function IdentityStrip({
-  thread,
-  area,
-}: {
-  thread: ProjectedThread;
-  area: ThreadVariantProps["area"];
-}) {
-  const { onThreadLocationChange } = useThreadPaneNav();
-  const updateThread = useUpdateThread(thread);
-  const [aboutOpen, setAboutOpen] = useState(false);
-
-  const handleTitleSave = async (title: string) => {
-    if (!title) return;
-    const result = await updateThread({ id: thread._id, title });
-    if (result?.slug && result.slug !== thread.slug) {
-      onThreadLocationChange({ areaSlug: area.slug, threadSlug: result.slug });
-    }
-  };
+/** The hero goes quiet: no pending work, but nothing is hidden either. */
+function ResolvedDeck({ thread }: { thread: ProjectedThread }) {
+  const followUp = thread.followUp ? new Date(thread.followUp) : undefined;
 
   return (
-    <Collapsible
-      open={aboutOpen}
-      onOpenChange={setAboutOpen}
-      className="shrink-0"
-    >
-      {/* Row one keeps the pane's floating lifecycle/close cluster clear. */}
-      <div className="flex min-h-7 items-center gap-2 pr-24">
-        <ThreadAreaSectionSection thread={thread} area={area} />
-      </div>
-
-      <div className="mt-1.5 flex min-w-0 items-center gap-1">
-        <div className="min-w-0 flex-1">
-          <EditableField
-            value={thread.title}
-            onSave={handleTitleSave}
-            inputAriaLabel="Thread title"
-            className="font-heading text-[14px] font-semibold tracking-tight"
-            displayClassName="truncate border-b-0"
-          />
-        </div>
-        <CollapsibleTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="xs"
-              className="shrink-0 text-[11px] font-normal text-muted-foreground"
-            />
-          }
-        >
-          About
-          <ChevronDown
-            data-icon="inline-end"
-            className={cn("transition-transform", aboutOpen && "rotate-180")}
-          />
-        </CollapsibleTrigger>
-      </div>
-
-      <CollapsibleContent>
-        <div className="pt-1 pb-0.5">
-          <ThreadDefinitionSection thread={thread} />
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+    <section aria-label="Resolved" className="flex shrink-0 flex-col gap-2">
+      <DeckHeading icon={CircleCheck} label="Resolved" tone="healthy" />
+      <p className="text-[13px] leading-relaxed text-muted-foreground">
+        Nothing is pending on this Thread. What follows is the record of how it
+        got here.
+      </p>
+      {(thread.nextMove || followUp) && (
+        <dl className="flex flex-col gap-1 text-[13px] text-muted-foreground">
+          {thread.nextMove && (
+            <div className="flex items-baseline gap-1.5">
+              <dt className="shrink-0 text-[11px] text-muted-foreground/70">
+                Last next move
+              </dt>
+              <dd className="min-w-0 text-foreground/80">{thread.nextMove}</dd>
+            </div>
+          )}
+          {followUp && (
+            <div className="flex items-baseline gap-1.5">
+              <dt className="shrink-0 text-[11px] text-muted-foreground/70">
+                Follow-up
+              </dt>
+              <dd className="tabular-nums text-foreground/80">
+                {format(followUp, "MMM d, yyyy")}
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
+    </section>
   );
 }
 
-/* ------------------------------------------------------------------- log */
+/* ------------------------------------------------------------- activity */
 
-function DeckLog({ threadId }: { threadId: Id<"threads"> }) {
+function ActivityDeck({ threadId }: { threadId: Id<"threads"> }) {
   const { logs, canLoadMore, isLoadingMore, loadMore, addNote } =
     useThreadActivity(threadId);
 
@@ -453,18 +498,24 @@ function DeckLog({ threadId }: { threadId: Id<"threads"> }) {
   return (
     <section
       aria-label="Activity log"
-      className="flex min-h-0 flex-1 flex-col gap-2.5"
+      className="flex min-h-0 flex-1 flex-col gap-3"
     >
-      <div className="flex shrink-0 items-center gap-2">
-        <h2 className={cn(EYEBROW, "text-muted-foreground")}>Log</h2>
-        {logs && logs.length > 0 && (
-          <span className="text-[10px] text-muted-foreground/60">
-            {logs.length}
-          </span>
-        )}
-        <span aria-hidden className="h-px flex-1 bg-border/70" />
+      <div className="shrink-0">
+        <DeckHeading icon={History} label="Activity">
+          {logs && logs.length > 0 && (
+            <span
+              className={cn(
+                PILL,
+                "bg-surface-3 tabular-nums text-muted-foreground",
+              )}
+            >
+              {logs.length}
+            </span>
+          )}
+        </DeckHeading>
       </div>
 
+      {/* The one scrolling region in the pane. */}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="relative pb-6">
           <div
@@ -492,7 +543,7 @@ function DeckLog({ threadId }: { threadId: Id<"threads"> }) {
               <label htmlFor="deck-note" className="sr-only">
                 Activity log note
               </label>
-              <InputGroup className="border-border/70 bg-muted/25">
+              <InputGroup className="border-border/60 bg-muted/40">
                 <InputGroupTextarea
                   id="deck-note"
                   value={noteText}

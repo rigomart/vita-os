@@ -3,18 +3,19 @@ import type { ProjectedThread } from "@convex/lib/validators";
 import type { ReactNode } from "react";
 
 import { conditionLabels } from "@convex/lib/condition";
-import { Badge } from "@vita-os/ui/components/badge";
 import { Button } from "@vita-os/ui/components/button";
 import { DatePicker } from "@vita-os/ui/components/date-picker";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupTextarea,
-} from "@vita-os/ui/components/input-group";
+import { Textarea } from "@vita-os/ui/components/textarea";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
-import { format, formatDistanceToNow } from "date-fns";
-import { ArrowUp, Check, CircleCheck, X } from "lucide-react";
+import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
+import {
+  ArrowUp,
+  Check,
+  CircleCheck,
+  CircleDashed,
+  History,
+  X,
+} from "lucide-react";
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -23,9 +24,12 @@ import {
   useState,
 } from "react";
 
-import { conditionTextClassName } from "@/features/areas/condition-presentation";
+import { EditableField } from "@/components/ui/editable-field";
+import {
+  conditionIcons,
+  conditionTextClassName,
+} from "@/features/areas/condition-presentation";
 import { ThreadAreaSectionSection } from "@/features/threads/components/thread-area-section-section";
-import { ThreadDefinitionSection } from "@/features/threads/components/thread-definition-section";
 import { ThreadHeaderSection } from "@/features/threads/components/thread-header-section";
 import {
   ActivityLogTimeline,
@@ -41,43 +45,44 @@ import type { ThreadVariantProps } from "./prototype-gate";
 
 import { useThreadActivity } from "./use-thread-activity";
 
+/** Small-caps label, same recipe as the Activity log's day markers. */
+const LABEL_CLASS =
+  "text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase";
+
 export function VariantD({ thread, area }: ThreadVariantProps) {
   const { logs, canLoadMore, isLoadingMore, loadMore, addNote } =
     useThreadActivity(thread._id);
   const isResolved = thread.state === "resolved";
+  const ConditionIcon = conditionIcons[area.condition];
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col">
-      {/* The single scroll region: identity, ledger and timeline all run
-          under the pinned composer, which masks the bottom edge. */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-24 [mask-image:linear-gradient(to_bottom,#000_calc(100%_-_3.5rem),transparent)]">
-        <header aria-label="Thread identity" className="pb-4">
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* One scroll region: identity, ledger and timeline. The note dock is
+          pinned below it, on the app's bar chrome (a hairline + surface). */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <header aria-label="Thread identity" className="pb-3">
           <div className="pr-24">
             <ThreadHeaderSection thread={thread} areaSlug={area.slug} />
           </div>
-          <div className="pt-0.5 text-[13px]">
-            <ThreadDefinitionSection thread={thread} />
-          </div>
+          {/* Full definition, always readable — no clamp, no disclosure. */}
+          <DefinitionCell thread={thread} />
         </header>
 
         <dl
           aria-label="Thread properties"
-          className="divide-y divide-border border-y border-border"
+          className="divide-y divide-border/50 border-y border-border/50"
         >
           <LedgerRow label="State">
             {isResolved ? (
-              <Badge
-                variant="secondary"
-                className="h-5 gap-1 px-2 text-[11px] font-medium"
-              >
-                <CircleCheck className="size-3" />
+              <span className="flex items-center gap-1.5 text-condition-healthy">
+                <CircleCheck aria-hidden className="size-3.5" />
                 Resolved
-              </Badge>
+              </span>
             ) : (
-              <span className="flex items-center gap-1.5 text-[13px] text-foreground">
-                <span
+              <span className="flex items-center gap-1.5">
+                <CircleDashed
                   aria-hidden
-                  className="size-1.5 rounded-full bg-(--brand-gold-strong)"
+                  className="size-3.5 text-muted-foreground"
                 />
                 Open
               </span>
@@ -85,7 +90,7 @@ export function VariantD({ thread, area }: ThreadVariantProps) {
           </LedgerRow>
 
           <LedgerRow label="Area">
-            <div className="-ml-1.5 flex items-center gap-2">
+            <div className="-ml-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <ThreadAreaSectionSection thread={thread} area={area} />
               <span
                 className={cn(
@@ -93,10 +98,7 @@ export function VariantD({ thread, area }: ThreadVariantProps) {
                   conditionTextClassName[area.condition],
                 )}
               >
-                <span
-                  aria-hidden
-                  className="size-1.5 rounded-full bg-current"
-                />
+                <ConditionIcon aria-hidden className="size-3.5" />
                 {conditionLabels[area.condition]}
               </span>
             </div>
@@ -113,7 +115,7 @@ export function VariantD({ thread, area }: ThreadVariantProps) {
             </>
           )}
 
-          <LedgerRow label="Last activity">
+          <LedgerRow label="Last touch">
             {thread.lastActivityAt ? (
               <Stamp
                 value={thread.lastActivityAt}
@@ -122,11 +124,11 @@ export function VariantD({ thread, area }: ThreadVariantProps) {
                 })}
               />
             ) : (
-              <span className="text-[13px] text-muted-foreground/60">—</span>
+              <span className="text-muted-foreground/60">Nothing logged</span>
             )}
           </LedgerRow>
 
-          <LedgerRow label="Created">
+          <LedgerRow label="Opened">
             <Stamp
               value={thread.createdAt}
               display={format(new Date(thread.createdAt), "MMM d, yyyy")}
@@ -134,20 +136,22 @@ export function VariantD({ thread, area }: ThreadVariantProps) {
           </LedgerRow>
         </dl>
 
-        <section aria-label="Activity">
-          <div className="sticky top-0 z-10 flex items-center gap-2.5 bg-popover/90 py-2.5 backdrop-blur-sm">
-            <h2 className="text-[10px] font-medium tracking-[0.09em] text-muted-foreground/70 uppercase">
+        <section aria-label="Activity" className="pt-4">
+          {/* Lane-heading vocabulary: icon, heading, count pill, hairline. */}
+          <h2 className="sticky top-0 z-10 -mx-1 flex items-center gap-2 bg-popover px-1 py-2">
+            <History aria-hidden className="size-4 text-muted-foreground" />
+            <span className="font-heading text-sm font-semibold tracking-tight">
               Activity
-            </h2>
-            <span aria-hidden className="h-px flex-1 bg-border" />
+            </span>
             {logs && logs.length > 0 && (
-              <span className="text-[10px] tabular-nums text-muted-foreground/60">
+              <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
                 {logs.length}
               </span>
             )}
-          </div>
+            <span aria-hidden className="ml-1 h-px flex-1 bg-border/50" />
+          </h2>
 
-          <div className="relative pb-6">
+          <div className="relative pt-2 pb-6">
             <div
               aria-hidden
               className={cn(
@@ -157,7 +161,8 @@ export function VariantD({ thread, area }: ThreadVariantProps) {
               )}
             />
 
-            {/* The rail's origin marker; the composer no longer sits here. */}
+            {/* The rail keeps its "now" origin even though the composer moved
+                down to the dock. */}
             <div className={cn("relative pb-3", ENTRY_PAD)}>
               <span
                 aria-hidden
@@ -169,9 +174,7 @@ export function VariantD({ thread, area }: ThreadVariantProps) {
               >
                 <span className="absolute inset-[3px] rounded-full bg-(--brand-gold)" />
               </span>
-              <p className="text-[10px] font-medium tracking-[0.09em] text-muted-foreground/60 uppercase">
-                Now
-              </p>
+              <p className={LABEL_CLASS}>Now</p>
             </div>
 
             <ActivityLogTimeline
@@ -184,7 +187,7 @@ export function VariantD({ thread, area }: ThreadVariantProps) {
         </section>
       </div>
 
-      <NoteComposer onAddNote={addNote} />
+      <NoteDock onAddNote={addNote} />
     </div>
   );
 }
@@ -197,11 +200,9 @@ function LedgerRow({
   children: ReactNode;
 }) {
   return (
-    <div className="grid min-h-9 grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-3 py-1">
-      <dt className="text-[10px] font-medium tracking-[0.09em] text-muted-foreground/70 uppercase">
-        {label}
-      </dt>
-      <dd className="min-w-0">{children}</dd>
+    <div className="grid min-h-9 grid-cols-[5rem_minmax(0,1fr)] items-center gap-3 py-1">
+      <dt className={LABEL_CLASS}>{label}</dt>
+      <dd className="min-w-0 text-[13px]">{children}</dd>
     </div>
   );
 }
@@ -213,14 +214,35 @@ function Stamp({ value, display }: { value: number; display: string }) {
     <time
       dateTime={date.toISOString()}
       title={format(date, "PPpp")}
-      className="text-[13px] text-muted-foreground"
+      className="text-muted-foreground"
     >
       {display}
     </time>
   );
 }
 
-/** Next move as a ledger cell: complete / edit in place / clear, no header. */
+/** The definition in full: wraps, never clamps; click to edit in place. */
+function DefinitionCell({ thread }: { thread: ProjectedThread }) {
+  const updateThread = useUpdateThread(thread);
+
+  return (
+    <EditableField
+      value={thread.summary ?? ""}
+      onSave={(summary) => {
+        void updateThread({ id: thread._id, summary: summary || null });
+      }}
+      variant="textarea"
+      textareaRows={2}
+      inputAriaLabel="Thread definition"
+      placeholder="Add a definition…"
+      className="min-h-0 py-1 text-[13px] leading-relaxed text-muted-foreground"
+      displayClassName="border-b-0 whitespace-pre-wrap hover:bg-muted/50"
+      editorClassName="rounded-lg border border-border/60 bg-muted/20 px-2.5 hover:bg-muted/20 focus-visible:bg-muted/20"
+    />
+  );
+}
+
+/** Next move in a ledger cell: readable at rest, complete / edit / clear. */
 function NextMoveCell({ thread }: { thread: ProjectedThread }) {
   const updateThread = useUpdateThread(thread);
   const completeNextMove = useCompleteNextMove(thread);
@@ -275,9 +297,6 @@ function NextMoveCell({ thread }: { thread: ProjectedThread }) {
     }
   };
 
-  const inputClassName =
-    "min-w-0 flex-1 rounded-sm bg-transparent px-1 py-0.5 text-[13px] outline-none ring-1 ring-ring";
-
   if (!text) {
     return (
       <input
@@ -288,14 +307,14 @@ function NextMoveCell({ thread }: { thread: ProjectedThread }) {
         onKeyDown={handleKeyDown}
         disabled={isSetting}
         aria-label="Next move"
-        placeholder="Set a next move…"
-        className="-ml-1 w-full rounded-sm bg-transparent px-1 py-1 text-[13px] outline-none placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-ring"
+        placeholder="Add a next move…"
+        className="-mx-1 w-full rounded-md bg-transparent px-1 py-1 text-[13px] outline-none transition-colors placeholder:text-muted-foreground/60 hover:bg-muted/50 focus:bg-transparent focus:ring-1 focus:ring-ring"
       />
     );
   }
 
   return (
-    <div className="group -ml-1 flex items-center gap-1.5">
+    <div className="group -ml-0.5 flex items-center gap-1.5">
       <Button
         variant="ghost"
         size="icon-xs"
@@ -318,7 +337,7 @@ function NextMoveCell({ thread }: { thread: ProjectedThread }) {
           onKeyDown={handleKeyDown}
           disabled={isSetting}
           aria-label="Next move"
-          className={inputClassName}
+          className="min-w-0 flex-1 rounded-md bg-transparent px-1 py-0.5 text-[13px] outline-none ring-1 ring-ring"
         />
       ) : (
         <button
@@ -328,7 +347,7 @@ function NextMoveCell({ thread }: { thread: ProjectedThread }) {
             setEditing(true);
           }}
           disabled={isSetting}
-          className="min-w-0 flex-1 cursor-text truncate rounded-sm px-1 py-0.5 text-left text-[13px] font-medium transition-colors hover:bg-muted/50"
+          className="min-w-0 flex-1 cursor-text rounded-md px-1 py-0.5 text-left text-[13px] font-medium break-words whitespace-pre-wrap transition-colors hover:bg-muted/50"
         >
           {text}
         </button>
@@ -341,7 +360,7 @@ function NextMoveCell({ thread }: { thread: ProjectedThread }) {
         disabled={isClearing}
         aria-busy={isClearing}
         aria-label="Clear next move"
-        className="shrink-0 text-muted-foreground/40 opacity-0 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+        className="shrink-0 text-muted-foreground/50 opacity-0 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
       >
         <X />
       </Button>
@@ -349,7 +368,7 @@ function NextMoveCell({ thread }: { thread: ProjectedThread }) {
   );
 }
 
-/** Follow-up as a ledger cell: the shared DatePicker, no header. */
+/** Follow-up in a ledger cell: the date reads at rest, lateness is toned. */
 function FollowUpCell({ thread }: { thread: ProjectedThread }) {
   const updateThread = useUpdateThread(thread);
 
@@ -360,19 +379,35 @@ function FollowUpCell({ thread }: { thread: ProjectedThread }) {
     { errorToast: true },
   );
 
+  const followUpDate =
+    thread.followUp === undefined ? undefined : new Date(thread.followUp);
+  const lateness = followUpDate
+    ? isToday(followUpDate)
+      ? "Due today"
+      : isPast(followUpDate)
+        ? "Overdue"
+        : undefined
+    : undefined;
+
   return (
-    <DatePicker
-      className="-ml-2"
-      value={thread.followUp ? new Date(thread.followUp) : undefined}
-      onChange={(date) => void saveFollowUp(date ? date.getTime() : null)}
-      placeholder="Set a follow-up…"
-      disabled={isPending}
-    />
+    <div className="-ml-2 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+      <DatePicker
+        value={followUpDate}
+        onChange={(date) => void saveFollowUp(date ? date.getTime() : null)}
+        placeholder="Add a follow-up…"
+        disabled={isPending}
+      />
+      {lateness && (
+        <span className="text-[11px] font-medium text-condition-attention">
+          {lateness}
+        </span>
+      )}
+    </div>
   );
 }
 
-/** Floating pill pinned to the pane's bottom edge; content scrolls beneath. */
-function NoteComposer({
+/** Note dock at the pane floor — the app's bar chrome: hairline + surface. */
+function NoteDock({
   onAddNote,
 }: {
   onAddNote: (text: string) => Promise<void>;
@@ -403,44 +438,30 @@ function NoteComposer({
   };
 
   return (
-    // The pane shell supplies the bottom (and safe-area) padding, so the pill
-    // floats clear of the edge without adding its own inset.
     <form
       onSubmit={handleSubmit}
-      className="absolute inset-x-0 bottom-0 z-20"
       aria-label="Add note"
+      className="mt-3 flex shrink-0 items-end gap-2 border-t border-border/60 pt-3"
     >
-      <InputGroup
-        data-disabled={isPending || undefined}
-        className="rounded-4xl border-border bg-popover/80 shadow-lg backdrop-blur-md has-[textarea]:rounded-4xl"
+      <Textarea
+        value={noteText}
+        onChange={(event) => setNoteText(event.target.value)}
+        onKeyDown={handleKeyDown}
+        disabled={isPending}
+        aria-label="Activity log note"
+        placeholder="Add a note about what happened…"
+        rows={1}
+        className="max-h-32 min-h-9 flex-1 px-3 py-2 text-[13px] md:text-[13px]"
+      />
+      <Button
+        type="submit"
+        size="icon-sm"
+        disabled={!noteText.trim() || isPending}
+        aria-busy={isPending}
+        aria-label="Add note"
       >
-        <InputGroupTextarea
-          id="variant-d-note"
-          value={noteText}
-          onChange={(event) => setNoteText(event.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isPending}
-          aria-label="Activity log note"
-          placeholder="Log what happened…"
-          rows={1}
-          className="min-h-10 py-2.5 pr-11 pl-4 text-[13px]"
-        />
-        <InputGroupAddon
-          align="block-end"
-          className="absolute right-2 bottom-2 w-auto p-0"
-        >
-          <InputGroupButton
-            type="submit"
-            size="icon-xs"
-            variant="secondary"
-            disabled={!noteText.trim() || isPending}
-            aria-label="Add note"
-            aria-busy={isPending}
-          >
-            <ArrowUp data-icon="inline-start" />
-          </InputGroupButton>
-        </InputGroupAddon>
-      </InputGroup>
+        <ArrowUp />
+      </Button>
     </form>
   );
 }

@@ -24,7 +24,7 @@ const VARIANTS: Record<
 > = {
   a: { name: "Dossier", Component: VariantA },
   b: { name: "Command deck", Component: VariantB },
-  c: { name: "Segmented", Component: VariantC },
+  c: { name: "Briefing band", Component: VariantC },
   d: { name: "Inspector", Component: VariantD },
   e: { name: "Journal dock", Component: VariantE },
 };
