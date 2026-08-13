@@ -21,7 +21,7 @@ describe("ThreadDefinition", () => {
 
     const editor = screen.getByRole("textbox", { name: "Thread summary" });
     expect(editor).toHaveAttribute("rows", "1");
-    expect(editor).toHaveClass("max-h-[4.5rem]");
+    expect(editor).toHaveClass("field-sizing-content");
   });
 
   it("keeps a short Summary content-sized until editing", () => {
@@ -31,5 +31,20 @@ describe("ThreadDefinition", () => {
       "min-h-0",
       "text-muted-foreground",
     );
+  });
+
+  it("shows a long definition in full instead of clamping it", () => {
+    const definition = Array.from(
+      { length: 12 },
+      (_, index) => `Line ${index + 1}`,
+    ).join("\n");
+
+    render(<ThreadDefinition summary={definition} onSave={vi.fn()} />);
+
+    const display = screen.getByRole("button", { name: /Line 1/ });
+    expect(display).toHaveTextContent("Line 12");
+    expect(display.className).not.toMatch(/max-h-/);
+    expect(display.className).not.toMatch(/overflow-y-auto/);
+    expect(display).toHaveClass("whitespace-pre-wrap");
   });
 });

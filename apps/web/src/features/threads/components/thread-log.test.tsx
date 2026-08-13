@@ -40,9 +40,10 @@ describe("ActivityLog", () => {
     render(<ActivityLog logs={[note, areaMove]} onAddNote={vi.fn()} />);
 
     expect(screen.getByRole("heading", { name: "Activity log" })).toHaveClass(
-      "text-[11px]",
-      "text-muted-foreground",
+      "font-heading",
+      "text-sm",
     );
+    expect(screen.getByText("Newest first")).toBeVisible();
     expect(screen.getByText("Called the clinic")).toHaveClass(
       "text-[13px]",
       "text-foreground",
@@ -173,5 +174,45 @@ describe("ActivityLog", () => {
         "Nothing on the timeline yet — the first note starts this Thread's continuity record.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("captions the rail's origin with how long the Thread has been still", () => {
+    const { rerender } = render(<ActivityLog logs={[]} onAddNote={vi.fn()} />);
+
+    expect(screen.getByText("No activity yet")).toBeVisible();
+
+    rerender(
+      <ActivityLog
+        logs={[note]}
+        lastActivityAt={subDays(new Date(), 3).getTime()}
+        onAddNote={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Updated 3 days ago")).toBeVisible();
+  });
+
+  it("pins the composer outside the one scrolling region", () => {
+    render(
+      <ActivityLog
+        logs={[note]}
+        canLoadMore
+        onAddNote={vi.fn()}
+        onLoadMore={vi.fn()}
+      />,
+    );
+
+    const scrollRegion = document.querySelector(
+      '[data-slot="activity-log-scroll"]',
+    );
+    const composer = screen.getByRole("textbox", { name: "Activity log note" });
+
+    expect(scrollRegion).toHaveClass("overflow-y-auto");
+    expect(scrollRegion!.contains(composer)).toBe(false);
+    expect(scrollRegion!.contains(screen.getByText("Called the clinic"))).toBe(
+      true,
+    );
+    // A partial page says so, rather than under-reporting the record.
+    expect(screen.getByText("1+")).toBeVisible();
   });
 });

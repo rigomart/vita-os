@@ -8,11 +8,15 @@ import { ActivityLog } from "./thread-log";
 
 interface ActivityLogSectionProps {
   threadId: Id<"threads">;
+  lastActivityAt?: number;
 }
 
 const PAGE_SIZE = 20;
 
-export function ActivityLogSection({ threadId }: ActivityLogSectionProps) {
+export function ActivityLogSection({
+  threadId,
+  lastActivityAt,
+}: ActivityLogSectionProps) {
   // `usePaginatedQuery` keys its page cache by args, so the args must be the
   // Thread's stable identity for as long as this section stays mounted — the
   // `_id`, never the slug.
@@ -26,6 +30,7 @@ export function ActivityLogSection({ threadId }: ActivityLogSectionProps) {
   return (
     <ActivityLog
       logs={status === "LoadingFirstPage" ? undefined : results}
+      lastActivityAt={lastActivityAt}
       canLoadMore={status === "CanLoadMore"}
       isLoadingMore={status === "LoadingMore"}
       onLoadMore={() => loadMore(PAGE_SIZE)}

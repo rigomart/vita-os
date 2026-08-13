@@ -1,34 +1,22 @@
 import type { ProjectedActivityLog } from "@convex/lib/validators";
 import type { LucideIcon } from "lucide-react";
 
-import { Badge } from "@vita-os/ui/components/badge";
 import { Button } from "@vita-os/ui/components/button";
-import { Field, FieldGroup, FieldLabel } from "@vita-os/ui/components/field";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupTextarea,
-} from "@vita-os/ui/components/input-group";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
-import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
-import { format, isToday, isYesterday } from "date-fns";
-import {
-  ArrowRight,
-  ArrowUp,
-  Bell,
-  CircleCheck,
-  Loader2,
-  MapPin,
-} from "lucide-react";
-import { type FormEvent, type KeyboardEvent, useState } from "react";
+import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
+import { ArrowRight, Bell, CircleCheck, Loader2, MapPin } from "lucide-react";
+import { useRef } from "react";
 
 import { getActivityLogEntryLabel } from "@/features/threads/activity-log-entry";
 import { cn } from "@/lib/utils";
 
+import { ActivityLogComposer } from "./thread-log-composer";
+
 interface ActivityLogProps {
   logs: ProjectedActivityLog[] | undefined;
   onAddNote: (text: string) => Promise<void> | void;
+  /** Drives the timeline's origin caption — when this Thread last moved. */
+  lastActivityAt?: number;
   canLoadMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
@@ -51,64 +39,55 @@ const ACTIVITY_LOG_ICONS: Record<
 
 // Rail geometry: the 1px line spans left 11–12px, so its center is 11.5px.
 // Nodes use NODE_LEFT with -translate-x-1/2 to center exactly on the line.
-// Exported for the PROTOTYPE(thread-view) variants; re-privatize on cleanup.
-export const RAIL_LEFT = "left-[11px]";
-export const NODE_LEFT = "left-[11.5px]";
-export const ENTRY_PAD = "pl-9";
+const RAIL_LEFT = "left-[11px]";
+const NODE_LEFT = "left-[11.5px]";
+const ENTRY_PAD = "pl-9";
 
+/**
+ * The Thread's continuity record: a heading, the scrolling timeline, and the
+ * composer pinned to the floor beneath it. The log owns the whole body of the
+ * pane — it is the only region that scrolls.
+ */
 export function ActivityLog({
   logs,
   onAddNote,
+  lastActivityAt,
   canLoadMore,
   isLoadingMore,
   onLoadMore,
 }: ActivityLogProps) {
-  const [noteText, setNoteText] = useState("");
-  const { run: addNote, isPending } = useGuardedAsyncAction(onAddNote, {
-    errorToast: true,
-  });
-
-  const submitNote = async () => {
-    const text = noteText.trim();
-    if (!text || isPending) return;
-
-    const result = await addNote(text);
-    if (result.ok) setNoteText("");
-  };
-
-  const handleAddNote = (event: FormEvent) => {
-    event.preventDefault();
-    void submitNote();
-  };
-
-  const handleNoteKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      void submitNote();
-    }
-  };
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-3.5">
-      <div className="flex shrink-0 items-center gap-1">
-        <h2 className="text-[11px] font-medium text-muted-foreground">
+    <section
+      aria-label="Activity log"
+      className="flex min-h-0 flex-1 flex-col gap-2"
+    >
+      <div className="flex shrink-0 items-center gap-2">
+        <h2 className="font-heading text-sm font-semibold tracking-tight">
           Activity log
         </h2>
         {logs && logs.length > 0 && (
-          <Badge
-            variant="ghost"
-            className="h-4 px-1.5 text-[10px] text-muted-foreground"
-          >
+          <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
             {logs.length}
-          </Badge>
+            {canLoadMore ? "+" : ""}
+          </span>
         )}
+        <span aria-hidden className="ml-1 h-px flex-1 bg-border/50" />
+        <span className="text-[10px] font-medium tracking-wide text-muted-foreground/60 uppercase">
+          Newest first
+        </span>
       </div>
 
-      {/* Only this region scrolls; the pane's header and attention sections
-          stay fixed above it. The rail's `relative` box must live inside the
-          scroll container so the absolute rail spans the full entry list
-          instead of being clipped to the visible height. */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      {/* Only this region scrolls; the pane's header, attention bar and
+          composer stay put around it. The rail's `relative` box must live
+          inside the scroll container so the absolute rail spans the full entry
+          list instead of being clipped to the visible height. */}
+      <div
+        ref={scrollRef}
+        data-slot="activity-log-scroll"
+        className="min-h-0 flex-1 scroll-smooth overflow-y-auto overscroll-contain motion-reduce:scroll-auto"
+      >
         <div className="relative pb-6">
           {/* The continuous rail: fades in at the top (the "now" origin) and
             fades out at the bottom past the oldest entry. */}
@@ -121,56 +100,7 @@ export function ActivityLog({
             )}
           />
 
-          {/* Composer — the "now" node at the rail's origin. */}
-          <div className={cn("relative pb-5", ENTRY_PAD)}>
-            <span
-              aria-hidden
-              className={cn(
-                "absolute top-[15px] size-2.5 -translate-x-1/2 rounded-full",
-                NODE_LEFT,
-                "border border-(--brand-gold) bg-background",
-              )}
-            >
-              <span className="absolute inset-[3px] rounded-full bg-(--brand-gold)" />
-            </span>
-            <form onSubmit={handleAddNote}>
-              <FieldGroup className="gap-0">
-                <Field data-disabled={isPending || undefined}>
-                  <FieldLabel htmlFor="activity-log-note" className="sr-only">
-                    Activity log note
-                  </FieldLabel>
-                  <InputGroup>
-                    <InputGroupTextarea
-                      id="activity-log-note"
-                      value={noteText}
-                      onChange={(event) => setNoteText(event.target.value)}
-                      disabled={isPending}
-                      aria-label="Activity log note"
-                      placeholder="Add a note about what happened…"
-                      className="min-h-10 pr-10 py-2 text-[13px]"
-                      rows={1}
-                      onKeyDown={handleNoteKeyDown}
-                    />
-                    <InputGroupAddon
-                      align="block-end"
-                      className="absolute right-2 bottom-2 w-auto p-0"
-                    >
-                      <InputGroupButton
-                        type="submit"
-                        size="icon-xs"
-                        variant="secondary"
-                        disabled={!noteText.trim() || isPending}
-                        aria-label="Add note"
-                        aria-busy={isPending}
-                      >
-                        <ArrowUp data-icon="inline-start" />
-                      </InputGroupButton>
-                    </InputGroupAddon>
-                  </InputGroup>
-                </Field>
-              </FieldGroup>
-            </form>
-          </div>
+          <TimelineOrigin lastActivityAt={lastActivityAt} />
 
           <ActivityLogTimeline
             logs={logs}
@@ -180,12 +110,47 @@ export function ActivityLog({
           />
         </div>
       </div>
+
+      <ActivityLogComposer
+        onAddNote={onAddNote}
+        // A posted note lands at the top of a newest-first list, so bring the
+        // origin back into view instead of leaving it above the scroll. The
+        // easing is the container's `scroll-smooth`, so motion-reduce holds.
+        onPosted={() => scrollRef.current?.scrollTo?.({ top: 0 })}
+      />
     </section>
   );
 }
 
-// Exported for the PROTOTYPE(thread-view) variants; re-privatize on cleanup.
-export function ActivityLogTimeline({
+/**
+ * The rail's origin is "now": the node the newest entry hangs from, captioned
+ * with how long this Thread has been standing still.
+ */
+function TimelineOrigin({ lastActivityAt }: { lastActivityAt?: number }) {
+  return (
+    <div className={cn("relative pb-4", ENTRY_PAD)}>
+      <span
+        aria-hidden
+        className={cn(
+          "absolute top-0.5 size-2.5 -translate-x-1/2 rounded-full",
+          NODE_LEFT,
+          "border border-(--brand-gold) bg-background",
+        )}
+      >
+        <span className="absolute inset-[3px] rounded-full bg-(--brand-gold)" />
+      </span>
+      <p className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
+        {lastActivityAt === undefined
+          ? "No activity yet"
+          : `Updated ${formatDistanceToNow(new Date(lastActivityAt), {
+              addSuffix: true,
+            })}`}
+      </p>
+    </div>
+  );
+}
+
+function ActivityLogTimeline({
   logs,
   canLoadMore,
   isLoadingMore,
