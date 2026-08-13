@@ -3,6 +3,7 @@ import type { ProjectedThread } from "@convex/lib/validators";
 import type { ReactNode } from "react";
 
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { AreaThreads } from "./area-threads";
@@ -38,7 +39,7 @@ function thread(
 }
 
 describe("AreaThreads", () => {
-  it("renders a flat thread list with header actions", () => {
+  it("renders attention lanes with a census line", () => {
     render(
       <AreaThreads
         threads={[
@@ -51,14 +52,51 @@ describe("AreaThreads", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("heading", { name: "Threads" }),
-    ).toBeInTheDocument();
+    // Census line reports only non-empty lanes; New Thread sits beside it.
+    expect(screen.getByText("1 upcoming")).toBeInTheDocument();
+    expect(screen.getByText("1 open")).toBeInTheDocument();
+    expect(screen.queryByText(/due now/i)).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "New Thread" }),
     ).toBeInTheDocument();
+
+    // Each populated lane renders as a collapsible section with its rows.
+    expect(screen.getByText("Upcoming")).toBeInTheDocument();
+    expect(screen.getByText("Open")).toBeInTheDocument();
     expect(screen.getByText("Call clinic")).toBeInTheDocument();
     expect(screen.getByText("Renew passport")).toBeInTheDocument();
+  });
+
+  it("collapses and re-expands a lane, keeping its count visible", async () => {
+    const user = userEvent.setup();
+    render(
+      <AreaThreads
+        threads={[
+          thread("overdue", "Overdue Follow-up", { followUp: yesterday }),
+          thread("open", "Plain Open Thread"),
+        ]}
+        currentDate={today}
+        onCreateThread={vi.fn()}
+        onRemoveThread={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByRole("button", { name: /Due now/ });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Overdue Follow-up")).toBeInTheDocument();
+
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Overdue Follow-up")).not.toBeInTheDocument();
+    // The collapsed lane keeps reporting its inventory.
+    expect(screen.getByText("1 due now")).toBeInTheDocument();
+    expect(screen.getByText("Due now")).toBeInTheDocument();
+    // The other lane is untouched.
+    expect(screen.getByText("Plain Open Thread")).toBeInTheDocument();
+
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Overdue Follow-up")).toBeInTheDocument();
   });
 
   it("shows a loading skeleton while Threads are still loading", () => {

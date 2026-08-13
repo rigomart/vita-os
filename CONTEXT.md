@@ -97,9 +97,11 @@ _Avoid_: Task list, project board, backlog.
 
 ## Thread Attention
 
-- **Open Threads** across the small-screen **Dashboard** and **Area** inventory share one flat attention-ordered list with no visible group headings. Attention groups survive as ordering only; a state signal on each row's date rail replaces the headings. The rail's visual states are recorded in ADR 0005.
+- **Open Threads** on the small-screen **Dashboard** sit in one flat attention-ordered list with no visible group headings. Attention groups survive as ordering only; a state signal on each row's date rail replaces the headings. The rail's visual states are recorded in ADR 0005.
+- The **Area** inventory groups the same attention order into visible, collapsible **attention lanes** — **Due now**, **Upcoming**, **Next moves**, **Open** — introduced by a census line that states each lane's count and hosts the **New Thread** action (ADR 0009). Every lane starts expanded; collapsing is session-local, a collapsed lane keeps its count, and empty lanes are omitted.
 - The flat order is **Overdue Follow-ups**, **Upcoming Follow-ups**, **Threads with Next Moves**, then plain **Open Threads**. On the **Dashboard**, dated upcoming **Follow-ups** come before undated **Threads with Next Moves**.
 - **Overdue Follow-ups** have a **Follow-up** before today. **Upcoming Follow-ups** have a **Follow-up** today or later.
+- **Due now** (the Area lane) covers **Threads** whose **Follow-up** is today or earlier — **Overdue Follow-ups** plus due-today ones. In the lane vocabulary, **Upcoming** narrows to a **Follow-up** strictly after today.
 - A **Follow-up** takes precedence when a **Thread** also has a **Next Move**.
 - **Threads with Next Moves** have a **Next Move** and no **Follow-up**.
 - Plain **Open Threads** have neither field and appear inline at the end of the flat run.

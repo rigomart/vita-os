@@ -35,7 +35,7 @@ export function AreaDetailScreen({ areaSlug }: AreaDetailScreenProps) {
   const { area, threads } = detail;
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 border-t-2 border-brand-gold-strong/55 pt-3">
+    <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <div>
         <AreaHeaderSection area={area} onEdit={() => setShowEdit(true)} />
         <div className="min-h-8 max-w-2xl">
