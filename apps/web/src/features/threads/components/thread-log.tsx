@@ -51,9 +51,10 @@ const ACTIVITY_LOG_ICONS: Record<
 
 // Rail geometry: the 1px line spans left 11–12px, so its center is 11.5px.
 // Nodes use NODE_LEFT with -translate-x-1/2 to center exactly on the line.
-const RAIL_LEFT = "left-[11px]";
-const NODE_LEFT = "left-[11.5px]";
-const ENTRY_PAD = "pl-9";
+// Exported for the PROTOTYPE(thread-view) variants; re-privatize on cleanup.
+export const RAIL_LEFT = "left-[11px]";
+export const NODE_LEFT = "left-[11.5px]";
+export const ENTRY_PAD = "pl-9";
 
 export function ActivityLog({
   logs,
@@ -183,7 +184,8 @@ export function ActivityLog({
   );
 }
 
-function ActivityLogTimeline({
+// Exported for the PROTOTYPE(thread-view) variants; re-privatize on cleanup.
+export function ActivityLogTimeline({
   logs,
   canLoadMore,
   isLoadingMore,

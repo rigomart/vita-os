@@ -31,6 +31,7 @@ import { useThreadPaneViewport } from "@/hooks/use-thread-pane-viewport";
 
 import type { ThreadLocation } from "./thread-pane-nav";
 
+import { ThreadViewPrototypeGate } from "./prototype/prototype-gate";
 import { ThreadNotFound } from "./thread-not-found";
 import { ThreadPaneNavContext } from "./thread-pane-nav";
 import { useDeferredRouteClose } from "./use-deferred-route-close";
@@ -79,7 +80,10 @@ export function ThreadDetailView({
     <ThreadNotFound areaSlug={areaSlug} onClose={onClose} />
   ) : (
     <ThreadPaneNavContext.Provider value={paneNav}>
-      <ThreadDetailContent thread={detail.thread} area={area} />
+      {/* PROTOTYPE(thread-view): gate swaps in UI variants via ?variant=. */}
+      <ThreadViewPrototypeGate thread={detail.thread} area={area}>
+        <ThreadDetailContent thread={detail.thread} area={area} />
+      </ThreadViewPrototypeGate>
     </ThreadPaneNavContext.Provider>
   );
 
