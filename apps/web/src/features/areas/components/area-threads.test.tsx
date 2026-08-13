@@ -38,7 +38,7 @@ function thread(
 }
 
 describe("AreaThreads", () => {
-  it("renders a flat thread list with header actions", () => {
+  it("renders attention lanes with a census line", () => {
     render(
       <AreaThreads
         threads={[
@@ -51,12 +51,17 @@ describe("AreaThreads", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("heading", { name: "Threads" }),
-    ).toBeInTheDocument();
+    // Census line reports only non-empty lanes; New Thread sits beside it.
+    expect(screen.getByText("1 upcoming")).toBeInTheDocument();
+    expect(screen.getByText("1 open")).toBeInTheDocument();
+    expect(screen.queryByText(/due now/)).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "New Thread" }),
     ).toBeInTheDocument();
+
+    // Each populated lane renders as a collapsible section with its rows.
+    expect(screen.getByText("Upcoming")).toBeInTheDocument();
+    expect(screen.getByText("Open")).toBeInTheDocument();
     expect(screen.getByText("Call clinic")).toBeInTheDocument();
     expect(screen.getByText("Renew passport")).toBeInTheDocument();
   });
