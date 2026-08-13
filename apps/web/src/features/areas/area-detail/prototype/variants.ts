@@ -1,38 +1,36 @@
 // PROTOTYPE — throwaway code. Registry for the Area view design variants.
-// Plan: five variants of the Area view, switchable via `?variant=`, mounted
-// on the existing `/$areaSlug` route ("current" = the existing design).
+// Round 2: refining direction B ("Triage Lanes"). Round-1 variants A/C/D/E
+// remain on disk (and in git history) as primary sources but are out of the
+// switcher cycle.
 
 import type { ComponentType } from "react";
 
 import type { AreaVariantProps } from "./variant-props";
 
-import { AreaVariantA } from "./variant-a";
 import { AreaVariantB } from "./variant-b";
-import { AreaVariantC } from "./variant-c";
-import { AreaVariantD } from "./variant-d";
-import { AreaVariantE } from "./variant-e";
+import { AreaVariantB1 } from "./variant-b1";
+import { AreaVariantB2 } from "./variant-b2";
+import { AreaVariantB3 } from "./variant-b3";
 
 export const VARIANT_COMPONENTS: Record<
   string,
   ComponentType<AreaVariantProps>
 > = {
-  a: AreaVariantA,
   b: AreaVariantB,
-  c: AreaVariantC,
-  d: AreaVariantD,
-  e: AreaVariantE,
+  b1: AreaVariantB1,
+  b2: AreaVariantB2,
+  b3: AreaVariantB3,
 };
 
 export const VARIANT_LABELS: Record<string, string> = {
   current: "Current design",
-  a: "The Ledger",
-  b: "Triage Lanes",
-  c: "Cockpit",
-  d: "Focus Stack",
-  e: "Mosaic",
+  b: "Triage Lanes (round 1)",
+  b1: "Quiet Lanes",
+  b2: "Hot Lane",
+  b3: "Workbench",
 };
 
-export const VARIANT_KEYS = ["current", "a", "b", "c", "d", "e"];
+export const VARIANT_KEYS = ["current", "b", "b1", "b2", "b3"];
 
 export function normalizeVariantKey(raw: string | undefined): string {
   return raw !== undefined && raw in VARIANT_COMPONENTS ? raw : "current";
