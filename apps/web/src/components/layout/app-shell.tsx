@@ -10,6 +10,16 @@ import {
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useState } from "react";
 
+import { AreaIconRail } from "@/components/dev/area-switcher-prototype/area-icon-rail";
+import { TopBarAreaStrip } from "@/components/dev/area-switcher-prototype/top-bar-area-strip";
+import {
+  AREA_SWITCHER_VARIANTS,
+  useAreaSwitcherVariant,
+} from "@/components/dev/area-switcher-prototype/use-area-switcher-variant";
+import {
+  PrototypeVariantSelector,
+  type PrototypeVariant,
+} from "@/components/dev/prototype-variants";
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
 import { useCommandPaletteShortcut } from "@/features/navigation/use-command-palette-shortcut";
 import { useCreateDialogs } from "@/features/navigation/use-create-dialogs";
@@ -30,6 +40,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const createTask = useCreateTask();
   const dialogs = useCreateDialogs();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // PROTOTYPE — area quick-switcher variants (throwaway).
+  const { variant: switcherVariant, setVariant: setSwitcherVariant } =
+    useAreaSwitcherVariant();
 
   // The area list is only read by the create-thread dialog here; the palette
   // subscribes for itself while it is mounted.
@@ -105,6 +118,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-svh">
+      {switcherVariant === "B" && <AreaIconRail />}
       {/* The whole chrome column — topbar included — sits beside the thread
           rail's width spacer, so an open rail pushes the topbar too instead
           of sliding over it. */}
@@ -114,6 +128,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           inboxActive={pathname === "/inbox"}
           onNewTask={dialogs.openNewTask}
           onOpenPalette={() => setPaletteOpen(true)}
+          areaStrip={switcherVariant === "A" ? <TopBarAreaStrip /> : undefined}
         />
         <main className="w-full min-w-0 flex-1 px-4 pt-3 pb-24 md:pb-8">
           {children}
@@ -169,6 +184,19 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
       {dialogs.showCreateArea && (
         <CreateAreaDialog open onOpenChange={dialogs.setShowCreateArea} />
+      )}
+
+      {import.meta.env.DEV && (
+        <PrototypeVariantSelector
+          variants={
+            AREA_SWITCHER_VARIANTS.map((v) => ({
+              ...v,
+              render: () => null,
+            })) as unknown as readonly [PrototypeVariant, ...PrototypeVariant[]]
+          }
+          activeKey={switcherVariant}
+          onSelect={setSwitcherVariant}
+        />
       )}
     </div>
   );

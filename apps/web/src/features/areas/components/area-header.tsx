@@ -38,6 +38,8 @@ import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-actio
 import { Ellipsis, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
+import { AreaTitleSwitcher } from "@/components/dev/area-switcher-prototype/area-title-switcher";
+import { useAreaSwitcherVariant } from "@/components/dev/area-switcher-prototype/use-area-switcher-variant";
 import { PageHeader } from "@/components/layout/page-header";
 import { BrandHexagon } from "@/components/ui/brand-hexagon";
 import {
@@ -78,6 +80,8 @@ export function AreaHeader({
 }: AreaHeaderProps) {
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // PROTOTYPE — area quick-switcher variant C mount point (throwaway).
+  const { variant: switcherVariant } = useAreaSwitcherVariant();
   const { run: saveIcon, isPending: isSavingIcon } =
     useGuardedAsyncAction(onIconChange);
   const selectedIcon = area.icon;
@@ -102,6 +106,11 @@ export function AreaHeader({
       <PageHeader
         className="mb-0"
         title={area.name}
+        titleAccessory={
+          switcherVariant === "C" ? (
+            <AreaTitleSwitcher currentArea={area} />
+          ) : undefined
+        }
         titleLeading={
           <Popover
             open={iconPickerOpen}

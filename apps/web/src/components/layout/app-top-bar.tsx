@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Link } from "@tanstack/react-router";
 import { Button } from "@vita-os/ui/components/button";
 import { Kbd } from "@vita-os/ui/components/kbd";
@@ -15,6 +17,8 @@ interface AppTopBarProps {
   inboxActive: boolean;
   onNewTask: () => void;
   onOpenPalette: () => void;
+  /** PROTOTYPE — area quick-switcher variant A slot (throwaway). */
+  areaStrip?: ReactNode;
 }
 
 export function AppTopBar({
@@ -22,6 +26,7 @@ export function AppTopBar({
   inboxActive,
   onNewTask,
   onOpenPalette,
+  areaStrip,
 }: AppTopBarProps) {
   const { data: session } = authClient.useSession();
   const { theme, setTheme } = useTheme();
@@ -32,25 +37,28 @@ export function AppTopBar({
     <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
       {/* Equal 1fr wings keep the search truly viewport-centered at md+. */}
       <div className="flex h-12 items-center gap-3 px-4 md:grid md:grid-cols-[1fr_minmax(0,24rem)_1fr]">
-        <Link
-          to="/"
-          aria-label="Vita OS home"
-          className="flex min-w-0 items-center gap-2 justify-self-start rounded-lg ring-ring outline-none transition-opacity hover:opacity-80 focus-visible:ring-2"
-        >
-          <img
-            src="/vita-logo.svg"
-            alt=""
-            className="size-7 shrink-0 rounded-lg shadow-sm ring-1 ring-border"
-          />
-          <span className="flex items-baseline gap-1 leading-none">
-            <span className="font-heading text-base font-semibold tracking-tight">
-              vita
+        <div className="flex min-w-0 items-center gap-3 justify-self-start">
+          <Link
+            to="/"
+            aria-label="Vita OS home"
+            className="flex min-w-0 shrink-0 items-center gap-2 rounded-lg ring-ring outline-none transition-opacity hover:opacity-80 focus-visible:ring-2"
+          >
+            <img
+              src="/vita-logo.svg"
+              alt=""
+              className="size-7 shrink-0 rounded-lg shadow-sm ring-1 ring-border"
+            />
+            <span className="flex items-baseline gap-1 leading-none">
+              <span className="font-heading text-base font-semibold tracking-tight">
+                vita
+              </span>
+              <span className="text-[0.5625rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                OS
+              </span>
             </span>
-            <span className="text-[0.5625rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-              OS
-            </span>
-          </span>
-        </Link>
+          </Link>
+          {areaStrip}
+        </div>
 
         {/* On mobile the search affordance lives in the tab bar instead. */}
         <button
