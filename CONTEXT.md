@@ -40,6 +40,10 @@ _Avoid_: Definition of Done, description, brief.
 The single next useful action that could move a **Thread** forward.
 _Avoid_: Action queue, subtask list, todo list, checklist.
 
+**Up Next**:
+The ordered list of already-known upcoming moves a **Thread** holds behind its **Next Move**.
+_Avoid_: Action queue, step list, checklist, subtasks, todo list.
+
 **Follow-up**:
 A soft resurfacing point on a **Thread** that brings the situation back into awareness around a chosen time.
 _Avoid_: Due date, deadline, reminder.
@@ -82,7 +86,9 @@ _Avoid_: Task list, project board, backlog.
 - The app may suggest minimal **Starter Areas**, but users can edit, delete, and reorder **Areas**.
 - An **Area** has one **Area Icon**.
 - An **Area** **Condition** affects the Area's visual prominence, but it does not change a **Thread**'s derived attention state.
-- A **Thread** has zero or one **Summary**, zero or one **Next Move**, zero or one **Follow-up**, and one **Activity Log**.
+- A **Thread** has zero or one **Summary**, zero or one **Next Move**, zero or more upcoming moves in its **Up Next** list, zero or one **Follow-up**, and one **Activity Log**.
+- While **Up Next** is non-empty, the **Thread** always has a **Next Move** — the **Next Move** is the front of the line.
+- **Up Next** moves are plain ordered text with no dates and no done states. A step that needs a date is a **Follow-up** or its own **Thread**.
 - A **Thread** is either **Open** or **Resolved**.
 - A **Thread** may move from one **Area** to another.
 - An **Activity Log** has zero or more **Activity Log Entries**.
@@ -108,6 +114,7 @@ _Avoid_: Task list, project board, backlog.
 - The small-screen **Dashboard** shows at most five plain **Open Threads** inline; the rest sit behind a **Show all** control that extends the same flat run in place. Attention-bearing **Threads** are never capped, and the **Area** inventory always lists every **Thread**.
 - **Follow-ups** are ordered oldest-first when overdue and soonest-first when upcoming. The user's **Thread** order breaks ties and orders undated attention groups.
 - An **Open Thread** with no **Next Move** and no **Follow-up** is valid; it is not automatically overdue, stale, or broken.
+- **Up Next** never affects attention: the **Dashboard**, attention lanes, and **Plan** derive from **Next Move** and **Follow-up** only. Only the **Next Move** surfaces outside its **Thread**; **Up Next** is visible only in **Thread** detail.
 - Opening or reviewing a **Thread** does not clear its **Follow-up**; the user must clear, reschedule, or resolve it explicitly.
 
 ## Dashboard Structure
@@ -124,10 +131,10 @@ _Avoid_: Task list, project board, backlog.
 
 ## Task Handling
 
-- **Processing** a **Task** means assigning it to a **Thread**: as an **Activity Log** entry, as the **Next Move**, or by promoting it into a new **Thread**.
+- **Processing** a **Task** means assigning it to a **Thread**: as an **Activity Log** entry, as the **Next Move**, appended to **Up Next**, or by promoting it into a new **Thread**.
 - Adding a date, editing text, completing, and discarding are inline actions on a **Task**, not processing.
 - A processed **Task** is consumed; its text lives on inside the **Thread** it was assigned to.
-- Moving a **Task** into a **Thread** requires choosing whether it becomes an **Activity Log** entry or the **Next Move**.
+- Moving a **Task** into a **Thread** requires choosing whether it becomes an **Activity Log** entry, the **Next Move**, or an **Up Next** move appended to the end of the list.
 - Creating a new **Thread** from a **Task** uses a user-provided **Thread** title; the original **Task** text becomes the first **Activity Log** entry by default.
 - Discarding a **Task** consumes it.
 
@@ -136,12 +143,14 @@ _Avoid_: Task list, project board, backlog.
 - Setting, changing, or intentionally clearing a saved **Next Move** adds an **Activity Log** entry.
 - Setting, changing, or intentionally clearing a saved **Follow-up** adds an **Activity Log** entry.
 - Completing a **Next Move** clears it and adds an **Activity Log** entry.
+- Completing or clearing a **Next Move** while **Up Next** is non-empty promotes the front move into the **Next Move** slot; the promotion rides the existing entry rather than adding its own.
+- Adding, editing, reordering, or removing **Up Next** moves does not add **Activity Log** entries.
 - Moving a **Thread** between **Areas** adds an **Activity Log** entry.
 - Resolving a **Thread** adds an **Activity Log** entry.
 - Resolving a **Thread** may include an optional resolution note; when present, it becomes an **Activity Log** entry.
-- Resolving a **Thread** clears its current **Next Move** and **Follow-up**.
+- Resolving a **Thread** clears its current **Next Move**, **Follow-up**, and **Up Next**; when **Up Next** moves are discarded this way, the resolution entry names them.
 - Reopening a **Resolved Thread** makes it an **Open Thread** and adds an **Activity Log** entry.
-- Reopening a **Thread** does not restore old **Follow-ups** automatically.
+- Reopening a **Thread** does not restore old **Follow-ups** or discarded **Up Next** moves automatically.
 - Changing an **Area** **Condition** does not add entries to **Thread** **Activity Logs**.
 
 ## Example Dialogue
@@ -159,7 +168,7 @@ _Avoid_: Task list, project board, backlog.
 
 - "Project" was the old term for a multi-step effort with a defined end state. Resolved: **Thread** is canonical because these life situations may not have a clean execution plan or defined finish line.
 - "Item" was the old neutral term for a lightweight Inbox entry. Resolved: **Task** is canonical, but only for the Inbox capture layer.
-- "Action queue" was the old term for ordered tentative next steps. Resolved: **Next Move** is singular so a **Thread** stays directional without becoming a checklist.
+- "Action queue" was the old term for ordered tentative next steps. Resolved: **Next Move** stays singular and is the only move surfaced outside the **Thread**; **Up Next** holds a known sequence behind it with queue semantics — no done states, no dates — so a **Thread** stays directional without becoming a checklist (ADR 0010).
 - "Project log" was the old term for the timeline on a **Thread**. Resolved: **Activity Log** is canonical and should capture continuity, not every small edit.
 - "Health status" was the old term for the manual judgment on an **Area**. Resolved: **Condition** is canonical.
 - "Definition of Done" belongs to project-management language and is not a **Thread** concept. Resolved: use **Summary** or the **Activity Log** when context is needed.
