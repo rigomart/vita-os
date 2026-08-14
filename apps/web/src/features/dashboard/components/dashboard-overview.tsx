@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@vita-os/ui/components/button";
-import { format, formatDistance } from "date-fns";
+import { formatDistance } from "date-fns";
 import { History } from "lucide-react";
 
 import type { PlanActions } from "@/features/dashboard/plan/use-plan-actions";
@@ -16,7 +16,7 @@ import type {
   DashboardThreadWithActivity,
 } from "./dashboard-model";
 
-import { AreaConditionStrip } from "./area-condition-strip";
+import { AreaStatusBar } from "./area-status-bar";
 import { recentActivity } from "./dashboard-model";
 
 interface DashboardOverviewProps {
@@ -42,7 +42,7 @@ export function DashboardOverview({
   if (areas.length === 0) {
     return (
       <div className="flex flex-col gap-6">
-        <DashboardHeader currentDate={currentDate} />
+        <h1 className="sr-only">Life Areas</h1>
         <section className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed px-6 text-center">
           <h2 className="font-heading text-lg font-semibold">
             Start with a Life Area
@@ -67,8 +67,14 @@ export function DashboardOverview({
 
   return (
     <div className="flex flex-col gap-6">
-      <DashboardHeader currentDate={currentDate} />
-      <AreaConditionStrip areas={areas} />
+      {/* The page's identity is the state of the Areas, not a title — the
+          heading survives only for assistive tech. */}
+      <h1 className="sr-only">Life Areas</h1>
+      <AreaStatusBar
+        areas={areas}
+        threads={threads}
+        currentDate={currentDate}
+      />
 
       {/* Two shapes of the same Plan. A phone gets the vertical schedule; the
           branch is real, not a CSS switch, so only the mounted one runs its
@@ -96,30 +102,6 @@ export function DashboardOverview({
         </>
       )}
     </div>
-  );
-}
-
-function DashboardHeader({ currentDate }: { currentDate: number }) {
-  const date = new Date(currentDate);
-
-  return (
-    <header className="flex flex-wrap items-center justify-between gap-3">
-      <h1 className="font-heading text-xl font-semibold tracking-tight">
-        Life Areas
-      </h1>
-      <time
-        dateTime={date.toISOString()}
-        title={format(date, "EEEE, MMMM d, yyyy")}
-        className="flex min-w-12 flex-col items-end text-muted-foreground"
-      >
-        <span className="text-[10px] font-medium uppercase tracking-wider">
-          {format(date, "MMM")}
-        </span>
-        <span className="text-lg font-semibold leading-none text-foreground">
-          {format(date, "d")}
-        </span>
-      </time>
-    </header>
   );
 }
 

@@ -11,10 +11,15 @@ import { DashboardOverview } from "./dashboard-overview";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     to,
+    params: _params,
     search: _search,
     children,
     ...props
-  }: ComponentPropsWithoutRef<"a"> & { to: string; search?: unknown }) => (
+  }: ComponentPropsWithoutRef<"a"> & {
+    params?: unknown;
+    search?: unknown;
+    to: string;
+  }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -96,27 +101,34 @@ function renderOverview(overrides: Partial<OverviewProps> = {}) {
 }
 
 describe("DashboardOverview", () => {
-  it("keeps attention-bearing Areas prominent in the condition strip", () => {
-    renderOverview();
+  it("keeps attention-bearing Areas prominent in the status bar", () => {
+    renderOverview({
+      threads: [thread("Insurance appeal", { nextMove: "Call the clinic" })],
+    });
 
-    const strip = screen.getByRole("region", {
+    // The page's only heading is the one assistive tech reads.
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Life Areas" }),
+    ).toBeInTheDocument();
+
+    const bar = screen.getByRole("region", {
       name: "Life Areas by condition",
     });
 
-    const criticalPill = within(strip).getByRole("link", { name: /Health/ });
-    expect(criticalPill).toBeVisible();
-    expect(within(criticalPill).getByText("Needs you")).toBeVisible();
+    const attention = within(bar).getByTitle("Health");
+    expect(attention).toBeVisible();
+    expect(attention).toHaveTextContent("Health");
+    expect(attention).toHaveTextContent("Call the clinic");
 
-    const healthyGlyph = within(strip).getByRole("link", { name: "Home" });
-    expect(within(healthyGlyph).queryByText("Needs you")).toBeNull();
-    expect(within(strip).getByText("1 steady")).toBeInTheDocument();
+    const healthyGlyph = within(bar).getByRole("link", { name: "Home" });
+    expect(within(healthyGlyph).getByText("Home")).toHaveClass("sr-only");
+    expect(healthyGlyph).toHaveAttribute("title", "Home — steady");
+    expect(healthyGlyph).not.toHaveTextContent("Call the clinic");
 
     expect(
-      criticalPill.compareDocumentPosition(healthyGlyph) &
+      attention.compareDocumentPosition(healthyGlyph) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-
-    expect(screen.queryByRole("tablist")).toBeNull();
   });
 
   it("collapses to a steady line when every Area is healthy", () => {
@@ -141,15 +153,17 @@ describe("DashboardOverview", () => {
       ],
     });
 
-    expect(screen.getByText("All areas steady.")).toBeVisible();
-    expect(screen.queryByText("Needs you")).toBeNull();
-    expect(screen.queryByText("Watch")).toBeNull();
-
-    const strip = screen.getByRole("region", {
+    const bar = screen.getByRole("region", {
       name: "Life Areas by condition",
     });
-    expect(within(strip).getByRole("link", { name: "Health" })).toBeVisible();
-    expect(within(strip).getByRole("link", { name: "Home" })).toBeVisible();
+    expect(within(bar).getByText("All 2 areas steady")).toBeVisible();
+
+    // Only the two quiet glyphs are left — no reason group to read.
+    const links = within(bar).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("title"))).toEqual([
+      "Health — steady",
+      "Home — steady",
+    ]);
   });
 
   it("hands the Plan canvas every open Thread and Task", () => {
@@ -194,7 +208,9 @@ describe("DashboardOverview", () => {
     });
 
     expect(screen.getByText("Recent activity")).toBeVisible();
-    expect(screen.getByText(/clinic sent the report/i)).toBeVisible();
+    // The status bar quotes the same activity as its reason, so scope the row.
+    const entry = screen.getByRole("link", { name: /Insurance appeal/ });
+    expect(within(entry).getByText(/clinic sent the report/i)).toBeVisible();
     expect(
       screen
         .getByTestId("plan-canvas")
