@@ -16,7 +16,8 @@ import type {
   DashboardThreadWithActivity,
 } from "./dashboard-model";
 
-import { AreaConditionStrip } from "./area-condition-strip";
+// PROTOTYPE — throwaway import; restore <DashboardHeader/> + <AreaConditionStrip/> when done.
+import { DashboardHeroPrototype } from "../prototype/dashboard-hero-prototype";
 import { recentActivity } from "./dashboard-model";
 
 interface DashboardOverviewProps {
@@ -67,8 +68,12 @@ export function DashboardOverview({
 
   return (
     <div className="flex flex-col gap-6">
-      <DashboardHeader currentDate={currentDate} />
-      <AreaConditionStrip areas={areas} />
+      {/* PROTOTYPE: hero variants, switchable via ?variant=A..E (dev only). */}
+      <DashboardHeroPrototype
+        areas={areas}
+        threads={threads}
+        currentDate={currentDate}
+      />
 
       {/* Two shapes of the same Plan. A phone gets the vertical schedule; the
           branch is real, not a CSS switch, so only the mounted one runs its
