@@ -9,6 +9,8 @@ interface ThreadDefinitionProps {
 export function ThreadDefinition({ summary, onSave }: ThreadDefinitionProps) {
   return (
     <div data-slot="thread-summary" className="min-h-9">
+      {/* Never clamped: the whole definition is on screen without a click, and
+          the field grows with its content while editing. */}
       <EditableField
         value={summary}
         onSave={onSave}
@@ -16,9 +18,9 @@ export function ThreadDefinition({ summary, onSave }: ThreadDefinitionProps) {
         textareaRows={1}
         inputAriaLabel="Thread summary"
         placeholder="Add a summary…"
-        className="min-h-0 max-h-[4.5rem] overflow-y-auto py-1.5 text-sm leading-relaxed text-muted-foreground"
+        className="min-h-0 py-1.5 text-[13px] leading-relaxed text-muted-foreground"
         displayClassName={cn(
-          "border-b-0",
+          "border-b-0 whitespace-pre-wrap",
           summary
             ? "hover:bg-transparent"
             : "h-7 w-fit cursor-pointer items-center rounded-4xl bg-secondary px-2.5 py-0 text-xs font-medium hover:bg-secondary/80",

@@ -325,8 +325,12 @@ describe("ThreadDetailView", () => {
         name: "Waiting for the specialist's opinion.",
       }),
     ).toBeVisible();
-    expect(within(attention).getByText("Next Move")).toBeVisible();
-    expect(within(attention).getByText("Follow-up")).toBeVisible();
+    expect(
+      within(attention).getByRole("textbox", { name: "Next move" }),
+    ).toBeVisible();
+    expect(
+      within(attention).getByRole("button", { name: "Add a follow-up…" }),
+    ).toBeVisible();
     expect(attention).not.toHaveAttribute("data-slot", "card");
     expect(
       summary.compareDocumentPosition(attention) &
@@ -338,7 +342,7 @@ describe("ThreadDetailView", () => {
     ).toBeTruthy();
   });
 
-  it("scrolls only the activity log, keeping header and attention fixed", async () => {
+  it("scrolls only the activity log, keeping header, attention and composer fixed", async () => {
     mocks.showDesktopPane = true;
     renderThreadDetail();
 
@@ -346,12 +350,12 @@ describe("ThreadDetailView", () => {
       name: "Sister's front teeth",
     });
 
-    const composer = screen.getByRole("textbox", {
-      name: "Activity log note",
-    });
-    const scrollRegion = composer.closest(".overflow-y-auto");
+    const scrollRegion = pane.querySelector(
+      '[data-slot="activity-log-scroll"]',
+    );
     expect(scrollRegion).not.toBeNull();
-    expect(pane.contains(scrollRegion)).toBe(true);
+    // Exactly one region in the pane scrolls.
+    expect(pane.querySelectorAll(".overflow-y-auto")).toHaveLength(1);
 
     const header = screen.getByRole("banner", { name: "Thread header" });
     const attention = screen.getByRole("region", { name: "Thread attention" });
@@ -361,6 +365,12 @@ describe("ThreadDetailView", () => {
     expect(
       scrollRegion!.contains(
         screen.getByRole("heading", { name: "Activity log" }),
+      ),
+    ).toBe(false);
+    // The composer is docked at the pane's floor, not at the rail's origin.
+    expect(
+      scrollRegion!.contains(
+        screen.getByRole("textbox", { name: "Activity log note" }),
       ),
     ).toBe(false);
     // No scroll container wraps the whole pane content.
@@ -380,6 +390,10 @@ describe("ThreadDetailView", () => {
     expect(
       screen.queryByRole("region", { name: "Thread attention" }),
     ).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Next move" })).toBeNull();
+    expect(
+      screen.getByText(/No next move or follow-up while resolved/),
+    ).toBeVisible();
 
     await userEvent.click(
       screen.getByRole("button", { name: "Thread actions" }),

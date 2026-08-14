@@ -1,7 +1,6 @@
 import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
-import { Badge } from "@vita-os/ui/components/badge";
 import { Button } from "@vita-os/ui/components/button";
 import {
   ButtonGroup,
@@ -13,19 +12,20 @@ import {
   DrawerDescription,
   DrawerTitle,
 } from "@vita-os/ui/components/drawer";
-import { Separator } from "@vita-os/ui/components/separator";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { X } from "lucide-react";
 import { useMemo } from "react";
 
-import { FollowUpSection } from "@/features/threads/components/follow-up-section";
-import { NextMoveSection } from "@/features/threads/components/next-move-section";
+import { AreaConditionDot } from "@/features/areas/components/area-condition-dot";
 import { ThreadAreaSectionSection } from "@/features/threads/components/thread-area-section-section";
+import { ThreadAttentionBarSection } from "@/features/threads/components/thread-attention-bar-section";
 import { ThreadDefinitionSection } from "@/features/threads/components/thread-definition-section";
 import { ThreadDetailSkeleton } from "@/features/threads/components/thread-detail-skeleton";
 import { ThreadHeaderSection } from "@/features/threads/components/thread-header-section";
 import { ThreadLifecycleActionsSection } from "@/features/threads/components/thread-lifecycle-actions-section";
 import { ActivityLogSection } from "@/features/threads/components/thread-log-section";
+import { ThreadResolvedNote } from "@/features/threads/components/thread-resolved-note";
+import { ThreadStateChip } from "@/features/threads/components/thread-state-chip";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useThreadPaneViewport } from "@/hooks/use-thread-pane-viewport";
 
@@ -247,20 +247,27 @@ interface ThreadDetailContentProps {
   area: ProjectedArea;
 }
 
+/**
+ * A journal you write into. Identity and attention are stated in full at the
+ * top — nothing about the Thread costs a click to read — and the Activity Log
+ * takes the whole body beneath them, scrolling under a pinned composer.
+ */
 function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
   const isResolved = thread.state === "resolved";
   const areaSlug = area.slug;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <header
         role="banner"
         aria-label="Thread header"
-        className="flex shrink-0 flex-col gap-3 pb-1"
+        className="flex shrink-0 flex-col gap-3"
       >
+        {/* `pr-24` clears the pane's absolutely-placed control cluster. */}
         <div className="flex items-center gap-2 pr-24">
+          <AreaConditionDot condition={area.condition} />
           <ThreadAreaSectionSection thread={thread} area={area} />
-          {isResolved && <Badge variant="secondary">Resolved</Badge>}
+          <ThreadStateChip state={thread.state} />
         </div>
         <div className="flex flex-col gap-0.5">
           <ThreadHeaderSection thread={thread} areaSlug={areaSlug} />
@@ -268,23 +275,16 @@ function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
         </div>
       </header>
 
-      {!isResolved && (
-        <section
-          role="region"
-          aria-label="Thread attention"
-          className="flex shrink-0 flex-col gap-5"
-        >
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(14rem,1fr))] gap-5">
-            <NextMoveSection thread={thread} />
-            <FollowUpSection thread={thread} />
-          </div>
-          <Separator />
-        </section>
+      {isResolved ? (
+        <ThreadResolvedNote />
+      ) : (
+        <ThreadAttentionBarSection thread={thread} />
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        <ActivityLogSection threadId={thread._id} />
-      </div>
+      <ActivityLogSection
+        threadId={thread._id}
+        lastActivityAt={thread.lastActivityAt}
+      />
     </div>
   );
 }

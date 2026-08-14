@@ -15,6 +15,13 @@ export const conditionTextClassName: Record<Condition, string> = {
   critical: "text-condition-critical",
 };
 
+/** Smallest signal: a filled dot beside something that already names the Area. */
+export const conditionDotClassName: Record<Condition, string> = {
+  healthy: "bg-condition-healthy-fill",
+  needs_attention: "bg-condition-attention-fill",
+  critical: "bg-condition-critical-fill",
+};
+
 // Badge/trigger treatment: solid vivid fills — on the app's warm cream
 // surfaces, low-alpha tints disappear into the background.
 export const conditionPillClassName: Record<Condition, string> = {
