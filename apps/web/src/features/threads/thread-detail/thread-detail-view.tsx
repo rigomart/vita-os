@@ -1,6 +1,7 @@
 import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 
 import { api } from "@convex/_generated/api";
+import { useSearch } from "@tanstack/react-router";
 import { Button } from "@vita-os/ui/components/button";
 import {
   ButtonGroup,
@@ -12,7 +13,6 @@ import {
   DrawerDescription,
   DrawerTitle,
 } from "@vita-os/ui/components/drawer";
-import { useSearch } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { X } from "lucide-react";
 import { useMemo } from "react";
