@@ -12,6 +12,7 @@ import {
   DrawerDescription,
   DrawerTitle,
 } from "@vita-os/ui/components/drawer";
+import { useSearch } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { X } from "lucide-react";
 import { useMemo } from "react";
@@ -31,6 +32,7 @@ import { useThreadPaneViewport } from "@/hooks/use-thread-pane-viewport";
 
 import type { ThreadLocation } from "./thread-pane-nav";
 
+import { ThreadViewPrototype } from "./prototype/prototype-host";
 import { ThreadNotFound } from "./thread-not-found";
 import { ThreadPaneNavContext } from "./thread-pane-nav";
 import { useDeferredRouteClose } from "./use-deferred-route-close";
@@ -58,6 +60,10 @@ export function ThreadDetailView({
   // One subscription serves both URL forms: `?thread=` reads the Area straight
   // off the composite, the canonical deep link validates against it.
   const detail = useQuery(api.threads.detailBySlug, { slug: threadSlug });
+  // PROTOTYPE (issue #280) — `?variant=` swaps the pane content for mock
+  // thread-view redesigns; remove with src/features/threads/thread-detail/prototype/.
+  const { variant } = useSearch({ from: "/_authenticated" });
+  const prototypeVariant = import.meta.env.DEV ? variant : undefined;
 
   useDocumentTitle(detail?.thread.title ?? "Thread");
 
@@ -73,7 +79,9 @@ export function ThreadDetailView({
     detail != null &&
     area !== null &&
     (areaSlug === undefined || area.slug === areaSlug);
-  const content = isLoading ? (
+  const content = prototypeVariant ? (
+    <ThreadViewPrototype variant={prototypeVariant} />
+  ) : isLoading ? (
     <ThreadDetailSkeleton />
   ) : !hasMatchingThread ? (
     <ThreadNotFound areaSlug={areaSlug} onClose={onClose} />
