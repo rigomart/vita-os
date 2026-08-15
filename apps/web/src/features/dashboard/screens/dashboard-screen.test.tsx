@@ -1,3 +1,5 @@
+import type { ComponentPropsWithoutRef } from "react";
+
 import { act, render, screen } from "@testing-library/react";
 import { getFunctionName } from "convex/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -5,6 +7,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardScreen } from "./dashboard-screen";
 
 const useQuery = vi.fn();
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    to,
+    params: _params,
+    search: _search,
+    children,
+    ...props
+  }: ComponentPropsWithoutRef<"a"> & {
+    to: string;
+    params?: unknown;
+    search?: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
+}));
 
 vi.mock("convex-helpers/react/cache/hooks", () => ({
   useQuery: (...args: unknown[]) => useQuery(...args),
@@ -16,6 +36,13 @@ vi.mock("@/features/areas/area-form/create-area-dialog", () => ({
 
 vi.mock("@/features/dashboard/plan/use-plan-actions", () => ({
   usePlanActions: () => ({ planTask: vi.fn(), planThread: vi.fn() }),
+}));
+
+// Both Plan surfaces are live surfaces of their own; the screen tests only
+// care about the queries and the date, not what the Plan renders.
+vi.mock("@/features/dashboard/plan", () => ({
+  PlanCanvas: () => null,
+  PlanSchedule: () => null,
 }));
 
 /** Every query the Dashboard reads, answered empty. */
@@ -67,11 +94,24 @@ describe("DashboardScreen", () => {
   it("moves the date when the day rolls over, without requerying", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 17, 23, 30));
-    answerEmpty();
+    // The date lives in the Area status bar, which needs an Area to render.
+    useQuery.mockImplementation((query: unknown) =>
+      getFunctionName(query as never) === "areas:list"
+        ? [
+            {
+              _id: "health",
+              name: "Health",
+              slug: "health",
+              icon: "HeartPulse",
+              condition: "healthy",
+              order: 0,
+            },
+          ]
+        : [],
+    );
     render(<DashboardScreen />);
 
-    expect(screen.getByText("Jul")).toBeVisible();
-    expect(screen.getByText("17")).toBeVisible();
+    expect(screen.getByText(/Jul 17/)).toBeVisible();
     // None of the subscriptions is keyed by the date.
     expect(useQuery.mock.calls.every(([, args]) => args === undefined)).toBe(
       true,
@@ -79,7 +119,7 @@ describe("DashboardScreen", () => {
 
     act(() => vi.advanceTimersByTime(30 * 60_000));
 
-    expect(screen.getByText("18")).toBeVisible();
+    expect(screen.getByText(/Jul 18/)).toBeVisible();
     expect(useQuery.mock.calls.every(([, args]) => args === undefined)).toBe(
       true,
     );
