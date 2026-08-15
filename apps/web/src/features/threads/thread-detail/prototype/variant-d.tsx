@@ -1,4 +1,6 @@
-/** PROTOTYPE (issue #280) — Variant D "Deck": upcoming moves stacked behind the Next Move. Throwaway. */
+/** PROTOTYPE (issue #280) — Variant D "Ledger": one framed card holding the Next Move and Up Next as a single plan. Throwaway. */
+import type { LucideIcon } from "lucide-react";
+
 import { Button } from "@vita-os/ui/components/button";
 import { Calendar } from "@vita-os/ui/components/calendar";
 import {
@@ -26,25 +28,23 @@ import {
   Plus,
   X,
 } from "lucide-react";
-import { type FormEvent, type KeyboardEvent, useState } from "react";
+import { useRef, useState } from "react";
 
 import { EditableField } from "@/components/ui/editable-field";
+import { conditionDotClassName } from "@/features/areas/condition-presentation";
+import { whenTone } from "@/features/attention-list";
 import { cn } from "@/lib/utils";
 
 import type { MockLogEntry, MockUpcomingMove } from "./mock-data";
 
 import { useMockThread } from "./mock-data";
 
-/** How far each card behind the front one peeks out, in pixels. */
-const PEEK_STEP = 7;
-/** Beyond this the stack stops reading as depth and starts reading as noise. */
-const MAX_PEEKS = 3;
-
 /**
- * The Thread as a deck: identity on top, then the Next Move as the front card
- * of a physical stack with the upcoming moves waiting behind it, then the
- * Activity log filling the floor. Completing the front card brings the next
- * one forward — the promotion is the animation, not a re-render.
+ * Ledger: the Thread's whole forward plan is one framed card — the only boxed
+ * element in the pane. The Next Move is the card's headline; the upcoming moves
+ * are ruled lines under it in the same column. Nothing is promoted between
+ * containers, because there is only one container: the top line is simply the
+ * line whose turn it is.
  */
 export function VariantD() {
   const {
@@ -69,7 +69,7 @@ export function VariantD() {
       <header
         role="banner"
         aria-label="Thread header"
-        className="flex shrink-0 flex-col gap-3"
+        className="flex shrink-0 flex-col gap-1"
       >
         {/* `pr-24` clears the pane's absolutely-placed control cluster. */}
         <div className="flex items-center gap-2 pr-24">
@@ -77,20 +77,14 @@ export function VariantD() {
             aria-hidden
             className={cn(
               "size-1.5 shrink-0 rounded-full",
-              CONDITION_DOT[area.condition],
+              conditionDotClassName[area.condition],
             )}
           />
-          <span className="truncate text-xs text-muted-foreground">
+          <span className="min-w-0 truncate text-xs text-muted-foreground">
             {area.name}
           </span>
-          <span
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 text-[11px]",
-              thread.state === "resolved"
-                ? "text-condition-healthy"
-                : "text-muted-foreground",
-            )}
-          >
+          <span aria-hidden className="h-3 w-px shrink-0 bg-border/60" />
+          <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
             {thread.state === "resolved" ? (
               <CircleCheck aria-hidden className="size-3" />
             ) : (
@@ -99,31 +93,33 @@ export function VariantD() {
             {thread.state === "resolved" ? "Resolved" : "Open"}
           </span>
         </div>
-        <div className="flex flex-col gap-0.5">
-          <EditableField
-            value={thread.title}
-            onSave={(title) => title && updateThread({ title })}
-            inputAriaLabel="Thread title"
-            className="font-heading text-xl font-semibold tracking-tight"
-          />
-          <EditableField
-            value={thread.summary ?? ""}
-            onSave={(summary) => updateThread({ summary })}
-            variant="textarea"
-            textareaRows={1}
-            inputAriaLabel="Thread summary"
-            placeholder="Add a summary…"
-            className="min-h-0 py-1.5 text-[13px] leading-relaxed text-muted-foreground"
-            displayClassName="border-b-0 whitespace-pre-wrap hover:bg-transparent"
-            editorClassName="rounded-lg border border-border/60 bg-muted/20 px-2.5 hover:bg-muted/20 focus-visible:bg-muted/20"
-          />
-        </div>
+
+        <EditableField
+          value={thread.title}
+          onSave={(title) => {
+            if (title) updateThread({ title });
+          }}
+          inputAriaLabel="Thread title"
+          className="min-h-0 py-0.5 font-heading text-lg font-semibold tracking-tight"
+          displayClassName="border-transparent"
+        />
+        <EditableField
+          value={thread.summary ?? ""}
+          onSave={(summary) => updateThread({ summary })}
+          variant="textarea"
+          textareaRows={1}
+          inputAriaLabel="Thread summary"
+          placeholder="Add a summary…"
+          className="min-h-0 py-0 text-[13px] leading-snug text-muted-foreground"
+          displayClassName="border-transparent whitespace-pre-wrap hover:bg-transparent"
+          editorClassName="rounded-lg border border-border/60 bg-muted/20 px-2.5"
+        />
       </header>
 
-      <Deck
+      <Ledger
         nextMove={thread.nextMove}
         followUp={thread.followUp}
-        upNext={upNext}
+        moves={upNext}
         onComplete={completeNextMove}
         onClear={clearNextMove}
         onSetNextMove={setNextMove}
@@ -143,16 +139,27 @@ export function VariantD() {
   );
 }
 
-const CONDITION_DOT = {
-  healthy: "bg-condition-healthy-fill",
-  needs_attention: "bg-condition-attention-fill",
-  critical: "bg-condition-critical-fill",
-} as const;
+/* ---------------------------------------------------------------- ledger -- */
 
-interface DeckProps {
+/**
+ * The marker column. On the headline it holds the complete control — that line
+ * is the one you can act on; on every waiting line it holds the line number.
+ * A fixed width is what keeps the two readings in the same column.
+ */
+const GUTTER = "w-6 shrink-0";
+
+/** Distance down the plan reads as distance from full ink. */
+const LEDGER_TONE = [
+  "text-foreground/90",
+  "text-foreground/80",
+  "text-muted-foreground",
+  "text-muted-foreground/75",
+];
+
+interface LedgerProps {
   nextMove: string | undefined;
   followUp: number | undefined;
-  upNext: MockUpcomingMove[];
+  moves: MockUpcomingMove[];
   onComplete: () => void;
   onClear: () => void;
   onSetNextMove: (text: string) => void;
@@ -163,15 +170,10 @@ interface DeckProps {
   onSetFollowUp: (timestamp: number | null) => void;
 }
 
-/**
- * The stack. Collapsed, the upcoming moves are layered edges under the front
- * card — you read how much is waiting without reading what it is. Fanned open,
- * the same moves become an editable column and the depth ticks carry the order.
- */
-function Deck({
+function Ledger({
   nextMove,
   followUp,
-  upNext,
+  moves,
   onComplete,
   onClear,
   onSetNextMove,
@@ -180,115 +182,74 @@ function Deck({
   onRemove,
   onReorder,
   onSetFollowUp,
-}: DeckProps) {
-  const [fanned, setFanned] = useState(false);
-  const peeks = upNext.slice(0, MAX_PEEKS);
-  const hidden = upNext.length - peeks.length;
-  const reserve = fanned ? 0 : peeks.length * PEEK_STEP;
+}: LedgerProps) {
+  const frontId = moves[0]?.id;
 
   return (
     <section
       aria-label="Next move and Up Next"
-      data-slot="deck"
-      className="flex shrink-0 flex-col gap-1.5"
+      data-slot="ledger"
+      className="shrink-0 rounded-lg border border-border border-l-2 border-l-(--brand-gold) bg-card px-3 py-2.5"
     >
+      {/* Both micro-label rows ride the same hairline, so the card reads as one
+          ruled page rather than two stacked blocks. */}
       <div className="flex items-center gap-2">
         <h2 className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
           Next move
         </h2>
         <span aria-hidden className="h-px flex-1 bg-border/50" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setFanned((open) => !open)}
-          aria-expanded={fanned}
-          className="h-6 gap-1 px-1.5 text-[11px] font-normal text-muted-foreground hover:text-foreground"
-        >
-          {fanned
-            ? "Collapse"
-            : upNext.length === 0
-              ? "Up Next"
-              : `${upNext.length} upcoming`}
-          <ChevronDown
-            aria-hidden
-            className={cn(
-              "size-3 transition-transform duration-200 motion-reduce:transition-none",
-              fanned && "rotate-180",
-            )}
-          />
-        </Button>
+        <FollowUpSatellite followUp={followUp} onSet={onSetFollowUp} />
       </div>
 
-      {/* The reserved strip below the front card is where the deck's edges
-          show; it collapses to nothing when the deck is fanned open. */}
-      <div
-        className="relative transition-[padding] duration-300 motion-reduce:transition-none"
-        style={{ paddingBottom: reserve }}
-      >
-        <div className="relative">
-          {peeks.map((move, index) => (
-            <div
+      <HeadlineLine
+        nextMove={nextMove}
+        onComplete={onComplete}
+        onClear={onClear}
+        onSet={onSetNextMove}
+      />
+
+      <div className="mt-1 flex items-center gap-2">
+        <h2 className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
+          Up Next
+          {moves.length > 0 && (
+            <span className="tabular-nums"> · {moves.length}</span>
+          )}
+        </h2>
+        <span aria-hidden className="h-px flex-1 bg-border/50" />
+      </div>
+
+      {moves.length === 0 ? (
+        <p className="py-1.5 pl-8 text-[13px] leading-snug text-muted-foreground">
+          Nothing waiting behind the next move.
+        </p>
+      ) : (
+        // Keyed on the front move: a promotion remounts the ledger so the
+        // remaining lines rise together as the headline takes the front one.
+        <ol
+          key={frontId}
+          className="mt-0.5 flex flex-col divide-y divide-border/25 animate-in fade-in slide-in-from-bottom-1 duration-300 motion-reduce:animate-none"
+        >
+          {moves.map((move, index) => (
+            <LedgerLine
               key={move.id}
-              aria-hidden
-              className={cn(
-                // Cards behind sink toward the app's own ground colour, so the
-                // stack recedes the same way in both themes.
-                "absolute inset-0 rounded-xl border border-border bg-surface-1",
-                "transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none",
-              )}
-              style={{
-                transform: `translateY(${(index + 1) * PEEK_STEP}px) scaleX(${1 - (index + 1) * 0.03})`,
-                opacity: fanned ? 0 : 1 - index * 0.28,
-              }}
+              move={move}
+              index={index}
+              isLast={index === moves.length - 1}
+              onEdit={onEdit}
+              onRemove={onRemove}
+              onReorder={onReorder}
             />
           ))}
-
-          <FrontCard
-            nextMove={nextMove}
-            onComplete={onComplete}
-            onClear={onClear}
-            onSet={onSetNextMove}
-          />
-        </div>
-
-        {/* Pressing the exposed edges is the deck's own affordance. */}
-        {!fanned && peeks.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setFanned(true)}
-            className="absolute inset-x-6 bottom-0 rounded-b-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            style={{ height: reserve }}
-          >
-            <span className="sr-only">
-              Show all {upNext.length} upcoming moves
-            </span>
-          </button>
-        )}
-      </div>
-
-      {fanned ? (
-        <FannedMoves
-          upNext={upNext}
-          onAdd={onAdd}
-          onEdit={onEdit}
-          onRemove={onRemove}
-          onReorder={onReorder}
-        />
-      ) : (
-        hidden > 0 && (
-          <p className="pl-1 text-[11px] text-muted-foreground/70">
-            {hidden} more waiting behind
-          </p>
-        )
+        </ol>
       )}
 
-      <FollowUpSatellite followUp={followUp} onSet={onSetFollowUp} />
+      <AddLine onAdd={onAdd} />
     </section>
   );
 }
 
-function FrontCard({
+/** The line whose turn it is: the strongest text on the page. */
+function HeadlineLine({
   nextMove,
   onComplete,
   onClear,
@@ -300,40 +261,42 @@ function FrontCard({
   onSet: (text: string) => void;
 }) {
   return (
-    // Opaque on purpose: the cards behind must not read through the front one,
-    // and `shadow-sm` is what falls onto their exposed edges.
-    <div className="group/front relative flex min-h-14 items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2 shadow-sm">
-      {nextMove === undefined ? (
-        <>
+    <div className="group/headline flex min-h-9 items-start gap-2 pt-1 pb-1.5">
+      <span className={cn("flex justify-end pt-px", GUTTER)}>
+        {nextMove === undefined ? (
           <ArrowRight
             aria-hidden
-            className="size-3.5 shrink-0 text-muted-foreground/70"
+            className="mt-1.5 size-3.5 text-muted-foreground/60"
           />
-          <NextMoveInput onCommit={onSet} />
-        </>
-      ) : (
-        <>
+        ) : (
           <Button
             variant="ghost"
             size="icon-xs"
             onClick={onComplete}
             aria-label="Complete next move"
-            className="size-7 shrink-0 rounded-full border border-condition-healthy/40 text-condition-healthy hover:bg-condition-healthy/10 hover:text-condition-healthy"
+            className="size-6 rounded-full border border-condition-healthy/40 text-condition-healthy hover:bg-condition-healthy/10 hover:text-condition-healthy"
           >
             <Check />
           </Button>
+        )}
+      </span>
 
-          {/* Keyed on the text so a promoted move arrives instead of swapping. */}
-          <span
-            key={nextMove}
-            className="min-w-0 flex-1 animate-in fade-in slide-in-from-bottom-1 duration-300 motion-reduce:animate-none"
-          >
+      {nextMove === undefined ? (
+        <NextMoveInput onCommit={onSet} />
+      ) : (
+        <>
+          {/* Keyed on the text: the promoted move arrives into the headline
+              instead of the old text quietly swapping out underneath it. */}
+          <span className="min-w-0 flex-1">
             <EditableField
+              key={nextMove}
               value={nextMove}
-              onSave={(text) => text && onSet(text)}
+              onSave={(text) => {
+                if (text) onSet(text);
+              }}
               inputAriaLabel="Next move"
-              className="min-h-0 py-0 text-[13px] font-medium leading-snug"
-              displayClassName="border-transparent text-left"
+              className="min-h-0 py-0.5 text-[15px] leading-snug font-medium"
+              displayClassName="border-transparent whitespace-pre-wrap animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
             />
           </span>
 
@@ -342,7 +305,7 @@ function FrontCard({
             size="icon-xs"
             onClick={onClear}
             aria-label="Clear next move"
-            className="size-7 shrink-0 self-start text-muted-foreground/50 transition-opacity hover:text-destructive xl:opacity-0 xl:group-focus-within/front:opacity-100 xl:group-hover/front:opacity-100"
+            className="shrink-0 text-muted-foreground/50 transition-opacity hover:text-destructive motion-reduce:transition-none xl:opacity-0 xl:group-focus-within/headline:opacity-100 xl:group-hover/headline:opacity-100"
           >
             <X />
           </Button>
@@ -376,97 +339,93 @@ function NextMoveInput({ onCommit }: { onCommit: (text: string) => void }) {
       }}
       aria-label="Next move"
       placeholder="Set the next move…"
-      className="h-8 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 text-[13px] font-medium outline-none transition-colors placeholder:font-normal placeholder:text-muted-foreground/60 focus:ring-1 focus:ring-ring"
+      className="h-8 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 text-[15px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-border/60 focus:bg-muted/30 motion-reduce:transition-none"
     />
   );
 }
 
-/**
- * The deck fanned out in place: one row per upcoming move, ordered top to
- * bottom, with the depth tick carrying how far back each one sits.
- */
-function FannedMoves({
-  upNext,
-  onAdd,
+/** A waiting line: number, text, and the controls that only appear on approach. */
+function LedgerLine({
+  move,
+  index,
+  isLast,
   onEdit,
   onRemove,
   onReorder,
 }: {
-  upNext: MockUpcomingMove[];
-  onAdd: (text: string) => void;
+  move: MockUpcomingMove;
+  index: number;
+  isLast: boolean;
   onEdit: (id: string, text: string) => void;
   onRemove: (id: string) => void;
   onReorder: (id: string, toIndex: number) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1 animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">
-      {upNext.length === 0 ? (
-        <p className="px-1 py-1 text-[13px] text-muted-foreground">
-          Nothing waiting behind the next move yet.
-        </p>
-      ) : (
-        <ul className="flex flex-col">
-          {upNext.map((move, index) => (
-            <li
-              key={move.id}
-              className="group/move flex items-center gap-2 rounded-md py-0.5 pr-1 pl-0.5 hover:bg-muted/40"
-            >
-              <span
-                aria-hidden
-                className="h-5 w-0.5 shrink-0 rounded-full bg-border"
-                style={{ opacity: Math.max(0.3, 1 - index * 0.15) }}
-              />
-              <span className="min-w-0 flex-1">
-                <EditableField
-                  value={move.text}
-                  onSave={(text) => text && onEdit(move.id, text)}
-                  inputAriaLabel={`Upcoming move ${index + 1}`}
-                  className="min-h-0 py-1 text-[13px] leading-snug"
-                  displayClassName="border-transparent text-left"
-                />
-              </span>
-              <span className="flex shrink-0 items-center transition-opacity xl:opacity-0 xl:group-focus-within/move:opacity-100 xl:group-hover/move:opacity-100">
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => onReorder(move.id, index - 1)}
-                  disabled={index === 0}
-                  aria-label={`Move "${move.text}" earlier`}
-                  className="size-6 text-muted-foreground/60 hover:text-foreground disabled:opacity-25"
-                >
-                  <ChevronUp />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => onReorder(move.id, index + 1)}
-                  disabled={index === upNext.length - 1}
-                  aria-label={`Move "${move.text}" later`}
-                  className="size-6 text-muted-foreground/60 hover:text-foreground disabled:opacity-25"
-                >
-                  <ChevronDown />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => onRemove(move.id)}
-                  aria-label={`Remove "${move.text}"`}
-                  className="size-6 text-muted-foreground/50 hover:text-destructive"
-                >
-                  <X />
-                </Button>
-              </span>
-            </li>
-          ))}
-        </ul>
+    <li
+      className={cn(
+        "group/line flex min-h-7 items-center gap-2 transition-colors duration-300 motion-reduce:transition-none",
+        LEDGER_TONE[Math.min(index, LEDGER_TONE.length - 1)],
       )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "text-right text-[10px] tabular-nums text-muted-foreground/50",
+          GUTTER,
+        )}
+      >
+        {String(index + 1).padStart(2, "0")}
+      </span>
 
-      <AddMoveInput onAdd={onAdd} />
-    </div>
+      <span className="min-w-0 flex-1">
+        <EditableField
+          value={move.text}
+          onSave={(text) => {
+            if (text) onEdit(move.id, text);
+          }}
+          inputAriaLabel="Upcoming move"
+          className="min-h-0 py-1 text-[13px] leading-snug"
+          displayClassName="border-transparent"
+        />
+      </span>
+
+      <span className="flex shrink-0 items-center transition-opacity motion-reduce:transition-none xl:opacity-0 xl:group-focus-within/line:opacity-100 xl:group-hover/line:opacity-100">
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          disabled={index === 0}
+          onClick={() => onReorder(move.id, index - 1)}
+          aria-label="Move earlier"
+          className="size-6 text-muted-foreground/60 hover:text-foreground"
+        >
+          <ChevronUp />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          disabled={isLast}
+          onClick={() => onReorder(move.id, index + 1)}
+          aria-label="Move later"
+          className="size-6 text-muted-foreground/60 hover:text-foreground"
+        >
+          <ChevronDown />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          onClick={() => onRemove(move.id)}
+          aria-label="Remove upcoming move"
+          className="size-6 text-muted-foreground/50 hover:text-destructive"
+        >
+          <X />
+        </Button>
+      </span>
+    </li>
   );
 }
 
-function AddMoveInput({ onAdd }: { onAdd: (text: string) => void }) {
+/** The foot of the page: where the plan gets one line longer. */
+function AddLine({ onAdd }: { onAdd: (text: string) => void }) {
   const [draft, setDraft] = useState("");
 
   const commit = () => {
@@ -477,28 +436,38 @@ function AddMoveInput({ onAdd }: { onAdd: (text: string) => void }) {
   };
 
   return (
-    <div className="flex items-center gap-2 pl-0.5">
-      <Plus aria-hidden className="size-3 shrink-0 text-muted-foreground/50" />
+    <div className="flex items-center gap-2 border-t border-border/25 pt-0.5">
+      <span className={cn("flex justify-end", GUTTER)}>
+        <Plus aria-hidden className="size-3 text-muted-foreground/40" />
+      </span>
       <input
         type="text"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             event.preventDefault();
             commit();
           }
         }}
-        onBlur={commit}
         aria-label="Add an upcoming move"
         placeholder="Add an upcoming move…"
-        className="h-8 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 text-[13px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:ring-1 focus:ring-ring"
+        className="h-7 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 text-[13px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-border/60 focus:bg-muted/30 motion-reduce:transition-none"
       />
     </div>
   );
 }
 
-/** The soft resurfacing date, tucked under the deck's corner. */
+/* ------------------------------------------------------------- follow-up -- */
+
+/** Lateness reads in the tone the rest of the app uses for a slipping date. */
+const FOLLOW_UP_TONE = {
+  overdue: "text-condition-attention",
+  due: "text-brand-accent-foreground",
+} as const;
+
+/** A satellite of the card's header line: when the Thread comes back, not a deadline. */
 function FollowUpSatellite({
   followUp,
   onSet,
@@ -508,35 +477,31 @@ function FollowUpSatellite({
 }) {
   const [open, setOpen] = useState(false);
   const selected = followUp === undefined ? undefined : new Date(followUp);
-  const isOverdue = followUp !== undefined && followUp < Date.now();
+  const tone = whenTone(followUp, Date.now());
 
   return (
-    <div className="flex items-center justify-end gap-0.5 pt-0.5">
+    <span className="flex shrink-0 items-center">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
             <Button
               variant="ghost"
-              size="sm"
-              className="h-6 gap-1.5 px-1.5 text-[11px] font-normal"
+              size="xs"
+              className="gap-1.5 px-1.5 font-normal"
             />
           }
         >
           <Bell aria-hidden className="size-3 text-muted-foreground/70" />
+          <span className="sr-only">Follow-up</span>
           {selected ? (
-            <>
-              <span className="text-muted-foreground">Resurfaces</span>
-              <span
-                className={cn(
-                  "tabular-nums",
-                  isOverdue
-                    ? "text-condition-attention"
-                    : "text-brand-accent-foreground",
-                )}
-              >
-                {format(selected, "MMM d, yyyy")}
-              </span>
-            </>
+            <span
+              className={cn(
+                "tabular-nums",
+                tone ? FOLLOW_UP_TONE[tone] : "text-muted-foreground",
+              )}
+            >
+              {format(selected, "MMM d")}
+            </span>
           ) : (
             <span className="text-muted-foreground">Add a follow-up…</span>
           )}
@@ -560,23 +525,42 @@ function FollowUpSatellite({
           size="icon-xs"
           onClick={() => onSet(null)}
           aria-label="Clear follow-up"
-          className="size-6 shrink-0 text-muted-foreground/50 hover:text-destructive"
+          className="size-5 shrink-0 text-muted-foreground/50 hover:text-destructive"
         >
           <X />
         </Button>
       )}
-    </div>
+    </span>
   );
 }
 
-const LOG_ICONS = {
+/* ------------------------------------------------------------------- log -- */
+
+type AutomaticEntry = MockLogEntry & {
+  type: Exclude<MockLogEntry["type"], "note">;
+};
+
+const LOG_ICONS: Record<AutomaticEntry["type"], LucideIcon> = {
   next_action_change: ArrowRight,
   state_change: CircleCheck,
   follow_up_change: Bell,
   area_move: MapPin,
-} as const;
+};
 
-/** The Thread's continuity record: the only scrolling region in the pane. */
+const LOG_LABELS: Record<AutomaticEntry["type"], string> = {
+  next_action_change: "Next move",
+  state_change: "Lifecycle",
+  follow_up_change: "Follow-up",
+  area_move: "Area",
+};
+
+// Rail geometry: the 1px line spans left 11–12px, so markers sit at 11.5px
+// with -translate-x-1/2 and entry bodies clear it at pl-9.
+const RAIL_LEFT = "left-[11px]";
+const NODE_LEFT = "left-[11.5px]";
+const ENTRY_PAD = "pl-9";
+
+/** The record behind the plan: the pane's only scrolling region. */
 function ActivityLog({
   log,
   lastActivityAt,
@@ -586,6 +570,8 @@ function ActivityLog({
   lastActivityAt: number;
   onAddNote: (content: string) => void;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   return (
     <section
       aria-label="Activity log"
@@ -604,17 +590,26 @@ function ActivityLog({
         </span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 scroll-smooth overflow-y-auto overscroll-contain motion-reduce:scroll-auto"
+      >
         <div className="relative pb-6">
           <div
             aria-hidden
-            className="absolute top-1 bottom-0 left-[11px] w-px bg-gradient-to-b from-transparent via-border to-transparent"
+            className={cn(
+              "absolute top-1 bottom-0 w-px bg-gradient-to-b from-transparent via-border to-transparent",
+              RAIL_LEFT,
+            )}
           />
 
-          <div className="relative pb-4 pl-9">
+          <div className={cn("relative pb-4", ENTRY_PAD)}>
             <span
               aria-hidden
-              className="absolute top-0.5 left-[11.5px] size-2.5 -translate-x-1/2 rounded-full border border-(--brand-gold) bg-background"
+              className={cn(
+                "absolute top-0.5 size-2.5 -translate-x-1/2 rounded-full border border-(--brand-gold) bg-background",
+                NODE_LEFT,
+              )}
             >
               <span className="absolute inset-[3px] rounded-full bg-(--brand-gold)" />
             </span>
@@ -632,16 +627,19 @@ function ActivityLog({
                 aria-label={group.label}
                 className="flex flex-col"
               >
-                <div className="pb-1.5 pl-9">
+                <div className={cn("pb-1.5", ENTRY_PAD)}>
                   <h3 className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
                     {group.label}
                   </h3>
                 </div>
                 {group.entries.map((entry) =>
                   entry.type === "note" ? (
-                    <NoteEntry key={entry.id} entry={entry} />
+                    <ManualNote key={entry.id} entry={entry} />
                   ) : (
-                    <ChangeEntry key={entry.id} entry={entry} />
+                    <AutomaticChange
+                      key={entry.id}
+                      entry={entry as AutomaticEntry}
+                    />
                   ),
                 )}
               </section>
@@ -650,24 +648,30 @@ function ActivityLog({
         </div>
       </div>
 
-      <NoteComposer onAddNote={onAddNote} />
+      <LogComposer
+        onAddNote={onAddNote}
+        onPosted={() => scrollRef.current?.scrollTo?.({ top: 0 })}
+      />
     </section>
   );
 }
 
-function NoteEntry({ entry }: { entry: MockLogEntry }) {
+function ManualNote({ entry }: { entry: MockLogEntry }) {
   return (
-    <div className="relative py-1.5 pl-9">
+    <div className={cn("relative py-1.5", ENTRY_PAD)}>
       <span
         aria-hidden
-        className="absolute top-4 left-[11.5px] size-2.5 -translate-x-1/2 rounded-full border border-(--brand-gold)/60 bg-(--brand-gold) ring-2 ring-background"
+        className={cn(
+          "absolute top-4 size-2.5 -translate-x-1/2 rounded-full border border-(--brand-gold)/60 bg-(--brand-gold) ring-2 ring-background",
+          NODE_LEFT,
+        )}
       />
       <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
         <div className="mb-1 flex items-baseline justify-between gap-2">
           <span className="text-[10px] font-medium tracking-wide text-(--brand-gold) uppercase">
             Note
           </span>
-          <LogTime createdAt={entry.createdAt} />
+          <LogTimestamp createdAt={entry.createdAt} />
         </div>
         <p className="whitespace-pre-wrap text-[13px] leading-snug text-foreground">
           {entry.content}
@@ -677,30 +681,36 @@ function NoteEntry({ entry }: { entry: MockLogEntry }) {
   );
 }
 
-function ChangeEntry({ entry }: { entry: MockLogEntry }) {
-  const Icon = LOG_ICONS[entry.type as keyof typeof LOG_ICONS] ?? ArrowRight;
+function AutomaticChange({ entry }: { entry: AutomaticEntry }) {
+  const Icon = LOG_ICONS[entry.type];
 
   return (
-    <div className="relative py-1 pl-9">
+    <div className={cn("relative py-1", ENTRY_PAD)}>
       <span
         aria-hidden
-        className="absolute top-[9px] left-[11.5px] size-1.5 -translate-x-1/2 rounded-full border border-muted-foreground/40 bg-background"
+        className={cn(
+          "absolute top-[9px] size-1.5 -translate-x-1/2 rounded-full border border-muted-foreground/40 bg-background",
+          NODE_LEFT,
+        )}
       />
       <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-        <Icon className="size-3.5 shrink-0 text-muted-foreground/60" />
-        <span className="shrink-0 font-medium">{entry.content}</span>
+        <Icon
+          aria-hidden
+          className="size-3.5 shrink-0 text-muted-foreground/60"
+        />
+        <span className="shrink-0 font-medium">{LOG_LABELS[entry.type]}</span>
         <span className="truncate text-muted-foreground/80">
-          {changeSummary(entry)}
+          {summarize(entry)}
         </span>
         <span className="ml-auto shrink-0 pl-2">
-          <LogTime createdAt={entry.createdAt} />
+          <LogTimestamp createdAt={entry.createdAt} />
         </span>
       </div>
     </div>
   );
 }
 
-function LogTime({ createdAt }: { createdAt: number }) {
+function LogTimestamp({ createdAt }: { createdAt: number }) {
   const date = new Date(createdAt);
 
   return (
@@ -714,26 +724,21 @@ function LogTime({ createdAt }: { createdAt: number }) {
   );
 }
 
-function NoteComposer({ onAddNote }: { onAddNote: (content: string) => void }) {
-  const [text, setText] = useState("");
+function LogComposer({
+  onAddNote,
+  onPosted,
+}: {
+  onAddNote: (content: string) => void;
+  onPosted: () => void;
+}) {
+  const [noteText, setNoteText] = useState("");
 
   const submit = () => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    setText("");
-    onAddNote(trimmed);
-  };
-
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    submit();
-  };
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      submit();
-    }
+    const text = noteText.trim();
+    if (!text) return;
+    setNoteText("");
+    onAddNote(text);
+    onPosted();
   };
 
   return (
@@ -742,16 +747,26 @@ function NoteComposer({ onAddNote }: { onAddNote: (content: string) => void }) {
         aria-hidden
         className="pointer-events-none absolute inset-x-0 -top-4 h-6 bg-gradient-to-t from-popover to-transparent"
       />
-      <form onSubmit={handleSubmit}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
+        }}
+      >
         <label htmlFor="variant-d-note" className="sr-only">
           Activity log note
         </label>
         <InputGroup className="bg-muted/50 has-[textarea]:rounded-3xl has-data-[align=block-end]:rounded-3xl">
           <InputGroupTextarea
             id="variant-d-note"
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={handleKeyDown}
+            value={noteText}
+            onChange={(event) => setNoteText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                submit();
+              }
+            }}
             aria-label="Activity log note"
             placeholder="Log what just happened…"
             rows={1}
@@ -765,7 +780,7 @@ function NoteComposer({ onAddNote }: { onAddNote: (content: string) => void }) {
               type="submit"
               size="icon-xs"
               variant="secondary"
-              disabled={!text.trim()}
+              disabled={!noteText.trim()}
               aria-label="Add note"
             >
               <ArrowUp data-icon="inline-start" />
@@ -777,20 +792,20 @@ function NoteComposer({ onAddNote }: { onAddNote: (content: string) => void }) {
   );
 }
 
-function groupByDay(log: MockLogEntry[]) {
+function groupByDay(entries: MockLogEntry[]) {
   const groups = new Map<string, MockLogEntry[]>();
 
-  for (const entry of [...log].sort((a, b) => b.createdAt - a.createdAt)) {
+  for (const entry of [...entries].sort((a, b) => b.createdAt - a.createdAt)) {
     const key = format(new Date(entry.createdAt), "yyyy-MM-dd");
     const group = groups.get(key) ?? [];
     group.push(entry);
     groups.set(key, group);
   }
 
-  return [...groups.entries()].map(([key, entries]) => ({
+  return [...groups.entries()].map(([key, groupEntries]) => ({
     key,
-    label: dayLabel(entries[0]!.createdAt),
-    entries,
+    label: dayLabel(groupEntries[0]!.createdAt),
+    entries: groupEntries,
   }));
 }
 
@@ -801,11 +816,15 @@ function dayLabel(createdAt: number) {
   return format(date, "MMMM d, yyyy");
 }
 
-function changeSummary(entry: MockLogEntry) {
+function summarize(entry: AutomaticEntry) {
   if (entry.previousValue && entry.newValue) {
     return `${entry.previousValue} → ${entry.newValue}`;
   }
   if (entry.newValue) return `Set to ${entry.newValue}`;
-  if (entry.previousValue) return entry.previousValue;
-  return "";
+  if (entry.previousValue) {
+    return entry.content.includes("completed")
+      ? `Completed ${entry.previousValue}`
+      : `Cleared ${entry.previousValue}`;
+  }
+  return entry.content;
 }

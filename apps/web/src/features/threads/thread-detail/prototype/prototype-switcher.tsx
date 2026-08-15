@@ -10,9 +10,9 @@ import type { PrototypeVariant } from "@/routes/_authenticated/route";
 
 export const PROTOTYPE_VARIANT_NAMES: Record<PrototypeVariant, string> = {
   a: "Runway",
-  b: "Journal & Dock",
-  c: "Continuum",
-  d: "Deck",
+  b: "Cascade",
+  c: "Ladder",
+  d: "Ledger",
   e: "Horizon",
 };
 
