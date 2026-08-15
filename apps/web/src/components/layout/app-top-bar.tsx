@@ -8,6 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 import { InboxTaskCountBadge } from "./inbox-task-count-badge";
+import { TopBarAreaStrip } from "./top-bar-area-strip";
 import { UserMenu } from "./user-menu";
 
 interface AppTopBarProps {
@@ -32,25 +33,28 @@ export function AppTopBar({
     <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
       {/* Equal 1fr wings keep the search truly viewport-centered at md+. */}
       <div className="flex h-12 items-center gap-3 px-4 md:grid md:grid-cols-[1fr_minmax(0,24rem)_1fr]">
-        <Link
-          to="/"
-          aria-label="Vita OS home"
-          className="flex min-w-0 items-center gap-2 justify-self-start rounded-lg ring-ring outline-none transition-opacity hover:opacity-80 focus-visible:ring-2"
-        >
-          <img
-            src="/vita-logo.svg"
-            alt=""
-            className="size-7 shrink-0 rounded-lg shadow-sm ring-1 ring-border"
-          />
-          <span className="flex items-baseline gap-1 leading-none">
-            <span className="font-heading text-base font-semibold tracking-tight">
-              vita
+        <div className="flex min-w-0 items-center gap-3 justify-self-start">
+          <Link
+            to="/"
+            aria-label="Vita OS home"
+            className="flex min-w-0 shrink-0 items-center gap-2 rounded-lg ring-ring outline-none transition-opacity hover:opacity-80 focus-visible:ring-2"
+          >
+            <img
+              src="/vita-logo.svg"
+              alt=""
+              className="size-7 shrink-0 rounded-lg shadow-sm ring-1 ring-border"
+            />
+            <span className="flex items-baseline gap-1 leading-none">
+              <span className="font-heading text-base font-semibold tracking-tight">
+                vita
+              </span>
+              <span className="text-[0.5625rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                OS
+              </span>
             </span>
-            <span className="text-[0.5625rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-              OS
-            </span>
-          </span>
-        </Link>
+          </Link>
+          <TopBarAreaStrip />
+        </div>
 
         {/* On mobile the search affordance lives in the tab bar instead. */}
         <button
