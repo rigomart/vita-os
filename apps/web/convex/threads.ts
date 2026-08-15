@@ -10,7 +10,11 @@ import {
   completeNextMove,
   sanitizeThreadPatch,
 } from "./lib/threadChanges";
-import { requireUpNextMoves, storedUpNext } from "./lib/upNext";
+import {
+  requireOpenForUpNext,
+  requireUpNextMoves,
+  storedUpNext,
+} from "./lib/upNext";
 import { requireTitle } from "./lib/validation";
 import {
   projectArea,
@@ -219,6 +223,7 @@ export const replaceUpNext = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     const thread = await requireOwned(ctx, "threads", { userId, id: args.id });
+    requireOpenForUpNext(thread);
 
     await applyThreadPatch(ctx, {
       userId,

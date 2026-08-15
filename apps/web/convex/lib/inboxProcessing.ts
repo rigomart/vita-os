@@ -7,7 +7,7 @@ import { getNextOrder } from "./helpers";
 import { requireOwned } from "./ownedAccess";
 import { generateSlug } from "./slugs";
 import { applyThreadPatch } from "./threadChanges";
-import { storedUpNext } from "./upNext";
+import { requireOpenForUpNext, storedUpNext } from "./upNext";
 import { requireTitle } from "./validation";
 
 type MutationCtx = GenericMutationCtx<DataModel>;
@@ -135,6 +135,7 @@ export async function processInboxTask(
       userId: args.userId,
       id: args.action.threadId,
     });
+    requireOpenForUpNext(thread);
 
     // The Task joins the back of the line and nothing is logged — lining up a
     // move is an edit, not an event. The only entry that can come out of this

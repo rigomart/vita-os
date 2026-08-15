@@ -31,7 +31,9 @@ export default defineSchema({
     state: v.union(v.literal("open"), v.literal("resolved")),
     nextMove: v.optional(v.string()),
     // The Up Next line behind the Next Move: plain ordered text, no dates and
-    // no done states (ADR 0010). Absent means no upcoming moves — an empty
+    // no done states (docs/adr/0010-up-next-behind-the-next-move.md — cited by
+    // path because two ADRs currently share the number). Absent means no
+    // upcoming moves — an empty
     // list is never stored, so a Thread without Up Next reads as it always
     // did. While this is non-empty, `nextMove` is set.
     upNext: v.optional(v.array(v.string())),

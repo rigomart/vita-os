@@ -281,6 +281,41 @@ describe("Up Next", () => {
     expect(reopened?.upNext).toBeUndefined();
   });
 
+  it("refuses to line up moves on a resolved Thread", async () => {
+    await owner.mutation(api.threads.update, {
+      id: owned.threadId,
+      state: "resolved",
+    });
+
+    await expect(
+      owner.mutation(api.threads.replaceUpNext, {
+        id: owned.threadId,
+        moves: ["Book the appointment"],
+      }),
+    ).rejects.toThrow(/resolved/i);
+
+    const thread = await readThread();
+    expect(thread?.upNext).toBeUndefined();
+    expect(thread?.nextMove).toBeUndefined();
+  });
+
+  it("refuses to process a Task into a resolved Thread's Up Next, keeping the Task", async () => {
+    await owner.mutation(api.threads.update, {
+      id: owned.threadId,
+      state: "resolved",
+    });
+
+    await expect(
+      owner.mutation(api.tasks.process, {
+        id: owned.taskId,
+        action: { type: "append_up_next", threadId: owned.threadId },
+      }),
+    ).rejects.toThrow(/resolved/i);
+
+    expect(await owner.query(api.tasks.list, {})).toHaveLength(1);
+    expect((await readThread())?.nextMove).toBeUndefined();
+  });
+
   it("appends a processed Task to the end of the line, silently, and consumes the Task", async () => {
     await storeUpNext(["Book the appointment"]);
     const before = await readActivityLog();
