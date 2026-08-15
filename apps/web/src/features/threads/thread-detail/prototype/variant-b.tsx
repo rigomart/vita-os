@@ -285,9 +285,11 @@ function Cascade({
         <h2 className="shrink-0 text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
           Up Next
         </h2>
-        <span className="shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground/60">
-          {`· ${moves.length}`}
-        </span>
+        {moves.length > 0 && (
+          <span className="shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground/60">
+            {`· ${moves.length}`}
+          </span>
+        )}
         <span aria-hidden className="h-px flex-1 bg-border/50" />
         <FollowUpSatellite
           followUp={followUp}
@@ -298,16 +300,7 @@ function Cascade({
       </div>
 
       <div className="flex flex-col">
-        {moves.length === 0 ? (
-          <p
-            className={cn(
-              "py-1 text-[13px] leading-snug text-muted-foreground",
-              ROW_PAD,
-            )}
-          >
-            Nothing waiting behind the next move.
-          </p>
-        ) : (
+        {moves.length > 0 && (
           <ol className="relative flex flex-col">
             {/* The spine: the elbow's line, continuing past every move that is
                 still waiting. It thins with depth and stops on the last tick. */}
@@ -456,8 +449,8 @@ function AddMove({ onAdd }: { onAdd: (text: string) => void }) {
           }
           if (event.key === "Escape") setDraft("");
         }}
-        aria-label="Add a move"
-        placeholder="Add a move…"
+        aria-label="Add an upcoming move"
+        placeholder="Add what comes after…"
         className="h-7 w-full min-w-0 rounded-md border border-transparent bg-transparent px-0 text-[13px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-border/60 focus:bg-muted/30 focus:px-1.5 motion-reduce:transition-none"
       />
     </div>
@@ -543,21 +536,23 @@ function FollowUpSatellite({
           }
         >
           <Bell aria-hidden className="size-3 text-muted-foreground/70" />
-          <span className="sr-only">Follow-up</span>
           {selected ? (
             <span
               className={cn(
-                "tabular-nums",
                 tone ? FOLLOW_UP_TONE[tone] : "text-muted-foreground",
               )}
             >
-              {format(selected, "MMM d")}
+              {"Follow up "}
+              <span className="tabular-nums">{format(selected, "MMM d")}</span>
             </span>
           ) : (
             <span className="text-muted-foreground">Add a follow-up…</span>
           )}
         </PopoverTrigger>
         <PopoverContent className="w-auto gap-0 p-0" align="end">
+          <p className="max-w-56 border-b border-border/60 px-3 py-2 text-xs leading-snug text-muted-foreground">
+            A soft date — the Thread comes back to your attention around it.
+          </p>
           <Calendar
             mode="single"
             selected={selected}
