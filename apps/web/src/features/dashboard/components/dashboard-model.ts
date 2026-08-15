@@ -39,12 +39,6 @@ export interface DashboardInboxTask {
   when?: number;
 }
 
-/** A Thread the recent-activity strip can render: both stamps are present. */
-export type DashboardThreadWithActivity = DashboardThread & {
-  lastActivityAt: number;
-  lastActivityContent: string;
-};
-
 export function toDashboardArea(doc: ProjectedArea): DashboardArea {
   return {
     id: doc._id,
@@ -78,30 +72,6 @@ export function toDashboardTask(doc: ProjectedTask): DashboardInboxTask {
     when: doc.when,
     createdAt: doc.createdAt,
   };
-}
-
-/**
- * Enough to fill the Dashboard's full-width activity strip at two rows of
- * three.
- */
-export const RECENT_ACTIVITY_CAP = 6;
-
-/**
- * The Threads the recent-activity strip shows: newest activity first, one
- * entry per Thread by construction — the activity lives on the Thread itself.
- */
-export function recentActivity(
-  threads: DashboardThread[],
-  cap: number = RECENT_ACTIVITY_CAP,
-): DashboardThreadWithActivity[] {
-  return threads
-    .filter(
-      (thread): thread is DashboardThreadWithActivity =>
-        thread.lastActivityAt !== undefined &&
-        thread.lastActivityContent !== undefined,
-    )
-    .sort((a, b) => b.lastActivityAt - a.lastActivityAt)
-    .slice(0, cap);
 }
 
 export function followUpDateLabel(timestamp: number, currentDate: number) {

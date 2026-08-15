@@ -197,48 +197,6 @@ describe("DashboardOverview", () => {
     expect(screen.queryByTestId("plan-canvas")).toBeNull();
   });
 
-  it("renders Recent activity as a strip below the canvas", () => {
-    renderOverview({
-      threads: [
-        thread("Insurance appeal", {
-          lastActivityAt: currentDate,
-          lastActivityContent: "Clinic sent the report",
-        }),
-      ],
-    });
-
-    expect(screen.getByText("Recent activity")).toBeVisible();
-    // The status bar quotes the same activity as its reason, so scope the row.
-    const entry = screen.getByRole("link", { name: /Insurance appeal/ });
-    expect(within(entry).getByText(/clinic sent the report/i)).toBeVisible();
-    expect(
-      screen
-        .getByTestId("plan-canvas")
-        .compareDocumentPosition(screen.getByText("Recent activity")) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-  });
-
-  it("omits Recent activity when there is none", () => {
-    renderOverview({ threads: [thread("Quiet thread")] });
-
-    expect(screen.queryByText("Recent activity")).toBeNull();
-  });
-
-  it("omits Recent activity when no entry's Area is known", () => {
-    renderOverview({
-      threads: [
-        thread("Orphaned", {
-          areaId: "gone",
-          lastActivityAt: currentDate,
-          lastActivityContent: "note",
-        }),
-      ],
-    });
-
-    expect(screen.queryByText("Recent activity")).toBeNull();
-  });
-
   it("preserves Area onboarding until the first Area exists", async () => {
     const user = userEvent.setup();
     const onCreateArea = vi.fn();
