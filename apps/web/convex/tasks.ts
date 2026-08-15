@@ -172,6 +172,10 @@ export const process = mutation({
         threadId: v.id("threads"),
       }),
       v.object({
+        type: v.literal("append_up_next"),
+        threadId: v.id("threads"),
+      }),
+      v.object({
         type: v.literal("discard"),
       }),
     ),

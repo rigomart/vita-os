@@ -49,6 +49,7 @@ describe("getTaskProcessingDisposition", () => {
     },
     { type: "add_activity_log_entry", threadId },
     { type: "set_next_move", threadId },
+    { type: "append_up_next", threadId },
     { type: "discard" },
   ])("deletes the Task after %s processing", (action) => {
     expect(getTaskProcessingDisposition(action)).toBe("delete_task");
@@ -60,6 +61,7 @@ describe("getInboxProcessingResultType", () => {
     [{ type: "create_thread", title: "Book health check", areaId }, "created"],
     [{ type: "add_activity_log_entry", threadId }, "added"],
     [{ type: "set_next_move", threadId }, "set_next_move"],
+    [{ type: "append_up_next", threadId }, "appended_up_next"],
     [{ type: "discard" }, "discarded"],
   ])("maps processing action %# to its mutation result", (action, result) => {
     expect(getInboxProcessingResultType(action)).toBe(result);

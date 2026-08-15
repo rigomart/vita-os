@@ -129,6 +129,12 @@ describe("owned-document authorization", () => {
           id: owned.threadId,
         }),
       ).rejects.toThrow(/Thread not found/);
+      await expect(
+        intruder.mutation(api.threads.replaceUpNext, {
+          id: owned.threadId,
+          moves: ["Stolen"],
+        }),
+      ).rejects.toThrow(/Thread not found/);
     });
 
     it("refuses filing a Thread under another user's Area", async () => {
@@ -167,6 +173,12 @@ describe("owned-document authorization", () => {
       await expect(
         t.mutation(api.threads.completeNextMoveMutation, {
           id: owned.threadId,
+        }),
+      ).rejects.toThrow();
+      await expect(
+        t.mutation(api.threads.replaceUpNext, {
+          id: owned.threadId,
+          moves: ["Anon"],
         }),
       ).rejects.toThrow();
     });
@@ -251,6 +263,12 @@ describe("owned-document authorization", () => {
         intruder.mutation(api.tasks.process, {
           id: theirs.taskId,
           action: { type: "set_next_move", threadId: owned.threadId },
+        }),
+      ).rejects.toThrow(/Thread not found/);
+      await expect(
+        intruder.mutation(api.tasks.process, {
+          id: theirs.taskId,
+          action: { type: "append_up_next", threadId: owned.threadId },
         }),
       ).rejects.toThrow(/Thread not found/);
       await expect(
