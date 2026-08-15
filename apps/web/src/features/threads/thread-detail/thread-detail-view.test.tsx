@@ -21,9 +21,12 @@ const mocks = vi.hoisted(() => ({
   onThreadLocationChange: vi.fn(),
   threadState: "open" as "open" | "resolved",
   threadExists: true,
+  upNext: undefined as string[] | undefined,
   /** Slugs the composite resolves; null lets every slug resolve. */
   knownSlugs: null as string[] | null,
   seen: [] as string[],
+  /** One mock per mutation, so a test can assert what the view dispatched. */
+  mutations: new Map<string, ReturnType<typeof vi.fn>>(),
 }));
 
 vi.mock("@/hooks/use-thread-pane-viewport", () => ({
@@ -63,18 +66,30 @@ vi.mock("convex-helpers/react/cache/hooks", () => ({
         return undefined;
       }
       if (!mocks.threadExists) return null;
-      return { thread: { ...thread, state: mocks.threadState }, area };
+      return {
+        thread: {
+          ...thread,
+          state: mocks.threadState,
+          ...(mocks.upNext && { upNext: mocks.upNext }),
+        },
+        area,
+      };
     }
     return undefined;
   },
 }));
 
 vi.mock("convex/react", () => ({
-  useMutation: () => {
-    const mutation = vi.fn().mockResolvedValue(undefined);
-    return Object.assign(mutation, {
+  useMutation: (reference: unknown) => {
+    const name = getFunctionName(reference as never);
+    const existing = mocks.mutations.get(name);
+    if (existing) return existing;
+
+    const mutation = Object.assign(vi.fn().mockResolvedValue(undefined), {
       withOptimisticUpdate: () => mutation,
     });
+    mocks.mutations.set(name, mutation);
+    return mutation;
   },
   usePaginatedQuery: () => ({
     results: [],
@@ -108,8 +123,10 @@ describe("ThreadDetailView", () => {
     mocks.onThreadLocationChange.mockReset();
     mocks.threadState = "open";
     mocks.threadExists = true;
+    mocks.upNext = undefined;
     mocks.knownSlugs = null;
     mocks.seen = [];
+    mocks.mutations.clear();
   });
 
   it("opens Thread detail as a near-full bottom drawer below the pane breakpoint", async () => {
@@ -340,6 +357,46 @@ describe("ThreadDetailView", () => {
       attention.compareDocumentPosition(activity) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("hangs the Thread's Up Next line under the next move, and edits it whole", async () => {
+    mocks.showDesktopPane = true;
+    mocks.upNext = ["Book the scan", "Collect the results"];
+    renderThreadDetail();
+
+    await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
+
+    const moves = within(
+      screen.getByRole("list", { name: "Up Next" }),
+    ).getAllByRole("listitem");
+    expect(
+      within(moves[0]!).getByRole("button", { name: "Book the scan" }),
+    ).toBeVisible();
+    expect(
+      within(moves[1]!).getByRole("button", { name: "Collect the results" }),
+    ).toBeVisible();
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Add an upcoming move" }),
+      "Share the report{Enter}",
+    );
+    await userEvent.click(
+      within(moves[0]!).getByRole("button", {
+        name: "Remove upcoming move",
+      }),
+    );
+
+    const replaceUpNext = mocks.mutations.get("threads:replaceUpNext");
+    expect(replaceUpNext).toHaveBeenNthCalledWith(1, {
+      id: thread._id,
+      moves: ["Book the scan", "Collect the results", "Share the report"],
+    });
+    expect(replaceUpNext).toHaveBeenNthCalledWith(2, {
+      id: thread._id,
+      moves: ["Collect the results"],
+    });
   });
 
   it("scrolls only the activity log, keeping header, attention and composer fixed", async () => {

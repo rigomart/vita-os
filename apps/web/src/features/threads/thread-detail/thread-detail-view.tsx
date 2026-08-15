@@ -18,7 +18,7 @@ import { useMemo } from "react";
 
 import { AreaConditionDot } from "@/features/areas/components/area-condition-dot";
 import { ThreadAreaSectionSection } from "@/features/threads/components/thread-area-section-section";
-import { ThreadAttentionBarSection } from "@/features/threads/components/thread-attention-bar-section";
+import { ThreadAttentionSection } from "@/features/threads/components/thread-attention-section";
 import { ThreadDefinitionSection } from "@/features/threads/components/thread-definition-section";
 import { ThreadDetailSkeleton } from "@/features/threads/components/thread-detail-skeleton";
 import { ThreadHeaderSection } from "@/features/threads/components/thread-header-section";
@@ -278,7 +278,7 @@ function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
       {isResolved ? (
         <ThreadResolvedNote />
       ) : (
-        <ThreadAttentionBarSection thread={thread} />
+        <ThreadAttentionSection thread={thread} />
       )}
 
       <ActivityLogSection

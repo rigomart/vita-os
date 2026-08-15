@@ -6,6 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "@convex/_generated/api";
 import { nullsToUndefined } from "@convex/lib/patch";
 import { generateSlug } from "@convex/lib/slugs";
+import { storedUpNext, takeFrontUpNextMove } from "@convex/lib/upNext";
 
 import { patchAreaDetail } from "@/features/areas/optimistic";
 import {
@@ -59,10 +60,32 @@ export function buildOptimisticThread(
   };
 }
 
-export function completeNextMove<T extends { nextMove?: string }>(
+/** Whatever the caches hold of a Thread's attention state. */
+type AttentionFields = { nextMove?: string; upNext?: string[] };
+
+/**
+ * The Up Next invariant, mirrored from the server (convex/lib/threadChanges):
+ * while the line holds moves, the Next Move slot is full. Every local write
+ * that could empty the slot runs through here, so the promotion the server is
+ * about to make is already on screen.
+ */
+function fillNextMoveFromUpNext<T extends AttentionFields>(thread: T): T {
+  if (thread.nextMove) return thread;
+
+  const promotion = takeFrontUpNextMove(thread.upNext);
+  return promotion ? { ...thread, ...promotion } : thread;
+}
+
+export function completeNextMove<T extends AttentionFields>(thread: T): T {
+  return fillNextMoveFromUpNext({ ...thread, nextMove: undefined });
+}
+
+/** The whole line, rewritten — the shape every Up Next edit sends. */
+export function replaceUpNext<T extends AttentionFields>(
   thread: T,
+  moves: readonly string[],
 ): T {
-  return { ...thread, nextMove: undefined };
+  return fillNextMoveFromUpNext({ ...thread, upNext: storedUpNext(moves) });
 }
 
 /**
@@ -130,10 +153,20 @@ export function optimisticallyUpdateThread(
 ): void {
   const { id, resolutionNote: _resolutionNote, ...updates } = args;
   const patch = nullsToUndefined(updates);
-  const threadPatch =
+  // Resolving takes the whole attention state with it. Any other write that
+  // empties the slot promotes the front of Up Next into it instead, and the
+  // promotion has to travel in the patch: the caches are patched field by
+  // field, not replaced with the Thread the caller handed us.
+  const attentionPatch: AttentionFields & { followUp?: number } =
     patch.state === "resolved"
-      ? { ...patch, nextMove: undefined, followUp: undefined }
-      : patch;
+      ? { nextMove: undefined, upNext: undefined, followUp: undefined }
+      : "nextMove" in patch
+        ? fillNextMoveFromUpNext({
+            nextMove: patch.nextMove,
+            upNext: context.thread.upNext,
+          })
+        : {};
+  const threadPatch = { ...patch, ...attentionPatch };
   const next = { ...context.thread, ...threadPatch };
   const resolved = threadPatch.state === "resolved";
   const reopened = threadPatch.state === "open";
@@ -203,23 +236,58 @@ export function optimisticallyRemoveThread(
   }));
 }
 
+/**
+ * Both attention writes land in the same three caches, differing only in what
+ * they do to the Thread they find: the open list, every cached rail holding
+ * it, and its Area page.
+ */
+function patchThreadAttention(
+  localStore: OptimisticLocalStore,
+  context: { id: Id<"threads">; areaId: Id<"areas"> },
+  patch: <T extends AttentionFields>(thread: T) => T,
+): void {
+  const patchList = <T extends AttentionFields & { _id: string }>(
+    threads: T[],
+  ) =>
+    threads.map((thread) =>
+      thread._id === context.id ? patch(thread) : thread,
+    );
+
+  patchQuery(localStore, api.threads.list, {}, patchList);
+  patchThreadDetail(localStore, context.id, (detail) => ({
+    ...detail,
+    thread: patch(detail.thread),
+  }));
+  patchAreaDetail(localStore, context.areaId, (detail) => ({
+    ...detail,
+    threads: patchList(detail.threads),
+  }));
+}
+
 export function optimisticallyCompleteNextMove(
   localStore: OptimisticLocalStore,
   args: { id: Id<"threads"> },
   context: { thread: ProjectedThread },
 ): void {
-  const clear = <T extends { _id: string; nextMove?: string }>(threads: T[]) =>
-    threads.map((thread) =>
-      thread._id === args.id ? completeNextMove(thread) : thread,
-    );
+  patchThreadAttention(
+    localStore,
+    { id: args.id, areaId: context.thread.areaId },
+    completeNextMove,
+  );
+}
 
-  patchQuery(localStore, api.threads.list, {}, clear);
-  patchThreadDetail(localStore, args.id, (detail) => ({
-    ...detail,
-    thread: completeNextMove(detail.thread),
-  }));
-  patchAreaDetail(localStore, context.thread.areaId, (detail) => ({
-    ...detail,
-    threads: clear(detail.threads),
-  }));
+/**
+ * Up Next edits — add, edit, reorder, remove — all arrive as the whole ordered
+ * line, so the local write is the same replacement the server will make.
+ */
+export function optimisticallyReplaceUpNext(
+  localStore: OptimisticLocalStore,
+  args: { id: Id<"threads">; moves: string[] },
+  context: { thread: ProjectedThread },
+): void {
+  patchThreadAttention(
+    localStore,
+    { id: args.id, areaId: context.thread.areaId },
+    (thread) => replaceUpNext(thread, args.moves),
+  );
 }
