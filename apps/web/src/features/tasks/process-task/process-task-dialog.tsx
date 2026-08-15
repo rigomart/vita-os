@@ -24,7 +24,7 @@ import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-actio
 import { useFeedback } from "@vita-os/ui/lib/feedback";
 import { cn } from "@vita-os/ui/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { ArrowRight, Check, FileText, Target } from "lucide-react";
+import { ArrowRight, Check, FileText, ListEnd, Target } from "lucide-react";
 import { useState } from "react";
 
 import type { ProcessTaskAction } from "@/features/tasks/use-process-task";
@@ -36,7 +36,10 @@ import {
   ThreadSearchAutocomplete,
 } from "./thread-search-autocomplete";
 
-type ProcessingMode = "add_activity_log_entry" | "set_next_move";
+type ProcessingMode =
+  | "add_activity_log_entry"
+  | "set_next_move"
+  | "append_up_next";
 
 interface ProcessTaskDialogProps {
   open: boolean;
@@ -64,6 +67,10 @@ function getProcessSuccessMessage(
 
   if (action.type === "set_next_move") {
     return `Set Next Move · ${threadTitle}`;
+  }
+
+  if (action.type === "append_up_next") {
+    return `Added to Up Next · ${threadTitle}`;
   }
 
   return `Added Activity Log entry · ${threadTitle}`;
@@ -203,8 +210,8 @@ export function ProcessTaskDialog({
 
         <InboxTaskPreview task={task} />
         <p className="-mt-3 text-sm text-muted-foreground">
-          Move this Inbox task into a Thread as an Activity Log entry or Next
-          Move.
+          Move this Inbox task into a Thread as an Activity Log entry, the Next
+          Move, or Up Next.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -245,6 +252,15 @@ export function ProcessTaskDialog({
                 title="Next Move"
                 description="Becomes what to do next."
                 icon={<Target className="h-4 w-4" />}
+              />
+              <ProcessingModeCard
+                mode="append_up_next"
+                selectedMode={mode}
+                onSelect={setMode}
+                title="Up Next"
+                description="Lines up as an upcoming move."
+                icon={<ListEnd className="h-4 w-4" />}
+                className="sm:col-span-2"
               />
             </div>
           )}
@@ -350,6 +366,7 @@ function ProcessingModeCard({
   title,
   description,
   icon,
+  className,
 }: {
   mode: ProcessingMode;
   selectedMode: ProcessingMode;
@@ -357,6 +374,7 @@ function ProcessingModeCard({
   title: string;
   description: string;
   icon: React.ReactNode;
+  className?: string;
 }) {
   const id = `process-${mode}`;
   const isSelected = mode === selectedMode;
@@ -369,6 +387,7 @@ function ProcessingModeCard({
         "bg-transparent hover:border-border hover:bg-muted/50",
         isSelected &&
           "border-primary/40 bg-primary/5 ring-1 ring-primary/20 hover:bg-primary/5",
+        className,
       )}
     >
       <input
