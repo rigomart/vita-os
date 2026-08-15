@@ -11,7 +11,8 @@ export type ProcessTaskAction =
       summary?: string;
     }
   | { type: "add_activity_log_entry"; threadId: Id<"threads"> }
-  | { type: "set_next_move"; threadId: Id<"threads"> };
+  | { type: "set_next_move"; threadId: Id<"threads"> }
+  | { type: "append_up_next"; threadId: Id<"threads"> };
 
 export function useProcessTask() {
   const processTask = useMutation(api.tasks.process);

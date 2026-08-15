@@ -25,6 +25,7 @@ import type * as lib_pagination from "../lib/pagination.js";
 import type * as lib_patch from "../lib/patch.js";
 import type * as lib_slugs from "../lib/slugs.js";
 import type * as lib_threadChanges from "../lib/threadChanges.js";
+import type * as lib_upNext from "../lib/upNext.js";
 import type * as lib_validation from "../lib/validation.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as migrations from "../migrations.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   "lib/patch": typeof lib_patch;
   "lib/slugs": typeof lib_slugs;
   "lib/threadChanges": typeof lib_threadChanges;
+  "lib/upNext": typeof lib_upNext;
   "lib/validation": typeof lib_validation;
   "lib/validators": typeof lib_validators;
   migrations: typeof migrations;

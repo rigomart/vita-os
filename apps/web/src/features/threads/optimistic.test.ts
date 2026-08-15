@@ -10,7 +10,9 @@ import {
   buildOptimisticThread,
   completeNextMove,
   optimisticallyRemoveThread,
+  optimisticallyReplaceUpNext,
   optimisticallyUpdateThread,
+  replaceUpNext,
 } from "./optimistic";
 
 function makeThread(overrides: Partial<ProjectedThread> = {}): ProjectedThread {
@@ -64,13 +66,142 @@ describe("Thread optimistic updates", () => {
     });
   });
 
-  it("clears the next move when completed", () => {
+  it("clears the next move when completed with nothing lined up behind it", () => {
     const thread = makeThread({ nextMove: "Call clinic" });
 
     expect(completeNextMove(thread)).toEqual({
       ...thread,
       nextMove: undefined,
     });
+  });
+
+  it("promotes the front upcoming move into the slot when completed", () => {
+    const thread = makeThread({
+      nextMove: "Call clinic",
+      upNext: ["Book the scan", "Collect the results"],
+    });
+
+    expect(completeNextMove(thread)).toEqual({
+      ...thread,
+      nextMove: "Book the scan",
+      upNext: ["Collect the results"],
+    });
+  });
+
+  it("leaves Up Next absent once its last move is promoted", () => {
+    const thread = makeThread({
+      nextMove: "Call clinic",
+      upNext: ["Book the scan"],
+    });
+
+    expect(completeNextMove(thread)).toEqual({
+      ...thread,
+      nextMove: "Book the scan",
+      upNext: undefined,
+    });
+  });
+
+  it("rewrites Up Next, storing an emptied line as absent", () => {
+    const thread = makeThread({
+      nextMove: "Call clinic",
+      upNext: ["Book the scan"],
+    });
+
+    expect(replaceUpNext(thread, ["Collect the results", "Book the scan"])) //
+      .toEqual({
+        ...thread,
+        upNext: ["Collect the results", "Book the scan"],
+      });
+    expect(replaceUpNext(thread, [])).toEqual({
+      ...thread,
+      upNext: undefined,
+    });
+  });
+
+  it("promotes the front move when Up Next arrives at an empty slot", () => {
+    const thread = makeThread();
+
+    expect(
+      replaceUpNext(thread, ["Book the scan", "Collect the results"]),
+    ).toEqual({
+      ...thread,
+      nextMove: "Book the scan",
+      upNext: ["Collect the results"],
+    });
+  });
+
+  it("writes a rewritten Up Next line into every cache holding the Thread", () => {
+    const area = makeArea("area1", "family-health");
+    const other = makeThread({ _id: "thread2" as Id<"threads"> });
+    const thread = makeThread({
+      slug: "book-checkup",
+      nextMove: "Call clinic",
+      upNext: ["Book the scan"],
+    });
+    const localStore = createLocalStore();
+
+    localStore.set(api.threads.list, {}, [thread, other]);
+    localStore.set(
+      api.threads.detailBySlug,
+      { slug: "book-checkup" },
+      { thread, area },
+    );
+    localStore.set(
+      api.areas.detailBySlug,
+      { slug: "family-health" },
+      { area, threads: [thread, other] },
+    );
+
+    optimisticallyReplaceUpNext(
+      localStore.store,
+      { id: thread._id, moves: ["Book the scan", "Collect the results"] },
+      { thread },
+    );
+
+    const rewritten = {
+      ...thread,
+      upNext: ["Book the scan", "Collect the results"],
+    };
+    expect(localStore.get(api.threads.list, {})).toEqual([rewritten, other]);
+    expect(
+      localStore.get(api.threads.detailBySlug, { slug: "book-checkup" }),
+    ).toEqual({ thread: rewritten, area });
+    expect(
+      localStore.get(api.areas.detailBySlug, { slug: "family-health" }),
+    ).toEqual({ area, threads: [rewritten, other] });
+  });
+
+  it("promotes the front upcoming move when the next move is cleared", () => {
+    const area = makeArea("area1", "family-health");
+    const thread = makeThread({
+      slug: "book-checkup",
+      nextMove: "Call clinic",
+      upNext: ["Book the scan", "Collect the results"],
+    });
+    const localStore = createLocalStore();
+
+    localStore.set(api.threads.list, {}, [thread]);
+    localStore.set(
+      api.threads.detailBySlug,
+      { slug: "book-checkup" },
+      { thread, area },
+    );
+
+    optimisticallyUpdateThread(
+      localStore.store,
+      { id: thread._id, nextMove: null },
+      { thread },
+    );
+
+    const promoted = {
+      ...thread,
+      nextMove: "Book the scan",
+      upNext: ["Collect the results"],
+    };
+    expect(localStore.get(api.threads.list, {})).toEqual([promoted]);
+    expect(
+      localStore.get(api.threads.detailBySlug, { slug: "book-checkup" }),
+    ).toEqual({ thread: promoted, area });
   });
 
   it("resolves Threads out of the open list and their Area page, keeping the rail current", () => {
@@ -83,6 +214,7 @@ describe("Thread optimistic updates", () => {
     const thread = makeThread({
       slug: "book-checkup",
       nextMove: "Call clinic",
+      upNext: ["Book the scan"],
       followUp: 123,
     });
     const localStore = createLocalStore();
@@ -118,6 +250,7 @@ describe("Thread optimistic updates", () => {
       ...thread,
       state: "resolved",
       nextMove: undefined,
+      upNext: undefined,
       followUp: undefined,
     };
     expect(localStore.get(api.threads.list, {})).toEqual([]);

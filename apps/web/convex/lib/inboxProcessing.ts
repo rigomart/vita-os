@@ -7,6 +7,7 @@ import { getNextOrder } from "./helpers";
 import { requireOwned } from "./ownedAccess";
 import { generateSlug } from "./slugs";
 import { applyThreadPatch } from "./threadChanges";
+import { requireOpenForUpNext, storedUpNext } from "./upNext";
 import { requireTitle } from "./validation";
 
 type MutationCtx = GenericMutationCtx<DataModel>;
@@ -20,12 +21,14 @@ export type InboxProcessingAction =
     }
   | { type: "add_activity_log_entry"; threadId: Id<"threads"> }
   | { type: "set_next_move"; threadId: Id<"threads"> }
+  | { type: "append_up_next"; threadId: Id<"threads"> }
   | { type: "discard" };
 
 export type InboxProcessingResult =
   | { type: "created"; slug: string }
   | { type: "added" }
   | { type: "set_next_move" }
+  | { type: "appended_up_next" }
   | { type: "discarded" };
 
 export type TaskProcessingDisposition = "keep_task" | "delete_task";
@@ -42,6 +45,7 @@ export function getInboxProcessingResultType(
   if (action.type === "create_thread") return "created";
   if (action.type === "add_activity_log_entry") return "added";
   if (action.type === "set_next_move") return "set_next_move";
+  if (action.type === "append_up_next") return "appended_up_next";
   return "discarded";
 }
 
@@ -124,6 +128,27 @@ export async function processInboxTask(
     });
     await ctx.db.delete(args.task._id);
     return { type: "set_next_move" };
+  }
+
+  if (args.action.type === "append_up_next") {
+    const thread = await requireOwned(ctx, "threads", {
+      userId: args.userId,
+      id: args.action.threadId,
+    });
+    requireOpenForUpNext(thread);
+
+    // The Task joins the back of the line and nothing is logged — lining up a
+    // move is an edit, not an event. The only entry that can come out of this
+    // is the invariant's: an empty Next Move slot takes the front move.
+    await applyThreadPatch(ctx, {
+      userId: args.userId,
+      thread,
+      patch: {
+        upNext: storedUpNext([...(thread.upNext ?? []), args.task.text]),
+      },
+    });
+    await ctx.db.delete(args.task._id);
+    return { type: "appended_up_next" };
   }
 
   await ctx.db.delete(args.task._id);

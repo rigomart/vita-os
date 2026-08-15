@@ -10,6 +10,11 @@ import {
   completeNextMove,
   sanitizeThreadPatch,
 } from "./lib/threadChanges";
+import {
+  requireOpenForUpNext,
+  requireUpNextMoves,
+  storedUpNext,
+} from "./lib/upNext";
 import { requireTitle } from "./lib/validation";
 import {
   projectArea,
@@ -199,6 +204,32 @@ export const remove = mutation({
     await Promise.all(logs.map((log) => ctx.db.delete(log._id)));
 
     await ctx.db.delete(thread._id);
+  },
+});
+
+/**
+ * Rewrite the Thread's Up Next line — adding, editing, reordering and removing
+ * upcoming moves all arrive here as the new list, in order.
+ *
+ * Editing Up Next is silent: no Activity Log entry is written. The one
+ * exception is the invariant — a list handed to a Thread with an empty Next
+ * Move slot promotes its front move, and a Next Move always logs.
+ */
+export const replaceUpNext = mutation({
+  args: {
+    id: v.id("threads"),
+    moves: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const thread = await requireOwned(ctx, "threads", { userId, id: args.id });
+    requireOpenForUpNext(thread);
+
+    await applyThreadPatch(ctx, {
+      userId,
+      thread,
+      patch: { upNext: storedUpNext(requireUpNextMoves(args.moves)) },
+    });
   },
 });
 
