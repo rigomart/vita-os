@@ -179,10 +179,11 @@ describe("PlanSchedule", () => {
     expect(screen.getAllByText("Home")[0]).toBeVisible();
   });
 
-  it("keeps the title carrying a Thread chip with no Next Move", () => {
+  it("prints a faint placeholder on a Thread chip with no Next Move", () => {
     renderSchedule();
 
     expect(screen.getByText("Dad's cardiologist")).toBeVisible();
+    expect(screen.getAllByText("No Next Move").length).toBeGreaterThan(0);
   });
 
   it("opens a Thread in place and sends a Task to the Inbox", async () => {

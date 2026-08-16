@@ -45,7 +45,7 @@ import {
 import type { PlanItem, PlanItemKind } from "./plan-model";
 import type { PlanActions } from "./use-plan-actions";
 
-import { chipLeadsWithNextMove } from "./plan-chip";
+import { NO_NEXT_MOVE } from "./plan-chip";
 import { AreaFilterChips } from "./plan-filters";
 import {
   buildPlanItems,
@@ -793,7 +793,6 @@ function ChipSurface({
   const area = item.areaId == null ? undefined : areaById.get(item.areaId);
   const waiting = slotKey === "overdue" && item.date != null;
   const ConditionIcon = area ? conditionIcons[area.condition] : undefined;
-  const leadsWithMove = chipLeadsWithNextMove(item);
 
   return (
     <div
@@ -839,27 +838,30 @@ function ChipSurface({
       </span>
 
       <span className="min-w-0 flex-1">
-        {/* Leading with the Next Move flips the two lines: the move takes the
-            top row and the identifiers (title, Area) share the muted line
-            beneath it. */}
-        {leadsWithMove ? (
+        {/* A Thread row leads with the Next Move — a faint placeholder when
+            the slot is empty — and the identifiers (title, Area) share the
+            muted line beneath it. */}
+        {isTask ? (
+          <span className="line-clamp-2 text-sm leading-snug font-normal">
+            {item.title}
+          </span>
+        ) : (
           <span className="flex items-start gap-1 text-sm leading-snug">
             <ArrowRight
               aria-hidden
-              className={cn("mt-[3px] size-3.5 shrink-0", MUTE_SOFT)}
+              className={cn(
+                "mt-[3px] size-3.5 shrink-0",
+                item.nextMove ? MUTE_SOFT : MUTE_FAINT,
+              )}
             />
-            <span className="line-clamp-2 min-w-0 flex-1 font-medium">
-              {item.nextMove}
+            <span
+              className={cn(
+                "line-clamp-2 min-w-0 flex-1",
+                item.nextMove ? "font-medium" : MUTE_FAINT,
+              )}
+            >
+              {item.nextMove ?? NO_NEXT_MOVE}
             </span>
-          </span>
-        ) : (
-          <span
-            className={cn(
-              "line-clamp-2 text-sm leading-snug",
-              isTask ? "font-normal" : "font-medium",
-            )}
-          >
-            {item.title}
           </span>
         )}
 
@@ -869,7 +871,7 @@ function ChipSurface({
             MUTE_SOFT,
           )}
         >
-          {leadsWithMove && (
+          {!isTask && (
             <>
               <span className="min-w-0 truncate font-semibold">
                 {item.title}

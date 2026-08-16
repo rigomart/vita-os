@@ -149,19 +149,19 @@ describe("PlanCanvas", () => {
     expect(within(canvas).getByText("1 in Inbox")).toBeVisible();
   });
 
-  it("leads a Thread chip with its Next Move, keeping the title as an eyebrow", () => {
+  it("leads a Thread chip with its Next Move, keeping the title beneath it", () => {
     renderCanvas();
 
     // t2 (Kitchen faucet) carries a Next Move: it becomes the primary line,
-    // the title demotes to a muted eyebrow — both still on the canvas.
+    // the title demotes to a muted identifier — both still on the canvas.
     expect(screen.getByText("Call the plumber")).toBeVisible();
     expect(screen.getByText("Kitchen faucet")).toBeVisible();
 
-    // Threads without a Next Move render title-only; the old placeholder is
-    // gone entirely.
+    // Threads without a Next Move keep the same layout, the empty slot
+    // printing a faint placeholder above the title (t1 and t3).
     expect(screen.getByText("Dad's cardiologist")).toBeVisible();
     expect(screen.getByText("Garage clear-out")).toBeVisible();
-    expect(screen.queryByText("No Next Move")).toBeNull();
+    expect(screen.getAllByText("No Next Move")).toHaveLength(2);
   });
 
   it("links each Area lane header to its Area page, Inbox staying plain", () => {
