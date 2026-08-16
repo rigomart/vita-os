@@ -8,7 +8,7 @@ import {
   MessageSquare,
   Plus,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 
 import {
   CommandDialog,
@@ -46,7 +46,15 @@ export function CommandPalette({
     [areas],
   );
 
+  // Running an action closes the palette and opens another surface in the same
+  // tick. Base UI would then queue a microtask returning focus to whatever was
+  // focused before the palette opened, stealing it from the new dialog's first
+  // field. A dismiss (Escape, backdrop) must still return focus, so the flag is
+  // set only on the action path.
+  const skipFocusReturn = useRef(false);
+
   const run = (action: () => void) => {
+    skipFocusReturn.current = true;
     onOpenChange(false);
     action();
   };
@@ -58,6 +66,9 @@ export function CommandPalette({
       title="Jump to"
       description="Jump to an area, thread, or action"
       showCloseButton={false}
+      // Function form: Base UI reads it at close time, after `run` has set the
+      // flag, which a plain value could not see in the same commit.
+      finalFocus={() => !skipFocusReturn.current}
       // Sit high so the on-screen keyboard never covers the input on mobile.
       className="top-[15%] translate-y-0"
     >

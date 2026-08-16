@@ -3,6 +3,8 @@ import { useEffect } from "react";
 export function useGlobalNewTaskShortcut(onOpen: () => void) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Bare Q only — Cmd/Ctrl+Q quits the browser and AltGr composes.
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key !== "q" && e.key !== "Q") return;
       const target = e.target as HTMLElement;
       if (
