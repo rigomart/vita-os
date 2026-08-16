@@ -35,6 +35,7 @@ function CommandDialog({
   children,
   className,
   showCloseButton = true,
+  finalFocus,
   ...props
 }: Omit<React.ComponentProps<typeof Dialog>, "children"> & {
   children?: React.ReactNode;
@@ -42,12 +43,15 @@ function CommandDialog({
   description?: string;
   className?: string;
   showCloseButton?: boolean;
+  // Belongs to the popup, not the dialog root, so it is forwarded explicitly.
+  finalFocus?: React.ComponentProps<typeof DialogContent>["finalFocus"];
 }) {
   return (
     <Dialog {...props}>
       <DialogContent
         className={cn("overflow-hidden p-0", className)}
         showCloseButton={showCloseButton}
+        finalFocus={finalFocus}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>{title}</DialogTitle>

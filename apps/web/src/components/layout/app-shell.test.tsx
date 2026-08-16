@@ -5,7 +5,12 @@ import userEvent from "@testing-library/user-event";
 import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { render, screen, waitFor } from "@/test/render-with-providers";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@/test/render-with-providers";
 
 import { AppShell } from "./app-shell";
 
@@ -163,6 +168,20 @@ describe("AppShell", () => {
     ).toBeVisible();
   });
 
+  it.each([["{Control>}q{/Control}"], ["{Meta>}q{/Meta}"], ["{Alt>}q{/Alt}"]])(
+    "leaves %s to the browser instead of opening the new task dialog",
+    async (keys) => {
+      const user = userEvent.setup();
+      renderShell();
+
+      await user.keyboard(keys);
+
+      expect(
+        screen.queryByPlaceholderText("What's on your mind?"),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   it("resets new task input between openings", async () => {
     const user = userEvent.setup();
     renderShell();
@@ -202,12 +221,40 @@ describe("AppShell", () => {
     expect(screen.getByText(thread.title)).toBeVisible();
   });
 
+  it("opens the palette from Ctrl+K with caps lock on", async () => {
+    renderShell();
+
+    fireEvent.keyDown(document, { code: "KeyK", key: "K", ctrlKey: true });
+
+    expect(
+      await screen.findByPlaceholderText("Jump to an area, thread, or action…"),
+    ).toBeVisible();
+  });
+
+  it("ignores AltGr+K, which arrives as ctrl and alt together", async () => {
+    renderShell();
+
+    fireEvent.keyDown(document, {
+      code: "KeyK",
+      key: "k",
+      ctrlKey: true,
+      altKey: true,
+    });
+
+    expect(
+      screen.queryByPlaceholderText("Jump to an area, thread, or action…"),
+    ).not.toBeInTheDocument();
+  });
+
   it("unmounts the palette and its subscriptions when it closes", async () => {
     const user = userEvent.setup();
     renderShell();
 
-    await user.click(screen.getByRole("button", { name: "top bar palette" }));
-    await screen.findByPlaceholderText("Jump to an area, thread, or action…");
+    const trigger = screen.getByRole("button", { name: "top bar palette" });
+    await user.click(trigger);
+    await user.click(
+      await screen.findByPlaceholderText("Jump to an area, thread, or action…"),
+    );
 
     await user.keyboard("{Escape}");
     await waitFor(() =>
@@ -215,6 +262,8 @@ describe("AppShell", () => {
         screen.queryByPlaceholderText("Jump to an area, thread, or action…"),
       ).not.toBeInTheDocument(),
     );
+    // Dismissing without running an action must still hand focus back.
+    await waitFor(() => expect(trigger).toHaveFocus());
 
     queryCall.mockClear();
     // A re-render after the close must not re-subscribe.
@@ -234,6 +283,28 @@ describe("AppShell", () => {
 
     expect(await screen.findByLabelText("Title")).toBeVisible();
     expect(subscribedTo("areas:list")).toBe(true);
+  });
+
+  it("focuses the new task input when New task is chosen from the palette", async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    await user.click(screen.getByRole("button", { name: "top bar palette" }));
+    await user.click(await screen.findByText("New task"));
+
+    const textarea = await screen.findByPlaceholderText("What's on your mind?");
+    await waitFor(() => expect(textarea).toHaveFocus());
+  });
+
+  it("focuses the thread title input when New thread is chosen from the palette", async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    await user.click(screen.getByRole("button", { name: "top bar palette" }));
+    await user.click(await screen.findByText("New thread"));
+
+    const titleInput = await screen.findByLabelText("Title");
+    await waitFor(() => expect(titleInput).toHaveFocus());
   });
 
   it("opens the create area dialog from the palette", async () => {

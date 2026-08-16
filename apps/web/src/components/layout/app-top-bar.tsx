@@ -5,6 +5,7 @@ import { Inbox, Plus, Search } from "lucide-react";
 
 import { useTheme } from "@/features/theme/theme-provider";
 import { authClient } from "@/lib/auth-client";
+import { isApplePlatform } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
 import { InboxTaskCountBadge } from "./inbox-task-count-badge";
@@ -26,6 +27,11 @@ export function AppTopBar({
 }: AppTopBarProps) {
   const { data: session } = authClient.useSession();
   const { theme, setTheme } = useTheme();
+  // The palette answers to Cmd+K and Ctrl+K alike; the hint has to name the
+  // key this keyboard actually has, spelled out for screen readers.
+  const apple = isApplePlatform();
+  const paletteHint = apple ? "⌘K" : "Ctrl K";
+  const paletteShortcutLabel = apple ? "Command K" : "Control K";
 
   return (
     // Below the thread detail rail (z-30): the desktop rail pushes the chrome
@@ -60,11 +66,13 @@ export function AppTopBar({
         <button
           type="button"
           onClick={onOpenPalette}
+          aria-label={`Jump anywhere, ${paletteShortcutLabel}`}
           className="hidden h-8 w-full items-center gap-2 rounded-lg border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted md:flex"
         >
           <Search className="size-4 shrink-0" />
           <span className="truncate">Jump anywhere…</span>
-          <Kbd className="ml-auto">⌘K</Kbd>
+          {/* Ctrl K is wider than ⌘K — the label truncates before the hint does. */}
+          <Kbd className="ml-auto shrink-0">{paletteHint}</Kbd>
         </button>
 
         <div className="ml-auto flex items-center gap-2 md:ml-0 md:justify-self-end">
