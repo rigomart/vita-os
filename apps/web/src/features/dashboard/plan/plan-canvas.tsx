@@ -35,7 +35,7 @@ import type { PlanActions } from "./use-plan-actions";
 import { AxisHeader } from "./plan-axis";
 import { ChipSurface } from "./plan-chip";
 import { AreaFilterChips } from "./plan-filters";
-import { LaneRow } from "./plan-lane";
+import { LaneRow, NoDateBucket } from "./plan-lane";
 import { PlanLaterDialog } from "./plan-later-dialog";
 import {
   bayWidth,
@@ -184,8 +184,8 @@ export function PlanCanvas({
     [lanes, inbox, totals, axis.days],
   );
 
-  /** How much of the right edge the two pinned bays hold: Later, then No date. */
-  const pinnedRight = 2 * bayWidth(density);
+  /** How much of the right edge the pinned Later bay holds. */
+  const pinnedRight = bayWidth(density);
 
   const edges = {
     end: metrics.scrollLeft + metrics.clientWidth < metrics.scrollWidth - 4,
@@ -393,7 +393,6 @@ export function PlanCanvas({
               <AxisHeader
                 areaCount={lanes.length}
                 axis={axis}
-                density={density}
                 drag={drag}
                 narrow={narrow}
                 totals={totals}
@@ -413,8 +412,7 @@ export function PlanCanvas({
           </div>
 
           {/* Edge fades: content slides *under* the pinned lane headers and
-              the Later and No-date bays, so the seam reads as a fold, not as
-              clipping. */}
+              the Later bay, so the seam reads as a fold, not as clipping. */}
           <span
             aria-hidden
             className="pointer-events-none absolute top-0 bottom-3 z-40 w-8 transition-opacity"
@@ -443,6 +441,10 @@ export function PlanCanvas({
             start={headerWidth}
           />
         </div>
+
+        {/* Undated work has no column on a calendar: it pools under the whole
+            canvas instead, at full width and outside the day scroller. */}
+        <NoDateBucket chrome={chrome} lanes={[...lanes, inbox]} />
 
         {tally.open === 0 && (
           <p className="mt-3 rounded-2xl border border-dashed border-border p-10 text-center font-heading text-sm font-semibold">

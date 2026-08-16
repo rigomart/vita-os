@@ -220,7 +220,6 @@ describe("PlanCanvas", () => {
     const canvas = screen.getByRole("region", { name: "Plan" });
     expect(within(canvas).getByText("Today")).toBeVisible();
     expect(within(canvas).getByText("Waiting")).toBeVisible();
-    expect(within(canvas).getByText("No date")).toBeVisible();
 
     // The Area names appear on the filter chips too; the lane headings are the
     // last of each.
@@ -315,19 +314,35 @@ describe("PlanCanvas", () => {
     expect(screen.getByText("Renew passport")).toBeVisible();
   });
 
-  it("pins a Later bay inboard of No date, holding work dated off the axis", () => {
+  it("bands every day under its month, naming no region of its own", () => {
+    renderCanvas();
+
+    const canvas = screen.getByRole("region", { name: "Plan" });
+    const bands = [...canvas.querySelectorAll("[data-band]")].map(
+      (band) => band.textContent,
+    );
+
+    // The 27-day floor runs past the near region and into the next month.
+    expect(bands).toEqual(["August", "September"]);
+    // The Later *bay* keeps its label; the band no longer names a Later region.
+    expect(
+      within(
+        canvas.querySelector('[data-bay="beyond"]') as HTMLElement,
+      ).getByText("Later"),
+    ).toBeVisible();
+  });
+
+  it("pins the Later bay at the axis end, holding work dated off it", () => {
     renderCanvas();
 
     const canvas = screen.getByRole("region", { name: "Plan" });
     const later = canvas.querySelector('[data-bay="beyond"]')!;
-    const noDate = canvas.querySelector('[data-bay="none"]')!;
 
     expect(within(later as HTMLElement).getByText("Later")).toBeVisible();
-    // One Thread is dated past the end of the axis; nothing is undated but t3.
+    // One Thread is dated past the end of the axis.
     expect(within(later as HTMLElement).getByText("1")).toBeVisible();
-    expect(
-      later.compareDocumentPosition(noDate) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    // No lane carries a No-date bay any more: the bucket owns undated work.
+    expect(canvas.querySelector('[data-bay="none"]')).toBeNull();
 
     // Position cannot say when, so the chip prints its own day.
     const chip = document.querySelector('[data-chip="t4"]')!;
@@ -478,18 +493,61 @@ describe("PlanCanvas", () => {
       followUp: day(0),
     });
 
-    // No date clears the day rather than opening anything.
-    planActions.planThread.mockClear();
-    await dragChipTo("t2", "home::none");
-    expect(planActions.planThread).toHaveBeenCalledWith("t2", {
-      followUp: undefined,
-    });
-
     // The waiting bay shows a debt; it never takes a new plan.
     planActions.planThread.mockClear();
     await dragChipTo("t2", "home::overdue");
     expect(planActions.planThread).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("gathers every undated item into one No-date bucket under the lanes", () => {
+    renderCanvas();
+
+    const bucket = screen.getByRole("group", { name: "No date" });
+
+    expect(within(bucket).getByText("No date")).toBeVisible();
+    expect(within(bucket).getByText("Garage clear-out")).toBeVisible();
+    // The count agrees with the tally line above the canvas.
+    expect(within(bucket).getByText("1")).toBeVisible();
+
+    // It sits after the Inbox lane, and no lane holds one of its own.
+    const inbox = screen.getByText("Inbox");
+    expect(
+      inbox.compareDocumentPosition(bucket) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getAllByText("No date")).toHaveLength(1);
+  });
+
+  it("hides an undated Thread from the bucket when its Area is filtered out", async () => {
+    const user = userEvent.setup();
+    renderCanvas();
+
+    await user.click(screen.getByRole("button", { name: /Family Health/ }));
+
+    const bucket = screen.getByRole("group", { name: "No date" });
+    expect(within(bucket).queryByText("Garage clear-out")).toBeNull();
+  });
+
+  it("clears the date on a drop into the No-date bucket", async () => {
+    const { planActions } = renderCanvas();
+    measureSlots();
+
+    await dragChipTo("t2", "none");
+
+    expect(planActions.planThread).toHaveBeenCalledWith("t2", {
+      followUp: undefined,
+    });
+  });
+
+  it("drags back out of the bucket onto a day, keeping the Thread's Area", async () => {
+    const { planActions } = renderCanvas();
+    measureSlots();
+
+    await dragChipTo("t3", "home::d0");
+
+    expect(planActions.planThread).toHaveBeenCalledWith("t3", {
+      followUp: day(0),
+    });
   });
 
   it("rebuilds the axis when the attention clock rolls the day over", () => {

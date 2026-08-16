@@ -82,10 +82,24 @@ describe("plan axis", () => {
     expect(slotKeyFor(dayAt(horizon + 1, now), now, horizon)).toBe("beyond");
   });
 
-  it("pins a Later column between the last day and the No-date bay", () => {
+  it("ends on the pinned Later column, with no No-date column at all", () => {
     const kinds = axis.columns.map((column) => column.kind);
-    expect(kinds.at(-1)).toBe("none");
-    expect(kinds.at(-2)).toBe("beyond");
+    expect(kinds.at(-1)).toBe("beyond");
+    expect(kinds).not.toContain("none");
+    expect(kinds.at(-2)).toBe("day");
+  });
+
+  it("bands every rendered day under its month, past the near region", () => {
+    // Aug 6 2026 plus the 27-day floor lands in September, so the band has to
+    // name both months and reach the last day column.
+    const labels = axis.monthSpans.map((span) => span.label);
+    expect(labels).toEqual(["August", "September"]);
+
+    const lastDay = axis.columns
+      .map((column) => column.kind)
+      .lastIndexOf("day");
+    expect(axis.monthSpans.at(-1)!.to).toBe(lastDay);
+    expect(axis.monthSpans[0].from).toBe(axis.hasOverdue ? 1 : 0);
   });
 
   it("grows to the furthest rendered item, never for beyond-ceiling ones", () => {

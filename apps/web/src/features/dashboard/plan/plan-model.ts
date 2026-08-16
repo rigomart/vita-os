@@ -134,7 +134,7 @@ const SLOT_WIDTH: Record<Density, number> = {
   comfortable: 184,
 };
 
-/** The waiting bay and the pinned No-date bay share the slot width. */
+/** The waiting bay and the pinned Later bay share the slot width. */
 export function bayWidth(density: Density): number {
   return SLOT_WIDTH[density];
 }
@@ -162,7 +162,6 @@ export interface DaySlot {
 export type AxisColumn =
   | { day: DaySlot; key: string; kind: "day"; width: number }
   | { key: "beyond"; kind: "beyond"; width: number }
-  | { key: "none"; kind: "none"; width: number }
   | { key: "overdue"; kind: "overdue"; width: number };
 
 export interface MonthSpan {
@@ -176,11 +175,10 @@ export interface Axis {
   columns: AxisColumn[];
   days: DaySlot[];
   hasOverdue: boolean;
-  /** Index into `columns` where the coarse Later region starts, if any. */
-  laterFrom?: number;
   minWidth: number;
+  /** One span per calendar month, covering every rendered day. */
   monthSpans: MonthSpan[];
-  /** `grid-template-columns`, header and both bays included. */
+  /** `grid-template-columns`, header and bays included. */
   template: string;
 }
 
@@ -253,11 +251,12 @@ export function buildAxis(
     columns.push({ day, key: day.key, kind: "day", width: day.width });
   }
   columns.push({ key: "beyond", kind: "beyond", width: slotWidth });
-  columns.push({ key: "none", kind: "none", width: slotWidth });
 
+  // The band names months and nothing else: every rendered day sits under the
+  // month it belongs to, ticks and open slots alike.
   const dayFrom = hasOverdue ? 1 : 0;
   const monthSpans: MonthSpan[] = [];
-  for (let index = 0; index < NEAR_DAYS && index < days.length; index += 1) {
+  for (let index = 0; index < days.length; index += 1) {
     const label = format(new Date(days[index].at), "MMMM");
     const last = monthSpans.at(-1);
     if (last?.label === label) last.to = dayFrom + index;
@@ -268,7 +267,6 @@ export function buildAxis(
     columns,
     days,
     hasOverdue,
-    laterFrom: days.length > NEAR_DAYS ? dayFrom + NEAR_DAYS : undefined,
     minWidth:
       headerWidth + columns.reduce((total, column) => total + column.width, 0),
     monthSpans,
