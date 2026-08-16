@@ -21,6 +21,7 @@ import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
 import {
   Ban,
+  Bell,
   ChevronDown,
   ChevronUp,
   Compass,
@@ -792,6 +793,10 @@ function ChipSurface({
   const isTask = item.kind === "task";
   const area = item.areaId == null ? undefined : areaById.get(item.areaId);
   const waiting = slotKey === "overdue" && item.date != null;
+  // The day heading says *when*; the bell says what the placement means — a
+  // Follow-up, the soft day the Thread resurfaces, never a commitment.
+  const resurfacing =
+    !isTask && item.date != null && slotKey !== "none" && !waiting;
   const ConditionIcon = area ? conditionIcons[area.condition] : undefined;
 
   return (
@@ -890,9 +895,13 @@ function ChipSurface({
       </span>
 
       {waiting && (
-        <span className="mt-px shrink-0 text-2xs font-semibold tabular-nums text-condition-attention">
-          {waitingLabel(item.date!, now)}
+        <span className="mt-px flex shrink-0 items-center gap-0.5 text-2xs font-semibold text-condition-attention">
+          {!isTask && <Bell aria-hidden className="size-3 shrink-0" />}
+          <span className="tabular-nums">{waitingLabel(item.date!, now)}</span>
         </span>
+      )}
+      {resurfacing && (
+        <Bell aria-hidden className={cn("mt-px size-3 shrink-0", MUTE_SOFT)} />
       )}
     </div>
   );
