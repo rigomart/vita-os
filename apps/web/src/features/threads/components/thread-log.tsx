@@ -68,13 +68,13 @@ export function ActivityLog({
           Activity log
         </h2>
         {logs && logs.length > 0 && (
-          <span className="rounded-full bg-surface-3 px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+          <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
             {logs.length}
             {canLoadMore ? "+" : ""}
           </span>
         )}
         <span aria-hidden className="ml-1 h-px flex-1 bg-border/50" />
-        <span className="text-[10px] font-medium tracking-wide text-muted-foreground/60 uppercase">
+        <span className="text-2xs font-medium tracking-wide text-muted-foreground/60 uppercase">
           Newest first
         </span>
       </div>
@@ -139,7 +139,7 @@ function TimelineOrigin({ lastActivityAt }: { lastActivityAt?: number }) {
       >
         <span className="absolute inset-[3px] rounded-full bg-(--brand-gold)" />
       </span>
-      <p className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
+      <p className="text-2xs font-medium tracking-wide text-muted-foreground/80 uppercase">
         {lastActivityAt === undefined
           ? "No activity yet"
           : `Updated ${formatDistanceToNow(new Date(lastActivityAt), {
@@ -173,7 +173,7 @@ function ActivityLogTimeline({
             NODE_LEFT,
           )}
         />
-        <p className="text-[13px] leading-snug text-muted-foreground">
+        <p className="text-sm leading-snug text-muted-foreground">
           Nothing on the timeline yet — the first note starts this Thread's
           continuity record.
         </p>
@@ -234,7 +234,7 @@ function ActivityLogTimeline({
 function DayMarker({ label }: { label: string }) {
   return (
     <div className={cn("pb-1.5", ENTRY_PAD)}>
-      <h3 className="text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase">
+      <h3 className="text-2xs font-medium tracking-wide text-muted-foreground/80 uppercase">
         {label}
       </h3>
     </div>
@@ -256,12 +256,12 @@ function ManualNote({ log }: { log: ActivityLogEntry }) {
       />
       <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
         <div className="mb-1 flex items-baseline justify-between gap-2">
-          <span className="text-[10px] font-medium tracking-wide text-(--brand-gold) uppercase">
+          <span className="text-2xs font-medium tracking-wide text-(--brand-gold) uppercase">
             Note
           </span>
           <ActivityLogTimestamp createdAt={log.createdAt} />
         </div>
-        <p className="whitespace-pre-wrap text-[13px] leading-snug text-foreground">
+        <p className="whitespace-pre-wrap text-sm leading-snug text-foreground">
           {log.content}
         </p>
       </div>
@@ -305,7 +305,7 @@ function ActivityLogTimestamp({ createdAt }: { createdAt: number }) {
     <time
       dateTime={date.toISOString()}
       title={format(date, "PPpp")}
-      className="shrink-0 text-[10px] text-muted-foreground/60"
+      className="shrink-0 text-2xs text-muted-foreground/60"
     >
       {format(date, "h:mm a")}
     </time>

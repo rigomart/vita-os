@@ -156,7 +156,7 @@ function NextMoveSlot({
               }}
               disabled={pending?.set}
               inputAriaLabel="Next move"
-              className="min-h-0 py-1 text-[13px] font-medium xl:py-0"
+              className="min-h-0 py-1 text-sm font-medium xl:py-0"
               displayClassName="block truncate border-transparent text-left hover:bg-transparent animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
             />
           </span>
@@ -263,12 +263,12 @@ function Cascade({
         />
         <h2
           id={labelId}
-          className="shrink-0 text-[10px] font-medium tracking-wide text-muted-foreground/80 uppercase"
+          className="shrink-0 text-2xs font-medium tracking-wide text-muted-foreground/80 uppercase"
         >
           Up Next
         </h2>
         {moves.length > 0 && (
-          <span className="shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground/60">
+          <span className="shrink-0 text-2xs font-medium tabular-nums text-muted-foreground/60">
             {`· ${moves.length}`}
           </span>
         )}
@@ -357,7 +357,7 @@ function CascadeRow({
             if (text) onEdit(text);
           }}
           inputAriaLabel="Upcoming move"
-          className="min-h-0 py-0.5 text-[13px] leading-snug"
+          className="min-h-0 py-0.5 text-sm leading-snug"
           displayClassName="border-transparent hover:bg-muted/40"
         />
       </span>
@@ -433,7 +433,7 @@ function AddMove({ onAdd }: { onAdd: (text: string) => void }) {
         }}
         aria-label="Add an upcoming move"
         placeholder="Add what comes after…"
-        className="h-9 w-full min-w-0 rounded-md border border-transparent bg-transparent px-0 text-[13px] outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-border/60 focus:bg-muted/30 focus:px-1.5 motion-reduce:transition-none xl:h-7"
+        className="h-9 w-full min-w-0 rounded-md border border-transparent bg-transparent px-0 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-border/60 focus:bg-muted/30 focus:px-1.5 motion-reduce:transition-none xl:h-7"
       />
     </div>
   );
@@ -475,7 +475,7 @@ function NextMoveInput({
       disabled={disabled}
       aria-label={ariaLabel}
       placeholder={placeholder}
-      className="h-9 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 text-[13px] outline-none placeholder:text-muted-foreground/60 focus:ring-1 focus:ring-ring disabled:opacity-50 xl:h-7"
+      className="h-9 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground/60 focus:ring-1 focus:ring-ring disabled:opacity-50 xl:h-7"
     />
   );
 }

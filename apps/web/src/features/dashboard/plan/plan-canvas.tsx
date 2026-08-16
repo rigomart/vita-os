@@ -395,7 +395,7 @@ export function PlanCanvas({
               className="cursor-grabbing"
             >
               <ChipSurface
-                density="compact"
+                density={density}
                 item={draggingItem}
                 lifted
                 now={now}
@@ -404,7 +404,7 @@ export function PlanCanvas({
               {dropPlan && (
                 <span
                   className={cn(
-                    "mt-1.5 inline-flex max-w-[15rem] items-center gap-1 truncate rounded-full px-2 py-0.5 text-[10px] font-medium shadow-sm",
+                    "mt-1.5 inline-flex max-w-[15rem] items-center gap-1 truncate rounded-full px-2 py-0.5 text-2xs font-medium shadow-sm",
                     dropPlan.tone === "move" && "bg-foreground text-surface-1",
                     dropPlan.tone === "default" &&
                       "bg-surface-2 text-foreground ring-1 ring-border",

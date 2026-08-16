@@ -111,6 +111,8 @@
 }
 
 @theme inline {
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 0.875rem;
   --color-brand-ink: var(--brand-ink);
   --color-brand-gold: var(--brand-gold);
   --color-brand-gold-strong: var(--brand-gold-strong);

@@ -5,6 +5,7 @@ import type { DashboardArea } from "@/features/dashboard/components/dashboard-mo
 import type { DragState, PlanItem } from "./plan-model";
 
 import {
+  bayWidth,
   buildAxis,
   buildLanes,
   dayAt,
@@ -80,6 +81,15 @@ describe("plan axis", () => {
     expect(axis.minWidth - compact.minWidth).toBe(
       HEADER_WIDTH - HEADER_WIDTH_NARROW,
     );
+  });
+
+  it("gives an open slot — and both bays — the width its density asks for", () => {
+    const comfortable = buildAxis(items, now, "comfortable");
+
+    expect(axis.days.find((day) => day.wide)!.width).toBe(144);
+    expect(comfortable.days.find((day) => day.wide)!.width).toBe(184);
+    expect(bayWidth("compact")).toBe(144);
+    expect(bayWidth("comfortable")).toBe(184);
   });
 });
 

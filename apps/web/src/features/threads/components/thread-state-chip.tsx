@@ -16,7 +16,7 @@ export function ThreadStateChip({
     <span
       data-slot="thread-state-chip"
       className={cn(
-        "flex shrink-0 items-center gap-1.5 text-[11px]",
+        "flex shrink-0 items-center gap-1.5 text-xs",
         isResolved ? "text-condition-healthy" : "text-muted-foreground",
       )}
     >

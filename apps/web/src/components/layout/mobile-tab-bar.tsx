@@ -18,7 +18,7 @@ export function MobileTabBar({
 
   const tabClassName = (active: boolean) =>
     cn(
-      "flex flex-col items-center justify-center gap-0.5 text-[0.6875rem] font-medium",
+      "flex flex-col items-center justify-center gap-0.5 text-2xs font-medium",
       active ? "text-foreground" : "text-muted-foreground",
     );
 
@@ -43,7 +43,7 @@ export function MobileTabBar({
         <span className="relative">
           <Inbox className="size-5" />
           {taskCount !== undefined && taskCount > 0 && (
-            <span className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[0.625rem] font-semibold text-primary-foreground">
+            <span className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-2xs leading-none font-semibold text-primary-foreground">
               {taskCount}
             </span>
           )}

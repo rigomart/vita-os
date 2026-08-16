@@ -73,7 +73,7 @@ export function AreaFilterChips({
             aria-pressed={active != null && active.has(area.id)}
             onClick={() => toggle(area.id)}
             className={cn(
-              "flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-medium ring-1 transition-colors",
+              "flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium ring-1 transition-colors",
               on
                 ? "bg-surface-2 text-foreground ring-border hover:bg-surface-3"
                 : "bg-transparent text-muted-foreground/45 ring-border/40 hover:text-muted-foreground",
@@ -114,7 +114,7 @@ function FilterChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "h-7 rounded-full px-2.5 text-[11px] font-medium transition-colors",
+        "h-7 rounded-full px-2.5 text-xs font-medium transition-colors",
         active
           ? "bg-foreground text-surface-1"
           : "bg-surface-3 text-muted-foreground hover:text-foreground",

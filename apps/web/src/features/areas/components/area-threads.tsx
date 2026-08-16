@@ -174,7 +174,7 @@ export function AreaThreads({
  */
 function TriageCensus({ lanes }: { lanes: Lane[] }) {
   return (
-    <p className="flex flex-wrap items-baseline gap-x-1.5 text-[11px] tabular-nums text-muted-foreground">
+    <p className="flex flex-wrap items-baseline gap-x-1.5 text-xs tabular-nums text-muted-foreground">
       {lanes.map((lane, index) => (
         <Fragment key={lane.id}>
           {index > 0 && (
@@ -245,7 +245,7 @@ function AttentionLane({
             </span>
             <span
               className={cn(
-                "rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
+                "rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
                 escalated
                   ? "bg-condition-attention-fill text-condition-attention-fill-foreground"
                   : "bg-surface-3 text-muted-foreground",

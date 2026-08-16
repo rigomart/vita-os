@@ -329,16 +329,16 @@ export function PlanSchedule({
               {dropPlan && (
                 <span
                   className={cn(
-                    "mt-1.5 ml-1 inline-flex max-w-full items-center gap-1 truncate rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm",
+                    "mt-1.5 ml-1 inline-flex max-w-full items-center gap-1 truncate rounded-full px-2 py-0.5 text-2xs font-semibold shadow-sm",
                     dropPlan.valid
                       ? "bg-foreground text-surface-1"
                       : cn("bg-surface-2 ring-1 ring-border/50", MUTE_SOFT),
                   )}
                 >
                   {dropPlan.valid ? (
-                    <CornerDownRight className="size-2.5 shrink-0" />
+                    <CornerDownRight className="size-3 shrink-0" />
                   ) : (
-                    <Ban className="size-2.5 shrink-0" />
+                    <Ban className="size-3 shrink-0" />
                   )}
                   {dropPlan.caption}
                 </span>
@@ -354,7 +354,7 @@ export function PlanSchedule({
         <button
           type="button"
           onClick={() => scrollToToday(true)}
-          className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-1 rounded-full bg-foreground px-3 py-1.5 font-heading text-[11px] font-semibold tracking-tight text-surface-1 shadow-lg"
+          className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-1 rounded-full bg-foreground px-3 py-1.5 font-heading text-xs font-semibold tracking-tight text-surface-1 shadow-lg"
         >
           <span
             aria-hidden
@@ -367,7 +367,7 @@ export function PlanSchedule({
       {schedule.total === 0 && (
         <p
           className={cn(
-            "mt-3 rounded-2xl border border-dashed p-10 text-center font-heading text-[13px] font-semibold",
+            "mt-3 rounded-2xl border border-dashed p-10 text-center font-heading text-sm font-semibold",
             HAIRLINE,
           )}
         >
@@ -407,15 +407,15 @@ interface ScheduleChrome {
 /** The app bar the month band pins under. */
 const APP_BAR = 48;
 
-/** The date rail. Wide enough for "WED" over a two-digit day in a 24px disc. */
+/** The date rail. Wide enough for "WED" over a two-digit day in a 28px disc. */
 const RAIL = "w-12 shrink-0";
 
 /**
- * Every day row clears the rail: 4px lead + 9px weekday + 2px gap + 24px disc
- * is 39px, rounded to 40. Empty days are the same 40px — the rail sets the
+ * Every day row clears the rail: 4px lead + 11px weekday + 2px gap + 28px disc
+ * is 45px, rounded to 48. Empty days are the same 48px — the rail sets the
  * floor, which also makes an empty day a fingertip-sized drop target.
  */
-const ROW_MIN = "min-h-10";
+const ROW_MIN = "min-h-12";
 
 /** The three muting steps. Faint tones pick one rather than inventing an alpha. */
 const MUTE = "text-muted-foreground";
@@ -451,9 +451,7 @@ function MonthBand({
       style={{ top: APP_BAR }}
       className="sticky z-10 -mx-1 flex items-center gap-2 bg-surface-1/95 px-1 pt-3 pb-1.5 backdrop-blur-sm"
     >
-      <span className={cn("font-heading text-[11px]", CAPS, MUTE)}>
-        {label}
-      </span>
+      <span className={cn("font-heading text-xs", CAPS, MUTE)}>{label}</span>
       <span aria-hidden className={cn("h-px flex-1", HAIRLINE_BG)} />
     </div>
   );
@@ -462,7 +460,7 @@ function MonthBand({
 /**
  * The date rail: weekday over day number, with *identical* layout, type and
  * x-alignment on every rendered day — a quieter day changes only its tone.
- * Today is the one day whose 24px disc is filled.
+ * Today is the one day whose 28px disc is filled.
  */
 function DayRail({
   date,
@@ -482,7 +480,7 @@ function DayRail({
     <div className={cn(RAIL, "flex flex-col items-center gap-0.5 pt-1")}>
       <span
         className={cn(
-          "text-[9px] leading-none",
+          "text-2xs leading-none",
           CAPS,
           dim === "faint" ? MUTE_FAINT : dim === "soft" ? MUTE_SOFT : MUTE,
         )}
@@ -491,7 +489,7 @@ function DayRail({
       </span>
       <span
         className={cn(
-          "flex size-6 items-center justify-center rounded-full text-[13px] leading-none font-semibold tabular-nums",
+          "flex size-7 items-center justify-center rounded-full text-sm leading-none font-semibold tabular-nums",
           isToday
             ? "bg-brand-accent-foreground text-surface-1"
             : dim === "faint"
@@ -615,13 +613,13 @@ function GapRow({
       >
         <span
           aria-hidden
-          className={cn(RAIL, "text-center text-[10px]", MUTE_FAINT)}
+          className={cn(RAIL, "text-center text-2xs", MUTE_FAINT)}
         >
           ···
         </span>
         <span
           className={cn(
-            "flex flex-1 items-center gap-1 pl-1 text-[10px]",
+            "flex flex-1 items-center gap-1 pl-1 text-2xs",
             MUTE_SOFT,
           )}
         >
@@ -674,15 +672,12 @@ function WaitingSection({
     >
       <div className="flex items-center gap-2 px-2.5 pt-2 pb-1.5">
         <span
-          className={cn(
-            "font-heading text-[11px] text-condition-attention",
-            CAPS,
-          )}
+          className={cn("font-heading text-xs text-condition-attention", CAPS)}
         >
           Waiting
         </span>
         <span aria-hidden className="h-px flex-1 bg-condition-attention/25" />
-        <span className="text-[10px] font-semibold tabular-nums text-condition-attention">
+        <span className="text-2xs font-semibold tabular-nums text-condition-attention">
           {items.length}
         </span>
       </div>
@@ -732,12 +727,10 @@ function NoDateSection({
         onClick={onToggle}
         className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
       >
-        <span className={cn("font-heading text-[11px]", CAPS, MUTE)}>
-          No date
-        </span>
+        <span className={cn("font-heading text-xs", CAPS, MUTE)}>No date</span>
         <span
           className={cn(
-            "rounded-full bg-surface-3 px-1.5 text-[10px] font-semibold tabular-nums",
+            "rounded-full bg-surface-3 px-1.5 text-2xs font-semibold tabular-nums",
             MUTE,
           )}
         >
@@ -754,7 +747,7 @@ function NoDateSection({
       {open && (
         <div className="flex flex-col gap-1 px-1.5 pb-2">
           {items.length === 0 ? (
-            <p className={cn("py-1 pl-1 text-[11px]", MUTE_FAINT)}>
+            <p className={cn("py-1 pl-1 text-xs", MUTE_FAINT)}>
               Everything has a day
             </p>
           ) : (
@@ -802,7 +795,7 @@ function ChipSurface({
   return (
     <div
       className={cn(
-        "relative flex w-full items-start gap-2 overflow-hidden rounded-lg border py-2 pr-2 pl-2.5 text-left",
+        "relative flex w-full items-start gap-2 overflow-hidden rounded-lg border py-2 pr-2.5 pl-3 text-left",
         isTask
           ? cn("border-dashed bg-surface-2/60", CHIP_EDGE)
           : cn("bg-surface-2", CHIP_EDGE),
@@ -845,7 +838,7 @@ function ChipSurface({
       <span className="min-w-0 flex-1">
         <span
           className={cn(
-            "line-clamp-2 text-[13px] leading-snug",
+            "line-clamp-2 text-sm leading-snug",
             isTask ? "font-normal" : "font-medium",
           )}
         >
@@ -854,21 +847,21 @@ function ChipSurface({
 
         <span
           className={cn(
-            "mt-0.5 flex min-w-0 items-center gap-1 text-[10px] leading-snug",
+            "mt-0.5 flex min-w-0 items-center gap-1 text-xs leading-snug",
             MUTE_SOFT,
           )}
         >
           {ConditionIcon && area && area.condition !== "healthy" && (
             <ConditionIcon
               aria-hidden
-              className={cn("size-2.5", conditionTextClassName[area.condition])}
+              className={cn("size-3", conditionTextClassName[area.condition])}
             />
           )}
           <span className="truncate">{area?.name ?? "Inbox"}</span>
           {item.nextMove && (
             <>
               <span aria-hidden>·</span>
-              <CornerDownRight aria-hidden className="size-2.5 shrink-0" />
+              <CornerDownRight aria-hidden className="size-3 shrink-0" />
               <span className="truncate">{item.nextMove}</span>
             </>
           )}
@@ -876,7 +869,7 @@ function ChipSurface({
       </span>
 
       {waiting && (
-        <span className="mt-px shrink-0 text-[10px] font-semibold tabular-nums text-condition-attention">
+        <span className="mt-px shrink-0 text-2xs font-semibold tabular-nums text-condition-attention">
           {waitingLabel(item.date!, now)}
         </span>
       )}

@@ -40,7 +40,8 @@ export function ChipSurface({
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden rounded-md border py-1 pr-1.5 pl-2 text-left transition-colors",
+        "relative w-full overflow-hidden rounded-md border text-left transition-colors",
+        density === "compact" ? "py-1 pr-1.5 pl-2" : "py-1.5 pr-2 pl-2.5",
         isTask
           ? "border-dashed border-border bg-surface-2/60 hover:bg-surface-3/60"
           : "border-border/70 bg-surface-2 hover:border-border hover:bg-surface-3/60",
@@ -65,12 +66,12 @@ export function ChipSurface({
         {isTask && (
           <Inbox
             aria-hidden
-            className="mt-[3px] size-3 shrink-0 text-muted-foreground/50"
+            className="mt-[3px] size-3.5 shrink-0 text-muted-foreground/50"
           />
         )}
         <span
           className={cn(
-            "min-w-0 flex-1 text-xs leading-snug",
+            "min-w-0 flex-1 text-sm leading-snug",
             density === "compact" ? "truncate" : "line-clamp-2",
             isTask ? "font-normal text-foreground/90" : "font-medium",
           )}
@@ -78,17 +79,17 @@ export function ChipSurface({
           {item.title}
         </span>
         {waiting && (
-          <span className="mt-px shrink-0 text-[10px] font-medium tabular-nums text-condition-attention">
+          <span className="mt-px shrink-0 text-2xs font-medium tabular-nums text-condition-attention">
             {waitingLabel(item.date!, now)}
           </span>
         )}
       </div>
 
       {density === "comfortable" && !isTask && (
-        <span className="mt-0.5 flex items-start gap-1 pl-1 text-[11px] leading-snug">
+        <span className="mt-0.5 flex items-start gap-1 pl-1 text-xs leading-snug">
           {item.nextMove ? (
             <>
-              <CornerDownRight className="mt-[3px] size-2.5 shrink-0 text-muted-foreground/50" />
+              <CornerDownRight className="mt-[3px] size-3 shrink-0 text-muted-foreground/50" />
               <span className="truncate text-muted-foreground">
                 {item.nextMove}
               </span>
@@ -100,7 +101,7 @@ export function ChipSurface({
       )}
 
       {density === "comfortable" && isTask && item.createdAt != null && (
-        <span className="mt-0.5 block pl-5.5 text-[11px] leading-snug text-muted-foreground/45">
+        <span className="mt-0.5 block pl-6 text-xs leading-snug text-muted-foreground/45">
           Captured {agoLabel(item.createdAt, now)}
         </span>
       )}

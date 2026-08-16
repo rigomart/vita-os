@@ -312,7 +312,7 @@ function InboxTaskPreview({ task }: { task: ProjectedTask }) {
         <p className="line-clamp-3 min-w-0 whitespace-pre-wrap text-sm leading-relaxed">
           {task.text}
         </p>
-        <ItemDescription className="text-[11px] text-muted-foreground/60">
+        <ItemDescription className="text-xs text-muted-foreground/60">
           {timestamp}
         </ItemDescription>
       </ItemContent>
@@ -331,7 +331,7 @@ function AreaChoice({
 }) {
   return (
     <div className="space-y-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+      <span className="text-2xs font-semibold uppercase tracking-widest text-muted-foreground/60">
         Area
       </span>
       <div className="flex flex-wrap gap-1.5">

@@ -54,7 +54,7 @@ export function AttentionRow({
       {row.area && (
         <AreaTag
           area={row.area}
-          className="hidden max-w-28 shrink-0 text-[11px] text-muted-foreground sm:inline-flex"
+          className="hidden max-w-28 shrink-0 text-xs text-muted-foreground sm:inline-flex"
         />
       )}
 
@@ -125,7 +125,7 @@ function StateRail({ now, row }: { now: number; row: AttentionRowModel }) {
           dateTime={date.toISOString()}
           className="flex flex-col items-center"
         >
-          <span className="text-[9px] leading-none font-medium tracking-wider uppercase opacity-70">
+          <span className="text-2xs leading-none font-medium tracking-wider uppercase opacity-70">
             {format(date, "MMM")}
           </span>
           <span

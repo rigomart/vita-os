@@ -74,7 +74,7 @@ export function ActivityLogComposer({
             aria-label="Activity log note"
             placeholder="Log what just happened…"
             rows={1}
-            className="min-h-10 py-2.5 pr-11 pl-4 text-[13px]"
+            className="min-h-10 py-2.5 pr-11 pl-4 text-sm"
           />
           <InputGroupAddon
             align="block-end"
