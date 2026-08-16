@@ -134,7 +134,7 @@ const SLOT_WIDTH: Record<Density, number> = {
   comfortable: 184,
 };
 
-/** The waiting bay and the pinned No-date bay share the slot width. */
+/** The waiting bay and the pinned Later bay share the slot width. */
 export function bayWidth(density: Density): number {
   return SLOT_WIDTH[density];
 }
@@ -161,7 +161,7 @@ export interface DaySlot {
 
 export type AxisColumn =
   | { day: DaySlot; key: string; kind: "day"; width: number }
-  | { key: "none"; kind: "none"; width: number }
+  | { key: "beyond"; kind: "beyond"; width: number }
   | { key: "overdue"; kind: "overdue"; width: number };
 
 export interface MonthSpan {
@@ -175,11 +175,10 @@ export interface Axis {
   columns: AxisColumn[];
   days: DaySlot[];
   hasOverdue: boolean;
-  /** Index into `columns` where the coarse Later region starts, if any. */
-  laterFrom?: number;
   minWidth: number;
+  /** One span per calendar month, covering every rendered day. */
   monthSpans: MonthSpan[];
-  /** `grid-template-columns`, header and both bays included. */
+  /** `grid-template-columns`, header and bays included. */
   template: string;
 }
 
@@ -209,15 +208,16 @@ export function buildAxis(
       hasOverdue = true;
       continue;
     }
+    // Past the ceiling an item docks in the Later bay: it neither stretches
+    // the axis nor opens a day.
+    if (offset > MAX_HORIZON) continue;
     planned.push(offset);
     if (offset > furthest) furthest = offset;
   }
 
   const horizon = Math.min(MAX_HORIZON, Math.max(MIN_HORIZON, furthest));
   const slotWidth = SLOT_WIDTH[density];
-  // Anything past the horizon piles into the last day, exactly as `slotKeyFor`
-  // files it — otherwise that day would show a count but stay tick-narrow.
-  const occupied = new Set(planned.map((offset) => Math.min(offset, horizon)));
+  const occupied = new Set(planned);
 
   const days: DaySlot[] = [];
   for (let offset = 0; offset <= horizon; offset += 1) {
@@ -250,11 +250,13 @@ export function buildAxis(
   for (const day of days) {
     columns.push({ day, key: day.key, kind: "day", width: day.width });
   }
-  columns.push({ key: "none", kind: "none", width: slotWidth });
+  columns.push({ key: "beyond", kind: "beyond", width: slotWidth });
 
+  // The band names months and nothing else: every rendered day sits under the
+  // month it belongs to, ticks and open slots alike.
   const dayFrom = hasOverdue ? 1 : 0;
   const monthSpans: MonthSpan[] = [];
-  for (let index = 0; index < NEAR_DAYS && index < days.length; index += 1) {
+  for (let index = 0; index < days.length; index += 1) {
     const label = format(new Date(days[index].at), "MMMM");
     const last = monthSpans.at(-1);
     if (last?.label === label) last.to = dayFrom + index;
@@ -265,7 +267,6 @@ export function buildAxis(
     columns,
     days,
     hasOverdue,
-    laterFrom: days.length > NEAR_DAYS ? dayFrom + NEAR_DAYS : undefined,
     minWidth:
       headerWidth + columns.reduce((total, column) => total + column.width, 0),
     monthSpans,
@@ -286,7 +287,7 @@ export function slotKeyFor(
   if (date == null) return "none";
   const offset = dayDelta(date, now);
   if (offset < 0) return "overdue";
-  return dayKey(Math.min(offset, horizon));
+  return offset > horizon ? "beyond" : dayKey(offset);
 }
 
 /* ----------------------------------------------------------------- lanes -- */
@@ -296,6 +297,8 @@ export const INBOX_LANE_ID = "inbox";
 export interface Lane {
   /** Undefined on the pinned Inbox lane. */
   area?: DashboardArea;
+  /** Dated past what the axis renders — docked in the Later bay. */
+  beyond: PlanItem[];
   byDay: Map<string, PlanItem[]>;
   id: string;
   /**
@@ -319,6 +322,7 @@ const conditionRank: Record<Condition, number> = {
 function emptyLane(id: string, area?: DashboardArea): Lane {
   return {
     area,
+    beyond: [],
     byDay: new Map(),
     id,
     nearHorizon: 0,
@@ -336,6 +340,10 @@ function push(lane: Lane, key: string, item: PlanItem) {
   }
   if (key === "overdue") {
     lane.overdue.push(item);
+    return;
+  }
+  if (key === "beyond") {
+    lane.beyond.push(item);
     return;
   }
   const bucket = lane.byDay.get(key);
@@ -368,6 +376,7 @@ export function buildLanes(
   for (const lane of [...lanes.values(), inbox]) {
     for (const bucket of lane.byDay.values()) bucket.sort(byDateThenTitle);
     lane.overdue.sort(byDateThenTitle);
+    lane.beyond.sort(byDateThenTitle);
     lane.none.sort(byDateThenTitle);
 
     let dated = 0;
@@ -377,8 +386,9 @@ export function buildLanes(
       if (Number(key.slice(1)) <= restOfWeek) near += bucket.length;
     }
     lane.nearHorizon = near;
-    lane.plannedCount = dated;
-    lane.openCount = dated + lane.overdue.length + lane.none.length;
+    lane.plannedCount = dated + lane.beyond.length;
+    lane.openCount =
+      dated + lane.overdue.length + lane.beyond.length + lane.none.length;
   }
 
   const areaLanes = [...lanes.values()].sort(
@@ -401,6 +411,7 @@ export function byDateThenTitle(a: PlanItem, b: PlanItem): number {
 /* ---------------------------------------------------------------- totals -- */
 
 export interface SlotTotals {
+  beyond: number;
   /** Items per day slot, summed across the lanes actually on screen. */
   byDay: Map<string, number>;
   none: number;
@@ -418,6 +429,7 @@ export interface SlotTotals {
  */
 export function slotTotals(lanes: Lane[]): SlotTotals {
   const byDay = new Map<string, number>();
+  let beyond = 0;
   let none = 0;
   let overdue = 0;
 
@@ -425,6 +437,7 @@ export function slotTotals(lanes: Lane[]): SlotTotals {
     for (const [key, bucket] of lane.byDay) {
       byDay.set(key, (byDay.get(key) ?? 0) + bucket.length);
     }
+    beyond += lane.beyond.length;
     none += lane.none.length;
     overdue += lane.overdue.length;
   }
@@ -432,7 +445,7 @@ export function slotTotals(lanes: Lane[]): SlotTotals {
   let peak = 1;
   for (const count of byDay.values()) if (count > peak) peak = count;
 
-  return { byDay, none, overdue, peak };
+  return { beyond, byDay, none, overdue, peak };
 }
 
 /* ------------------------------------------------------------------ drop -- */
@@ -455,6 +468,8 @@ export interface DropPlan {
   caption: string;
   clears: boolean;
   date?: number;
+  /** The Later bay: the drop is valid but the day comes from a picker. */
+  needsDate?: boolean;
   laneId: string;
   reschedule: boolean;
   slotKey: string;
@@ -470,6 +485,8 @@ export interface DayDropPlan {
   clears: boolean;
   /** The day the drop writes; undefined when it clears. */
   date?: number;
+  /** The Later bay: the drop is valid but the day comes from a picker. */
+  needsDate?: boolean;
   /** The item is not already sitting in the slot it would land in. */
   reschedule: boolean;
   valid: boolean;
@@ -499,6 +516,18 @@ export function planDayDrop(
       clears: false,
       reschedule: false,
       valid: false,
+    };
+  }
+
+  // The Later bay holds no single day: the drop is valid, the day is picked
+  // in a calendar afterwards, so nothing is written here.
+  if (to === "beyond") {
+    return {
+      caption: "Pick a day",
+      clears: false,
+      needsDate: true,
+      reschedule: true,
+      valid: true,
     };
   }
 
@@ -574,6 +603,7 @@ export function planDrop(
     clears: day.clears,
     date: day.date,
     laneId: overLaneId,
+    needsDate: day.needsDate,
     reschedule: day.reschedule,
     slotKey: overSlotKey,
     tone: movedLane ? "move" : "default",

@@ -1,8 +1,15 @@
 import type { PropsWithChildren } from "react";
 
-import { render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type {
   DashboardArea,
@@ -92,6 +99,17 @@ const threads: DashboardThread[] = [
     slug: "garage-clear-out",
     title: "Garage clear-out",
   },
+  // Past `MAX_HORIZON`: the axis never draws this day, so the chip docks in the
+  // Later bay instead.
+  {
+    areaId: "home",
+    followUp: day(120),
+    id: "t4",
+    nextMove: "Book the sweep",
+    order: 3,
+    slug: "chimney-sweep",
+    title: "Chimney sweep",
+  },
 ];
 
 const tasks: DashboardInboxTask[] = [
@@ -114,6 +132,87 @@ function renderCanvas() {
   };
 }
 
+/* -------------------------------------------------------------------- dnd -- */
+
+/**
+ * dnd-kit decides what a drag is over from measured rectangles, and jsdom
+ * reports every rectangle as zero — every slot would collide with every other.
+ * So the drop targets are laid out here on a synthetic strip: each element
+ * carrying a `data-slot-key` gets its own 100px-wide cell, in document order.
+ */
+const CELL = 100;
+
+function cellRect(index: number): DOMRect {
+  const left = index * CELL;
+  return {
+    bottom: CELL,
+    height: CELL,
+    left,
+    right: left + CELL,
+    toJSON: () => ({}),
+    top: 0,
+    width: CELL,
+    x: left,
+    y: 0,
+  };
+}
+
+function slots(): Element[] {
+  return [...document.querySelectorAll("[data-slot-key]")];
+}
+
+function measureSlots() {
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+    function (this: HTMLElement) {
+      const index = slots().indexOf(this);
+      return index < 0 ? cellRect(-CELL) : cellRect(index);
+    },
+  );
+}
+
+/** The pointer position that lands inside a lane's slot, e.g. `home::beyond`. */
+function centreOf(slotKey: string): { clientX: number; clientY: number } {
+  const index = slots().findIndex(
+    (slot) => slot.getAttribute("data-slot-key") === slotKey,
+  );
+  expect(index, `no drop target ${slotKey}`).toBeGreaterThanOrEqual(0);
+  return { clientX: index * CELL + CELL / 2, clientY: CELL / 2 };
+}
+
+/**
+ * Lift the chip, hover the slot, let go — the whole gesture dnd-kit expects.
+ * `whileOver` runs with the chip still in the air, which is the only moment the
+ * drag overlay and its caption exist.
+ */
+async function dragChipTo(
+  itemId: string,
+  slotKey: string,
+  whileOver?: () => void,
+) {
+  const chip = document.querySelector(`[data-chip="${itemId}"]`)!;
+  const target = centreOf(slotKey);
+
+  await act(async () => {
+    fireEvent.mouseDown(chip, { clientX: 0, clientY: 0 });
+    // Past the 5px activation distance, so the drag arms rather than clicks.
+    fireEvent.mouseMove(document, { clientX: 40, clientY: 0 });
+  });
+  await act(async () => {
+    fireEvent.mouseMove(document, target);
+  });
+  whileOver?.();
+  await act(async () => {
+    fireEvent.mouseUp(document, target);
+  });
+  // dnd-kit swallows clicks on a capture-phase document listener it removes
+  // only 50ms after the drop; a dialog click inside that window goes dead.
+  await act(() => new Promise((resolve) => setTimeout(resolve, 60)));
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("PlanCanvas", () => {
   it("lays Areas out worst condition first over a day axis, Inbox last", () => {
     renderCanvas();
@@ -121,7 +220,6 @@ describe("PlanCanvas", () => {
     const canvas = screen.getByRole("region", { name: "Plan" });
     expect(within(canvas).getByText("Today")).toBeVisible();
     expect(within(canvas).getByText("Waiting")).toBeVisible();
-    expect(within(canvas).getByText("No date")).toBeVisible();
 
     // The Area names appear on the filter chips too; the lane headings are the
     // last of each.
@@ -214,6 +312,242 @@ describe("PlanCanvas", () => {
     expect(screen.queryByText("Kitchen faucet")).toBeNull();
     expect(screen.queryByText("Garage clear-out")).toBeNull();
     expect(screen.getByText("Renew passport")).toBeVisible();
+  });
+
+  it("bands every day under its month, naming no region of its own", () => {
+    renderCanvas();
+
+    const canvas = screen.getByRole("region", { name: "Plan" });
+    const bands = [...canvas.querySelectorAll("[data-band]")].map(
+      (band) => band.textContent,
+    );
+
+    // The 27-day floor runs past the near region and into the next month.
+    expect(bands).toEqual(["August", "September"]);
+    // The Later *bay* keeps its label; the band no longer names a Later region.
+    expect(
+      within(
+        canvas.querySelector('[data-bay="beyond"]') as HTMLElement,
+      ).getByText("Later"),
+    ).toBeVisible();
+  });
+
+  it("pins the Later bay at the axis end, holding work dated off it", () => {
+    renderCanvas();
+
+    const canvas = screen.getByRole("region", { name: "Plan" });
+    const later = canvas.querySelector('[data-bay="beyond"]')!;
+
+    expect(within(later as HTMLElement).getByText("Later")).toBeVisible();
+    // One Thread is dated past the end of the axis.
+    expect(within(later as HTMLElement).getByText("1")).toBeVisible();
+    // No lane carries a No-date bay any more: the bucket owns undated work.
+    expect(canvas.querySelector('[data-bay="none"]')).toBeNull();
+
+    // Position cannot say when, so the chip prints its own day.
+    const chip = document.querySelector('[data-chip="t4"]')!;
+    expect(chip.closest("[data-slot-key]")).toHaveAttribute(
+      "data-slot-key",
+      "home::beyond",
+    );
+    expect(within(chip as HTMLElement).getByText("Fri 4 Dec")).toBeVisible();
+  });
+
+  it("answers a drop on Later with a calendar, writing only once a day is picked", async () => {
+    const user = userEvent.setup();
+    const { planActions } = renderCanvas();
+    measureSlots();
+
+    await dragChipTo("t2", "home::beyond", () => {
+      // The lifted chip promises a picker rather than a day.
+      expect(screen.getByText("Pick a day")).toBeVisible();
+    });
+
+    // The drop itself writes nothing: the bay names no single day.
+    expect(planActions.planThread).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Kitchen faucet")).toBeVisible();
+
+    await user.click(
+      within(dialog).getByRole("button", { name: /August 12th/ }),
+    );
+
+    expect(planActions.planThread).toHaveBeenCalledWith("t2", {
+      followUp: day(6),
+    });
+  });
+
+  it("carries the Area move through the Later calendar", async () => {
+    const user = userEvent.setup();
+    const { planActions } = renderCanvas();
+    measureSlots();
+
+    await dragChipTo("t2", "health::beyond");
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText("Kitchen faucet → Family Health"),
+    ).toBeVisible();
+
+    await user.click(
+      within(dialog).getByRole("button", { name: /August 12th/ }),
+    );
+
+    expect(planActions.planThread).toHaveBeenCalledWith("t2", {
+      areaId: "health",
+      followUp: day(6),
+    });
+  });
+
+  it("confirms the day the item already sits on, keeping the Area move", async () => {
+    const user = userEvent.setup();
+    const { planActions } = renderCanvas();
+    measureSlots();
+
+    // "Chimney sweep" is already dated day(120): moving it across lanes via
+    // Later and re-picking its own day must still write the Area move.
+    await dragChipTo("t4", "health::beyond");
+
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: /December 4th/ }),
+    );
+
+    expect(planActions.planThread).toHaveBeenCalledWith("t4", {
+      areaId: "health",
+      followUp: day(120),
+    });
+  });
+
+  it("opens on today, unselected, for a chip dragged out of Waiting", async () => {
+    renderCanvas();
+    measureSlots();
+
+    // t1 is overdue: its past date must not drag the calendar into a month
+    // where every day is disabled.
+    await dragChipTo("t1", "health::beyond");
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("August 2026")).toBeVisible();
+    expect(dialog.querySelector('[data-selected-single="true"]')).toBeNull();
+  });
+
+  it("forgets the pending drop when the item disappears mid-pick", async () => {
+    const { planActions, rerender } = renderCanvas();
+    measureSlots();
+
+    await dragChipTo("t2", "health::beyond");
+    await screen.findByRole("dialog");
+
+    rerender(
+      <PlanCanvas
+        areas={areas}
+        currentDate={now}
+        planActions={planActions}
+        tasks={tasks}
+        threads={threads.filter((thread) => thread.id !== "t2")}
+      />,
+    );
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(planActions.planThread).not.toHaveBeenCalled();
+  });
+
+  it("leaves the item alone when the Later calendar is dismissed", async () => {
+    const user = userEvent.setup();
+    const { planActions } = renderCanvas();
+    measureSlots();
+
+    await dragChipTo("t2", "health::beyond");
+    await screen.findByRole("dialog");
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // Not even the Area move: an abandoned pick abandons the whole drop.
+    expect(planActions.planThread).not.toHaveBeenCalled();
+    expect(planActions.planTask).not.toHaveBeenCalled();
+  });
+
+  it("sends an Inbox Task through the same Later calendar", async () => {
+    const user = userEvent.setup();
+    const { planActions } = renderCanvas();
+    measureSlots();
+
+    await dragChipTo("k1", "inbox::beyond");
+
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: /August 12th/ }),
+    );
+
+    expect(planActions.planTask).toHaveBeenCalledWith("k1", day(6));
+  });
+
+  it("keeps a plain day drop writing straight through, and refuses the past", async () => {
+    const { planActions } = renderCanvas();
+    measureSlots();
+
+    await dragChipTo("t2", "home::d0");
+    expect(planActions.planThread).toHaveBeenCalledWith("t2", {
+      followUp: day(0),
+    });
+
+    // The waiting bay shows a debt; it never takes a new plan.
+    planActions.planThread.mockClear();
+    await dragChipTo("t2", "home::overdue");
+    expect(planActions.planThread).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("gathers every undated item into one No-date bucket under the lanes", () => {
+    renderCanvas();
+
+    const bucket = screen.getByRole("group", { name: "No date" });
+
+    expect(within(bucket).getByText("No date")).toBeVisible();
+    expect(within(bucket).getByText("Garage clear-out")).toBeVisible();
+    // The count agrees with the tally line above the canvas.
+    expect(within(bucket).getByText("1")).toBeVisible();
+
+    // It sits after the Inbox lane, and no lane holds one of its own.
+    const inbox = screen.getByText("Inbox");
+    expect(
+      inbox.compareDocumentPosition(bucket) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getAllByText("No date")).toHaveLength(1);
+  });
+
+  it("hides an undated Thread from the bucket when its Area is filtered out", async () => {
+    const user = userEvent.setup();
+    renderCanvas();
+
+    await user.click(screen.getByRole("button", { name: /Family Health/ }));
+
+    const bucket = screen.getByRole("group", { name: "No date" });
+    expect(within(bucket).queryByText("Garage clear-out")).toBeNull();
+  });
+
+  it("clears the date on a drop into the No-date bucket", async () => {
+    const { planActions } = renderCanvas();
+    measureSlots();
+
+    await dragChipTo("t2", "none");
+
+    expect(planActions.planThread).toHaveBeenCalledWith("t2", {
+      followUp: undefined,
+    });
+  });
+
+  it("drags back out of the bucket onto a day, keeping the Thread's Area", async () => {
+    const { planActions } = renderCanvas();
+    measureSlots();
+
+    await dragChipTo("t3", "home::d0");
+
+    expect(planActions.planThread).toHaveBeenCalledWith("t3", {
+      followUp: day(0),
+    });
   });
 
   it("rebuilds the axis when the attention clock rolls the day over", () => {

@@ -48,12 +48,16 @@ import type { PlanActions } from "./use-plan-actions";
 
 import { NO_NEXT_MOVE } from "./plan-chip";
 import { AreaFilterChips } from "./plan-filters";
+import { PlanLaterDialog } from "./plan-later-dialog";
 import {
   buildPlanItems,
   conditionIconTone,
   conditionRailTone,
   dayAt,
+  dayCaption,
+  dayDelta,
   dayKey,
+  MAX_HORIZON,
   waitingLabel,
 } from "./plan-model";
 import {
@@ -65,8 +69,9 @@ import {
 /**
  * Plan — the phone schedule: the canvas's model as a vertical agenda. Area
  * collapses from a lane into a chip attribute; the near horizon prints every
- * day, empty ones included, and quiet stretches past it fold into a tappable
- * "N quiet days".
+ * day, empty ones included, quiet stretches past it fold into a tappable
+ * "N quiet days", and anything dated past the agenda's reach lists in Later
+ * with the day it is on.
  *
  * Opens on today. A long-press lifts a chip; dropping it writes the date
  * through the app's own mutations, as the canvas does.
@@ -95,6 +100,8 @@ export function PlanSchedule({
   const [openGaps, setOpenGaps] = useState<ReadonlySet<number>>(
     () => new Set(),
   );
+  const [pendingLater, setPendingLater] = useState<PendingLater | null>(null);
+  const [showLater, setShowLater] = useState(false);
   const [showNoDate, setShowNoDate] = useState(false);
   const [todayInView, setTodayInView] = useState(true);
 
@@ -129,6 +136,17 @@ export function PlanSchedule({
   );
 
   const schedule = useMemo(() => buildSchedule(visible, now), [visible, now]);
+
+  // Resolved or completed elsewhere while the calendar was open: there is
+  // nothing left to date, so the pending drop dissolves with it.
+  useEffect(() => {
+    if (
+      pendingLater != null &&
+      !visible.some((item) => item.id === pendingLater.itemId)
+    ) {
+      setPendingLater(null);
+    }
+  }, [pendingLater, visible]);
 
   const areaCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -215,6 +233,19 @@ export function PlanSchedule({
     const plan = planScheduleDrop(source.slotKey, over.slotKey, now);
     if (!plan?.valid || !plan.reschedule) return;
 
+    // Later stands for every day the agenda does not print, so it names no
+    // date of its own: the drop opens the calendar and writes nothing yet.
+    if (plan.needsDate) {
+      const item = visible.find((entry) => entry.id === source.itemId);
+      setPendingLater({
+        at: item?.date,
+        itemId: source.itemId,
+        kind: source.kind,
+        title: item?.title ?? "",
+      });
+      return;
+    }
+
     const date = plan.clears ? undefined : plan.date;
     // An item dropped into a folded-away section has to be visible where it
     // landed, or the drop reads as a deletion.
@@ -225,6 +256,22 @@ export function PlanSchedule({
       return;
     }
     planThread(source.itemId, { followUp: date });
+  }
+
+  /** The calendar's answer for a drop on Later: the day the item now sits on. */
+  function pickLater(at: number) {
+    if (!pendingLater) return;
+    const { itemId, kind } = pendingLater;
+    setPendingLater(null);
+    // Same rule as a No-date drop: whichever section it lands in has to be
+    // open, or the drop reads as a deletion.
+    if (dayDelta(at, now) > MAX_HORIZON) setShowLater(true);
+
+    if (kind === "task") {
+      planTask(itemId, at);
+      return;
+    }
+    planThread(itemId, { followUp: at });
   }
 
   function toggleGap(from: number) {
@@ -269,7 +316,7 @@ export function PlanSchedule({
         accessibility={{
           screenReaderInstructions: {
             draggable:
-              "Drag up or down onto a day to reschedule, or onto No date to clear it. Press Enter to open it instead.",
+              "Drag up or down onto a day to reschedule, onto Later to pick a further day, or onto No date to clear it. Press Enter to open it instead.",
           },
         }}
       >
@@ -311,6 +358,13 @@ export function PlanSchedule({
             );
           })}
 
+          <LaterSection
+            chrome={chrome}
+            items={schedule.beyond}
+            open={showLater}
+            onToggle={() => setShowLater((previous) => !previous)}
+          />
+
           <NoDateSection
             chrome={chrome}
             items={schedule.none}
@@ -350,6 +404,17 @@ export function PlanSchedule({
           )}
         </DragOverlay>
       </DndContext>
+
+      <PlanLaterDialog
+        at={pendingLater?.at}
+        hint={pendingLater?.title ?? ""}
+        now={now}
+        open={pendingLater != null}
+        onOpenChange={(open) => {
+          if (!open) setPendingLater(null);
+        }}
+        onPick={pickLater}
+      />
 
       {/* Bottom-right: the mobile tab bar owns the bottom edge and the DEV
           toolbar owns bottom-centre, so the pill floats clear of both. */}
@@ -397,6 +462,15 @@ interface ScheduleDragData {
 
 interface ScheduleSlotData {
   slotKey: string;
+}
+
+/** A drop on Later, waiting on the day the calendar has yet to name. */
+interface PendingLater {
+  /** The day it is on now, so the calendar opens where the item already is. */
+  at?: number;
+  itemId: string;
+  kind: PlanItemKind;
+  title: string;
 }
 
 /** What every row needs and none of them should have to thread individually. */
@@ -694,6 +768,87 @@ function WaitingSection({
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Past the agenda's reach: work that is dated, but too far out for the axis to
+ * spend rows on. Each chip carries its own day, since there is no rail beside
+ * it to read one off. A drop here has no day of its own — it opens the
+ * calendar, which is what "Pick a day" on the lifted chip promises.
+ */
+function LaterSection({
+  chrome,
+  items,
+  onToggle,
+  open,
+}: {
+  chrome: ScheduleChrome;
+  items: PlanItem[];
+  onToggle: () => void;
+  open: boolean;
+}) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: "slot::beyond",
+    data: { slotKey: "beyond" } satisfies ScheduleSlotData,
+  });
+  const armed = chrome.drag != null && isOver;
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "mt-2 rounded-xl border transition-colors",
+        armed ? cn("border-brand-gold-strong/50", ARMED) : HAIRLINE,
+      )}
+    >
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={onToggle}
+        className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
+      >
+        <span className={cn("font-heading text-xs", CAPS, MUTE)}>Later</span>
+        <span
+          className={cn(
+            "rounded-full bg-surface-3 px-1.5 text-2xs font-semibold tabular-nums",
+            MUTE,
+          )}
+        >
+          {items.length}
+        </span>
+        <span aria-hidden className={cn("h-px flex-1", HAIRLINE_BG)} />
+        {open ? (
+          <ChevronUp className={cn("size-3.5", MUTE_SOFT)} />
+        ) : (
+          <ChevronDown className={cn("size-3.5", MUTE_SOFT)} />
+        )}
+      </button>
+
+      {open && (
+        <div className="flex flex-col gap-1.5 px-1.5 pb-2">
+          {items.length === 0 ? (
+            <p className={cn("py-1 pl-1 text-xs", MUTE_FAINT)}>
+              Nothing this far out
+            </p>
+          ) : (
+            items.map((item) => (
+              <div key={item.id} className="flex flex-col gap-0.5">
+                <span
+                  className={cn(
+                    "pl-1 text-2xs font-semibold tabular-nums",
+                    MUTE_SOFT,
+                  )}
+                >
+                  {dayCaption(item.date!)}
+                </span>
+                <ScheduleChip chrome={chrome} item={item} slotKey="beyond" />
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

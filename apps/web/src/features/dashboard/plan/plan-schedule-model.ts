@@ -31,6 +31,8 @@ export type ScheduleRow =
   | { key: string; kind: "month"; label: string };
 
 export interface Schedule {
+  /** Dated past what the agenda prints — listed in the Later section. */
+  beyond: PlanItem[];
   /** Day key → the items planned on it, earliest first. */
   byDay: Map<string, PlanItem[]>;
   none: PlanItem[];
@@ -47,6 +49,7 @@ export interface Schedule {
  * it occupied, which lets them fold away like any other quiet day.
  */
 export function buildSchedule(items: PlanItem[], now: number): Schedule {
+  const beyond: PlanItem[] = [];
   const byDay = new Map<string, PlanItem[]>();
   const none: PlanItem[] = [];
   const overdue: PlanItem[] = [];
@@ -62,6 +65,12 @@ export function buildSchedule(items: PlanItem[], now: number): Schedule {
       overdue.push(item);
       continue;
     }
+    // Past the ceiling an item lists in the Later section with its real date;
+    // it neither stretches the agenda nor squats on the last printed day.
+    if (offset > MAX_HORIZON) {
+      beyond.push(item);
+      continue;
+    }
     if (offset > furthest) furthest = offset;
   }
 
@@ -70,10 +79,8 @@ export function buildSchedule(items: PlanItem[], now: number): Schedule {
   for (const item of items) {
     if (item.date == null) continue;
     const offset = dayDelta(item.date, now);
-    if (offset < 0) continue;
-    // Anything past the horizon piles into the last day it prints, so a very
-    // distant date is still reachable rather than dropped.
-    const key = dayKey(Math.min(offset, horizon));
+    if (offset < 0 || offset > MAX_HORIZON) continue;
+    const key = dayKey(offset);
     const bucket = byDay.get(key);
     if (bucket) bucket.push(item);
     else byDay.set(key, [item]);
@@ -81,6 +88,7 @@ export function buildSchedule(items: PlanItem[], now: number): Schedule {
 
   for (const bucket of byDay.values()) bucket.sort(byDateThenTitle);
   overdue.sort(byDateThenTitle);
+  beyond.sort(byDateThenTitle);
   none.sort(byDateThenTitle);
 
   const rows: ScheduleRow[] = [];
@@ -115,7 +123,7 @@ export function buildSchedule(items: PlanItem[], now: number): Schedule {
   }
   flushGap(horizon);
 
-  return { byDay, none, overdue, rows, total: items.length };
+  return { beyond, byDay, none, overdue, rows, total: items.length };
 }
 
 /** "August 2026" — the band that pins under the app bar. */
@@ -141,6 +149,6 @@ export function planScheduleDrop(
   return planDayDrop(from, to, (key) => {
     const match = /^d(\d+)$/.exec(key);
     if (!match) return undefined;
-    return dayAt(Math.min(Number(match[1]), MAX_HORIZON), now);
+    return dayAt(Number(match[1]), now);
   });
 }

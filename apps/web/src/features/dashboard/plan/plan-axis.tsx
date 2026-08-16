@@ -19,7 +19,7 @@ export interface SlotDropData {
 }
 
 /**
- * The shared day axis: a band naming the regions over a header of one cell per
+ * The shared day axis: a band naming the months over a header of one cell per
  * column, each with a bar drawn against the busiest day on screen.
  *
  * The header row is also a drop target, so a chip can be dragged straight up
@@ -68,7 +68,7 @@ export function AxisHeader({
         <span className="h-[3px]" />
       </div>
 
-      <BandRow axis={axis} totals={totals} />
+      <BandRow axis={axis} />
 
       {axis.columns.map((column, index) => {
         const gridColumn = index + 2;
@@ -79,17 +79,20 @@ export function AxisHeader({
               key="overdue"
               count={totals.overdue}
               gridColumn={gridColumn}
-              waiting
+              kind="overdue"
             />
           );
         }
-        if (column.kind === "none") {
+        // The Later bay pins against the right edge, so it stays legible
+        // however far the axis is scrolled.
+        if (column.kind === "beyond") {
           return (
             <BayHeader
-              key="none"
-              count={totals.none}
+              key="beyond"
+              count={totals.beyond}
               gridColumn={gridColumn}
-              pinned
+              kind="beyond"
+              right={0}
             />
           );
         }
@@ -102,7 +105,6 @@ export function AxisHeader({
             day={column.day}
             dragging={drag != null}
             gridColumn={gridColumn}
-            isLaterStart={axis.laterFrom === index}
             peak={totals.peak}
           />
         );
@@ -113,62 +115,46 @@ export function AxisHeader({
 
 /* ------------------------------------------------------------------ band -- */
 
-/** Month spans over the near days, then the one coarse Later stretch. */
-function BandRow({ axis, totals }: { axis: Axis; totals: SlotTotals }) {
-  const segments = [...axis.monthSpans];
-
-  if (axis.laterFrom != null) {
-    segments.push({
-      from: axis.laterFrom,
-      label: "Later",
-      to: axis.columns.length - 2,
-    });
-  }
-
-  // The Later stretch is the one segment worth counting: its days are ticks, so
-  // their own numbers are too small to add up at a glance. Months are read off
-  // the day headers underneath them.
-  let later = 0;
-  for (const day of axis.days) {
-    if (day.region === "later") later += totals.byDay.get(day.key) ?? 0;
-  }
-
+/**
+ * Month spans over every rendered day — the calendar and nothing else. The
+ * bays past the last day are off the calendar and carry their own headers.
+ */
+function BandRow({ axis }: { axis: Axis }) {
   return (
     <>
-      {segments.map((segment) => {
-        const isLater = segment.label === "Later";
-
-        return (
-          <span
-            key={`${segment.label}-${segment.from}`}
-            className={cn(
-              "flex items-baseline gap-1 px-2 pt-2 pb-1 text-2xs font-semibold tracking-[0.08em] text-muted-foreground/55 uppercase",
-              segment.from > 0 && "border-l border-border/60",
-            )}
-            style={{
-              gridColumn: `${segment.from + 2} / ${segment.to + 3}`,
-              gridRow: 1,
-            }}
-          >
-            <span className="truncate">{segment.label}</span>
-            {isLater && (
-              <span className="shrink-0 tracking-normal tabular-nums text-muted-foreground/45">
-                {later}
-              </span>
-            )}
-          </span>
-        );
-      })}
+      {axis.monthSpans.map((segment) => (
+        <span
+          key={`${segment.label}-${segment.from}`}
+          data-band={segment.label}
+          className={cn(
+            "truncate px-2 pt-2 pb-1 text-2xs font-semibold tracking-[0.08em] text-muted-foreground/55 uppercase",
+            segment.from > 0 && "border-l border-border/60",
+          )}
+          style={{
+            gridColumn: `${segment.from + 2} / ${segment.to + 3}`,
+            gridRow: 1,
+          }}
+        >
+          {segment.label}
+        </span>
+      ))}
     </>
   );
 }
 
 /* -------------------------------------------------------------- bay cells -- */
 
+const BAY_LABEL: Record<BayKind, string> = {
+  beyond: "Later",
+  overdue: "Waiting",
+};
+
+type BayKind = "beyond" | "overdue";
+
 /**
- * The waiting bay and the pinned No-date bay: same label · count · bar stack as
- * a day, in the tone their condition deserves — the past reads as a debt, the
- * undated reads as quiet.
+ * The waiting bay and the pinned Later bay: same label · count · bar stack as a
+ * day, in the tone their condition deserves — the past reads as a debt, the
+ * far-off reads as quiet.
  *
  * Both span the band and header rows, so their label sits on the band line and
  * their bar lands on the same baseline as the days'.
@@ -176,24 +162,28 @@ function BandRow({ axis, totals }: { axis: Axis; totals: SlotTotals }) {
 function BayHeader({
   count,
   gridColumn,
-  pinned,
-  waiting,
+  kind,
+  right,
 }: {
   count: number;
   gridColumn: number;
-  pinned?: boolean;
-  waiting?: boolean;
+  kind: BayKind;
+  /** Distance from the scroller's right edge, for the pinned bays only. */
+  right?: number;
 }) {
+  const waiting = kind === "overdue";
+
   return (
     <div
+      data-bay={kind}
       className={cn(
         "flex flex-col gap-1.5 px-2 pt-2 pb-2",
-        pinned
-          ? "sticky right-0 z-30 border-l border-border bg-surface-1"
-          : "border-l border-border/60",
+        right == null
+          ? "border-l border-border/60"
+          : "sticky z-30 border-l border-border bg-surface-1",
         waiting && "bg-condition-attention/[0.07]",
       )}
-      style={{ gridColumn, gridRow: "1 / 3" }}
+      style={{ gridColumn, gridRow: "1 / 3", right }}
     >
       <div className="flex items-baseline gap-1">
         <span
@@ -202,7 +192,7 @@ function BayHeader({
             waiting ? "text-condition-attention" : "text-muted-foreground/70",
           )}
         >
-          {waiting ? "Waiting" : "No date"}
+          {BAY_LABEL[kind]}
         </span>
         <span
           className={cn(
@@ -237,7 +227,6 @@ function DayHeader({
   day,
   dragging,
   gridColumn,
-  isLaterStart,
   peak,
 }: {
   active: boolean;
@@ -245,7 +234,6 @@ function DayHeader({
   day: DaySlot;
   dragging: boolean;
   gridColumn: number;
-  isLaterStart: boolean;
   peak: number;
 }) {
   const { setNodeRef } = useDroppable({
@@ -263,11 +251,9 @@ function DayHeader({
       className={cn(
         "relative flex flex-col justify-end gap-1.5 pt-2 pb-2 transition-colors",
         day.wide ? "px-2" : "px-1",
-        isLaterStart
-          ? "border-l border-border/60"
-          : day.isWeekStart
-            ? "border-l border-border/45"
-            : "border-l border-border/25",
+        day.isWeekStart
+          ? "border-l border-border/45"
+          : "border-l border-border/25",
         day.isWeekend && "bg-foreground/[0.03]",
         day.isToday && TODAY_COLUMN,
         dragging && "cursor-copy",

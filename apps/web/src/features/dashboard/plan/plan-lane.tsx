@@ -22,6 +22,8 @@ import type {
 import { TODAY_COLUMN } from "./plan-axis";
 import { PlanChip } from "./plan-chip";
 import {
+  bayWidth,
+  byDateThenTitle,
   conditionIconTone,
   conditionLaneTint,
   conditionRailTone,
@@ -44,7 +46,8 @@ export interface LaneChrome {
  *
  * Chips sit in the day slot matching their date and read left to right in date
  * order; anything already past docks in the tinted waiting bay at the lane's
- * left edge. Dragging along the lane retargets the day, dragging across lanes
+ * left edge, and anything dated past the axis docks in the Later bay pinned at
+ * its right. Dragging along the lane retargets the day, dragging across lanes
  * moves the Thread's Area.
  */
 export function LaneRow({
@@ -103,13 +106,13 @@ export function LaneRow({
             />
           );
         }
-        if (column.kind === "none") {
+        if (column.kind === "beyond") {
           return (
-            <NoDateBay
-              key="none"
+            <LaterBay
+              key="beyond"
               chrome={chrome}
               gridColumn={gridColumn}
-              items={lane.none}
+              items={lane.beyond}
               laneId={lane.id}
               tint={tint}
             />
@@ -122,7 +125,6 @@ export function LaneRow({
             chrome={chrome}
             day={column.day}
             gridColumn={gridColumn}
-            isLaterStart={chrome.axis.laterFrom === index}
             items={lane.byDay.get(column.key)}
             laneId={lane.id}
           />
@@ -401,14 +403,12 @@ function DayCell({
   chrome,
   day,
   gridColumn,
-  isLaterStart,
   items = EMPTY,
   laneId,
 }: {
   chrome: LaneChrome;
   day: DaySlot;
   gridColumn: number;
-  isLaterStart: boolean;
   items?: PlanItem[];
   laneId: string;
 }) {
@@ -432,11 +432,9 @@ function DayCell({
         "relative flex flex-col justify-center transition-colors",
         cellRhythm(density),
         day.wide ? "px-1.5" : "px-0",
-        isLaterStart
-          ? "border-l border-border/60"
-          : day.isWeekStart
-            ? "border-l border-border/45"
-            : "border-l border-border/25",
+        day.isWeekStart
+          ? "border-l border-border/45"
+          : "border-l border-border/25",
         day.isWeekend && "bg-foreground/[0.03]",
         day.isToday && TODAY_COLUMN,
         columnActive && "bg-brand-gold-strong/10",
@@ -487,6 +485,7 @@ function WaitingBay({
   return (
     <div
       ref={setNodeRef}
+      data-slot-key={`${laneId}::overdue`}
       style={{ gridColumn, gridRow: 1 }}
       className={cn(
         "relative flex flex-col justify-center border-l border-border/60 bg-condition-attention/[0.07] px-1.5",
@@ -509,8 +508,15 @@ function WaitingBay({
   );
 }
 
-/** Pinned to the right edge: everything with no date at all. */
-function NoDateBay({
+/**
+ * **Later** — the bay pinned to the lane's right edge, holding work dated past
+ * the far end of the axis. It never scrolls away, so the axis always ends on
+ * the same anchor however far it is scrolled.
+ *
+ * A drop here has no single day to write, so the canvas answers it with a
+ * calendar instead of a mutation — see `plan-later-dialog.tsx`.
+ */
+function LaterBay({
   chrome,
   gridColumn,
   items,
@@ -524,10 +530,11 @@ function NoDateBay({
   tint: string;
 }) {
   const { density, drag, now, onOpen } = chrome;
+  const slotKey = "beyond";
 
   const { isOver, setNodeRef } = useDroppable({
-    id: `${laneId}::none`,
-    data: { laneId, slotKey: "none" } satisfies SlotDropData,
+    id: `${laneId}::${slotKey}`,
+    data: { laneId, slotKey } satisfies SlotDropData,
   });
 
   const armed = drag != null && acceptsKind(laneId, drag.kind) && isOver;
@@ -535,6 +542,7 @@ function NoDateBay({
   return (
     <div
       ref={setNodeRef}
+      data-slot-key={`${laneId}::${slotKey}`}
       style={{ gridColumn, gridRow: 1 }}
       className={cn(
         "sticky right-0 z-20 flex flex-col justify-center border-l border-border bg-surface-1 px-1.5",
@@ -563,10 +571,96 @@ function NoDateBay({
             laneId={laneId}
             now={now}
             onOpen={onOpen}
-            slotKey="none"
+            slotKey={slotKey}
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------- no-date bucket -- */
+
+/**
+ * **No date** — everything with no day at all, pooled under the canvas rather
+ * than sliced per lane. Undated work has no place on a calendar, so it gets no
+ * column on one: it reads as a holding pen, deliberately unlike a lane — no
+ * header column, no condition tint, its own raised surface, and chips flowing
+ * across the full width instead of down a slot.
+ *
+ * It is a droppable that clears the date, and it publishes no `laneId` of its
+ * own — like the ruler, it means "no day, whichever lane you came from", so a
+ * Thread dropped here keeps its Area. Each chip carries its own lane back, so
+ * dragging one out onto a day lands it where it belongs.
+ */
+export function NoDateBucket({
+  chrome,
+  lanes,
+}: {
+  chrome: LaneChrome;
+  /** The lanes on screen — an Area filtered out takes its undated work with it. */
+  lanes: Lane[];
+}) {
+  const { density, drag, now, onOpen } = chrome;
+
+  const { isOver, setNodeRef } = useDroppable({
+    id: "bucket::none",
+    data: { slotKey: "none" } satisfies SlotDropData,
+  });
+
+  const entries = lanes
+    .flatMap((lane) => lane.none.map((item) => ({ item, laneId: lane.id })))
+    .sort((a, b) => byDateThenTitle(a.item, b.item));
+
+  const armed = drag != null && isOver;
+
+  return (
+    <div
+      ref={setNodeRef}
+      role="group"
+      aria-label="No date"
+      data-slot-key="none"
+      className={cn(
+        "relative mt-3 rounded-xl border border-dashed border-border bg-surface-2/60 transition-colors",
+        density === "compact" ? "p-2.5" : "p-3",
+        armed && "border-solid border-foreground/40 bg-surface-3/70",
+      )}
+    >
+      <div className="mb-2 flex items-baseline gap-1.5">
+        <span className="text-2xs font-semibold tracking-[0.08em] text-muted-foreground/70 uppercase">
+          No date
+        </span>
+        <span className="text-xs tabular-nums text-muted-foreground/70">
+          {entries.length}
+        </span>
+        <span className="ml-2 truncate text-xs text-muted-foreground/50">
+          Drop here to take the day off
+        </span>
+      </div>
+
+      {entries.length === 0 ? (
+        <p className="text-xs text-muted-foreground/45">Nothing undated</p>
+      ) : (
+        <div
+          className={cn(
+            "flex flex-wrap",
+            density === "compact" ? "gap-1.5" : "gap-2",
+          )}
+        >
+          {entries.map(({ item, laneId }) => (
+            <div key={item.id} style={{ width: bayWidth(density) }}>
+              <PlanChip
+                density={density}
+                item={item}
+                laneId={laneId}
+                now={now}
+                onOpen={onOpen}
+                slotKey="none"
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
