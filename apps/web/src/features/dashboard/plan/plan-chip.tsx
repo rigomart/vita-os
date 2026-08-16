@@ -6,6 +6,14 @@ import type { Density, PlanItem } from "./plan-model";
 
 import { agoLabel, waitingLabel } from "./plan-model";
 
+/** Thread chips lead with the Next Move when one exists (ADR 0010: the Next
+ * Move is the one thing a Thread surfaces outside its detail view), demoting
+ * the title to a muted identifier line. Without one, the title carries the
+ * chip alone — a valid state, so no placeholder. */
+export function chipLeadsWithNextMove(item: PlanItem): boolean {
+  return item.kind === "thread" && Boolean(item.nextMove);
+}
+
 export interface ChipDragData {
   itemId: string;
   kind: PlanItem["kind"];
@@ -36,6 +44,7 @@ export function ChipSurface({
 }) {
   const isTask = item.kind === "task";
   const waiting = slotKey === "overdue" && item.date != null;
+  const leadsWithMove = chipLeadsWithNextMove(item);
 
   return (
     <div
@@ -71,9 +80,14 @@ export function ChipSurface({
         )}
         <span
           className={cn(
-            "min-w-0 flex-1 text-sm leading-snug",
-            density === "compact" ? "truncate" : "line-clamp-2",
-            isTask ? "font-normal text-foreground/90" : "font-medium",
+            "min-w-0 flex-1 leading-snug",
+            leadsWithMove
+              ? "truncate text-xs text-muted-foreground"
+              : cn(
+                  "text-sm",
+                  density === "compact" ? "truncate" : "line-clamp-2",
+                  isTask ? "font-normal text-foreground/90" : "font-medium",
+                ),
           )}
         >
           {item.title}
@@ -85,18 +99,20 @@ export function ChipSurface({
         )}
       </div>
 
-      {density === "comfortable" && !isTask && (
-        <span className="mt-0.5 flex items-start gap-1 pl-1 text-xs leading-snug">
-          {item.nextMove ? (
-            <>
-              <CornerDownRight className="mt-[3px] size-3 shrink-0 text-muted-foreground/50" />
-              <span className="truncate text-muted-foreground">
-                {item.nextMove}
-              </span>
-            </>
-          ) : (
-            <span className="text-muted-foreground/45">No Next Move</span>
-          )}
+      {leadsWithMove && (
+        <span className="mt-0.5 flex items-start gap-1 pl-1 text-sm leading-snug">
+          <CornerDownRight
+            aria-hidden
+            className="mt-[3px] size-3.5 shrink-0 text-muted-foreground/50"
+          />
+          <span
+            className={cn(
+              "min-w-0 flex-1 font-medium",
+              density === "compact" ? "truncate" : "line-clamp-2",
+            )}
+          >
+            {item.nextMove}
+          </span>
         </span>
       )}
 
@@ -139,10 +155,9 @@ export function PlanChip({
     } satisfies ChipDragData,
   });
 
-  const hint =
-    item.kind === "thread" && item.nextMove
-      ? `Next Move: ${item.nextMove}`
-      : undefined;
+  const hint = chipLeadsWithNextMove(item)
+    ? `${item.title}\nNext Move: ${item.nextMove}`
+    : undefined;
 
   return (
     <button

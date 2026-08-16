@@ -44,6 +44,7 @@ import {
 import type { PlanItem, PlanItemKind } from "./plan-model";
 import type { PlanActions } from "./use-plan-actions";
 
+import { chipLeadsWithNextMove } from "./plan-chip";
 import { AreaFilterChips } from "./plan-filters";
 import {
   buildPlanItems,
@@ -791,6 +792,7 @@ function ChipSurface({
   const area = item.areaId == null ? undefined : areaById.get(item.areaId);
   const waiting = slotKey === "overdue" && item.date != null;
   const ConditionIcon = area ? conditionIcons[area.condition] : undefined;
+  const leadsWithMove = chipLeadsWithNextMove(item);
 
   return (
     <div
@@ -836,21 +838,32 @@ function ChipSurface({
       </span>
 
       <span className="min-w-0 flex-1">
-        <span
-          className={cn(
-            "line-clamp-2 text-sm leading-snug",
-            isTask ? "font-normal" : "font-medium",
-          )}
-        >
-          {item.title}
-        </span>
+        {/* Leading with the Next Move flips the two lines: the identifiers
+            (title, Area) share the muted eyebrow and the move takes the row. */}
+        {!leadsWithMove && (
+          <span
+            className={cn(
+              "line-clamp-2 text-sm leading-snug",
+              isTask ? "font-normal" : "font-medium",
+            )}
+          >
+            {item.title}
+          </span>
+        )}
 
         <span
           className={cn(
-            "mt-0.5 flex min-w-0 items-center gap-1 text-xs leading-snug",
+            "flex min-w-0 items-center gap-1 text-xs leading-snug",
+            !leadsWithMove && "mt-0.5",
             MUTE_SOFT,
           )}
         >
+          {leadsWithMove && (
+            <>
+              <span className="min-w-0 truncate">{item.title}</span>
+              <span aria-hidden>·</span>
+            </>
+          )}
           {ConditionIcon && area && area.condition !== "healthy" && (
             <ConditionIcon
               aria-hidden
@@ -858,14 +871,19 @@ function ChipSurface({
             />
           )}
           <span className="truncate">{area?.name ?? "Inbox"}</span>
-          {item.nextMove && (
-            <>
-              <span aria-hidden>·</span>
-              <CornerDownRight aria-hidden className="size-3 shrink-0" />
-              <span className="truncate">{item.nextMove}</span>
-            </>
-          )}
         </span>
+
+        {leadsWithMove && (
+          <span className="mt-0.5 flex items-start gap-1 text-sm leading-snug">
+            <CornerDownRight
+              aria-hidden
+              className={cn("mt-[3px] size-3.5 shrink-0", MUTE_SOFT)}
+            />
+            <span className="line-clamp-2 min-w-0 flex-1 font-medium">
+              {item.nextMove}
+            </span>
+          </span>
+        )}
       </span>
 
       {waiting && (
