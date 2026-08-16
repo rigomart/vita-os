@@ -1,6 +1,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { cn } from "@vita-os/ui/lib/utils";
-import { ArrowRight, Inbox } from "lucide-react";
+import { format } from "date-fns";
+import { ArrowRight, Bell, Inbox } from "lucide-react";
 
 import type { Density, PlanItem } from "./plan-model";
 
@@ -26,6 +27,11 @@ export interface ChipDragData {
  * The axis already says *when*, so a chip on a day carries no date stamp. The
  * two slots where position cannot say it — the waiting bay and No date — are
  * the only ones that print anything.
+ *
+ * A dated Thread chip does carry a bell glyph: the axis says *when*, the bell
+ * says what that placement *means* — a Follow-up, the soft day the Thread
+ * resurfaces into awareness, never a hard commitment. The waiting badge wears
+ * the same glyph so the overdue state reads as the same promise, run late.
  */
 export function ChipSurface({
   density,
@@ -42,6 +48,8 @@ export function ChipSurface({
 }) {
   const isTask = item.kind === "task";
   const waiting = slotKey === "overdue" && item.date != null;
+  const resurfacing =
+    !isTask && item.date != null && slotKey !== "none" && !waiting;
 
   return (
     <div
@@ -97,9 +105,18 @@ export function ChipSurface({
           {isTask ? item.title : (item.nextMove ?? NO_NEXT_MOVE)}
         </span>
         {waiting && (
-          <span className="mt-px shrink-0 text-2xs font-medium tabular-nums text-condition-attention">
-            {waitingLabel(item.date!, now)}
+          <span className="mt-px flex shrink-0 items-center gap-0.5 text-2xs font-medium text-condition-attention">
+            {!isTask && <Bell aria-hidden className="size-3 shrink-0" />}
+            <span className="tabular-nums">
+              {waitingLabel(item.date!, now)}
+            </span>
           </span>
+        )}
+        {resurfacing && (
+          <Bell
+            aria-hidden
+            className="mt-[3px] size-3 shrink-0 text-muted-foreground/50"
+          />
         )}
       </div>
 
@@ -148,10 +165,19 @@ export function PlanChip({
     } satisfies ChipDragData,
   });
 
-  const hint =
-    item.kind === "thread" && item.nextMove
-      ? `${item.title}\nNext Move: ${item.nextMove}`
-      : undefined;
+  // Hover spells out what the placement means — the bell glyph can only hint
+  // that the day is a Follow-up rather than a commitment.
+  const lines: string[] = [];
+  if (item.kind === "thread" && (item.nextMove || item.date != null)) {
+    lines.push(item.title);
+    if (item.nextMove) lines.push(`Next Move: ${item.nextMove}`);
+    if (item.date != null) {
+      lines.push(
+        `Follow-up ${format(item.date, "MMM d")} · soft resurfacing date`,
+      );
+    }
+  }
+  const hint = lines.length > 0 ? lines.join("\n") : undefined;
 
   return (
     <button
