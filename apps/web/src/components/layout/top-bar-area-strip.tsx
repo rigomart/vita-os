@@ -96,7 +96,7 @@ export function TopBarAreaStrip() {
                 <span
                   aria-hidden
                   className={cn(
-                    "text-[0.5625rem] leading-none font-semibold tabular-nums transition-colors",
+                    "text-2xs leading-none font-semibold tabular-nums transition-colors",
                     active
                       ? "text-foreground"
                       : "text-muted-foreground/60 group-hover:text-muted-foreground",

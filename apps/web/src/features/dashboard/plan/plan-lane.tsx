@@ -210,7 +210,7 @@ function AreaLaneHeader({
                   />
                 )}
                 <span
-                  className="text-[10px] tabular-nums text-muted-foreground/70"
+                  className="text-2xs tabular-nums text-muted-foreground/70"
                   title={`${lane.openCount} open Threads`}
                 >
                   {lane.openCount}
@@ -239,7 +239,7 @@ function AreaLaneHeader({
                   {area.name}
                 </span>
                 <span
-                  className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70"
+                  className="shrink-0 text-xs tabular-nums text-muted-foreground/70"
                   title={`${lane.openCount} open Threads`}
                 >
                   {lane.openCount}
@@ -259,7 +259,7 @@ function LaneStatus({ incoming, lane }: { incoming: boolean; lane: Lane }) {
 
   if (incoming) {
     return (
-      <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-foreground">
+      <span className="mt-0.5 flex items-center gap-1 text-xs font-medium text-foreground">
         <CornerDownRight className="size-3" />
         Move to {area.name}
       </span>
@@ -280,7 +280,7 @@ function LaneStatus({ incoming, lane }: { incoming: boolean; lane: Lane }) {
             : null;
 
     return (
-      <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px]">
+      <span className="mt-0.5 flex min-w-0 items-center gap-1 text-xs">
         <span
           className={cn(
             "flex shrink-0 items-center gap-1 font-medium",
@@ -311,7 +311,7 @@ function LaneStatus({ incoming, lane }: { incoming: boolean; lane: Lane }) {
 
   if (lane.openCount === 0) {
     return (
-      <span className="mt-0.5 block text-[11px] text-muted-foreground/50">
+      <span className="mt-0.5 block text-xs text-muted-foreground/50">
         No open Threads
       </span>
     );
@@ -319,7 +319,7 @@ function LaneStatus({ incoming, lane }: { incoming: boolean; lane: Lane }) {
 
   if (lane.plannedCount === 0) {
     return (
-      <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground/60">
+      <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground/60">
         <CircleDashed className="size-3" />
         Nothing planned
       </span>
@@ -328,14 +328,14 @@ function LaneStatus({ incoming, lane }: { incoming: boolean; lane: Lane }) {
 
   if (lane.nearHorizon === 0) {
     return (
-      <span className="mt-0.5 block text-[11px] text-muted-foreground/60">
+      <span className="mt-0.5 block text-xs text-muted-foreground/60">
         Nothing this week
       </span>
     );
   }
 
   return (
-    <span className="mt-0.5 block truncate text-[11px] text-muted-foreground/60">
+    <span className="mt-0.5 block truncate text-xs text-muted-foreground/60">
       {conditionShort[area.condition]} ·{" "}
       <span className="tabular-nums">{lane.plannedCount}</span> planned
     </span>
@@ -354,7 +354,7 @@ function InboxLaneHeader({ lane, narrow }: { lane: Lane; narrow: boolean }) {
             <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-surface-2 text-muted-foreground">
               <Inbox className="size-3.5" />
             </span>
-            <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/70">
+            <span className="shrink-0 text-2xs tabular-nums text-muted-foreground/70">
               {lane.openCount}
             </span>
           </div>
@@ -380,11 +380,11 @@ function InboxLaneHeader({ lane, narrow }: { lane: Lane; narrow: boolean }) {
             <span className="truncate font-heading text-sm font-semibold tracking-tight">
               Inbox
             </span>
-            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70">
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground/70">
               {lane.openCount}
             </span>
           </div>
-          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground/60">
+          <span className="mt-0.5 block truncate text-xs text-muted-foreground/60">
             Tasks · no Area
           </span>
         </div>
@@ -429,7 +429,8 @@ function DayCell({
       data-slot-key={`${laneId}::${day.key}`}
       style={{ gridColumn, gridRow: 1 }}
       className={cn(
-        "relative flex min-h-[2.75rem] flex-col justify-center gap-1 py-1.5 transition-colors",
+        "relative flex flex-col justify-center transition-colors",
+        cellRhythm(density),
         day.wide ? "px-1.5" : "px-0",
         isLaterStart
           ? "border-l border-border/60"
@@ -488,7 +489,8 @@ function WaitingBay({
       ref={setNodeRef}
       style={{ gridColumn, gridRow: 1 }}
       className={cn(
-        "relative flex min-h-[2.75rem] flex-col justify-center gap-1 border-l border-border/60 bg-condition-attention/[0.07] px-1.5 py-1.5",
+        "relative flex flex-col justify-center border-l border-border/60 bg-condition-attention/[0.07] px-1.5",
+        cellRhythm(density),
         drag != null && isOver && "bg-condition-attention/10",
       )}
     >
@@ -535,7 +537,8 @@ function NoDateBay({
       ref={setNodeRef}
       style={{ gridColumn, gridRow: 1 }}
       className={cn(
-        "sticky right-0 z-20 flex min-h-[2.75rem] flex-col justify-center gap-1 border-l border-border bg-surface-1 px-1.5 py-1.5",
+        "sticky right-0 z-20 flex flex-col justify-center border-l border-border bg-surface-1 px-1.5",
+        cellRhythm(density),
         armed && "bg-surface-3",
       )}
     >
@@ -546,7 +549,12 @@ function NoDateBay({
           className="pointer-events-none absolute inset-1 rounded-md border border-dashed border-foreground/40"
         />
       )}
-      <div className="relative flex flex-col gap-1">
+      <div
+        className={cn(
+          "relative flex flex-col",
+          density === "compact" ? "gap-1" : "gap-1.5",
+        )}
+      >
         {items.map((item) => (
           <PlanChip
             key={item.id}
@@ -561,6 +569,17 @@ function NoDateBay({
       </div>
     </div>
   );
+}
+
+/**
+ * The vertical rhythm every slot shares — row height, chip spacing, breathing
+ * room. Comfortable gets the proportional bump; compact keeps its tight values,
+ * which is the whole reason the density switch exists.
+ */
+function cellRhythm(density: Density): string {
+  return density === "compact"
+    ? "min-h-11 gap-1 py-1.5"
+    : "min-h-12 gap-1.5 py-2";
 }
 
 function acceptsKind(laneId: string, kind: PlanItem["kind"]): boolean {

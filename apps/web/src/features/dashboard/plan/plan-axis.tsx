@@ -49,7 +49,7 @@ export function AxisHeader({
     >
       <div
         className={cn(
-          "sticky left-0 z-30 flex flex-col justify-end gap-1.5 border-r border-border bg-surface-1 pt-1.5 pb-2",
+          "sticky left-0 z-30 flex flex-col justify-end gap-1.5 border-r border-border bg-surface-1 pt-2 pb-2",
           narrow ? "px-2.5" : "px-3.5",
         )}
         style={{ gridColumn: 1, gridRow: "1 / 3" }}
@@ -57,7 +57,7 @@ export function AxisHeader({
         <span
           className={cn(
             "truncate font-semibold tracking-[0.06em] text-muted-foreground uppercase",
-            narrow ? "text-[10px]" : "text-[11px]",
+            narrow ? "text-2xs" : "text-xs",
           )}
         >
           <span className="tabular-nums">{areaCount}</span>{" "}
@@ -142,7 +142,7 @@ function BandRow({ axis, totals }: { axis: Axis; totals: SlotTotals }) {
           <span
             key={`${segment.label}-${segment.from}`}
             className={cn(
-              "flex items-baseline gap-1 px-2 pt-1.5 pb-1 text-[10px] font-semibold tracking-[0.08em] text-muted-foreground/55 uppercase",
+              "flex items-baseline gap-1 px-2 pt-2 pb-1 text-2xs font-semibold tracking-[0.08em] text-muted-foreground/55 uppercase",
               segment.from > 0 && "border-l border-border/60",
             )}
             style={{
@@ -187,7 +187,7 @@ function BayHeader({
   return (
     <div
       className={cn(
-        "flex flex-col gap-1.5 px-2 pt-1.5 pb-2",
+        "flex flex-col gap-1.5 px-2 pt-2 pb-2",
         pinned
           ? "sticky right-0 z-30 border-l border-border bg-surface-1"
           : "border-l border-border/60",
@@ -198,7 +198,7 @@ function BayHeader({
       <div className="flex items-baseline gap-1">
         <span
           className={cn(
-            "truncate text-[10px] font-semibold tracking-[0.08em] uppercase",
+            "truncate text-2xs font-semibold tracking-[0.08em] uppercase",
             waiting ? "text-condition-attention" : "text-muted-foreground/70",
           )}
         >
@@ -206,7 +206,7 @@ function BayHeader({
         </span>
         <span
           className={cn(
-            "ml-auto shrink-0 text-[11px] tabular-nums",
+            "ml-auto shrink-0 text-xs tabular-nums",
             waiting
               ? "text-condition-attention/80"
               : "text-muted-foreground/70",
@@ -261,7 +261,7 @@ function DayHeader({
       data-day={day.key}
       style={{ gridColumn, gridRow: 2 }}
       className={cn(
-        "relative flex flex-col justify-end gap-1.5 pt-1.5 pb-2 transition-colors",
+        "relative flex flex-col justify-end gap-1.5 pt-2 pb-2 transition-colors",
         day.wide ? "px-2" : "px-1",
         isLaterStart
           ? "border-l border-border/60"
@@ -285,7 +285,7 @@ function DayHeader({
         <div className="flex items-baseline gap-1">
           <span
             className={cn(
-              "truncate text-[10px] font-semibold tracking-[0.06em] uppercase",
+              "truncate text-2xs font-semibold tracking-[0.06em] uppercase",
               dayLabelTone(day, active),
             )}
           >
@@ -293,13 +293,13 @@ function DayHeader({
           </span>
           <span
             className={cn(
-              "shrink-0 text-xs font-semibold tabular-nums",
+              "shrink-0 text-sm font-semibold tabular-nums",
               dayNumberTone(day, active),
             )}
           >
             {day.isMonthStart ? format(date, "d MMM") : format(date, "d")}
           </span>
-          <span className="ml-auto shrink-0 text-[11px] tabular-nums text-muted-foreground/70">
+          <span className="ml-auto shrink-0 text-xs tabular-nums text-muted-foreground/70">
             {count}
           </span>
         </div>
@@ -308,13 +308,13 @@ function DayHeader({
           {/* The month stamp is the Later region's only signpost. It floats in
               the padding so a month edge never grows the header row. */}
           {day.isMonthStart && (
-            <span className="pointer-events-none absolute inset-x-0 top-1 truncate text-center text-[8px] leading-none font-semibold tracking-[0.06em] text-muted-foreground/45 uppercase">
+            <span className="pointer-events-none absolute inset-x-0 top-1 truncate text-center text-2xs leading-none font-semibold text-muted-foreground/45 uppercase">
               {format(date, "MMM")}
             </span>
           )}
           <span
             className={cn(
-              "text-center text-[11px] leading-4 font-semibold tabular-nums",
+              "text-center text-xs leading-4 font-semibold tabular-nums",
               tickNumberTone(day, active),
             )}
           >

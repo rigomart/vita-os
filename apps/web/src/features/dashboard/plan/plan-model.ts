@@ -127,11 +127,11 @@ export const HEADER_WIDTH = 178;
 export const HEADER_WIDTH_NARROW = 112;
 
 const TICK_NEAR = 26;
-const TICK_LATER = 20;
+const TICK_LATER = 26;
 
 const SLOT_WIDTH: Record<Density, number> = {
-  compact: 130,
-  comfortable: 166,
+  compact: 144,
+  comfortable: 184,
 };
 
 /** The waiting bay and the pinned No-date bay share the slot width. */

@@ -8,7 +8,7 @@ export function ThreadResolvedNote() {
   return (
     <p
       data-slot="thread-resolved-note"
-      className="flex min-h-9 shrink-0 items-center gap-2 text-[13px] text-muted-foreground"
+      className="flex min-h-9 shrink-0 items-center gap-2 text-sm text-muted-foreground"
     >
       <CircleCheck
         aria-hidden

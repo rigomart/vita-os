@@ -18,7 +18,7 @@ export function ThreadDefinition({ summary, onSave }: ThreadDefinitionProps) {
         textareaRows={1}
         inputAriaLabel="Thread summary"
         placeholder="Add a summary…"
-        className="min-h-0 py-1.5 text-[13px] leading-relaxed text-muted-foreground"
+        className="min-h-0 py-1.5 text-sm leading-relaxed text-muted-foreground"
         displayClassName={cn(
           "border-b-0 whitespace-pre-wrap",
           summary

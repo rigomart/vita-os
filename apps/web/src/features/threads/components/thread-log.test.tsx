@@ -45,7 +45,7 @@ describe("ActivityLog", () => {
     );
     expect(screen.getByText("Newest first")).toBeVisible();
     expect(screen.getByText("Called the clinic")).toHaveClass(
-      "text-[13px]",
+      "text-sm",
       "text-foreground",
     );
     expect(screen.getByText("Health → Finances")).toHaveClass(

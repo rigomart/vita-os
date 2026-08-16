@@ -54,7 +54,7 @@ export function AppTopBar({
               <span className="font-heading text-base font-semibold tracking-tight">
                 vita
               </span>
-              <span className="text-[0.5625rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+              <span className="text-2xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
                 OS
               </span>
             </span>
