@@ -21,6 +21,7 @@ export function useUpdateArea() {
       id: area._id,
       name: value.name,
       condition: value.condition,
+      icon: value.icon,
     });
 
     if (value.name !== area.name && result?.slug) {
