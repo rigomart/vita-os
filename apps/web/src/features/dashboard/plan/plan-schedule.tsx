@@ -137,6 +137,17 @@ export function PlanSchedule({
 
   const schedule = useMemo(() => buildSchedule(visible, now), [visible, now]);
 
+  // Resolved or completed elsewhere while the calendar was open: there is
+  // nothing left to date, so the pending drop dissolves with it.
+  useEffect(() => {
+    if (
+      pendingLater != null &&
+      !visible.some((item) => item.id === pendingLater.itemId)
+    ) {
+      setPendingLater(null);
+    }
+  }, [pendingLater, visible]);
+
   const areaCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const item of items) {

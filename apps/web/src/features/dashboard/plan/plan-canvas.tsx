@@ -17,7 +17,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@vita-os/ui/components/button";
 import { cn } from "@vita-os/ui/lib/utils";
 import { Ban, CornerDownRight, Rows2, Rows4 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type {
   DashboardArea,
@@ -304,6 +304,11 @@ export function PlanCanvas({
 
   const laterItem =
     pendingLater && items.find((item) => item.id === pendingLater.itemId);
+  // Resolved or completed elsewhere while the calendar was open: there is
+  // nothing left to date, so the pending drop dissolves with it.
+  useEffect(() => {
+    if (pendingLater != null && laterItem == null) setPendingLater(null);
+  }, [pendingLater, laterItem]);
   const laterHint =
     laterItem == null
       ? ""

@@ -1,6 +1,13 @@
 import type { PropsWithChildren } from "react";
 
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -197,6 +204,9 @@ async function dragChipTo(
   await act(async () => {
     fireEvent.mouseUp(document, target);
   });
+  // dnd-kit swallows clicks on a capture-phase document listener it removes
+  // only 50ms after the drop; a dialog click inside that window goes dead.
+  await act(() => new Promise((resolve) => setTimeout(resolve, 60)));
 }
 
 afterEach(() => {
@@ -372,6 +382,60 @@ describe("PlanCanvas", () => {
       areaId: "health",
       followUp: day(6),
     });
+  });
+
+  it("confirms the day the item already sits on, keeping the Area move", async () => {
+    const user = userEvent.setup();
+    const { planActions } = renderCanvas();
+    measureSlots();
+
+    // "Chimney sweep" is already dated day(120): moving it across lanes via
+    // Later and re-picking its own day must still write the Area move.
+    await dragChipTo("t4", "health::beyond");
+
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: /December 4th/ }),
+    );
+
+    expect(planActions.planThread).toHaveBeenCalledWith("t4", {
+      areaId: "health",
+      followUp: day(120),
+    });
+  });
+
+  it("opens on today, unselected, for a chip dragged out of Waiting", async () => {
+    renderCanvas();
+    measureSlots();
+
+    // t1 is overdue: its past date must not drag the calendar into a month
+    // where every day is disabled.
+    await dragChipTo("t1", "health::beyond");
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("August 2026")).toBeVisible();
+    expect(dialog.querySelector('[data-selected-single="true"]')).toBeNull();
+  });
+
+  it("forgets the pending drop when the item disappears mid-pick", async () => {
+    const { planActions, rerender } = renderCanvas();
+    measureSlots();
+
+    await dragChipTo("t2", "health::beyond");
+    await screen.findByRole("dialog");
+
+    rerender(
+      <PlanCanvas
+        areas={areas}
+        currentDate={now}
+        planActions={planActions}
+        tasks={tasks}
+        threads={threads.filter((thread) => thread.id !== "t2")}
+      />,
+    );
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(planActions.planThread).not.toHaveBeenCalled();
   });
 
   it("leaves the item alone when the Later calendar is dismissed", async () => {

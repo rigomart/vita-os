@@ -36,6 +36,12 @@ export function PlanLaterDialog({
   onPick,
   open,
 }: PlanLaterDialogProps) {
+  const today = startOfDay(new Date(now));
+  // A Waiting chip arrives with a past date: preselecting it would open the
+  // calendar on a month where every day is disabled.
+  const preselected =
+    at == null || at < today.getTime() ? undefined : new Date(at);
+
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
       <ResponsiveDialogContent className="w-fit min-w-0">
@@ -45,13 +51,12 @@ export function PlanLaterDialog({
         </ResponsiveDialogHeader>
         <Calendar
           mode="single"
-          selected={at == null ? undefined : new Date(at)}
-          defaultMonth={at == null ? undefined : new Date(at)}
-          disabled={{ before: startOfDay(new Date(now)) }}
-          onSelect={(date) => {
-            if (!date) return;
-            onPick(date.getTime());
-          }}
+          selected={preselected}
+          defaultMonth={preselected}
+          disabled={{ before: today }}
+          // The clicked day, not the selection: re-picking the preselected day
+          // is a confirmation, where the selection would toggle to nothing.
+          onSelect={(_, day) => onPick(day.getTime())}
           className="mx-auto"
         />
       </ResponsiveDialogContent>
