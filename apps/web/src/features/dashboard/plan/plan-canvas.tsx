@@ -17,7 +17,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@vita-os/ui/components/button";
 import { cn } from "@vita-os/ui/lib/utils";
 import { Ban, CornerDownRight, Rows2, Rows4 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type {
   DashboardArea,
@@ -47,6 +47,7 @@ import {
   planDrop,
   slotTotals,
 } from "./plan-model";
+import { PlanScrollbar, useScrollMetrics } from "./plan-scrollbar";
 
 const DENSITY_OPTIONS: {
   icon: typeof Rows2;
@@ -91,7 +92,7 @@ export function PlanCanvas({
   );
 
   const [scrollNode, setScrollNode] = useState<HTMLDivElement | null>(null);
-  const [edges, setEdges] = useState({ end: false, start: false });
+  const metrics = useScrollMetrics(scrollNode);
 
   /**
    * Mouse and touch each get their own guard: a mouse drag arms after 5px so a
@@ -167,30 +168,10 @@ export function PlanCanvas({
     [lanes, inbox, totals, axis.days],
   );
 
-  useEffect(() => {
-    const node = scrollNode;
-    if (!node || typeof ResizeObserver === "undefined") return;
-
-    const update = () => {
-      // A detached or zero-width node measures as "nothing overflows"; ignore
-      // it rather than flashing the fades off.
-      if (node.clientWidth === 0) return;
-      setEdges({
-        end: node.scrollLeft + node.clientWidth < node.scrollWidth - 4,
-        start: node.scrollLeft > 4,
-      });
-    };
-
-    update();
-    node.addEventListener("scroll", update, { passive: true });
-    const observer = new ResizeObserver(update);
-    observer.observe(node);
-
-    return () => {
-      node.removeEventListener("scroll", update);
-      observer.disconnect();
-    };
-  }, [scrollNode, axis.minWidth, lanes.length]);
+  const edges = {
+    end: metrics.scrollLeft + metrics.clientWidth < metrics.scrollWidth - 4,
+    start: metrics.scrollLeft > 4,
+  };
 
   function openItem(item: PlanItem) {
     // Tasks have no rail of their own; the Inbox is where a Task is handled.
@@ -340,9 +321,13 @@ export function PlanCanvas({
         }}
       >
         <div className="relative">
+          {/* The native scrollbar would run the full width of the scroller —
+              under the pinned lane headers and the No-date bay, which never
+              move. It is hidden here and drawn by `PlanScrollbar` across the
+              day region only. */}
           <div
             ref={setScrollNode}
-            className="overflow-x-auto pb-1 [scrollbar-width:thin]"
+            className="overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             <div style={{ minWidth: axis.minWidth }}>
               <AxisHeader
@@ -370,7 +355,7 @@ export function PlanCanvas({
               the No-date bay, so the seam reads as a fold, not as clipping. */}
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 z-40 w-8 transition-opacity"
+            className="pointer-events-none absolute top-0 bottom-3 z-40 w-8 transition-opacity"
             style={{
               backgroundImage:
                 "linear-gradient(to right, var(--surface-1) 0 35%, transparent 100%)",
@@ -380,13 +365,20 @@ export function PlanCanvas({
           />
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 z-40 w-10 transition-opacity"
+            className="pointer-events-none absolute top-0 bottom-3 z-40 w-10 transition-opacity"
             style={{
               backgroundImage:
                 "linear-gradient(to left, var(--surface-1) 0 35%, transparent 100%)",
               opacity: edges.end ? 1 : 0,
               right: bayWidth(density),
             }}
+          />
+
+          <PlanScrollbar
+            end={bayWidth(density)}
+            metrics={metrics}
+            node={scrollNode}
+            start={headerWidth}
           />
         </div>
 
