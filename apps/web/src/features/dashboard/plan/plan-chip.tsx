@@ -1,6 +1,6 @@
 import { useDraggable } from "@dnd-kit/core";
 import { cn } from "@vita-os/ui/lib/utils";
-import { CornerDownRight, Inbox } from "lucide-react";
+import { ArrowRight, Inbox } from "lucide-react";
 
 import type { Density, PlanItem } from "./plan-model";
 
@@ -78,19 +78,20 @@ export function ChipSurface({
             className="mt-[3px] size-3.5 shrink-0 text-muted-foreground/50"
           />
         )}
+        {leadsWithMove && (
+          <ArrowRight
+            aria-hidden
+            className="mt-[3px] size-3.5 shrink-0 text-muted-foreground/50"
+          />
+        )}
         <span
           className={cn(
-            "min-w-0 flex-1 leading-snug",
-            leadsWithMove
-              ? "truncate text-xs text-muted-foreground"
-              : cn(
-                  "text-sm",
-                  density === "compact" ? "truncate" : "line-clamp-2",
-                  isTask ? "font-normal text-foreground/90" : "font-medium",
-                ),
+            "min-w-0 flex-1 text-sm leading-snug",
+            density === "compact" ? "truncate" : "line-clamp-2",
+            isTask ? "font-normal text-foreground/90" : "font-medium",
           )}
         >
-          {item.title}
+          {leadsWithMove ? item.nextMove : item.title}
         </span>
         {waiting && (
           <span className="mt-px shrink-0 text-2xs font-medium tabular-nums text-condition-attention">
@@ -100,19 +101,8 @@ export function ChipSurface({
       </div>
 
       {leadsWithMove && (
-        <span className="mt-0.5 flex items-start gap-1 pl-1 text-sm leading-snug">
-          <CornerDownRight
-            aria-hidden
-            className="mt-[3px] size-3.5 shrink-0 text-muted-foreground/50"
-          />
-          <span
-            className={cn(
-              "min-w-0 flex-1 font-medium",
-              density === "compact" ? "truncate" : "line-clamp-2",
-            )}
-          >
-            {item.nextMove}
-          </span>
+        <span className="mt-0.5 block min-w-0 truncate pl-6 text-xs leading-snug font-semibold text-muted-foreground">
+          {item.title}
         </span>
       )}
 

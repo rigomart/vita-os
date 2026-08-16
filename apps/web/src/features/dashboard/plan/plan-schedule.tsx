@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ChevronUp,
   Compass,
+  ArrowRight,
   CornerDownRight,
   Inbox,
 } from "lucide-react";
@@ -838,9 +839,20 @@ function ChipSurface({
       </span>
 
       <span className="min-w-0 flex-1">
-        {/* Leading with the Next Move flips the two lines: the identifiers
-            (title, Area) share the muted eyebrow and the move takes the row. */}
-        {!leadsWithMove && (
+        {/* Leading with the Next Move flips the two lines: the move takes the
+            top row and the identifiers (title, Area) share the muted line
+            beneath it. */}
+        {leadsWithMove ? (
+          <span className="flex items-start gap-1 text-sm leading-snug">
+            <ArrowRight
+              aria-hidden
+              className={cn("mt-[3px] size-3.5 shrink-0", MUTE_SOFT)}
+            />
+            <span className="line-clamp-2 min-w-0 flex-1 font-medium">
+              {item.nextMove}
+            </span>
+          </span>
+        ) : (
           <span
             className={cn(
               "line-clamp-2 text-sm leading-snug",
@@ -853,14 +865,15 @@ function ChipSurface({
 
         <span
           className={cn(
-            "flex min-w-0 items-center gap-1 text-xs leading-snug",
-            !leadsWithMove && "mt-0.5",
+            "mt-0.5 flex min-w-0 items-center gap-1 text-xs leading-snug",
             MUTE_SOFT,
           )}
         >
           {leadsWithMove && (
             <>
-              <span className="min-w-0 truncate">{item.title}</span>
+              <span className="min-w-0 truncate font-semibold">
+                {item.title}
+              </span>
               <span aria-hidden>·</span>
             </>
           )}
@@ -872,18 +885,6 @@ function ChipSurface({
           )}
           <span className="truncate">{area?.name ?? "Inbox"}</span>
         </span>
-
-        {leadsWithMove && (
-          <span className="mt-0.5 flex items-start gap-1 text-sm leading-snug">
-            <CornerDownRight
-              aria-hidden
-              className={cn("mt-[3px] size-3.5 shrink-0", MUTE_SOFT)}
-            />
-            <span className="line-clamp-2 min-w-0 flex-1 font-medium">
-              {item.nextMove}
-            </span>
-          </span>
-        )}
       </span>
 
       {waiting && (
