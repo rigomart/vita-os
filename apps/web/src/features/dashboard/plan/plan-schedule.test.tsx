@@ -85,6 +85,7 @@ const threads: DashboardThread[] = [
     areaId: "home",
     followUp: day(2),
     id: "t2",
+    nextMove: "Call the plumber back",
     order: 1,
     slug: "kitchen-faucet",
     title: "Kitchen faucet",
@@ -167,6 +168,22 @@ describe("PlanSchedule", () => {
     expect(fold).toHaveAttribute("aria-expanded", "false");
     expect(within(fold).getByText("1")).toBeVisible();
     expect(screen.queryByText("Garage clear-out")).toBeNull();
+  });
+
+  it("leads a Thread chip with its Next Move, title and Area behind it", () => {
+    renderSchedule();
+
+    expect(screen.getByText("Call the plumber back")).toBeVisible();
+    // The identifiers stay on the chip, demoted rather than dropped.
+    expect(screen.getByText("Kitchen faucet")).toBeVisible();
+    expect(screen.getAllByText("Home")[0]).toBeVisible();
+  });
+
+  it("prints a faint placeholder on a Thread chip with no Next Move", () => {
+    renderSchedule();
+
+    expect(screen.getByText("Dad's cardiologist")).toBeVisible();
+    expect(screen.getAllByText("No Next Move").length).toBeGreaterThan(0);
   });
 
   it("opens a Thread in place and sends a Task to the Inbox", async () => {

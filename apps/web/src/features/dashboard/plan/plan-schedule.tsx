@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ChevronUp,
   Compass,
+  ArrowRight,
   CornerDownRight,
   Inbox,
 } from "lucide-react";
@@ -44,6 +45,7 @@ import {
 import type { PlanItem, PlanItemKind } from "./plan-model";
 import type { PlanActions } from "./use-plan-actions";
 
+import { NO_NEXT_MOVE } from "./plan-chip";
 import { AreaFilterChips } from "./plan-filters";
 import {
   buildPlanItems,
@@ -836,14 +838,32 @@ function ChipSurface({
       </span>
 
       <span className="min-w-0 flex-1">
-        <span
-          className={cn(
-            "line-clamp-2 text-sm leading-snug",
-            isTask ? "font-normal" : "font-medium",
-          )}
-        >
-          {item.title}
-        </span>
+        {/* A Thread row leads with the Next Move — a faint placeholder when
+            the slot is empty — and the identifiers (title, Area) share the
+            muted line beneath it. */}
+        {isTask ? (
+          <span className="line-clamp-2 text-sm leading-snug font-normal">
+            {item.title}
+          </span>
+        ) : (
+          <span className="flex items-start gap-1 text-sm leading-snug">
+            <ArrowRight
+              aria-hidden
+              className={cn(
+                "mt-[3px] size-3.5 shrink-0",
+                item.nextMove ? MUTE_SOFT : MUTE_FAINT,
+              )}
+            />
+            <span
+              className={cn(
+                "line-clamp-2 min-w-0 flex-1",
+                item.nextMove ? "font-medium" : MUTE_FAINT,
+              )}
+            >
+              {item.nextMove ?? NO_NEXT_MOVE}
+            </span>
+          </span>
+        )}
 
         <span
           className={cn(
@@ -851,6 +871,14 @@ function ChipSurface({
             MUTE_SOFT,
           )}
         >
+          {!isTask && (
+            <>
+              <span className="min-w-0 truncate font-semibold">
+                {item.title}
+              </span>
+              <span aria-hidden>·</span>
+            </>
+          )}
           {ConditionIcon && area && area.condition !== "healthy" && (
             <ConditionIcon
               aria-hidden
@@ -858,13 +886,6 @@ function ChipSurface({
             />
           )}
           <span className="truncate">{area?.name ?? "Inbox"}</span>
-          {item.nextMove && (
-            <>
-              <span aria-hidden>·</span>
-              <CornerDownRight aria-hidden className="size-3 shrink-0" />
-              <span className="truncate">{item.nextMove}</span>
-            </>
-          )}
         </span>
       </span>
 

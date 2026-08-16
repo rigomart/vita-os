@@ -1,10 +1,16 @@
 import { useDraggable } from "@dnd-kit/core";
 import { cn } from "@vita-os/ui/lib/utils";
-import { CornerDownRight, Inbox } from "lucide-react";
+import { ArrowRight, Inbox } from "lucide-react";
 
 import type { Density, PlanItem } from "./plan-model";
 
 import { agoLabel, waitingLabel } from "./plan-model";
+
+/** Thread chips lead with the Next Move (ADR 0010: the Next Move is the one
+ * thing a Thread surfaces outside its detail view), demoting the title to a
+ * muted identifier line. An empty slot prints a faint placeholder — a valid
+ * state, so it reads neutral, never as a warning. */
+export const NO_NEXT_MOVE = "No Next Move";
 
 export interface ChipDragData {
   itemId: string;
@@ -63,20 +69,32 @@ export function ChipSurface({
       )}
 
       <div className="flex items-start gap-1.5 pl-1">
-        {isTask && (
+        {isTask ? (
           <Inbox
             aria-hidden
             className="mt-[3px] size-3.5 shrink-0 text-muted-foreground/50"
+          />
+        ) : (
+          <ArrowRight
+            aria-hidden
+            className={cn(
+              "mt-[3px] size-3.5 shrink-0",
+              item.nextMove
+                ? "text-muted-foreground/50"
+                : "text-muted-foreground/40",
+            )}
           />
         )}
         <span
           className={cn(
             "min-w-0 flex-1 text-sm leading-snug",
             density === "compact" ? "truncate" : "line-clamp-2",
-            isTask ? "font-normal text-foreground/90" : "font-medium",
+            isTask && "font-normal text-foreground/90",
+            !isTask &&
+              (item.nextMove ? "font-medium" : "text-muted-foreground/45"),
           )}
         >
-          {item.title}
+          {isTask ? item.title : (item.nextMove ?? NO_NEXT_MOVE)}
         </span>
         {waiting && (
           <span className="mt-px shrink-0 text-2xs font-medium tabular-nums text-condition-attention">
@@ -85,18 +103,9 @@ export function ChipSurface({
         )}
       </div>
 
-      {density === "comfortable" && !isTask && (
-        <span className="mt-0.5 flex items-start gap-1 pl-1 text-xs leading-snug">
-          {item.nextMove ? (
-            <>
-              <CornerDownRight className="mt-[3px] size-3 shrink-0 text-muted-foreground/50" />
-              <span className="truncate text-muted-foreground">
-                {item.nextMove}
-              </span>
-            </>
-          ) : (
-            <span className="text-muted-foreground/45">No Next Move</span>
-          )}
+      {!isTask && (
+        <span className="mt-0.5 block min-w-0 truncate pl-1 text-xs leading-snug font-semibold text-muted-foreground">
+          {item.title}
         </span>
       )}
 
@@ -141,7 +150,7 @@ export function PlanChip({
 
   const hint =
     item.kind === "thread" && item.nextMove
-      ? `Next Move: ${item.nextMove}`
+      ? `${item.title}\nNext Move: ${item.nextMove}`
       : undefined;
 
   return (
