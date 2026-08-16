@@ -82,16 +82,22 @@ describe("buildSchedule", () => {
     expect(dayRows(buildSchedule([], now).rows).at(-1)).toBe(NEAR_DAYS - 1);
     expect(gapRows(buildSchedule([], now).rows).at(-1)?.[1]).toBe(MIN_HORIZON);
 
+    const mid = buildSchedule([item({ date: dayAt(50, now), id: "mid" })], now);
+    expect(dayRows(mid.rows).at(-1)).toBe(50);
+  });
+
+  it("docks beyond-horizon items in the Later section, off the day rows", () => {
     const far = buildSchedule(
       [item({ date: dayAt(MAX_HORIZON + 40, now), id: "distant" })],
       now,
     );
 
-    expect(dayRows(far.rows).at(-1)).toBe(MAX_HORIZON);
-    // Past the horizon piles onto the last day it prints, rather than vanishing.
-    expect(far.byDay.get(`d${MAX_HORIZON}`)?.map((entry) => entry.id)).toEqual([
-      "distant",
-    ]);
+    // A beyond-ceiling item no longer stretches the agenda or squats on the
+    // last printed day — it sits in Later with its real date.
+    expect(gapRows(far.rows).at(-1)?.[1]).toBe(MIN_HORIZON);
+    expect(far.byDay.get(`d${MAX_HORIZON}`)).toBeUndefined();
+    expect(far.beyond.map((entry) => entry.id)).toEqual(["distant"]);
+    expect(far.total).toBe(1);
   });
 
   it("bands each month it reaches, the first one included", () => {
@@ -146,6 +152,25 @@ describe("planScheduleDrop", () => {
     expect(planScheduleDrop("none", "none", now)).toMatchObject({
       reschedule: false,
     });
+  });
+
+  it("asks for a day on the Later section instead of writing one", () => {
+    const plan = planScheduleDrop("d2", "beyond", now);
+
+    expect(plan).toMatchObject({
+      caption: "Pick a day",
+      clears: false,
+      needsDate: true,
+      reschedule: true,
+      valid: true,
+    });
+    expect(plan!.date).toBeUndefined();
+  });
+
+  it("writes the exact day a picker-shaped key names, however far", () => {
+    expect(planScheduleDrop("d2", `d${MAX_HORIZON + 30}`, now)!.date).toBe(
+      dayAt(MAX_HORIZON + 30, now),
+    );
   });
 
   it("ignores a slot key no day answers to", () => {

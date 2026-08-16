@@ -12,8 +12,11 @@ import {
   HEADER_WIDTH,
   HEADER_WIDTH_NARROW,
   INBOX_LANE_ID,
+  MAX_HORIZON,
+  MIN_HORIZON,
   planDrop,
   slotKeyFor,
+  slotTotals,
 } from "./plan-model";
 
 const now = new Date(2026, 7, 6, 9).getTime();
@@ -73,6 +76,45 @@ describe("plan axis", () => {
     expect(slotKeyFor(undefined, now, horizon)).toBe("none");
   });
 
+  it("files a date past the horizon into the Later bay, not the last day", () => {
+    const horizon = axis.days.length - 1;
+    expect(slotKeyFor(dayAt(horizon, now), now, horizon)).toBe(`d${horizon}`);
+    expect(slotKeyFor(dayAt(horizon + 1, now), now, horizon)).toBe("beyond");
+  });
+
+  it("pins a Later column between the last day and the No-date bay", () => {
+    const kinds = axis.columns.map((column) => column.kind);
+    expect(kinds.at(-1)).toBe("none");
+    expect(kinds.at(-2)).toBe("beyond");
+  });
+
+  it("grows to the furthest rendered item, never for beyond-ceiling ones", () => {
+    const within = buildAxis(
+      [{ areaId: "home", date: dayAt(50, now), id: "mid", kind: "thread", title: "Mid" }],
+      now,
+      "compact",
+    );
+    expect(within.days.length - 1).toBe(50);
+
+    const far = buildAxis(
+      [
+        {
+          areaId: "home",
+          date: dayAt(MAX_HORIZON + 40, now),
+          id: "distant",
+          kind: "thread",
+          title: "Distant",
+        },
+      ],
+      now,
+      "compact",
+    );
+    // A beyond-ceiling item lives in the Later bay: it neither stretches the
+    // axis nor widens the last rendered day.
+    expect(far.days.length - 1).toBe(MIN_HORIZON);
+    expect(far.days.at(-1)!.wide).toBe(false);
+  });
+
   it("narrows the header column when the component layer asks for it", () => {
     const compact = buildAxis(items, now, "compact", HEADER_WIDTH_NARROW);
 
@@ -124,6 +166,44 @@ describe("plan lanes", () => {
     expect(areaLanes[0].plannedCount).toBe(0);
     expect(areaLanes[1].none.map((item) => item.id)).toEqual(["t3"]);
     expect(inbox.byDay.get("d1")?.map((item) => item.id)).toEqual(["k1"]);
+  });
+
+  it("docks beyond-horizon items in the Later bucket, dates intact", () => {
+    const distant: PlanItem[] = [
+      ...items,
+      {
+        areaId: "home",
+        date: dayAt(MAX_HORIZON + 40, now),
+        id: "t9",
+        kind: "thread",
+        title: "Distant thread",
+      },
+      { date: dayAt(MAX_HORIZON + 10, now), id: "k9", kind: "task", title: "Distant task" },
+    ];
+    const at = buildAxis(distant, now, "compact");
+    const horizon = at.days.length - 1;
+    const { areaLanes, inbox } = buildLanes(
+      distant,
+      [
+        {
+          condition: "healthy",
+          icon: "Home",
+          id: "home",
+          name: "Home",
+          order: 1,
+          slug: "home",
+        },
+      ],
+      now,
+      horizon,
+    );
+
+    expect(areaLanes[0].beyond.map((item) => item.id)).toEqual(["t9"]);
+    expect(inbox.beyond.map((item) => item.id)).toEqual(["k9"]);
+    // The last rendered day stays honest: nothing is filed onto it.
+    expect(areaLanes[0].byDay.get(`d${horizon}`)).toBeUndefined();
+    expect(areaLanes[0].openCount).toBe(3);
+    expect(slotTotals([...areaLanes, inbox]).beyond).toBe(2);
   });
 });
 
@@ -227,6 +307,30 @@ describe("planDrop", () => {
     expect(plan).toMatchObject({
       areaMove: "health",
       reschedule: false,
+      tone: "move",
+      valid: true,
+    });
+  });
+
+  it("asks for a day on the Later bay instead of writing one", () => {
+    const plan = drop({ overLaneId: "home", overSlotKey: "beyond" });
+
+    expect(plan).toMatchObject({
+      caption: "Pick a day",
+      clears: false,
+      needsDate: true,
+      reschedule: true,
+      valid: true,
+    });
+    expect(plan!.date).toBeUndefined();
+  });
+
+  it("still moves the Area on a cross-lane Later drop", () => {
+    const plan = drop({ overLaneId: "health", overSlotKey: "beyond" });
+
+    expect(plan).toMatchObject({
+      areaMove: "health",
+      needsDate: true,
       tone: "move",
       valid: true,
     });
