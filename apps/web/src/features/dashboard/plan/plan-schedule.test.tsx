@@ -1,6 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
+import type { DragEndEvent } from "@dnd-kit/core";
+import type { ReactNode } from "react";
+
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   DashboardArea,
@@ -12,11 +15,49 @@ import { PlanSchedule } from "./plan-schedule";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
+  onDragEnd: null as ((event: DragEndEvent) => void) | null,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
+
+/**
+ * A pointer drag needs layout, which jsdom does not have, so the context is
+ * replaced by one that hands the drag-end handler straight to the test. The
+ * droppable and draggable hooks stay real — they only ever report "not over"
+ * without a live drag, which is what the static trees below assert against.
+ */
+vi.mock("@dnd-kit/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@dnd-kit/core")>();
+  return {
+    ...actual,
+    DndContext: ({
+      children,
+      onDragEnd,
+    }: {
+      children: ReactNode;
+      onDragEnd: (event: DragEndEvent) => void;
+    }) => {
+      mocks.onDragEnd = onDragEnd;
+      return children;
+    },
+    DragOverlay: ({ children }: { children: ReactNode }) => children,
+  };
+});
+
+/** The drop dnd-kit would have reported, without the pointer that made it. */
+function drop(
+  source: { itemId: string; kind: "task" | "thread"; slotKey: string },
+  overSlotKey: string,
+) {
+  act(() => {
+    mocks.onDragEnd?.({
+      active: { data: { current: source } },
+      over: { data: { current: { slotKey: overSlotKey } } },
+    } as unknown as DragEndEvent);
+  });
+}
 
 /**
  * The list opens on today, and jsdom ships `window.scrollTo` as a
@@ -97,7 +138,19 @@ const threads: DashboardThread[] = [
     slug: "garage-clear-out",
     title: "Garage clear-out",
   },
+  {
+    areaId: "home",
+    // Four months out: past the ceiling the agenda draws, so it lists in Later.
+    followUp: day(120),
+    id: "t4",
+    order: 3,
+    slug: "roof-replacement",
+    title: "Roof replacement",
+  },
 ];
+
+/** The day `day(120)` falls on, as the Later section prints it. */
+const BEYOND_CAPTION = "Fri 4 Dec";
 
 const tasks: DashboardInboxTask[] = [
   { createdAt: day(-1), id: "k1", text: "Renew passport", when: day(1) },
@@ -127,6 +180,21 @@ function precedes(first: Element, second: Element) {
 }
 
 const weekdayRails = () => screen.getAllByText(WEEKDAY);
+
+/** The calendar's cell for a day of the month, inside the open picker. */
+function dayCell(label: string) {
+  const dialog = screen.getByRole("dialog");
+  const cell = within(dialog)
+    .getAllByRole("button")
+    .find((button) => button.textContent?.trim() === label);
+  if (!cell) throw new Error(`no day cell for ${label}`);
+  return cell;
+}
+
+beforeEach(() => {
+  mocks.navigate.mockClear();
+  mocks.onDragEnd = null;
+});
 
 describe("PlanSchedule", () => {
   it("prints the near horizon day by day, today first and empty days kept", () => {
@@ -229,5 +297,94 @@ describe("PlanSchedule", () => {
     await user.click(screen.getByRole("button", { name: /No date/ }));
 
     expect(screen.getByText("Garage clear-out")).toBeVisible();
+  });
+
+  it("folds a far-off Thread into Later, under the agenda", async () => {
+    const user = userEvent.setup();
+    renderSchedule();
+
+    const fold = screen.getByRole("button", { name: /Later/ });
+    expect(within(fold).getByText("1")).toBeVisible();
+    expect(screen.queryByText("Roof replacement")).toBeNull();
+
+    await user.click(fold);
+
+    const item = screen.getByText("Roof replacement");
+    expect(item).toBeVisible();
+    // Off the axis, the chip has to say which day it is actually on.
+    expect(screen.getByText(BEYOND_CAPTION)).toBeVisible();
+    // Later sits between the last day row and No date.
+    expect(precedes(screen.getAllByText(WEEKDAY).at(-1)!, item)).toBe(true);
+    expect(
+      precedes(item, screen.getByRole("button", { name: /No date/ })),
+    ).toBe(true);
+  });
+
+  it("opens the day picker on a drop into Later instead of writing", () => {
+    const { planActions } = renderSchedule();
+
+    drop({ itemId: "t2", kind: "thread", slotKey: "d2" }, "beyond");
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Pick a day")).toBeVisible();
+    // The hint names what is being moved.
+    expect(within(dialog).getByText("Kitchen faucet")).toBeVisible();
+    expect(planActions.planThread).not.toHaveBeenCalled();
+  });
+
+  it("writes the picked day for a dropped Thread and closes the picker", async () => {
+    const user = userEvent.setup();
+    const { planActions } = renderSchedule();
+
+    drop({ itemId: "t2", kind: "thread", slotKey: "d2" }, "beyond");
+    await user.click(dayCell("21"));
+
+    expect(planActions.planThread).toHaveBeenCalledWith("t2", {
+      followUp: new Date(2026, 7, 21).getTime(),
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("writes the picked day for a dropped Task", async () => {
+    const user = userEvent.setup();
+    const { planActions } = renderSchedule();
+
+    drop({ itemId: "k1", kind: "task", slotKey: "d1" }, "beyond");
+    await user.click(dayCell("21"));
+
+    expect(planActions.planTask).toHaveBeenCalledWith(
+      "k1",
+      new Date(2026, 7, 21).getTime(),
+    );
+  });
+
+  it("writes nothing when the picker is dismissed", async () => {
+    const user = userEvent.setup();
+    const { planActions } = renderSchedule();
+
+    drop({ itemId: "t2", kind: "thread", slotKey: "d2" }, "beyond");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(planActions.planThread).not.toHaveBeenCalled();
+    expect(planActions.planTask).not.toHaveBeenCalled();
+  });
+
+  it("keeps refusing Waiting and still clears on No date", () => {
+    const { planActions } = renderSchedule();
+
+    drop({ itemId: "t2", kind: "thread", slotKey: "d2" }, "overdue");
+    expect(planActions.planThread).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    drop({ itemId: "t2", kind: "thread", slotKey: "d2" }, "none");
+    expect(planActions.planThread).toHaveBeenCalledWith("t2", {
+      followUp: undefined,
+    });
+    // The section it landed in unfolds, or the drop reads as a deletion.
+    expect(screen.getByRole("button", { name: /No date/ })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   });
 });

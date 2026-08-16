@@ -22,6 +22,7 @@ import type {
 import { TODAY_COLUMN } from "./plan-axis";
 import { PlanChip } from "./plan-chip";
 import {
+  bayWidth,
   conditionIconTone,
   conditionLaneTint,
   conditionRailTone,
@@ -44,7 +45,8 @@ export interface LaneChrome {
  *
  * Chips sit in the day slot matching their date and read left to right in date
  * order; anything already past docks in the tinted waiting bay at the lane's
- * left edge. Dragging along the lane retargets the day, dragging across lanes
+ * left edge, and anything dated past the axis docks in the Later bay pinned at
+ * its right. Dragging along the lane retargets the day, dragging across lanes
  * moves the Thread's Area.
  */
 export function LaneRow({
@@ -103,14 +105,30 @@ export function LaneRow({
             />
           );
         }
+        if (column.kind === "beyond") {
+          return (
+            <PinnedBay
+              key="beyond"
+              chrome={chrome}
+              gridColumn={gridColumn}
+              items={lane.beyond}
+              laneId={lane.id}
+              right={bayWidth(chrome.density)}
+              slotKey="beyond"
+              tint={tint}
+            />
+          );
+        }
         if (column.kind === "none") {
           return (
-            <NoDateBay
+            <PinnedBay
               key="none"
               chrome={chrome}
               gridColumn={gridColumn}
               items={lane.none}
               laneId={lane.id}
+              right={0}
+              slotKey="none"
               tint={tint}
             />
           );
@@ -487,6 +505,7 @@ function WaitingBay({
   return (
     <div
       ref={setNodeRef}
+      data-slot-key={`${laneId}::overdue`}
       style={{ gridColumn, gridRow: 1 }}
       className={cn(
         "relative flex flex-col justify-center border-l border-border/60 bg-condition-attention/[0.07] px-1.5",
@@ -509,25 +528,38 @@ function WaitingBay({
   );
 }
 
-/** Pinned to the right edge: everything with no date at all. */
-function NoDateBay({
+/**
+ * The two bays pinned to the lane's right edge, side by side: **Later** for
+ * work dated past the far end of the axis, then **No date** for work with no
+ * day at all. Later sits inboard, one bay width off the edge, so the axis
+ * always ends on the same two anchors however far it is scrolled.
+ *
+ * A drop on Later has no single day to write, so the canvas answers it with a
+ * calendar instead of a mutation — see `plan-later-dialog.tsx`.
+ */
+function PinnedBay({
   chrome,
   gridColumn,
   items,
   laneId,
+  right,
+  slotKey,
   tint,
 }: {
   chrome: LaneChrome;
   gridColumn: number;
   items: PlanItem[];
   laneId: string;
+  /** Distance from the scroller's right edge. */
+  right: number;
+  slotKey: "beyond" | "none";
   tint: string;
 }) {
   const { density, drag, now, onOpen } = chrome;
 
   const { isOver, setNodeRef } = useDroppable({
-    id: `${laneId}::none`,
-    data: { laneId, slotKey: "none" } satisfies SlotDropData,
+    id: `${laneId}::${slotKey}`,
+    data: { laneId, slotKey } satisfies SlotDropData,
   });
 
   const armed = drag != null && acceptsKind(laneId, drag.kind) && isOver;
@@ -535,9 +567,10 @@ function NoDateBay({
   return (
     <div
       ref={setNodeRef}
-      style={{ gridColumn, gridRow: 1 }}
+      data-slot-key={`${laneId}::${slotKey}`}
+      style={{ gridColumn, gridRow: 1, right }}
       className={cn(
-        "sticky right-0 z-20 flex flex-col justify-center border-l border-border bg-surface-1 px-1.5",
+        "sticky z-20 flex flex-col justify-center border-l border-border bg-surface-1 px-1.5",
         cellRhythm(density),
         armed && "bg-surface-3",
       )}
@@ -563,7 +596,7 @@ function NoDateBay({
             laneId={laneId}
             now={now}
             onOpen={onOpen}
-            slotKey="none"
+            slotKey={slotKey}
           />
         ))}
       </div>

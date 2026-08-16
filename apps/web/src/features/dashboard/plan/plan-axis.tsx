@@ -2,7 +2,15 @@ import { useDroppable } from "@dnd-kit/core";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
 
-import type { Axis, DaySlot, DragState, SlotTotals } from "./plan-model";
+import type {
+  Axis,
+  DaySlot,
+  Density,
+  DragState,
+  SlotTotals,
+} from "./plan-model";
+
+import { bayWidth } from "./plan-model";
 
 /**
  * Today's column, ruler and lanes alike: a tinted band with a hairline "now"
@@ -28,12 +36,14 @@ export interface SlotDropData {
 export function AxisHeader({
   areaCount,
   axis,
+  density,
   drag,
   narrow,
   totals,
 }: {
   areaCount: number;
   axis: Axis;
+  density: Density;
   drag: DragState | null;
   /** The header column is at its compact width (see `HEADER_WIDTH_NARROW`). */
   narrow: boolean;
@@ -79,7 +89,20 @@ export function AxisHeader({
               key="overdue"
               count={totals.overdue}
               gridColumn={gridColumn}
-              waiting
+              kind="overdue"
+            />
+          );
+        }
+        // The two pinned bays stack against the right edge, Later inboard of
+        // No date, so both stay legible however far the axis is scrolled.
+        if (column.kind === "beyond") {
+          return (
+            <BayHeader
+              key="beyond"
+              count={totals.beyond}
+              gridColumn={gridColumn}
+              kind="beyond"
+              right={bayWidth(density)}
             />
           );
         }
@@ -89,7 +112,8 @@ export function AxisHeader({
               key="none"
               count={totals.none}
               gridColumn={gridColumn}
-              pinned
+              kind="none"
+              right={0}
             />
           );
         }
@@ -118,10 +142,12 @@ function BandRow({ axis, totals }: { axis: Axis; totals: SlotTotals }) {
   const segments = [...axis.monthSpans];
 
   if (axis.laterFrom != null) {
+    // Stops at the last day: the two pinned bays past it are off the calendar
+    // and carry their own headers.
     segments.push({
       from: axis.laterFrom,
       label: "Later",
-      to: axis.columns.length - 2,
+      to: axis.columns.length - 3,
     });
   }
 
@@ -165,35 +191,47 @@ function BandRow({ axis, totals }: { axis: Axis; totals: SlotTotals }) {
 
 /* -------------------------------------------------------------- bay cells -- */
 
+const BAY_LABEL: Record<BayKind, string> = {
+  beyond: "Later",
+  none: "No date",
+  overdue: "Waiting",
+};
+
+type BayKind = "beyond" | "none" | "overdue";
+
 /**
- * The waiting bay and the pinned No-date bay: same label · count · bar stack as
- * a day, in the tone their condition deserves — the past reads as a debt, the
- * undated reads as quiet.
+ * The waiting bay and the two pinned bays — Later and No date: same label ·
+ * count · bar stack as a day, in the tone their condition deserves — the past
+ * reads as a debt, the undated and the far-off read as quiet.
  *
- * Both span the band and header rows, so their label sits on the band line and
- * their bar lands on the same baseline as the days'.
+ * All three span the band and header rows, so their label sits on the band line
+ * and their bar lands on the same baseline as the days'.
  */
 function BayHeader({
   count,
   gridColumn,
-  pinned,
-  waiting,
+  kind,
+  right,
 }: {
   count: number;
   gridColumn: number;
-  pinned?: boolean;
-  waiting?: boolean;
+  kind: BayKind;
+  /** Distance from the scroller's right edge, for the pinned bays only. */
+  right?: number;
 }) {
+  const waiting = kind === "overdue";
+
   return (
     <div
+      data-bay={kind}
       className={cn(
         "flex flex-col gap-1.5 px-2 pt-2 pb-2",
-        pinned
-          ? "sticky right-0 z-30 border-l border-border bg-surface-1"
-          : "border-l border-border/60",
+        right == null
+          ? "border-l border-border/60"
+          : "sticky z-30 border-l border-border bg-surface-1",
         waiting && "bg-condition-attention/[0.07]",
       )}
-      style={{ gridColumn, gridRow: "1 / 3" }}
+      style={{ gridColumn, gridRow: "1 / 3", right }}
     >
       <div className="flex items-baseline gap-1">
         <span
@@ -202,7 +240,7 @@ function BayHeader({
             waiting ? "text-condition-attention" : "text-muted-foreground/70",
           )}
         >
-          {waiting ? "Waiting" : "No date"}
+          {BAY_LABEL[kind]}
         </span>
         <span
           className={cn(

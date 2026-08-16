@@ -90,7 +90,15 @@ describe("plan axis", () => {
 
   it("grows to the furthest rendered item, never for beyond-ceiling ones", () => {
     const within = buildAxis(
-      [{ areaId: "home", date: dayAt(50, now), id: "mid", kind: "thread", title: "Mid" }],
+      [
+        {
+          areaId: "home",
+          date: dayAt(50, now),
+          id: "mid",
+          kind: "thread",
+          title: "Mid",
+        },
+      ],
       now,
       "compact",
     );
@@ -178,7 +186,12 @@ describe("plan lanes", () => {
         kind: "thread",
         title: "Distant thread",
       },
-      { date: dayAt(MAX_HORIZON + 10, now), id: "k9", kind: "task", title: "Distant task" },
+      {
+        date: dayAt(MAX_HORIZON + 10, now),
+        id: "k9",
+        kind: "task",
+        title: "Distant task",
+      },
     ];
     const at = buildAxis(distant, now, "compact");
     const horizon = at.days.length - 1;

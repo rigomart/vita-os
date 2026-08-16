@@ -5,7 +5,7 @@ import { ArrowRight, Bell, Inbox } from "lucide-react";
 
 import type { Density, PlanItem } from "./plan-model";
 
-import { agoLabel, waitingLabel } from "./plan-model";
+import { agoLabel, dayCaption, waitingLabel } from "./plan-model";
 
 /** Thread chips lead with the Next Move (ADR 0010: the Next Move is the one
  * thing a Thread surfaces outside its detail view), demoting the title to a
@@ -25,8 +25,9 @@ export interface ChipDragData {
  * lifted item is pixel-identical to the one it left behind.
  *
  * The axis already says *when*, so a chip on a day carries no date stamp. The
- * two slots where position cannot say it — the waiting bay and No date — are
- * the only ones that print anything.
+ * bays are where position cannot say it: the waiting bay prints how long the
+ * debt has run, the Later bay prints the day itself — it stands for every date
+ * past the end of the axis — and No date has nothing to print.
  *
  * A dated Thread chip does carry a bell glyph: the axis says *when*, the bell
  * says what that placement *means* — a Follow-up, the soft day the Thread
@@ -48,8 +49,9 @@ export function ChipSurface({
 }) {
   const isTask = item.kind === "task";
   const waiting = slotKey === "overdue" && item.date != null;
+  const beyond = slotKey === "beyond" && item.date != null;
   const resurfacing =
-    !isTask && item.date != null && slotKey !== "none" && !waiting;
+    !isTask && item.date != null && slotKey !== "none" && !waiting && !beyond;
 
   return (
     <div
@@ -110,6 +112,12 @@ export function ChipSurface({
             <span className="tabular-nums">
               {waitingLabel(item.date!, now)}
             </span>
+          </span>
+        )}
+        {beyond && (
+          <span className="mt-px flex shrink-0 items-center gap-0.5 text-2xs font-medium text-muted-foreground/70">
+            {!isTask && <Bell aria-hidden className="size-3 shrink-0" />}
+            <span className="tabular-nums">{dayCaption(item.date!)}</span>
           </span>
         )}
         {resurfacing && (

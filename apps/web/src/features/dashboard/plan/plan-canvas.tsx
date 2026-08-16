@@ -29,13 +29,14 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 import type { SlotDropData } from "./plan-axis";
 import type { ChipDragData } from "./plan-chip";
-import type { Density, DragState, PlanItem } from "./plan-model";
+import type { Density, DragState, PlanItem, PlanItemKind } from "./plan-model";
 import type { PlanActions } from "./use-plan-actions";
 
 import { AxisHeader } from "./plan-axis";
 import { ChipSurface } from "./plan-chip";
 import { AreaFilterChips } from "./plan-filters";
 import { LaneRow } from "./plan-lane";
+import { PlanLaterDialog } from "./plan-later-dialog";
 import {
   bayWidth,
   buildAxis,
@@ -57,6 +58,20 @@ const DENSITY_OPTIONS: {
   { icon: Rows2, label: "Comfortable", value: "comfortable" },
   { icon: Rows4, label: "Compact", value: "compact" },
 ];
+
+/**
+ * A drop on the Later bay, waiting on the day the calendar has yet to name.
+ * Nothing is written until it is picked, so an abandoned dialog leaves the item
+ * exactly where it was — Area move included.
+ */
+interface PendingLater {
+  /** The Area the drop would move a Thread into, when it crossed lanes. */
+  areaMove?: string;
+  /** The item's current date, so the calendar opens where the item already is. */
+  at?: number;
+  itemId: string;
+  kind: PlanItemKind;
+}
 
 /**
  * Plan — the Area × day canvas. One shared compressing day ruler; every Area is
@@ -87,6 +102,7 @@ export function PlanCanvas({
 
   const [density, setDensity] = useState<Density>("comfortable");
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [pendingLater, setPendingLater] = useState<PendingLater | null>(null);
   const [activeAreas, setActiveAreas] = useState<ReadonlySet<string> | null>(
     null,
   );
@@ -168,6 +184,9 @@ export function PlanCanvas({
     [lanes, inbox, totals, axis.days],
   );
 
+  /** How much of the right edge the two pinned bays hold: Later, then No date. */
+  const pinnedRight = 2 * bayWidth(density);
+
   const edges = {
     end: metrics.scrollLeft + metrics.clientWidth < metrics.scrollWidth - 4,
     start: metrics.scrollLeft > 4,
@@ -243,6 +262,18 @@ export function PlanCanvas({
     );
     if (!plan?.valid) return;
 
+    // The Later bay names no day of its own: hold the whole drop — the Area
+    // move with it — until the calendar comes back with one.
+    if (plan.needsDate) {
+      setPendingLater({
+        areaMove: plan.areaMove,
+        at: items.find((item) => item.id === source.itemId)?.date,
+        itemId: source.itemId,
+        kind: source.kind,
+      });
+      return;
+    }
+
     const date = plan.clears ? undefined : plan.date;
 
     if (source.kind === "task") {
@@ -255,6 +286,30 @@ export function PlanCanvas({
       ...(plan.reschedule && { followUp: date }),
     });
   }
+
+  /** The one write the Later bay's calendar makes, then it forgets the drop. */
+  function pickLaterDay(at: number) {
+    if (pendingLater == null) return;
+    const { areaMove, itemId, kind } = pendingLater;
+
+    if (kind === "task") planTask(itemId, at);
+    else {
+      planThread(itemId, {
+        ...(areaMove != null && { areaId: areaMove }),
+        followUp: at,
+      });
+    }
+    setPendingLater(null);
+  }
+
+  const laterItem =
+    pendingLater && items.find((item) => item.id === pendingLater.itemId);
+  const laterHint =
+    laterItem == null
+      ? ""
+      : pendingLater?.areaMove != null
+        ? `${laterItem.title} → ${areaName(pendingLater.areaMove)}`
+        : laterItem.title;
 
   const draggingItem = drag && items.find((item) => item.id === drag.itemId);
   const dropPlan = drag ? planDrop(drag, axis, areaName) : null;
@@ -322,8 +377,8 @@ export function PlanCanvas({
       >
         <div className="relative">
           {/* The native scrollbar would run the full width of the scroller —
-              under the pinned lane headers and the No-date bay, which never
-              move. It is hidden here and drawn by `PlanScrollbar` across the
+              under the pinned lane headers and the two right-hand bays, which
+              never move. It is hidden here and drawn by `PlanScrollbar` across the
               day region only. */}
           <div
             ref={setScrollNode}
@@ -333,6 +388,7 @@ export function PlanCanvas({
               <AxisHeader
                 areaCount={lanes.length}
                 axis={axis}
+                density={density}
                 drag={drag}
                 narrow={narrow}
                 totals={totals}
@@ -352,7 +408,8 @@ export function PlanCanvas({
           </div>
 
           {/* Edge fades: content slides *under* the pinned lane headers and
-              the No-date bay, so the seam reads as a fold, not as clipping. */}
+              the Later and No-date bays, so the seam reads as a fold, not as
+              clipping. */}
           <span
             aria-hidden
             className="pointer-events-none absolute top-0 bottom-3 z-40 w-8 transition-opacity"
@@ -370,12 +427,12 @@ export function PlanCanvas({
               backgroundImage:
                 "linear-gradient(to left, var(--surface-1) 0 35%, transparent 100%)",
               opacity: edges.end ? 1 : 0,
-              right: bayWidth(density),
+              right: pinnedRight,
             }}
           />
 
           <PlanScrollbar
-            end={bayWidth(density)}
+            end={pinnedRight}
             metrics={metrics}
             node={scrollNode}
             start={headerWidth}
@@ -424,6 +481,20 @@ export function PlanCanvas({
           )}
         </DragOverlay>
       </DndContext>
+
+      <PlanLaterDialog
+        // Remounts per drop, so the calendar always opens on the dropped
+        // item's own month rather than the previous one's.
+        key={pendingLater?.itemId}
+        at={pendingLater?.at}
+        hint={laterHint}
+        now={now}
+        open={pendingLater != null}
+        onOpenChange={(open) => {
+          if (!open) setPendingLater(null);
+        }}
+        onPick={pickLaterDay}
+      />
     </section>
   );
 }
