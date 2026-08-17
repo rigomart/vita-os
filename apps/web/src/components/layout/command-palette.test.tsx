@@ -151,7 +151,9 @@ describe("CommandPalette area drill-in", () => {
       params: { areaSlug: health.slug },
     });
     await waitFor(() =>
-      expect(screen.queryByPlaceholderText(PLACEHOLDER)).not.toBeInTheDocument(),
+      expect(
+        screen.queryByPlaceholderText(PLACEHOLDER),
+      ).not.toBeInTheDocument(),
     );
   });
 
@@ -195,7 +197,9 @@ describe("CommandPalette area drill-in", () => {
       condition: "critical",
       id: health._id,
     });
-    expect(screen.getByPlaceholderText(`Actions in ${health.name}…`)).toBeVisible();
+    expect(
+      screen.getByPlaceholderText(`Actions in ${health.name}…`),
+    ).toBeVisible();
   });
 
   it("closes the palette and opens the create Thread dialog scoped to the Area", async () => {
@@ -225,7 +229,9 @@ describe("CommandPalette area drill-in", () => {
       params: { areaSlug: health.slug },
     });
     await waitFor(() =>
-      expect(screen.queryByPlaceholderText(PLACEHOLDER)).not.toBeInTheDocument(),
+      expect(
+        screen.queryByPlaceholderText(PLACEHOLDER),
+      ).not.toBeInTheDocument(),
     );
   });
 

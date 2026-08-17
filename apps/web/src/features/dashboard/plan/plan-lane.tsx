@@ -8,6 +8,7 @@ import {
   conditionIcons,
   conditionTextClassName,
 } from "@/features/areas/condition-presentation";
+import { conditionShort } from "@/features/areas/condition-presentation";
 
 import type { SlotDropData } from "./plan-axis";
 import type {
@@ -29,8 +30,6 @@ import {
   conditionRailTone,
   INBOX_LANE_ID,
 } from "./plan-model";
-
-import { conditionShort } from "@/features/areas/condition-presentation";
 
 export interface LaneChrome {
   axis: Axis;
