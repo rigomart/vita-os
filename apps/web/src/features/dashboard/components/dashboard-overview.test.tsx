@@ -94,6 +94,7 @@ function renderOverview(overrides: Partial<OverviewProps> = {}) {
     tasks: [],
     currentDate,
     onCreateArea: vi.fn(),
+    onNewThreadInArea: vi.fn(),
     planActions: { planTask: vi.fn(), planThread: vi.fn() },
     ...overrides,
   };

@@ -17,6 +17,8 @@ interface DashboardOverviewProps {
   areas: DashboardArea[];
   currentDate: number;
   onCreateArea: () => void;
+  /** Capture scoped to an Area, raised from a Plan lane header's Quick Panel. */
+  onNewThreadInArea: (areaId: string) => void;
   planActions: PlanActions;
   tasks: DashboardInboxTask[];
   threads: DashboardThread[];
@@ -28,6 +30,7 @@ export function DashboardOverview({
   tasks,
   currentDate,
   onCreateArea,
+  onNewThreadInArea,
   planActions,
 }: DashboardOverviewProps) {
   const compact = useIsCompact();
@@ -77,6 +80,7 @@ export function DashboardOverview({
         <PlanCanvas
           areas={areas}
           currentDate={currentDate}
+          onNewThreadInArea={onNewThreadInArea}
           planActions={planActions}
           tasks={tasks}
           threads={threads}

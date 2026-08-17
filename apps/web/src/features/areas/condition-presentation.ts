@@ -9,6 +9,13 @@ export const conditionIcons: Record<Condition, LucideIcon> = {
   critical: OctagonAlert,
 };
 
+/** Short labels for tight surfaces: lane status lines, segment controls. */
+export const conditionShort: Record<Condition, string> = {
+  critical: "Critical",
+  needs_attention: "Needs you",
+  healthy: "Healthy",
+};
+
 export const conditionTextClassName: Record<Condition, string> = {
   healthy: "text-condition-healthy",
   needs_attention: "text-condition-attention",

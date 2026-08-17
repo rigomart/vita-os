@@ -1,4 +1,7 @@
+import type { Id } from "@convex/_generated/dataModel";
+
 import { api } from "@convex/_generated/api";
+import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useMemo, useState } from "react";
 
@@ -11,6 +14,7 @@ import {
 import { DashboardOverview } from "@/features/dashboard/components/dashboard-overview";
 import { DashboardOverviewSkeleton } from "@/features/dashboard/components/dashboard-overview-skeleton";
 import { usePlanActions } from "@/features/dashboard/plan/use-plan-actions";
+import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread-dialog";
 import { useAttentionClock } from "@/hooks/use-attention-clock";
 
 /**
@@ -29,6 +33,13 @@ export function DashboardScreen() {
     threads: threadDocs ?? [],
   });
   const [showCreateArea, setShowCreateArea] = useState(false);
+  const navigate = useNavigate();
+  /**
+   * The Area a lane header's Quick Panel asked to capture into. The dialog
+   * lives up here rather than in the panel: the panel closes on the way to it,
+   * and the Areas the picker needs are already on this screen.
+   */
+  const [newThreadAreaId, setNewThreadAreaId] = useState<string | null>(null);
 
   // Explicit memos: the Plan surfaces memo on these arrays by reference.
   const areas = useMemo(
@@ -60,6 +71,7 @@ export function DashboardScreen() {
           tasks={tasks}
           currentDate={currentDate}
           onCreateArea={() => setShowCreateArea(true)}
+          onNewThreadInArea={setNewThreadAreaId}
           planActions={planActions}
         />
       )}
@@ -68,6 +80,24 @@ export function DashboardScreen() {
         open={showCreateArea}
         onOpenChange={setShowCreateArea}
       />
+
+      {newThreadAreaId != null && areaDocs !== undefined && (
+        <CreateThreadDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setNewThreadAreaId(null);
+          }}
+          areas={areaDocs}
+          defaultAreaId={newThreadAreaId as Id<"areas">}
+          onCreated={({ slug }) => {
+            setNewThreadAreaId(null);
+            navigate({
+              to: ".",
+              search: (prev) => ({ ...prev, thread: slug }),
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

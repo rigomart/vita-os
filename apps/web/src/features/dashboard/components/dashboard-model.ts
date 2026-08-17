@@ -17,6 +17,8 @@ export interface DashboardArea {
   name: string;
   order: number;
   slug: string;
+  /** The Area's Standard, read-only here — the Quick Panel shows it verbatim. */
+  standard?: string;
 }
 
 export interface DashboardThread {
@@ -47,6 +49,7 @@ export function toDashboardArea(doc: ProjectedArea): DashboardArea {
     condition: doc.condition,
     icon: doc.icon,
     order: doc.order,
+    standard: doc.standard,
   };
 }
 
