@@ -97,6 +97,7 @@ export function AppTopBar({
             <button
               type="button"
               aria-label="Inbox"
+              data-inbox-proto-chrome=""
               aria-expanded={inboxPrototype.isOpen}
               onClick={inboxPrototype.toggle}
               className={cn(

@@ -115,7 +115,10 @@ export function InboxPrototypeSwitcher({
   if (import.meta.env.PROD) return null;
 
   return (
-    <div className="fixed bottom-20 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full border border-amber-500/50 bg-zinc-900 py-1 pr-3 pl-1 text-zinc-50 shadow-lg md:bottom-4 dark:bg-zinc-100 dark:text-zinc-900">
+    <div
+      data-inbox-proto-chrome=""
+      className="fixed bottom-20 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full border border-amber-500/50 bg-zinc-900 py-1 pr-3 pl-1 text-zinc-50 shadow-lg md:bottom-4 dark:bg-zinc-100 dark:text-zinc-900"
+    >
       <button
         type="button"
         // Blur so the arrow-key opt-out (which skips <button>) keeps working

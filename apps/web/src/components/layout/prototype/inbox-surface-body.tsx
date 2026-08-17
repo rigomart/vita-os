@@ -15,14 +15,24 @@ export function InboxSurfaceBody({
   onClose,
   className,
   bodyClassName,
+  density = "default",
 }: {
   onClose: () => void;
   className?: string;
   bodyClassName?: string;
+  /** `compact` tightens container spacing for the small popover panel only. */
+  density?: "default" | "compact";
 }) {
+  const compact = density === "compact";
+
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-2.5">
+      <header
+        className={cn(
+          "flex shrink-0 items-center justify-between gap-2 border-b",
+          compact ? "px-3 py-1.5" : "px-4 py-2.5",
+        )}
+      >
         <h2 className="font-heading text-sm font-semibold tracking-tight">
           Inbox
         </h2>
@@ -35,9 +45,15 @@ export function InboxSurfaceBody({
           <X />
         </Button>
       </header>
+      {/* The compact rules reach one level into the embedded screen — the task
+          list's own root > (header, sections) — so the panel can be tightened
+          without changing the shared list for the other forms. */}
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto px-4 py-3",
+          "min-h-0 flex-1 overflow-y-auto",
+          compact
+            ? "px-3 py-2 [&>div>div]:gap-4 [&>div>header]:mb-2"
+            : "px-4 py-3",
           bodyClassName,
         )}
       >

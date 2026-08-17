@@ -20,6 +20,13 @@ export const NESTED_OVERLAY_SELECTOR = [
   '[data-slot="combobox-content"]',
 ].join(",");
 
+/**
+ * Prototype chrome that drives the surface itself — the top-bar Inbox trigger
+ * and the form switcher pill. Clicks on these must not count as "outside": the
+ * trigger toggles on its own, and the pill swaps forms while one is open.
+ */
+export const INBOX_PROTO_CHROME_SELECTOR = "[data-inbox-proto-chrome]";
+
 /** True while any portaled overlay is mounted above the surface. */
 export function hasNestedOverlay() {
   if (typeof document === "undefined") return false;
