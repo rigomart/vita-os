@@ -5,12 +5,16 @@ import { cn } from "@/lib/utils";
 
 interface MobileTabBarProps {
   taskCount: number | undefined;
+  inboxOpen: boolean;
+  onToggleInbox: () => void;
   onNewTask: () => void;
   onOpenPalette: () => void;
 }
 
 export function MobileTabBar({
   taskCount,
+  inboxOpen,
+  onToggleInbox,
   onNewTask,
   onOpenPalette,
 }: MobileTabBarProps) {
@@ -39,7 +43,12 @@ export function MobileTabBar({
         <Search className="size-5" />
         Search
       </button>
-      <Link to="/inbox" className={tabClassName(pathname === "/inbox")}>
+      <button
+        type="button"
+        aria-expanded={inboxOpen}
+        onClick={onToggleInbox}
+        className={tabClassName(inboxOpen)}
+      >
         <span className="relative">
           <Inbox className="size-5" />
           {taskCount !== undefined && taskCount > 0 && (
@@ -49,7 +58,7 @@ export function MobileTabBar({
           )}
         </span>
         Inbox
-      </Link>
+      </button>
       <button type="button" onClick={onNewTask} className={tabClassName(false)}>
         <Plus className="size-5" />
         New task

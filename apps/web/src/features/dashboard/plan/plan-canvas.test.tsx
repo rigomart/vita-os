@@ -41,6 +41,7 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
   useNavigate: () => mocks.navigate,
+  useSearch: () => ({}),
 }));
 
 const now = new Date(2026, 7, 6, 9).getTime();
@@ -283,7 +284,7 @@ describe("PlanCanvas", () => {
     expect(within(header).getByText(/No open Threads/)).toBeVisible();
   });
 
-  it("opens a Thread in place and sends a Task to the Inbox", async () => {
+  it("opens a Thread in place and summons the Inbox for a Task", async () => {
     const user = userEvent.setup();
     renderCanvas();
 
@@ -299,7 +300,15 @@ describe("PlanCanvas", () => {
     });
 
     await user.click(screen.getByText("Renew passport"));
-    expect(mocks.navigate).toHaveBeenLastCalledWith({ to: "/inbox" });
+
+    const [taskCall] = mocks.navigate.mock.calls.at(-1) as [
+      { search: (previous: object) => object; to: string },
+    ];
+    expect(taskCall.to).toBe(".");
+    expect(taskCall.search({ thread: "kitchen-faucet" })).toEqual({
+      inbox: true,
+      thread: "kitchen-faucet",
+    });
   });
 
   it("isolates an Area on the first filter click, Inbox always in view", async () => {

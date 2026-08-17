@@ -13,12 +13,14 @@ import {
 } from "./dialog";
 import {
   Drawer,
+  DrawerNested,
   DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
+  useInsideDrawer,
 } from "./drawer";
 
 const MobileContext = createContext(false);
@@ -33,13 +35,17 @@ function ResponsiveDialog({
   children: ReactNode;
 }) {
   const isMobile = useIsMobile();
+  const insideDrawer = useInsideDrawer();
   const content = <MobileContext value={isMobile}>{children}</MobileContext>;
 
   if (isMobile) {
+    // Opened from inside a drawer — the Inbox surface on a phone — this has to
+    // be a nested root, or the two drawers fight over the body scroll lock.
+    const DrawerRoot = insideDrawer ? DrawerNested : Drawer;
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerRoot open={open} onOpenChange={onOpenChange}>
         {content}
-      </Drawer>
+      </DrawerRoot>
     );
   }
 

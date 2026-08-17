@@ -2,7 +2,6 @@ import type { ProjectedTask } from "@convex/lib/validators";
 
 import { groupTasksByAttention } from "@convex/lib/attentionOrdering";
 import { Button } from "@vita-os/ui/components/button";
-import { format } from "date-fns";
 import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 
 import {
@@ -53,22 +52,8 @@ export function InboxTaskList({
   const showCompleted = doneTasks.length > 0 || !isDoneExhausted;
 
   return (
-    <div className="mx-auto max-w-4xl pb-16">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Inbox
-          </h1>
-          <span className="ml-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-            {openCount}
-          </span>
-        </div>
-        <p className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
-          {format(new Date(now), "EEEE, MMMM d")}
-        </p>
-      </header>
-
-      <div className="flex flex-col gap-6">
+    <div>
+      <div className="flex flex-col gap-4">
         {openCount === 0 ? (
           <InboxZero />
         ) : (

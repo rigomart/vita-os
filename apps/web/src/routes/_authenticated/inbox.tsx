@@ -1,16 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { RouteErrorFallback } from "@/components/error-boundary";
-import { InboxScreen } from "@/features/inbox/screens/inbox-screen";
+import { InboxDeepLinkRedirect } from "@/features/inbox/surface/inbox-deep-link-redirect";
 
 export const Route = createFileRoute("/_authenticated/inbox")({
-  head: () => ({
-    meta: [{ title: "Inbox | Vita OS" }],
-  }),
   errorComponent: RouteErrorFallback,
-  component: InboxRoute,
+  component: InboxDeepLinkRedirect,
 });
-
-function InboxRoute() {
-  return <InboxScreen />;
-}

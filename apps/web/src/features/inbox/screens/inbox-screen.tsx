@@ -57,10 +57,7 @@ export function InboxScreen() {
 
 function InboxSkeleton() {
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-6">
-        <Skeleton className="h-8 w-20" />
-      </div>
+    <div>
       <div className="space-y-1">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="border-b py-3 last:border-b-0">

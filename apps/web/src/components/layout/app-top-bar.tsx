@@ -3,6 +3,7 @@ import { Button } from "@vita-os/ui/components/button";
 import { Kbd } from "@vita-os/ui/components/kbd";
 import { Inbox, Plus, Search } from "lucide-react";
 
+import { inboxSurfaceTriggerProps } from "@/features/inbox/surface/inbox-surface-trigger";
 import { useTheme } from "@/features/theme/theme-provider";
 import { authClient } from "@/lib/auth-client";
 import { isApplePlatform } from "@/lib/platform";
@@ -14,14 +15,16 @@ import { UserMenu } from "./user-menu";
 
 interface AppTopBarProps {
   taskCount: number | undefined;
-  inboxActive: boolean;
+  inboxOpen: boolean;
+  onToggleInbox: () => void;
   onNewTask: () => void;
   onOpenPalette: () => void;
 }
 
 export function AppTopBar({
   taskCount,
-  inboxActive,
+  inboxOpen,
+  onToggleInbox,
   onNewTask,
   onOpenPalette,
 }: AppTopBarProps) {
@@ -88,12 +91,15 @@ export function AppTopBar({
               Q
             </Kbd>
           </Button>
-          <Link
-            to="/inbox"
+          <button
+            type="button"
             aria-label="Inbox"
+            aria-expanded={inboxOpen}
+            {...inboxSurfaceTriggerProps}
+            onClick={onToggleInbox}
             className={cn(
               "relative hidden size-8 items-center justify-center rounded-md transition-colors md:flex",
-              inboxActive
+              inboxOpen
                 ? "bg-muted text-foreground"
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
             )}
@@ -102,7 +108,7 @@ export function AppTopBar({
             <span className="absolute -top-1 -right-1">
               <InboxTaskCountBadge taskCount={taskCount} />
             </span>
-          </Link>
+          </button>
           <UserMenu
             user={session?.user}
             theme={theme}

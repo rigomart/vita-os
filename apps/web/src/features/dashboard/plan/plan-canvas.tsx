@@ -25,6 +25,7 @@ import type {
   DashboardThread,
 } from "@/features/dashboard/components/dashboard-model";
 
+import { useInboxSurface } from "@/features/inbox/surface/use-inbox-surface";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import type { SlotDropData } from "./plan-axis";
@@ -98,6 +99,7 @@ export function PlanCanvas({
 }) {
   const now = currentDate;
   const navigate = useNavigate();
+  const inboxSurface = useInboxSurface();
   const { planTask, planThread } = planActions;
 
   const [density, setDensity] = useState<Density>("comfortable");
@@ -195,7 +197,7 @@ export function PlanCanvas({
   function openItem(item: PlanItem) {
     // Tasks have no rail of their own; the Inbox is where a Task is handled.
     if (item.kind === "task") {
-      void navigate({ to: "/inbox" });
+      inboxSurface.open();
       return;
     }
     if (item.slug == null) return;

@@ -27,6 +27,7 @@ interface CommandPaletteProps {
   onNewTask: () => void;
   onNewThread: () => void;
   onNewArea: () => void;
+  onOpenInbox: () => void;
 }
 
 export function CommandPalette({
@@ -35,6 +36,7 @@ export function CommandPalette({
   onNewTask,
   onNewThread,
   onNewArea,
+  onOpenInbox,
 }: CommandPaletteProps) {
   const navigate = useNavigate();
   // The palette is mounted only while it is open, so these subscriptions live
@@ -95,7 +97,7 @@ export function CommandPalette({
             <LayoutDashboard />
             Dashboard
           </CommandItem>
-          <CommandItem onSelect={() => run(() => navigate({ to: "/inbox" }))}>
+          <CommandItem onSelect={() => run(onOpenInbox)}>
             <Inbox />
             Inbox
           </CommandItem>

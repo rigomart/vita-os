@@ -1,16 +1,13 @@
 import type { ReactNode } from "react";
 
 import { api } from "@convex/_generated/api";
-import {
-  useLocation,
-  useMatch,
-  useNavigate,
-  useSearch,
-} from "@tanstack/react-router";
+import { useMatch, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useState } from "react";
 
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
+import { InboxSurface } from "@/features/inbox/surface/inbox-surface";
+import { useInboxSurface } from "@/features/inbox/surface/use-inbox-surface";
 import { useCommandPaletteShortcut } from "@/features/navigation/use-command-palette-shortcut";
 import { useCreateDialogs } from "@/features/navigation/use-create-dialogs";
 import { useGlobalNewTaskShortcut } from "@/features/navigation/use-global-new-task-shortcut";
@@ -25,10 +22,10 @@ import { MobileTabBar } from "./mobile-tab-bar";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const taskCount = useQuery(api.tasks.count);
-  const { pathname } = useLocation();
   const navigate = useNavigate();
   const createTask = useCreateTask();
   const dialogs = useCreateDialogs();
+  const inbox = useInboxSurface();
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   // The area list is only read by the create-thread dialog here; the palette
@@ -111,7 +108,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-svh min-w-0 flex-1 flex-col">
         <AppTopBar
           taskCount={taskCount}
-          inboxActive={pathname === "/inbox"}
+          inboxOpen={inbox.isOpen}
+          onToggleInbox={inbox.toggle}
           onNewTask={dialogs.openNewTask}
           onOpenPalette={() => setPaletteOpen(true)}
         />
@@ -120,10 +118,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
         <MobileTabBar
           taskCount={taskCount}
+          inboxOpen={inbox.isOpen}
+          onToggleInbox={inbox.toggle}
           onNewTask={dialogs.openNewTask}
           onOpenPalette={() => setPaletteOpen(true)}
         />
       </div>
+      <InboxSurface />
       {openThreadSlug !== undefined && (
         <ThreadDetailView
           threadSlug={openThreadSlug}
@@ -142,6 +143,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           onNewTask={dialogs.openNewTask}
           onNewThread={() => dialogs.openCreateThread()}
           onNewArea={dialogs.openCreateArea}
+          onOpenInbox={inbox.open}
         />
       )}
 
