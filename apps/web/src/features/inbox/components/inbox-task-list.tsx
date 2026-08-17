@@ -60,20 +60,18 @@ export function InboxTaskList({
   return (
     <div>
       {/* The surface names the Inbox in its own header; this line only carries
-          the open count and today's date. */}
-      <header
-        className={cn(
-          "flex items-center justify-between gap-3",
-          compact ? "mb-2" : "mb-3",
-        )}
-      >
-        <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-          {openCount}
-        </span>
-        <p className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
-          {format(new Date(now), "EEEE, MMMM d")}
-        </p>
-      </header>
+          the open count and today's date, and the compact surface leaves both
+          to the chrome badge. */}
+      {!compact && (
+        <header className="mb-3 flex items-center justify-between gap-3">
+          <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+            {openCount}
+          </span>
+          <p className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
+            {format(new Date(now), "EEEE, MMMM d")}
+          </p>
+        </header>
+      )}
 
       <div className={cn("flex flex-col", compact ? "gap-4" : "gap-6")}>
         {openCount === 0 ? (
