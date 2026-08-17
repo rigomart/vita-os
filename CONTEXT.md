@@ -16,6 +16,10 @@ _Avoid_: Template, default category, fixed category.
 The user's manual judgment on an **Area**: `healthy | needs_attention | critical`.
 _Avoid_: Health status, score, rating, traffic light.
 
+**Standard**:
+The user's written description of what a healthy state looks like for an **Area**: the reference against which **Condition** is judged.
+_Avoid_: Goal, target, KPI, checklist, definition of done.
+
 **Area Icon**:
 A user-chosen visual marker that helps identify an **Area**.
 _Avoid_: Status icon, condition icon.
@@ -77,7 +81,7 @@ The single view for all visible **Tasks**, with **Open Tasks** first in a flat a
 _Avoid_: Backlog.
 
 **Dashboard**:
-The main awareness surface that starts with **Life Areas**, then offers an **Overview** of **Open Threads** and a **Plan** that lays them out on the days their **Follow-ups** fall on. It also lightly surfaces **Open Tasks** and recent **Activity Log Entries**.
+The main awareness surface that starts with a dense **Condition** strip of **Life Areas**, then lays every **Open Thread** out on a single **Plan** over the days their **Follow-ups** fall on. It also lightly surfaces **Open Tasks** through a pinned **Inbox** lane.
 _Avoid_: Task list, project board, backlog.
 
 ## Relationships
@@ -122,12 +126,13 @@ _Avoid_: Task list, project board, backlog.
 - The Dashboard has a single view: **Plan**. There are no Dashboard tabs.
 - **Life Areas** appear as one dense **Condition** strip above the canvas, grouped Critical, Needs Attention, then Healthy with the user's Area order preserved inside each group. Critical and Needs Attention Areas are labeled links to their Area page; Healthy Areas are icon-only links behind a steady tally. When nothing needs attention the strip says all areas are steady.
 - **Plan** lays every **Area** out as a lane over one continuous day axis, worst **Condition** first, with a pinned **Inbox** lane for **Tasks**. A lane's chips sit on the exact day of their **Follow-up** or **When**; days nothing is planned on compress to ticks. Items already past dock in a waiting bay at the lane's left edge, and undated items in a No Date bay pinned right.
-- A lane's header links to its **Area** page, and a lane whose **Area** is not Healthy always shows its **Condition**, even when empty. The pinned **Inbox** lane is the Inbox's only embedded Dashboard surface; its open count is visible in the canvas summary without scrolling.
+- A lane's header opens the **Area** Quick Panel — the Area's **Condition**, its **Standard** as read-only text, a new **Thread** scoped to that Area, and a link to the Area page — and a lane whose **Area** is not Healthy always shows its **Condition**, even when empty. The pinned **Inbox** lane is the Inbox's only embedded Dashboard surface; its open count is visible in the canvas summary without scrolling.
 - On small screens the Dashboard shows **Plan** as a vertical schedule instead of the canvas; the **Inbox** is reached by summoning it, not through a Dashboard preview.
 - Dragging on **Plan** writes directly: along a lane or onto the day ruler sets that item's **Follow-up** (**Thread**) or **When** (**Task**) to the exact day, the No Date bay clears it, and across lanes moves the **Thread** to that **Area**. The past is never a drop target, **Tasks** stay in the **Inbox**, and **Threads** stay in **Areas**.
 - **Plan** does not introduce a separate schedule or priority model. Rescheduling continues to mean changing the Thread's existing **Follow-up**, so every change is an ordinary edit with the usual **Activity Log** entries and is reversible by dragging back.
 - Opening a **Thread** from any surface — **Dashboard**, **Inbox**, the palette, or an **Area** inventory — shows its detail pane in place over the current page rather than navigating to the **Area** page; closing the pane returns the user to where they were. The in-place behavior is recorded in ADR 0007.
 - Opening the **Inbox** from any surface — the top bar, the palette, a **Plan** Task chip, or the mobile tab — summons it in place over the current page rather than navigating; closing returns the user exactly where they were. `/inbox` survives as a deep link that lands on the **Dashboard** with the Inbox open over it. The in-place behavior and the chosen form are recorded in ADR 0011.
+- Acting on an **Area** from the **Dashboard** — setting its **Condition**, reading its **Standard**, capturing a **Thread** scoped to it — happens in the summoned Area Quick Panel, and the command palette offers the same actions per Area. The top-bar strip and the area status bar stay pure navigation, and **Condition** changes are still recorded nowhere. The panel, its action set, and its limits are recorded in ADR 0012.
 
 ## Task Handling
 

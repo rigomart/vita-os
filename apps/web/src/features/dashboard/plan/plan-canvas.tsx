@@ -87,12 +87,15 @@ interface PendingLater {
 export function PlanCanvas({
   areas,
   currentDate,
+  onNewThreadInArea,
   planActions,
   tasks,
   threads,
 }: {
   areas: DashboardArea[];
   currentDate: number;
+  /** Capture from a lane header's Quick Panel; the host owns the dialog. */
+  onNewThreadInArea: (areaId: string) => void;
   planActions: PlanActions;
   tasks: DashboardInboxTask[];
   threads: DashboardThread[];
@@ -321,7 +324,15 @@ export function PlanCanvas({
   const draggingItem = drag && items.find((item) => item.id === drag.itemId);
   const dropPlan = drag ? planDrop(drag, axis, areaName) : null;
 
-  const chrome = { axis, density, drag, narrow, now, onOpen: openItem };
+  const chrome = {
+    axis,
+    density,
+    drag,
+    narrow,
+    now,
+    onNewThreadInArea,
+    onOpen: openItem,
+  };
 
   return (
     <section aria-label="Plan" className="flex flex-col gap-3">

@@ -23,6 +23,20 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
 }));
 
+// Base UI's popover measures and observes; jsdom provides neither.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
+vi.mock("convex/react", () => ({
+  useMutation: () => {
+    const mutation = vi.fn();
+    return Object.assign(mutation, { withOptimisticUpdate: () => mutation });
+  },
+}));
+
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     children,
@@ -119,18 +133,29 @@ const tasks: DashboardInboxTask[] = [
 
 function renderCanvas() {
   const planActions = { planTask: vi.fn(), planThread: vi.fn() };
+  const onNewThreadInArea = vi.fn();
   return {
     ...render(
       <PlanCanvas
         areas={areas}
         currentDate={now}
+        onNewThreadInArea={onNewThreadInArea}
         planActions={planActions}
         tasks={tasks}
         threads={threads}
       />,
     ),
+    onNewThreadInArea,
     planActions,
   };
+}
+
+/**
+ * An Area's filter chip. Its name also appears on the lane header, which is a
+ * button of its own now; only the chip carries a pressed state.
+ */
+function filterChip(name: RegExp) {
+  return screen.getByRole("button", { name, pressed: false });
 }
 
 /* -------------------------------------------------------------------- dnd -- */
@@ -263,15 +288,18 @@ describe("PlanCanvas", () => {
     expect(screen.getAllByText("No Next Move")).toHaveLength(2);
   });
 
-  it("links each Area lane header to its Area page, Inbox staying plain", () => {
+  it("makes every Area lane header its Quick Panel trigger, Inbox staying plain", () => {
     renderCanvas();
 
     expect(
-      screen.getByRole("link", { name: "Open Family Health" }),
-    ).toHaveAttribute("href", "/family-health");
-    expect(screen.getByRole("link", { name: "Open Home" })).toHaveAttribute(
-      "href",
-      "/home",
+      screen.getByRole("button", { name: "Area panel for Family Health" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Area panel for Home" }),
+    ).toBeVisible();
+    // The Inbox lane is not an Area: it has no panel and no link of its own.
+    expect(screen.queryByRole("button", { name: /Area panel for Inbox/ })).toBe(
+      null,
     );
     expect(screen.queryByRole("link", { name: /Inbox/ })).toBeNull();
   });
@@ -279,9 +307,30 @@ describe("PlanCanvas", () => {
   it("declares a non-healthy lane's condition even when it is empty", () => {
     renderCanvas();
 
-    const header = screen.getByRole("link", { name: "Open Finance" });
+    const header = screen.getByRole("button", {
+      name: "Area panel for Finance",
+    });
     expect(within(header).getByText("Critical")).toBeVisible();
     expect(within(header).getByText(/No open Threads/)).toBeVisible();
+  });
+
+  it("opens the Area's panel from its lane header and captures into it", async () => {
+    const user = userEvent.setup();
+    const { onNewThreadInArea } = renderCanvas();
+
+    await user.click(
+      screen.getByRole("button", { name: "Area panel for Family Health" }),
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Open Family Health" }),
+    ).toHaveAttribute("href", "/family-health");
+
+    await user.click(
+      screen.getByRole("button", { name: "New Thread in Family Health" }),
+    );
+
+    expect(onNewThreadInArea).toHaveBeenCalledWith("health");
   });
 
   it("opens a Thread in place and summons the Inbox for a Task", async () => {
@@ -315,7 +364,7 @@ describe("PlanCanvas", () => {
     const user = userEvent.setup();
     renderCanvas();
 
-    await user.click(screen.getByRole("button", { name: /Family Health/ }));
+    await user.click(filterChip(/Family Health/));
 
     expect(screen.getByText("Dad's cardiologist")).toBeVisible();
     expect(screen.queryByText("Kitchen faucet")).toBeNull();
@@ -452,6 +501,7 @@ describe("PlanCanvas", () => {
       <PlanCanvas
         areas={areas}
         currentDate={now}
+        onNewThreadInArea={vi.fn()}
         planActions={planActions}
         tasks={tasks}
         threads={threads.filter((thread) => thread.id !== "t2")}
@@ -531,7 +581,7 @@ describe("PlanCanvas", () => {
     const user = userEvent.setup();
     renderCanvas();
 
-    await user.click(screen.getByRole("button", { name: /Family Health/ }));
+    await user.click(filterChip(/Family Health/));
 
     const bucket = screen.getByRole("group", { name: "No date" });
     expect(within(bucket).queryByText("Garage clear-out")).toBeNull();
@@ -574,6 +624,7 @@ describe("PlanCanvas", () => {
       <PlanCanvas
         areas={areas}
         currentDate={clock}
+        onNewThreadInArea={vi.fn()}
         planActions={{ planTask: vi.fn(), planThread: vi.fn() }}
         tasks={[]}
         threads={laneThreads}

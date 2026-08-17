@@ -1,9 +1,9 @@
 import { useDroppable } from "@dnd-kit/core";
-import { Link } from "@tanstack/react-router";
 import { cn } from "@vita-os/ui/lib/utils";
 import { CircleDashed, CornerDownRight, Inbox } from "lucide-react";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
+import { AreaQuickPanel } from "@/features/areas/components/area-quick-panel";
 import {
   conditionIcons,
   conditionTextClassName,
@@ -38,6 +38,8 @@ export interface LaneChrome {
   /** Below the md breakpoint: the header column stacks icon over name. */
   narrow: boolean;
   now: number;
+  /** Capture scoped to one Area, from its lane header's Quick Panel. */
+  onNewThreadInArea: (areaId: string) => void;
   onOpen: (item: PlanItem) => void;
 }
 
@@ -89,6 +91,7 @@ export function LaneRow({
           incoming={incoming}
           lane={lane}
           narrow={chrome.narrow}
+          onNewThreadInArea={chrome.onNewThreadInArea}
         />
       )}
 
@@ -148,19 +151,24 @@ function Tint({ className }: { className: string }) {
 /* --------------------------------------------------------------- headers -- */
 
 /**
- * The whole header is a link to the Area page. Headers are never drag sources
- * or drop targets — only chips are draggables — so navigation cannot collide
- * with dnd-kit: a drag passing over the header keeps working, and a plain
- * click navigates.
+ * The whole header is the Area's Quick Panel trigger: the lane is where the
+ * Area is already on screen, so acting on it — Condition, capture, the way
+ * through to its page — happens here rather than a navigation away.
+ *
+ * Headers are never drag sources or drop targets — only chips are draggables —
+ * so opening the panel cannot collide with dnd-kit: a drag passing over the
+ * header keeps working, and a plain click opens the panel.
  */
 function AreaLaneHeader({
   incoming,
   lane,
   narrow,
+  onNewThreadInArea,
 }: {
   incoming: boolean;
   lane: Lane;
   narrow: boolean;
+  onNewThreadInArea: (areaId: string) => void;
 }) {
   const area = lane.area!;
   const ConditionIcon = conditionIcons[area.condition];
@@ -178,16 +186,21 @@ function AreaLaneHeader({
           conditionRailTone[area.condition],
         )}
       />
-      <Link
-        to="/$areaSlug"
-        params={{ areaSlug: area.slug }}
-        aria-label={`Open ${area.name}`}
-        className={cn(
-          "group/lane relative outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-          narrow
-            ? "flex flex-col gap-1.5 py-2 pr-2 pl-2.5"
-            : "flex items-start gap-2.5 py-2 pr-3 pl-3.5",
-        )}
+      <AreaQuickPanel
+        area={area}
+        onNewThread={onNewThreadInArea}
+        trigger={
+          <button
+            type="button"
+            aria-label={`Area panel for ${area.name}`}
+            className={cn(
+              "group/lane relative w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+              narrow
+                ? "flex flex-col gap-1.5 py-2 pr-2 pl-2.5"
+                : "flex items-start gap-2.5 py-2 pr-3 pl-3.5",
+            )}
+          />
+        }
       >
         {narrow ? (
           <>
@@ -251,7 +264,7 @@ function AreaLaneHeader({
             </div>
           </>
         )}
-      </Link>
+      </AreaQuickPanel>
     </div>
   );
 }

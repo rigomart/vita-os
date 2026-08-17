@@ -1,7 +1,6 @@
 import type { AreaIcon as AreaIconName } from "@convex/lib/areaIcons";
 import type { ProjectedArea } from "@convex/lib/validators";
 
-import { CONDITION_OPTIONS, isCondition } from "@convex/lib/condition";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,40 +25,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@vita-os/ui/components/popover";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@vita-os/ui/components/select";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { Ellipsis, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { BrandHexagon } from "@/components/ui/brand-hexagon";
-import {
-  conditionIcons,
-  conditionPillClassName,
-  conditionTextClassName,
-} from "@/features/areas/condition-presentation";
-import { cn } from "@/lib/utils";
 
+import { AreaConditionSelect } from "./area-condition-select";
 import { AreaIcon } from "./area-icon";
 import { AreaIconPicker } from "./area-icon-picker";
-
-function ConditionStateIcon({
-  condition,
-  className,
-}: {
-  condition: ProjectedArea["condition"];
-  className?: string;
-}) {
-  const Icon = conditionIcons[condition];
-  return <Icon aria-hidden className={className} />;
-}
 
 interface AreaHeaderProps {
   area: ProjectedArea;
@@ -135,45 +110,11 @@ export function AreaHeader({
         }
         actions={
           <>
-            <Select
-              items={CONDITION_OPTIONS}
-              value={area.condition}
-              onValueChange={(value) => {
-                if (isCondition(value)) onConditionChange(value);
-              }}
-            >
-              <SelectTrigger
-                className={cn(
-                  "ml-1 h-7 w-auto gap-1.5 border px-2.5 text-xs font-medium [&_svg]:text-current",
-                  conditionPillClassName[area.condition],
-                )}
-                aria-label="Area condition"
-              >
-                <ConditionStateIcon
-                  condition={area.condition}
-                  className="size-3.5"
-                />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {CONDITION_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <span className="flex items-center gap-2">
-                        <ConditionStateIcon
-                          condition={option.value}
-                          className={cn(
-                            "size-4",
-                            conditionTextClassName[option.value],
-                          )}
-                        />
-                        {option.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <AreaConditionSelect
+              className="ml-1"
+              condition={area.condition}
+              onConditionChange={onConditionChange}
+            />
 
             <DropdownMenu>
               <DropdownMenuTrigger
