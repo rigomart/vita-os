@@ -11,7 +11,10 @@ import { ProcessTaskDialogContainer } from "@/features/tasks/process-task/proces
 
 const DONE_PAGE_SIZE = 10;
 
-export function InboxScreen() {
+// PROTOTYPE (issue #291): remove `embedded` — it drops the page-level layout
+// (max-width centering, h1 header, bottom padding) so the screen can be mounted
+// whole inside a summoned surface.
+export function InboxScreen({ embedded = false }: { embedded?: boolean } = {}) {
   const tasks = useQuery(api.tasks.list);
   const {
     results: doneTasks,
@@ -27,12 +30,13 @@ export function InboxScreen() {
   >(undefined);
 
   if (tasks === undefined) {
-    return <InboxSkeleton />;
+    return <InboxSkeleton embedded={embedded} />;
   }
 
   return (
     <>
       <InboxTaskList
+        embedded={embedded}
         tasks={tasks}
         onProcess={setProcessingTask}
         doneTasks={doneTasks}
@@ -55,9 +59,10 @@ export function InboxScreen() {
   );
 }
 
-function InboxSkeleton() {
+function InboxSkeleton({ embedded = false }: { embedded?: boolean }) {
   return (
-    <div className="mx-auto max-w-3xl">
+    // PROTOTYPE (issue #291): revert to the plain `mx-auto max-w-3xl` wrapper.
+    <div className={embedded ? "" : "mx-auto max-w-3xl"}>
       <div className="mb-6">
         <Skeleton className="h-8 w-20" />
       </div>

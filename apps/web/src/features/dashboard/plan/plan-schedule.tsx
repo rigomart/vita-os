@@ -37,6 +37,8 @@ import type {
   DashboardThread,
 } from "@/features/dashboard/components/dashboard-model";
 
+// PROTOTYPE (issue #291): remove — summon instead of navigate.
+import { useInboxPrototype } from "@/components/layout/prototype/inbox-prototype-context";
 import { AreaIcon } from "@/features/areas/components/area-icon";
 import {
   conditionIcons,
@@ -91,6 +93,8 @@ export function PlanSchedule({
 }) {
   const now = currentDate;
   const navigate = useNavigate();
+  // PROTOTYPE (issue #291): remove.
+  const inboxPrototype = useInboxPrototype();
   const { planTask, planThread } = planActions;
 
   const [activeAreas, setActiveAreas] = useState<ReadonlySet<string> | null>(
@@ -199,6 +203,11 @@ export function PlanSchedule({
   function openItem(item: PlanItem) {
     // Tasks have no rail of their own; the Inbox is where a Task is handled.
     if (item.kind === "task") {
+      // PROTOTYPE (issue #291): remove — summon instead of navigate.
+      if (inboxPrototype.summons) {
+        inboxPrototype.open();
+        return;
+      }
       void navigate({ to: "/inbox" });
       return;
     }

@@ -26,6 +26,8 @@ interface InboxTaskListProps {
   canLoadMoreDone?: boolean;
   isLoadingMoreDone?: boolean;
   onLoadMoreDone?: () => void;
+  /** PROTOTYPE (issue #291): remove — compact layout for a summoned surface. */
+  embedded?: boolean;
 }
 
 export function InboxTaskList({
@@ -36,6 +38,8 @@ export function InboxTaskList({
   canLoadMoreDone = false,
   isLoadingMoreDone = false,
   onLoadMoreDone,
+  // PROTOTYPE (issue #291): remove.
+  embedded = false,
 }: InboxTaskListProps) {
   const now = useAttentionClock();
   const groups = groupTasksByAttention(tasks, now);
@@ -53,20 +57,32 @@ export function InboxTaskList({
   const showCompleted = doneTasks.length > 0 || !isDoneExhausted;
 
   return (
-    <div className="mx-auto max-w-4xl pb-16">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Inbox
-          </h1>
-          <span className="ml-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+    // PROTOTYPE (issue #291): revert to `mx-auto max-w-4xl pb-16` + the h1 header.
+    <div className={embedded ? "" : "mx-auto max-w-4xl pb-16"}>
+      {embedded ? (
+        <header className="mb-3 flex items-center justify-between gap-3">
+          <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
             {openCount}
           </span>
-        </div>
-        <p className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
-          {format(new Date(now), "EEEE, MMMM d")}
-        </p>
-      </header>
+          <p className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
+            {format(new Date(now), "EEEE, MMMM d")}
+          </p>
+        </header>
+      ) : (
+        <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <h1 className="font-heading text-2xl font-semibold tracking-tight">
+              Inbox
+            </h1>
+            <span className="ml-1 rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+              {openCount}
+            </span>
+          </div>
+          <p className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
+            {format(new Date(now), "EEEE, MMMM d")}
+          </p>
+        </header>
+      )}
 
       <div className="flex flex-col gap-6">
         {openCount === 0 ? (

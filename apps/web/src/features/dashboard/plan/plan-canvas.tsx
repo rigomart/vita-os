@@ -25,6 +25,8 @@ import type {
   DashboardThread,
 } from "@/features/dashboard/components/dashboard-model";
 
+// PROTOTYPE (issue #291): remove — summon instead of navigate.
+import { useInboxPrototype } from "@/components/layout/prototype/inbox-prototype-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import type { SlotDropData } from "./plan-axis";
@@ -98,6 +100,8 @@ export function PlanCanvas({
 }) {
   const now = currentDate;
   const navigate = useNavigate();
+  // PROTOTYPE (issue #291): remove.
+  const inboxPrototype = useInboxPrototype();
   const { planTask, planThread } = planActions;
 
   const [density, setDensity] = useState<Density>("comfortable");
@@ -195,6 +199,11 @@ export function PlanCanvas({
   function openItem(item: PlanItem) {
     // Tasks have no rail of their own; the Inbox is where a Task is handled.
     if (item.kind === "task") {
+      // PROTOTYPE (issue #291): remove — summon instead of navigate.
+      if (inboxPrototype.summons) {
+        inboxPrototype.open();
+        return;
+      }
       void navigate({ to: "/inbox" });
       return;
     }
