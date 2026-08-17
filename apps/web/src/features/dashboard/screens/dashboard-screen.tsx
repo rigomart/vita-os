@@ -5,10 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useMemo, useState } from "react";
 
-// PROTOTYPE — remove the switcher mount with the quick-panel-prototype dir.
-import { PrototypeSwitcher } from "@/components/prototype/prototype-switcher";
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
-import { PANEL_VARIANTS } from "@/features/areas/components/quick-panel-prototype/prototype";
 import {
   toDashboardArea,
   toDashboardTask,
@@ -77,10 +74,6 @@ export function DashboardScreen() {
           onNewThreadInArea={setNewThreadAreaId}
           planActions={planActions}
         />
-      )}
-
-      {import.meta.env.DEV && !import.meta.env.TEST && (
-        <PrototypeSwitcher variants={PANEL_VARIANTS} />
       )}
 
       <CreateAreaDialog

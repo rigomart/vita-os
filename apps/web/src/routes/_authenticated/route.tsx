@@ -8,18 +8,13 @@ import { AppShell } from "@/components/layout/app-shell";
 export const Route = createFileRoute("/_authenticated")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { thread?: string; inbox?: true; variant?: string } => ({
+  ): { thread?: string; inbox?: true } => ({
     thread:
       typeof search.thread === "string" && search.thread.length > 0
         ? search.thread
         : undefined,
     // `?inbox=true` summons the Inbox over whatever page is showing.
     inbox: search.inbox === true || search.inbox === "true" ? true : undefined,
-    // PROTOTYPE — `?variant=` drives throwaway UI variants; remove with them.
-    variant:
-      import.meta.env.DEV && typeof search.variant === "string"
-        ? search.variant
-        : undefined,
   }),
   errorComponent: RouteErrorFallback,
   component: AuthenticatedLayout,

@@ -629,12 +629,6 @@ export function waitingLabel(date: number, now: number): string {
 /* ---------------------------------------------------------------- tokens -- */
 
 /** Short condition wording, so the lane subtitle stays on one line. */
-export const conditionShort: Record<Condition, string> = {
-  critical: "Critical",
-  needs_attention: "Needs you",
-  healthy: "Healthy",
-};
-
 export const conditionIconTone: Record<Condition, string> = {
   critical: "bg-condition-critical text-white",
   needs_attention: "bg-condition-attention/15 text-condition-attention",

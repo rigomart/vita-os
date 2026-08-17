@@ -322,8 +322,9 @@ describe("PlanCanvas", () => {
       screen.getByRole("button", { name: "Area panel for Family Health" }),
     );
 
+    // The panel's title links through to the Area page.
     expect(
-      await screen.findByRole("link", { name: "Open Family Health" }),
+      await screen.findByRole("link", { name: "Family Health" }),
     ).toHaveAttribute("href", "/family-health");
 
     await user.click(

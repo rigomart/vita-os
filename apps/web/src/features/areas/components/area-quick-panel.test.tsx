@@ -104,19 +104,24 @@ describe("AreaQuickPanel", () => {
     await user.click(openTrigger());
 
     expect(
-      await screen.findByRole("combobox", {
+      await screen.findByRole("radiogroup", {
         name: "Condition for Family Health",
       }),
-    ).toHaveTextContent("Needs attention");
+    ).toBeVisible();
+    expect(
+      screen.getByRole("radio", { name: "Needs attention" }),
+    ).toBeChecked();
     expect(
       screen.getByText("Everyone seen once a year, nothing chased twice."),
     ).toBeVisible();
     expect(
       screen.getByRole("button", { name: "New Thread in Family Health" }),
     ).toBeVisible();
-    expect(
-      screen.getByRole("link", { name: "Open Family Health" }),
-    ).toHaveAttribute("href", "/family-health");
+    // The title is the way through to the page.
+    expect(screen.getByRole("link", { name: "Family Health" })).toHaveAttribute(
+      "href",
+      "/family-health",
+    );
   });
 
   it("opens from the keyboard on the focused trigger", async () => {
@@ -145,12 +150,7 @@ describe("AreaQuickPanel", () => {
     renderPanel();
 
     await user.click(openTrigger());
-    await user.click(
-      await screen.findByRole("combobox", {
-        name: "Condition for Family Health",
-      }),
-    );
-    await user.click(await screen.findByRole("option", { name: "Critical" }));
+    await user.click(await screen.findByRole("radio", { name: "Critical" }));
 
     await waitFor(() =>
       expect(mocks.mutation).toHaveBeenCalledWith("areas:update", {

@@ -27,9 +27,10 @@ import {
   conditionIconTone,
   conditionLaneTint,
   conditionRailTone,
-  conditionShort,
   INBOX_LANE_ID,
 } from "./plan-model";
+
+import { conditionShort } from "@/features/areas/condition-presentation";
 
 export interface LaneChrome {
   axis: Axis;

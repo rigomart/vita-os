@@ -1,3 +1,4 @@
+import type { Id } from "@convex/_generated/dataModel";
 import type { ReactNode } from "react";
 
 import { api } from "@convex/_generated/api";
@@ -141,7 +142,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           open
           onOpenChange={setPaletteOpen}
           onNewTask={dialogs.openNewTask}
-          onNewThread={() => dialogs.openCreateThread()}
+          // The palette's Area drill-in scopes the new Thread; the plain
+          // "New thread" row passes nothing and the picker stays unscoped.
+          onNewThread={(areaId) =>
+            dialogs.openCreateThread(areaId as Id<"areas"> | undefined)
+          }
           onNewArea={dialogs.openCreateArea}
           onOpenInbox={inbox.open}
         />
