@@ -21,15 +21,13 @@ import {
 } from "@/components/ui/command";
 import { AreaIcon } from "@/features/areas/components/area-icon";
 
-// PROTOTYPE (issue #291): remove — summon instead of navigate.
-import { useInboxPrototype } from "./prototype/inbox-prototype-context";
-
 interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onNewTask: () => void;
   onNewThread: () => void;
   onNewArea: () => void;
+  onOpenInbox: () => void;
 }
 
 export function CommandPalette({
@@ -38,10 +36,9 @@ export function CommandPalette({
   onNewTask,
   onNewThread,
   onNewArea,
+  onOpenInbox,
 }: CommandPaletteProps) {
   const navigate = useNavigate();
-  // PROTOTYPE (issue #291): remove.
-  const inboxPrototype = useInboxPrototype();
   // The palette is mounted only while it is open, so these subscriptions live
   // exactly as long as the surface that reads them.
   const areas = useQuery(api.areas.list, open ? {} : "skip");
@@ -100,16 +97,7 @@ export function CommandPalette({
             <LayoutDashboard />
             Dashboard
           </CommandItem>
-          {/* PROTOTYPE (issue #291): remove — summon instead of navigate. */}
-          <CommandItem
-            onSelect={() =>
-              run(() =>
-                inboxPrototype.summons
-                  ? inboxPrototype.open()
-                  : navigate({ to: "/inbox" }),
-              )
-            }
-          >
+          <CommandItem onSelect={() => run(onOpenInbox)}>
             <Inbox />
             Inbox
           </CommandItem>

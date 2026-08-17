@@ -1,3 +1,6 @@
+import type { ComponentProps } from "react";
+
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { render, screen } from "@/test/render-with-providers";
@@ -25,18 +28,45 @@ vi.mock("./top-bar-area-strip", () => ({
   TopBarAreaStrip: () => null,
 }));
 
-function renderTopBar() {
+function renderTopBar(props: Partial<ComponentProps<typeof AppTopBar>> = {}) {
   return render(
     <AppTopBar
       taskCount={0}
-      inboxActive={false}
+      inboxOpen={false}
+      onToggleInbox={vi.fn()}
       onNewTask={vi.fn()}
       onOpenPalette={vi.fn()}
+      {...props}
     />,
   );
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("AppTopBar Inbox trigger", () => {
+  it("summons the Inbox instead of navigating to a page", async () => {
+    const user = userEvent.setup();
+    const onToggleInbox = vi.fn();
+    renderTopBar({ onToggleInbox });
+
+    const trigger = screen.getByRole("button", { name: "Inbox" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(trigger);
+
+    expect(onToggleInbox).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("link", { name: "Inbox" })).toBeNull();
+  });
+
+  it("marks the trigger open while the surface is showing", () => {
+    renderTopBar({ inboxOpen: true });
+
+    expect(screen.getByRole("button", { name: "Inbox" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+});
 
 describe("AppTopBar palette hint", () => {
   it("spells the shortcut with Ctrl on a non-Apple platform", () => {

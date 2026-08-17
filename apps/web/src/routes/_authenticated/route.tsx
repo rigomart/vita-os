@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_authenticated")({
       typeof search.thread === "string" && search.thread.length > 0
         ? search.thread
         : undefined,
-    // PROTOTYPE (issue #291): remove — `?inbox=true` opens the summoned Inbox.
+    // `?inbox=true` summons the Inbox over whatever page is showing.
     inbox: search.inbox === true || search.inbox === "true" ? true : undefined,
   }),
   errorComponent: RouteErrorFallback,

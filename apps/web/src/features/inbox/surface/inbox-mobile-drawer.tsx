@@ -1,8 +1,3 @@
-// PROTOTYPE (issue #291) — THROWAWAY CODE, do not ship.
-//
-// Shared small-screen fallback for all three candidate forms: a bottom drawer
-// at 90dvh, matching the Thread detail drawer.
-
 import {
   Drawer,
   DrawerContent,
@@ -10,20 +5,32 @@ import {
   DrawerTitle,
 } from "@vita-os/ui/components/drawer";
 
-import { useDeferredRouteClose } from "@/features/threads/thread-detail/use-deferred-route-close";
-
 import { InboxSurfaceBody } from "./inbox-surface-body";
 
-export function InboxMobileDrawer({ onClosed }: { onClosed: () => void }) {
-  const { open, requestClose, handleOpenChange, completeOpenChange } =
-    useDeferredRouteClose(onClosed);
+interface InboxMobileDrawerProps {
+  /** False while the drawer animates out; it unmounts on `onExited`. */
+  open: boolean;
+  onClose: () => void;
+  onExited: () => void;
+}
 
+/** The phone-sized Inbox: a bottom drawer, matching the Thread detail drawer. */
+export function InboxMobileDrawer({
+  open,
+  onClose,
+  onExited,
+}: InboxMobileDrawerProps) {
   return (
     <Drawer
       open={open}
       direction="bottom"
-      onOpenChange={handleOpenChange}
-      onAnimationEnd={completeOpenChange}
+      autoFocus
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+      onAnimationEnd={(nextOpen) => {
+        if (!nextOpen) onExited();
+      }}
     >
       <DrawerContent
         className="h-[90dvh] max-h-[90dvh] p-0 before:inset-0 before:rounded-t-4xl data-[vaul-drawer-direction=bottom]:max-h-[90dvh]"
@@ -32,7 +39,7 @@ export function InboxMobileDrawer({ onClosed }: { onClosed: () => void }) {
             event.target === event.currentTarget &&
             event.currentTarget.dataset.state === "closed"
           ) {
-            completeOpenChange(false);
+            onExited();
           }
         }}
       >
@@ -41,7 +48,7 @@ export function InboxMobileDrawer({ onClosed }: { onClosed: () => void }) {
           Process the Tasks waiting in your Inbox.
         </DrawerDescription>
         <InboxSurfaceBody
-          onClose={requestClose}
+          onClose={onClose}
           className="pt-2"
           bodyClassName="pb-[calc(1rem+env(safe-area-inset-bottom))]"
         />

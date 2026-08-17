@@ -1,16 +1,13 @@
 import type { ReactNode } from "react";
 
 import { api } from "@convex/_generated/api";
-import {
-  useLocation,
-  useMatch,
-  useNavigate,
-  useSearch,
-} from "@tanstack/react-router";
+import { useMatch, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { useState } from "react";
 
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
+import { InboxSurface } from "@/features/inbox/surface/inbox-surface";
+import { useInboxSurface } from "@/features/inbox/surface/use-inbox-surface";
 import { useCommandPaletteShortcut } from "@/features/navigation/use-command-palette-shortcut";
 import { useCreateDialogs } from "@/features/navigation/use-create-dialogs";
 import { useGlobalNewTaskShortcut } from "@/features/navigation/use-global-new-task-shortcut";
@@ -22,23 +19,14 @@ import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread
 import { AppTopBar } from "./app-top-bar";
 import { CommandPalette } from "./command-palette";
 import { MobileTabBar } from "./mobile-tab-bar";
-// PROTOTYPE (issue #291): remove — summoned Inbox forms.
-import { InboxPrototypeProvider } from "./prototype/inbox-prototype-context";
-import {
-  InboxPrototypeSwitcher,
-  useInboxFormVariant,
-} from "./prototype/inbox-prototype-switcher";
-import { InboxSurface } from "./prototype/inbox-surface";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const taskCount = useQuery(api.tasks.count);
-  const { pathname } = useLocation();
   const navigate = useNavigate();
   const createTask = useCreateTask();
   const dialogs = useCreateDialogs();
+  const inbox = useInboxSurface();
   const [paletteOpen, setPaletteOpen] = useState(false);
-  // PROTOTYPE (issue #291): remove — which Inbox form is being evaluated.
-  const [inboxForm, setInboxForm] = useInboxFormVariant();
 
   // The area list is only read by the create-thread dialog here; the palette
   // subscribes for itself while it is mounted.
@@ -113,84 +101,77 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    // PROTOTYPE (issue #291): remove — provider + surface + switcher.
-    <InboxPrototypeProvider variant={inboxForm}>
-      <div className="flex min-h-svh">
-        {/* The whole chrome column — topbar included — sits beside the thread
+    <div className="flex min-h-svh">
+      {/* The whole chrome column — topbar included — sits beside the thread
           rail's width spacer, so an open rail pushes the topbar too instead
           of sliding over it. */}
-        <div className="flex min-h-svh min-w-0 flex-1 flex-col">
-          <AppTopBar
-            taskCount={taskCount}
-            inboxActive={pathname === "/inbox"}
-            onNewTask={dialogs.openNewTask}
-            onOpenPalette={() => setPaletteOpen(true)}
-          />
-          <main className="w-full min-w-0 flex-1 px-4 pt-3 pb-24 md:pb-8">
-            {children}
-          </main>
-          <MobileTabBar
-            taskCount={taskCount}
-            onNewTask={dialogs.openNewTask}
-            onOpenPalette={() => setPaletteOpen(true)}
-          />
-        </div>
-        {/* PROTOTYPE (issue #291): remove — sibling of the chrome column so the
-          rail form's spacer participates in the root flex row, and placed
-          before the Thread rail so the two rails sit side by side. */}
-        <InboxSurface threadOpen={openThreadSlug !== undefined} />
-        {openThreadSlug !== undefined && (
-          <ThreadDetailView
-            threadSlug={openThreadSlug}
-            areaSlug={isSearchSource ? undefined : routeAreaSlug}
-            onClose={closeThreadPane}
-            onThreadLocationChange={handleThreadLocationChange}
-          />
-        )}
-
-        {/* Mounted on demand: each surface holds form state and subscriptions
-          that should not exist — or survive a close — while it is hidden. */}
-        {paletteOpen && (
-          <CommandPalette
-            open
-            onOpenChange={setPaletteOpen}
-            onNewTask={dialogs.openNewTask}
-            onNewThread={() => dialogs.openCreateThread()}
-            onNewArea={dialogs.openCreateArea}
-          />
-        )}
-
-        {/* Also held until the gated list resolves — never an empty picker. */}
-        {dialogs.showCreateThread && createThreadAreas !== undefined && (
-          <CreateThreadDialog
-            open
-            onOpenChange={dialogs.setShowCreateThread}
-            areas={createThreadAreas}
-            defaultAreaId={dialogs.createForAreaId}
-            onCreated={({ slug }) => {
-              openThreadInPlace(slug);
-            }}
-          />
-        )}
-        {dialogs.showNewTask && (
-          <NewTaskDialog
-            open
-            onOpenChange={dialogs.setShowNewTask}
-            onSubmit={async (value) => {
-              await createTask(value);
-              dialogs.setShowNewTask(false);
-            }}
-          />
-        )}
-        {dialogs.showCreateArea && (
-          <CreateAreaDialog open onOpenChange={dialogs.setShowCreateArea} />
-        )}
-        {/* PROTOTYPE (issue #291): remove — form switcher pill. */}
-        <InboxPrototypeSwitcher
-          variant={inboxForm}
-          onVariantChange={setInboxForm}
+      <div className="flex min-h-svh min-w-0 flex-1 flex-col">
+        <AppTopBar
+          taskCount={taskCount}
+          inboxOpen={inbox.isOpen}
+          onToggleInbox={inbox.toggle}
+          onNewTask={dialogs.openNewTask}
+          onOpenPalette={() => setPaletteOpen(true)}
+        />
+        <main className="w-full min-w-0 flex-1 px-4 pt-3 pb-24 md:pb-8">
+          {children}
+        </main>
+        <MobileTabBar
+          taskCount={taskCount}
+          inboxOpen={inbox.isOpen}
+          onToggleInbox={inbox.toggle}
+          onNewTask={dialogs.openNewTask}
+          onOpenPalette={() => setPaletteOpen(true)}
         />
       </div>
-    </InboxPrototypeProvider>
+      <InboxSurface />
+      {openThreadSlug !== undefined && (
+        <ThreadDetailView
+          threadSlug={openThreadSlug}
+          areaSlug={isSearchSource ? undefined : routeAreaSlug}
+          onClose={closeThreadPane}
+          onThreadLocationChange={handleThreadLocationChange}
+        />
+      )}
+
+      {/* Mounted on demand: each surface holds form state and subscriptions
+          that should not exist — or survive a close — while it is hidden. */}
+      {paletteOpen && (
+        <CommandPalette
+          open
+          onOpenChange={setPaletteOpen}
+          onNewTask={dialogs.openNewTask}
+          onNewThread={() => dialogs.openCreateThread()}
+          onNewArea={dialogs.openCreateArea}
+          onOpenInbox={inbox.open}
+        />
+      )}
+
+      {/* Also held until the gated list resolves — never an empty picker. */}
+      {dialogs.showCreateThread && createThreadAreas !== undefined && (
+        <CreateThreadDialog
+          open
+          onOpenChange={dialogs.setShowCreateThread}
+          areas={createThreadAreas}
+          defaultAreaId={dialogs.createForAreaId}
+          onCreated={({ slug }) => {
+            openThreadInPlace(slug);
+          }}
+        />
+      )}
+      {dialogs.showNewTask && (
+        <NewTaskDialog
+          open
+          onOpenChange={dialogs.setShowNewTask}
+          onSubmit={async (value) => {
+            await createTask(value);
+            dialogs.setShowNewTask(false);
+          }}
+        />
+      )}
+      {dialogs.showCreateArea && (
+        <CreateAreaDialog open onOpenChange={dialogs.setShowCreateArea} />
+      )}
+    </div>
   );
 }

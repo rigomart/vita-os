@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
+  useSearch: () => ({}),
 }));
 
 /**
@@ -254,7 +255,7 @@ describe("PlanSchedule", () => {
     expect(screen.getAllByText("No Next Move").length).toBeGreaterThan(0);
   });
 
-  it("opens a Thread in place and sends a Task to the Inbox", async () => {
+  it("opens a Thread in place and summons the Inbox for a Task", async () => {
     const user = userEvent.setup();
     renderSchedule();
 
@@ -270,7 +271,15 @@ describe("PlanSchedule", () => {
     });
 
     await user.click(screen.getByText("Renew passport"));
-    expect(mocks.navigate).toHaveBeenLastCalledWith({ to: "/inbox" });
+
+    const [taskCall] = mocks.navigate.mock.calls.at(-1) as [
+      { search: (previous: object) => object; to: string },
+    ];
+    expect(taskCall.to).toBe(".");
+    expect(taskCall.search({ thread: "kitchen-faucet" })).toEqual({
+      inbox: true,
+      thread: "kitchen-faucet",
+    });
   });
 
   it("opens a run of quiet days into the same day rows", async () => {

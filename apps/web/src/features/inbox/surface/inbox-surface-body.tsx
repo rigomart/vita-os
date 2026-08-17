@@ -1,28 +1,28 @@
-// PROTOTYPE (issue #291) — THROWAWAY CODE, do not ship.
-//
-// The shared innards of every candidate surface: a compact header with a close
-// button, and the whole `InboxScreen` under it in its own scroll container.
-// Mounting the real screen — not a copy — is what buys full capability parity
-// (processing dialog, inline text/When/done/discard, Done history + Load more).
-
 import { Button } from "@vita-os/ui/components/button";
 import { X } from "lucide-react";
 
 import { InboxScreen } from "@/features/inbox/screens/inbox-screen";
 import { cn } from "@/lib/utils";
 
+interface InboxSurfaceBodyProps {
+  onClose: () => void;
+  className?: string;
+  bodyClassName?: string;
+  /** `compact` tightens container spacing for the narrow popover panel. */
+  density?: "default" | "compact";
+}
+
+/**
+ * A pinned header over the whole Inbox screen in its own scroll container.
+ * Mounting the screen itself — not a copy of it — is what keeps every Inbox
+ * capability alive in the summoned surface.
+ */
 export function InboxSurfaceBody({
   onClose,
   className,
   bodyClassName,
   density = "default",
-}: {
-  onClose: () => void;
-  className?: string;
-  bodyClassName?: string;
-  /** `compact` tightens container spacing for the small popover panel only. */
-  density?: "default" | "compact";
-}) {
+}: InboxSurfaceBodyProps) {
   const compact = density === "compact";
 
   return (
@@ -45,19 +45,14 @@ export function InboxSurfaceBody({
           <X />
         </Button>
       </header>
-      {/* The compact rules reach one level into the embedded screen — the task
-          list's own root > (header, sections) — so the panel can be tightened
-          without changing the shared list for the other forms. */}
       <div
         className={cn(
           "min-h-0 flex-1 overflow-y-auto",
-          compact
-            ? "px-3 py-2 [&>div>div]:gap-4 [&>div>header]:mb-2"
-            : "px-4 py-3",
+          compact ? "px-3 py-2" : "px-4 py-3",
           bodyClassName,
         )}
       >
-        <InboxScreen embedded />
+        <InboxScreen density={density} />
       </div>
     </div>
   );

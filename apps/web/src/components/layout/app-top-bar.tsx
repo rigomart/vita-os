@@ -3,33 +3,32 @@ import { Button } from "@vita-os/ui/components/button";
 import { Kbd } from "@vita-os/ui/components/kbd";
 import { Inbox, Plus, Search } from "lucide-react";
 
+import { inboxSurfaceTriggerProps } from "@/features/inbox/surface/inbox-surface-trigger";
 import { useTheme } from "@/features/theme/theme-provider";
 import { authClient } from "@/lib/auth-client";
 import { isApplePlatform } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
 import { InboxTaskCountBadge } from "./inbox-task-count-badge";
-// PROTOTYPE (issue #291): remove — summon instead of navigate.
-import { useInboxPrototype } from "./prototype/inbox-prototype-context";
 import { TopBarAreaStrip } from "./top-bar-area-strip";
 import { UserMenu } from "./user-menu";
 
 interface AppTopBarProps {
   taskCount: number | undefined;
-  inboxActive: boolean;
+  inboxOpen: boolean;
+  onToggleInbox: () => void;
   onNewTask: () => void;
   onOpenPalette: () => void;
 }
 
 export function AppTopBar({
   taskCount,
-  inboxActive,
+  inboxOpen,
+  onToggleInbox,
   onNewTask,
   onOpenPalette,
 }: AppTopBarProps) {
   const { data: session } = authClient.useSession();
-  // PROTOTYPE (issue #291): remove — toggles `?inbox=true` when a form is active.
-  const inboxPrototype = useInboxPrototype();
   const { theme, setTheme } = useTheme();
   // The palette answers to Cmd+K and Ctrl+K alike; the hint has to name the
   // key this keyboard actually has, spelled out for screen readers.
@@ -92,43 +91,24 @@ export function AppTopBar({
               Q
             </Kbd>
           </Button>
-          {/* PROTOTYPE (issue #291): remove — button form when summoning. */}
-          {inboxPrototype.summons ? (
-            <button
-              type="button"
-              aria-label="Inbox"
-              data-inbox-proto-chrome=""
-              aria-expanded={inboxPrototype.isOpen}
-              onClick={inboxPrototype.toggle}
-              className={cn(
-                "relative hidden size-8 items-center justify-center rounded-md transition-colors md:flex",
-                inboxPrototype.isOpen
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-              )}
-            >
-              <Inbox className="size-4" />
-              <span className="absolute -top-1 -right-1">
-                <InboxTaskCountBadge taskCount={taskCount} />
-              </span>
-            </button>
-          ) : (
-            <Link
-              to="/inbox"
-              aria-label="Inbox"
-              className={cn(
-                "relative hidden size-8 items-center justify-center rounded-md transition-colors md:flex",
-                inboxActive
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-              )}
-            >
-              <Inbox className="size-4" />
-              <span className="absolute -top-1 -right-1">
-                <InboxTaskCountBadge taskCount={taskCount} />
-              </span>
-            </Link>
-          )}
+          <button
+            type="button"
+            aria-label="Inbox"
+            aria-expanded={inboxOpen}
+            {...inboxSurfaceTriggerProps}
+            onClick={onToggleInbox}
+            className={cn(
+              "relative hidden size-8 items-center justify-center rounded-md transition-colors md:flex",
+              inboxOpen
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+            )}
+          >
+            <Inbox className="size-4" />
+            <span className="absolute -top-1 -right-1">
+              <InboxTaskCountBadge taskCount={taskCount} />
+            </span>
+          </button>
           <UserMenu
             user={session?.user}
             theme={theme}
