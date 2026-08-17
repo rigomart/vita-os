@@ -10,8 +10,7 @@ import { useSearch } from "@tanstack/react-router";
 
 import type { QuickPanelArea } from "../area-quick-panel";
 
-import { VariantA, VariantB } from "./variants-ab";
-import { VariantC, VariantD } from "./variants-cd";
+import { VariantA, VariantA2, VariantA3 } from "./variants-ab";
 
 export interface PanelVariantProps {
   area: QuickPanelArea;
@@ -45,22 +44,16 @@ export const PANEL_VARIANTS: PanelVariant[] = [
     Component: VariantA,
   },
   {
-    key: "b",
-    name: "B — Judgment first",
+    key: "a2",
+    name: "A2 — Header segments",
     contentClassName: NEUTRAL_SHELL,
-    Component: VariantB,
+    Component: VariantA2,
   },
   {
-    key: "c",
-    name: "C — Reference sheet",
+    key: "a3",
+    name: "A3 — Segment strip",
     contentClassName: NEUTRAL_SHELL,
-    Component: VariantC,
-  },
-  {
-    key: "d",
-    name: "D — Action list",
-    contentClassName: NEUTRAL_SHELL,
-    Component: VariantD,
+    Component: VariantA3,
   },
 ];
 
