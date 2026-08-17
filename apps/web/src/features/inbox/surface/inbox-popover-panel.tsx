@@ -52,7 +52,7 @@ export function InboxPopoverPanel({
         }
       }}
     >
-      <InboxSurfaceBody density="compact" onClose={onClose} />
+      <InboxSurfaceBody onClose={onClose} />
     </div>
   );
 }

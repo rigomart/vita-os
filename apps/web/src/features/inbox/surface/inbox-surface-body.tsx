@@ -8,8 +8,6 @@ interface InboxSurfaceBodyProps {
   onClose: () => void;
   className?: string;
   bodyClassName?: string;
-  /** `compact` tightens container spacing for the narrow popover panel. */
-  density?: "default" | "compact";
 }
 
 /**
@@ -21,18 +19,10 @@ export function InboxSurfaceBody({
   onClose,
   className,
   bodyClassName,
-  density = "default",
 }: InboxSurfaceBodyProps) {
-  const compact = density === "compact";
-
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <header
-        className={cn(
-          "flex shrink-0 items-center justify-between gap-2 border-b",
-          compact ? "px-3 py-1.5" : "px-4 py-2.5",
-        )}
-      >
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-1.5">
         <h2 className="font-heading text-sm font-semibold tracking-tight">
           Inbox
         </h2>
@@ -47,12 +37,11 @@ export function InboxSurfaceBody({
       </header>
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto",
-          compact ? "px-3 py-2" : "px-4 py-3",
+          "min-h-0 flex-1 overflow-y-auto px-3 py-2",
           bodyClassName,
         )}
       >
-        <InboxScreen density={density} />
+        <InboxScreen />
       </div>
     </div>
   );

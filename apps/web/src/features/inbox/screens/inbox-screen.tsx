@@ -11,11 +11,7 @@ import { ProcessTaskDialogContainer } from "@/features/tasks/process-task/proces
 
 const DONE_PAGE_SIZE = 10;
 
-export function InboxScreen({
-  density = "default",
-}: {
-  density?: "default" | "compact";
-}) {
+export function InboxScreen() {
   const tasks = useQuery(api.tasks.list);
   const {
     results: doneTasks,
@@ -37,7 +33,6 @@ export function InboxScreen({
   return (
     <>
       <InboxTaskList
-        density={density}
         tasks={tasks}
         onProcess={setProcessingTask}
         doneTasks={doneTasks}
@@ -63,9 +58,6 @@ export function InboxScreen({
 function InboxSkeleton() {
   return (
     <div>
-      <div className="mb-3">
-        <Skeleton className="h-5 w-16" />
-      </div>
       <div className="space-y-1">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="border-b py-3 last:border-b-0">

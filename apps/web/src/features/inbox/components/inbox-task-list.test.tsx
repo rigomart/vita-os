@@ -74,7 +74,7 @@ describe("InboxTaskList", () => {
     );
   });
 
-  it("re-dates its header and ages today's Task at local midnight", () => {
+  it("ages today's Task at local midnight", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 17, 23, 30));
 
@@ -87,12 +87,10 @@ describe("InboxTaskList", () => {
     const rail = () =>
       screen.getByRole("button", { name: "Change when" }).firstElementChild;
 
-    expect(screen.getByText("Friday, July 17")).toBeVisible();
     expect(rail()).toHaveClass("bg-surface-3");
 
     act(() => vi.advanceTimersByTime(30 * 60_000));
 
-    expect(screen.getByText("Saturday, July 18")).toBeVisible();
     expect(rail()).toHaveClass("bg-condition-attention-fill");
   });
 

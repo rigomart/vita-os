@@ -2,7 +2,6 @@ import type { ProjectedTask } from "@convex/lib/validators";
 
 import { groupTasksByAttention } from "@convex/lib/attentionOrdering";
 import { Button } from "@vita-os/ui/components/button";
-import { format } from "date-fns";
 import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 
 import {
@@ -15,7 +14,6 @@ import {
 } from "@/features/attention-list";
 import { useTaskRowActions } from "@/features/tasks/task-row/use-task-row-actions";
 import { useAttentionClock } from "@/hooks/use-attention-clock";
-import { cn } from "@/lib/utils";
 
 interface InboxTaskListProps {
   tasks: ProjectedTask[];
@@ -27,8 +25,6 @@ interface InboxTaskListProps {
   canLoadMoreDone?: boolean;
   isLoadingMoreDone?: boolean;
   onLoadMoreDone?: () => void;
-  /** `compact` tightens the list for the narrow popover panel. */
-  density?: "default" | "compact";
 }
 
 export function InboxTaskList({
@@ -39,9 +35,7 @@ export function InboxTaskList({
   canLoadMoreDone = false,
   isLoadingMoreDone = false,
   onLoadMoreDone,
-  density = "default",
 }: InboxTaskListProps) {
-  const compact = density === "compact";
   const now = useAttentionClock();
   const groups = groupTasksByAttention(tasks, now);
   const openCount =
@@ -59,21 +53,7 @@ export function InboxTaskList({
 
   return (
     <div>
-      {/* The surface names the Inbox in its own header; this line only carries
-          the open count and today's date, and the compact surface leaves both
-          to the chrome badge. */}
-      {!compact && (
-        <header className="mb-3 flex items-center justify-between gap-3">
-          <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-            {openCount}
-          </span>
-          <p className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
-            {format(new Date(now), "EEEE, MMMM d")}
-          </p>
-        </header>
-      )}
-
-      <div className={cn("flex flex-col", compact ? "gap-4" : "gap-6")}>
+      <div className="flex flex-col gap-4">
         {openCount === 0 ? (
           <InboxZero />
         ) : (
