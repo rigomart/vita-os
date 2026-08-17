@@ -38,7 +38,7 @@ interface CommandPaletteProps {
 
 /**
  * Marks an Area row as a drill-in target. Read back off the currently selected
- * row when ArrowRight/Tab is pressed, so the keyboard entry does not need cmdk's
+ * row when ArrowRight is pressed, so the keyboard entry does not need cmdk's
  * controlled `value` (whose encoding is an implementation detail of this file).
  */
 const AREA_ID_ATTRIBUTE = "data-area-id";
@@ -113,7 +113,7 @@ export function CommandPalette({
       return;
     }
 
-    if (event.key !== "Tab" && event.key !== "ArrowRight") return;
+    if (event.key !== "ArrowRight") return;
     // ArrowRight still belongs to the text caret whenever there is text to its
     // right; only at the end of the query does it mean "go deeper".
     if (

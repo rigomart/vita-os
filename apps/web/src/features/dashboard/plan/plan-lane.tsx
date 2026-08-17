@@ -6,9 +6,9 @@ import { AreaIcon } from "@/features/areas/components/area-icon";
 import { AreaQuickPanel } from "@/features/areas/components/area-quick-panel";
 import {
   conditionIcons,
+  conditionShort,
   conditionTextClassName,
 } from "@/features/areas/condition-presentation";
-import { conditionShort } from "@/features/areas/condition-presentation";
 
 import type { SlotDropData } from "./plan-axis";
 import type {

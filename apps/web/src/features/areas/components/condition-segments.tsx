@@ -12,10 +12,11 @@ import { cn } from "@/lib/utils";
 
 /**
  * The Condition as a segmented control: all three states visible at once,
- * one tap to re-judge. Radiogroup semantics — a single tab stop, arrow keys
- * move and select. Every segment carries its state icon and short label, so
- * the active segment's vivid fill is a second signal, never the only one
- * (ADR 0008).
+ * one tap to re-judge. Radiogroup semantics — a single tab stop; arrow keys
+ * move focus and Enter/Space commits, so roving across a state never writes
+ * a judgment the user didn't make. Every segment carries its state icon and
+ * short label, so the active segment's vivid fill is a second signal, never
+ * the only one (ADR 0008).
  */
 export function ConditionSegments({
   condition,
@@ -33,7 +34,6 @@ export function ConditionSegments({
 
   const move = (from: number, step: number) => {
     const next = (from + step + CONDITIONS.length) % CONDITIONS.length;
-    onConditionChange(CONDITIONS[next]!);
     segments.current[next]?.focus();
   };
 
