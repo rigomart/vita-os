@@ -288,6 +288,16 @@ describe("PlanCanvas", () => {
     expect(screen.getAllByText("No Next Move")).toHaveLength(2);
   });
 
+  it("draws no chip wakes where there is no layout to measure", () => {
+    renderCanvas();
+
+    // The wakes are pure decoration over measured geometry: with jsdom
+    // reporting an empty box the overlay stands down, and the lanes render as
+    // they always did rather than painting onto nothing.
+    expect(document.querySelectorAll("svg.z-0 circle")).toHaveLength(0);
+    expect(screen.getByText("Kitchen faucet")).toBeVisible();
+  });
+
   it("makes every Area lane header its Quick Panel trigger, Inbox staying plain", () => {
     renderCanvas();
 

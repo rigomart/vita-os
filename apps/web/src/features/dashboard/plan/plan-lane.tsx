@@ -1,6 +1,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import { cn } from "@vita-os/ui/lib/utils";
 import { CircleDashed, CornerDownRight, Inbox } from "lucide-react";
+import { useRef } from "react";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
 import { AreaQuickPanel } from "@/features/areas/components/area-quick-panel";
@@ -30,6 +31,7 @@ import {
   conditionRailTone,
   INBOX_LANE_ID,
 } from "./plan-model";
+import { LaneTraces } from "./plan-trace";
 
 export interface LaneChrome {
   axis: Axis;
@@ -71,18 +73,25 @@ export function LaneRow({
     drag.laneId !== lane.id;
 
   const tint = lane.area ? conditionLaneTint[lane.area.condition] : "";
+  const rowRef = useRef<HTMLDivElement>(null);
 
   return (
     <div
+      ref={rowRef}
       className={cn(
         "relative grid w-full bg-surface-1 transition-shadow",
-        isInbox ? "border-t-2 border-border" : "border-b border-border/50",
+        // The lane rule stays faint: the chip wakes are what should carry the
+        // eye along a lane, not the grid they cross.
+        isInbox ? "border-t-2 border-border" : "border-b border-border/25",
         last && !isInbox && "border-b-0",
         incoming && "ring-1 ring-foreground/35 ring-inset",
       )}
       style={{ gridTemplateColumns: chrome.axis.template }}
     >
       <Tint className={tint} />
+
+      {/* Under the header and chips, which are opaque and paint over it. */}
+      {!isInbox && <LaneTraces containerRef={rowRef} />}
 
       {isInbox ? (
         <InboxLaneHeader lane={lane} narrow={chrome.narrow} />
@@ -445,9 +454,11 @@ function DayCell({
         "relative flex flex-col justify-center transition-colors",
         cellRhythm(density),
         day.wide ? "px-1.5" : "px-0",
+        // Day columns whisper, so the horizontal wakes aren't fighting a
+        // vertical grid; the week start still reads a shade stronger.
         day.isWeekStart
-          ? "border-l border-border/45"
-          : "border-l border-border/25",
+          ? "border-l border-border/25"
+          : "border-l border-border/10",
         day.isWeekend && "bg-foreground/[0.03]",
         day.isToday && TODAY_COLUMN,
         columnActive && "bg-brand-gold-strong/10",
