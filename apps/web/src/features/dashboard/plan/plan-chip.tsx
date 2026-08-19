@@ -6,6 +6,9 @@ import { ArrowRight, Bell, Inbox } from "lucide-react";
 import type { Density, PlanItem } from "./plan-model";
 
 import { agoLabel, dayCaption, waitingLabel } from "./plan-model";
+/* PROTOTYPE */
+import { chipStitch, StitchRail } from "./prototype/stitch-rail";
+import { usePrototypeVariant } from "./prototype/use-prototype-variant";
 
 /** Thread chips lead with the Next Move (ADR 0010: the Next Move is the one
  * thing a Thread surfaces outside its detail view), demoting the title to a
@@ -50,6 +53,8 @@ export function ChipSurface({
   const isTask = item.kind === "task";
   const waiting = slotKey === "overdue" && item.date != null;
   const beyond = slotKey === "beyond" && item.date != null;
+  /* PROTOTYPE */
+  const variant = usePrototypeVariant();
   const resurfacing =
     !isTask && item.date != null && slotKey !== "none" && !waiting && !beyond;
 
@@ -68,15 +73,23 @@ export function ChipSurface({
           "border-border bg-surface-2 shadow-lg ring-1 ring-foreground/10",
       )}
     >
-      {!isTask && (
-        <span
-          aria-hidden
-          className={cn(
-            "absolute inset-y-1 left-0 w-[3px] rounded-r-full",
-            waiting ? "bg-condition-attention" : "bg-border",
-          )}
-        />
-      )}
+      {/* PROTOTYPE — every variant but "off" stitches the chip rail; twist is
+          mud at 30px, so chips keep the stitch even in the twist variant. */}
+      {!isTask &&
+        (variant === "off" ? (
+          <span
+            aria-hidden
+            className={cn(
+              "absolute inset-y-1 left-0 w-[3px] rounded-r-full",
+              waiting ? "bg-condition-attention" : "bg-border",
+            )}
+          />
+        ) : (
+          <StitchRail
+            className="inset-y-1 left-0"
+            style={waiting ? chipStitch.waiting : chipStitch.default}
+          />
+        ))}
 
       <div className="flex items-start gap-1.5 pl-1">
         {isTask ? (

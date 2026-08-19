@@ -66,6 +66,9 @@ import {
   monthLabel,
   planScheduleDrop,
 } from "./plan-schedule-model";
+/* PROTOTYPE */
+import { chipStitch, StitchRail } from "./prototype/stitch-rail";
+import { usePrototypeVariant } from "./prototype/use-prototype-variant";
 
 /**
  * Plan — the phone schedule: the canvas's model as a vertical agenda. Area
@@ -955,6 +958,8 @@ function ChipSurface({
   const resurfacing =
     !isTask && item.date != null && slotKey !== "none" && !waiting;
   const ConditionIcon = area ? conditionIcons[area.condition] : undefined;
+  /* PROTOTYPE */
+  const variant = usePrototypeVariant();
 
   return (
     <div
@@ -970,17 +975,25 @@ function ChipSurface({
           "border-transparent bg-surface-2 shadow-lg ring-1 ring-brand-gold-strong/50",
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "absolute inset-y-0 left-0 w-[3px]",
-          waiting
-            ? "bg-condition-attention"
-            : area == null || area.condition === "healthy"
-              ? "bg-border"
-              : conditionRailTone[area.condition],
-        )}
-      />
+      {/* PROTOTYPE — mobile chips stitch under every variant but "off". */}
+      {variant === "off" ? (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-y-0 left-0 w-[3px]",
+            waiting
+              ? "bg-condition-attention"
+              : area == null || area.condition === "healthy"
+                ? "bg-border"
+                : conditionRailTone[area.condition],
+          )}
+        />
+      ) : (
+        <StitchRail
+          className="inset-y-0 left-0"
+          style={waiting ? chipStitch.waiting : chipStitch.default}
+        />
+      )}
 
       <span
         className={cn(

@@ -1,6 +1,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import { cn } from "@vita-os/ui/lib/utils";
 import { CircleDashed, CornerDownRight, Inbox } from "lucide-react";
+import { useRef } from "react";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
 import { AreaQuickPanel } from "@/features/areas/components/area-quick-panel";
@@ -30,6 +31,15 @@ import {
   conditionRailTone,
   INBOX_LANE_ID,
 } from "./plan-model";
+/* PROTOTYPE */
+import { LaceOverlay } from "./prototype/lace-overlay";
+import { LaneThread } from "./prototype/lane-thread";
+import {
+  conditionStitch,
+  StitchRail,
+  TwistRail,
+} from "./prototype/stitch-rail";
+import { usePrototypeVariant } from "./prototype/use-prototype-variant";
 
 export interface LaneChrome {
   axis: Axis;
@@ -63,6 +73,9 @@ export function LaneRow({
 }) {
   const { drag } = chrome;
   const isInbox = lane.id === INBOX_LANE_ID;
+  /* PROTOTYPE */
+  const variant = usePrototypeVariant();
+  const rowRef = useRef<HTMLDivElement>(null);
   const incoming =
     drag != null &&
     drag.kind === "thread" &&
@@ -74,6 +87,7 @@ export function LaneRow({
 
   return (
     <div
+      ref={rowRef}
       className={cn(
         "relative grid w-full bg-surface-1 transition-shadow",
         isInbox ? "border-t-2 border-border" : "border-b border-border/50",
@@ -83,6 +97,10 @@ export function LaneRow({
       style={{ gridTemplateColumns: chrome.axis.template }}
     >
       <Tint className={tint} />
+      {/* PROTOTYPE — one literal thread per lane, sagging between chips. */}
+      {variant === "continuous" && !isInbox && (
+        <LaneThread containerRef={rowRef} />
+      )}
 
       {isInbox ? (
         <InboxLaneHeader lane={lane} narrow={chrome.narrow} />
@@ -172,6 +190,8 @@ function AreaLaneHeader({
 }) {
   const area = lane.area!;
   const ConditionIcon = conditionIcons[area.condition];
+  /* PROTOTYPE */
+  const variant = usePrototypeVariant();
 
   return (
     <div
@@ -179,13 +199,24 @@ function AreaLaneHeader({
       style={{ gridColumn: 1, gridRow: 1 }}
     >
       <Tint className={conditionLaneTint[area.condition]} />
-      <span
-        aria-hidden
-        className={cn(
-          "absolute inset-y-0 left-0 w-[3px]",
-          conditionRailTone[area.condition],
-        )}
-      />
+      {/* PROTOTYPE — lace and continuous keep the solid rail here; their
+          overlays land on top of the lane separately. */}
+      {variant === "stitch" ? (
+        <StitchRail
+          className="inset-y-0 left-0"
+          style={conditionStitch[area.condition]}
+        />
+      ) : variant === "twist" ? (
+        <TwistRail className="inset-y-0 left-0" condition={area.condition} />
+      ) : (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-y-0 left-0 w-[3px]",
+            conditionRailTone[area.condition],
+          )}
+        />
+      )}
       <AreaQuickPanel
         area={area}
         onNewThread={onNewThreadInArea}
@@ -435,6 +466,8 @@ function DayCell({
   const columnActive = drag?.overSlotKey === day.key;
   const valid = drag != null && acceptsKind(laneId, drag.kind);
   const armed = valid && isOver;
+  /* PROTOTYPE */
+  const variant = usePrototypeVariant();
 
   return (
     <div
@@ -459,6 +492,13 @@ function DayCell({
           aria-hidden
           className="pointer-events-none absolute inset-y-1 inset-x-0.5 rounded-md border border-dashed border-foreground/40"
         />
+      )}
+
+      {/* PROTOTYPE — gutter stitch: mounted before the chips so their opaque
+          surfaces paint over it and the thread appears sewn under them.
+          Offset matches the chip rail x (cell padding + 1px chip border). */}
+      {variant === "lace" && (
+        <LaceOverlay leftClassName={day.wide ? "left-[7px]" : "left-px"} />
       )}
 
       {items.map((item) => (

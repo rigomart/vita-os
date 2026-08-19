@@ -3,6 +3,9 @@ import { Button } from "@vita-os/ui/components/button";
 import type { PlanActions } from "@/features/dashboard/plan/use-plan-actions";
 
 import { PlanCanvas, PlanSchedule } from "@/features/dashboard/plan";
+/* PROTOTYPE */
+import { PrototypeSwitcher } from "@/features/dashboard/plan/prototype/prototype-switcher";
+import { PrototypeVariantProvider } from "@/features/dashboard/plan/prototype/use-prototype-variant";
 import { useIsCompact } from "@/hooks/use-mobile";
 
 import type {
@@ -55,37 +58,41 @@ export function DashboardOverview({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* The page's identity is the state of the Areas, not a title — the
+    /* PROTOTYPE — variant provider + switcher wrap the real dashboard. */
+    <PrototypeVariantProvider>
+      <PrototypeSwitcher />
+      <div className="flex flex-col gap-6">
+        {/* The page's identity is the state of the Areas, not a title — the
           heading survives only for assistive tech. */}
-      <h1 className="sr-only">Life Areas</h1>
-      <AreaStatusBar
-        areas={areas}
-        threads={threads}
-        currentDate={currentDate}
-      />
+        <h1 className="sr-only">Life Areas</h1>
+        <AreaStatusBar
+          areas={areas}
+          threads={threads}
+          currentDate={currentDate}
+        />
 
-      {/* Two shapes of the same Plan. A phone gets the vertical schedule; the
+        {/* Two shapes of the same Plan. A phone gets the vertical schedule; the
           branch is real, not a CSS switch, so only the mounted one runs its
           scroll and observer effects. */}
-      {compact ? (
-        <PlanSchedule
-          areas={areas}
-          currentDate={currentDate}
-          planActions={planActions}
-          tasks={tasks}
-          threads={threads}
-        />
-      ) : (
-        <PlanCanvas
-          areas={areas}
-          currentDate={currentDate}
-          onNewThreadInArea={onNewThreadInArea}
-          planActions={planActions}
-          tasks={tasks}
-          threads={threads}
-        />
-      )}
-    </div>
+        {compact ? (
+          <PlanSchedule
+            areas={areas}
+            currentDate={currentDate}
+            planActions={planActions}
+            tasks={tasks}
+            threads={threads}
+          />
+        ) : (
+          <PlanCanvas
+            areas={areas}
+            currentDate={currentDate}
+            onNewThreadInArea={onNewThreadInArea}
+            planActions={planActions}
+            tasks={tasks}
+            threads={threads}
+          />
+        )}
+      </div>
+    </PrototypeVariantProvider>
   );
 }
