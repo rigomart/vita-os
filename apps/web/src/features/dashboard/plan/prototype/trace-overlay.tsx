@@ -6,9 +6,9 @@ import { useId } from "react";
 import { useChipAnchors } from "./use-chip-anchors";
 
 /** Stroke weight of a tail, and so the height of its gradient rect. */
-const WEIGHT = 1.5;
+const WEIGHT = 2;
 /** Radius of the dot that kisses the chip's left edge. */
-const DOT = 2.5;
+const DOT = 3;
 /** How far back a comet tail reaches from the chip it trails. */
 const TAIL = 56;
 /** Left inset the tail tip never crosses. */
@@ -35,7 +35,7 @@ const TICK_END = 14;
  */
 export function TraceOverlay({
   containerRef,
-  tone = "text-border dark:text-foreground/30",
+  tone = "text-muted-foreground/60 dark:text-foreground/50",
 }: {
   /** The lane row the traces are drawn across. Must be `relative`. */
   containerRef: React.RefObject<HTMLElement | null>;
@@ -80,7 +80,7 @@ export function TraceOverlay({
             <circle cx={tailEnd} cy={anchor.y} fill="currentColor" r={DOT} />
             {tickEnd > tickStart && (
               <line
-                opacity={0.5}
+                opacity={0.6}
                 stroke="currentColor"
                 strokeDasharray="2 3"
                 strokeWidth={WEIGHT}

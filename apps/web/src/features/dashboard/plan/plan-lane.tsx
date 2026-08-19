@@ -85,7 +85,12 @@ export function LaneRow({
       ref={rowRef}
       className={cn(
         "relative grid w-full bg-surface-1 transition-shadow",
-        isInbox ? "border-t-2 border-border" : "border-b border-border/50",
+        /* PROTOTYPE — under "trace" the row rule recedes so the wakes lead. */
+        isInbox
+          ? "border-t-2 border-border"
+          : variant === "trace"
+            ? "border-b border-border/25"
+            : "border-b border-border/50",
         last && !isInbox && "border-b-0",
         incoming && "ring-1 ring-foreground/35 ring-inset",
       )}
@@ -460,6 +465,8 @@ function DayCell({
   const columnActive = drag?.overSlotKey === day.key;
   const valid = drag != null && acceptsKind(laneId, drag.kind);
   const armed = valid && isOver;
+  /* PROTOTYPE */
+  const variant = usePrototypeVariant();
 
   return (
     <div
@@ -470,9 +477,15 @@ function DayCell({
         "relative flex flex-col justify-center transition-colors",
         cellRhythm(density),
         day.wide ? "px-1.5" : "px-0",
-        day.isWeekStart
-          ? "border-l border-border/45"
-          : "border-l border-border/25",
+        /* PROTOTYPE — day columns whisper under "trace" so the horizontal
+           wakes aren't fighting a vertical grid. */
+        variant === "trace"
+          ? day.isWeekStart
+            ? "border-l border-border/25"
+            : "border-l border-border/10"
+          : day.isWeekStart
+            ? "border-l border-border/45"
+            : "border-l border-border/25",
         day.isWeekend && "bg-foreground/[0.03]",
         day.isToday && TODAY_COLUMN,
         columnActive && "bg-brand-gold-strong/10",
