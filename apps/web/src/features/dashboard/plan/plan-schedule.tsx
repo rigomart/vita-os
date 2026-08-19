@@ -29,7 +29,14 @@ import {
   CornerDownRight,
   Inbox,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type {
   DashboardArea,
@@ -514,6 +521,97 @@ const CAPS = "font-semibold tracking-[0.1em] uppercase";
 /** Gold means "in flight or about to receive" — ghost, armed row, armed section. */
 const ARMED = "bg-brand-gold-strong/15";
 
+/* ------------------------------------------------------------------ wake -- */
+
+/** `currentColor` source for the wake, shared with the canvas's lane traces. */
+const WAKE_TONE = "text-muted-foreground/60 dark:text-foreground/50";
+
+/** Stroke weight of the trail and the tick, and so the trail rect's width. */
+const WAKE_WEIGHT = 2;
+/** Radius of the dot the trail arrives at. */
+const WAKE_DOT = 3;
+/**
+ * Where the wake arrives, measured from the chip's top edge: the centre of the
+ * Area glyph (8px of padding, 1px of nudge, half of a 24px pill). Anchoring to
+ * the glyph rather than to the chip's own middle keeps the dot on a line the
+ * layout already draws, whether the chip runs to one line of Next Move or two.
+ */
+const WAKE_DOT_Y = 21;
+/** Gap between the dot and the tick that carries on past it, and the tick's length. */
+const WAKE_TICK_GAP = 2;
+const WAKE_TICK_LENGTH = 12;
+
+/** The gutter between the condition rail and the glyph, and the stem's centre in it. */
+const WAKE_LEFT = 3;
+const WAKE_WIDTH = 8;
+const WAKE_STEM_X = 4;
+
+const WAKE_TICK_TOP = WAKE_DOT_Y + WAKE_DOT + WAKE_TICK_GAP;
+const WAKE_HEIGHT = WAKE_TICK_TOP + WAKE_TICK_LENGTH;
+
+/**
+ * One Thread's wake, on the axis the phone reads on.
+ *
+ * The canvas trails each chip horizontally because a lane's time runs across;
+ * here time runs *down*, so the same three marks are turned a quarter turn. A
+ * trail fades in out of nothing at the chip's top edge and drops to a dot —
+ * where the Thread has been — and a dashed tick carries on below it, where it
+ * goes next. Nothing joins one chip to the next: two chips on a day read as two
+ * Threads in motion, never as one connector between them.
+ *
+ * Drawn inside the chip's own box, in the gutter between the condition rail and
+ * the Area glyph. The list's gaps are 4px and every chip surface is opaque, so
+ * a wake reaching into them would be clipped by its own chip or painted over
+ * its neighbour's; kept inside, it needs no measurement and shifts nothing.
+ */
+function ChipWake() {
+  const gradientId = useId();
+
+  return (
+    <svg
+      aria-hidden
+      className={cn("pointer-events-none absolute top-0", WAKE_TONE)}
+      height={WAKE_HEIGHT}
+      style={{ left: WAKE_LEFT }}
+      width={WAKE_WIDTH}
+    >
+      <defs>
+        {/* Vertical, and relative to the rect's own box, so the fade always
+            spans exactly the run it is painted on. */}
+        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="currentColor" stopOpacity={0} />
+          <stop offset="0.65" stopColor="currentColor" stopOpacity={0.55} />
+          <stop offset="1" stopColor="currentColor" stopOpacity={1} />
+        </linearGradient>
+      </defs>
+
+      <rect
+        fill={`url(#${gradientId})`}
+        height={WAKE_DOT_Y - WAKE_DOT}
+        width={WAKE_WEIGHT}
+        x={WAKE_STEM_X - WAKE_WEIGHT / 2}
+        y={0}
+      />
+      <circle
+        cx={WAKE_STEM_X}
+        cy={WAKE_DOT_Y}
+        fill="currentColor"
+        r={WAKE_DOT}
+      />
+      <line
+        opacity={0.6}
+        stroke="currentColor"
+        strokeDasharray="2 3"
+        strokeWidth={WAKE_WEIGHT}
+        x1={WAKE_STEM_X}
+        x2={WAKE_STEM_X}
+        y1={WAKE_TICK_TOP}
+        y2={WAKE_HEIGHT}
+      />
+    </svg>
+  );
+}
+
 /* ------------------------------------------------------------- furniture -- */
 
 /** The one piece of chrome that spans the full width. Pins under the app bar. */
@@ -981,6 +1079,10 @@ function ChipSurface({
               : conditionRailTone[area.condition],
         )}
       />
+
+      {/* A Task is a single act with no history behind it; only a Thread, an
+          effort already under way, earns a wake. */}
+      {!isTask && <ChipWake />}
 
       <span
         className={cn(
