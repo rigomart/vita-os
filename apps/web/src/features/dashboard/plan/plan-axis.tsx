@@ -75,24 +75,10 @@ export function AxisHeader({
 
         if (column.kind === "overdue") {
           return (
-            <BayHeader
+            <WaitingHeader
               key="overdue"
               count={totals.overdue}
               gridColumn={gridColumn}
-              kind="overdue"
-            />
-          );
-        }
-        // The Later bay pins against the right edge, so it stays legible
-        // however far the axis is scrolled.
-        if (column.kind === "beyond") {
-          return (
-            <BayHeader
-              key="beyond"
-              count={totals.beyond}
-              gridColumn={gridColumn}
-              kind="beyond"
-              right={0}
             />
           );
         }
@@ -117,7 +103,7 @@ export function AxisHeader({
 
 /**
  * Month spans over every rendered day — the calendar and nothing else. The
- * bays past the last day are off the calendar and carry their own headers.
+ * waiting bay is off the calendar and carries its own header.
  */
 function BandRow({ axis }: { axis: Axis }) {
   return (
@@ -144,74 +130,38 @@ function BandRow({ axis }: { axis: Axis }) {
 
 /* -------------------------------------------------------------- bay cells -- */
 
-const BAY_LABEL: Record<BayKind, string> = {
-  beyond: "Later",
-  overdue: "Waiting",
-};
-
-type BayKind = "beyond" | "overdue";
-
 /**
- * The waiting bay and the pinned Later bay: same label · count · bar stack as a
- * day, in the tone their condition deserves — the past reads as a debt, the
- * far-off reads as quiet.
+ * The waiting bay's header: the same label · count · bar stack as a day, in the
+ * tone the past deserves — a debt rather than a plan.
  *
- * Both span the band and header rows, so their label sits on the band line and
- * their bar lands on the same baseline as the days'.
+ * It spans the band and header rows, so its label sits on the band line and its
+ * bar lands on the same baseline as the days'.
  */
-function BayHeader({
+function WaitingHeader({
   count,
   gridColumn,
-  kind,
-  right,
 }: {
   count: number;
   gridColumn: number;
-  kind: BayKind;
-  /** Distance from the scroller's right edge, for the pinned bays only. */
-  right?: number;
 }) {
-  const waiting = kind === "overdue";
-
   return (
     <div
-      data-bay={kind}
-      className={cn(
-        "flex flex-col gap-1.5 px-2 pt-2 pb-2",
-        right == null
-          ? "border-l border-border/60"
-          : "sticky z-30 border-l border-border bg-surface-1",
-        waiting && "bg-condition-attention/[0.07]",
-      )}
-      style={{ gridColumn, gridRow: "1 / 3", right }}
+      data-bay="overdue"
+      className="flex flex-col gap-1.5 border-l border-border/60 bg-condition-attention/[0.07] px-2 pt-2 pb-2"
+      style={{ gridColumn, gridRow: "1 / 3" }}
     >
       <div className="flex items-baseline gap-1">
-        <span
-          className={cn(
-            "truncate text-2xs font-semibold tracking-[0.08em] uppercase",
-            waiting ? "text-condition-attention" : "text-muted-foreground/70",
-          )}
-        >
-          {BAY_LABEL[kind]}
+        <span className="truncate text-2xs font-semibold tracking-[0.08em] text-condition-attention uppercase">
+          Waiting
         </span>
-        <span
-          className={cn(
-            "ml-auto shrink-0 text-xs tabular-nums",
-            waiting
-              ? "text-condition-attention/80"
-              : "text-muted-foreground/70",
-          )}
-        >
+        <span className="ml-auto shrink-0 text-xs tabular-nums text-condition-attention/80">
           {count}
         </span>
       </div>
 
       <div className="mt-auto h-[3px] w-full overflow-hidden rounded-full bg-foreground/10">
         <div
-          className={cn(
-            "h-full rounded-full",
-            waiting ? "bg-condition-attention/70" : "bg-foreground/12",
-          )}
+          className="h-full rounded-full bg-condition-attention/70"
           style={{ width: count > 0 ? "100%" : 0 }}
         />
       </div>

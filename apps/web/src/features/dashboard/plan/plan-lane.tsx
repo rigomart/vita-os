@@ -50,9 +50,9 @@ export interface LaneChrome {
  *
  * Chips sit in the day slot matching their date and read left to right in date
  * order; anything already past docks in the tinted waiting bay at the lane's
- * left edge, and anything dated past the axis docks in the Later bay pinned at
- * its right. Dragging along the lane retargets the day, dragging across lanes
- * moves the Thread's Area.
+ * left edge, and anything dated past the axis leaves the lane altogether for
+ * the Later bucket under the canvas. Dragging along the lane retargets the day,
+ * dragging across lanes moves the Thread's Area.
  */
 export function LaneRow({
   chrome,
@@ -118,19 +118,6 @@ export function LaneRow({
             />
           );
         }
-        if (column.kind === "beyond") {
-          return (
-            <LaterBay
-              key="beyond"
-              chrome={chrome}
-              gridColumn={gridColumn}
-              items={lane.beyond}
-              laneId={lane.id}
-              tint={tint}
-            />
-          );
-        }
-
         return (
           <DayCell
             key={column.key}
@@ -532,108 +519,88 @@ function WaitingBay({
   );
 }
 
-/**
- * **Later** — the bay pinned to the lane's right edge, holding work dated past
- * the far end of the axis. It never scrolls away, so the axis always ends on
- * the same anchor however far it is scrolled.
- *
- * A drop here has no single day to write, so the canvas answers it with a
- * calendar instead of a mutation — see `plan-later-dialog.tsx`.
- */
-function LaterBay({
-  chrome,
-  gridColumn,
-  items,
-  laneId,
-  tint,
-}: {
-  chrome: LaneChrome;
-  gridColumn: number;
-  items: PlanItem[];
-  laneId: string;
-  tint: string;
-}) {
-  const { density, drag, now, onOpen } = chrome;
-  const slotKey = "beyond";
-
-  const { isOver, setNodeRef } = useDroppable({
-    id: `${laneId}::${slotKey}`,
-    data: { laneId, slotKey } satisfies SlotDropData,
-  });
-
-  const armed = drag != null && acceptsKind(laneId, drag.kind) && isOver;
-
-  return (
-    <div
-      ref={setNodeRef}
-      data-slot-key={`${laneId}::${slotKey}`}
-      style={{ gridColumn, gridRow: 1 }}
-      className={cn(
-        "sticky right-0 z-20 flex flex-col justify-center border-l border-border bg-surface-1 px-1.5",
-        cellRhythm(density),
-        armed && "bg-surface-3",
-      )}
-    >
-      <Tint className={tint} />
-      {armed && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-1 rounded-md border border-dashed border-foreground/40"
-        />
-      )}
-      <div
-        className={cn(
-          "relative flex flex-col",
-          density === "compact" ? "gap-1" : "gap-1.5",
-        )}
-      >
-        {items.map((item) => (
-          <PlanChip
-            key={item.id}
-            density={density}
-            item={item}
-            laneId={laneId}
-            now={now}
-            onOpen={onOpen}
-            slotKey={slotKey}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* --------------------------------------------------------- no-date bucket -- */
+/* --------------------------------------------------------------- pools -- */
 
 /**
  * **No date** — everything with no day at all, pooled under the canvas rather
  * than sliced per lane. Undated work has no place on a calendar, so it gets no
- * column on one: it reads as a holding pen, deliberately unlike a lane — no
- * header column, no condition tint, its own raised surface, and chips flowing
+ * column on one.
+ */
+export function NoDateBucket({ chrome, lanes }: PoolProps) {
+  return (
+    <Pool
+      chrome={chrome}
+      empty="Nothing undated"
+      hint="Drop here to take the day off"
+      items={(lane) => lane.none}
+      label="No date"
+      lanes={lanes}
+      slotKey="none"
+    />
+  );
+}
+
+/**
+ * **Later** — work dated past the far end of the axis, pooled the same way. A
+ * drop here has no single day to write, so the canvas answers it with a
+ * calendar instead of a mutation — see `plan-later-dialog.tsx`.
+ */
+export function LaterBucket({ chrome, lanes }: PoolProps) {
+  return (
+    <Pool
+      chrome={chrome}
+      empty="Nothing further out"
+      hint="Drop here to pick a further day"
+      items={(lane) => lane.beyond}
+      label="Later"
+      lanes={lanes}
+      slotKey="beyond"
+    />
+  );
+}
+
+interface PoolProps {
+  chrome: LaneChrome;
+  /** The lanes on screen — an Area filtered out takes its work with it. */
+  lanes: Lane[];
+}
+
+/**
+ * The shape both pools share: a holding pen, deliberately unlike a lane — no
+ * header column, no condition tint, its own dashed surface, and chips flowing
  * across the full width instead of down a slot.
  *
- * It is a droppable that clears the date, and it publishes no `laneId` of its
- * own — like the ruler, it means "no day, whichever lane you came from", so a
- * Thread dropped here keeps its Area. Each chip carries its own lane back, so
- * dragging one out onto a day lands it where it belongs.
+ * A pool is a droppable that publishes no `laneId` of its own — like the ruler,
+ * it means "this slot, whichever lane you came from", so a Thread dropped here
+ * keeps its Area. Each chip carries its own lane back, so dragging one out onto
+ * a day lands it where it belongs.
  */
-export function NoDateBucket({
+function Pool({
   chrome,
+  empty,
+  hint,
+  items,
+  label,
   lanes,
-}: {
-  chrome: LaneChrome;
-  /** The lanes on screen — an Area filtered out takes its undated work with it. */
-  lanes: Lane[];
+  slotKey,
+}: PoolProps & {
+  /** Shown in place of the chips when the pool is empty. */
+  empty: string;
+  /** The one line naming what a drop here does. */
+  hint: string;
+  items: (lane: Lane) => PlanItem[];
+  label: string;
+  slotKey: string;
 }) {
   const { density, drag, now, onOpen } = chrome;
 
   const { isOver, setNodeRef } = useDroppable({
-    id: "bucket::none",
-    data: { slotKey: "none" } satisfies SlotDropData,
+    id: `bucket::${slotKey}`,
+    data: { slotKey } satisfies SlotDropData,
   });
 
   const entries = lanes
-    .flatMap((lane) => lane.none.map((item) => ({ item, laneId: lane.id })))
+    .flatMap((lane) => items(lane).map((item) => ({ item, laneId: lane.id })))
     .sort((a, b) => byDateThenTitle(a.item, b.item));
 
   const armed = drag != null && isOver;
@@ -642,28 +609,28 @@ export function NoDateBucket({
     <div
       ref={setNodeRef}
       role="group"
-      aria-label="No date"
-      data-slot-key="none"
+      aria-label={label}
+      data-slot-key={slotKey}
       className={cn(
-        "relative mt-3 rounded-xl border border-dashed border-border bg-surface-2/60 transition-colors",
+        "relative min-w-0 rounded-xl border border-dashed border-border bg-surface-2/60 transition-colors",
         density === "compact" ? "p-2.5" : "p-3",
         armed && "border-solid border-foreground/40 bg-surface-3/70",
       )}
     >
       <div className="mb-2 flex items-baseline gap-1.5">
         <span className="text-2xs font-semibold tracking-[0.08em] text-muted-foreground/70 uppercase">
-          No date
+          {label}
         </span>
         <span className="text-xs tabular-nums text-muted-foreground/70">
           {entries.length}
         </span>
         <span className="ml-2 truncate text-xs text-muted-foreground/50">
-          Drop here to take the day off
+          {hint}
         </span>
       </div>
 
       {entries.length === 0 ? (
-        <p className="text-xs text-muted-foreground/45">Nothing undated</p>
+        <p className="text-xs text-muted-foreground/45">{empty}</p>
       ) : (
         <div
           className={cn(
@@ -679,7 +646,7 @@ export function NoDateBucket({
                 laneId={laneId}
                 now={now}
                 onOpen={onOpen}
-                slotKey="none"
+                slotKey={slotKey}
               />
             </div>
           ))}
