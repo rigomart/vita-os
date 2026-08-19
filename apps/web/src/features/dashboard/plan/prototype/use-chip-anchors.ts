@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 export interface ChipAnchor {
   /** The `data-chip` attribute value of the measured chip. */
   id: string;
+  /** The chip's measured width, so callers can reach its right edge. */
+  w: number;
   x: number;
   y: number;
 }
@@ -27,6 +29,7 @@ function measure(container: HTMLElement): ChipAnchors {
       const rect = chip.getBoundingClientRect();
       return {
         id: chip.dataset.chip ?? "",
+        w: rect.width,
         x: rect.left - box.left,
         y: rect.top - box.top + rect.height / 2,
       };
@@ -37,9 +40,9 @@ function measure(container: HTMLElement): ChipAnchors {
 
 /**
  * Reads every `[data-chip]` element inside `containerRef` and reports its left
- * edge and vertical center relative to the container, plus the container's own
- * box. Re-measures on mount, on resize, and on DOM mutation, debounced to one
- * animation frame.
+ * edge, vertical center and width relative to the container, plus the
+ * container's own box. Re-measures on mount, on resize, and on DOM mutation,
+ * debounced to one animation frame.
  *
  * The container must be `relative` for the numbers to line up with an overlay
  * drawn at `absolute inset-0`. SSR-safe: measurement is skipped entirely when

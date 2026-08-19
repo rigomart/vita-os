@@ -4,42 +4,43 @@ import { cn } from "@vita-os/ui/lib/utils";
 
 import { type ChipAnchor, useChipAnchors } from "./use-chip-anchors";
 
-/** How far left of a chip the branch leaves the rail. */
-const RUN = 16;
-/** Corner radius of the two 90° turns. */
+/** Corner radius of the two 90° turns in a step between chips. */
 const RADIUS = 6;
-/** Vertical slack within which a chip counts as sitting *on* the rail. */
-const ON_RAIL = 4;
+/** Vertical slack within which two chips count as sitting on the same line. */
+const SAME_LINE = 4;
+/** How far past the last chip the branch trails off into the future. */
+const STUB = 28;
 
 /**
- * Orthogonal branch from the rail up/down to one chip: run along the rail,
- * round the corner, climb, round back, arrive horizontally at the chip's left
- * edge. Returns `null` when the chip already sits on the rail (the rail itself
- * reaches it) and falls back to a flat tail when there is no room to turn.
+ * Appends the run from `from` to `to`: a straight line when both sit on the
+ * same line, otherwise an orthogonal step whose vertical leg is placed midway
+ * between the two so the line reads as a subway hop rather than a hook onto
+ * the destination. The corner radius shrinks to fit both the gap and the drop.
  */
-function branchPath(anchor: ChipAnchor, railY: number): string | null {
-  const dy = anchor.y - railY;
-  if (Math.abs(dy) <= ON_RAIL) return null;
+function step(from: ChipAnchor, to: ChipAnchor): string {
+  const dy = to.y - from.y;
+  const dx = to.x - from.x;
+  if (Math.abs(dy) <= SAME_LINE || dx <= 0) return `L ${to.x} ${to.y}`;
 
-  const vx = anchor.x - RUN;
-  const r = Math.min(RADIUS, Math.abs(dy) / 2, RUN / 2);
-  if (vx - r < 0) return `M 0 ${anchor.y} L ${anchor.x} ${anchor.y}`;
-
+  const legX = from.x + dx / 2;
+  const r = Math.min(RADIUS, Math.abs(dy) / 2, dx / 2);
   const s = dy > 0 ? 1 : -1;
   return [
-    `M ${vx - r} ${railY}`,
-    `Q ${vx} ${railY} ${vx} ${railY + s * r}`,
-    `L ${vx} ${anchor.y - s * r}`,
-    `Q ${vx} ${anchor.y} ${vx + r} ${anchor.y}`,
-    `L ${anchor.x} ${anchor.y}`,
+    `L ${legX - r} ${from.y}`,
+    `Q ${legX} ${from.y} ${legX} ${from.y + s * r}`,
+    `L ${legX} ${to.y - s * r}`,
+    `Q ${legX} ${to.y} ${legX + r} ${to.y}`,
+    `L ${to.x} ${to.y}`,
   ].join(" ");
 }
 
 /**
- * Variant "graph": the lane drawn as a git commit graph / subway line. A rail
- * runs along the lane's vertical center from x=0 (emerging from behind the
- * opaque sticky header) to the last chip, and each chip is reached by a
- * stepped, rounded-corner branch off that rail with a commit dot at the end.
+ * Variant "graph": the Area lane drawn as a git branch, its threads the
+ * commits on it. One line enters from x=0 at the first chip's height (emerging
+ * from behind the opaque sticky header), threads through every chip in x order
+ * with rounded orthogonal steps between rows, carries a ringed commit node at
+ * each chip, and trails off past the last one as a dashed stub — the branch
+ * continues into the future.
  *
  * Self-measuring; `containerRef` must be `relative` and the chips must paint
  * above `z-0`.
@@ -50,14 +51,28 @@ export function GraphOverlay({
 }: {
   /** The lane row the graph is drawn across. Must be `relative`. */
   containerRef: React.RefObject<HTMLElement | null>;
-  /** `currentColor` source for rail, branches and dots. */
+  /** `currentColor` source for the branch, nodes and stub. */
   tone?: string;
 }) {
   const { anchors, height, width } = useChipAnchors(containerRef);
-  if (anchors.length === 0 || width === 0 || height === 0) return null;
+  const first = anchors[0];
+  const last = anchors[anchors.length - 1];
+  if (!(first && last) || width === 0 || height === 0) return null;
 
-  const railY = height / 2;
-  const railEnd = anchors[anchors.length - 1]?.x ?? 0;
+  const d = anchors
+    .reduce(
+      (segments, anchor, index) => {
+        const previous = anchors[index - 1];
+        segments.push(
+          previous ? step(previous, anchor) : `L ${anchor.x} ${anchor.y}`,
+        );
+        return segments;
+      },
+      [`M 0 ${first.y}`],
+    )
+    .join(" ");
+
+  const stubEnd = Math.min(last.x + STUB, width);
 
   return (
     <svg
@@ -72,14 +87,17 @@ export function GraphOverlay({
         strokeLinecap="round"
         strokeWidth={1.5}
       >
-        <line x1={0} x2={railEnd} y1={railY} y2={railY} />
-        {anchors.map((anchor) => {
-          const d = branchPath(anchor, railY);
-          return d ? <path d={d} key={`branch:${anchor.id}`} /> : null;
-        })}
+        <path d={d} />
+        {stubEnd > last.x ? (
+          <path
+            d={`M ${last.x} ${last.y} L ${stubEnd} ${last.y}`}
+            opacity={0.5}
+            strokeDasharray="2 4"
+          />
+        ) : null}
       </g>
       {anchors.map((anchor) => (
-        <g key={`dot:${anchor.id}`}>
+        <g key={`node:${anchor.id}`}>
           <circle
             cx={anchor.x}
             cy={anchor.y}

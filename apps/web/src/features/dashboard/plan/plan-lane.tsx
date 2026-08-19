@@ -94,7 +94,16 @@ export function LaneRow({
       <Tint className={tint} />
       {/* PROTOTYPE — lane-level thread idioms; opaque header/chips paint over. */}
       {variant === "graph" && !isInbox && (
-        <GraphOverlay containerRef={rowRef} />
+        <GraphOverlay
+          containerRef={rowRef}
+          tone={
+            lane.area == null || lane.area.condition === "healthy"
+              ? "text-border dark:text-foreground/30"
+              : lane.area.condition === "critical"
+                ? "text-condition-critical/70"
+                : "text-condition-attention/70"
+          }
+        />
       )}
       {variant === "trace" && !isInbox && (
         <TraceOverlay containerRef={rowRef} />

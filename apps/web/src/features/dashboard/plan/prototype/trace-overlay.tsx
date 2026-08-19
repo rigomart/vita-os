@@ -9,13 +9,22 @@ import { useChipAnchors } from "./use-chip-anchors";
 const WEIGHT = 1.5;
 /** Radius of the dot that kisses the chip's left edge. */
 const DOT = 2.5;
+/** How far back a comet tail reaches from the chip it trails. */
+const TAIL = 56;
+/** Left inset the tail tip never crosses. */
+const EDGE = 2;
+/** Below this much room, a chip is too close to the edge to earn a tail. */
+const MIN_TAIL = 10;
+/** Gap between a chip's right edge and its leading tick, and the tick's length. */
+const TICK_GAP = 2;
+const TICK_END = 14;
 
 /**
- * Variant "trace": every chip trails its own history. Each chip gets a
- * horizontal tail at its own vertical center running from x=0 — out of the
- * opaque sticky header — to the chip's left edge, fading up from nothing so it
- * reads as a thread that has been running for a while rather than a connector
- * between chips.
+ * Variant "trace": every chip trails its own independent wake. Each chip gets a
+ * short comet tail at its own vertical center — a fixed {@link TAIL} px run
+ * fading up from nothing into the chip — plus a dashed tick pointing ahead of
+ * its right edge. Nothing spans the lane, so two chips in a row read as two
+ * separate threads in motion rather than one connector.
  *
  * Each tail is a `<rect>` filled with one shared `objectBoundingBox` gradient:
  * because the gradient is relative to each rect's own box, a single definition
@@ -30,7 +39,7 @@ export function TraceOverlay({
 }: {
   /** The lane row the traces are drawn across. Must be `relative`. */
   containerRef: React.RefObject<HTMLElement | null>;
-  /** `currentColor` source for tails and dots. */
+  /** `currentColor` source for tails, dots and ticks. */
   tone?: string;
 }) {
   const gradientId = useId();
@@ -53,23 +62,34 @@ export function TraceOverlay({
       </defs>
       {anchors.map((anchor) => {
         const tailEnd = anchor.x - DOT;
+        const tailStart = Math.max(EDGE, anchor.x - TAIL);
+        const tailWidth = tailEnd - tailStart;
+        const tickStart = Math.min(anchor.x + anchor.w + TICK_GAP, width);
+        const tickEnd = Math.min(anchor.x + anchor.w + TICK_END, width);
         return (
           <g key={anchor.id}>
-            {tailEnd > 0 && (
+            {tailWidth >= MIN_TAIL && (
               <rect
                 fill={`url(#${gradientId})`}
                 height={WEIGHT}
-                width={tailEnd}
-                x={0}
+                width={tailWidth}
+                x={tailStart}
                 y={anchor.y - WEIGHT / 2}
               />
             )}
-            <circle
-              cx={anchor.x - DOT}
-              cy={anchor.y}
-              fill="currentColor"
-              r={DOT}
-            />
+            <circle cx={tailEnd} cy={anchor.y} fill="currentColor" r={DOT} />
+            {tickEnd > tickStart && (
+              <line
+                opacity={0.5}
+                stroke="currentColor"
+                strokeDasharray="2 3"
+                strokeWidth={WEIGHT}
+                x1={tickStart}
+                x2={tickEnd}
+                y1={anchor.y}
+                y2={anchor.y}
+              />
+            )}
           </g>
         );
       })}
