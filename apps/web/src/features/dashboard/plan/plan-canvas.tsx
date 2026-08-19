@@ -8,7 +8,6 @@ import {
   DndContext,
   DragOverlay,
   MouseSensor,
-  pointerWithin,
   TouchSensor,
   useSensor,
   useSensors,
@@ -35,6 +34,7 @@ import type { PlanActions } from "./use-plan-actions";
 
 import { AxisHeader } from "./plan-axis";
 import { ChipSurface } from "./plan-chip";
+import { planCollisionDetection } from "./plan-collision";
 import { AreaFilterChips } from "./plan-filters";
 import { LaneRow, NoDateBucket } from "./plan-lane";
 import { PlanLaterDialog } from "./plan-later-dialog";
@@ -380,7 +380,9 @@ export function PlanCanvas({
       />
 
       <DndContext
-        collisionDetection={pointerWithin}
+        // The Later bay is pinned inside the day scroller, so its measured rect
+        // drifts as the canvas scrolls; the sticky bays are hit-tested live.
+        collisionDetection={planCollisionDetection}
         sensors={sensors}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
