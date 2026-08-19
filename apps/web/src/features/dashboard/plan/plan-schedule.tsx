@@ -67,7 +67,7 @@ import {
   planScheduleDrop,
 } from "./plan-schedule-model";
 /* PROTOTYPE */
-import { chipStitch, StitchRail } from "./prototype/stitch-rail";
+import { ReplyElbow, replyTone } from "./prototype/reply-chip";
 import { usePrototypeVariant } from "./prototype/use-prototype-variant";
 
 /**
@@ -958,8 +958,67 @@ function ChipSurface({
   const resurfacing =
     !isTask && item.date != null && slotKey !== "none" && !waiting;
   const ConditionIcon = area ? conditionIcons[area.condition] : undefined;
-  /* PROTOTYPE */
+  /* PROTOTYPE — same reading as the desktop chip: under `reply` the title line
+     is the parent message and the Next Move is the reply hanging off it. */
   const variant = usePrototypeVariant();
+  const reply = variant === "reply";
+  /** A Task chip has no Next Move, so it has no reply to hang or reorder. */
+  const replyOrder = reply && !isTask;
+  const threaded = replyOrder && item.nextMove != null;
+
+  const moveRow = isTask ? (
+    <span className="line-clamp-2 text-sm leading-snug font-normal">
+      {item.title}
+    </span>
+  ) : (
+    <span
+      className={cn(
+        "flex items-start gap-1 text-sm leading-snug",
+        reply && "relative mt-0.5 pl-4",
+      )}
+    >
+      {threaded && <ReplyElbow className={cn("left-1", replyTone(waiting))} />}
+      <ArrowRight
+        aria-hidden
+        className={cn(
+          "mt-[3px] size-3.5 shrink-0",
+          item.nextMove ? MUTE_SOFT : MUTE_FAINT,
+        )}
+      />
+      <span
+        className={cn(
+          "line-clamp-2 min-w-0 flex-1",
+          item.nextMove ? "font-medium" : MUTE_FAINT,
+        )}
+      >
+        {item.nextMove ?? NO_NEXT_MOVE}
+      </span>
+    </span>
+  );
+
+  const metaRow = (
+    <span
+      className={cn(
+        "flex min-w-0 items-center gap-1 text-xs leading-snug",
+        !replyOrder && "mt-0.5",
+        MUTE_SOFT,
+      )}
+    >
+      {!isTask && (
+        <>
+          <span className="min-w-0 truncate font-semibold">{item.title}</span>
+          <span aria-hidden>·</span>
+        </>
+      )}
+      {ConditionIcon && area && area.condition !== "healthy" && (
+        <ConditionIcon
+          aria-hidden
+          className={cn("size-3", conditionTextClassName[area.condition])}
+        />
+      )}
+      <span className="truncate">{area?.name ?? "Inbox"}</span>
+    </span>
+  );
 
   return (
     <div
@@ -975,8 +1034,9 @@ function ChipSurface({
           "border-transparent bg-surface-2 shadow-lg ring-1 ring-brand-gold-strong/50",
       )}
     >
-      {/* PROTOTYPE — mobile chips stitch under every variant but "off". */}
-      {variant === "off" ? (
+      {/* PROTOTYPE — the stock condition rail, kept by every variant but
+          "reply", which trades it for the indent guide inside the chip. */}
+      {!reply && (
         <span
           aria-hidden
           className={cn(
@@ -987,11 +1047,6 @@ function ChipSurface({
                 ? "bg-border"
                 : conditionRailTone[area.condition],
           )}
-        />
-      ) : (
-        <StitchRail
-          className="inset-y-0 left-0"
-          style={waiting ? chipStitch.waiting : chipStitch.default}
         />
       )}
 
@@ -1016,52 +1071,17 @@ function ChipSurface({
         {/* A Thread row leads with the Next Move — a faint placeholder when
             the slot is empty — and the identifiers (title, Area) share the
             muted line beneath it. */}
-        {isTask ? (
-          <span className="line-clamp-2 text-sm leading-snug font-normal">
-            {item.title}
-          </span>
+        {replyOrder ? (
+          <>
+            {metaRow}
+            {moveRow}
+          </>
         ) : (
-          <span className="flex items-start gap-1 text-sm leading-snug">
-            <ArrowRight
-              aria-hidden
-              className={cn(
-                "mt-[3px] size-3.5 shrink-0",
-                item.nextMove ? MUTE_SOFT : MUTE_FAINT,
-              )}
-            />
-            <span
-              className={cn(
-                "line-clamp-2 min-w-0 flex-1",
-                item.nextMove ? "font-medium" : MUTE_FAINT,
-              )}
-            >
-              {item.nextMove ?? NO_NEXT_MOVE}
-            </span>
-          </span>
+          <>
+            {moveRow}
+            {metaRow}
+          </>
         )}
-
-        <span
-          className={cn(
-            "mt-0.5 flex min-w-0 items-center gap-1 text-xs leading-snug",
-            MUTE_SOFT,
-          )}
-        >
-          {!isTask && (
-            <>
-              <span className="min-w-0 truncate font-semibold">
-                {item.title}
-              </span>
-              <span aria-hidden>·</span>
-            </>
-          )}
-          {ConditionIcon && area && area.condition !== "healthy" && (
-            <ConditionIcon
-              aria-hidden
-              className={cn("size-3", conditionTextClassName[area.condition])}
-            />
-          )}
-          <span className="truncate">{area?.name ?? "Inbox"}</span>
-        </span>
       </span>
 
       {waiting && (

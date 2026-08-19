@@ -7,7 +7,7 @@ import type { Density, PlanItem } from "./plan-model";
 
 import { agoLabel, dayCaption, waitingLabel } from "./plan-model";
 /* PROTOTYPE */
-import { chipStitch, StitchRail } from "./prototype/stitch-rail";
+import { ReplyElbow, replyTone } from "./prototype/reply-chip";
 import { usePrototypeVariant } from "./prototype/use-prototype-variant";
 
 /** Thread chips lead with the Next Move (ADR 0010: the Next Move is the one
@@ -58,6 +58,80 @@ export function ChipSurface({
   const resurfacing =
     !isTask && item.date != null && slotKey !== "none" && !waiting && !beyond;
 
+  /* PROTOTYPE — `reply` reads the chip as a two-message thread, so the title
+     (the parent) rises above the Next Move (the reply) and the 3px rail gives
+     way to an indent guide. `graph` and `trace` decorate the lane, not the
+     chip: they keep the stock rail. */
+  const reply = variant === "reply";
+  const threaded = reply && !isTask && item.nextMove != null;
+
+  const moveRow = (
+    <div
+      className={cn(
+        "relative flex items-start gap-1.5 pl-1",
+        reply && !isTask && "mt-0.5 pl-5",
+      )}
+    >
+      {threaded && <ReplyElbow className={cn("left-2", replyTone(waiting))} />}
+      {isTask ? (
+        <Inbox
+          aria-hidden
+          className="mt-[3px] size-3.5 shrink-0 text-muted-foreground/50"
+        />
+      ) : (
+        <ArrowRight
+          aria-hidden
+          className={cn(
+            "mt-[3px] size-3.5 shrink-0",
+            item.nextMove
+              ? "text-muted-foreground/50"
+              : "text-muted-foreground/40",
+          )}
+        />
+      )}
+      <span
+        className={cn(
+          "min-w-0 flex-1 text-sm leading-snug",
+          density === "compact" ? "truncate" : "line-clamp-2",
+          isTask && "font-normal text-foreground/90",
+          !isTask &&
+            (item.nextMove ? "font-medium" : "text-muted-foreground/45"),
+        )}
+      >
+        {isTask ? item.title : (item.nextMove ?? NO_NEXT_MOVE)}
+      </span>
+      {waiting && (
+        <span className="mt-px flex shrink-0 items-center gap-0.5 text-2xs font-medium text-condition-attention">
+          {!isTask && <Bell aria-hidden className="size-3 shrink-0" />}
+          <span className="tabular-nums">{waitingLabel(item.date!, now)}</span>
+        </span>
+      )}
+      {beyond && (
+        <span className="mt-px flex shrink-0 items-center gap-0.5 text-2xs font-medium text-muted-foreground/70">
+          {!isTask && <Bell aria-hidden className="size-3 shrink-0" />}
+          <span className="tabular-nums">{dayCaption(item.date!)}</span>
+        </span>
+      )}
+      {resurfacing && (
+        <Bell
+          aria-hidden
+          className="mt-[3px] size-3 shrink-0 text-muted-foreground/50"
+        />
+      )}
+    </div>
+  );
+
+  const titleRow = !isTask && (
+    <span
+      className={cn(
+        "block min-w-0 truncate pl-1 text-xs leading-snug font-semibold text-muted-foreground",
+        !reply && "mt-0.5",
+      )}
+    >
+      {item.title}
+    </span>
+  );
+
   return (
     <div
       className={cn(
@@ -73,78 +147,27 @@ export function ChipSurface({
           "border-border bg-surface-2 shadow-lg ring-1 ring-foreground/10",
       )}
     >
-      {/* PROTOTYPE — every variant but "off" stitches the chip rail; twist is
-          mud at 30px, so chips keep the stitch even in the twist variant. */}
-      {!isTask &&
-        (variant === "off" ? (
-          <span
-            aria-hidden
-            className={cn(
-              "absolute inset-y-1 left-0 w-[3px] rounded-r-full",
-              waiting ? "bg-condition-attention" : "bg-border",
-            )}
-          />
-        ) : (
-          <StitchRail
-            className="inset-y-1 left-0"
-            style={waiting ? chipStitch.waiting : chipStitch.default}
-          />
-        ))}
-
-      <div className="flex items-start gap-1.5 pl-1">
-        {isTask ? (
-          <Inbox
-            aria-hidden
-            className="mt-[3px] size-3.5 shrink-0 text-muted-foreground/50"
-          />
-        ) : (
-          <ArrowRight
-            aria-hidden
-            className={cn(
-              "mt-[3px] size-3.5 shrink-0",
-              item.nextMove
-                ? "text-muted-foreground/50"
-                : "text-muted-foreground/40",
-            )}
-          />
-        )}
+      {/* PROTOTYPE — the stock rail, kept by every variant but "reply". */}
+      {!isTask && !reply && (
         <span
+          aria-hidden
           className={cn(
-            "min-w-0 flex-1 text-sm leading-snug",
-            density === "compact" ? "truncate" : "line-clamp-2",
-            isTask && "font-normal text-foreground/90",
-            !isTask &&
-              (item.nextMove ? "font-medium" : "text-muted-foreground/45"),
+            "absolute inset-y-1 left-0 w-[3px] rounded-r-full",
+            waiting ? "bg-condition-attention" : "bg-border",
           )}
-        >
-          {isTask ? item.title : (item.nextMove ?? NO_NEXT_MOVE)}
-        </span>
-        {waiting && (
-          <span className="mt-px flex shrink-0 items-center gap-0.5 text-2xs font-medium text-condition-attention">
-            {!isTask && <Bell aria-hidden className="size-3 shrink-0" />}
-            <span className="tabular-nums">
-              {waitingLabel(item.date!, now)}
-            </span>
-          </span>
-        )}
-        {beyond && (
-          <span className="mt-px flex shrink-0 items-center gap-0.5 text-2xs font-medium text-muted-foreground/70">
-            {!isTask && <Bell aria-hidden className="size-3 shrink-0" />}
-            <span className="tabular-nums">{dayCaption(item.date!)}</span>
-          </span>
-        )}
-        {resurfacing && (
-          <Bell
-            aria-hidden
-            className="mt-[3px] size-3 shrink-0 text-muted-foreground/50"
-          />
-        )}
-      </div>
+        />
+      )}
 
-      {!isTask && (
-        <span className="mt-0.5 block min-w-0 truncate pl-1 text-xs leading-snug font-semibold text-muted-foreground">
-          {item.title}
-        </span>
+      {reply ? (
+        <>
+          {titleRow}
+          {moveRow}
+        </>
+      ) : (
+        <>
+          {moveRow}
+          {titleRow}
+        </>
       )}
 
       {density === "comfortable" && isTask && item.createdAt != null && (

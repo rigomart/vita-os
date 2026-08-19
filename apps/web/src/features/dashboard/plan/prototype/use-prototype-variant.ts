@@ -9,22 +9,15 @@ import {
   useSyncExternalStore,
 } from "react";
 
-export const PROTOTYPE_VARIANTS = [
-  "off",
-  "stitch",
-  "twist",
-  "lace",
-  "continuous",
-] as const;
+export const PROTOTYPE_VARIANTS = ["off", "reply", "graph", "trace"] as const;
 
 export type PrototypeVariant = (typeof PROTOTYPE_VARIANTS)[number];
 
 export const PROTOTYPE_VARIANT_LABELS: Record<PrototypeVariant, string> = {
-  off: "Today (baseline)",
-  stitch: "Running stitch",
-  twist: "Two-ply twist",
-  lace: "Lace overlay",
-  continuous: "Continuous thread",
+  off: "Current",
+  reply: "Reply thread",
+  graph: "Commit graph",
+  trace: "Time trace",
 };
 
 /**

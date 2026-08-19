@@ -193,15 +193,3 @@
     cursor: pointer;
   }
 }
-
-/* PROTOTYPE keyframes — throwaway thread-line variant experiment, do not ship */
-@keyframes thread-march {
-  to {
-    stroke-dashoffset: -12;
-  }
-}
-@keyframes thread-twist {
-  to {
-    background-position: 0 7.07px;
-  }
-}
