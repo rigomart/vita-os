@@ -9,8 +9,9 @@ import {
 import { startOfDay } from "date-fns";
 
 /**
- * The Later bay's calendar — a drop on the bay opens it instead of writing a
- * date, because the bay stands for every day the axis does not draw.
+ * The Later bucket's calendar — a drop on the bucket opens it instead of
+ * writing a date, because the bucket stands for every day the axis does not
+ * draw.
  *
  * Picking a day writes it and closes; closing any other way writes nothing.
  * The past is disabled — the Waiting bay shows debts, it does not take new
@@ -19,7 +20,7 @@ import { startOfDay } from "date-fns";
 interface PlanLaterDialogProps {
   /** The dropped item's current date, preselected when it has one. */
   at?: number;
-  /** What the pick will do, e.g. the item's title and any Area move. */
+  /** What the pick will do, e.g. the item's title. */
   hint: string;
   now: number;
   onOpenChange: (open: boolean) => void;

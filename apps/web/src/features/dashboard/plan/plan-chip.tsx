@@ -25,9 +25,9 @@ export interface ChipDragData {
  * lifted item is pixel-identical to the one it left behind.
  *
  * The axis already says *when*, so a chip on a day carries no date stamp. The
- * bays are where position cannot say it: the waiting bay prints how long the
- * debt has run, the Later bay prints the day itself — it stands for every date
- * past the end of the axis — and No date has nothing to print.
+ * bays and pools are where position cannot say it: the waiting bay prints how
+ * long the debt has run, the Later bucket prints the day itself — it stands for
+ * every date past the end of the axis — and No date has nothing to print.
  *
  * A dated Thread chip does carry a bell glyph: the axis says *when*, the bell
  * says what that placement *means* — a Follow-up, the soft day the Thread

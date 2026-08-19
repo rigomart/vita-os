@@ -67,10 +67,10 @@ export interface ScrollbarGeometry {
 
 /**
  * Where the thumb sits and how long it is, given the scroller's geometry and
- * the width of the two pinned columns.
+ * the width of the pinned lane header column.
  *
- * The thumb is measured against the day region alone: the pinned columns are
- * always on screen, so they belong to neither the viewport nor the content
+ * The thumb is measured against the day region alone: a pinned column is
+ * always on screen, so it belongs to neither the viewport nor the content
  * being represented. Returns null when nothing overflows.
  */
 export function scrollbarGeometry(
@@ -103,10 +103,10 @@ interface Grip {
  * The Plan canvas' own horizontal scrollbar.
  *
  * The native one spans the whole scroller, which puts it under the pinned lane
- * headers and the No-date bay — columns that never move — reading as if they
- * scrolled too. This one is inset to the day region alone, so its extent is the
- * extent of what actually slides, and it is sized against that region rather
- * than the full viewport.
+ * header column — a column that never moves — reading as if it scrolled too.
+ * This one is inset to the day region alone, so its extent is the extent of
+ * what actually slides, and it is sized against that region rather than the
+ * full viewport.
  *
  * It is a pointer affordance only, hidden from assistive tech: it restores what
  * the native bar offered a mouse, and the scroller keeps its own scrollable
@@ -118,7 +118,7 @@ export function PlanScrollbar({
   node,
   start,
 }: {
-  /** Inset from the right edge: the pinned No-date bay. */
+  /** Inset from the right edge, for anything pinned there. */
   end: number;
   metrics: ScrollMetrics;
   node: HTMLElement | null;

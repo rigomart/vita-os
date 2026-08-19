@@ -8,6 +8,7 @@ import {
   DndContext,
   DragOverlay,
   MouseSensor,
+  pointerWithin,
   TouchSensor,
   useSensor,
   useSensors,
@@ -34,9 +35,8 @@ import type { PlanActions } from "./use-plan-actions";
 
 import { AxisHeader } from "./plan-axis";
 import { ChipSurface } from "./plan-chip";
-import { planCollisionDetection } from "./plan-collision";
 import { AreaFilterChips } from "./plan-filters";
-import { LaneRow, NoDateBucket } from "./plan-lane";
+import { LaneRow, LaterBucket, NoDateBucket } from "./plan-lane";
 import { PlanLaterDialog } from "./plan-later-dialog";
 import {
   bayWidth,
@@ -61,13 +61,11 @@ const DENSITY_OPTIONS: {
 ];
 
 /**
- * A drop on the Later bay, waiting on the day the calendar has yet to name.
+ * A drop on the Later bucket, waiting on the day the calendar has yet to name.
  * Nothing is written until it is picked, so an abandoned dialog leaves the item
- * exactly where it was — Area move included.
+ * exactly where it was.
  */
 interface PendingLater {
-  /** The Area the drop would move a Thread into, when it crossed lanes. */
-  areaMove?: string;
   /** The item's current date, so the calendar opens where the item already is. */
   at?: number;
   itemId: string;
@@ -189,9 +187,6 @@ export function PlanCanvas({
     [lanes, inbox, totals, axis.days],
   );
 
-  /** How much of the right edge the pinned Later bay holds. */
-  const pinnedRight = bayWidth(density);
-
   const edges = {
     end: metrics.scrollLeft + metrics.clientWidth < metrics.scrollWidth - 4,
     start: metrics.scrollLeft > 4,
@@ -267,11 +262,10 @@ export function PlanCanvas({
     );
     if (!plan?.valid) return;
 
-    // The Later bay names no day of its own: hold the whole drop — the Area
-    // move with it — until the calendar comes back with one.
+    // The Later bucket names no day of its own — and, publishing no lane, it
+    // never moves an Area either: hold the drop until the calendar names a day.
     if (plan.needsDate) {
       setPendingLater({
-        areaMove: plan.areaMove,
         at: items.find((item) => item.id === source.itemId)?.date,
         itemId: source.itemId,
         kind: source.kind,
@@ -292,18 +286,13 @@ export function PlanCanvas({
     });
   }
 
-  /** The one write the Later bay's calendar makes, then it forgets the drop. */
+  /** The one write the Later calendar makes, then it forgets the drop. */
   function pickLaterDay(at: number) {
     if (pendingLater == null) return;
-    const { areaMove, itemId, kind } = pendingLater;
+    const { itemId, kind } = pendingLater;
 
     if (kind === "task") planTask(itemId, at);
-    else {
-      planThread(itemId, {
-        ...(areaMove != null && { areaId: areaMove }),
-        followUp: at,
-      });
-    }
+    else planThread(itemId, { followUp: at });
     setPendingLater(null);
   }
 
@@ -314,12 +303,7 @@ export function PlanCanvas({
   useEffect(() => {
     if (pendingLater != null && laterItem == null) setPendingLater(null);
   }, [pendingLater, laterItem]);
-  const laterHint =
-    laterItem == null
-      ? ""
-      : pendingLater?.areaMove != null
-        ? `${laterItem.title} → ${areaName(pendingLater.areaMove)}`
-        : laterItem.title;
+  const laterHint = laterItem?.title ?? "";
 
   const draggingItem = drag && items.find((item) => item.id === drag.itemId);
   const dropPlan = drag ? planDrop(drag, axis, areaName) : null;
@@ -380,9 +364,7 @@ export function PlanCanvas({
       />
 
       <DndContext
-        // The Later bay is pinned inside the day scroller, so its measured rect
-        // drifts as the canvas scrolls; the sticky bays are hit-tested live.
-        collisionDetection={planCollisionDetection}
+        collisionDetection={pointerWithin}
         sensors={sensors}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
@@ -397,9 +379,8 @@ export function PlanCanvas({
       >
         <div className="relative">
           {/* The native scrollbar would run the full width of the scroller —
-              under the pinned lane headers and the two right-hand bays, which
-              never move. It is hidden here and drawn by `PlanScrollbar` across the
-              day region only. */}
+              under the pinned lane headers, which never move. It is hidden here
+              and drawn by `PlanScrollbar` across the day region only. */}
           <div
             ref={setScrollNode}
             className="overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -426,8 +407,8 @@ export function PlanCanvas({
             </div>
           </div>
 
-          {/* Edge fades: content slides *under* the pinned lane headers and
-              the Later bay, so the seam reads as a fold, not as clipping. */}
+          {/* Edge fades: content slides *under* the pinned lane headers, so
+              the seam reads as a fold, not as clipping. */}
           <span
             aria-hidden
             className="pointer-events-none absolute top-0 bottom-3 z-40 w-8 transition-opacity"
@@ -445,21 +426,25 @@ export function PlanCanvas({
               backgroundImage:
                 "linear-gradient(to left, var(--surface-1) 0 35%, transparent 100%)",
               opacity: edges.end ? 1 : 0,
-              right: pinnedRight,
+              right: 0,
             }}
           />
 
           <PlanScrollbar
-            end={pinnedRight}
+            end={0}
             metrics={metrics}
             node={scrollNode}
             start={headerWidth}
           />
         </div>
 
-        {/* Undated work has no column on a calendar: it pools under the whole
-            canvas instead, at full width and outside the day scroller. */}
-        <NoDateBucket chrome={chrome} lanes={[...lanes, inbox]} />
+        {/* Neither undated work nor work past the horizon has a column on the
+            calendar: both pool under it, side by side and outside the day
+            scroller, and stack once the canvas is too narrow for two. */}
+        <div className="mt-2 grid gap-2 md:grid-cols-2">
+          <NoDateBucket chrome={chrome} lanes={[...lanes, inbox]} />
+          <LaterBucket chrome={chrome} lanes={[...lanes, inbox]} />
+        </div>
 
         {tally.open === 0 && (
           <p className="mt-3 rounded-2xl border border-dashed border-border p-10 text-center font-heading text-sm font-semibold">
