@@ -9,9 +9,8 @@ import {
 import { startOfDay } from "date-fns";
 
 /**
- * The Later bucket's calendar — a drop on the bucket opens it instead of
- * writing a date, because the bucket stands for every day the axis does not
- * draw.
+ * The Later rail's calendar — a drop on the rail opens it instead of writing a
+ * date, because the rail stands for every day the axis does not draw.
  *
  * Picking a day writes it and closes; closing any other way writes nothing.
  * The past is disabled — the Waiting bay shows debts, it does not take new

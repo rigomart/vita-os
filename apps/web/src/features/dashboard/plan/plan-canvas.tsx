@@ -30,28 +30,20 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 import type { SlotDropData } from "./plan-axis";
 import type { ChipDragData } from "./plan-chip";
-import type { PlanVariant } from "./plan-later-prototype";
 import type { Density, DragState, PlanItem, PlanItemKind } from "./plan-model";
 import type { PlanActions } from "./use-plan-actions";
 
 import { AxisHeader } from "./plan-axis";
 import { ChipSurface } from "./plan-chip";
 import { AreaFilterChips } from "./plan-filters";
-import { LaneRow, LaterBucket, NoDateBucket } from "./plan-lane";
+import { LaneRow, NoDateBucket } from "./plan-lane";
 import { PlanLaterDialog } from "./plan-later-dialog";
-import {
-  LaterOverlay,
-  LaterRail,
-  PrototypeSwitcher,
-  readVariant,
-  TrayPool,
-} from "./plan-later-prototype";
+import { LaterRail } from "./plan-later-rail";
 import {
   bayWidth,
   buildAxis,
   buildLanes,
   buildPlanItems,
-  dayCaption,
   HEADER_WIDTH,
   HEADER_WIDTH_NARROW,
   INBOX_LANE_ID,
@@ -70,7 +62,7 @@ const DENSITY_OPTIONS: {
 ];
 
 /**
- * A drop on the Later bucket, waiting on the day the calendar has yet to name.
+ * A drop on the Later rail, waiting on the day the calendar has yet to name.
  * Nothing is written until it is picked, so an abandoned dialog leaves the item
  * exactly where it was.
  */
@@ -122,12 +114,12 @@ export function PlanCanvas({
   const [scrollNode, setScrollNode] = useState<HTMLDivElement | null>(null);
   const metrics = useScrollMetrics(scrollNode);
 
-  /* PROTOTYPE — see `plan-later-prototype.tsx`. `current` is the shipped
-     layout, so everything below is a no-op until `?variant=` says otherwise. */
-  const [variant, setVariant] = useState<PlanVariant>(readVariant);
-  const gateScroll = variant === "rail" || variant === "overlay";
-  /** Freezes the lanes while the pointer is aiming at a Later surface. */
-  const overBeyond = useRef(false);
+  /**
+   * The lanes hold still while the pointer is on the Later rail. The rail sits
+   * outside the scroller, so a chip held over it would otherwise leave the
+   * canvas racing sideways under a target that is not moving.
+   */
+  const overLater = useRef(false);
 
   /**
    * Mouse and touch each get their own guard: a mouse drag arms after 5px so a
@@ -239,7 +231,7 @@ export function PlanCanvas({
 
   function handleDragOver(event: DragOverEvent) {
     const over = event.over?.data.current as SlotDropData | undefined;
-    overBeyond.current = over?.slotKey === "beyond"; // PROTOTYPE
+    overLater.current = over?.slotKey === "beyond";
     setDrag((previous) =>
       previous
         ? {
@@ -260,7 +252,7 @@ export function PlanCanvas({
    */
   function handleDragEnd(event: DragEndEvent) {
     setDrag(null);
-    overBeyond.current = false; // PROTOTYPE
+    overLater.current = false;
 
     const source = event.active.data.current as ChipDragData | undefined;
     const over = event.over?.data.current as SlotDropData | undefined;
@@ -280,7 +272,7 @@ export function PlanCanvas({
     );
     if (!plan?.valid) return;
 
-    // The Later bucket names no day of its own — and, publishing no lane, it
+    // The Later rail names no day of its own — and, publishing no lane, it
     // never moves an Area either: hold the drop until the calendar names a day.
     if (plan.needsDate) {
       setPendingLater({
@@ -336,72 +328,6 @@ export function PlanCanvas({
     onOpen: openItem,
   };
 
-  // PROTOTYPE: `rail` puts the day scroller and the rail side by side, so the
-  // scroller has to become a flex child. Every other variant renders the block
-  // exactly as it ships.
-  const canvasBlock = (
-    <div className={cn("relative", variant === "rail" && "min-w-0 flex-1")}>
-      {/* The native scrollbar would run the full width of the scroller —
-          under the pinned lane headers, which never move. It is hidden here
-          and drawn by `PlanScrollbar` across the day region only. */}
-      <div
-        ref={setScrollNode}
-        className="overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        <div style={{ minWidth: axis.minWidth }}>
-          <AxisHeader
-            areaCount={lanes.length}
-            axis={axis}
-            drag={drag}
-            narrow={narrow}
-            totals={totals}
-          />
-
-          {lanes.map((lane, index) => (
-            <LaneRow
-              key={lane.id}
-              chrome={chrome}
-              lane={lane}
-              last={index === lanes.length - 1}
-            />
-          ))}
-
-          <LaneRow chrome={chrome} lane={inbox} />
-        </div>
-      </div>
-
-      {/* Edge fades: content slides *under* the pinned lane headers, so
-          the seam reads as a fold, not as clipping. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute top-0 bottom-3 z-40 w-8 transition-opacity"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, var(--surface-1) 0 35%, transparent 100%)",
-          left: headerWidth,
-          opacity: edges.start ? 1 : 0,
-        }}
-      />
-      <span
-        aria-hidden
-        className="pointer-events-none absolute top-0 bottom-3 z-40 w-10 transition-opacity"
-        style={{
-          backgroundImage:
-            "linear-gradient(to left, var(--surface-1) 0 35%, transparent 100%)",
-          opacity: edges.end ? 1 : 0,
-          right: 0,
-        }}
-      />
-
-      <PlanScrollbar
-        end={0}
-        metrics={metrics}
-        node={scrollNode}
-        start={headerWidth}
-      />
-    </div>
-  );
-
   return (
     <section aria-label="Plan" className="flex flex-col gap-3">
       <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
@@ -450,78 +376,94 @@ export function PlanCanvas({
       <DndContext
         collisionDetection={pointerWithin}
         sensors={sensors}
-        // PROTOTYPE: rail and overlay freeze the lanes while the pointer is on
-        // a Later surface, so autoscroll cannot run away from the target.
-        {...(gateScroll
-          ? { autoScroll: { canScroll: () => !overBeyond.current } }
-          : {})}
+        autoScroll={{ canScroll: () => !overLater.current }}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         onDragCancel={() => {
           setDrag(null);
-          overBeyond.current = false; // PROTOTYPE
+          overLater.current = false;
         }}
         accessibility={{
           screenReaderInstructions: {
             draggable:
-              "Drag along the lane to pick an exact day, onto the ruler to reschedule in place, or into another Area lane to move the Thread. Press Enter to open it instead.",
+              "Drag along the lane to pick an exact day, onto the ruler to reschedule in place, into another Area lane to move the Thread, or onto the Later rail to pick a day past the axis. Press Enter to open it instead.",
           },
         }}
       >
-        {variant === "rail" ? (
-          <div className="flex items-stretch gap-2">
-            {canvasBlock}
-            <LaterRail chrome={chrome} lanes={[...lanes, inbox]} />
-          </div>
-        ) : (
-          canvasBlock
-        )}
+        {/* The days scroll; Later does not. The rail rides alongside the
+            scroller so the far end of the plan is always at the same edge —
+            flush against it, since a gap here would be a strip of canvas that
+            is neither a day nor Later, and a drag crossing it would come up
+            over nothing. */}
+        <div className="flex items-stretch">
+          <div className="relative min-w-0 flex-1">
+            {/* The native scrollbar would run the full width of the scroller —
+                under the pinned lane headers, which never move. It is hidden
+                here and drawn by `PlanScrollbar` across the day region only. */}
+            <div
+              ref={setScrollNode}
+              className="overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div style={{ minWidth: axis.minWidth }}>
+                <AxisHeader
+                  areaCount={lanes.length}
+                  axis={axis}
+                  drag={drag}
+                  narrow={narrow}
+                  totals={totals}
+                />
 
-        {/* Neither undated work nor work past the horizon has a column on the
-            calendar: both pool under it, side by side and outside the day
-            scroller, and stack once the canvas is too narrow for two. */}
-        {variant === "rail" ? (
-          // PROTOTYPE: the rail owns Later, so only No date pools below.
-          <div className="mt-2">
-            <NoDateBucket chrome={chrome} lanes={[...lanes, inbox]} />
-          </div>
-        ) : variant === "tray" ? (
-          // PROTOTYPE: same two pools, but they hide when empty, group by Area
-          // and say where Later begins.
-          <div className="mt-2 grid gap-2 md:grid-cols-2">
-            <TrayPool
-              chrome={chrome}
-              empty="Nothing undated"
-              hint="Drop here to take the day off"
-              label="No date"
-              lanes={[...lanes, inbox]}
-              pick={(lane) => lane.none}
-              slotKey="none"
-            />
-            <TrayPool
-              chrome={chrome}
-              empty="Nothing further out"
-              hint="Drop here to pick a further day"
-              label="Later"
-              lanes={[...lanes, inbox]}
-              note={
-                axis.days.at(-1) && `after ${dayCaption(axis.days.at(-1)!.at)}`
-              }
-              pick={(lane) => lane.beyond}
-              slotKey="beyond"
-            />
-          </div>
-        ) : (
-          <div className="mt-2 grid gap-2 md:grid-cols-2">
-            <NoDateBucket chrome={chrome} lanes={[...lanes, inbox]} />
-            <LaterBucket chrome={chrome} lanes={[...lanes, inbox]} />
-          </div>
-        )}
+                {lanes.map((lane, index) => (
+                  <LaneRow
+                    key={lane.id}
+                    chrome={chrome}
+                    lane={lane}
+                    last={index === lanes.length - 1}
+                  />
+                ))}
 
-        {/* PROTOTYPE: the drag-summoned panel — mounted all along, revealed
-            the moment a chip leaves its slot. */}
-        {variant === "overlay" && <LaterOverlay dragging={drag != null} />}
+                <LaneRow chrome={chrome} lane={inbox} />
+              </div>
+            </div>
+
+            {/* Edge fades: content slides *under* the pinned lane headers, so
+                the seam reads as a fold, not as clipping. */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute top-0 bottom-3 z-40 w-8 transition-opacity"
+              style={{
+                backgroundImage:
+                  "linear-gradient(to right, var(--surface-1) 0 35%, transparent 100%)",
+                left: headerWidth,
+                opacity: edges.start ? 1 : 0,
+              }}
+            />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute top-0 bottom-3 z-40 w-10 transition-opacity"
+              style={{
+                backgroundImage:
+                  "linear-gradient(to left, var(--surface-1) 0 35%, transparent 100%)",
+                opacity: edges.end ? 1 : 0,
+                right: 0,
+              }}
+            />
+
+            <PlanScrollbar
+              end={0}
+              metrics={metrics}
+              node={scrollNode}
+              start={headerWidth}
+            />
+          </div>
+
+          <LaterRail chrome={chrome} lanes={[...lanes, inbox]} />
+        </div>
+
+        {/* Undated work has no place on a calendar at all, so it pools under
+            the whole canvas rather than beside it. */}
+        <NoDateBucket chrome={chrome} lanes={[...lanes, inbox]} />
 
         {tally.open === 0 && (
           <p className="mt-3 rounded-2xl border border-dashed border-border p-10 text-center font-heading text-sm font-semibold">
@@ -579,9 +521,6 @@ export function PlanCanvas({
         }}
         onPick={pickLaterDay}
       />
-
-      {/* PROTOTYPE — delete with `plan-later-prototype.tsx`. */}
-      <PrototypeSwitcher onChange={setVariant} variant={variant} />
     </section>
   );
 }

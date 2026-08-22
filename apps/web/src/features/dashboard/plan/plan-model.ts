@@ -207,7 +207,7 @@ export function buildAxis(
       hasOverdue = true;
       continue;
     }
-    // Past the ceiling an item pools in the Later bucket: it neither stretches
+    // Past the ceiling an item is held in Later: it neither stretches
     // the axis nor opens a day.
     if (offset > MAX_HORIZON) continue;
     planned.push(offset);
@@ -295,7 +295,7 @@ export const INBOX_LANE_ID = "inbox";
 export interface Lane {
   /** Undefined on the pinned Inbox lane. */
   area?: DashboardArea;
-  /** Dated past what the axis renders — pooled in the Later bucket. */
+  /** Dated past what the axis renders — held in the Later rail. */
   beyond: PlanItem[];
   byDay: Map<string, PlanItem[]>;
   id: string;
@@ -466,7 +466,7 @@ export interface DropPlan {
   caption: string;
   clears: boolean;
   date?: number;
-  /** The Later bucket: the drop is valid but the day comes from a picker. */
+  /** Later: the drop is valid, but the day itself comes from a picker. */
   needsDate?: boolean;
   laneId: string;
   reschedule: boolean;
@@ -483,7 +483,7 @@ export interface DayDropPlan {
   clears: boolean;
   /** The day the drop writes; undefined when it clears. */
   date?: number;
-  /** The Later bucket: the drop is valid but the day comes from a picker. */
+  /** Later: the drop is valid, but the day itself comes from a picker. */
   needsDate?: boolean;
   /** The item is not already sitting in the slot it would land in. */
   reschedule: boolean;
@@ -517,7 +517,7 @@ export function planDayDrop(
     };
   }
 
-  // The Later bucket holds no single day: the drop is valid, the day is picked
+  // Later holds no single day: the drop is valid, the day is picked
   // in a calendar afterwards, so nothing is written here.
   if (to === "beyond") {
     return {

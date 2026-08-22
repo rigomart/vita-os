@@ -115,7 +115,7 @@ const threads: DashboardThread[] = [
     title: "Garage clear-out",
   },
   // Past `MAX_HORIZON`: the axis never draws this day, so the chip pools in the
-  // Later bucket instead.
+  // Later rail instead.
   {
     areaId: "home",
     followUp: day(120),
@@ -397,19 +397,31 @@ describe("PlanCanvas", () => {
     expect(canvas.querySelector('[data-bay="beyond"]')).toBeNull();
   });
 
-  it("pools work dated past the axis in the Later bucket, off the lanes", () => {
+  it("keeps work dated past the axis in the Later rail, off the lanes", async () => {
+    const user = userEvent.setup();
     renderCanvas();
 
     const canvas = screen.getByRole("region", { name: "Plan" });
     const later = screen.getByRole("group", { name: "Later" });
 
-    // One Thread is dated past the end of the axis.
+    // Collapsed, the rail is a spine: its count and its name, nothing else.
+    const toggle = within(later).getByRole("button", { name: "Later rail" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(within(later).getByText("Later")).toBeVisible();
     expect(within(later).getByText("1")).toBeVisible();
-    // No lane carries a Later or a No-date bay any more: the buckets own both.
+    expect(within(later).queryByText("Chimney sweep")).toBeNull();
+    // No lane carries a Later or a No-date bay any more.
     expect(canvas.querySelector('[data-bay="none"]')).toBeNull();
     expect(canvas.querySelector('[data-slot-key$="::beyond"]')).toBeNull();
 
-    // Position cannot say when, so the chip prints its own day.
+    // The same button pins it open, so the keyboard keeps its place.
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(toggle).toHaveFocus();
+
+    // Open, the chips read under the Area they belong to, and — position
+    // cannot say when out here — each prints its own day.
+    expect(within(later).getByText("Home")).toBeVisible();
     const chip = within(later)
       .getByText("Chimney sweep")
       .closest("[data-chip]")!;
@@ -428,9 +440,13 @@ describe("PlanCanvas", () => {
     await dragChipTo("t2", "beyond", () => {
       // The lifted chip promises a picker rather than a day.
       expect(screen.getByText("Pick a day")).toBeVisible();
+      // The rail opens on the lift, so what is already out there is in view
+      // before the chip lands on it.
+      const later = screen.getByRole("group", { name: "Later" });
+      expect(within(later).getByText("Chimney sweep")).toBeVisible();
     });
 
-    // The drop itself writes nothing: the bucket names no single day.
+    // The drop itself writes nothing: the rail names no single day.
     expect(planActions.planThread).not.toHaveBeenCalled();
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Kitchen faucet")).toBeVisible();
@@ -464,13 +480,15 @@ describe("PlanCanvas", () => {
     });
   });
 
-  it("re-dates a chip already pooled in Later, opening on its own month", async () => {
+  it("re-dates a chip already held in the rail, opening on its own month", async () => {
     const user = userEvent.setup();
     const { planActions } = renderCanvas();
+
+    // "Chimney sweep" is already dated day(120), so it lives in the rail:
+    // pin it open to reach the chip, then drop it straight back on Later.
+    await user.click(screen.getByRole("button", { name: "Later rail" }));
     measureSlots();
 
-    // "Chimney sweep" is already dated day(120), so it starts in the bucket:
-    // dropping it back on Later is still a valid pick, not a no-op.
     await dragChipTo("t4", "beyond");
 
     const dialog = await screen.findByRole("dialog");
@@ -482,6 +500,23 @@ describe("PlanCanvas", () => {
 
     expect(planActions.planThread).toHaveBeenCalledWith("t4", {
       followUp: day(120),
+    });
+  });
+
+  it("drags out of the rail onto another Area's day, moving the Thread", async () => {
+    const user = userEvent.setup();
+    const { planActions } = renderCanvas();
+
+    // The rail's chips carry the lane they came from, so a drag out of it
+    // crosses lanes like any other: "Chimney sweep" is Home's.
+    await user.click(screen.getByRole("button", { name: "Later rail" }));
+    measureSlots();
+
+    await dragChipTo("t4", "health::d0");
+
+    expect(planActions.planThread).toHaveBeenCalledWith("t4", {
+      areaId: "health",
+      followUp: day(0),
     });
   });
 
@@ -555,10 +590,24 @@ describe("PlanCanvas", () => {
     const { planActions } = renderCanvas();
     measureSlots();
 
-    await dragChipTo("t2", "home::d0");
+    await dragChipTo("t2", "home::d0", () => {
+      // Any lift opens the rail, wherever the chip is headed.
+      expect(
+        within(screen.getByRole("group", { name: "Later" })).getByText(
+          "Chimney sweep",
+        ),
+      ).toBeVisible();
+    });
     expect(planActions.planThread).toHaveBeenCalledWith("t2", {
       followUp: day(0),
     });
+
+    // With the chip down and nothing pinned, the rail is a spine again.
+    expect(
+      within(screen.getByRole("group", { name: "Later" })).queryByText(
+        "Chimney sweep",
+      ),
+    ).toBeNull();
 
     // The waiting bay shows a debt; it never takes a new plan.
     planActions.planThread.mockClear();

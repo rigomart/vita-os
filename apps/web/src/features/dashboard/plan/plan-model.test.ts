@@ -76,7 +76,7 @@ describe("plan axis", () => {
     expect(slotKeyFor(undefined, now, horizon)).toBe("none");
   });
 
-  it("files a date past the horizon into the Later bucket, not the last day", () => {
+  it("files a date past the horizon into the Later rail, not the last day", () => {
     const horizon = axis.days.length - 1;
     expect(slotKeyFor(dayAt(horizon, now), now, horizon)).toBe(`d${horizon}`);
     expect(slotKeyFor(dayAt(horizon + 1, now), now, horizon)).toBe("beyond");
@@ -133,7 +133,7 @@ describe("plan axis", () => {
       now,
       "compact",
     );
-    // A beyond-ceiling item lives in the Later bucket: it neither stretches the
+    // A beyond-ceiling item lives in the Later rail: it neither stretches the
     // axis nor widens the last rendered day.
     expect(far.days.length - 1).toBe(MIN_HORIZON);
     expect(far.days.at(-1)!.wide).toBe(false);
@@ -192,7 +192,7 @@ describe("plan lanes", () => {
     expect(inbox.byDay.get("d1")?.map((item) => item.id)).toEqual(["k1"]);
   });
 
-  it("docks beyond-horizon items in the Later bucket, dates intact", () => {
+  it("docks beyond-horizon items in the Later rail, dates intact", () => {
     const distant: PlanItem[] = [
       ...items,
       {
@@ -341,7 +341,7 @@ describe("planDrop", () => {
     });
   });
 
-  it("asks for a day on the Later bucket instead of writing one", () => {
+  it("asks for a day on the Later rail instead of writing one", () => {
     const plan = drop({ overLaneId: "home", overSlotKey: "beyond" });
 
     expect(plan).toMatchObject({
@@ -354,8 +354,8 @@ describe("planDrop", () => {
     expect(plan!.date).toBeUndefined();
   });
 
-  // A Later drop can no longer cross lanes: the bucket is pooled under the
-  // canvas and publishes no lane, so `overLaneId` is always the source's.
+  // A Later drop can no longer cross lanes: the rail sits beside the canvas
+  // and publishes no lane, so `overLaneId` is always the source's.
 
   it("refuses the past, the wrong lane, and a no-op drop", () => {
     expect(drop({ overLaneId: "home", overSlotKey: "overdue" })).toMatchObject({
