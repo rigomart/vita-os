@@ -76,17 +76,19 @@ describe("plan axis", () => {
     expect(slotKeyFor(undefined, now, horizon)).toBe("none");
   });
 
-  it("files a date past the horizon into the Later bay, not the last day", () => {
+  it("files a date past the horizon into the Later rail, not the last day", () => {
     const horizon = axis.days.length - 1;
     expect(slotKeyFor(dayAt(horizon, now), now, horizon)).toBe(`d${horizon}`);
     expect(slotKeyFor(dayAt(horizon + 1, now), now, horizon)).toBe("beyond");
   });
 
-  it("ends on the pinned Later column, with no No-date column at all", () => {
+  it("ends on its last day: neither Later nor No date earns a column", () => {
     const kinds = axis.columns.map((column) => column.kind);
-    expect(kinds.at(-1)).toBe("beyond");
+    expect(kinds.at(-1)).toBe("day");
+    expect(kinds).not.toContain("beyond");
     expect(kinds).not.toContain("none");
-    expect(kinds.at(-2)).toBe("day");
+    // The waiting bay is the one column that is not a day.
+    expect(kinds[0]).toBe("overdue");
   });
 
   it("bands every rendered day under its month, past the near region", () => {
@@ -131,7 +133,7 @@ describe("plan axis", () => {
       now,
       "compact",
     );
-    // A beyond-ceiling item lives in the Later bay: it neither stretches the
+    // A beyond-ceiling item lives in the Later rail: it neither stretches the
     // axis nor widens the last rendered day.
     expect(far.days.length - 1).toBe(MIN_HORIZON);
     expect(far.days.at(-1)!.wide).toBe(false);
@@ -147,7 +149,7 @@ describe("plan axis", () => {
     );
   });
 
-  it("gives an open slot — and both bays — the width its density asks for", () => {
+  it("gives an open slot — and the waiting bay — the width its density asks for", () => {
     const comfortable = buildAxis(items, now, "comfortable");
 
     expect(axis.days.find((day) => day.wide)!.width).toBe(144);
@@ -190,7 +192,7 @@ describe("plan lanes", () => {
     expect(inbox.byDay.get("d1")?.map((item) => item.id)).toEqual(["k1"]);
   });
 
-  it("docks beyond-horizon items in the Later bucket, dates intact", () => {
+  it("docks beyond-horizon items in the Later rail, dates intact", () => {
     const distant: PlanItem[] = [
       ...items,
       {
@@ -339,7 +341,7 @@ describe("planDrop", () => {
     });
   });
 
-  it("asks for a day on the Later bay instead of writing one", () => {
+  it("asks for a day on the Later rail instead of writing one", () => {
     const plan = drop({ overLaneId: "home", overSlotKey: "beyond" });
 
     expect(plan).toMatchObject({
@@ -352,16 +354,8 @@ describe("planDrop", () => {
     expect(plan!.date).toBeUndefined();
   });
 
-  it("still moves the Area on a cross-lane Later drop", () => {
-    const plan = drop({ overLaneId: "health", overSlotKey: "beyond" });
-
-    expect(plan).toMatchObject({
-      areaMove: "health",
-      needsDate: true,
-      tone: "move",
-      valid: true,
-    });
-  });
+  // A Later drop can no longer cross lanes: the rail sits beside the canvas
+  // and publishes no lane, so `overLaneId` is always the source's.
 
   it("refuses the past, the wrong lane, and a no-op drop", () => {
     expect(drop({ overLaneId: "home", overSlotKey: "overdue" })).toMatchObject({

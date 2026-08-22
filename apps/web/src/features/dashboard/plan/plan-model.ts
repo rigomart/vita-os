@@ -134,7 +134,7 @@ const SLOT_WIDTH: Record<Density, number> = {
   comfortable: 184,
 };
 
-/** The waiting bay and the pinned Later bay share the slot width. */
+/** The width of an open day slot: what the waiting bay and every chip get. */
 export function bayWidth(density: Density): number {
   return SLOT_WIDTH[density];
 }
@@ -161,7 +161,6 @@ export interface DaySlot {
 
 export type AxisColumn =
   | { day: DaySlot; key: string; kind: "day"; width: number }
-  | { key: "beyond"; kind: "beyond"; width: number }
   | { key: "overdue"; kind: "overdue"; width: number };
 
 export interface MonthSpan {
@@ -178,7 +177,7 @@ export interface Axis {
   minWidth: number;
   /** One span per calendar month, covering every rendered day. */
   monthSpans: MonthSpan[];
-  /** `grid-template-columns`, header and bays included. */
+  /** `grid-template-columns`, header and waiting bay included. */
   template: string;
 }
 
@@ -208,7 +207,7 @@ export function buildAxis(
       hasOverdue = true;
       continue;
     }
-    // Past the ceiling an item docks in the Later bay: it neither stretches
+    // Past the ceiling an item is held in Later: it neither stretches
     // the axis nor opens a day.
     if (offset > MAX_HORIZON) continue;
     planned.push(offset);
@@ -250,7 +249,6 @@ export function buildAxis(
   for (const day of days) {
     columns.push({ day, key: day.key, kind: "day", width: day.width });
   }
-  columns.push({ key: "beyond", kind: "beyond", width: slotWidth });
 
   // The band names months and nothing else: every rendered day sits under the
   // month it belongs to, ticks and open slots alike.
@@ -297,7 +295,7 @@ export const INBOX_LANE_ID = "inbox";
 export interface Lane {
   /** Undefined on the pinned Inbox lane. */
   area?: DashboardArea;
-  /** Dated past what the axis renders — docked in the Later bay. */
+  /** Dated past what the axis renders — held in the Later rail. */
   beyond: PlanItem[];
   byDay: Map<string, PlanItem[]>;
   id: string;
@@ -468,7 +466,7 @@ export interface DropPlan {
   caption: string;
   clears: boolean;
   date?: number;
-  /** The Later bay: the drop is valid but the day comes from a picker. */
+  /** Later: the drop is valid, but the day itself comes from a picker. */
   needsDate?: boolean;
   laneId: string;
   reschedule: boolean;
@@ -485,7 +483,7 @@ export interface DayDropPlan {
   clears: boolean;
   /** The day the drop writes; undefined when it clears. */
   date?: number;
-  /** The Later bay: the drop is valid but the day comes from a picker. */
+  /** Later: the drop is valid, but the day itself comes from a picker. */
   needsDate?: boolean;
   /** The item is not already sitting in the slot it would land in. */
   reschedule: boolean;
@@ -519,7 +517,7 @@ export function planDayDrop(
     };
   }
 
-  // The Later bay holds no single day: the drop is valid, the day is picked
+  // Later holds no single day: the drop is valid, the day is picked
   // in a calendar afterwards, so nothing is written here.
   if (to === "beyond") {
     return {

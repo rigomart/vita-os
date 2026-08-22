@@ -7,8 +7,8 @@ import type { Density, PlanItem } from "./plan-model";
 
 import { agoLabel, dayCaption, waitingLabel } from "./plan-model";
 
-/** Thread chips lead with the Next Move (ADR 0010: the Next Move is the one
- * thing a Thread surfaces outside its detail view), demoting the title to a
+/** The Next Move is the one thing a Thread surfaces outside its detail view
+ * (ADR 0010), so it keeps the lead font weight; the title sits above it as a
  * muted identifier line. An empty slot prints a faint placeholder — a valid
  * state, so it reads neutral, never as a warning. */
 export const NO_NEXT_MOVE = "No Next Move";
@@ -24,15 +24,14 @@ export interface ChipDragData {
  * Presentation only — shared by the in-lane chip and the drag ghost so the
  * lifted item is pixel-identical to the one it left behind.
  *
- * The axis already says *when*, so a chip on a day carries no date stamp. The
- * bays are where position cannot say it: the waiting bay prints how long the
- * debt has run, the Later bay prints the day itself — it stands for every date
+ * The axis already says *when*, so a chip on a day carries no date stamp. Off
+ * the axis is where position cannot say it: the waiting bay prints how long the
+ * debt has run, the Later rail prints the day itself — it stands for every date
  * past the end of the axis — and No date has nothing to print.
  *
- * A dated Thread chip does carry a bell glyph: the axis says *when*, the bell
- * says what that placement *means* — a Follow-up, the soft day the Thread
- * resurfaces into awareness, never a hard commitment. The waiting badge wears
- * the same glyph so the overdue state reads as the same promise, run late.
+ * Only the waiting badge wears the bell glyph: overdue is the one state loud
+ * enough to earn it. Elsewhere the placement speaks for itself — the hover
+ * hint spells out that a Thread's day is a Follow-up, not a commitment.
  */
 export function ChipSurface({
   density,
@@ -50,8 +49,6 @@ export function ChipSurface({
   const isTask = item.kind === "task";
   const waiting = slotKey === "overdue" && item.date != null;
   const beyond = slotKey === "beyond" && item.date != null;
-  const resurfacing =
-    !isTask && item.date != null && slotKey !== "none" && !waiting && !beyond;
 
   return (
     <div
@@ -78,7 +75,13 @@ export function ChipSurface({
         />
       )}
 
-      <div className="flex items-start gap-1.5 pl-1">
+      {!isTask && (
+        <span className="mb-0.5 block min-w-0 truncate text-xs leading-snug font-semibold text-muted-foreground">
+          {item.title}
+        </span>
+      )}
+
+      <div className="flex items-start gap-1.5">
         {isTask ? (
           <Inbox
             aria-hidden
@@ -115,27 +118,14 @@ export function ChipSurface({
           </span>
         )}
         {beyond && (
-          <span className="mt-px flex shrink-0 items-center gap-0.5 text-2xs font-medium text-muted-foreground/70">
-            {!isTask && <Bell aria-hidden className="size-3 shrink-0" />}
-            <span className="tabular-nums">{dayCaption(item.date!)}</span>
+          <span className="mt-px shrink-0 text-2xs font-medium tabular-nums text-muted-foreground/70">
+            {dayCaption(item.date!)}
           </span>
-        )}
-        {resurfacing && (
-          <Bell
-            aria-hidden
-            className="mt-[3px] size-3 shrink-0 text-muted-foreground/50"
-          />
         )}
       </div>
 
-      {!isTask && (
-        <span className="mt-0.5 block min-w-0 truncate pl-1 text-xs leading-snug font-semibold text-muted-foreground">
-          {item.title}
-        </span>
-      )}
-
       {density === "comfortable" && isTask && item.createdAt != null && (
-        <span className="mt-0.5 block pl-6 text-xs leading-snug text-muted-foreground/45">
+        <span className="mt-0.5 block pl-5 text-xs leading-snug text-muted-foreground/45">
           Captured {agoLabel(item.createdAt, now)}
         </span>
       )}

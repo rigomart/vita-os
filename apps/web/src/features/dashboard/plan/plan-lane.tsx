@@ -1,6 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
 import { cn } from "@vita-os/ui/lib/utils";
-import { CircleDashed, CornerDownRight, Inbox } from "lucide-react";
+import { CornerDownRight, Inbox } from "lucide-react";
 import { useRef } from "react";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
@@ -50,9 +50,9 @@ export interface LaneChrome {
  *
  * Chips sit in the day slot matching their date and read left to right in date
  * order; anything already past docks in the tinted waiting bay at the lane's
- * left edge, and anything dated past the axis docks in the Later bay pinned at
- * its right. Dragging along the lane retargets the day, dragging across lanes
- * moves the Thread's Area.
+ * left edge, and anything dated past the axis leaves the lane altogether for
+ * the Later rail beside the canvas. Dragging along the lane retargets the day,
+ * dragging across lanes moves the Thread's Area.
  */
 export function LaneRow({
   chrome,
@@ -118,19 +118,6 @@ export function LaneRow({
             />
           );
         }
-        if (column.kind === "beyond") {
-          return (
-            <LaterBay
-              key="beyond"
-              chrome={chrome}
-              gridColumn={gridColumn}
-              items={lane.beyond}
-              laneId={lane.id}
-              tint={tint}
-            />
-          );
-        }
-
         return (
           <DayCell
             key={column.key}
@@ -290,80 +277,26 @@ function LaneStatus({ incoming, lane }: { incoming: boolean; lane: Lane }) {
     );
   }
 
-  // A non-healthy Area always leads with its condition, even when the lane
-  // holds nothing — the condition never hides behind emptiness.
+  // A non-healthy Area always declares its condition, even when the lane
+  // holds nothing — the condition never hides behind emptiness. That is the
+  // whole line: any longer detail overflows the header column.
   if (area.condition !== "healthy") {
     const StateIcon = conditionIcons[area.condition];
-    const detail =
-      lane.openCount === 0
-        ? "No open Threads"
-        : lane.plannedCount === 0
-          ? "Nothing planned"
-          : lane.nearHorizon === 0
-            ? "Nothing this week"
-            : null;
 
     return (
-      <span className="mt-0.5 flex min-w-0 items-center gap-1 text-xs">
-        <span
-          className={cn(
-            "flex shrink-0 items-center gap-1 font-medium",
-            conditionTextClassName[area.condition],
-          )}
-        >
-          <StateIcon aria-hidden className="size-3" />
-          {conditionShort[area.condition]}
-        </span>
-        <span
-          className={cn(
-            "truncate",
-            detail === "Nothing this week"
-              ? "font-medium text-condition-attention"
-              : "text-muted-foreground/60",
-          )}
-        >
-          ·{" "}
-          {detail ?? (
-            <>
-              <span className="tabular-nums">{lane.plannedCount}</span> planned
-            </>
-          )}
-        </span>
+      <span
+        className={cn(
+          "mt-0.5 flex items-center gap-1 text-xs font-medium",
+          conditionTextClassName[area.condition],
+        )}
+      >
+        <StateIcon aria-hidden className="size-3" />
+        {conditionShort[area.condition]}
       </span>
     );
   }
 
-  if (lane.openCount === 0) {
-    return (
-      <span className="mt-0.5 block text-xs text-muted-foreground/50">
-        No open Threads
-      </span>
-    );
-  }
-
-  if (lane.plannedCount === 0) {
-    return (
-      <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground/60">
-        <CircleDashed className="size-3" />
-        Nothing planned
-      </span>
-    );
-  }
-
-  if (lane.nearHorizon === 0) {
-    return (
-      <span className="mt-0.5 block text-xs text-muted-foreground/60">
-        Nothing this week
-      </span>
-    );
-  }
-
-  return (
-    <span className="mt-0.5 block truncate text-xs text-muted-foreground/60">
-      {conditionShort[area.condition]} ·{" "}
-      <span className="tabular-nums">{lane.plannedCount}</span> planned
-    </span>
-  );
+  return null;
 }
 
 function InboxLaneHeader({ lane, narrow }: { lane: Lane; narrow: boolean }) {
@@ -532,90 +465,19 @@ function WaitingBay({
   );
 }
 
-/**
- * **Later** — the bay pinned to the lane's right edge, holding work dated past
- * the far end of the axis. It never scrolls away, so the axis always ends on
- * the same anchor however far it is scrolled.
- *
- * A drop here has no single day to write, so the canvas answers it with a
- * calendar instead of a mutation — see `plan-later-dialog.tsx`.
- */
-function LaterBay({
-  chrome,
-  gridColumn,
-  items,
-  laneId,
-  tint,
-}: {
-  chrome: LaneChrome;
-  gridColumn: number;
-  items: PlanItem[];
-  laneId: string;
-  tint: string;
-}) {
-  const { density, drag, now, onOpen } = chrome;
-  const slotKey = "beyond";
-
-  const { isOver, setNodeRef } = useDroppable({
-    id: `${laneId}::${slotKey}`,
-    data: { laneId, slotKey } satisfies SlotDropData,
-  });
-
-  const armed = drag != null && acceptsKind(laneId, drag.kind) && isOver;
-
-  return (
-    <div
-      ref={setNodeRef}
-      data-slot-key={`${laneId}::${slotKey}`}
-      style={{ gridColumn, gridRow: 1 }}
-      className={cn(
-        "sticky right-0 z-20 flex flex-col justify-center border-l border-border bg-surface-1 px-1.5",
-        cellRhythm(density),
-        armed && "bg-surface-3",
-      )}
-    >
-      <Tint className={tint} />
-      {armed && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-1 rounded-md border border-dashed border-foreground/40"
-        />
-      )}
-      <div
-        className={cn(
-          "relative flex flex-col",
-          density === "compact" ? "gap-1" : "gap-1.5",
-        )}
-      >
-        {items.map((item) => (
-          <PlanChip
-            key={item.id}
-            density={density}
-            item={item}
-            laneId={laneId}
-            now={now}
-            onOpen={onOpen}
-            slotKey={slotKey}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* --------------------------------------------------------- no-date bucket -- */
+/* --------------------------------------------------- no-date bucket -- */
 
 /**
  * **No date** — everything with no day at all, pooled under the canvas rather
  * than sliced per lane. Undated work has no place on a calendar, so it gets no
- * column on one: it reads as a holding pen, deliberately unlike a lane — no
- * header column, no condition tint, its own raised surface, and chips flowing
- * across the full width instead of down a slot.
+ * column on one: a holding pen, deliberately unlike a lane — no header column,
+ * no condition tint, its own dashed surface, and chips flowing across the full
+ * width instead of down a slot.
  *
- * It is a droppable that clears the date, and it publishes no `laneId` of its
- * own — like the ruler, it means "no day, whichever lane you came from", so a
- * Thread dropped here keeps its Area. Each chip carries its own lane back, so
- * dragging one out onto a day lands it where it belongs.
+ * It publishes no `laneId` of its own — like the ruler, it means "no day,
+ * whichever lane you came from", so a Thread dropped here keeps its Area. Each
+ * chip carries its own lane back, so dragging one out onto a day lands it where
+ * it belongs.
  */
 export function NoDateBucket({
   chrome,
@@ -645,7 +507,7 @@ export function NoDateBucket({
       aria-label="No date"
       data-slot-key="none"
       className={cn(
-        "relative mt-3 rounded-xl border border-dashed border-border bg-surface-2/60 transition-colors",
+        "relative mt-2 rounded-xl border border-dashed border-border bg-surface-2/60 transition-colors",
         density === "compact" ? "p-2.5" : "p-3",
         armed && "border-solid border-foreground/40 bg-surface-3/70",
       )}
