@@ -43,7 +43,7 @@ describe("ActivityLog", () => {
       "font-heading",
       "text-sm",
     );
-    expect(screen.getByText("Newest first")).toBeVisible();
+    expect(screen.queryByText("Newest first")).not.toBeInTheDocument();
     expect(screen.getByText("Called the clinic")).toHaveClass(
       "text-sm",
       "text-foreground",
@@ -51,7 +51,7 @@ describe("ActivityLog", () => {
     expect(screen.getByText("Health → Finances")).toHaveClass(
       "text-muted-foreground/80",
     );
-    expect(screen.getByText("Area")).toBeInTheDocument();
+    expect(screen.getByText("Area")).toHaveClass("sr-only");
     expect(screen.queryByText("area_move")).not.toBeInTheDocument();
     expect(
       screen.getByRole("textbox", { name: "Activity log note" }),
@@ -160,7 +160,11 @@ describe("ActivityLog", () => {
     ).toBeInTheDocument();
     const noteCard = screen.getByText("Called the clinic").closest("div");
     expect(noteCard).toHaveClass("rounded-md", "border-border");
-    expect(screen.getByText("Note")).toHaveClass("uppercase");
+    expect(screen.getByText("Note")).toHaveClass("sr-only");
+    expect(noteCard?.querySelector("svg")).toHaveClass(
+      "size-3.5",
+      "text-(--brand-gold)",
+    );
     const changeRow = screen.getByText("Health → Finances").closest("div");
     expect(changeRow).toHaveClass("text-muted-foreground");
     expect(changeRow).not.toHaveClass("border-border");

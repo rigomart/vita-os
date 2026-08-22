@@ -4,7 +4,14 @@ import type { LucideIcon } from "lucide-react";
 import { Button } from "@vita-os/ui/components/button";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
-import { ArrowRight, Bell, CircleCheck, Loader2, MapPin } from "lucide-react";
+import {
+  ArrowRight,
+  Bell,
+  CircleCheck,
+  Loader2,
+  MapPin,
+  StickyNote,
+} from "lucide-react";
 import { useRef } from "react";
 
 import { getActivityLogEntryLabel } from "@/features/threads/activity-log-entry";
@@ -74,9 +81,6 @@ export function ActivityLog({
           </span>
         )}
         <span aria-hidden className="ml-1 h-px flex-1 bg-border/50" />
-        <span className="text-2xs font-medium tracking-wide text-muted-foreground/60 uppercase">
-          Newest first
-        </span>
       </div>
 
       {/* Only this region scrolls; the pane's header, attention bar and
@@ -255,10 +259,12 @@ function ManualNote({ log }: { log: ActivityLogEntry }) {
         )}
       />
       <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
-        <div className="mb-1 flex items-baseline justify-between gap-2">
-          <span className="text-2xs font-medium tracking-wide text-(--brand-gold) uppercase">
-            Note
-          </span>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <StickyNote
+            aria-hidden
+            className="size-3.5 shrink-0 text-(--brand-gold)"
+          />
+          <span className="sr-only">Note</span>
           <ActivityLogTimestamp createdAt={log.createdAt} />
         </div>
         <p className="whitespace-pre-wrap text-sm leading-snug text-foreground">
@@ -284,9 +290,7 @@ function AutomaticChange({ log }: { log: AutomaticActivityLogEntry }) {
       />
       <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
         <Icon className="size-3.5 shrink-0 text-muted-foreground/60" />
-        <span className="shrink-0 font-medium">
-          {getActivityLogEntryLabel(log.type)}
-        </span>
+        <span className="sr-only">{getActivityLogEntryLabel(log.type)}</span>
         <span className="truncate text-muted-foreground/80">
           {getAutomaticChangeSummary(log)}
         </span>

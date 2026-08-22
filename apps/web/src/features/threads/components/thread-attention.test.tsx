@@ -51,7 +51,10 @@ describe("ThreadAttention", () => {
 
     const attention = screen.getByRole("region", { name: "Thread attention" });
     expect(within(attention).getByText("Call the clinic")).toBeVisible();
-    expect(within(attention).getByText("Follow up Aug 13")).toBeVisible();
+    expect(within(attention).getByText("Aug 13")).toBeVisible();
+    expect(
+      within(attention).getByRole("button", { name: "Follow up Aug 13" }),
+    ).toBeVisible();
     expect(
       within(attention).getByRole("button", { name: "Complete next move" }),
     ).toBeVisible();
@@ -253,14 +256,10 @@ describe("ThreadAttention", () => {
     const { unmount } = renderAttention({
       followUp: subDays(new Date(now), 2).getTime(),
     });
-    expect(screen.getByText("Follow up Aug 11")).toHaveClass(
-      "text-condition-attention",
-    );
+    expect(screen.getByText("Aug 11")).toHaveClass("text-condition-attention");
     unmount();
 
     renderAttention({ followUp: addDays(new Date(now), 9).getTime() });
-    expect(screen.getByText("Follow up Aug 22")).toHaveClass(
-      "text-muted-foreground",
-    );
+    expect(screen.getByText("Aug 22")).toHaveClass("text-muted-foreground");
   });
 });
