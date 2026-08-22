@@ -10,6 +10,8 @@ interface EditableFieldProps {
   placeholder?: string;
   className?: string;
   displayClassName?: string;
+  /** Ref to the display button, so callers can measure the rendered text. */
+  displayRef?: React.Ref<HTMLButtonElement>;
   editorClassName?: string;
   textareaRows?: number;
   startEditing?: boolean;
@@ -31,6 +33,7 @@ export function EditableField({
   placeholder = "Click to edit...",
   className,
   displayClassName: displayClassNameProp,
+  displayRef,
   editorClassName,
   textareaRows = 3,
   startEditing = false,
@@ -98,7 +101,8 @@ export function EditableField({
 
   const displayClassName = cn(
     fieldClassName,
-    "flex items-start justify-start font-inherit leading-inherit tracking-inherit",
+    // `text-left` resets the UA stylesheet's centered button text.
+    "flex items-start justify-start text-left font-inherit leading-inherit tracking-inherit",
     displayClassNameProp,
   );
 
@@ -110,6 +114,7 @@ export function EditableField({
   return (
     <div className="grid w-full items-start text-left">
       <button
+        ref={displayRef}
         type="button"
         onClick={() => {
           if (!disabled) {
