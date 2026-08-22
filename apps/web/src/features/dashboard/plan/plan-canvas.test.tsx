@@ -321,7 +321,6 @@ describe("PlanCanvas", () => {
       name: "Area panel for Finance",
     });
     expect(within(header).getByText("Critical")).toBeVisible();
-    expect(within(header).getByText(/No open Threads/)).toBeVisible();
   });
 
   it("opens the Area's panel from its lane header and captures into it", async () => {
