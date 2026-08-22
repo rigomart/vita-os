@@ -520,6 +520,11 @@ function FollowUpSatellite({
               variant="ghost"
               size="xs"
               disabled={isPending}
+              // The Bell already says "follow-up", so the label stays visually
+              // to the date alone — the phrase survives as the accessible name.
+              aria-label={
+                selected ? `Follow up ${format(selected, "MMM d")}` : undefined
+              }
               className="h-8 gap-1.5 px-1.5 font-normal xl:h-6"
             />
           }
@@ -532,7 +537,7 @@ function FollowUpSatellite({
                 tone ? FOLLOW_UP_TONE[tone] : "text-muted-foreground",
               )}
             >
-              {`Follow up ${format(selected, "MMM d")}`}
+              {format(selected, "MMM d")}
             </span>
           ) : (
             <span className="text-muted-foreground">Add a follow-up…</span>
