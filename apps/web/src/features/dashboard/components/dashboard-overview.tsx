@@ -3,6 +3,8 @@ import { Button } from "@vita-os/ui/components/button";
 import type { PlanActions } from "@/features/dashboard/plan/use-plan-actions";
 
 import { PlanCanvas, PlanSchedule } from "@/features/dashboard/plan";
+// PROTOTYPE — throwaway (issue #309). Delete this import with the folder.
+import { AttentionDashboardPrototype } from "@/features/dashboard/prototype/attention-dashboard-prototype";
 import { useIsCompact } from "@/hooks/use-mobile";
 
 import type {
@@ -77,13 +79,24 @@ export function DashboardOverview({
           threads={threads}
         />
       ) : (
-        <PlanCanvas
+        /* PROTOTYPE — throwaway (issue #309): the attention-first variants
+           wrap the desktop canvas; the Plan stays reachable as the `plan`
+           baseline. Restore the bare <PlanCanvas> when the round is decided. */
+        <AttentionDashboardPrototype
           areas={areas}
           currentDate={currentDate}
-          onNewThreadInArea={onNewThreadInArea}
-          planActions={planActions}
           tasks={tasks}
           threads={threads}
+          plan={
+            <PlanCanvas
+              areas={areas}
+              currentDate={currentDate}
+              onNewThreadInArea={onNewThreadInArea}
+              planActions={planActions}
+              tasks={tasks}
+              threads={threads}
+            />
+          }
         />
       )}
     </div>
