@@ -2,7 +2,7 @@ import type { ComponentPropsWithoutRef, ComponentProps } from "react";
 
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { DashboardThread } from "./dashboard-model";
 
@@ -26,33 +26,32 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-// Both Plan surfaces are live surfaces of their own — Convex mutations, drag
-// and drop, the Thread rail. Here we only care which one the dashboard mounts
-// and that it hands it the full open set.
-vi.mock("@/features/dashboard/plan", () => {
-  const stub =
-    (testId: string) =>
-    ({ tasks, threads }: { tasks: unknown[]; threads: unknown[] }) => (
-      <div data-testid={testId}>
-        {threads.length} Threads · {tasks.length} Tasks
-      </div>
-    );
+vi.mock("@/features/areas/components/area-quick-panel", () => {
   return {
-    PlanCanvas: stub("plan-canvas"),
-    PlanSchedule: stub("plan-schedule"),
+    AreaQuickPanel: ({
+      area,
+      children,
+      onNewThread,
+    }: {
+      area: { condition: string; id: string; name: string };
+      children: React.ReactNode;
+      onNewThread: (areaId: string) => void;
+    }) => (
+      <button
+        type="button"
+        aria-label={`Area panel for ${area.name}`}
+        title={
+          area.condition === "healthy" ? `${area.name} — steady` : area.name
+        }
+        onClick={() => onNewThread(area.id)}
+      >
+        {children}
+      </button>
+    ),
   };
 });
 
 const currentDate = new Date(2026, 6, 17, 12).getTime();
-
-/** `useIsCompact` reads `innerWidth`; jsdom's default is a desktop width. */
-function compactViewport() {
-  vi.stubGlobal("innerWidth", 390);
-}
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
 
 function thread(
   id: string,
@@ -95,7 +94,6 @@ function renderOverview(overrides: Partial<OverviewProps> = {}) {
     currentDate,
     onCreateArea: vi.fn(),
     onNewThreadInArea: vi.fn(),
-    planActions: { planTask: vi.fn(), planThread: vi.fn() },
     ...overrides,
   };
   return { ...render(<DashboardOverview {...props} />), props };
@@ -121,7 +119,9 @@ describe("DashboardOverview", () => {
     expect(attention).toHaveTextContent("Health");
     expect(attention).toHaveTextContent("Call the clinic");
 
-    const healthyGlyph = within(bar).getByRole("link", { name: "Home" });
+    const healthyGlyph = within(bar).getByRole("button", {
+      name: "Area panel for Home",
+    });
     expect(within(healthyGlyph).getByText("Home")).toHaveClass("sr-only");
     expect(healthyGlyph).toHaveAttribute("title", "Home — steady");
     expect(healthyGlyph).not.toHaveTextContent("Call the clinic");
@@ -160,42 +160,65 @@ describe("DashboardOverview", () => {
     expect(within(bar).getByText("All 2 areas steady")).toBeVisible();
 
     // Only the two quiet glyphs are left — no reason group to read.
-    const links = within(bar).getAllByRole("link");
-    expect(links.map((link) => link.getAttribute("title"))).toEqual([
+    const buttons = within(bar).getAllByRole("button");
+    expect(buttons.map((button) => button.getAttribute("title"))).toEqual([
       "Health — steady",
       "Home — steady",
     ]);
   });
 
-  it("hands the Plan canvas every open Thread and Task", () => {
+  it("lays every Thread out in canonical attention order", () => {
     renderOverview({
       threads: [
-        thread("Check renewal", { followUp: currentDate }),
-        thread("Without date"),
+        thread("Plain open", { order: 0 }),
+        thread("Next move", { nextMove: "Call", order: 1 }),
+        thread("Upcoming", { followUp: currentDate + 86_400_000 }),
+        thread("Overdue", { followUp: currentDate - 86_400_000 }),
       ],
-      tasks: [{ id: "task", text: "Renew passport", createdAt: currentDate }],
     });
 
-    expect(screen.getByTestId("plan-canvas")).toHaveTextContent(
-      "2 Threads · 1 Tasks",
-    );
-    expect(screen.queryByTestId("plan-schedule")).toBeNull();
+    const rows = within(
+      screen.getByRole("list", { name: "Threads in attention order" }),
+    ).getAllByRole("listitem");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Overdue"),
+      expect.stringContaining("Upcoming"),
+      expect.stringContaining("Next move"),
+      expect.stringContaining("Plain open"),
+    ]);
   });
 
-  it("swaps the canvas for the schedule on a phone-sized viewport", () => {
-    compactViewport();
+  it("keeps dated Inbox Tasks visible without mixing them into the Thread run", () => {
     renderOverview({
-      threads: [
-        thread("Check renewal", { followUp: currentDate }),
-        thread("Without date"),
+      tasks: [
+        {
+          id: "dated",
+          text: "Renew passport",
+          createdAt: currentDate,
+          when: currentDate,
+        },
+        { id: "loose", text: "Buy stamps", createdAt: currentDate },
       ],
-      tasks: [{ id: "task", text: "Renew passport", createdAt: currentDate }],
     });
 
-    expect(screen.getByTestId("plan-schedule")).toHaveTextContent(
-      "2 Threads · 1 Tasks",
-    );
-    expect(screen.queryByTestId("plan-canvas")).toBeNull();
+    const synopsis = screen.getByRole("region", { name: "Inbox synopsis" });
+    expect(within(synopsis).getByText("Renew passport")).toBeVisible();
+    expect(within(synopsis).getByText("+1 more")).toBeVisible();
+    expect(within(synopsis).getByText(/2 open/)).toBeVisible();
+  });
+
+  it("describes a long-quiet Thread without fading it or changing its order", () => {
+    renderOverview({
+      threads: [
+        thread("Quiet concern", {
+          lastActivityAt: currentDate - 45 * 86_400_000,
+        }),
+      ],
+    });
+
+    const row = screen.getByRole("link", { name: /Quiet concern/ });
+    expect(row).toHaveTextContent("quiet 45d");
+    expect(row.className).not.toMatch(/opacity/);
   });
 
   it("preserves Area onboarding until the first Area exists", async () => {
@@ -205,7 +228,9 @@ describe("DashboardOverview", () => {
 
     await user.click(screen.getByRole("button", { name: "Create Life Area" }));
     expect(onCreateArea).toHaveBeenCalledOnce();
-    expect(screen.queryByTestId("plan-canvas")).toBeNull();
+    expect(
+      screen.queryByRole("list", { name: "Threads in attention order" }),
+    ).toBeNull();
 
     rerender(
       <DashboardOverview
@@ -225,8 +250,6 @@ describe("DashboardOverview", () => {
     expect(
       screen.queryByRole("button", { name: "Create Life Area" }),
     ).toBeNull();
-    expect(screen.getByTestId("plan-canvas")).toHaveTextContent(
-      "0 Threads · 0 Tasks",
-    );
+    expect(screen.getByText("No open Threads right now.")).toBeVisible();
   });
 });

@@ -28,15 +28,14 @@ export interface QuickPanelArea extends AreaActionTarget {
  *
  * It holds exactly what you need to act without leaving: the Condition as a
  * segmented control that writes straight through, the Standard as a reminder
- * of what "healthy" was supposed to mean here, and capture scoped to this
- * Area. The title itself is the way through to the page — a trailing arrow
- * marks the jump — so everything else in the panel can stay an action.
- * Nothing here is editable but the Condition: the Standard is authored on the
- * Area page, and saying so is kinder than a second editor that disagrees with
- * the first.
+ * of what "healthy" was supposed to mean here when one exists, and capture
+ * scoped to this Area. The title itself is the way through to the page — a
+ * trailing arrow marks the jump — so everything else in the panel can stay an
+ * action. Nothing here is editable but the Condition: the Standard is authored
+ * on the Area page and absent Standards add no empty section here.
  *
  * The host supplies the trigger element so the panel can hang off anything
- * that already draws an Area — a Plan lane header, a palette row — without the
+ * that already draws an Area — the Dashboard Condition strip, a palette row — without the
  * panel dictating how that thing looks.
  */
 export function AreaQuickPanel({
@@ -91,20 +90,16 @@ export function AreaQuickPanel({
             />
           </header>
 
-          <section className="flex flex-col gap-2 px-4 py-4">
-            <h3 className="font-heading text-2xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-              Standard
-            </h3>
-            {area.standard ? (
+          {area.standard?.trim() && (
+            <section className="flex flex-col gap-2 px-4 py-4">
+              <h3 className="font-heading text-2xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                Standard
+              </h3>
               <p className="text-sm leading-relaxed whitespace-pre-line text-foreground/85">
                 {area.standard}
               </p>
-            ) : (
-              <p className="text-sm text-muted-foreground/70 italic">
-                No Standard yet — write it on the Area page.
-              </p>
-            )}
-          </section>
+            </section>
+          )}
 
           <footer className="p-2">
             <Button
@@ -118,7 +113,7 @@ export function AreaQuickPanel({
               }}
             >
               <newThread.icon />
-              <span className="truncate">{newThread.label}</span>
+              <span className="truncate">New Thread</span>
             </Button>
           </footer>
         </div>

@@ -41,24 +41,18 @@ vi.mock("@/features/areas/area-form/create-area-dialog", () => ({
   CreateAreaDialog: () => null,
 }));
 
-vi.mock("@/features/dashboard/plan/use-plan-actions", () => ({
-  usePlanActions: () => ({ planTask: vi.fn(), planThread: vi.fn() }),
-}));
-
-// Both Plan surfaces are live surfaces of their own; the screen tests only
-// care about the queries, the date, and the callbacks the Plan raises — the
-// capture request stands in for a lane header's Quick Panel.
-vi.mock("@/features/dashboard/plan", () => ({
-  PlanCanvas: ({
-    onNewThreadInArea,
+vi.mock("@/features/areas/components/area-quick-panel", () => ({
+  AreaQuickPanel: ({
+    area,
+    onNewThread,
   }: {
-    onNewThreadInArea: (areaId: string) => void;
+    area: { id: string; name: string };
+    onNewThread: (areaId: string) => void;
   }) => (
-    <button type="button" onClick={() => onNewThreadInArea("health")}>
+    <button type="button" onClick={() => onNewThread(area.id)}>
       panel capture
     </button>
   ),
-  PlanSchedule: () => null,
 }));
 
 vi.mock("@/features/threads/thread-form/create-thread-dialog", () => ({

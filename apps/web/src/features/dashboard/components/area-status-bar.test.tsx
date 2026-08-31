@@ -1,6 +1,7 @@
 import type { ComponentPropsWithoutRef, ComponentProps } from "react";
 
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { DashboardArea, DashboardThread } from "./dashboard-model";
@@ -22,6 +23,27 @@ vi.mock("@tanstack/react-router", () => ({
     <a href={to} {...props}>
       {children}
     </a>
+  ),
+}));
+
+vi.mock("@/features/areas/components/area-quick-panel", () => ({
+  AreaQuickPanel: ({
+    area,
+    children,
+    onNewThread,
+  }: {
+    area: { condition: string; id: string; name: string };
+    children: React.ReactNode;
+    onNewThread: (areaId: string) => void;
+  }) => (
+    <button
+      type="button"
+      aria-label={`Area panel for ${area.name}`}
+      title={area.condition === "healthy" ? `${area.name} — steady` : area.name}
+      onClick={() => onNewThread(area.id)}
+    >
+      {children}
+    </button>
   ),
 }));
 
@@ -67,6 +89,7 @@ function renderBar(overrides: Partial<BarProps> = {}) {
     areas: [area("Health", { condition: "critical" })],
     threads: [],
     currentDate,
+    onNewThreadInArea: vi.fn(),
     ...overrides,
   };
   render(<AreaStatusBar {...props} />);
@@ -202,8 +225,8 @@ describe("AreaStatusBar", () => {
 
     expect(
       within(bar)
-        .getAllByRole("link")
-        .map((link) => link.getAttribute("title")),
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("title")),
     ).toEqual(["Health", "Home", "Money"]);
   });
 
@@ -216,8 +239,8 @@ describe("AreaStatusBar", () => {
 
     expect(
       within(bar)
-        .getAllByRole("link")
-        .map((link) => link.getAttribute("title")),
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("title")),
     ).toEqual(["Health", "Home", "Money", "Work"]);
 
     const overflow = within(bar).getByText("+2 more");
@@ -235,7 +258,7 @@ describe("AreaStatusBar", () => {
 
     expect(within(bar).getByText("All 3 areas steady")).toBeVisible();
     expect(within(bar).queryByText("Nothing captured")).toBeNull();
-    expect(within(bar).getAllByRole("link")).toHaveLength(3);
+    expect(within(bar).getAllByRole("button")).toHaveLength(3);
   });
 
   it("trails healthy Areas as icon-only links in Area order", () => {
@@ -248,7 +271,9 @@ describe("AreaStatusBar", () => {
       threads: [thread("Appeal", { nextMove: "Call the clinic" })],
     });
 
-    const glyphs = within(bar).getAllByRole("link", { name: /Home|Money/ });
+    const glyphs = within(bar).getAllByRole("button", {
+      name: /Area panel for (Home|Money)/,
+    });
     expect(glyphs.map((link) => link.getAttribute("title"))).toEqual([
       "Home — steady",
       "Money — steady",
@@ -263,5 +288,17 @@ describe("AreaStatusBar", () => {
       reasonGroup("Health").compareDocumentPosition(glyphs[0]) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("summons Area capture from the Condition strip", async () => {
+    const user = userEvent.setup();
+    const onNewThreadInArea = vi.fn();
+    renderBar({ onNewThreadInArea });
+
+    await user.click(
+      screen.getByRole("button", { name: "Area panel for Health" }),
+    );
+
+    expect(onNewThreadInArea).toHaveBeenCalledWith("Health");
   });
 });

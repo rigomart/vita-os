@@ -13,7 +13,6 @@ import {
 } from "@/features/dashboard/components/dashboard-model";
 import { DashboardOverview } from "@/features/dashboard/components/dashboard-overview";
 import { DashboardOverviewSkeleton } from "@/features/dashboard/components/dashboard-overview-skeleton";
-import { usePlanActions } from "@/features/dashboard/plan/use-plan-actions";
 import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread-dialog";
 import { useAttentionClock } from "@/hooks/use-attention-clock";
 
@@ -28,10 +27,6 @@ export function DashboardScreen() {
   const areaDocs = useQuery(api.areas.list);
   const threadDocs = useQuery(api.threads.list);
   const taskDocs = useQuery(api.tasks.list);
-  const planActions = usePlanActions({
-    areas: areaDocs ?? [],
-    threads: threadDocs ?? [],
-  });
   const [showCreateArea, setShowCreateArea] = useState(false);
   const navigate = useNavigate();
   /**
@@ -41,7 +36,7 @@ export function DashboardScreen() {
    */
   const [newThreadAreaId, setNewThreadAreaId] = useState<string | null>(null);
 
-  // Explicit memos: the Plan surfaces memo on these arrays by reference.
+  // Keep the three projections stable while their source query is unchanged.
   const areas = useMemo(
     () => (areaDocs ?? []).map(toDashboardArea),
     [areaDocs],
@@ -72,7 +67,6 @@ export function DashboardScreen() {
           currentDate={currentDate}
           onCreateArea={() => setShowCreateArea(true)}
           onNewThreadInArea={setNewThreadAreaId}
-          planActions={planActions}
         />
       )}
 

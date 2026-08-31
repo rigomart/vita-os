@@ -114,9 +114,7 @@ describe("AreaQuickPanel", () => {
     expect(
       screen.getByText("Everyone seen once a year, nothing chased twice."),
     ).toBeVisible();
-    expect(
-      screen.getByRole("button", { name: "New Thread in Family Health" }),
-    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "New Thread" })).toBeVisible();
     // The title is the way through to the page.
     expect(screen.getByRole("link", { name: "Family Health" })).toHaveAttribute(
       "href",
@@ -134,15 +132,16 @@ describe("AreaQuickPanel", () => {
     expect(await screen.findByText("Standard")).toBeVisible();
   });
 
-  it("says where the Standard is written when the Area has none", async () => {
+  it("omits the Standard section when the Area has none", async () => {
     const user = userEvent.setup();
-    renderPanel({ standard: undefined });
+    renderPanel({ standard: "   " });
 
     await user.click(openTrigger());
 
     expect(
-      await screen.findByText(/No Standard yet — write it on the Area page\./),
+      await screen.findByRole("button", { name: "New Thread" }),
     ).toBeVisible();
+    expect(screen.queryByText("Standard")).toBeNull();
   });
 
   it("writes the chosen Condition through areas.update", async () => {
@@ -167,16 +166,14 @@ describe("AreaQuickPanel", () => {
     await user.click(openTrigger());
     await user.click(
       await screen.findByRole("button", {
-        name: "New Thread in Family Health",
+        name: "New Thread",
       }),
     );
 
     expect(onNewThread).toHaveBeenCalledWith("area1");
     // The panel is gone by the time the dialog would claim focus.
     await waitFor(() =>
-      expect(
-        screen.queryByRole("button", { name: "New Thread in Family Health" }),
-      ).toBeNull(),
+      expect(screen.queryByRole("button", { name: "New Thread" })).toBeNull(),
     );
   });
 

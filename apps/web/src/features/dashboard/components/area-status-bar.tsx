@@ -1,7 +1,7 @@
-import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
+import { AreaQuickPanel } from "@/features/areas/components/area-quick-panel";
 import {
   conditionIcons,
   conditionTextClassName,
@@ -18,6 +18,7 @@ const REASON_CAP = 4;
 interface AreaStatusBarProps {
   areas: DashboardArea[];
   currentDate: number;
+  onNewThreadInArea: (areaId: string) => void;
   threads: DashboardThread[];
 }
 
@@ -38,6 +39,7 @@ export function AreaStatusBar({
   areas,
   threads,
   currentDate,
+  onNewThreadInArea,
 }: AreaStatusBarProps) {
   const date = new Date(currentDate);
   const threadsByArea = groupByArea(threads);
@@ -85,6 +87,7 @@ export function AreaStatusBar({
               <ReasonGroup
                 area={area}
                 currentDate={currentDate}
+                onNewThreadInArea={onNewThreadInArea}
                 threads={threadsByArea.get(area.id) ?? []}
               />
             </div>
@@ -114,16 +117,22 @@ export function AreaStatusBar({
       {steady.length > 0 && (
         <span className="flex min-w-0 flex-wrap items-center gap-0.5 sm:ml-auto">
           {steady.map((area) => (
-            <Link
+            <AreaQuickPanel
               key={area.id}
-              to="/$areaSlug"
-              params={{ areaSlug: area.slug }}
-              title={`${area.name} — steady`}
-              className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
+              area={area}
+              onNewThread={onNewThreadInArea}
+              trigger={
+                <button
+                  type="button"
+                  aria-label={`Area panel for ${area.name}`}
+                  title={`${area.name} — steady`}
+                  className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+                />
+              }
             >
               <AreaIcon icon={area.icon} className="size-3.5" />
               <span className="sr-only">{area.name}</span>
-            </Link>
+            </AreaQuickPanel>
           ))}
         </span>
       )}
@@ -136,19 +145,27 @@ function ReasonGroup({
   area,
   threads,
   currentDate,
+  onNewThreadInArea,
 }: {
   area: DashboardArea;
   currentDate: number;
+  onNewThreadInArea: (areaId: string) => void;
   threads: DashboardThread[];
 }) {
   const reason = areaReason(threads, currentDate);
 
   return (
-    <Link
-      to="/$areaSlug"
-      params={{ areaSlug: area.slug }}
-      title={area.name}
-      className="group flex min-w-0 max-w-full items-center gap-1.5 rounded-sm px-1 py-1 transition-colors hover:bg-muted/60 sm:max-w-[20rem]"
+    <AreaQuickPanel
+      area={area}
+      onNewThread={onNewThreadInArea}
+      trigger={
+        <button
+          type="button"
+          aria-label={`Area panel for ${area.name}`}
+          title={area.name}
+          className="group flex min-w-0 max-w-full items-center gap-1.5 rounded-sm px-1 py-1 text-left transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40 sm:max-w-[20rem]"
+        />
+      }
     >
       <AreaIcon
         icon={area.icon}
@@ -186,7 +203,7 @@ function ReasonGroup({
         {reason.due && reason.text ? " · " : ""}
         {reason.text ?? (reason.due ? "" : "Nothing captured")}
       </span>
-    </Link>
+    </AreaQuickPanel>
   );
 }
 

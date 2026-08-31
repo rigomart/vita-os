@@ -78,9 +78,32 @@ export function toDashboardTask(doc: ProjectedTask): DashboardInboxTask {
 }
 
 export function followUpDateLabel(timestamp: number, currentDate: number) {
-  const difference = dayDifference(timestamp, currentDate);
+  const difference = dayDelta(timestamp, currentDate);
   if (difference === 0) return "Today";
   if (difference === 1) return "Tomorrow";
+  return format(new Date(timestamp), "MMM d");
+}
+
+/** Whole local days from today to `timestamp` (negative means past). */
+export function dayDelta(timestamp: number, currentDate: number) {
+  return Math.round(
+    (startOfLocalDay(timestamp) - startOfLocalDay(currentDate)) / DAY,
+  );
+}
+
+/** Whole local days since `timestamp`, never negative. */
+export function daysSince(timestamp: number, currentDate: number) {
+  return Math.max(0, -dayDelta(timestamp, currentDate));
+}
+
+/** A compact, humane annotation for a soft attention date. */
+export function relativeDayLabel(timestamp: number, currentDate: number) {
+  const difference = dayDelta(timestamp, currentDate);
+  if (difference < -1) return `${-difference}d late`;
+  if (difference === -1) return "Yesterday";
+  if (difference === 0) return "Today";
+  if (difference === 1) return "Tomorrow";
+  if (difference <= 6) return format(new Date(timestamp), "EEE");
   return format(new Date(timestamp), "MMM d");
 }
 
@@ -91,10 +114,4 @@ export function startOfLocalDay(timestamp: number) {
     date.getMonth(),
     date.getDate(),
   ).getTime();
-}
-
-function dayDifference(timestamp: number, currentDate: number) {
-  return Math.round(
-    (startOfLocalDay(timestamp) - startOfLocalDay(currentDate)) / DAY,
-  );
 }

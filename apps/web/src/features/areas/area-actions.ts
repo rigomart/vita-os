@@ -13,8 +13,8 @@ import { optimisticallyUpdateArea } from "@/features/areas/optimistic";
 
 /**
  * The Area an action set is built for. Deliberately smaller than
- * `ProjectedArea`: every surface that can name an Area — the Dashboard Plan's
- * lane header, the command palette's drill-in, the Area page itself — already
+ * `ProjectedArea`: every surface that can name an Area — the Dashboard
+ * Condition strip, the command palette's drill-in, the Area page itself — already
  * has these four fields, so none of them has to hold a full document to offer
  * the actions.
  */
