@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 
 /**
  * The attention clock — one "now" for every surface that reads a date. Inbox
- * ordering, Thread grouping, the Dashboard date and the Plan axis all classify
+ * ordering, Thread grouping, and the Dashboard date all classify
  * by *day*, so they share a timestamp that holds still for the local day and
  * steps forward at local midnight.
  *

@@ -81,7 +81,7 @@ The single view for all visible **Tasks**, with **Open Tasks** first in a flat a
 _Avoid_: Backlog.
 
 **Dashboard**:
-The main awareness surface that starts with a dense **Condition** strip of **Life Areas**, then lays every **Open Thread** out on a single **Plan** over the days their **Follow-ups** fall on. It also lightly surfaces **Open Tasks** through a pinned **Inbox** lane.
+The main awareness surface: a dense **Condition** strip of **Life Areas**, one flat attention-ordered run of every **Open Thread**, and a lightweight **Inbox** synopsis.
 _Avoid_: Task list, project board, backlog.
 
 ## Relationships
@@ -107,7 +107,7 @@ _Avoid_: Task list, project board, backlog.
 
 ## Thread Attention
 
-- **Open Threads** on the small-screen **Dashboard** sit in one flat attention-ordered list with no visible group headings. Attention groups survive as ordering only; a state signal on each row's date rail replaces the headings. The rail's visual states are recorded in ADR 0005.
+- **Open Threads** on the **Dashboard** sit in one flat attention-ordered list with no visible group headings at every screen size. Attention groups survive as ordering only; a compact date annotation on each row carries the Follow-up signal. The ordering and state language come from ADR 0005; the canonical Dashboard form is recorded in ADR 0014.
 - The **Area** inventory groups the same attention order into visible, collapsible **attention lanes** — **Due now**, **Upcoming**, **Next moves**, **Open** — introduced by a census line that states each lane's count and hosts the **New Thread** action (ADR 0009). Every lane starts expanded; collapsing is session-local, a collapsed lane keeps its count, and empty lanes are omitted.
 - The flat order is **Overdue Follow-ups**, **Upcoming Follow-ups**, **Threads with Next Moves**, then plain **Open Threads**. On the **Dashboard**, dated upcoming **Follow-ups** come before undated **Threads with Next Moves**.
 - **Overdue Follow-ups** have a **Follow-up** before today. **Upcoming Follow-ups** have a **Follow-up** today or later.
@@ -115,24 +115,24 @@ _Avoid_: Task list, project board, backlog.
 - A **Follow-up** takes precedence when a **Thread** also has a **Next Move**.
 - **Threads with Next Moves** have a **Next Move** and no **Follow-up**.
 - Plain **Open Threads** have neither field and appear inline at the end of the flat run.
-- The small-screen **Dashboard** shows at most five plain **Open Threads** inline; the rest sit behind a **Show all** control that extends the same flat run in place. Attention-bearing **Threads** are never capped, and the **Area** inventory always lists every **Thread**.
+- The **Dashboard** shows every plain **Open Thread** inline after attention-bearing Threads; none are capped or hidden. The **Area** inventory also always lists every Thread.
 - **Follow-ups** are ordered oldest-first when overdue and soonest-first when upcoming. The user's **Thread** order breaks ties and orders undated attention groups.
 - An **Open Thread** with no **Next Move** and no **Follow-up** is valid; it is not automatically overdue, stale, or broken.
-- **Up Next** never affects attention: the **Dashboard**, attention lanes, and **Plan** derive from **Next Move** and **Follow-up** only. Only the **Next Move** surfaces outside its **Thread**; **Up Next** is visible only in **Thread** detail.
+- **Up Next** never affects attention: the **Dashboard** and attention lanes derive from **Next Move** and **Follow-up** only. Only the **Next Move** surfaces outside its **Thread**; **Up Next** is visible only in **Thread** detail.
+- The Dashboard may annotate a Thread as `quiet Nd` when its latest Activity Log movement is at least seven days old. Quiet age is neutral continuity context: it never changes attention order, opacity, Condition, or group, and missing activity says nothing. It does not create a **Stale Thread** state.
 - Opening or reviewing a **Thread** does not clear its **Follow-up**; the user must clear, reschedule, or resolve it explicitly.
 
 ## Dashboard Structure
 
-- The Dashboard has a single view: **Plan**. There are no Dashboard tabs.
-- **Life Areas** appear as one dense **Condition** strip above the canvas, grouped Critical, Needs Attention, then Healthy with the user's Area order preserved inside each group. Critical and Needs Attention Areas are labeled links to their Area page; Healthy Areas are icon-only links behind a steady tally. When nothing needs attention the strip says all areas are steady.
-- **Plan** lays every **Area** out as a lane over one continuous day axis, worst **Condition** first, with a pinned **Inbox** lane for **Tasks**. A lane's chips sit on the exact day of their **Follow-up** or **When**; days nothing is planned on compress to ticks. Items already past dock in a waiting bay at the lane's left edge, and undated items in a No Date bay pinned right.
-- A lane's header opens the **Area** Quick Panel — the Area's **Condition**, its **Standard** as read-only text, a new **Thread** scoped to that Area, and a link to the Area page — and a lane whose **Area** is not Healthy always shows its **Condition**, even when empty. The pinned **Inbox** lane is the Inbox's only embedded Dashboard surface; its open count is visible in the canvas summary without scrolling.
-- On small screens the Dashboard shows **Plan** as a vertical schedule instead of the canvas; the **Inbox** is reached by summoning it, not through a Dashboard preview.
-- Dragging on **Plan** writes directly: along a lane or onto the day ruler sets that item's **Follow-up** (**Thread**) or **When** (**Task**) to the exact day, the No Date bay clears it, and across lanes moves the **Thread** to that **Area**. The past is never a drop target, **Tasks** stay in the **Inbox**, and **Threads** stay in **Areas**.
-- **Plan** does not introduce a separate schedule or priority model. Rescheduling continues to mean changing the Thread's existing **Follow-up**, so every change is an ordinary edit with the usual **Activity Log** entries and is reversible by dragging back.
+- The Dashboard has one attention-first view and no tabs or secondary schedule.
+- **Life Areas** appear as one dense **Condition** strip above the Thread run, grouped Critical, Needs Attention, then Healthy with the user's Area order preserved inside each group. Critical and Needs Attention Areas name the strongest reason they are asking for attention; Healthy Areas trail as quiet icons behind a steady tally. When nothing needs attention the strip says all areas are steady.
+- Activating an Area in the Condition strip opens the **Area** Quick Panel — the Area's Condition, its Standard as read-only text when one exists, a new Thread scoped to that Area, and a link to the Area page. The persistent top-bar Area strip remains pure navigation.
+- Every **Open Thread** appears in one global run: Overdue Follow-ups, Upcoming Follow-ups, Threads with Next Moves, then plain Open Threads. Follow-up is a row annotation, never a layout coordinate. Opening a row summons Thread detail in place.
+- The Dashboard is read-only with respect to Follow-up and Thread placement. Setting, clearing, or rescheduling a Follow-up and moving a Thread between Areas happen in Thread detail.
+- A lightweight Inbox synopsis shows at most three dated Open Tasks in When order, the total open count, and how many Tasks remain. Activating it summons the full Inbox in place.
 - Opening a **Thread** from any surface — **Dashboard**, **Inbox**, the palette, or an **Area** inventory — shows its detail pane in place over the current page rather than navigating to the **Area** page; closing the pane returns the user to where they were. The in-place behavior is recorded in ADR 0007.
-- Opening the **Inbox** from any surface — the top bar, the palette, a **Plan** Task chip, or the mobile tab — summons it in place over the current page rather than navigating; closing returns the user exactly where they were. `/inbox` survives as a deep link that lands on the **Dashboard** with the Inbox open over it. The in-place behavior and the chosen form are recorded in ADR 0011.
-- Acting on an **Area** from the **Dashboard** — setting its **Condition**, reading its **Standard**, capturing a **Thread** scoped to it — happens in the summoned Area Quick Panel, and the command palette offers the same actions per Area. The top-bar strip and the area status bar stay pure navigation, and **Condition** changes are still recorded nowhere. The panel, its action set, and its limits are recorded in ADR 0012.
+- Opening the **Inbox** from any surface — the top bar, the palette, the Dashboard synopsis, or the mobile tab — summons it in place over the current page rather than navigating; closing returns the user exactly where they were. `/inbox` survives as a deep link that lands on the Dashboard with the Inbox open over it. The in-place behavior and chosen form are recorded in ADR 0012.
+- Acting on an **Area** from the **Dashboard** — setting its Condition, reading its Standard, capturing a Thread scoped to it — happens in the summoned Area Quick Panel, and the command palette offers the same actions per Area. The top-bar strip stays pure navigation, and Condition changes are still recorded nowhere. The panel, its action set, and its limits are recorded in ADR 0013.
 
 ## Task Handling
 

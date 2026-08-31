@@ -1,10 +1,5 @@
 import { Button } from "@vita-os/ui/components/button";
 
-import type { PlanActions } from "@/features/dashboard/plan/use-plan-actions";
-
-import { PlanCanvas, PlanSchedule } from "@/features/dashboard/plan";
-import { useIsCompact } from "@/hooks/use-mobile";
-
 import type {
   DashboardArea,
   DashboardInboxTask,
@@ -12,14 +7,14 @@ import type {
 } from "./dashboard-model";
 
 import { AreaStatusBar } from "./area-status-bar";
+import { DashboardAttention } from "./dashboard-attention";
 
 interface DashboardOverviewProps {
   areas: DashboardArea[];
   currentDate: number;
   onCreateArea: () => void;
-  /** Capture scoped to an Area, raised from a Plan lane header's Quick Panel. */
+  /** Capture scoped to an Area, raised from the Condition strip's Quick Panel. */
   onNewThreadInArea: (areaId: string) => void;
-  planActions: PlanActions;
   tasks: DashboardInboxTask[];
   threads: DashboardThread[];
 }
@@ -31,10 +26,7 @@ export function DashboardOverview({
   currentDate,
   onCreateArea,
   onNewThreadInArea,
-  planActions,
 }: DashboardOverviewProps) {
-  const compact = useIsCompact();
-
   if (areas.length === 0) {
     return (
       <div className="flex flex-col gap-6">
@@ -63,29 +55,14 @@ export function DashboardOverview({
         areas={areas}
         threads={threads}
         currentDate={currentDate}
+        onNewThreadInArea={onNewThreadInArea}
       />
-
-      {/* Two shapes of the same Plan. A phone gets the vertical schedule; the
-          branch is real, not a CSS switch, so only the mounted one runs its
-          scroll and observer effects. */}
-      {compact ? (
-        <PlanSchedule
-          areas={areas}
-          currentDate={currentDate}
-          planActions={planActions}
-          tasks={tasks}
-          threads={threads}
-        />
-      ) : (
-        <PlanCanvas
-          areas={areas}
-          currentDate={currentDate}
-          onNewThreadInArea={onNewThreadInArea}
-          planActions={planActions}
-          tasks={tasks}
-          threads={threads}
-        />
-      )}
+      <DashboardAttention
+        areas={areas}
+        currentDate={currentDate}
+        tasks={tasks}
+        threads={threads}
+      />
     </div>
   );
 }

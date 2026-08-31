@@ -6,18 +6,27 @@ export function DashboardOverviewSkeleton() {
       className="flex flex-col gap-6"
       data-testid="dashboard-overview-skeleton"
     >
-      <header className="flex items-center justify-between">
-        <Skeleton className="h-6 w-28" />
-        <Skeleton className="h-3 w-32" />
-      </header>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Skeleton className="h-7 w-36 rounded-full" />
-        <Skeleton className="h-7 w-32 rounded-full" />
-        <Skeleton className="h-7 w-44 rounded-full" />
+      <div className="flex flex-wrap items-center gap-3 border-b border-border/60 pb-3">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-6 w-44 rounded-md" />
+        <Skeleton className="h-6 w-36 rounded-md" />
+        <Skeleton className="ml-auto h-6 w-20 rounded-md" />
       </div>
 
-      <Skeleton className="h-[26rem] w-full rounded-xl" />
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: 6 }, (_, index) => (
+          <div key={index} className="flex h-10 items-center gap-3 px-2">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 flex-1" />
+            <Skeleton className="hidden h-3 w-24 sm:block" />
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-border/50 pt-3">
+        <Skeleton className="h-4 w-24" />
+      </div>
     </div>
   );
 }

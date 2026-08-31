@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 /**
- * Bare `1..9` jumps to the Nth Area in the user's own order (ADR 0010).
+ * Bare `1..9` jumps to the Nth Area in the user's own order (ADR 0011).
  * Modifier chords are left alone — ⌘/Ctrl+digit is the browser's own tab
  * switcher. Matching on `e.code` keeps the digit row working on layouts
  * where digits are typed shifted.

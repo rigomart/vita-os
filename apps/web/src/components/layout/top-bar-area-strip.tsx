@@ -27,7 +27,7 @@ function conditionLabel(condition: string) {
 }
 
 /**
- * Persistent Area switcher in the top bar (ADR 0010): one hexagon per Area in
+ * Persistent Area switcher in the top bar (ADR 0011): one hexagon per Area in
  * the user's own order, each a one-click jump with a visible 1..9 digit and a
  * condition dot for Areas asking for attention. Desktop-only — the strip is
  * hidden below md, but the component stays mounted so the shortcuts follow
