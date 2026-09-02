@@ -58,8 +58,10 @@ describe("InboxSurface", () => {
   it("hangs the panel off the top bar on a pointer-sized viewport", async () => {
     renderSurface();
 
-    await waitFor(() => expect(panel()).toHaveAttribute("data-state", "open"));
-    expect(screen.getByRole("dialog", { name: "Inbox" })).toHaveFocus();
+    await waitFor(() => {
+      expect(panel()).toHaveAttribute("data-state", "open");
+      expect(screen.getByRole("dialog", { name: "Inbox" })).toHaveFocus();
+    });
   });
 
   it("falls back to a bottom drawer on a phone", async () => {
