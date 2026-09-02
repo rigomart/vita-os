@@ -246,7 +246,14 @@ describe("ThreadAttention", () => {
     ).toBeVisible();
     await user.click(within(await screen.findByRole("grid")).getByText("20"));
 
-    expect(onSetFollowUp).toHaveBeenCalledWith(new Date(2026, 7, 20).getTime());
+    // Calendar defaults to current real month, so clicking "20" gives the 20th of that month
+    const today = new Date();
+    const expectedDate = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      20,
+    ).getTime();
+    expect(onSetFollowUp).toHaveBeenCalledWith(expectedDate);
 
     await user.click(screen.getByRole("button", { name: "Clear follow-up" }));
     expect(onClearFollowUp).toHaveBeenCalled();
