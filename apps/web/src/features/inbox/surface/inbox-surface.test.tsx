@@ -60,7 +60,7 @@ describe("InboxSurface", () => {
 
     await waitFor(() => {
       expect(panel()).toHaveAttribute("data-state", "open");
-      expect(screen.getByRole("dialog", { name: "Inbox" })).toHaveFocus();
+      expect(screen.getByRole("dialog", { name: "Notes" })).toHaveFocus();
     });
   });
 

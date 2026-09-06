@@ -43,9 +43,9 @@ export function InboxMobileDrawer({
           }
         }}
       >
-        <DrawerTitle className="sr-only">Inbox</DrawerTitle>
+        <DrawerTitle className="sr-only">Notes</DrawerTitle>
         <DrawerDescription className="sr-only">
-          Process the Tasks waiting in your Inbox.
+          Your standalone Notes and completed history.
         </DrawerDescription>
         <InboxSurfaceBody
           onClose={onClose}

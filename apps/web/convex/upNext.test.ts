@@ -299,62 +299,6 @@ describe("Up Next", () => {
     expect(thread?.nextMove).toBeUndefined();
   });
 
-  it("refuses to process a Task into a resolved Thread's Up Next, keeping the Task", async () => {
-    await owner.mutation(api.threads.update, {
-      id: owned.threadId,
-      state: "resolved",
-    });
-
-    await expect(
-      owner.mutation(api.tasks.process, {
-        id: owned.taskId,
-        action: { type: "append_up_next", threadId: owned.threadId },
-      }),
-    ).rejects.toThrow(/resolved/i);
-
-    expect(await owner.query(api.tasks.list, {})).toHaveLength(1);
-    expect((await readThread())?.nextMove).toBeUndefined();
-  });
-
-  it("appends a processed Task to the end of the line, silently, and consumes the Task", async () => {
-    await storeUpNext(["Book the appointment"]);
-    const before = await readActivityLog();
-
-    const result = await owner.mutation(api.tasks.process, {
-      id: owned.taskId,
-      action: { type: "append_up_next", threadId: owned.threadId },
-    });
-
-    expect(result).toEqual({ type: "appended_up_next" });
-
-    const thread = await readThread();
-    expect(thread?.upNext).toEqual(["Book the appointment", "Buy vitamins"]);
-    expect(thread?.nextMove).toBe("Call the clinic");
-
-    expect(await owner.query(api.tasks.list, {})).toEqual([]);
-    expect(await readActivityLog()).toEqual(before);
-  });
-
-  it("makes a processed Task the Next Move when the slot is empty, logging the move it set", async () => {
-    await owner.mutation(api.threads.completeNextMoveMutation, {
-      id: owned.threadId,
-    });
-    const before = await readActivityLog();
-
-    await owner.mutation(api.tasks.process, {
-      id: owned.taskId,
-      action: { type: "append_up_next", threadId: owned.threadId },
-    });
-
-    const thread = await readThread();
-    expect(thread?.nextMove).toBe("Buy vitamins");
-    expect(thread?.upNext).toBeUndefined();
-
-    const after = await readActivityLog();
-    expect(after.length).toBe(before.length + 1);
-    expect(after[0]?.content).toBe('Next move set to "Buy vitamins"');
-  });
-
   it("changes nothing the attention surfaces read", async () => {
     /** Everything the Dashboard and the Area lanes order Threads from. */
     const readAttentionSurfaces = async () => ({

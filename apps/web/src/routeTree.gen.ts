@@ -14,6 +14,7 @@ import { Route as UnauthenticatedRouteRouteImport } from './routes/_unauthentica
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedAreaSlugRouteRouteImport } from './routes/_authenticated/$areaSlug/route'
 import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
+import { Route as AuthenticatedNotesRouteImport } from './routes/_authenticated/notes'
 import { Route as UnauthenticatedSignInRouteImport } from './routes/_unauthenticated/sign-in'
 import { Route as UnauthenticatedSignUpRouteImport } from './routes/_unauthenticated/sign-up'
 import { Route as AuthenticatedAreaSlugIndexRouteImport } from './routes/_authenticated/$areaSlug/index'
@@ -43,6 +44,11 @@ const AuthenticatedInboxRoute = AuthenticatedInboxRouteImport.update({
   path: '/inbox',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedNotesRoute = AuthenticatedNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const UnauthenticatedSignInRoute = UnauthenticatedSignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/$areaSlug': typeof AuthenticatedAreaSlugRouteRouteWithChildren
   '/inbox': typeof AuthenticatedInboxRoute
+  '/notes': typeof AuthenticatedNotesRoute
   '/sign-in': typeof UnauthenticatedSignInRoute
   '/sign-up': typeof UnauthenticatedSignUpRoute
   '/$areaSlug/$threadSlug': typeof AuthenticatedAreaSlugThreadSlugRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/inbox': typeof AuthenticatedInboxRoute
+  '/notes': typeof AuthenticatedNotesRoute
   '/sign-in': typeof UnauthenticatedSignInRoute
   '/sign-up': typeof UnauthenticatedSignUpRoute
   '/$areaSlug/$threadSlug': typeof AuthenticatedAreaSlugThreadSlugRoute
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/_unauthenticated': typeof UnauthenticatedRouteRouteWithChildren
   '/_authenticated/$areaSlug': typeof AuthenticatedAreaSlugRouteRouteWithChildren
   '/_authenticated/inbox': typeof AuthenticatedInboxRoute
+  '/_authenticated/notes': typeof AuthenticatedNotesRoute
   '/_unauthenticated/sign-in': typeof UnauthenticatedSignInRoute
   '/_unauthenticated/sign-up': typeof UnauthenticatedSignUpRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$areaSlug'
     | '/inbox'
+    | '/notes'
     | '/sign-in'
     | '/sign-up'
     | '/$areaSlug/$threadSlug'
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/inbox'
+    | '/notes'
     | '/sign-in'
     | '/sign-up'
     | '/$areaSlug/$threadSlug'
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/_unauthenticated'
     | '/_authenticated/$areaSlug'
     | '/_authenticated/inbox'
+    | '/_authenticated/notes'
     | '/_unauthenticated/sign-in'
     | '/_unauthenticated/sign-up'
     | '/_authenticated/'
@@ -166,6 +178,13 @@ declare module '@tanstack/react-router' {
       path: '/inbox'
       fullPath: '/inbox'
       preLoaderRoute: typeof AuthenticatedInboxRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/notes': {
+      id: '/_authenticated/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof AuthenticatedNotesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_unauthenticated/sign-in': {
@@ -218,12 +237,14 @@ const AuthenticatedAreaSlugRouteRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAreaSlugRouteRoute: typeof AuthenticatedAreaSlugRouteRouteWithChildren
   AuthenticatedInboxRoute: typeof AuthenticatedInboxRoute
+  AuthenticatedNotesRoute: typeof AuthenticatedNotesRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAreaSlugRouteRoute: AuthenticatedAreaSlugRouteRouteWithChildren,
   AuthenticatedInboxRoute: AuthenticatedInboxRoute,
+  AuthenticatedNotesRoute: AuthenticatedNotesRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

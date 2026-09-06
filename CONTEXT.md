@@ -1,6 +1,6 @@
 # Vita OS
 
-Personal life-awareness app. Holds the inventory of life domains, open threads, and loose tasks so the user's brain does not have to.
+Personal life-awareness app. Holds the inventory of life domains, open threads, and standalone notes so the user's brain does not have to.
 
 ## Language
 
@@ -60,28 +60,28 @@ _Avoid_: Project log, activity feed, audit log, comments.
 A user-facing note, decision, action, reference, or meaningful automatic update in an **Activity Log**.
 _Avoid_: Audit event, comment.
 
-**Task**:
-A lightweight tactical entry in the **Inbox** that can be handled directly or moved into a **Thread**.
-_Avoid_: Item, todo, ticket.
+**Note**:
+A body-only capture that is valid as soon as it is saved: information, a thought, or a standalone action. A standalone Note belongs to no **Area** or **Thread** and requires no classification.
+_Avoid_: Task, item, todo, ticket.
 
-**Open Task**:
-A **Task** that has not been completed.
-_Avoid_: Pending item.
+**Open Note**:
+A **Note** that has not been marked Done.
+_Avoid_: Pending item, unprocessed.
 
-**Done Task**:
-A **Task** that was completed directly from the **Inbox**.
-_Avoid_: Completed item.
+**Done Note**:
+A **Note** marked Done and retained in completed history.
+_Avoid_: Resolved, processed.
 
-**When**:
-A soft attention date on a **Task**.
+**Attention Date**:
+An optional date on a **Note** meaning “bring this back into attention.”
 _Avoid_: Due date, deadline.
 
-**Inbox**:
-The single view for all visible **Tasks**, with **Open Tasks** first in a flat attention-ordered list and **Done Tasks** in collapsed history.
-_Avoid_: Backlog.
+**Notes**:
+The global collection of standalone **Notes**, with **Open Notes** in attention order and **Done Notes** in collapsed history. Thread notes do not belong to this collection.
+_Avoid_: Inbox, backlog.
 
 **Dashboard**:
-The main awareness surface: a dense **Condition** strip of **Life Areas**, one flat attention-ordered run of every **Open Thread**, and a lightweight **Inbox** synopsis.
+The main awareness surface: a dense **Condition** strip of **Life Areas**, one flat attention-ordered run of every **Open Thread**, and a lightweight **Notes** synopsis.
 _Avoid_: Task list, project board, backlog.
 
 ## Relationships
@@ -96,14 +96,14 @@ _Avoid_: Task list, project board, backlog.
 - A **Thread** is either **Open** or **Resolved**.
 - A **Thread** may move from one **Area** to another.
 - An **Activity Log** has zero or more **Activity Log Entries**.
-- A **Task** belongs to no **Area** and no **Thread**.
-- **Tasks** are not created inside **Threads**.
-- A visible **Task** is either **Open** or **Done**.
-- A **Task** has zero or one **When**.
-- **Done Tasks** remain available as collapsed **Inbox** history in the MVP.
-- The **Inbox** shows all visible **Tasks**; **When** affects emphasis, not whether the **Task** exists in the Inbox.
-- The **Inbox** orders **Open Tasks** in one flat run: **Past due**, **Today**, **Coming up**, then **No date**, then collapsed **Done Tasks**. Past and future **Tasks** follow **When** order, Today and No date are newest-first, and Done Tasks are most-recently-completed first.
-- The navigation badge (top bar on desktop, tab bar on mobile) counts every **Open Task**, whether or not it has a **When**.
+- A **Note** belongs to no **Area** and no **Thread**.
+- **Notes** are not created inside **Threads**.
+- A visible **Note** is either **Open** or **Done**.
+- A **Note** has zero or one **Attention Date**.
+- **Done Notes** remain available as collapsed **Notes** history in the MVP.
+- The **Notes** collection shows all visible **Notes**; **Attention Date** affects emphasis, not whether the **Note** exists in Notes.
+- The **Notes** collection orders **Open Notes** in one flat run: past attention date, today, no date, then coming up. Past and future Notes follow attention-date order; today and undated Notes are newest-first. Done Notes are separate, most-recently-completed first.
+- The navigation badge (top bar on desktop, tab bar on mobile) counts every **Open Note**, whether or not it has an **Attention Date**.
 
 ## Thread Attention
 
@@ -129,19 +129,18 @@ _Avoid_: Task list, project board, backlog.
 - Activating an Area in the Condition strip opens the **Area** Quick Panel — the Area's Condition, its Standard as read-only text when one exists, a new Thread scoped to that Area, and a link to the Area page. The persistent top-bar Area strip remains pure navigation.
 - Every **Open Thread** appears in one global run: Overdue Follow-ups, Upcoming Follow-ups, Threads with Next Moves, then plain Open Threads. Follow-up is a row annotation, never a layout coordinate. Opening a row summons Thread detail in place.
 - The Dashboard is read-only with respect to Follow-up and Thread placement. Setting, clearing, or rescheduling a Follow-up and moving a Thread between Areas happen in Thread detail.
-- A lightweight Inbox synopsis shows at most three dated Open Tasks in When order, the total open count, and how many Tasks remain. Activating it summons the full Inbox in place.
-- Opening a **Thread** from any surface — **Dashboard**, **Inbox**, the palette, or an **Area** inventory — shows its detail pane in place over the current page rather than navigating to the **Area** page; closing the pane returns the user to where they were. The in-place behavior is recorded in ADR 0007.
-- Opening the **Inbox** from any surface — the top bar, the palette, the Dashboard synopsis, or the mobile tab — summons it in place over the current page rather than navigating; closing returns the user exactly where they were. `/inbox` survives as a deep link that lands on the Dashboard with the Inbox open over it. The in-place behavior and chosen form are recorded in ADR 0012.
+- A lightweight Notes synopsis shows at most three dated Open Notes in attention-date order, the total open count, and how many Notes remain. Activating it summons Notes in place.
+- Opening a **Thread** from any surface — **Dashboard**, **Notes**, the palette, or an **Area** inventory — shows its detail pane in place over the current page rather than navigating to the **Area** page; closing the pane returns the user to where they were. The in-place behavior is recorded in ADR 0007.
+- Opening the **Notes** from any surface — the top bar, the palette, the Dashboard synopsis, or the mobile tab — summons it in place over the current page rather than navigating; closing returns the user exactly where they were. `/notes` opens Notes over the Dashboard; `/inbox` remains a compatibility deep link. The in-place behavior and chosen form are recorded in ADR 0012.
 - Acting on an **Area** from the **Dashboard** — setting its Condition, reading its Standard, capturing a Thread scoped to it — happens in the summoned Area Quick Panel, and the command palette offers the same actions per Area. The top-bar strip stays pure navigation, and Condition changes are still recorded nowhere. The panel, its action set, and its limits are recorded in ADR 0013.
 
-## Task Handling
+## Note Handling
 
-- **Processing** a **Task** means assigning it to a **Thread**: as an **Activity Log** entry, as the **Next Move**, appended to **Up Next**, or by promoting it into a new **Thread**.
-- Adding a date, editing text, completing, and discarding are inline actions on a **Task**, not processing.
-- A processed **Task** is consumed; its text lives on inside the **Thread** it was assigned to.
-- Moving a **Task** into a **Thread** requires choosing whether it becomes an **Activity Log** entry, the **Next Move**, or an **Up Next** move appended to the end of the list.
-- Creating a new **Thread** from a **Task** uses a user-provided **Thread** title; the original **Task** text becomes the first **Activity Log** entry by default.
-- Discarding a **Task** consumes it.
+- A **Note** can be captured and edited with just a body; it has no title or type selector.
+- A **Note** can have its **Attention Date** set, changed, or cleared.
+- Any **Note** can be marked **Done**, reopened, or permanently deleted from active Notes or completed history.
+- Creation time is preserved; last-edited time is retained going forward. An unknown historical edit time remains unknown.
+- Processing, conversion, and attaching an existing standalone **Note** to a **Thread** are outside this version.
 
 ## Activity Rules
 
@@ -160,8 +159,8 @@ _Avoid_: Task list, project board, backlog.
 
 ## Example Dialogue
 
-> **Dev:** "If I move a **Task** into a **Thread**, does the **Task** become part of that **Thread**?"
-> **Builder:** "No. **Tasks** never belong to **Threads**. Moving it means its text becomes either an **Activity Log** entry or the **Next Move**, then the original **Task** is consumed."
+> **Dev:** "Does a captured **Note** need to become an action?"
+> **Builder:** "No. Information and thoughts are valid Notes as soon as they are saved. No classification or processing is required."
 
 > **Dev:** "If a **Thread** has no **Next Move** and no **Follow-up**, is it broken?"
 > **Builder:** "No. A plain **Open Thread** is valid. It means the situation still matters, but there is no clear move or resurfacing date right now."
@@ -172,7 +171,7 @@ _Avoid_: Task list, project board, backlog.
 ## Flagged Ambiguities
 
 - "Project" was the old term for a multi-step effort with a defined end state. Resolved: **Thread** is canonical because these life situations may not have a clean execution plan or defined finish line.
-- "Item" was the old neutral term for a lightweight Inbox entry. Resolved: **Task** is canonical, but only for the Inbox capture layer.
+- "Task" and "Inbox" were the old capture vocabulary. Resolved by issue 313: **Note** and **Notes** are canonical; standalone Notes need no classification or processing.
 - "Action queue" was the old term for ordered tentative next steps. Resolved: **Next Move** stays singular and is the only move surfaced outside the **Thread**; **Up Next** holds a known sequence behind it with queue semantics — no done states, no dates — so a **Thread** stays directional without becoming a checklist (ADR 0010).
 - "Project log" was the old term for the timeline on a **Thread**. Resolved: **Activity Log** is canonical and should capture continuity, not every small edit.
 - "Health status" was the old term for the manual judgment on an **Area**. Resolved: **Condition** is canonical.

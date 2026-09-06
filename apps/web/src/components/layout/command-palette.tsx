@@ -29,7 +29,7 @@ import { AreaIcon } from "@/features/areas/components/area-icon";
 interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onNewTask: () => void;
+  onNewNote: () => void;
   /** The optional Area scopes the new Thread; the root row passes nothing. */
   onNewThread: (areaId?: string) => void;
   onNewArea: () => void;
@@ -46,7 +46,7 @@ const AREA_ID_ATTRIBUTE = "data-area-id";
 export function CommandPalette({
   open,
   onOpenChange,
-  onNewTask,
+  onNewNote,
   onNewThread,
   onNewArea,
   onOpenInbox,
@@ -184,9 +184,9 @@ export function CommandPalette({
         <CommandList key="root">
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="Actions">
-            <CommandItem onSelect={() => run(onNewTask)}>
+            <CommandItem onSelect={() => run(onNewNote)}>
               <Plus />
-              New task
+              New note
               <CommandShortcut>Q</CommandShortcut>
             </CommandItem>
             <CommandItem onSelect={() => run(() => onNewThread())}>
@@ -205,7 +205,7 @@ export function CommandPalette({
             </CommandItem>
             <CommandItem onSelect={() => run(onOpenInbox)}>
               <Inbox />
-              Inbox
+              Notes
             </CommandItem>
           </CommandGroup>
           <CommandGroup heading="Areas">

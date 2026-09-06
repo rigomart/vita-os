@@ -19,7 +19,6 @@ import type * as lib_areaThreads from "../lib/areaThreads.js";
 import type * as lib_attentionOrdering from "../lib/attentionOrdering.js";
 import type * as lib_condition from "../lib/condition.js";
 import type * as lib_helpers from "../lib/helpers.js";
-import type * as lib_inboxProcessing from "../lib/inboxProcessing.js";
 import type * as lib_ownedAccess from "../lib/ownedAccess.js";
 import type * as lib_pagination from "../lib/pagination.js";
 import type * as lib_patch from "../lib/patch.js";
@@ -29,7 +28,7 @@ import type * as lib_upNext from "../lib/upNext.js";
 import type * as lib_validation from "../lib/validation.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as migrations from "../migrations.js";
-import type * as tasks from "../tasks.js";
+import type * as notes from "../notes.js";
 import type * as threads from "../threads.js";
 
 import type {
@@ -50,7 +49,6 @@ declare const fullApi: ApiFromModules<{
   "lib/attentionOrdering": typeof lib_attentionOrdering;
   "lib/condition": typeof lib_condition;
   "lib/helpers": typeof lib_helpers;
-  "lib/inboxProcessing": typeof lib_inboxProcessing;
   "lib/ownedAccess": typeof lib_ownedAccess;
   "lib/pagination": typeof lib_pagination;
   "lib/patch": typeof lib_patch;
@@ -60,7 +58,7 @@ declare const fullApi: ApiFromModules<{
   "lib/validation": typeof lib_validation;
   "lib/validators": typeof lib_validators;
   migrations: typeof migrations;
-  tasks: typeof tasks;
+  notes: typeof notes;
   threads: typeof threads;
 }>;
 

@@ -69,7 +69,7 @@ export function RowCheckbox({
       }}
       disabled={row.toggleBusy}
       aria-busy={row.toggleBusy}
-      aria-label={row.done ? "Mark task open" : "Mark task done"}
+      aria-label={row.done ? "Mark note open" : "Mark note done"}
       className={cn("border-border/80 bg-surface-1", className)}
     />
   );
@@ -112,6 +112,7 @@ export function WhenPopover({
         <Calendar
           mode="single"
           selected={selected}
+          defaultMonth={selected}
           disabled={row.whenBusy}
           onSelect={(date) => {
             if (!date || row.whenBusy) return;

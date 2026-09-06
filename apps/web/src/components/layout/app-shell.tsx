@@ -11,9 +11,9 @@ import { InboxSurface } from "@/features/inbox/surface/inbox-surface";
 import { useInboxSurface } from "@/features/inbox/surface/use-inbox-surface";
 import { useCommandPaletteShortcut } from "@/features/navigation/use-command-palette-shortcut";
 import { useCreateDialogs } from "@/features/navigation/use-create-dialogs";
-import { useGlobalNewTaskShortcut } from "@/features/navigation/use-global-new-task-shortcut";
-import { NewTaskDialog } from "@/features/tasks/new-task/new-task-dialog";
-import { useCreateTask } from "@/features/tasks/use-create-task";
+import { useGlobalNewNoteShortcut } from "@/features/navigation/use-global-new-note-shortcut";
+import { NewNoteDialog } from "@/features/notes/new-note/new-note-dialog";
+import { useCreateNote } from "@/features/notes/use-create-note";
 import { ThreadDetailView } from "@/features/threads/thread-detail/thread-detail-view";
 import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread-dialog";
 
@@ -22,9 +22,9 @@ import { CommandPalette } from "./command-palette";
 import { MobileTabBar } from "./mobile-tab-bar";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const taskCount = useQuery(api.tasks.count);
+  const noteCount = useQuery(api.notes.count);
   const navigate = useNavigate();
-  const createTask = useCreateTask();
+  const createNote = useCreateNote();
   const dialogs = useCreateDialogs();
   const inbox = useInboxSurface();
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -36,7 +36,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     dialogs.showCreateThread ? {} : "skip",
   );
 
-  useGlobalNewTaskShortcut(dialogs.openNewTask);
+  useGlobalNewNoteShortcut(dialogs.openNewNote);
   useCommandPaletteShortcut(() => setPaletteOpen(true));
 
   // The thread pane opens from two sources: the global `?thread=<slug>`
@@ -108,20 +108,20 @@ export function AppShell({ children }: { children: ReactNode }) {
           of sliding over it. */}
       <div className="flex min-h-svh min-w-0 flex-1 flex-col">
         <AppTopBar
-          taskCount={taskCount}
+          noteCount={noteCount}
           inboxOpen={inbox.isOpen}
           onToggleInbox={inbox.toggle}
-          onNewTask={dialogs.openNewTask}
+          onNewNote={dialogs.openNewNote}
           onOpenPalette={() => setPaletteOpen(true)}
         />
         <main className="w-full min-w-0 flex-1 px-4 pt-3 pb-24 md:pb-8">
           {children}
         </main>
         <MobileTabBar
-          taskCount={taskCount}
+          noteCount={noteCount}
           inboxOpen={inbox.isOpen}
           onToggleInbox={inbox.toggle}
-          onNewTask={dialogs.openNewTask}
+          onNewNote={dialogs.openNewNote}
           onOpenPalette={() => setPaletteOpen(true)}
         />
       </div>
@@ -141,7 +141,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <CommandPalette
           open
           onOpenChange={setPaletteOpen}
-          onNewTask={dialogs.openNewTask}
+          onNewNote={dialogs.openNewNote}
           // The palette's Area drill-in scopes the new Thread; the plain
           // "New thread" row passes nothing and the picker stays unscoped.
           onNewThread={(areaId) =>
@@ -164,13 +164,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           }}
         />
       )}
-      {dialogs.showNewTask && (
-        <NewTaskDialog
+      {dialogs.showNewNote && (
+        <NewNoteDialog
           open
-          onOpenChange={dialogs.setShowNewTask}
+          onOpenChange={dialogs.setShowNewNote}
           onSubmit={async (value) => {
-            await createTask(value);
-            dialogs.setShowNewTask(false);
+            await createNote(value);
+            dialogs.setShowNewNote(false);
           }}
         />
       )}

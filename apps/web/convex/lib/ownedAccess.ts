@@ -16,7 +16,7 @@ export type OwnedTable = "activityLogs" | "areas" | "tasks" | "threads";
 
 /**
  * Owned tables that also carry a user-scoped `slug` and a `by_user_slug`
- * index. Tasks and activity logs have no slug, so they cannot be looked up
+ * index. Notes and activity logs have no slug, so they cannot be looked up
  * by one.
  */
 export type SluggedTable = "areas" | "threads";
@@ -53,7 +53,7 @@ export type EveryOwnedDocHasUserId = AssertTrue<
 const DOCUMENT_LABELS: Record<OwnedTable, string> = {
   activityLogs: "Activity log",
   areas: "Area",
-  tasks: "Task",
+  tasks: "Note",
   threads: "Thread",
 };
 

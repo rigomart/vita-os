@@ -36,7 +36,7 @@ export function InboxPopoverPanel({
       ref={panelRef}
       id={INBOX_SURFACE_PANEL_ID}
       role="dialog"
-      aria-label="Inbox"
+      aria-label="Notes"
       aria-hidden={open ? undefined : true}
       tabIndex={-1}
       data-slot="inbox-surface-panel"

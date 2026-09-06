@@ -24,13 +24,13 @@ export function InboxSurfaceBody({
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
       <header className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-1.5">
         <h2 className="font-heading text-sm font-semibold tracking-tight">
-          Inbox
+          Notes
         </h2>
         <Button
           variant="ghost"
           size="icon-sm"
           onClick={onClose}
-          aria-label="Close inbox"
+          aria-label="Close notes"
         >
           <X />
         </Button>

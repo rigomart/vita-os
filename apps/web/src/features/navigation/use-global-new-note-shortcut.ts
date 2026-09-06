@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-export function useGlobalNewTaskShortcut(onOpen: () => void) {
+export function useGlobalNewNoteShortcut(onOpen: () => void) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       // Bare Q only — Cmd/Ctrl+Q quits the browser and AltGr composes.

@@ -3,9 +3,9 @@ import { useEffect, useRef } from "react";
 import { INBOX_SURFACE_TRIGGER_SELECTOR } from "./inbox-surface-trigger";
 
 /**
- * Everything the Inbox can open on top of itself — the process dialog
- * (ResponsiveDialog → Dialog/Drawer), the When picker (Popover + Calendar), the
- * discard confirm (AlertDialog), any Select or Combobox — portals out of the
+ * Everything Notes can open on top of itself — the attention date picker
+ * (Popover + Calendar), the delete confirmation (AlertDialog), any dialog,
+ * Select or Combobox — portals out of the
  * surface and tags its popup with a `*-content` data-slot. A document-level
  * listener has to recognise those so it does not steal keys or clicks from them.
  *

@@ -4,55 +4,54 @@ import {
 } from "convex/server";
 import { v } from "convex/values";
 
-import type { ProjectedTask } from "./lib/validators";
+import type { ProjectedNote } from "./lib/validators";
 
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
-import { processInboxTask } from "./lib/inboxProcessing";
 import { requireOwned } from "./lib/ownedAccess";
 import { emptyPage } from "./lib/pagination";
 import { requireTitle } from "./lib/validation";
-import { projectedTaskValidator, projectTask } from "./lib/validators";
+import { projectedNoteValidator, projectNote } from "./lib/validators";
 
 /**
- * Every Open Task, newest first.
+ * Every Open Note, newest first.
  *
- * Bounded by the Inbox itself: an Open Task is one the user still has to deal
- * with, so this set is what they are willing to look at. Done Tasks grow
+ * Bounded by the Inbox itself: an Open Note is one the user still has to deal
+ * with, so this set is what they are willing to look at. Done Notes grow
  * without limit and are paginated by `listDone` instead.
  */
 export const list = query({
   args: {},
-  returns: v.array(projectedTaskValidator),
+  returns: v.array(projectedNoteValidator),
   handler: async (ctx) => {
     const userId = await safeGetAuthUserId(ctx);
     if (!userId) return [];
-    const tasks = await ctx.db
+    const notes = await ctx.db
       .query("tasks")
       .withIndex("by_user_inbox", (q) =>
         q.eq("userId", userId).eq("state", "open"),
       )
       .order("desc")
       .collect();
-    return tasks.map(projectTask);
+    return notes.map(projectNote);
   },
 });
 
-/** Done Tasks, newest first, one page at a time. */
+/** Done Notes, newest first, one page at a time. */
 export const listDone = query({
   args: { paginationOpts: paginationOptsValidator },
-  returns: paginationResultValidator(projectedTaskValidator),
+  returns: paginationResultValidator(projectedNoteValidator),
   handler: async (ctx, args) => {
     const userId = await safeGetAuthUserId(ctx);
-    if (!userId) return emptyPage<ProjectedTask>();
+    if (!userId) return emptyPage<ProjectedNote>();
     const page = await ctx.db
       .query("tasks")
-      .withIndex("by_user_inbox", (q) =>
+      .withIndex("by_user_completed", (q) =>
         q.eq("userId", userId).eq("state", "done"),
       )
       .order("desc")
       .paginate(args.paginationOpts);
-    return { ...page, page: page.page.map(projectTask) };
+    return { ...page, page: page.page.map(projectNote) };
   },
 });
 
@@ -74,18 +73,20 @@ export const count = query({
 
 export const create = mutation({
   args: {
-    text: v.string(),
+    body: v.string(),
     when: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
+    const now = Date.now();
     return ctx.db.insert("tasks", {
       userId,
-      text: requireTitle(args.text, "Task text"),
+      text: requireTitle(args.body, "Note body"),
+      updatedAt: now,
       when: args.when,
       state: "open",
-      createdAt: Date.now(),
+      createdAt: now,
     });
   },
 });
@@ -101,15 +102,16 @@ export const remove = mutation({
   },
 });
 
-export const updateText = mutation({
-  args: { id: v.id("tasks"), text: v.string() },
+export const updateBody = mutation({
+  args: { id: v.id("tasks"), body: v.string() },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
     await requireOwned(ctx, "tasks", { userId, id: args.id });
 
     await ctx.db.patch(args.id, {
-      text: requireTitle(args.text, "Task text"),
+      text: requireTitle(args.body, "Note body"),
+      updatedAt: Date.now(),
     });
   },
 });
@@ -121,7 +123,7 @@ export const updateWhen = mutation({
 
     await requireOwned(ctx, "tasks", { userId, id: args.id });
 
-    await ctx.db.patch(args.id, { when: args.when });
+    await ctx.db.patch(args.id, { when: args.when, updatedAt: Date.now() });
   },
 });
 
@@ -135,6 +137,7 @@ export const markDone = mutation({
     await ctx.db.patch(args.id, {
       state: "done",
       completedAt: Date.now(),
+      updatedAt: Date.now(),
     });
   },
 });
@@ -149,42 +152,7 @@ export const markOpen = mutation({
     await ctx.db.patch(args.id, {
       state: "open",
       completedAt: undefined,
+      updatedAt: Date.now(),
     });
-  },
-});
-
-export const process = mutation({
-  args: {
-    id: v.id("tasks"),
-    action: v.union(
-      v.object({
-        type: v.literal("create_thread"),
-        title: v.string(),
-        areaId: v.id("areas"),
-        summary: v.optional(v.string()),
-      }),
-      v.object({
-        type: v.literal("add_activity_log_entry"),
-        threadId: v.id("threads"),
-      }),
-      v.object({
-        type: v.literal("set_next_move"),
-        threadId: v.id("threads"),
-      }),
-      v.object({
-        type: v.literal("append_up_next"),
-        threadId: v.id("threads"),
-      }),
-      v.object({
-        type: v.literal("discard"),
-      }),
-    ),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-
-    const task = await requireOwned(ctx, "tasks", { userId, id: args.id });
-
-    return processInboxTask(ctx, { userId, task, action: args.action });
   },
 });

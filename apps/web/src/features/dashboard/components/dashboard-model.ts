@@ -2,7 +2,7 @@ import type { AreaIcon } from "@convex/lib/areaIcons";
 import type { Condition } from "@convex/lib/condition";
 import type {
   ProjectedArea,
-  ProjectedTask,
+  ProjectedNote,
   ProjectedThread,
 } from "@convex/lib/validators";
 
@@ -34,10 +34,10 @@ export interface DashboardThread {
   title: string;
 }
 
-export interface DashboardInboxTask {
+export interface DashboardInboxNote {
   createdAt: number;
   id: string;
-  text: string;
+  body: string;
   when?: number;
 }
 
@@ -68,10 +68,10 @@ export function toDashboardThread(doc: ProjectedThread): DashboardThread {
   };
 }
 
-export function toDashboardTask(doc: ProjectedTask): DashboardInboxTask {
+export function toDashboardNote(doc: ProjectedNote): DashboardInboxNote {
   return {
     id: doc._id,
-    text: doc.text,
+    body: doc.body,
     when: doc.when,
     createdAt: doc.createdAt,
   };

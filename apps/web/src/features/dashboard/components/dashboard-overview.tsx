@@ -2,7 +2,7 @@ import { Button } from "@vita-os/ui/components/button";
 
 import type {
   DashboardArea,
-  DashboardInboxTask,
+  DashboardInboxNote,
   DashboardThread,
 } from "./dashboard-model";
 
@@ -15,14 +15,14 @@ interface DashboardOverviewProps {
   onCreateArea: () => void;
   /** Capture scoped to an Area, raised from the Condition strip's Quick Panel. */
   onNewThreadInArea: (areaId: string) => void;
-  tasks: DashboardInboxTask[];
+  notes: DashboardInboxNote[];
   threads: DashboardThread[];
 }
 
 export function DashboardOverview({
   areas,
   threads,
-  tasks,
+  notes,
   currentDate,
   onCreateArea,
   onNewThreadInArea,
@@ -60,7 +60,7 @@ export function DashboardOverview({
       <DashboardAttention
         areas={areas}
         currentDate={currentDate}
-        tasks={tasks}
+        notes={notes}
         threads={threads}
       />
     </div>

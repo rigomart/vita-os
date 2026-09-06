@@ -9,16 +9,21 @@ import { cn } from "@/lib/utils";
 
 import type {
   DashboardArea,
-  DashboardInboxTask,
+  DashboardInboxNote,
   DashboardThread,
 } from "./dashboard-model";
 
-import { dayDelta, daysSince, relativeDayLabel } from "./dashboard-model";
+import {
+  dayDelta,
+  daysSince,
+  followUpDateLabel,
+  relativeDayLabel,
+} from "./dashboard-model";
 
 interface DashboardAttentionProps {
   areas: DashboardArea[];
   currentDate: number;
-  tasks: DashboardInboxTask[];
+  notes: DashboardInboxNote[];
   threads: DashboardThread[];
 }
 
@@ -40,7 +45,7 @@ const QUIET_AFTER_DAYS = 7;
 export function DashboardAttention({
   areas,
   currentDate,
-  tasks,
+  notes,
   threads,
 }: DashboardAttentionProps) {
   const run = buildAttentionRun(threads, areas, currentDate);
@@ -64,7 +69,7 @@ export function DashboardAttention({
         </ol>
       )}
 
-      <InboxSynopsis currentDate={currentDate} tasks={tasks} />
+      <InboxSynopsis currentDate={currentDate} notes={notes} />
     </div>
   );
 }
@@ -201,25 +206,25 @@ function AreaMark({ area }: { area: DashboardArea }) {
 
 function InboxSynopsis({
   currentDate,
-  tasks,
+  notes,
 }: {
   currentDate: number;
-  tasks: DashboardInboxTask[];
+  notes: DashboardInboxNote[];
 }) {
-  if (tasks.length === 0) return null;
+  if (notes.length === 0) return null;
 
-  const dated = tasks
+  const dated = notes
     .filter(
-      (task): task is DashboardInboxTask & { when: number } =>
-        task.when !== undefined,
+      (note): note is DashboardInboxNote & { when: number } =>
+        note.when !== undefined,
     )
     .sort((a, b) => a.when - b.when);
   const shown = dated.slice(0, INBOX_PREVIEW_LIMIT);
-  const remaining = tasks.length - shown.length;
+  const remaining = notes.length - shown.length;
 
   return (
     <section
-      aria-label="Inbox synopsis"
+      aria-label="Notes synopsis"
       className="border-t border-border/50 pt-3 text-muted-foreground"
     >
       <Link
@@ -228,26 +233,26 @@ function InboxSynopsis({
         className="inline-flex items-center gap-1.5 rounded-sm text-2xs outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
       >
         <CircleDashed aria-hidden className="size-3.5" />
-        <span className="font-medium">Inbox</span>
-        <span className="tabular-nums">· {tasks.length} open</span>
+        <span className="font-medium">Notes</span>
+        <span className="tabular-nums">· {notes.length} open</span>
       </Link>
 
       {shown.length > 0 && (
         <ul className="mt-1 flex flex-col">
-          {shown.map((task) => (
-            <li key={task.id} className="flex h-7 items-center gap-2.5 px-2">
+          {shown.map((note) => (
+            <li key={note.id} className="flex h-7 items-center gap-2.5 px-2">
               <time
-                dateTime={new Date(task.when).toISOString()}
+                dateTime={new Date(note.when).toISOString()}
                 className={cn(
                   "w-16 shrink-0 text-right text-2xs tabular-nums",
-                  dayDelta(task.when, currentDate) < 0
+                  dayDelta(note.when, currentDate) < 0
                     ? "font-medium text-condition-attention"
                     : "text-muted-foreground/70",
                 )}
               >
-                {relativeDayLabel(task.when, currentDate)}
+                {followUpDateLabel(note.when, currentDate)}
               </time>
-              <span className="min-w-0 truncate text-2xs">{task.text}</span>
+              <span className="min-w-0 truncate text-2xs">{note.body}</span>
             </li>
           ))}
         </ul>

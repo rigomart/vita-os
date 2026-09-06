@@ -184,123 +184,81 @@ describe("owned-document authorization", () => {
     });
   });
 
-  describe("tasks", () => {
-    it("hides another user's Task from every read", async () => {
-      await owner.mutation(api.tasks.markDone, { id: owned.taskId });
+  describe("notes", () => {
+    it("hides another user's Note from every read", async () => {
+      await owner.mutation(api.notes.markDone, { id: owned.noteId });
 
       expect(
         (
-          await owner.query(api.tasks.listDone, {
+          await owner.query(api.notes.listDone, {
             paginationOpts: FIRST_PAGE,
           })
-        ).page.map((task) => task._id),
-      ).toEqual([owned.taskId]);
+        ).page.map((note) => note._id),
+      ).toEqual([owned.noteId]);
 
       expect(
         (
-          await intruder.query(api.tasks.listDone, {
+          await intruder.query(api.notes.listDone, {
             paginationOpts: FIRST_PAGE,
           })
         ).page,
       ).toEqual([]);
 
-      await owner.mutation(api.tasks.markOpen, { id: owned.taskId });
+      await owner.mutation(api.notes.markOpen, { id: owned.noteId });
 
       expect(
-        (await owner.query(api.tasks.list, {})).map((task) => task._id),
-      ).toEqual([owned.taskId]);
-      expect(await owner.query(api.tasks.count, {})).toBe(1);
+        (await owner.query(api.notes.list, {})).map((note) => note._id),
+      ).toEqual([owned.noteId]);
+      expect(await owner.query(api.notes.count, {})).toBe(1);
 
-      expect(await intruder.query(api.tasks.list, {})).toEqual([]);
-      expect(await intruder.query(api.tasks.count, {})).toBe(0);
+      expect(await intruder.query(api.notes.list, {})).toEqual([]);
+      expect(await intruder.query(api.notes.count, {})).toBe(0);
     });
 
-    it("refuses another user's Task in every mutation", async () => {
+    it("refuses another user's Note in every mutation", async () => {
       await expect(
-        intruder.mutation(api.tasks.remove, { id: owned.taskId }),
-      ).rejects.toThrow(/Task not found/);
+        intruder.mutation(api.notes.remove, { id: owned.noteId }),
+      ).rejects.toThrow(/Note not found/);
       await expect(
-        intruder.mutation(api.tasks.updateText, {
-          id: owned.taskId,
-          text: "Stolen",
+        intruder.mutation(api.notes.updateBody, {
+          id: owned.noteId,
+          body: "Stolen",
         }),
-      ).rejects.toThrow(/Task not found/);
+      ).rejects.toThrow(/Note not found/);
       await expect(
-        intruder.mutation(api.tasks.updateWhen, {
-          id: owned.taskId,
+        intruder.mutation(api.notes.updateWhen, {
+          id: owned.noteId,
           when: Date.now(),
         }),
-      ).rejects.toThrow(/Task not found/);
+      ).rejects.toThrow(/Note not found/);
       await expect(
-        intruder.mutation(api.tasks.markDone, { id: owned.taskId }),
-      ).rejects.toThrow(/Task not found/);
+        intruder.mutation(api.notes.markDone, { id: owned.noteId }),
+      ).rejects.toThrow(/Note not found/);
       await expect(
-        intruder.mutation(api.tasks.markOpen, { id: owned.taskId }),
-      ).rejects.toThrow(/Task not found/);
-      await expect(
-        intruder.mutation(api.tasks.process, {
-          id: owned.taskId,
-          action: { type: "discard" },
-        }),
-      ).rejects.toThrow(/Task not found/);
+        intruder.mutation(api.notes.markOpen, { id: owned.noteId }),
+      ).rejects.toThrow(/Note not found/);
 
-      expect(await owner.query(api.tasks.count, {})).toBe(1);
-    });
-
-    it("refuses processing one's own Task into another user's Thread", async () => {
-      const theirs = await seed(intruder);
-
-      await expect(
-        intruder.mutation(api.tasks.process, {
-          id: theirs.taskId,
-          action: {
-            type: "add_activity_log_entry",
-            threadId: owned.threadId,
-          },
-        }),
-      ).rejects.toThrow(/Thread not found/);
-      await expect(
-        intruder.mutation(api.tasks.process, {
-          id: theirs.taskId,
-          action: { type: "set_next_move", threadId: owned.threadId },
-        }),
-      ).rejects.toThrow(/Thread not found/);
-      await expect(
-        intruder.mutation(api.tasks.process, {
-          id: theirs.taskId,
-          action: { type: "append_up_next", threadId: owned.threadId },
-        }),
-      ).rejects.toThrow(/Thread not found/);
-      await expect(
-        intruder.mutation(api.tasks.process, {
-          id: theirs.taskId,
-          action: {
-            type: "create_thread",
-            title: "Squatting",
-            areaId: owned.areaId,
-          },
-        }),
-      ).rejects.toThrow(/Area not found/);
+      expect(await owner.query(api.notes.count, {})).toBe(1);
     });
 
     it("refuses unauthenticated mutations", async () => {
       await expect(
-        t.mutation(api.tasks.create, { text: "Anon" }),
+        t.mutation(api.notes.updateWhen, { id: owned.noteId, when: 123 }),
       ).rejects.toThrow();
       await expect(
-        t.mutation(api.tasks.remove, { id: owned.taskId }),
+        t.mutation(api.notes.markOpen, { id: owned.noteId }),
       ).rejects.toThrow();
       await expect(
-        t.mutation(api.tasks.updateText, { id: owned.taskId, text: "Anon" }),
+        t.mutation(api.notes.create, { body: "Anon" }),
       ).rejects.toThrow();
       await expect(
-        t.mutation(api.tasks.markDone, { id: owned.taskId }),
+        t.mutation(api.notes.remove, { id: owned.noteId }),
       ).rejects.toThrow();
       await expect(
-        t.mutation(api.tasks.process, {
-          id: owned.taskId,
-          action: { type: "discard" },
-        }),
+        t.mutation(api.notes.updateBody, { id: owned.noteId, body: "Anon" }),
+      ).rejects.toThrow();
+      await expect(
+        t.mutation(api.notes.markDone, { id: owned.noteId }),
       ).rejects.toThrow();
     });
   });

@@ -8,7 +8,7 @@ function dayOffset(when: number, now: number) {
 
 export type WhenTone = "due" | "overdue";
 
-/** Lateness, shared by a Task's When and a Thread's Follow-up. */
+/** Lateness, shared by a Note's When and a Thread's Follow-up. */
 export function whenTone(
   when: number | undefined,
   now: number,

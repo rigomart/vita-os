@@ -7,10 +7,10 @@ export function useCreateDialogs() {
   const [createForAreaId, setCreateForAreaId] = useState<
     Id<"areas"> | undefined
   >();
-  const [showNewTask, setShowNewTask] = useState(false);
+  const [showNewNote, setShowNewNote] = useState(false);
   const [showCreateArea, setShowCreateArea] = useState(false);
 
-  const openNewTask = useCallback(() => setShowNewTask(true), []);
+  const openNewNote = useCallback(() => setShowNewNote(true), []);
 
   const openCreateArea = useCallback(() => setShowCreateArea(true), []);
 
@@ -23,9 +23,9 @@ export function useCreateDialogs() {
     showCreateThread,
     setShowCreateThread,
     createForAreaId,
-    showNewTask,
-    setShowNewTask,
-    openNewTask,
+    showNewNote,
+    setShowNewNote,
+    openNewNote,
     showCreateArea,
     setShowCreateArea,
     openCreateArea,

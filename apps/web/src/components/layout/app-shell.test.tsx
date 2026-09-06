@@ -51,7 +51,7 @@ vi.mock("convex-helpers/react/cache/hooks", () => ({
     if (args === "skip") return undefined;
     if (name === "areas:list") return [area];
     if (name === "threads:list") return [thread];
-    if (name === "tasks:count") return 0;
+    if (name === "notes:count") return 0;
     return undefined;
   },
 }));
@@ -80,15 +80,15 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 // these tests exercise, so each entry point is reduced to a labelled button.
 vi.mock("./app-top-bar", () => ({
   AppTopBar: ({
-    onNewTask,
+    onNewNote,
     onOpenPalette,
   }: {
-    onNewTask: () => void;
+    onNewNote: () => void;
     onOpenPalette: () => void;
   }) => (
     <div>
-      <button type="button" onClick={onNewTask}>
-        top bar new task
+      <button type="button" onClick={onNewNote}>
+        top bar new note
       </button>
       <button type="button" onClick={onOpenPalette}>
         top bar palette
@@ -99,15 +99,15 @@ vi.mock("./app-top-bar", () => ({
 
 vi.mock("./mobile-tab-bar", () => ({
   MobileTabBar: ({
-    onNewTask,
+    onNewNote,
     onOpenPalette,
   }: {
-    onNewTask: () => void;
+    onNewNote: () => void;
     onOpenPalette: () => void;
   }) => (
     <div>
-      <button type="button" onClick={onNewTask}>
-        mobile new task
+      <button type="button" onClick={onNewNote}>
+        mobile new note
       </button>
       <button type="button" onClick={onOpenPalette}>
         mobile palette
@@ -140,13 +140,13 @@ describe("AppShell", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(subscribedTo("areas:list")).toBe(false);
     expect(subscribedTo("threads:list")).toBe(false);
-    expect(subscribedTo("tasks:count")).toBe(true);
+    expect(subscribedTo("notes:count")).toBe(true);
   });
 
   it.each([
-    ["top bar", "top bar new task"],
-    ["mobile tab bar", "mobile new task"],
-  ])("opens the new task dialog from the %s", async (_source, label) => {
+    ["top bar", "top bar new note"],
+    ["mobile tab bar", "mobile new note"],
+  ])("opens the new note dialog from the %s", async (_source, label) => {
     const user = userEvent.setup();
     renderShell();
 
@@ -157,7 +157,7 @@ describe("AppShell", () => {
     ).toBeVisible();
   });
 
-  it("opens the new task dialog from the q shortcut", async () => {
+  it("opens the new note dialog from the q shortcut", async () => {
     const user = userEvent.setup();
     renderShell();
 
@@ -169,7 +169,7 @@ describe("AppShell", () => {
   });
 
   it.each([["{Control>}q{/Control}"], ["{Meta>}q{/Meta}"], ["{Alt>}q{/Alt}"]])(
-    "leaves %s to the browser instead of opening the new task dialog",
+    "leaves %s to the browser instead of opening the new note dialog",
     async (keys) => {
       const user = userEvent.setup();
       renderShell();
@@ -182,11 +182,11 @@ describe("AppShell", () => {
     },
   );
 
-  it("resets new task input between openings", async () => {
+  it("resets new note input between openings", async () => {
     const user = userEvent.setup();
     renderShell();
 
-    await user.click(screen.getByRole("button", { name: "top bar new task" }));
+    await user.click(screen.getByRole("button", { name: "top bar new note" }));
     const textarea = await screen.findByPlaceholderText("What's on your mind?");
     await user.type(textarea, "Buy milk");
     expect(textarea).toHaveValue("Buy milk");
@@ -198,7 +198,7 @@ describe("AppShell", () => {
       ).not.toBeInTheDocument(),
     );
 
-    await user.click(screen.getByRole("button", { name: "top bar new task" }));
+    await user.click(screen.getByRole("button", { name: "top bar new note" }));
     expect(
       await screen.findByPlaceholderText("What's on your mind?"),
     ).toHaveValue("");
@@ -267,7 +267,7 @@ describe("AppShell", () => {
 
     queryCall.mockClear();
     // A re-render after the close must not re-subscribe.
-    await user.click(screen.getByRole("button", { name: "top bar new task" }));
+    await user.click(screen.getByRole("button", { name: "top bar new note" }));
     await screen.findByPlaceholderText("What's on your mind?");
     expect(subscribedTo("threads:list")).toBe(false);
   });
@@ -285,12 +285,12 @@ describe("AppShell", () => {
     expect(subscribedTo("areas:list")).toBe(true);
   });
 
-  it("focuses the new task input when New task is chosen from the palette", async () => {
+  it("focuses the new note input when New note is chosen from the palette", async () => {
     const user = userEvent.setup();
     renderShell();
 
     await user.click(screen.getByRole("button", { name: "top bar palette" }));
-    await user.click(await screen.findByText("New task"));
+    await user.click(await screen.findByText("New note"));
 
     const textarea = await screen.findByPlaceholderText("What's on your mind?");
     await waitFor(() => expect(textarea).toHaveFocus());

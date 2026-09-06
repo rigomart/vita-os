@@ -18,26 +18,26 @@ export interface AreaThreadAttentionGroups<TThread> {
   withNextMoves: TThread[];
 }
 
-export interface TaskAttentionInput {
+export interface NoteAttentionInput {
   completedAt?: number | null;
   createdAt: number;
   state: "done" | "open";
   when?: number | null;
 }
 
-export interface TaskAttentionGroups<TTask> {
-  comingUp: TTask[];
-  completed: TTask[];
-  noDate: TTask[];
-  pastDue: TTask[];
-  today: TTask[];
+export interface NoteAttentionGroups<TNote> {
+  comingUp: TNote[];
+  completed: TNote[];
+  noDate: TNote[];
+  pastDue: TNote[];
+  today: TNote[];
 }
 
-type TaskAttentionGroup = keyof TaskAttentionGroups<never>;
+type NoteAttentionGroup = keyof NoteAttentionGroups<never>;
 
 const DAY = 86_400_000;
 
-const taskGroupOrder: Record<TaskAttentionGroup, number> = {
+const noteGroupOrder: Record<NoteAttentionGroup, number> = {
   pastDue: 0,
   today: 1,
   noDate: 2,
@@ -112,12 +112,12 @@ export function groupAreaThreadsByAttention<
   };
 }
 
-export function groupTasksByAttention<TTask extends TaskAttentionInput>(
-  tasks: TTask[],
+export function groupNotesByAttention<TNote extends NoteAttentionInput>(
+  notes: TNote[],
   currentDate: number,
   timezoneOffsetMinutes?: number,
-): TaskAttentionGroups<TTask> {
-  const groups: TaskAttentionGroups<TTask> = {
+): NoteAttentionGroups<TNote> {
+  const groups: NoteAttentionGroups<TNote> = {
     pastDue: [],
     today: [],
     noDate: [],
@@ -125,30 +125,30 @@ export function groupTasksByAttention<TTask extends TaskAttentionInput>(
     completed: [],
   };
 
-  for (const task of [...tasks].sort((a, b) =>
-    compareTasksByAttention(a, b, currentDate, timezoneOffsetMinutes),
+  for (const note of [...notes].sort((a, b) =>
+    compareNotesByAttention(a, b, currentDate, timezoneOffsetMinutes),
   )) {
     groups[
-      getTaskAttentionGroup(task, currentDate, timezoneOffsetMinutes)
-    ].push(task);
+      getNoteAttentionGroup(note, currentDate, timezoneOffsetMinutes)
+    ].push(note);
   }
 
   return groups;
 }
 
-export function isOpenTask(task: Pick<TaskAttentionInput, "state">) {
-  return task.state === "open";
+export function isOpenNote(note: Pick<NoteAttentionInput, "state">) {
+  return note.state === "open";
 }
 
-export function compareTasksByAttention<TTask extends TaskAttentionInput>(
-  a: TTask,
-  b: TTask,
+export function compareNotesByAttention<TNote extends NoteAttentionInput>(
+  a: TNote,
+  b: TNote,
   currentDate: number,
   timezoneOffsetMinutes?: number,
 ) {
-  const aGroup = getTaskAttentionGroup(a, currentDate, timezoneOffsetMinutes);
-  const bGroup = getTaskAttentionGroup(b, currentDate, timezoneOffsetMinutes);
-  const groupDifference = taskGroupOrder[aGroup] - taskGroupOrder[bGroup];
+  const aGroup = getNoteAttentionGroup(a, currentDate, timezoneOffsetMinutes);
+  const bGroup = getNoteAttentionGroup(b, currentDate, timezoneOffsetMinutes);
+  const groupDifference = noteGroupOrder[aGroup] - noteGroupOrder[bGroup];
 
   if (groupDifference !== 0) return groupDifference;
 
@@ -175,15 +175,15 @@ export function startOfLocalDay(timestamp: number) {
   ).getTime();
 }
 
-function getTaskAttentionGroup(
-  task: TaskAttentionInput,
+function getNoteAttentionGroup(
+  note: NoteAttentionInput,
   currentDate: number,
   timezoneOffsetMinutes?: number,
-): TaskAttentionGroup {
-  if (task.state === "done") return "completed";
-  if (task.when == null) return "noDate";
+): NoteAttentionGroup {
+  if (note.state === "done") return "completed";
+  if (note.when == null) return "noDate";
 
-  const when = getDayKey(task.when, timezoneOffsetMinutes);
+  const when = getDayKey(note.when, timezoneOffsetMinutes);
   const today = getDayKey(currentDate, timezoneOffsetMinutes);
 
   if (when < today) return "pastDue";

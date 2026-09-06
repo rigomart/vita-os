@@ -22,8 +22,8 @@ describe("requireTitle", () => {
   });
 
   it("rejects an empty value, naming the field", () => {
-    expect(() => requireTitle("", "Task text")).toThrow(
-      "Task text cannot be empty",
+    expect(() => requireTitle("", "Note text")).toThrow(
+      "Note text cannot be empty",
     );
   });
 

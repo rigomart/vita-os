@@ -1,8 +1,8 @@
-import type { ProjectedTask } from "@convex/lib/validators";
+import type { ProjectedNote } from "@convex/lib/validators";
 
-import { groupTasksByAttention } from "@convex/lib/attentionOrdering";
+import { groupNotesByAttention } from "@convex/lib/attentionOrdering";
 import { Button } from "@vita-os/ui/components/button";
-import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 
 import {
   AttentionCollapsed,
@@ -10,16 +10,14 @@ import {
   AttentionRow,
   type AttentionRowModel,
   RowDeleteAction,
-  RowIconAction,
 } from "@/features/attention-list";
-import { useTaskRowActions } from "@/features/tasks/task-row/use-task-row-actions";
+import { useNoteRowActions } from "@/features/notes/note-row/use-note-row-actions";
 import { useAttentionClock } from "@/hooks/use-attention-clock";
 
-interface InboxTaskListProps {
-  tasks: ProjectedTask[];
-  onProcess?: (task: ProjectedTask) => void;
-  /** Done Tasks loaded so far from `tasks.listDone`. */
-  doneTasks?: ProjectedTask[];
+interface InboxNoteListProps {
+  notes: ProjectedNote[];
+  /** Done Notes loaded so far from `notes.listDone`. */
+  doneNotes?: ProjectedNote[];
   /** Defaults to `true`: non-paginating callers render Completed only when non-empty. */
   isDoneExhausted?: boolean;
   canLoadMoreDone?: boolean;
@@ -27,29 +25,28 @@ interface InboxTaskListProps {
   onLoadMoreDone?: () => void;
 }
 
-export function InboxTaskList({
-  tasks,
-  onProcess,
-  doneTasks = [],
+export function InboxNoteList({
+  notes,
+  doneNotes = [],
   isDoneExhausted = true,
   canLoadMoreDone = false,
   isLoadingMoreDone = false,
   onLoadMoreDone,
-}: InboxTaskListProps) {
+}: InboxNoteListProps) {
   const now = useAttentionClock();
-  const groups = groupTasksByAttention(tasks, now);
+  const groups = groupNotesByAttention(notes, now);
   const openCount =
     groups.pastDue.length +
     groups.today.length +
     groups.noDate.length +
     groups.comingUp.length;
-  const openTasks = [
+  const openNotes = [
     ...groups.pastDue,
     ...groups.today,
-    ...groups.comingUp,
     ...groups.noDate,
+    ...groups.comingUp,
   ];
-  const showCompleted = doneTasks.length > 0 || !isDoneExhausted;
+  const showCompleted = doneNotes.length > 0 || !isDoneExhausted;
 
   return (
     <div>
@@ -58,22 +55,17 @@ export function InboxTaskList({
           <InboxZero />
         ) : (
           <AttentionList>
-            {openTasks.map((task) => (
-              <InboxTaskRow
-                key={task._id}
-                task={task}
-                now={now}
-                onProcess={onProcess}
-              />
+            {openNotes.map((note) => (
+              <InboxNoteRow key={note._id} note={note} now={now} />
             ))}
           </AttentionList>
         )}
 
         {showCompleted && (
-          <AttentionCollapsed title="Completed" count={doneTasks.length}>
+          <AttentionCollapsed title="Completed" count={doneNotes.length}>
             <AttentionList>
-              {doneTasks.map((task) => (
-                <InboxTaskRow key={task._id} task={task} now={now} />
+              {doneNotes.map((note) => (
+                <InboxNoteRow key={note._id} note={note} now={now} />
               ))}
             </AttentionList>
             {(canLoadMoreDone || isLoadingMoreDone) && (
@@ -112,39 +104,32 @@ function InboxZero() {
   return (
     <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed px-6 text-center">
       <CheckCircle2 className="mb-3 size-7 text-muted-foreground" />
-      <h2 className="text-sm font-semibold">Inbox zero</h2>
+      <h2 className="text-sm font-semibold">No active Notes</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Nothing is waiting for a decision.
+        Capture a thought, information, or an action whenever you need.
       </p>
     </div>
   );
 }
 
-function InboxTaskRow({
-  task,
-  now,
-  onProcess,
-}: {
-  task: ProjectedTask;
-  now: number;
-  onProcess?: (task: ProjectedTask) => void;
-}) {
+function InboxNoteRow({ note, now }: { note: ProjectedNote; now: number }) {
   const {
     handleRemove,
     handleToggleComplete,
     handleUpdateText,
     handleUpdateWhen,
-    isDiscardPending,
+    isDeletePending,
     isSavingText,
     isTogglePending,
     isWhenPending,
-  } = useTaskRowActions(task);
-  const done = task.state === "done";
+  } = useNoteRowActions(note);
+  const done = note.state === "done";
 
   const row: AttentionRowModel = {
-    title: task.text,
+    title: note.body,
+    multiline: true,
     done,
-    when: task.when,
+    when: note.when,
     onToggleDone: handleToggleComplete,
     toggleBusy: isTogglePending,
     onSetWhen: handleUpdateWhen,
@@ -153,19 +138,12 @@ function InboxTaskRow({
     isSavingText,
     actions: (
       <>
-        {onProcess && !done && (
-          <RowIconAction
-            icon={ArrowRight}
-            label="Process task"
-            onSelect={() => onProcess(task)}
-          />
-        )}
         <RowDeleteAction
-          label="Discard task"
-          title="Discard task?"
-          description="This task will be permanently removed from your Inbox. This action cannot be undone."
-          confirmLabel="Discard"
-          busy={isDiscardPending}
+          label="Delete note"
+          title="Delete note?"
+          description="This note will be permanently removed from your Notes. This action cannot be undone."
+          confirmLabel="Delete"
+          busy={isDeletePending}
           onConfirm={handleRemove}
         />
       </>

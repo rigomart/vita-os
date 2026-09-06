@@ -11,28 +11,28 @@ import { Textarea } from "@vita-os/ui/components/textarea";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useState } from "react";
 
-import type { CreateTaskValue } from "@/features/tasks/use-create-task";
+import type { CreateNoteValue } from "@/features/notes/use-create-note";
 
-interface NewTaskDialogProps {
+interface NewNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (value: CreateTaskValue) => Promise<void> | void;
+  onSubmit: (value: CreateNoteValue) => Promise<void> | void;
 }
 
-export function NewTaskDialog({
+export function NewNoteDialog({
   open,
   onOpenChange,
   onSubmit,
-}: NewTaskDialogProps) {
-  const [text, setText] = useState("");
+}: NewNoteDialogProps) {
+  const [body, setBody] = useState("");
   const [when, setWhen] = useState<Date | undefined>(undefined);
 
   const {
-    run: submitTask,
+    run: submitNote,
     isPending,
     error,
   } = useGuardedAsyncAction(onSubmit, {
-    successMessage: "Task added",
+    successMessage: "Note added",
     errorToast: false,
   });
 
@@ -43,13 +43,13 @@ export function NewTaskDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = text.trim();
+    const trimmed = body.trim();
     if (!trimmed || isPending) return;
 
-    const result = await submitTask({ text: trimmed, when: when?.getTime() });
+    const result = await submitNote({ body: trimmed, when: when?.getTime() });
     if (!result.ok) return;
 
-    setText("");
+    setBody("");
     setWhen(undefined);
   };
 
@@ -57,12 +57,13 @@ export function NewTaskDialog({
     <ResponsiveDialog open={open} onOpenChange={handleOpenChange}>
       <ResponsiveDialogContent showCloseButton={!isPending}>
         <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle>New task</ResponsiveDialogTitle>
+          <ResponsiveDialogTitle>New note</ResponsiveDialogTitle>
         </ResponsiveDialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
+            aria-label="Note body"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
             placeholder="What's on your mind?"
             rows={3}
             autoFocus
@@ -74,7 +75,14 @@ export function NewTaskDialog({
               }
             }}
           />
-          <DatePicker value={when} onChange={setWhen} placeholder="Add When" />
+          <DatePicker
+            value={when}
+            onChange={setWhen}
+            placeholder="Attention date (optional)"
+          />
+          <p className="text-xs text-muted-foreground">
+            Bring this Note back into attention on this date.
+          </p>
           {error ? (
             <p role="alert" className="text-sm text-destructive">
               {error}
@@ -91,7 +99,7 @@ export function NewTaskDialog({
             </Button>
             <Button
               type="submit"
-              disabled={!text.trim() || isPending}
+              disabled={!body.trim() || isPending}
               aria-busy={isPending}
             >
               Add
