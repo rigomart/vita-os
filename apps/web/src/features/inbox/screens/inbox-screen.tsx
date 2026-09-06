@@ -4,6 +4,8 @@ import { useQuery } from "convex-helpers/react/cache/hooks";
 import { usePaginatedQuery } from "convex/react";
 
 import { InboxNoteList } from "@/features/inbox/components/inbox-note-list";
+// PROTOTYPE — throwaway; delete this import and the ../prototype folder together.
+import { InboxPrototype } from "@/features/inbox/prototype/inbox-prototype";
 
 const DONE_PAGE_SIZE = 10;
 
@@ -23,18 +25,26 @@ export function InboxScreen() {
     return <InboxSkeleton />;
   }
 
-  return (
-    <>
-      <InboxNoteList
-        notes={notes}
-        doneNotes={doneNotes}
-        isDoneExhausted={doneStatus === "Exhausted"}
-        canLoadMoreDone={doneStatus === "CanLoadMore"}
-        isLoadingMoreDone={doneStatus === "LoadingMore"}
-        onLoadMoreDone={() => loadMoreDone(DONE_PAGE_SIZE)}
-      />
-    </>
+  const list = (
+    <InboxNoteList
+      notes={notes}
+      doneNotes={doneNotes}
+      isDoneExhausted={doneStatus === "Exhausted"}
+      canLoadMoreDone={doneStatus === "CanLoadMore"}
+      isLoadingMoreDone={doneStatus === "LoadingMore"}
+      onLoadMoreDone={() => loadMoreDone(DONE_PAGE_SIZE)}
+    />
   );
+
+  // PROTOTYPE — throwaway. Statically false in production, so the whole
+  // prototype tree is eliminated from the bundle.
+  if (import.meta.env.DEV) {
+    return (
+      <InboxPrototype notes={notes} doneNotes={doneNotes} current={list} />
+    );
+  }
+
+  return list;
 }
 
 function InboxSkeleton() {
