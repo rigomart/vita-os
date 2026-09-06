@@ -86,15 +86,14 @@ describe("InboxNoteList", () => {
       />,
     );
 
-    const rail = () =>
-      screen.getByRole("button", { name: "Change attention date" })
-        .firstElementChild;
+    const attentionDate = () =>
+      screen.getByRole("button", { name: "Change attention date" });
 
-    expect(rail()).toHaveClass("bg-surface-3");
+    expect(attentionDate()).toHaveClass("text-brand-accent-foreground");
 
     act(() => vi.advanceTimersByTime(30 * 60_000));
 
-    expect(rail()).toHaveClass("bg-condition-attention-fill");
+    expect(attentionDate()).toHaveClass("text-condition-attention");
   });
 
   it("keeps Completed Notes collapsed when the Open Inbox is clear", async () => {
@@ -168,6 +167,32 @@ describe("InboxNoteList", () => {
       expect(actions.handleRemove).not.toHaveBeenCalled();
       await user.click(screen.getByRole("button", { name: "Delete" }));
       expect(actions.handleRemove).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each([
+    { state: "open", label: "Mark note done" },
+    { state: "done", label: "Mark note open" },
+  ] as const)(
+    "labels the icon-only completion toggle for a $state Note",
+    async ({ state, label }) => {
+      const user = userEvent.setup();
+      const saved = note("Saved thought", { state, completedAt: today });
+      render(
+        <InboxNoteList
+          notes={state === "open" ? [saved] : []}
+          doneNotes={state === "done" ? [saved] : []}
+        />,
+      );
+      if (state === "done")
+        await user.click(screen.getByRole("button", { name: /completed/i }));
+
+      const toggle = screen.getByRole("button", { name: label });
+      expect(toggle).toHaveTextContent("");
+
+      await user.click(toggle);
+
+      expect(actions.handleToggleComplete).toHaveBeenCalledOnce();
     },
   );
 

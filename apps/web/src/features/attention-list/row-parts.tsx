@@ -96,14 +96,18 @@ export function AreaTag({
 }
 
 export function WhenPopover({
-  row,
+  busy,
+  onSetWhen,
   trigger,
+  when,
 }: {
-  row: AttentionRowModel;
+  busy?: boolean;
+  onSetWhen?: (when: number | undefined) => void;
   trigger: ReactElement;
+  when?: number;
 }) {
   const [open, setOpen] = useState(false);
-  const selected = row.when === undefined ? undefined : new Date(row.when);
+  const selected = when === undefined ? undefined : new Date(when);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -113,10 +117,10 @@ export function WhenPopover({
           mode="single"
           selected={selected}
           defaultMonth={selected}
-          disabled={row.whenBusy}
+          disabled={busy}
           onSelect={(date) => {
-            if (!date || row.whenBusy) return;
-            row.onSetWhen?.(date.getTime());
+            if (!date || busy) return;
+            onSetWhen?.(date.getTime());
             setOpen(false);
           }}
         />
@@ -127,10 +131,10 @@ export function WhenPopover({
               variant="ghost"
               size="sm"
               className="w-full justify-start text-muted-foreground"
-              disabled={row.whenBusy}
+              disabled={busy}
               onClick={() => {
-                if (row.whenBusy) return;
-                row.onSetWhen?.(undefined);
+                if (busy) return;
+                onSetWhen?.(undefined);
                 setOpen(false);
               }}
             >

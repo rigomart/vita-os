@@ -35,9 +35,11 @@ export function InboxSurfaceBody({
           <X />
         </Button>
       </header>
+      {/* Recessed against the panel: Note cards are the brightest surface, so
+          what sits behind them has to step back for them to read as paper. */}
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto px-3 py-2",
+          "min-h-0 flex-1 overflow-y-auto bg-surface-1 px-3 py-3",
           bodyClassName,
         )}
       >

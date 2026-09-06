@@ -4,14 +4,8 @@ import { groupNotesByAttention } from "@convex/lib/attentionOrdering";
 import { Button } from "@vita-os/ui/components/button";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
-import {
-  AttentionCollapsed,
-  AttentionList,
-  AttentionRow,
-  type AttentionRowModel,
-  RowDeleteAction,
-} from "@/features/attention-list";
-import { useNoteRowActions } from "@/features/notes/note-row/use-note-row-actions";
+import { AttentionCollapsed } from "@/features/attention-list";
+import { NoteCard } from "@/features/notes/note-card/note-card";
 import { useAttentionClock } from "@/hooks/use-attention-clock";
 
 interface InboxNoteListProps {
@@ -54,20 +48,20 @@ export function InboxNoteList({
         {openCount === 0 ? (
           <InboxZero />
         ) : (
-          <AttentionList>
+          <div className="flex flex-col gap-2.5">
             {openNotes.map((note) => (
-              <InboxNoteRow key={note._id} note={note} now={now} />
+              <NoteCard key={note._id} note={note} now={now} />
             ))}
-          </AttentionList>
+          </div>
         )}
 
         {showCompleted && (
           <AttentionCollapsed title="Completed" count={doneNotes.length}>
-            <AttentionList>
+            <div className="flex flex-col gap-2.5 pt-1">
               {doneNotes.map((note) => (
-                <InboxNoteRow key={note._id} note={note} now={now} />
+                <NoteCard key={note._id} note={note} now={now} />
               ))}
-            </AttentionList>
+            </div>
             {(canLoadMoreDone || isLoadingMoreDone) && (
               <div className="flex justify-center pt-2">
                 <Button
@@ -110,45 +104,4 @@ function InboxZero() {
       </p>
     </div>
   );
-}
-
-function InboxNoteRow({ note, now }: { note: ProjectedNote; now: number }) {
-  const {
-    handleRemove,
-    handleToggleComplete,
-    handleUpdateText,
-    handleUpdateWhen,
-    isDeletePending,
-    isSavingText,
-    isTogglePending,
-    isWhenPending,
-  } = useNoteRowActions(note);
-  const done = note.state === "done";
-
-  const row: AttentionRowModel = {
-    title: note.body,
-    multiline: true,
-    done,
-    when: note.when,
-    onToggleDone: handleToggleComplete,
-    toggleBusy: isTogglePending,
-    onSetWhen: handleUpdateWhen,
-    whenBusy: isWhenPending,
-    onUpdateText: handleUpdateText,
-    isSavingText,
-    actions: (
-      <>
-        <RowDeleteAction
-          label="Delete note"
-          title="Delete note?"
-          description="This note will be permanently removed from your Notes. This action cannot be undone."
-          confirmLabel="Delete"
-          busy={isDeletePending}
-          onConfirm={handleRemove}
-        />
-      </>
-    ),
-  };
-
-  return <AttentionRow now={now} row={row} />;
 }

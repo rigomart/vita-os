@@ -157,7 +157,9 @@ function StateRail({ now, row }: { now: number; row: AttentionRowModel }) {
   return (
     <span className="flex w-11 shrink-0 justify-center">
       <WhenPopover
-        row={row}
+        when={row.when}
+        busy={row.whenBusy}
+        onSetWhen={row.onSetWhen}
         trigger={
           <Button
             variant="ghost"
