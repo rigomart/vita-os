@@ -2,13 +2,14 @@ import { Button } from "@vita-os/ui/components/button";
 import { DatePicker } from "@vita-os/ui/components/date-picker";
 import {
   ResponsiveDialog,
+  ResponsiveDialogClose,
   ResponsiveDialogContent,
-  ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@vita-os/ui/components/responsive-dialog";
 import { Textarea } from "@vita-os/ui/components/textarea";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
+import { XIcon } from "lucide-react";
 import { useState } from "react";
 
 import type { CreateNoteValue } from "@/features/notes/use-create-note";
@@ -55,19 +56,37 @@ export function NewNoteDialog({
 
   return (
     <ResponsiveDialog open={open} onOpenChange={handleOpenChange}>
-      <ResponsiveDialogContent showCloseButton={!isPending}>
-        <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle>New note</ResponsiveDialogTitle>
+      <ResponsiveDialogContent surface="framed" showCloseButton={false}>
+        <ResponsiveDialogHeader className="flex-row items-center justify-between gap-2">
+          <ResponsiveDialogTitle className="font-heading text-xs font-medium text-muted-foreground">
+            New note
+          </ResponsiveDialogTitle>
+          {isPending ? null : (
+            <ResponsiveDialogClose
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="-my-1 -mr-1 rounded-full text-muted-foreground hover:text-foreground"
+                />
+              }
+            >
+              <XIcon />
+              <span className="sr-only">Close</span>
+            </ResponsiveDialogClose>
+          )}
         </ResponsiveDialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="grid gap-3">
           <Textarea
+            variant="inline"
             aria-label="Note body"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="What's on your mind?"
-            rows={3}
+            rows={6}
             autoFocus
             disabled={isPending}
+            className="min-h-40 py-2 text-base leading-relaxed caret-ring disabled:opacity-100"
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
@@ -75,36 +94,29 @@ export function NewNoteDialog({
               }
             }}
           />
-          <DatePicker
-            value={when}
-            onChange={setWhen}
-            placeholder="Attention date (optional)"
-          />
-          <p className="text-xs text-muted-foreground">
-            Bring this Note back into attention on this date.
-          </p>
           {error ? (
             <p role="alert" className="text-sm text-destructive">
               {error}
             </p>
           ) : null}
-          <ResponsiveDialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
+          <div className="flex items-center justify-between gap-2">
+            <DatePicker
+              value={when}
+              onChange={setWhen}
               disabled={isPending}
-            >
-              Cancel
-            </Button>
+              placeholder="Attention date"
+              className="-ml-1 rounded-full"
+            />
             <Button
               type="submit"
+              size="sm"
+              className="rounded-full px-4"
               disabled={!body.trim() || isPending}
               aria-busy={isPending}
             >
               Add
             </Button>
-          </ResponsiveDialogFooter>
+          </div>
         </form>
       </ResponsiveDialogContent>
     </ResponsiveDialog>

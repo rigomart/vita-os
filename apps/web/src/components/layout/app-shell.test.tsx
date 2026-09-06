@@ -191,7 +191,7 @@ describe("AppShell", () => {
     await user.type(textarea, "Buy milk");
     expect(textarea).toHaveValue("Buy milk");
 
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Close" }));
     await waitFor(() =>
       expect(
         screen.queryByPlaceholderText("What's on your mind?"),
