@@ -96,7 +96,7 @@ export function InboxNoteList({
 
 function InboxZero() {
   return (
-    <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed px-6 text-center">
+    <div className="flex min-h-64 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border/60 px-6 text-center">
       <CheckCircle2 className="mb-3 size-7 text-muted-foreground" />
       <h2 className="text-sm font-semibold">No active Notes</h2>
       <p className="mt-1 text-sm text-muted-foreground">

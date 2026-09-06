@@ -49,7 +49,7 @@ const dialogContentVariants = cva(
         default:
           "gap-6 rounded-4xl bg-popover p-6 ring-1 ring-foreground/5 dark:ring-foreground/10",
         framed:
-          "gap-3 rounded-4xl border-4 border-border bg-popover p-4 ring-0 transition-colors has-focus-visible:border-ring/50",
+          "gap-3 rounded-4xl border-2 border-border bg-popover p-4 ring-0 transition-colors has-focus-visible:border-ring/50",
       },
     },
     defaultVariants: {

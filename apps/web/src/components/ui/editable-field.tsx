@@ -17,6 +17,12 @@ interface EditableFieldProps {
   startEditing?: boolean;
   disabled?: boolean;
   inputAriaLabel?: string;
+  /**
+   * Drop the field's own underline and hover fill, for a surface that is
+   * already legibly editable — a Note card, where the text is the surface and
+   * the card frame carries the state instead.
+   */
+  chromeless?: boolean;
 }
 
 const editableFieldStyles = cn(
@@ -39,6 +45,7 @@ export function EditableField({
   startEditing = false,
   disabled = false,
   inputAriaLabel,
+  chromeless = false,
 }: EditableFieldProps) {
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState(value);
@@ -93,6 +100,7 @@ export function EditableField({
 
   const fieldClassName = cn(
     editableFieldStyles,
+    chromeless && "border-b-0 hover:border-transparent hover:bg-transparent",
     variant === "input" && "py-1.5",
     variant === "textarea" &&
       "min-h-[5.5rem] resize-none py-2 field-sizing-content",
@@ -128,7 +136,7 @@ export function EditableField({
           displayClassName,
           "cursor-text",
           editing && "pointer-events-none invisible",
-          !editing && "hover:border-border hover:bg-muted/40",
+          !editing && !chromeless && "hover:border-border hover:bg-muted/40",
           isPlaceholder && "text-muted-foreground",
         )}
       >

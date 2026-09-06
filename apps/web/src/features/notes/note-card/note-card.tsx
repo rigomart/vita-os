@@ -24,9 +24,12 @@ function shortDate(timestamp: number) {
 }
 
 /**
- * A Note as a card: the body owns the whole top of it, and everything the card
- * can do sits in a footer beneath. Nothing frames or precedes the text, because
- * a Note is a thing you wrote — not a line item with a state in front of it.
+ * A Note as a card, in the same grammar as the new Note dialog: one open
+ * writing surface, a heavy edge doing all the containing, and controls floating
+ * on the surface rather than framing it. The card is a step down from the
+ * dialog — a 2px edge to its 4px, one radius smaller — so a Note reads as the
+ * same kind of object as the one you wrote it in. Nothing precedes the text,
+ * because a Note is a thing you wrote, not a line item with a state in front.
  */
 export function NoteCard({ note, now }: { note: ProjectedNote; now: number }) {
   const {
@@ -47,8 +50,9 @@ export function NoteCard({ note, now }: { note: ProjectedNote; now: number }) {
   return (
     <article
       className={cn(
-        "group/card flex flex-col rounded-xl bg-surface-2 p-3 shadow-sm transition-shadow hover:shadow-md",
-        done && "opacity-70 shadow-none hover:shadow-none",
+        "group/card flex flex-col rounded-3xl border-2 border-border/70 bg-surface-2 p-4",
+        "transition-colors hover:border-border has-focus-visible:border-ring/50",
+        done && "border-border/40 bg-transparent opacity-70",
       )}
     >
       <EditableField
@@ -60,7 +64,9 @@ export function NoteCard({ note, now }: { note: ProjectedNote; now: number }) {
         }}
         disabled={isSavingText}
         inputAriaLabel="Edit note body"
+        chromeless
         className="min-h-0 py-0"
+        editorClassName="caret-ring"
         displayClassName={cn(
           "block border-transparent text-left text-sm leading-relaxed whitespace-pre-wrap wrap-anywhere",
           // Not struck through: a completed Note is still there to be read.
@@ -68,7 +74,8 @@ export function NoteCard({ note, now }: { note: ProjectedNote; now: number }) {
         )}
       />
 
-      <div className="mt-2 flex items-center gap-1 border-t border-border/30 pt-2">
+      {/* No divider: the dialog separates by whitespace, and so does the card. */}
+      <div className="mt-3 flex items-center gap-1">
         <WhenPopover
           when={note.when}
           busy={isWhenPending}
@@ -85,7 +92,7 @@ export function NoteCard({ note, now }: { note: ProjectedNote; now: number }) {
                   : "Change attention date"
               }
               className={cn(
-                "-ml-1.5 h-7 gap-1.5 px-1.5 text-2xs font-normal",
+                "-ml-1 h-7 gap-1.5 rounded-full px-2 text-2xs font-normal",
                 note.when === undefined
                   ? "text-muted-foreground/60 opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 aria-expanded:opacity-100"
                   : "text-muted-foreground",
