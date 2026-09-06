@@ -56,10 +56,10 @@ describe("InboxNoteList", () => {
       />,
     );
 
-    const pastDue = screen.getByRole("button", { name: "Past due" });
-    const todayNote = screen.getByRole("button", { name: "Today" });
-    const comingUp = screen.getByRole("button", { name: "Coming up" });
-    const noDate = screen.getByRole("button", { name: "No date" });
+    const pastDue = screen.getByDisplayValue("Past due");
+    const todayNote = screen.getByDisplayValue("Today");
+    const comingUp = screen.getByDisplayValue("Coming up");
+    const noDate = screen.getByDisplayValue("No date");
     const completed = screen.getByRole("button", { name: /completed/i });
 
     expect(pastDue.compareDocumentPosition(todayNote)).toBe(
@@ -112,11 +112,11 @@ describe("InboxNoteList", () => {
     );
 
     expect(screen.getByText("No active Notes")).toBeVisible();
-    expect(screen.queryByText("Finished Note")).toBeNull();
+    expect(screen.queryByDisplayValue("Finished Note")).toBeNull();
 
     await user.click(screen.getByRole("button", { name: /completed/i }));
 
-    expect(screen.getByText("Finished Note")).toBeVisible();
+    expect(screen.getByDisplayValue("Finished Note")).toBeVisible();
   });
 
   it("hides the Completed section once the empty Done page is confirmed", () => {
@@ -215,5 +215,42 @@ describe("InboxNoteList", () => {
     );
     await user.click(screen.getByRole("button", { name: "Clear" }));
     expect(actions.handleUpdateWhen).toHaveBeenLastCalledWith(undefined);
+  });
+  it("keeps the native Note editor mounted and saves an edit at the selected position", async () => {
+    const user = userEvent.setup();
+    render(
+      <InboxNoteList
+        notes={[note("A long paragraph\nwith context to edit.")]}
+      />,
+    );
+    const editor = screen.getByRole<HTMLTextAreaElement>("textbox", {
+      name: "Edit note body",
+    });
+    await user.click(editor);
+    editor.setSelectionRange(22, 29);
+    await user.keyboard("details");
+    expect(editor).toHaveValue("A long paragraph\nwith details to edit.");
+    await user.tab();
+    expect(actions.handleUpdateText).toHaveBeenCalledExactlyOnceWith(
+      "A long paragraph\nwith details to edit.",
+    );
+    expect(screen.getByRole("textbox", { name: "Edit note body" })).toBe(
+      editor,
+    );
+  });
+
+  it("cancels a Note edit with Escape and restores an empty draft on blur", async () => {
+    const user = userEvent.setup();
+    render(<InboxNoteList notes={[note("Keep this thought")]} />);
+    const editor = screen.getByRole("textbox", { name: "Edit note body" });
+    await user.clear(editor);
+    await user.keyboard("Changed thought{Escape}");
+    expect(editor).toHaveValue("Keep this thought");
+    await user.tab();
+    expect(actions.handleUpdateText).not.toHaveBeenCalled();
+    await user.clear(editor);
+    await user.tab();
+    expect(editor).toHaveValue("Keep this thought");
+    expect(actions.handleUpdateText).not.toHaveBeenCalled();
   });
 });

@@ -64,11 +64,11 @@ export function NoteCard({ note, now }: { note: ProjectedNote; now: number }) {
         }}
         disabled={isSavingText}
         inputAriaLabel="Edit note body"
+        editOnFocus
+        textareaRows={1}
         chromeless
-        className="min-h-0 py-0"
-        editorClassName="caret-ring"
-        displayClassName={cn(
-          "block border-transparent text-left text-sm leading-relaxed whitespace-pre-wrap wrap-anywhere",
+        className={cn(
+          "min-h-0 py-0 text-left text-sm leading-relaxed whitespace-pre-wrap wrap-anywhere caret-ring",
           // Not struck through: a completed Note is still there to be read.
           done && "text-muted-foreground/60",
         )}
