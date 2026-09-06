@@ -8,6 +8,7 @@ export interface AttentionRowModel {
   detailKind?: "next-move" | "summary";
   done?: boolean;
   isSavingText?: boolean;
+  multiline?: boolean;
   linkTo?: { threadSlug: string };
   onSetWhen?: (when: number | undefined) => void;
   onToggleDone?: () => void;

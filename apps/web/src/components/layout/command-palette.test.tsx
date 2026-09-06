@@ -61,7 +61,7 @@ vi.mock("convex-helpers/react/cache/hooks", () => ({
     if (args === "skip") return undefined;
     if (name === "areas:list") return [health, money];
     if (name === "threads:list") return [thread];
-    if (name === "tasks:count") return 0;
+    if (name === "notes:count") return 0;
     return undefined;
   },
 }));
@@ -267,7 +267,7 @@ describe("CommandPalette area drill-in", () => {
 
     await user.keyboard("{Backspace}");
 
-    expect(await screen.findByText("New task")).toBeVisible();
+    expect(await screen.findByText("New note")).toBeVisible();
     expect(screen.getByPlaceholderText(PLACEHOLDER)).toHaveValue("");
     expect(
       screen.queryByText(`Set ${health.name} to Healthy`),
@@ -282,7 +282,7 @@ describe("CommandPalette area drill-in", () => {
 
     await user.keyboard("{Escape}");
 
-    expect(await screen.findByText("New task")).toBeVisible();
+    expect(await screen.findByText("New note")).toBeVisible();
     expect(screen.getByPlaceholderText(PLACEHOLDER)).toBeVisible();
   });
 });

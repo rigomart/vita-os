@@ -116,30 +116,32 @@ export function projectThread(thread: Doc<"threads">): ProjectedThread {
 }
 
 /**
- * Tasks keep `_creationTime`: the Inbox sorts by `createdAt` and breaks ties
+ * Notes keep `_creationTime`: the Inbox sorts by `createdAt` and breaks ties
  * on it, so unlike everywhere else it is a field the client genuinely reads.
  */
-export const projectedTaskValidator = v.object({
+export const projectedNoteValidator = v.object({
   _id: v.id("tasks"),
   _creationTime: v.number(),
-  text: v.string(),
+  body: v.string(),
   when: v.optional(v.number()),
   state: v.union(v.literal("open"), v.literal("done")),
   completedAt: v.optional(v.number()),
   createdAt: v.number(),
+  updatedAt: v.optional(v.number()),
 });
 
-export type ProjectedTask = Infer<typeof projectedTaskValidator>;
+export type ProjectedNote = Infer<typeof projectedNoteValidator>;
 
-export function projectTask(task: Doc<"tasks">): ProjectedTask {
+export function projectNote(note: Doc<"tasks">): ProjectedNote {
   return {
-    _id: task._id,
-    _creationTime: task._creationTime,
-    text: task.text,
-    when: task.when,
-    state: task.state,
-    completedAt: task.completedAt,
-    createdAt: task.createdAt,
+    _id: note._id,
+    _creationTime: note._creationTime,
+    body: note.text,
+    updatedAt: note.updatedAt,
+    when: note.when,
+    state: note.state,
+    completedAt: note.completedAt,
+    createdAt: note.createdAt,
   };
 }
 

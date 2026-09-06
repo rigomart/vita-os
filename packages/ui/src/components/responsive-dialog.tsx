@@ -58,12 +58,14 @@ function ResponsiveDialog({
 
 function ResponsiveDialogContent({
   showCloseButton,
+  surface,
   className,
   children,
 }: React.ComponentProps<typeof DialogContent>) {
   const isMobile = use(MobileContext);
 
   if (isMobile) {
+    // `surface` is a desktop concern: a drawer is anchored to the screen edge.
     return (
       <DrawerContent className={cn(className)}>
         <div className="flex flex-col gap-4 overflow-y-auto p-4 pt-0">
@@ -74,7 +76,11 @@ function ResponsiveDialogContent({
   }
 
   return (
-    <DialogContent showCloseButton={showCloseButton} className={className}>
+    <DialogContent
+      showCloseButton={showCloseButton}
+      surface={surface}
+      className={className}
+    >
       {children}
     </DialogContent>
   );

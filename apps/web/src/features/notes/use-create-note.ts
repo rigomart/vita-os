@@ -3,28 +3,29 @@ import type { Id } from "@convex/_generated/dataModel";
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
 
-import { optimisticallyAddToOpenTasks } from "./optimistic";
+import { optimisticallyAddToOpenNotes } from "./optimistic";
 
-export type CreateTaskValue = {
-  text: string;
+export type CreateNoteValue = {
+  body: string;
   when?: number;
 };
 
-export function useCreateTask() {
-  const createTask = useMutation(api.tasks.create).withOptimisticUpdate(
+export function useCreateNote() {
+  const createNote = useMutation(api.notes.create).withOptimisticUpdate(
     (localStore, args) => {
       const now = Date.now();
 
-      optimisticallyAddToOpenTasks(localStore, {
+      optimisticallyAddToOpenNotes(localStore, {
         _id: crypto.randomUUID() as Id<"tasks">,
         _creationTime: now,
-        text: args.text,
+        body: args.body,
         when: args.when,
         state: "open",
         createdAt: now,
+        updatedAt: now,
       });
     },
   );
 
-  return (value: CreateTaskValue) => createTask(value);
+  return (value: CreateNoteValue) => createNote(value);
 }

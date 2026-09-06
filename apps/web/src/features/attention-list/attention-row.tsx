@@ -28,7 +28,12 @@ export function AttentionRow({
   row: AttentionRowModel;
 }) {
   return (
-    <div className="group/row flex h-10 items-center gap-2.5 rounded-lg pr-2 transition-colors hover:bg-muted/50">
+    <div
+      className={cn(
+        "group/row flex items-center gap-2.5 rounded-lg pr-2 transition-colors hover:bg-muted/50",
+        row.multiline ? "min-h-10 py-1.5" : "h-10",
+      )}
+    >
       <StateRail now={now} row={row} />
 
       {row.onToggleDone && <RowCheckbox row={row} className="shrink-0" />}
@@ -91,14 +96,18 @@ function RowTitle({ row }: { row: AttentionRowModel }) {
     <span className={widthClassName}>
       <EditableField
         value={row.title}
+        variant={row.multiline ? "textarea" : "input"}
         onSave={(text) => {
           if (!text || row.isSavingText) return;
           row.onUpdateText?.(text);
         }}
         disabled={row.isSavingText}
-        inputAriaLabel="Edit task text"
+        inputAriaLabel="Edit note body"
         className={cn("min-h-0 py-0", titleClassName)}
-        displayClassName="block truncate border-transparent text-left"
+        displayClassName={cn(
+          "block border-transparent text-left",
+          row.multiline ? "whitespace-pre-wrap wrap-anywhere" : "truncate",
+        )}
       />
     </span>
   );
@@ -148,14 +157,16 @@ function StateRail({ now, row }: { now: number; row: AttentionRowModel }) {
   return (
     <span className="flex w-11 shrink-0 justify-center">
       <WhenPopover
-        row={row}
+        when={row.when}
+        busy={row.whenBusy}
+        onSetWhen={row.onSetWhen}
         trigger={
           <Button
             variant="ghost"
             size="icon"
             disabled={row.whenBusy}
             aria-busy={row.whenBusy}
-            aria-label={date ? "Change when" : "Set when"}
+            aria-label={date ? "Change attention date" : "Set attention date"}
             className="size-9 rounded-md p-0 hover:bg-transparent"
           >
             {block}

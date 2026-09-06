@@ -3,7 +3,7 @@ import type { PaginationResult } from "convex/server";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import type { Id } from "./_generated/dataModel";
-import type { ProjectedActivityLog, ProjectedTask } from "./lib/validators";
+import type { ProjectedActivityLog, ProjectedNote } from "./lib/validators";
 import type { SignedIn, TestApi } from "./test.helpers";
 
 import { api } from "./_generated/api";
@@ -17,14 +17,14 @@ import { seed, setupTest, signIn } from "./test.helpers";
 
 const NO_CURSOR = { numItems: 2, cursor: null };
 
-async function createTask(
+async function createNote(
   t: TestApi,
   as: SignedIn,
-  spec: { text: string; createdAt: number; done?: boolean },
+  spec: { body: string; createdAt: number; done?: boolean },
 ): Promise<Id<"tasks">> {
-  const id = await as.mutation(api.tasks.create, { text: spec.text });
+  const id = await as.mutation(api.notes.create, { body: spec.body });
   if (spec.done) {
-    await as.mutation(api.tasks.markDone, { id });
+    await as.mutation(api.notes.markDone, { id });
   }
   // `create` stamps `createdAt` with the clock, which gives ties inside a
   // single test. Restating it makes the expected order explicit.
@@ -66,48 +66,48 @@ describe("bounded queries", () => {
     other = await signIn(t, "other@example.com");
   });
 
-  describe("tasks.list", () => {
-    it("returns Open Tasks only, newest first", async () => {
-      const old = await createTask(t, owner, { text: "old", createdAt: 100 });
-      await createTask(t, owner, { text: "done", createdAt: 200, done: true });
-      const recent = await createTask(t, owner, {
-        text: "recent",
+  describe("notes.list", () => {
+    it("returns Open Notes only, newest first", async () => {
+      const old = await createNote(t, owner, { body: "old", createdAt: 100 });
+      await createNote(t, owner, { body: "done", createdAt: 200, done: true });
+      const recent = await createNote(t, owner, {
+        body: "recent",
         createdAt: 300,
       });
-      await createTask(t, other, { text: "theirs", createdAt: 250 });
+      await createNote(t, other, { body: "theirs", createdAt: 250 });
 
       expect(
-        (await owner.query(api.tasks.list, {})).map((task) => task._id),
+        (await owner.query(api.notes.list, {})).map((note) => note._id),
       ).toEqual([recent, old]);
     });
   });
 
-  describe("tasks.count", () => {
-    it("counts Open Tasks only", async () => {
-      await createTask(t, owner, { text: "open", createdAt: 100 });
-      await createTask(t, owner, { text: "also open", createdAt: 110 });
-      await createTask(t, owner, { text: "done", createdAt: 120, done: true });
-      await createTask(t, other, { text: "theirs", createdAt: 130 });
+  describe("notes.count", () => {
+    it("counts Open Notes only", async () => {
+      await createNote(t, owner, { body: "open", createdAt: 100 });
+      await createNote(t, owner, { body: "also open", createdAt: 110 });
+      await createNote(t, owner, { body: "done", createdAt: 120, done: true });
+      await createNote(t, other, { body: "theirs", createdAt: 130 });
 
-      expect(await owner.query(api.tasks.count, {})).toBe(2);
+      expect(await owner.query(api.notes.count, {})).toBe(2);
     });
   });
 
-  describe("tasks.listDone", () => {
-    it("pages through Done Tasks newest first, without gaps or repeats", async () => {
+  describe("notes.listDone", () => {
+    it("pages through Done Notes newest first, without gaps or repeats", async () => {
       const done: Array<Id<"tasks">> = [];
       for (const createdAt of [10, 20, 30, 40, 50]) {
         done.push(
-          await createTask(t, owner, {
-            text: `done-${createdAt}`,
+          await createNote(t, owner, {
+            body: `done-${createdAt}`,
             createdAt,
             done: true,
           }),
         );
       }
-      await createTask(t, owner, { text: "open", createdAt: 60 });
-      await createTask(t, other, {
-        text: "theirs",
+      await createNote(t, owner, { body: "open", createdAt: 60 });
+      await createNote(t, other, {
+        body: "theirs",
         createdAt: 35,
         done: true,
       });
@@ -117,12 +117,12 @@ describe("bounded queries", () => {
       let pages = 0;
 
       for (;;) {
-        const page: PaginationResult<ProjectedTask> = await owner.query(
-          api.tasks.listDone,
+        const page: PaginationResult<ProjectedNote> = await owner.query(
+          api.notes.listDone,
           { paginationOpts: { numItems: 2, cursor } },
         );
         pages += 1;
-        seen.push(...page.page.map((task) => task._id));
+        seen.push(...page.page.map((note) => note._id));
         if (page.isDone) break;
         cursor = page.continueCursor;
         expect(pages).toBeLessThan(10);
@@ -133,10 +133,10 @@ describe("bounded queries", () => {
     });
 
     it("returns an empty page to an unauthenticated caller", async () => {
-      await createTask(t, owner, { text: "done", createdAt: 10, done: true });
+      await createNote(t, owner, { body: "done", createdAt: 10, done: true });
 
       expect(
-        await t.query(api.tasks.listDone, { paginationOpts: NO_CURSOR }),
+        await t.query(api.notes.listDone, { paginationOpts: NO_CURSOR }),
       ).toEqual({
         page: [],
         isDone: true,

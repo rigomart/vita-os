@@ -31,10 +31,10 @@ vi.mock("./top-bar-area-strip", () => ({
 function renderTopBar(props: Partial<ComponentProps<typeof AppTopBar>> = {}) {
   return render(
     <AppTopBar
-      taskCount={0}
+      noteCount={0}
       inboxOpen={false}
       onToggleInbox={vi.fn()}
-      onNewTask={vi.fn()}
+      onNewNote={vi.fn()}
       onOpenPalette={vi.fn()}
       {...props}
     />,
@@ -49,19 +49,19 @@ describe("AppTopBar Inbox trigger", () => {
     const onToggleInbox = vi.fn();
     renderTopBar({ onToggleInbox });
 
-    const trigger = screen.getByRole("button", { name: "Inbox" });
+    const trigger = screen.getByRole("button", { name: "Notes" });
     expect(trigger).toHaveAttribute("aria-expanded", "false");
 
     await user.click(trigger);
 
     expect(onToggleInbox).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("link", { name: "Inbox" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Notes" })).toBeNull();
   });
 
   it("marks the trigger open while the surface is showing", () => {
     renderTopBar({ inboxOpen: true });
 
-    expect(screen.getByRole("button", { name: "Inbox" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Notes" })).toHaveAttribute(
       "aria-expanded",
       "true",
     );

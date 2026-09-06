@@ -1,56 +1,38 @@
-import type { ProjectedTask } from "@convex/lib/validators";
-
 import { api } from "@convex/_generated/api";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { usePaginatedQuery } from "convex/react";
-import { useState } from "react";
 
-import { InboxTaskList } from "@/features/inbox/components/inbox-task-list";
-import { ProcessTaskDialogContainer } from "@/features/tasks/process-task/process-task-dialog-container";
+import { InboxNoteList } from "@/features/inbox/components/inbox-note-list";
 
 const DONE_PAGE_SIZE = 10;
 
 export function InboxScreen() {
-  const tasks = useQuery(api.tasks.list);
+  const notes = useQuery(api.notes.list);
   const {
-    results: doneTasks,
+    results: doneNotes,
     status: doneStatus,
     loadMore: loadMoreDone,
   } = usePaginatedQuery(
-    api.tasks.listDone,
+    api.notes.listDone,
     {},
     { initialNumItems: DONE_PAGE_SIZE },
   );
-  const [processingTask, setProcessingTask] = useState<
-    ProjectedTask | undefined
-  >(undefined);
 
-  if (tasks === undefined) {
+  if (notes === undefined) {
     return <InboxSkeleton />;
   }
 
   return (
     <>
-      <InboxTaskList
-        tasks={tasks}
-        onProcess={setProcessingTask}
-        doneTasks={doneTasks}
+      <InboxNoteList
+        notes={notes}
+        doneNotes={doneNotes}
         isDoneExhausted={doneStatus === "Exhausted"}
         canLoadMoreDone={doneStatus === "CanLoadMore"}
         isLoadingMoreDone={doneStatus === "LoadingMore"}
         onLoadMoreDone={() => loadMoreDone(DONE_PAGE_SIZE)}
       />
-
-      {processingTask && (
-        <ProcessTaskDialogContainer
-          open={!!processingTask}
-          onOpenChange={(open) => {
-            if (!open) setProcessingTask(undefined);
-          }}
-          task={processingTask}
-        />
-      )}
     </>
   );
 }

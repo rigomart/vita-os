@@ -1,38 +1,38 @@
 import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedTask } from "@convex/lib/validators";
+import type { ProjectedNote } from "@convex/lib/validators";
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import { act, renderHook, waitFor } from "@/test/render-with-providers";
 
-import { useTaskRowActions } from "./use-task-row-actions";
+import { useNoteRowActions } from "./use-note-row-actions";
 
 const mocks = vi.hoisted(() => ({
-  completeTask: vi.fn(),
-  uncompleteTask: vi.fn(),
-  removeTask: vi.fn(),
-  updateTaskText: vi.fn(),
-  updateTaskWhen: vi.fn(),
+  completeNote: vi.fn(),
+  uncompleteNote: vi.fn(),
+  removeNote: vi.fn(),
+  updateNoteBody: vi.fn(),
+  updateNoteWhen: vi.fn(),
 }));
 
-vi.mock("@/features/tasks/use-complete-task", () => ({
-  useCompleteTask: () => mocks.completeTask,
+vi.mock("@/features/notes/use-complete-note", () => ({
+  useCompleteNote: () => mocks.completeNote,
 }));
 
-vi.mock("@/features/tasks/use-uncomplete-task", () => ({
-  useUncompleteTask: () => mocks.uncompleteTask,
+vi.mock("@/features/notes/use-uncomplete-note", () => ({
+  useUncompleteNote: () => mocks.uncompleteNote,
 }));
 
-vi.mock("@/features/tasks/use-remove-task", () => ({
-  useRemoveTask: () => mocks.removeTask,
+vi.mock("@/features/notes/use-remove-note", () => ({
+  useRemoveNote: () => mocks.removeNote,
 }));
 
-vi.mock("@/features/tasks/use-update-task-text", () => ({
-  useUpdateTaskText: () => mocks.updateTaskText,
+vi.mock("@/features/notes/use-update-note-body", () => ({
+  useUpdateNoteBody: () => mocks.updateNoteBody,
 }));
 
-vi.mock("@/features/tasks/use-update-task-when", () => ({
-  useUpdateTaskWhen: () => mocks.updateTaskWhen,
+vi.mock("@/features/notes/use-update-note-when", () => ({
+  useUpdateNoteWhen: () => mocks.updateNoteWhen,
 }));
 
 function deferred() {
@@ -43,41 +43,41 @@ function deferred() {
   return { promise, resolve };
 }
 
-const openTask = {
-  _id: "task1" as Id<"tasks">,
+const openNote = {
+  _id: "note1" as Id<"tasks">,
   _creationTime: 0,
-  text: "Buy milk",
+  body: "Buy milk",
   state: "open",
   createdAt: Date.now(),
-} satisfies ProjectedTask;
+} satisfies ProjectedNote;
 
-const doneTask = {
-  ...openTask,
+const doneNote = {
+  ...openNote,
   state: "done",
   completedAt: Date.now(),
-} satisfies ProjectedTask;
+} satisfies ProjectedNote;
 
-describe("useTaskRowActions", () => {
+describe("useNoteRowActions", () => {
   beforeEach(() => {
-    mocks.completeTask.mockReset();
-    mocks.uncompleteTask.mockReset();
-    mocks.removeTask.mockReset();
-    mocks.updateTaskText.mockReset();
-    mocks.updateTaskWhen.mockReset();
+    mocks.completeNote.mockReset();
+    mocks.uncompleteNote.mockReset();
+    mocks.removeNote.mockReset();
+    mocks.updateNoteBody.mockReset();
+    mocks.updateNoteWhen.mockReset();
   });
 
   it("ignores duplicate complete toggles while pending", async () => {
     const pendingComplete = deferred();
-    mocks.completeTask.mockImplementation(() => pendingComplete.promise);
+    mocks.completeNote.mockImplementation(() => pendingComplete.promise);
 
-    const { result } = renderHook(() => useTaskRowActions(openTask));
+    const { result } = renderHook(() => useNoteRowActions(openNote));
 
     act(() => {
       result.current.handleToggleComplete();
       result.current.handleToggleComplete();
     });
 
-    expect(mocks.completeTask).toHaveBeenCalledTimes(1);
+    expect(mocks.completeNote).toHaveBeenCalledTimes(1);
     expect(result.current.isTogglePending).toBe(true);
 
     await act(async () => {
@@ -86,21 +86,21 @@ describe("useTaskRowActions", () => {
     });
 
     await waitFor(() => expect(result.current.isTogglePending).toBe(false));
-    expect(mocks.completeTask).toHaveBeenCalledTimes(1);
+    expect(mocks.completeNote).toHaveBeenCalledTimes(1);
   });
 
   it("ignores duplicate reopen toggles while pending", async () => {
     const pendingReopen = deferred();
-    mocks.uncompleteTask.mockImplementation(() => pendingReopen.promise);
+    mocks.uncompleteNote.mockImplementation(() => pendingReopen.promise);
 
-    const { result } = renderHook(() => useTaskRowActions(doneTask));
+    const { result } = renderHook(() => useNoteRowActions(doneNote));
 
     act(() => {
       result.current.handleToggleComplete();
       result.current.handleToggleComplete();
     });
 
-    expect(mocks.uncompleteTask).toHaveBeenCalledTimes(1);
+    expect(mocks.uncompleteNote).toHaveBeenCalledTimes(1);
     expect(result.current.isTogglePending).toBe(true);
 
     await act(async () => {
@@ -109,72 +109,72 @@ describe("useTaskRowActions", () => {
     });
 
     await waitFor(() => expect(result.current.isTogglePending).toBe(false));
-    expect(mocks.uncompleteTask).toHaveBeenCalledTimes(1);
+    expect(mocks.uncompleteNote).toHaveBeenCalledTimes(1);
   });
 
   it("ignores duplicate discard actions while pending", async () => {
     const pendingRemove = deferred();
-    mocks.removeTask.mockImplementation(() => pendingRemove.promise);
+    mocks.removeNote.mockImplementation(() => pendingRemove.promise);
 
-    const { result } = renderHook(() => useTaskRowActions(openTask));
+    const { result } = renderHook(() => useNoteRowActions(openNote));
 
     act(() => {
       result.current.handleRemove();
       result.current.handleRemove();
     });
 
-    expect(mocks.removeTask).toHaveBeenCalledTimes(1);
-    expect(result.current.isDiscardPending).toBe(true);
+    expect(mocks.removeNote).toHaveBeenCalledTimes(1);
+    expect(result.current.isDeletePending).toBe(true);
 
     await act(async () => {
       pendingRemove.resolve();
       await pendingRemove.promise;
     });
 
-    await waitFor(() => expect(result.current.isDiscardPending).toBe(false));
-    expect(mocks.removeTask).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(result.current.isDeletePending).toBe(false));
+    expect(mocks.removeNote).toHaveBeenCalledTimes(1);
   });
 
   it("shows an error toast when discard fails", async () => {
-    mocks.removeTask.mockRejectedValue(new Error("Could not discard task"));
+    mocks.removeNote.mockRejectedValue(new Error("Could not discard note"));
 
-    const { result, feedback } = renderHook(() => useTaskRowActions(openTask));
+    const { result, feedback } = renderHook(() => useNoteRowActions(openNote));
 
     act(() => {
       result.current.handleRemove();
     });
 
     await waitFor(() =>
-      expect(feedback.error).toHaveBeenCalledWith("Could not discard task"),
+      expect(feedback.error).toHaveBeenCalledWith("Could not discard note"),
     );
   });
 
   it("shows a success toast when discard succeeds", async () => {
-    mocks.removeTask.mockResolvedValue(undefined);
+    mocks.removeNote.mockResolvedValue(undefined);
 
-    const { result, feedback } = renderHook(() => useTaskRowActions(openTask));
+    const { result, feedback } = renderHook(() => useNoteRowActions(openNote));
 
     act(() => {
       result.current.handleRemove();
     });
 
     await waitFor(() =>
-      expect(feedback.success).toHaveBeenCalledWith("Task discarded"),
+      expect(feedback.success).toHaveBeenCalledWith("Note deleted"),
     );
   });
 
-  it("ignores duplicate text saves while pending", async () => {
+  it("ignores duplicate body saves while pending", async () => {
     const pendingSave = deferred();
-    mocks.updateTaskText.mockImplementation(() => pendingSave.promise);
+    mocks.updateNoteBody.mockImplementation(() => pendingSave.promise);
 
-    const { result } = renderHook(() => useTaskRowActions(openTask));
+    const { result } = renderHook(() => useNoteRowActions(openNote));
 
     act(() => {
       void result.current.handleUpdateText("Buy oat milk");
       void result.current.handleUpdateText("Buy oat milk");
     });
 
-    expect(mocks.updateTaskText).toHaveBeenCalledTimes(1);
+    expect(mocks.updateNoteBody).toHaveBeenCalledTimes(1);
     expect(result.current.isSavingText).toBe(true);
 
     await act(async () => {
@@ -183,13 +183,13 @@ describe("useTaskRowActions", () => {
     });
 
     await waitFor(() => expect(result.current.isSavingText).toBe(false));
-    expect(mocks.updateTaskText).toHaveBeenCalledTimes(1);
+    expect(mocks.updateNoteBody).toHaveBeenCalledTimes(1);
   });
 
-  it("stays quiet on successful text saves", async () => {
-    mocks.updateTaskText.mockResolvedValue(undefined);
+  it("stays quiet on successful body saves", async () => {
+    mocks.updateNoteBody.mockResolvedValue(undefined);
 
-    const { result, feedback } = renderHook(() => useTaskRowActions(openTask));
+    const { result, feedback } = renderHook(() => useNoteRowActions(openNote));
 
     act(() => {
       result.current.handleUpdateText("Buy oat milk");
@@ -201,16 +201,16 @@ describe("useTaskRowActions", () => {
 
   it("ignores duplicate When updates while pending", async () => {
     const pendingWhen = deferred();
-    mocks.updateTaskWhen.mockImplementation(() => pendingWhen.promise);
+    mocks.updateNoteWhen.mockImplementation(() => pendingWhen.promise);
 
-    const { result } = renderHook(() => useTaskRowActions(openTask));
+    const { result } = renderHook(() => useNoteRowActions(openNote));
 
     act(() => {
       void result.current.handleUpdateWhen(Date.now());
       void result.current.handleUpdateWhen(Date.now());
     });
 
-    expect(mocks.updateTaskWhen).toHaveBeenCalledTimes(1);
+    expect(mocks.updateNoteWhen).toHaveBeenCalledTimes(1);
     expect(result.current.isWhenPending).toBe(true);
 
     await act(async () => {
@@ -219,13 +219,13 @@ describe("useTaskRowActions", () => {
     });
 
     await waitFor(() => expect(result.current.isWhenPending).toBe(false));
-    expect(mocks.updateTaskWhen).toHaveBeenCalledTimes(1);
+    expect(mocks.updateNoteWhen).toHaveBeenCalledTimes(1);
   });
 
   it("shows an error toast when When update fails", async () => {
-    mocks.updateTaskWhen.mockRejectedValue(new Error("Could not update When"));
+    mocks.updateNoteWhen.mockRejectedValue(new Error("Could not update When"));
 
-    const { result, feedback } = renderHook(() => useTaskRowActions(openTask));
+    const { result, feedback } = renderHook(() => useNoteRowActions(openNote));
 
     act(() => {
       result.current.handleUpdateWhen(Date.now());

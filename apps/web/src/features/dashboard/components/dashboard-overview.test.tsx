@@ -90,7 +90,7 @@ function renderOverview(overrides: Partial<OverviewProps> = {}) {
       },
     ],
     threads: [],
-    tasks: [],
+    notes: [],
     currentDate,
     onCreateArea: vi.fn(),
     onNewThreadInArea: vi.fn(),
@@ -188,20 +188,20 @@ describe("DashboardOverview", () => {
     ]);
   });
 
-  it("keeps dated Inbox Tasks visible without mixing them into the Thread run", () => {
+  it("keeps dated Inbox Notes visible without mixing them into the Thread run", () => {
     renderOverview({
-      tasks: [
+      notes: [
         {
           id: "dated",
-          text: "Renew passport",
+          body: "Renew passport",
           createdAt: currentDate,
           when: currentDate,
         },
-        { id: "loose", text: "Buy stamps", createdAt: currentDate },
+        { id: "loose", body: "Buy stamps", createdAt: currentDate },
       ],
     });
 
-    const synopsis = screen.getByRole("region", { name: "Inbox synopsis" });
+    const synopsis = screen.getByRole("region", { name: "Notes synopsis" });
     expect(within(synopsis).getByText("Renew passport")).toBeVisible();
     expect(within(synopsis).getByText("+1 more")).toBeVisible();
     expect(within(synopsis).getByText(/2 open/)).toBeVisible();

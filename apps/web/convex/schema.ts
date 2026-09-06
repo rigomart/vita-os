@@ -50,14 +50,19 @@ export default defineSchema({
     .index("by_user_state", ["userId", "state"])
     .index("by_user_area_state", ["userId", "areaId", "state"]),
 
+  // Physical compatibility storage for standalone Notes. Keep IDs and timestamps
+  // intact: the Notes API projects legacy `text` as `body`. No Thread linkage.
   tasks: defineTable({
     userId: v.string(),
     text: v.string(),
+    updatedAt: v.optional(v.number()),
     when: v.optional(v.number()),
     state: v.union(v.literal("open"), v.literal("done")),
     completedAt: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_user_inbox", ["userId", "state", "createdAt"]),
+  })
+    .index("by_user_inbox", ["userId", "state", "createdAt"])
+    .index("by_user_completed", ["userId", "state", "completedAt"]),
 
   activityLogs: defineTable({
     userId: v.string(),

@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   groupAreaThreadsByAttention,
-  groupTasksByAttention,
+  groupNotesByAttention,
   groupThreadsByAttention,
-  isOpenTask,
+  isOpenNote,
 } from "./attentionOrdering";
 
 const today = new Date(2026, 6, 17).getTime();
@@ -73,7 +73,7 @@ describe("Thread attention ordering", () => {
   });
 });
 
-function task(
+function note(
   id: string,
   fields: {
     completedAt?: number;
@@ -90,20 +90,20 @@ function task(
   };
 }
 
-describe("Task attention ordering", () => {
+describe("Note attention ordering", () => {
   it("orders every Inbox group by its attention rule", () => {
-    const groups = groupTasksByAttention(
+    const groups = groupNotesByAttention(
       [
-        task("future-later", { when: today + 3 * 86_400_000 }),
-        task("today-new", { when: today, createdAt: 8 }),
-        task("done-old", { state: "done", completedAt: 10 }),
-        task("undated-old", { createdAt: 2 }),
-        task("past-recent", { when: today - 86_400_000 }),
-        task("future-sooner", { when: today + 86_400_000 }),
-        task("today-old", { when: today, createdAt: 3 }),
-        task("past-old", { when: today - 4 * 86_400_000 }),
-        task("done-new", { state: "done", completedAt: 20 }),
-        task("undated-new", { createdAt: 9 }),
+        note("future-later", { when: today + 3 * 86_400_000 }),
+        note("today-new", { when: today, createdAt: 8 }),
+        note("done-old", { state: "done", completedAt: 10 }),
+        note("undated-old", { createdAt: 2 }),
+        note("past-recent", { when: today - 86_400_000 }),
+        note("future-sooner", { when: today + 86_400_000 }),
+        note("today-old", { when: today, createdAt: 3 }),
+        note("past-old", { when: today - 4 * 86_400_000 }),
+        note("done-new", { state: "done", completedAt: 20 }),
+        note("undated-new", { createdAt: 9 }),
       ],
       today,
     );
@@ -130,14 +130,14 @@ describe("Task attention ordering", () => {
     ]);
   });
 
-  it("counts every Open Task regardless of When", () => {
-    const tasks = [
-      task("undated"),
-      task("scheduled", { when: today + 86_400_000 }),
-      task("done", { state: "done" }),
+  it("counts every Open Note regardless of When", () => {
+    const notes = [
+      note("undated"),
+      note("scheduled", { when: today + 86_400_000 }),
+      note("done", { state: "done" }),
     ];
 
-    expect(tasks.filter(isOpenTask).map((item) => item.id)).toEqual([
+    expect(notes.filter(isOpenNote).map((item) => item.id)).toEqual([
       "undated",
       "scheduled",
     ]);

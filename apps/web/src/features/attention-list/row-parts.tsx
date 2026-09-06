@@ -69,7 +69,7 @@ export function RowCheckbox({
       }}
       disabled={row.toggleBusy}
       aria-busy={row.toggleBusy}
-      aria-label={row.done ? "Mark task open" : "Mark task done"}
+      aria-label={row.done ? "Mark note open" : "Mark note done"}
       className={cn("border-border/80 bg-surface-1", className)}
     />
   );
@@ -96,14 +96,18 @@ export function AreaTag({
 }
 
 export function WhenPopover({
-  row,
+  busy,
+  onSetWhen,
   trigger,
+  when,
 }: {
-  row: AttentionRowModel;
+  busy?: boolean;
+  onSetWhen?: (when: number | undefined) => void;
   trigger: ReactElement;
+  when?: number;
 }) {
   const [open, setOpen] = useState(false);
-  const selected = row.when === undefined ? undefined : new Date(row.when);
+  const selected = when === undefined ? undefined : new Date(when);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -112,10 +116,11 @@ export function WhenPopover({
         <Calendar
           mode="single"
           selected={selected}
-          disabled={row.whenBusy}
+          defaultMonth={selected}
+          disabled={busy}
           onSelect={(date) => {
-            if (!date || row.whenBusy) return;
-            row.onSetWhen?.(date.getTime());
+            if (!date || busy) return;
+            onSetWhen?.(date.getTime());
             setOpen(false);
           }}
         />
@@ -126,10 +131,10 @@ export function WhenPopover({
               variant="ghost"
               size="sm"
               className="w-full justify-start text-muted-foreground"
-              disabled={row.whenBusy}
+              disabled={busy}
               onClick={() => {
-                if (row.whenBusy) return;
-                row.onSetWhen?.(undefined);
+                if (busy) return;
+                onSetWhen?.(undefined);
                 setOpen(false);
               }}
             >

@@ -119,70 +119,37 @@ describe("titles", () => {
       expect(thread?.slug).toMatch(slugFor("renew-passport"));
       expect(slug).toBe(thread?.slug);
     });
-
-    it.each(BLANK)(
-      "is refused when an Inbox Task becomes a Thread: %j",
-      async (title) => {
-        await expect(
-          owner.mutation(api.tasks.process, {
-            id: owned.taskId,
-            action: { type: "create_thread", title, areaId: owned.areaId },
-          }),
-        ).rejects.toThrow("Thread title cannot be empty");
-      },
-    );
-
-    it("is stored trimmed when an Inbox Task becomes a Thread", async () => {
-      const result = await owner.mutation(api.tasks.process, {
-        id: owned.taskId,
-        action: {
-          type: "create_thread",
-          title: "  Renew passport  ",
-          areaId: owned.areaId,
-        },
-      });
-
-      if (result.type !== "created") {
-        throw new Error(`Expected a created Thread, got "${result.type}"`);
-      }
-      expect(result.slug).toMatch(slugFor("renew-passport"));
-
-      const thread = await owner.query(api.threads.getBySlug, {
-        slug: result.slug,
-      });
-      expect(thread?.title).toBe("Renew passport");
-    });
   });
 
-  describe("Task text", () => {
-    const openTaskTexts = async () =>
-      (await owner.query(api.tasks.list, {})).map((task) => task.text);
+  describe("Note body", () => {
+    const openNoteTexts = async () =>
+      (await owner.query(api.notes.list, {})).map((note) => note.body);
 
-    it.each(BLANK)("is refused on create: %j", async (text) => {
-      await expect(owner.mutation(api.tasks.create, { text })).rejects.toThrow(
-        "Task text cannot be empty",
+    it.each(BLANK)("is refused on create: %j", async (body) => {
+      await expect(owner.mutation(api.notes.create, { body })).rejects.toThrow(
+        "Note body cannot be empty",
       );
     });
 
-    it.each(BLANK)("is refused on edit: %j", async (text) => {
+    it.each(BLANK)("is refused on edit: %j", async (body) => {
       await expect(
-        owner.mutation(api.tasks.updateText, { id: owned.taskId, text }),
-      ).rejects.toThrow("Task text cannot be empty");
+        owner.mutation(api.notes.updateBody, { id: owned.noteId, body }),
+      ).rejects.toThrow("Note body cannot be empty");
     });
 
     it("is stored trimmed on create", async () => {
-      await owner.mutation(api.tasks.create, { text: "  Buy vitamins  " });
+      await owner.mutation(api.notes.create, { body: "  Buy vitamins  " });
 
-      expect(await openTaskTexts()).toContain("Buy vitamins");
+      expect(await openNoteTexts()).toContain("Buy vitamins");
     });
 
     it("is stored trimmed on edit", async () => {
-      await owner.mutation(api.tasks.updateText, {
-        id: owned.taskId,
-        text: "  Buy vitamins  ",
+      await owner.mutation(api.notes.updateBody, {
+        id: owned.noteId,
+        body: "  Buy vitamins  ",
       });
 
-      expect(await openTaskTexts()).toContain("Buy vitamins");
+      expect(await openNoteTexts()).toContain("Buy vitamins");
     });
   });
 });

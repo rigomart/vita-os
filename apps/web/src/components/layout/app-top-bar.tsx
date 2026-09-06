@@ -9,23 +9,23 @@ import { authClient } from "@/lib/auth-client";
 import { isApplePlatform } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
-import { InboxTaskCountBadge } from "./inbox-task-count-badge";
+import { InboxNoteCountBadge } from "./inbox-note-count-badge";
 import { TopBarAreaStrip } from "./top-bar-area-strip";
 import { UserMenu } from "./user-menu";
 
 interface AppTopBarProps {
-  taskCount: number | undefined;
+  noteCount: number | undefined;
   inboxOpen: boolean;
   onToggleInbox: () => void;
-  onNewTask: () => void;
+  onNewNote: () => void;
   onOpenPalette: () => void;
 }
 
 export function AppTopBar({
-  taskCount,
+  noteCount,
   inboxOpen,
   onToggleInbox,
-  onNewTask,
+  onNewNote,
   onOpenPalette,
 }: AppTopBarProps) {
   const { data: session } = authClient.useSession();
@@ -81,19 +81,19 @@ export function AppTopBar({
         <div className="ml-auto flex items-center gap-2 md:ml-0 md:justify-self-end">
           {/* Compact icon-only below lg; full label + shortcut hint from lg up. */}
           <Button
-            onClick={onNewTask}
-            aria-label="New task"
+            onClick={onNewNote}
+            aria-label="New note"
             className="hidden w-9 px-0 md:inline-flex lg:w-auto lg:px-3"
           >
             <Plus />
-            <span className="hidden lg:inline">New task</span>
+            <span className="hidden lg:inline">New note</span>
             <Kbd className="hidden bg-primary-foreground/20 text-primary-foreground lg:inline-flex">
               Q
             </Kbd>
           </Button>
           <button
             type="button"
-            aria-label="Inbox"
+            aria-label="Notes"
             aria-expanded={inboxOpen}
             {...inboxSurfaceTriggerProps}
             onClick={onToggleInbox}
@@ -106,7 +106,7 @@ export function AppTopBar({
           >
             <Inbox className="size-4" />
             <span className="absolute -top-1 -right-1">
-              <InboxTaskCountBadge taskCount={taskCount} />
+              <InboxNoteCountBadge noteCount={noteCount} />
             </span>
           </button>
           <UserMenu

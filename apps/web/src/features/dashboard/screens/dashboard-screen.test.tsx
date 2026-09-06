@@ -90,7 +90,7 @@ describe("DashboardScreen", () => {
 
   it("renders a layout-matched loading state while any source loads", () => {
     useQuery.mockImplementation((query: unknown) =>
-      getFunctionName(query as never) === "tasks:list" ? undefined : [],
+      getFunctionName(query as never) === "notes:list" ? undefined : [],
     );
     render(<DashboardScreen />);
 
@@ -115,7 +115,7 @@ describe("DashboardScreen", () => {
     );
     expect([...names].sort()).toEqual([
       "areas:list",
-      "tasks:list",
+      "notes:list",
       "threads:list",
     ]);
   });

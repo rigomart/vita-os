@@ -33,7 +33,7 @@ describe("AttentionRow", () => {
       />,
     );
 
-    const checkbox = screen.getByRole("checkbox", { name: "Mark task done" });
+    const checkbox = screen.getByRole("checkbox", { name: "Mark note done" });
     expect(checkbox).toHaveAttribute("aria-disabled", "true");
     expect(checkbox).toHaveAttribute("aria-busy", "true");
 
@@ -56,12 +56,32 @@ describe("AttentionRow", () => {
     );
 
     await user.click(screen.getByRole("button", { name: baseRow.title }));
-    const input = screen.getByRole("textbox", { name: "Edit task text" });
+    const input = screen.getByRole("textbox", { name: "Edit note body" });
     fireEvent.change(input, { target: { value: "Buy oat milk" } });
     fireEvent.keyDown(input, { key: "Enter" });
     fireEvent.blur(input);
 
     expect(onUpdateText).toHaveBeenCalledTimes(1);
     expect(onUpdateText).toHaveBeenCalledWith("Buy oat milk");
+  });
+  it("edits a multiline Note body without losing line breaks", async () => {
+    const user = userEvent.setup();
+    const onUpdateText = vi.fn();
+    render(
+      <AttentionRow
+        now={now}
+        row={{ ...baseRow, multiline: true, onUpdateText }}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: baseRow.title }));
+    const editor = screen.getByRole("textbox", { name: "Edit note body" });
+    expect(editor.tagName).toBe("TEXTAREA");
+    await user.clear(editor);
+    await user.type(editor, "A thought{Enter}More context");
+    expect(onUpdateText).not.toHaveBeenCalled();
+    fireEvent.blur(editor);
+    expect(onUpdateText).toHaveBeenCalledExactlyOnceWith(
+      "A thought\nMore context",
+    );
   });
 });

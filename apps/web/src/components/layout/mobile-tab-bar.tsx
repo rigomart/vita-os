@@ -4,18 +4,18 @@ import { Inbox, LayoutDashboard, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MobileTabBarProps {
-  taskCount: number | undefined;
+  noteCount: number | undefined;
   inboxOpen: boolean;
   onToggleInbox: () => void;
-  onNewTask: () => void;
+  onNewNote: () => void;
   onOpenPalette: () => void;
 }
 
 export function MobileTabBar({
-  taskCount,
+  noteCount,
   inboxOpen,
   onToggleInbox,
-  onNewTask,
+  onNewNote,
   onOpenPalette,
 }: MobileTabBarProps) {
   const { pathname } = useLocation();
@@ -51,17 +51,17 @@ export function MobileTabBar({
       >
         <span className="relative">
           <Inbox className="size-5" />
-          {taskCount !== undefined && taskCount > 0 && (
+          {noteCount !== undefined && noteCount > 0 && (
             <span className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-2xs leading-none font-semibold text-primary-foreground">
-              {taskCount}
+              {noteCount}
             </span>
           )}
         </span>
-        Inbox
+        Notes
       </button>
-      <button type="button" onClick={onNewTask} className={tabClassName(false)}>
+      <button type="button" onClick={onNewNote} className={tabClassName(false)}>
         <Plus className="size-5" />
-        New task
+        New note
       </button>
     </nav>
   );

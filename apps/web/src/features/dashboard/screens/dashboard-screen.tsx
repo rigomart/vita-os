@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
 import {
   toDashboardArea,
-  toDashboardTask,
+  toDashboardNote,
   toDashboardThread,
 } from "@/features/dashboard/components/dashboard-model";
 import { DashboardOverview } from "@/features/dashboard/components/dashboard-overview";
@@ -18,7 +18,7 @@ import { useAttentionClock } from "@/hooks/use-attention-clock";
 
 /**
  * The Dashboard composes the three list queries the rest of the app already
- * subscribes to, so a Task write reruns only the Tasks source, an Area
+ * subscribes to, so a Note write reruns only the Notes source, an Area
  * condition change only the Areas source — and the palette's caches are the
  * same caches.
  */
@@ -26,7 +26,7 @@ export function DashboardScreen() {
   const currentDate = useAttentionClock();
   const areaDocs = useQuery(api.areas.list);
   const threadDocs = useQuery(api.threads.list);
-  const taskDocs = useQuery(api.tasks.list);
+  const noteDocs = useQuery(api.notes.list);
   const [showCreateArea, setShowCreateArea] = useState(false);
   const navigate = useNavigate();
   /**
@@ -45,15 +45,15 @@ export function DashboardScreen() {
     () => (threadDocs ?? []).map(toDashboardThread),
     [threadDocs],
   );
-  const tasks = useMemo(
-    () => (taskDocs ?? []).map(toDashboardTask),
-    [taskDocs],
+  const notes = useMemo(
+    () => (noteDocs ?? []).map(toDashboardNote),
+    [noteDocs],
   );
 
   const loading =
     areaDocs === undefined ||
     threadDocs === undefined ||
-    taskDocs === undefined;
+    noteDocs === undefined;
 
   return (
     <div className="mx-auto max-w-7xl pb-16">
@@ -63,7 +63,7 @@ export function DashboardScreen() {
         <DashboardOverview
           areas={areas}
           threads={threads}
-          tasks={tasks}
+          notes={notes}
           currentDate={currentDate}
           onCreateArea={() => setShowCreateArea(true)}
           onNewThreadInArea={setNewThreadAreaId}

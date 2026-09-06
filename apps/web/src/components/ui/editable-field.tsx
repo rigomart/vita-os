@@ -17,6 +17,14 @@ interface EditableFieldProps {
   startEditing?: boolean;
   disabled?: boolean;
   inputAriaLabel?: string;
+  /** Keep the native editor mounted so pointer clicks and selections land directly in the text. */
+  editOnFocus?: boolean;
+  /**
+   * Drop the field's own underline and hover fill, for a surface that is
+   * already legibly editable — a Note card, where the text is the surface and
+   * the card frame carries the state instead.
+   */
+  chromeless?: boolean;
 }
 
 const editableFieldStyles = cn(
@@ -39,6 +47,8 @@ export function EditableField({
   startEditing = false,
   disabled = false,
   inputAriaLabel,
+  editOnFocus = false,
+  chromeless = false,
 }: EditableFieldProps) {
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState(value);
@@ -67,6 +77,9 @@ export function EditableField({
     isCommittingRef.current = true;
     const trimmed = draft.trim();
     setEditing(false);
+    // Match the display-mode behavior until the caller supplies the saved value,
+    // including when it rejects an empty draft or a save fails.
+    if (editOnFocus) setDraft(value);
 
     if (trimmed !== value) {
       onSave(trimmed);
@@ -93,6 +106,7 @@ export function EditableField({
 
   const fieldClassName = cn(
     editableFieldStyles,
+    chromeless && "border-b-0 hover:border-transparent hover:bg-transparent",
     variant === "input" && "py-1.5",
     variant === "textarea" &&
       "min-h-[5.5rem] resize-none py-2 field-sizing-content",
@@ -113,29 +127,31 @@ export function EditableField({
 
   return (
     <div className="grid w-full items-start text-left">
-      <button
-        ref={displayRef}
-        type="button"
-        onClick={() => {
-          if (!disabled) {
-            setEditing(true);
-          }
-        }}
-        disabled={disabled}
-        tabIndex={editing ? -1 : 0}
-        aria-hidden={editing}
-        className={cn(
-          displayClassName,
-          "cursor-text",
-          editing && "pointer-events-none invisible",
-          !editing && "hover:border-border hover:bg-muted/40",
-          isPlaceholder && "text-muted-foreground",
-        )}
-      >
-        {displayValue}
-      </button>
+      {!editOnFocus && (
+        <button
+          ref={displayRef}
+          type="button"
+          onClick={() => {
+            if (!disabled) {
+              setEditing(true);
+            }
+          }}
+          disabled={disabled}
+          tabIndex={editing ? -1 : 0}
+          aria-hidden={editing}
+          className={cn(
+            displayClassName,
+            "cursor-text",
+            editing && "pointer-events-none invisible",
+            !editing && !chromeless && "hover:border-border hover:bg-muted/40",
+            isPlaceholder && "text-muted-foreground",
+          )}
+        >
+          {displayValue}
+        </button>
+      )}
 
-      {editing &&
+      {(editing || editOnFocus) &&
         (variant === "textarea" ? (
           <Textarea
             ref={textareaRef}

@@ -42,12 +42,12 @@ describe("query projections", () => {
     t = setupTest();
     owner = await signIn(t, "owner@example.com");
     owned = await seed(owner);
-    await owner.mutation(api.tasks.create, { text: "Done later" });
+    await owner.mutation(api.notes.create, { body: "Done later" });
   });
 
   it("never puts userId on the wire", async () => {
-    const doneTask = await owner.mutation(api.tasks.create, { text: "Filed" });
-    await owner.mutation(api.tasks.markDone, { id: doneTask });
+    const doneNote = await owner.mutation(api.notes.create, { body: "Filed" });
+    await owner.mutation(api.notes.markDone, { id: doneNote });
 
     const results: Array<[string, unknown]> = [
       ["areas.list", await owner.query(api.areas.list, {})],
@@ -75,17 +75,17 @@ describe("query projections", () => {
           slug: owned.threadSlug,
         }),
       ],
-      ["tasks.list", await owner.query(api.tasks.list, {})],
+      ["notes.list", await owner.query(api.notes.list, {})],
     ];
 
     // The paginated queries need their own vacuity guard: the pagination
     // wrapper is itself an object, so `expectNoOwner`'s non-empty check
     // passes even when `page` is empty and inspects no documents.
-    const doneTasks = await owner.query(api.tasks.listDone, {
+    const doneNotes = await owner.query(api.notes.listDone, {
       paginationOpts: FIRST_PAGE,
     });
-    expect(doneTasks.page.length).toBeGreaterThan(0);
-    results.push(["tasks.listDone", doneTasks]);
+    expect(doneNotes.page.length).toBeGreaterThan(0);
+    results.push(["notes.listDone", doneNotes]);
 
     const logs = await owner.query(api.activityLogs.listByThread, {
       threadId: owned.threadId,
@@ -132,21 +132,21 @@ describe("query projections", () => {
     expect(get).toEqual(threadDetail?.thread);
   });
 
-  it("returns the same Task shape open and done", async () => {
-    const id = await owner.mutation(api.tasks.create, { text: "Filed" });
-    const open = (await owner.query(api.tasks.list, {})).find(
-      (task) => task._id === id,
+  it("returns the same Note shape open and done", async () => {
+    const id = await owner.mutation(api.notes.create, { body: "Filed" });
+    const open = (await owner.query(api.notes.list, {})).find(
+      (note) => note._id === id,
     );
-    await owner.mutation(api.tasks.markDone, { id });
+    await owner.mutation(api.notes.markDone, { id });
     const done = (
-      await owner.query(api.tasks.listDone, { paginationOpts: FIRST_PAGE })
-    ).page.find((task) => task._id === id);
+      await owner.query(api.notes.listDone, { paginationOpts: FIRST_PAGE })
+    ).page.find((note) => note._id === id);
 
-    // `useUncompleteTask` moves a Done Task straight into the Open list, so
+    // `useUncompleteNote` moves a Done Note straight into the Open list, so
     // the two must carry the same fields. `when` and `completedAt` are the
     // optional ones, present or absent by state rather than by projection.
-    const stateIndependent = (task: object | undefined) =>
-      Object.keys(task ?? {})
+    const stateIndependent = (note: object | undefined) =>
+      Object.keys(note ?? {})
         .filter((key) => key !== "when" && key !== "completedAt")
         .sort();
 
@@ -154,9 +154,10 @@ describe("query projections", () => {
     expect(stateIndependent(open)).toEqual([
       "_creationTime",
       "_id",
+      "body",
       "createdAt",
       "state",
-      "text",
+      "updatedAt",
     ]);
   });
 
@@ -173,9 +174,9 @@ describe("query projections", () => {
     }
   });
 
-  it("keeps _creationTime on Tasks, which the Inbox sorts by", async () => {
-    for (const task of await owner.query(api.tasks.list, {})) {
-      expect(task._creationTime).toEqual(expect.any(Number));
+  it("keeps _creationTime on Notes, which the Inbox sorts by", async () => {
+    for (const note of await owner.query(api.notes.list, {})) {
+      expect(note._creationTime).toEqual(expect.any(Number));
     }
   });
 });

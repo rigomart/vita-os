@@ -84,12 +84,12 @@ export interface Fixture {
   areaId: Id<"areas">;
   areaSlug: string;
   logId: Id<"activityLogs">;
-  taskId: Id<"tasks">;
+  noteId: Id<"tasks">;
   threadId: Id<"threads">;
   threadSlug: string;
 }
 
-/** One Area, Thread, Task and Activity Log, all created through `api.*`. */
+/** One Area, Thread, Note and Activity Log, all created through `api.*`. */
 export async function seed(as: SignedIn): Promise<Fixture> {
   const area = await as.mutation(api.areas.create, {
     name: "Family Health",
@@ -104,7 +104,7 @@ export async function seed(as: SignedIn): Promise<Fixture> {
     id: thread.id,
     nextMove: "Call the clinic",
   });
-  const taskId = await as.mutation(api.tasks.create, { text: "Buy vitamins" });
+  const noteId = await as.mutation(api.notes.create, { body: "Buy vitamins" });
   const logId = await as.mutation(api.activityLogs.create, {
     threadId: thread.id,
     content: "Left a voicemail",
@@ -115,7 +115,7 @@ export async function seed(as: SignedIn): Promise<Fixture> {
     areaSlug: area.slug,
     threadId: thread.id,
     threadSlug: thread.slug,
-    taskId,
+    noteId,
     logId,
   };
 }
