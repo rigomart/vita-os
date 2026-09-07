@@ -5,7 +5,7 @@ import { Textarea } from "@vita-os/ui/components/textarea";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format, isThisYear } from "date-fns";
-import { Check, Loader2, StickyNote, Undo2 } from "lucide-react";
+import { Check, Loader2, Undo2 } from "lucide-react";
 import { useState } from "react";
 
 import { EditableField } from "@/components/ui/editable-field";
@@ -47,11 +47,11 @@ export function ThreadNotes({
     <section aria-label="Thread Notes" className="flex flex-col gap-3">
       <ThreadNoteComposer onCreate={onCreate} />
 
+      {/* Nothing stands in for an empty list: the composer above is already
+          the invitation, and a second hollow shape only competes with it. */}
       {notes === undefined ? (
         <p className="text-sm text-muted-foreground">Loading Notes…</p>
-      ) : notes.length === 0 ? (
-        <ThreadNotesEmpty />
-      ) : (
+      ) : notes.length === 0 ? null : (
         <div className="flex flex-col gap-2.5">
           {notes.map((note) => (
             <ThreadNoteCard
@@ -106,24 +106,13 @@ export function ThreadNotes({
 }
 
 /**
- * The same shape the Inbox uses when it has nothing to show — a dashed frame
- * the size of the cards that will replace it.
- */
-function ThreadNotesEmpty() {
-  return (
-    <div className="flex min-h-40 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border/60 px-6 text-center">
-      <StickyNote className="mb-3 size-7 text-muted-foreground" />
-      <h2 className="text-sm font-semibold">No open Notes</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Anything you learn or decide about this Thread belongs here.
-      </p>
-    </div>
-  );
-}
-
-/**
- * The new Note dialog's surface, sized for the pane: one open writing area on
- * a heavy edge, and the Add button alone beneath it.
+ * Where a Note is written, deliberately not shaped like one. A saved Note is a
+ * raised card on a heavy edge; this is the inverse — a recessed well, a
+ * thinner rule, one radius smaller — so the two never read as the same object.
+ *
+ * At rest it is a single row. It opens to a writing surface once there is
+ * something to write, and shuts again when it is left empty, so an untouched
+ * Notes panel is the Notes and one quiet line.
  */
 function ThreadNoteComposer({
   onCreate,
@@ -131,10 +120,15 @@ function ThreadNoteComposer({
   onCreate: (body: string) => Promise<void> | void;
 }) {
   const [body, setBody] = useState("");
+  const [focused, setFocused] = useState(false);
   const { run: createNote, isPending } = useGuardedAsyncAction(onCreate, {
     successMessage: "Note added",
     errorToast: true,
   });
+
+  // A draft holds the composer open even after focus leaves, so nobody loses
+  // what they typed to a stray click.
+  const open = focused || body.trim().length > 0;
 
   const submit = async () => {
     const trimmed = body.trim();
@@ -149,17 +143,29 @@ function ThreadNoteComposer({
         event.preventDefault();
         void submit();
       }}
-      className="rounded-3xl border-2 border-border/70 bg-surface-2 p-4 transition-colors focus-within:border-ring/50"
+      onFocus={() => setFocused(true)}
+      onBlur={(event) => {
+        // Focus moving to the Add button is still focus inside the composer.
+        if (event.currentTarget.contains(event.relatedTarget)) return;
+        setFocused(false);
+      }}
+      className={cn(
+        "rounded-2xl border border-border/60 bg-muted/30 px-3 transition-[background-color,border-color] focus-within:border-ring/50 focus-within:bg-muted/50 motion-reduce:transition-none",
+        open ? "py-3" : "py-0",
+      )}
     >
       <Textarea
         variant="inline"
         aria-label="New Thread Note"
         value={body}
         onChange={(event) => setBody(event.target.value)}
-        placeholder="What's on your mind?"
-        rows={3}
+        placeholder="Write a note…"
+        rows={1}
         disabled={isPending}
-        className="min-h-20 py-0 text-sm leading-relaxed caret-ring disabled:opacity-100"
+        className={cn(
+          "field-sizing-content text-sm leading-relaxed caret-ring disabled:opacity-100",
+          open ? "min-h-16" : "min-h-10 py-2.5",
+        )}
         onKeyDown={(event) => {
           if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
             event.preventDefault();
@@ -167,18 +173,21 @@ function ThreadNoteComposer({
           }
         }}
       />
-      {/* No divider: the dialog separates by whitespace, and so does this. */}
-      <div className="mt-3 flex justify-end">
-        <Button
-          type="submit"
-          size="sm"
-          className="rounded-full px-4"
-          disabled={!body.trim() || isPending}
-          aria-busy={isPending}
-        >
-          Add
-        </Button>
-      </div>
+      {open && (
+        // No divider: the new Note dialog separates by whitespace, and so
+        // does this.
+        <div className="mt-2 flex justify-end">
+          <Button
+            type="submit"
+            size="sm"
+            className="rounded-full px-4"
+            disabled={!body.trim() || isPending}
+            aria-busy={isPending}
+          >
+            Add
+          </Button>
+        </div>
+      )}
     </form>
   );
 }

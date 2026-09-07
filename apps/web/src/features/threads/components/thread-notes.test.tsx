@@ -39,9 +39,10 @@ describe("ThreadNotes", () => {
       />,
     );
 
-    // The Notes tab names the panel; the section repeats no heading.
+    // The Notes tab names the panel; the section repeats no heading, and an
+    // empty list stands on the composer rather than a second hollow shape.
     expect(screen.queryByRole("heading", { name: "Notes" })).toBeNull();
-    expect(screen.getByText("No open Notes")).toBeVisible();
+    expect(screen.queryByText(/No open Notes/)).toBeNull();
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(
@@ -57,6 +58,39 @@ describe("ThreadNotes", () => {
     expect(onCreate).toHaveBeenCalledExactlyOnceWith(
       "Called the clinic\nWaiting for a reply",
     );
+  });
+
+  it("rests as one line and opens only while there is a draft", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ThreadNotes
+        notes={[]}
+        doneNotes={[]}
+        onCreate={vi.fn()}
+        onUpdateBody={vi.fn()}
+        onToggleDone={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    const field = screen.getByRole("textbox", { name: "New Thread Note" });
+    // A well, not a card: the composer must never wear the card's frame.
+    const composer = field.closest("form")!;
+    expect(composer).toHaveClass("rounded-2xl", "bg-muted/30");
+    expect(composer).not.toHaveClass("border-2", "bg-surface-2");
+    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+
+    await user.click(field);
+    expect(screen.getByRole("button", { name: "Add" })).toBeVisible();
+
+    // Leaving it empty shuts it again; a draft keeps it open.
+    await user.tab();
+    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+
+    await user.type(field, "Half a thought");
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Add" })).toBeVisible();
   });
 
   it("edits, completes, and permanently deletes a Note card", async () => {
