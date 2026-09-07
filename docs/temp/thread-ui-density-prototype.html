@@ -91,11 +91,19 @@
 
   /* ---------- the rail of panes ---------- */
   .rail {
-    display: flex; gap: clamp(1rem, 2vw, 2rem);
+    display: flex; flex-wrap: wrap; gap: clamp(1.25rem, 2vw, 2rem);
     padding: 0 clamp(1rem, 3vw, 2.5rem) 3rem;
     overflow-x: auto; align-items: start;
     max-width: 1600px; margin: 0 auto;
   }
+  .round {
+    flex: 1 0 100%; display: flex; align-items: baseline; gap: 0.75rem;
+    padding-top: 0.5rem;
+  }
+  .round:not(:first-child) { padding-top: 1.5rem; }
+  .round h2 { font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+  .round p { color: var(--muted-fg); font-size: 0.8125rem; }
+  .round .rule { flex: 1; height: 1px; background: color-mix(in oklab, var(--border) 80%, transparent); }
   .column { flex: 0 0 30rem; max-width: 30rem; display: flex; flex-direction: column; gap: 0.85rem; }
   @media (max-width: 640px) { .column { flex-basis: min(30rem, 88vw); } }
 
@@ -248,6 +256,67 @@
   .log strong { color: var(--fg); font-weight: 600; }
   .log time { font-variant-numeric: tabular-nums; opacity: 0.8; }
 
+  /* ---------- ways of making Activity a tab ---------- */
+
+  /* C2: segmented pair */
+  .seg {
+    display: inline-flex; gap: 2px; padding: 2px;
+    background: color-mix(in oklab, var(--surface-3) 70%, transparent);
+    border-radius: 999px;
+  }
+  .seg button {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.25rem 0.75rem; border-radius: 999px;
+    font-size: 0.8125rem; font-weight: 600; color: var(--muted-fg);
+  }
+  .seg button:hover { color: var(--fg); }
+  .seg button[aria-selected="true"] {
+    background: var(--surface-2); color: var(--fg);
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--fg) 10%, transparent);
+  }
+  .seg .n { font-variant-numeric: tabular-nums; opacity: 0.7; font-weight: 500; }
+
+  /* C3: folder tabs */
+  .ftabs { display: flex; align-items: flex-end; gap: 0.25rem; border-bottom: 1px solid var(--border); }
+  .ftabs button {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.35rem 0.75rem; margin-bottom: -1px;
+    border: 1px solid transparent; border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    font-family: var(--font-heading); font-size: 0.8125rem; font-weight: 600;
+    color: var(--muted-fg);
+  }
+  .ftabs button:hover { color: var(--fg); }
+  .ftabs button[aria-selected="true"] {
+    background: var(--surface-2); border-color: var(--border); color: var(--fg);
+  }
+  .ftabs .corner { margin-left: auto; }
+  .ftabs .n { font-variant-numeric: tabular-nums; font-weight: 500; opacity: 0.75; }
+
+  /* C4: dock at the floor */
+  .pane.docked { padding-bottom: 3.25rem; }
+  .dock {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
+    display: flex; flex-direction: column;
+    background: var(--surface-2);
+    border-top: 1px solid var(--border);
+    max-height: 2.9rem;
+    transition: max-height 220ms cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: 0 -8px 24px -18px color-mix(in oklab, var(--fg) 60%, transparent);
+  }
+  .dock.open { max-height: 21rem; box-shadow: 0 -14px 32px -20px color-mix(in oklab, var(--fg) 70%, transparent); }
+  @media (prefers-reduced-motion: reduce) { .dock { transition: none; } }
+  .dock-handle {
+    display: flex; align-items: center; gap: 0.5rem; width: 100%;
+    padding: 0.7rem 1.5rem; flex: none; text-align: left;
+  }
+  .dock-handle:hover { background: color-mix(in oklab, var(--surface-3) 45%, transparent); }
+  .dock-handle .d-label { flex: none; }
+  .dock-handle .grip { width: 1.75rem; height: 3px; border-radius: 999px; background: var(--border); flex: none; }
+  .dock .chev { transform: rotate(-90deg); }
+  .dock.open .chev { transform: rotate(90deg); }
+  .dock-body { min-height: 0; overflow-y: auto; padding: 0.25rem 1.5rem 1.25rem; }
+
   .stack { display: flex; flex-direction: column; }
   .gap-3 { gap: 0.75rem; } .gap-4 { gap: 1rem; } .gap-5 { gap: 1.25rem; }
   .head { flex: none; }
@@ -271,7 +340,7 @@
 <header class="chrome">
   <div>
     <h1>Thread pane density study</h1>
-    <p class="sub">Three framings of the same Thread, at the pane's real width. Same content, same interactions &mdash; what changes is what leads and what stays folded. The chevrons are live; open and close them to feel the resting density.</p>
+    <p class="sub">Six framings of the same Thread, at the pane's real width. Same content, same interactions &mdash; what changes is what leads and what stays folded. Round one asks what the pane should lead with; round two takes the notes-first answer and tries three ways of parking the Activity log. Everything is live: open the chevrons, switch the tabs, pull up the dock.</p>
   </div>
   <div class="chrome-actions">
     <button class="toggle" id="theme" type="button" aria-pressed="false">
@@ -286,6 +355,12 @@
 </p>
 
 <main class="rail">
+
+  <div class="round">
+    <h2>Round one</h2>
+    <p>What leads the pane</p>
+    <span class="rule"></span>
+  </div>
 
   <!-- ============ A: attention block whole ============ -->
   <section class="column">
@@ -543,6 +618,232 @@
     </div>
   </section>
 
+  <div class="round">
+    <h2>Round two</h2>
+    <p>Inside framing C &mdash; notes are the surface, Activity is somewhere you visit</p>
+    <span class="rule"></span>
+  </div>
+
+  <!-- ============ C2: segmented pair ============ -->
+  <section class="column">
+    <div class="caption">
+      <span class="tag">C2</span>
+      <h2>Segmented pair</h2>
+      <p>One small control under the attention strip: <b>Notes</b> is where you land, <b>Activity</b> is one tap away and never occupies the pane at the same time. The count lives on the tab, so it works as a status read too.</p>
+    </div>
+    <div class="pane">
+      <div class="controls">
+        <button type="button" aria-label="Thread actions"><svg class="icon" viewBox="0 0 20 20"><use href="#i-more"/></svg></button>
+        <button type="button" aria-label="Close thread"><svg class="icon" viewBox="0 0 20 20"><use href="#i-x"/></svg></button>
+      </div>
+
+      <div class="head stack gap-3">
+        <div>
+          <div class="eyebrow"><span class="dot"></span> Home <span class="sep">&middot;</span> Active</div>
+          <div class="title sm">Kitchen permit resubmission</div>
+          <button class="linkish" type="button" style="margin-top:.3rem">Summary</button>
+        </div>
+
+        <details class="disclosure" style="border:0">
+          <summary style="padding:0">
+            <div class="slot thin" style="flex:1">
+              <svg class="icon arrow" viewBox="0 0 20 20"><use href="#i-arrow"/></svg>
+              <span class="move">Email Dana the stamped drawing</span>
+              <span class="d-count">+3</span>
+              <span class="chip gold"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-bell"/></svg> Fri</span>
+              <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-chev"/></svg>
+            </div>
+          </summary>
+          <div class="d-body" style="padding-top:.55rem">
+            <ol class="upnext">
+              <li><span class="txt">Resubmit the packet online</span><button class="row-x" type="button" aria-label="Remove move"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-x"/></svg></button></li>
+              <li><span class="txt">Book the framing inspection window</span><button class="row-x" type="button" aria-label="Remove move"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-x"/></svg></button></li>
+              <li><span class="txt">Send the approved permit to the contractor</span><button class="row-x" type="button" aria-label="Remove move"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-x"/></svg></button></li>
+            </ol>
+            <button class="add-move" type="button"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-plus"/></svg> Add a move</button>
+          </div>
+        </details>
+
+        <div class="seg" role="tablist" aria-label="Thread body" data-tabs style="margin-top:.4rem;align-self:flex-start">
+          <button type="button" role="tab" aria-selected="true" data-target="c2-notes">Notes <span class="n">3</span></button>
+          <button type="button" role="tab" aria-selected="false" data-target="c2-activity">Activity</button>
+        </div>
+      </div>
+
+      <div class="scroll" style="margin-top:.85rem">
+        <div id="c2-notes" role="tabpanel" class="stack gap-3">
+          <div class="composer live">
+            <span style="color:var(--muted-fg)">Write a note&hellip;</span>
+          </div>
+          <div>
+            <div class="note"><button class="box" type="button" aria-label="Complete note"></button><div class="body"><p>Dana's engineer stamps drawings on Tuesdays only &mdash; anything sent after Monday evening waits a week.</p><time>2 Sep</time></div></div>
+            <div class="note"><button class="box" type="button" aria-label="Complete note"></button><div class="body"><p>Permit fee already paid on the first submission; resubmission is free within 90 days. After that the whole fee is charged again.</p><time>28 Aug</time></div></div>
+            <div class="note"><button class="box" type="button" aria-label="Complete note"></button><div class="body"><p>The inspector prefers the framing window booked at least ten days out &mdash; the Monday slots go first.</p><time>26 Aug</time></div></div>
+            <div class="note done"><button class="box" type="button" aria-label="Reopen note"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-check"/></svg></button><div class="body"><p>Confirm the wall is load-bearing before paying for drawings.</p><time>21 Aug</time></div></div>
+          </div>
+        </div>
+
+        <div id="c2-activity" role="tabpanel" hidden>
+          <ol class="log">
+            <li><strong>Next move set</strong> &mdash; Email Dana the stamped structural drawing &middot; <time>2 Sep</time></li>
+            <li><strong>Follow-up set</strong> for Fri 12 Sep &middot; <time>2 Sep</time></li>
+            <li><strong>Next move completed</strong> &mdash; Call the permit office about the rejection &middot; <time>29 Aug</time></li>
+            <li><strong>Up Next reordered</strong> &mdash; Resubmit the packet online moved to the front &middot; <time>27 Aug</time></li>
+            <li><strong>Next move set</strong> &mdash; Call the permit office about the rejection &middot; <time>24 Aug</time></li>
+            <li><strong>Moved</strong> to Home &middot; <time>21 Aug</time></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ C3: folder tab in the corner ============ -->
+  <section class="column">
+    <div class="caption">
+      <span class="tag">C3</span>
+      <h2>Folder tab in the corner</h2>
+      <p>Notes aren't a tab &mdash; they're the open folder. <b>Activity</b> is a single tab parked in the far corner, the way a divider sticks out of a file. Nothing about the resting pane suggests you're meant to switch.</p>
+    </div>
+    <div class="pane">
+      <div class="controls">
+        <button type="button" aria-label="Thread actions"><svg class="icon" viewBox="0 0 20 20"><use href="#i-more"/></svg></button>
+        <button type="button" aria-label="Close thread"><svg class="icon" viewBox="0 0 20 20"><use href="#i-x"/></svg></button>
+      </div>
+
+      <div class="head stack gap-3">
+        <div>
+          <div class="eyebrow"><span class="dot"></span> Home <span class="sep">&middot;</span> Active</div>
+          <div class="title sm">Kitchen permit resubmission</div>
+          <button class="linkish" type="button" style="margin-top:.3rem">Summary</button>
+        </div>
+
+        <details class="disclosure" style="border:0">
+          <summary style="padding:0">
+            <div class="slot thin" style="flex:1">
+              <svg class="icon arrow" viewBox="0 0 20 20"><use href="#i-arrow"/></svg>
+              <span class="move">Email Dana the stamped drawing</span>
+              <span class="d-count">+3</span>
+              <span class="chip gold"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-bell"/></svg> Fri</span>
+              <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-chev"/></svg>
+            </div>
+          </summary>
+          <div class="d-body" style="padding-top:.55rem">
+            <ol class="upnext">
+              <li><span class="txt">Resubmit the packet online</span><button class="row-x" type="button" aria-label="Remove move"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-x"/></svg></button></li>
+              <li><span class="txt">Book the framing inspection window</span><button class="row-x" type="button" aria-label="Remove move"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-x"/></svg></button></li>
+              <li><span class="txt">Send the approved permit to the contractor</span><button class="row-x" type="button" aria-label="Remove move"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-x"/></svg></button></li>
+            </ol>
+            <button class="add-move" type="button"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-plus"/></svg> Add a move</button>
+          </div>
+        </details>
+
+        <div class="ftabs" role="tablist" aria-label="Thread body" data-tabs style="margin-top:.5rem">
+          <button type="button" role="tab" aria-selected="true" data-target="c3-notes">Notes <span class="n">3</span></button>
+          <button type="button" role="tab" aria-selected="false" data-target="c3-activity" class="corner">Activity</button>
+        </div>
+      </div>
+
+      <div class="scroll" style="margin-top:.75rem">
+        <div id="c3-notes" role="tabpanel" class="stack gap-3">
+          <div class="composer live">
+            <span style="color:var(--muted-fg)">Write a note&hellip;</span>
+          </div>
+          <div>
+            <div class="note"><button class="box" type="button" aria-label="Complete note"></button><div class="body"><p>Dana's engineer stamps drawings on Tuesdays only &mdash; anything sent after Monday evening waits a week.</p><time>2 Sep</time></div></div>
+            <div class="note"><button class="box" type="button" aria-label="Complete note"></button><div class="body"><p>Permit fee already paid on the first submission; resubmission is free within 90 days. After that the whole fee is charged again.</p><time>28 Aug</time></div></div>
+            <div class="note"><button class="box" type="button" aria-label="Complete note"></button><div class="body"><p>The inspector prefers the framing window booked at least ten days out &mdash; the Monday slots go first.</p><time>26 Aug</time></div></div>
+            <div class="note done"><button class="box" type="button" aria-label="Reopen note"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-check"/></svg></button><div class="body"><p>Confirm the wall is load-bearing before paying for drawings.</p><time>21 Aug</time></div></div>
+          </div>
+        </div>
+
+        <div id="c3-activity" role="tabpanel" hidden>
+          <ol class="log">
+            <li><strong>Next move set</strong> &mdash; Email Dana the stamped structural drawing &middot; <time>2 Sep</time></li>
+            <li><strong>Follow-up set</strong> for Fri 12 Sep &middot; <time>2 Sep</time></li>
+            <li><strong>Next move completed</strong> &mdash; Call the permit office about the rejection &middot; <time>29 Aug</time></li>
+            <li><strong>Up Next reordered</strong> &mdash; Resubmit the packet online moved to the front &middot; <time>27 Aug</time></li>
+            <li><strong>Next move set</strong> &mdash; Call the permit office about the rejection &middot; <time>24 Aug</time></li>
+            <li><strong>Moved</strong> to Home &middot; <time>21 Aug</time></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ C4: dock at the floor ============ -->
+  <section class="column">
+    <div class="caption">
+      <span class="tag">C4</span>
+      <h2>Dock at the floor</h2>
+      <p>No tab bar at all &mdash; notes own the full pane. Activity is a strip along the bottom edge that already answers the usual question (<b>last moved 2 days ago</b>) and slides up over the notes when you want the rest.</p>
+    </div>
+    <div class="pane docked">
+      <div class="controls">
+        <button type="button" aria-label="Thread actions"><svg class="icon" viewBox="0 0 20 20"><use href="#i-more"/></svg></button>
+        <button type="button" aria-label="Close thread"><svg class="icon" viewBox="0 0 20 20"><use href="#i-x"/></svg></button>
+      </div>
+
+      <div class="head stack gap-3">
+        <div>
+          <div class="eyebrow"><span class="dot"></span> Home <span class="sep">&middot;</span> Active</div>
+          <div class="title sm">Kitchen permit resubmission</div>
+          <button class="linkish" type="button" style="margin-top:.3rem">Summary</button>
+        </div>
+
+        <details class="disclosure" style="border:0">
+          <summary style="padding:0">
+            <div class="slot thin" style="flex:1">
+              <svg class="icon arrow" viewBox="0 0 20 20"><use href="#i-arrow"/></svg>
+              <span class="move">Email Dana the stamped drawing</span>
+              <span class="d-count">+3</span>
+              <span class="chip gold"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-bell"/></svg> Fri</span>
+              <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-chev"/></svg>
+            </div>
+          </summary>
+          <div class="d-body" style="padding-top:.55rem">
+            <ol class="upnext">
+              <li><span class="txt">Resubmit the packet online</span><button class="row-x" type="button" aria-label="Remove move"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-x"/></svg></button></li>
+              <li><span class="txt">Book the framing inspection window</span><button class="row-x" type="button" aria-label="Remove move"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-x"/></svg></button></li>
+              <li><span class="txt">Send the approved permit to the contractor</span><button class="row-x" type="button" aria-label="Remove move"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-x"/></svg></button></li>
+            </ol>
+            <button class="add-move" type="button"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-plus"/></svg> Add a move</button>
+          </div>
+        </details>
+
+        <div class="composer live" style="margin-top:.35rem">
+          <span style="color:var(--muted-fg)">Write a note&hellip;</span>
+        </div>
+      </div>
+
+      <div class="scroll" style="margin-top:.85rem">
+        <div class="note"><button class="box" type="button" aria-label="Complete note"></button><div class="body"><p>Dana's engineer stamps drawings on Tuesdays only &mdash; anything sent after Monday evening waits a week.</p><time>2 Sep</time></div></div>
+        <div class="note"><button class="box" type="button" aria-label="Complete note"></button><div class="body"><p>Permit fee already paid on the first submission; resubmission is free within 90 days. After that the whole fee is charged again.</p><time>28 Aug</time></div></div>
+        <div class="note"><button class="box" type="button" aria-label="Complete note"></button><div class="body"><p>The inspector prefers the framing window booked at least ten days out &mdash; the Monday slots go first.</p><time>26 Aug</time></div></div>
+        <div class="note"><button class="box" type="button" aria-label="Complete note"></button><div class="body"><p>Ask Dana whether the stamp covers the beam spec too, or only the wall section.</p><time>25 Aug</time></div></div>
+        <div class="note done"><button class="box" type="button" aria-label="Reopen note"><svg class="icon sm" viewBox="0 0 20 20"><use href="#i-check"/></svg></button><div class="body"><p>Confirm the wall is load-bearing before paying for drawings.</p><time>21 Aug</time></div></div>
+      </div>
+
+      <div class="dock" data-dock>
+        <button class="dock-handle" type="button" aria-expanded="false">
+          <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-chev"/></svg>
+          <span class="d-label">Activity</span>
+          <span class="d-peek">Last moved 2 days ago</span>
+          <span class="grip" aria-hidden="true"></span>
+        </button>
+        <div class="dock-body">
+          <ol class="log">
+            <li><strong>Next move set</strong> &mdash; Email Dana the stamped structural drawing &middot; <time>2 Sep</time></li>
+            <li><strong>Follow-up set</strong> for Fri 12 Sep &middot; <time>2 Sep</time></li>
+            <li><strong>Next move completed</strong> &mdash; Call the permit office about the rejection &middot; <time>29 Aug</time></li>
+            <li><strong>Up Next reordered</strong> &mdash; Resubmit the packet online moved to the front &middot; <time>27 Aug</time></li>
+            <li><strong>Next move set</strong> &mdash; Call the permit office about the rejection &middot; <time>24 Aug</time></li>
+            <li><strong>Moved</strong> to Home &middot; <time>21 Aug</time></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <script>
@@ -565,5 +866,35 @@
       sync();
     });
     sync();
+  })();
+
+  /* Tabs: Notes / Activity, in both the segmented and folder forms. */
+  (function () {
+    var lists = document.querySelectorAll("[data-tabs]");
+    Array.prototype.forEach.call(lists, function (list) {
+      var tabs = list.querySelectorAll("[role='tab']");
+      Array.prototype.forEach.call(tabs, function (tab) {
+        tab.addEventListener("click", function () {
+          Array.prototype.forEach.call(tabs, function (other) {
+            var selected = other === tab;
+            other.setAttribute("aria-selected", String(selected));
+            var panel = document.getElementById(other.getAttribute("data-target"));
+            if (panel) panel.hidden = !selected;
+          });
+        });
+      });
+    });
+  })();
+
+  /* The floor dock: Activity slides up over the notes. */
+  (function () {
+    var docks = document.querySelectorAll("[data-dock]");
+    Array.prototype.forEach.call(docks, function (dock) {
+      var handle = dock.querySelector(".dock-handle");
+      handle.addEventListener("click", function () {
+        var open = dock.classList.toggle("open");
+        handle.setAttribute("aria-expanded", String(open));
+      });
+    });
   })();
 </script>
