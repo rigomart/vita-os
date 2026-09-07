@@ -248,9 +248,8 @@ interface ThreadDetailContentProps {
 }
 
 /**
- * Identity and attention are stated at the top and stay put. Beneath them the
- * body is a pair of tabs — Notes at rest, the Activity Log a click away — so
- * only one of the two ever occupies the pane.
+ * Identity and attention are stated at the top and stay put; beneath them the
+ * body is a pair of tabs, so only one of the two ever occupies the pane.
  */
 function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
   const isResolved = thread.state === "resolved";

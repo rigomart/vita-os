@@ -429,7 +429,6 @@ describe("ThreadDetailView", () => {
         screen.getByRole("textbox", { name: "New Thread Note" }),
       ),
     ).toBe(true);
-    // The tabs themselves stay above the scroll, with the panels inside it.
     const notesTab = screen.getByRole("tab", { name: /Notes/ });
     expect(scrollRegion!.contains(notesTab)).toBe(false);
 

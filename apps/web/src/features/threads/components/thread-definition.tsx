@@ -7,10 +7,8 @@ interface ThreadDefinitionProps {
 }
 
 /**
- * The Thread's one-line orientation. Empty, it is a quiet text action and
- * nothing else; filled, it is a single muted line under the title. Anything
- * past that line is read in the editor the line opens — the pane's job is to
- * say what this Thread is, not to hold the whole account of it.
+ * The Thread's one-line orientation: a quiet text action while empty, a single
+ * muted line once set. Anything past that line is read in the editor it opens.
  */
 export function ThreadDefinition({ summary, onSave }: ThreadDefinitionProps) {
   return (

@@ -18,12 +18,9 @@ interface ThreadBodyTabsProps {
 }
 
 /**
- * The pane's body below attention. Notes are where the work happens, so they
- * are the resting tab; the Activity Log is something you look in on, so it
- * costs a click and nothing at rest.
- *
- * One scroll container wraps both panels rather than each owning its own, so
- * the pane keeps exactly one scrolling region however the tabs are switched.
+ * The pane's body below attention: Notes at rest, the Activity Log a click
+ * away. One scroll container wraps both panels rather than each owning its
+ * own, so the pane keeps exactly one scrolling region either way.
  */
 export function ThreadBodyTabs({
   threadId,

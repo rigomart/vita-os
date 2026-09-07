@@ -32,7 +32,6 @@ describe("ActivityLog", () => {
   it("renders only automatic changes and offers no manual entry controls", () => {
     render(<ActivityLog logs={[areaMove, followUp]} />);
 
-    // The Activity tab names the panel, so the log repeats no heading.
     expect(
       screen.queryByRole("heading", { name: "Activity log" }),
     ).not.toBeInTheDocument();

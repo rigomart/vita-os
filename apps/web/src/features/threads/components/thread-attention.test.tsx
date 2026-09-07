@@ -64,7 +64,6 @@ describe("ThreadAttention", () => {
       within(attention).getByRole("button", { name: "Complete next move" }),
     ).toBeVisible();
 
-    // The line is folded, but its depth and its front are still stated.
     expect(screen.queryByRole("list", { name: "Up Next" })).toBeNull();
     expect(within(attention).getByText("2")).toBeVisible();
     expect(within(attention).getByText("Book the scan")).toBeVisible();

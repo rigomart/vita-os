@@ -54,11 +54,8 @@ interface ThreadAttentionProps {
 /**
  * The Thread's live attention: the Next Move in a gold-edged slot, and —
  * hanging off one hairline that leaves that slot — the line of moves waiting
- * behind it, with the Follow-up riding the same rule.
- *
- * The waiting line is folded by default. Shut, its row still carries the count
- * and the move at the front, which is all the slot's occupant usually needs to
- * be read against; the rest is one click away.
+ * behind it, with the Follow-up riding the same rule. The waiting line is
+ * folded by default; shut, its row still carries the count and the front move.
  *
  * `xl` is the Thread pane's breakpoint (THREAD_PANE_BREAKPOINT): from there up
  * the pane is a rail with room for hover affordances; below it the Thread is a
@@ -284,8 +281,6 @@ function Cascade({
               {moves.length}
             </span>
           )}
-          {/* Closed, the row still says what is at the front of the line, so
-              the disclosure costs nothing to leave shut. */}
           {front !== undefined && !open ? (
             <span className="min-w-0 flex-1 truncate text-2xs text-muted-foreground/60">
               {front}

@@ -41,8 +41,7 @@ const ENTRY_PAD = "pl-9";
 
 /**
  * The Thread's continuity record, written entirely by the system: a rail from
- * "now" back through every automatic entry. It is a place you visit rather
- * than a place you work, so it sits behind the Activity tab.
+ * "now" back through every automatic entry.
  */
 export function ActivityLog({
   logs,
@@ -54,7 +53,6 @@ export function ActivityLog({
   const automaticLogs = logs?.filter(isAutomaticActivityLogEntry);
 
   return (
-    // No heading: the tab that reveals this panel already names it.
     <section aria-label="Activity log" className="flex flex-col gap-2">
       <div className="relative pb-6">
         <div

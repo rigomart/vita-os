@@ -39,8 +39,6 @@ describe("ThreadNotes", () => {
       />,
     );
 
-    // The Notes tab names the panel; the section repeats no heading, and an
-    // empty list stands on the composer rather than a second hollow shape.
     expect(screen.queryByRole("heading", { name: "Notes" })).toBeNull();
     expect(screen.queryByText(/No open Notes/)).toBeNull();
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
@@ -84,7 +82,6 @@ describe("ThreadNotes", () => {
     await user.click(field);
     expect(screen.getByRole("button", { name: "Add" })).toBeVisible();
 
-    // Leaving it empty shuts it again; a draft keeps it open.
     await user.tab();
     expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
 

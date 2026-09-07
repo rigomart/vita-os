@@ -42,13 +42,9 @@ export function ThreadNotes({
   const showCompleted = doneNotes.length > 0 || !isDoneExhausted;
 
   return (
-    // No heading: the tab that reveals this panel already names it, and the
-    // count it carries is the one this section used to repeat.
     <section aria-label="Thread Notes" className="flex flex-col gap-3">
       <ThreadNoteComposer onCreate={onCreate} />
 
-      {/* Nothing stands in for an empty list: the composer above is already
-          the invitation, and a second hollow shape only competes with it. */}
       {notes === undefined ? (
         <p className="text-sm text-muted-foreground">Loading Notes…</p>
       ) : notes.length === 0 ? null : (
@@ -106,13 +102,10 @@ export function ThreadNotes({
 }
 
 /**
- * Where a Note is written, deliberately not shaped like one. A saved Note is a
- * raised card on a heavy edge; this is the inverse — a recessed well, a
- * thinner rule, one radius smaller — so the two never read as the same object.
- *
- * At rest it is a single row. It opens to a writing surface once there is
- * something to write, and shuts again when it is left empty, so an untouched
- * Notes panel is the Notes and one quiet line.
+ * Where a Note is written, deliberately not shaped like one: a saved Note is a
+ * raised card on a heavy edge, so this is its inverse — a recessed well, a
+ * thinner rule, one radius smaller. At rest it is a single row, opening to a
+ * writing surface only while there is a draft.
  */
 function ThreadNoteComposer({
   onCreate,
@@ -126,8 +119,7 @@ function ThreadNoteComposer({
     errorToast: true,
   });
 
-  // A draft holds the composer open even after focus leaves, so nobody loses
-  // what they typed to a stray click.
+  // A draft holds it open past blur, so a stray click cannot swallow one.
   const open = focused || body.trim().length > 0;
 
   const submit = async () => {
@@ -174,8 +166,6 @@ function ThreadNoteComposer({
         }}
       />
       {open && (
-        // No divider: the new Note dialog separates by whitespace, and so
-        // does this.
         <div className="mt-2 flex justify-end">
           <Button
             type="submit"

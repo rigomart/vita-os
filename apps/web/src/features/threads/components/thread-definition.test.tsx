@@ -17,7 +17,6 @@ describe("ThreadDefinition", () => {
 
     expect(screen.queryByText("Summary")).not.toBeInTheDocument();
     const addSummary = screen.getByRole("button", { name: "Add a summary…" });
-    // Text, not a chip: nothing is filled in yet, so nothing is framed.
     expect(addSummary).toHaveClass("w-fit");
     expect(addSummary).not.toHaveClass("bg-secondary");
     expect(addSummary.closest('[data-slot="thread-summary"]')).toHaveClass(
@@ -54,12 +53,10 @@ describe("ThreadDefinition", () => {
       <ThreadDefinition summary={longSummary} onSave={vi.fn()} />,
     );
 
-    // `block` so the ellipsis applies: the display is otherwise a flex button.
     expect(screen.getByRole("button", { name: /Line 1/ })).toHaveClass(
       "block",
       "truncate",
     );
-    // Nothing expands in place — the full text is read in the editor.
     expect(
       screen.queryByRole("button", { name: "Show more" }),
     ).not.toBeInTheDocument();
