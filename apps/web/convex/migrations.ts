@@ -146,6 +146,13 @@ export const migrateActivityLogNotesToThreadNotes = internalMutation({
         state: "open",
         createdAt: entry.createdAt,
       });
+      const thread = await ctx.db.get("threads", entry.threadId);
+      if (
+        thread?.lastActivityAt === entry.createdAt &&
+        thread.lastActivityContent === entry.content
+      ) {
+        await ctx.db.patch(thread._id, { lastActivityContent: undefined });
+      }
       await ctx.db.delete(entry._id);
     }
 

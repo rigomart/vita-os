@@ -1,4 +1,4 @@
-import { requireTitle } from "./validation";
+import { requireNonBlankText } from "./validation";
 
 /**
  * Up Next: the ordered line of upcoming moves a Thread holds behind its Next
@@ -31,7 +31,7 @@ export function storedUpNext(moves: readonly string[]): string[] | undefined {
 
 /** Every move, trimmed. A blank move is refused like any other named text. */
 export function requireUpNextMoves(moves: readonly string[]): string[] {
-  return moves.map((move) => requireTitle(move, "Upcoming move"));
+  return moves.map((move) => requireNonBlankText(move, "Upcoming move"));
 }
 
 /**

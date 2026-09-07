@@ -69,12 +69,11 @@ describe("Thread Notes", () => {
           updatedAt: 1_000,
         }),
       ]);
-      expect(await owner.query(api.threads.get, { id: threadId })).toEqual(
-        expect.objectContaining({
-          lastActivityAt: 1_000,
-          lastActivityContent: "Called the clinic\nWaiting for a reply",
-        }),
-      );
+      const updatedThread = await owner.query(api.threads.get, {
+        id: threadId,
+      });
+      expect(updatedThread?.lastActivityAt).toBe(1_000);
+      expect(updatedThread).not.toHaveProperty("lastActivityContent");
       expect(
         (
           await owner.query(api.activityLogs.listByThread, {
@@ -132,7 +131,7 @@ describe("Thread Notes", () => {
           state: "done",
           completedAt: 3_000,
           createdAt: 1_000,
-          updatedAt: 3_000,
+          updatedAt: 2_000,
         }),
       ]);
 

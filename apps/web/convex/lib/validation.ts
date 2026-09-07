@@ -8,11 +8,10 @@ export const RESERVED_AREA_SLUGS = new Set([
 ]);
 
 /**
- * The trimmed name, or a thrown "<label> cannot be empty". Every surface that
- * titles something names it through here, so blanks are refused identically
- * everywhere.
+ * Trim non-blank text, or throw "<label> cannot be empty". Names, titles,
+ * bodies, and moves all pass through here so blanks are refused identically.
  */
-export function requireTitle(value: string, label: string): string {
+export function requireNonBlankText(value: string, label: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
     throw new Error(`${label} cannot be empty`);
@@ -26,7 +25,7 @@ export function requireTitle(value: string, label: string): string {
  * string and store a differently-trimmed one.
  */
 export function validateAreaName(name: string): string {
-  const trimmed = requireTitle(name, "Area name");
+  const trimmed = requireNonBlankText(name, "Area name");
   const base = slugify(trimmed);
   if (RESERVED_AREA_SLUGS.has(base)) {
     throw new Error(

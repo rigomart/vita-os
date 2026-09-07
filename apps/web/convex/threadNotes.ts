@@ -10,7 +10,7 @@ import { mutation, query } from "./_generated/server";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
 import { getOwned, requireOwned } from "./lib/ownedAccess";
 import { emptyPage } from "./lib/pagination";
-import { requireTitle } from "./lib/validation";
+import { requireNonBlankText } from "./lib/validation";
 import {
   projectedThreadNoteValidator,
   projectThreadNote,
@@ -73,7 +73,7 @@ export const create = mutation({
       userId,
       id: args.threadId,
     });
-    const body = requireTitle(args.body, "Thread note body");
+    const body = requireNonBlankText(args.body, "Thread note body");
     const now = Date.now();
 
     const id = await ctx.db.insert("threadNotes", {
@@ -86,7 +86,7 @@ export const create = mutation({
     });
     await ctx.db.patch(thread._id, {
       lastActivityAt: now,
-      lastActivityContent: body,
+      lastActivityContent: undefined,
     });
     return id;
   },
@@ -98,7 +98,7 @@ export const updateBody = mutation({
     const userId = await getAuthUserId(ctx);
     await requireOwned(ctx, "threadNotes", { userId, id: args.id });
     await ctx.db.patch(args.id, {
-      body: requireTitle(args.body, "Thread note body"),
+      body: requireNonBlankText(args.body, "Thread note body"),
       updatedAt: Date.now(),
     });
   },
@@ -113,7 +113,6 @@ export const markDone = mutation({
     await ctx.db.patch(args.id, {
       state: "done",
       completedAt: now,
-      updatedAt: now,
     });
   },
 });
@@ -126,7 +125,6 @@ export const markOpen = mutation({
     await ctx.db.patch(args.id, {
       state: "open",
       completedAt: undefined,
-      updatedAt: Date.now(),
     });
   },
 });

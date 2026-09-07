@@ -408,7 +408,7 @@ describe("bounded queries", () => {
       });
 
       const thread = await threadDoc(fixture.threadId);
-      expect(thread?.lastActivityContent).toBe("Called the clinic back");
+      expect(thread?.lastActivityContent).toBeUndefined();
       expect(thread?.lastActivityAt).toEqual(expect.any(Number));
     });
 

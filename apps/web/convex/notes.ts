@@ -10,7 +10,7 @@ import { mutation, query } from "./_generated/server";
 import { getAuthUserId, safeGetAuthUserId } from "./lib/helpers";
 import { requireOwned } from "./lib/ownedAccess";
 import { emptyPage } from "./lib/pagination";
-import { requireTitle } from "./lib/validation";
+import { requireNonBlankText } from "./lib/validation";
 import { projectedNoteValidator, projectNote } from "./lib/validators";
 
 /**
@@ -82,7 +82,7 @@ export const create = mutation({
     const now = Date.now();
     return ctx.db.insert("tasks", {
       userId,
-      text: requireTitle(args.body, "Note body"),
+      text: requireNonBlankText(args.body, "Note body"),
       updatedAt: now,
       when: args.when,
       state: "open",
@@ -110,7 +110,7 @@ export const updateBody = mutation({
     await requireOwned(ctx, "tasks", { userId, id: args.id });
 
     await ctx.db.patch(args.id, {
-      text: requireTitle(args.body, "Note body"),
+      text: requireNonBlankText(args.body, "Note body"),
       updatedAt: Date.now(),
     });
   },

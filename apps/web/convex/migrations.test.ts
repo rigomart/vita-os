@@ -439,6 +439,10 @@ describe("migrations.migrateActivityLogNotesToThreadNotes", () => {
         content: "Follow-up set",
         createdAt: 456,
       });
+      await ctx.db.patch("threads", threadId, {
+        lastActivityAt: 123,
+        lastActivityContent: "  Called the clinic\nWaiting for a reply  ",
+      });
       return { note, automatic };
     });
 
@@ -464,6 +468,11 @@ describe("migrations.migrateActivityLogNotesToThreadNotes", () => {
         updatedAt: 123,
       }),
     ]);
+    const migratedThread = await t.run((ctx) =>
+      ctx.db.get("threads", threadId),
+    );
+    expect(migratedThread?.lastActivityAt).toBe(123);
+    expect(migratedThread).not.toHaveProperty("lastActivityContent");
 
     await runToCompletion((paginationOpts) =>
       t.mutation(internal.migrations.migrateActivityLogNotesToThreadNotes, {

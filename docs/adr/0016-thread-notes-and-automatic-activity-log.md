@@ -4,8 +4,8 @@ Issue #315 separates prose from change history inside a Thread. Body-only Thread
 
 ## Migration
 
-Existing hand-written Activity Log entries are copied into Thread Notes with their content and creation time intact, then removed from the log. Activity Log reads hide those legacy entries while the paginated migration is in progress. The compatibility `note` entry type remains in storage until the migration has run everywhere, but no public operation can write it.
+Existing hand-written Activity Log entries are copied into Thread Notes with their content and creation time intact, then removed from the log. Activity Log reads hide those legacy entries while the paginated migration is in progress. When migrated prose was also cached as a Thread's last-activity summary, the migration clears that summary so a Thread Note never appears outside its Thread. The compatibility `note` entry type remains in storage until the migration has run everywhere, but no public operation can write it.
 
 ## Activity
 
-Capturing a Thread Note advances the Thread's last-activity timestamp without adding an Activity Log entry. Editing, completing, reopening, and deleting an existing Thread Note update only that Note. Thread Notes have no Attention Date because the parent Thread's Follow-up already provides resurfacing.
+Capturing a Thread Note advances the Thread's last-activity timestamp without exposing its body as a last-activity summary or adding an Activity Log entry. Editing advances the Note's last-edited timestamp; completing, reopening, and deleting do not. Thread Notes have no Attention Date because the parent Thread's Follow-up already provides resurfacing.
