@@ -329,8 +329,8 @@ describe("ThreadDetailView", () => {
     const attention = screen.getByRole("region", {
       name: "Thread attention",
     });
-    const activity = screen.getByRole("heading", { name: "Activity log" });
-    const notes = screen.getByRole("heading", { name: "Notes" });
+    const notes = screen.getByRole("tab", { name: /Notes/ });
+    const activity = screen.getByRole("tab", { name: "Activity" });
 
     expect(
       within(header).getByRole("button", { name: "Family Health" }),
@@ -373,6 +373,7 @@ describe("ThreadDetailView", () => {
       name: "Sister's front teeth",
     });
 
+    await userEvent.click(screen.getByRole("button", { name: /Up Next/ }));
     const moves = within(
       screen.getByRole("list", { name: "Up Next" }),
     ).getAllByRole("listitem");
@@ -425,13 +426,16 @@ describe("ThreadDetailView", () => {
     expect(scrollRegion!.contains(attention)).toBe(false);
     expect(
       scrollRegion!.contains(
-        screen.getByRole("heading", { name: "Activity log" }),
-      ),
-    ).toBe(true);
-    expect(
-      scrollRegion!.contains(
         screen.getByRole("textbox", { name: "New Thread Note" }),
       ),
+    ).toBe(true);
+    // The tabs themselves stay above the scroll, with the panels inside it.
+    const notesTab = screen.getByRole("tab", { name: /Notes/ });
+    expect(scrollRegion!.contains(notesTab)).toBe(false);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Activity" }));
+    expect(
+      scrollRegion!.contains(await screen.findByLabelText("Activity log")),
     ).toBe(true);
     expect(
       screen.queryByRole("textbox", { name: "Activity log note" }),

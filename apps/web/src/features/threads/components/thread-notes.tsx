@@ -5,7 +5,7 @@ import { Textarea } from "@vita-os/ui/components/textarea";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format, isThisYear } from "date-fns";
-import { Check, Loader2, Undo2 } from "lucide-react";
+import { Check, Loader2, StickyNote, Undo2 } from "lucide-react";
 import { useState } from "react";
 
 import { EditableField } from "@/components/ui/editable-field";
@@ -42,27 +42,15 @@ export function ThreadNotes({
   const showCompleted = doneNotes.length > 0 || !isDoneExhausted;
 
   return (
+    // No heading: the tab that reveals this panel already names it, and the
+    // count it carries is the one this section used to repeat.
     <section aria-label="Thread Notes" className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <h2 className="font-heading text-sm font-semibold tracking-tight">
-          Notes
-        </h2>
-        {notes && notes.length > 0 && (
-          <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-            {notes.length}
-          </span>
-        )}
-        <span aria-hidden className="ml-1 h-px flex-1 bg-border/50" />
-      </div>
-
       <ThreadNoteComposer onCreate={onCreate} />
 
       {notes === undefined ? (
         <p className="text-sm text-muted-foreground">Loading Notes…</p>
       ) : notes.length === 0 ? (
-        <p className="px-1 text-sm text-muted-foreground">
-          No open Notes on this Thread.
-        </p>
+        <ThreadNotesEmpty />
       ) : (
         <div className="flex flex-col gap-2.5">
           {notes.map((note) => (
@@ -117,6 +105,26 @@ export function ThreadNotes({
   );
 }
 
+/**
+ * The same shape the Inbox uses when it has nothing to show — a dashed frame
+ * the size of the cards that will replace it.
+ */
+function ThreadNotesEmpty() {
+  return (
+    <div className="flex min-h-40 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border/60 px-6 text-center">
+      <StickyNote className="mb-3 size-7 text-muted-foreground" />
+      <h2 className="text-sm font-semibold">No open Notes</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Anything you learn or decide about this Thread belongs here.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The new Note dialog's surface, sized for the pane: one open writing area on
+ * a heavy edge, and the Add button alone beneath it.
+ */
 function ThreadNoteComposer({
   onCreate,
 }: {
@@ -141,19 +149,26 @@ function ThreadNoteComposer({
         event.preventDefault();
         void submit();
       }}
-      className="rounded-3xl border-2 border-border/70 bg-surface-2 p-3 transition-colors focus-within:border-ring/50"
+      className="rounded-3xl border-2 border-border/70 bg-surface-2 p-4 transition-colors focus-within:border-ring/50"
     >
       <Textarea
         variant="inline"
         aria-label="New Thread Note"
         value={body}
         onChange={(event) => setBody(event.target.value)}
-        placeholder="Add a note to this Thread…"
-        rows={2}
+        placeholder="What's on your mind?"
+        rows={3}
         disabled={isPending}
-        className="min-h-16 py-1 text-sm leading-relaxed caret-ring disabled:opacity-100"
+        className="min-h-20 py-0 text-sm leading-relaxed caret-ring disabled:opacity-100"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+            event.preventDefault();
+            void submit();
+          }
+        }}
       />
-      <div className="mt-2 flex justify-end">
+      {/* No divider: the dialog separates by whitespace, and so does this. */}
+      <div className="mt-3 flex justify-end">
         <Button
           type="submit"
           size="sm"
@@ -161,7 +176,7 @@ function ThreadNoteComposer({
           disabled={!body.trim() || isPending}
           aria-busy={isPending}
         >
-          Add note
+          Add
         </Button>
       </div>
     </form>

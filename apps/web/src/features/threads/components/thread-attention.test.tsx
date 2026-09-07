@@ -41,8 +41,13 @@ function upNextRows() {
   );
 }
 
+/** The line is folded at rest; every test that reads a row unfolds it first. */
+async function openUpNext(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: /Up Next/ }));
+}
+
 describe("ThreadAttention", () => {
-  it("states the whole attention state without any interaction", () => {
+  it("states the live attention without any interaction", () => {
     renderAttention({
       nextMove: "Call the clinic",
       upNext: ["Book the scan", "Collect the results"],
@@ -59,6 +64,21 @@ describe("ThreadAttention", () => {
       within(attention).getByRole("button", { name: "Complete next move" }),
     ).toBeVisible();
 
+    // The line is folded, but its depth and its front are still stated.
+    expect(screen.queryByRole("list", { name: "Up Next" })).toBeNull();
+    expect(within(attention).getByText("2")).toBeVisible();
+    expect(within(attention).getByText("Book the scan")).toBeVisible();
+  });
+
+  it("unfolds the whole line on request", async () => {
+    const user = userEvent.setup();
+    renderAttention({
+      nextMove: "Call the clinic",
+      upNext: ["Book the scan", "Collect the results"],
+    });
+
+    await openUpNext(user);
+
     const rows = upNextRows();
     expect(
       within(rows[0]!).getByRole("button", { name: "Book the scan" }),
@@ -73,11 +93,11 @@ describe("ThreadAttention", () => {
 
     expect(screen.getByText("Up Next")).toBeVisible();
     expect(screen.queryByRole("list", { name: "Up Next" })).toBeNull();
-    expect(screen.queryByText(/·/)).toBeNull();
+    expect(screen.queryByText("0")).toBeNull();
     unmount();
 
     renderAttention({ upNext: ["Book the scan", "Collect the results"] });
-    expect(screen.getByText("· 2")).toBeVisible();
+    expect(screen.getByText("2")).toBeVisible();
   });
 
   it("takes a new next move on Enter and on blur", async () => {
@@ -146,6 +166,7 @@ describe("ThreadAttention", () => {
       upNext: ["Book the scan"],
     });
 
+    await openUpNext(user);
     const field = screen.getByRole("textbox", { name: "Add an upcoming move" });
     await user.type(field, "  Collect the results  {Enter}");
     expect(onReplaceUpNext).toHaveBeenCalledWith([
@@ -166,6 +187,7 @@ describe("ThreadAttention", () => {
       upNext: ["Book the scan", "Collect the results"],
     });
 
+    await openUpNext(user);
     await user.click(
       within(upNextRows()[1]!).getByRole("button", { name: "Move earlier" }),
     );
@@ -201,12 +223,14 @@ describe("ThreadAttention", () => {
     ]);
   });
 
-  it("pins the ends of the line", () => {
+  it("pins the ends of the line", async () => {
+    const user = userEvent.setup();
     renderAttention({
       nextMove: "Call the clinic",
       upNext: ["Book the scan", "Collect the results"],
     });
 
+    await openUpNext(user);
     const rows = upNextRows();
     expect(
       within(rows[0]!).getByRole("button", { name: "Move earlier" }),
@@ -216,11 +240,14 @@ describe("ThreadAttention", () => {
     ).toBeDisabled();
   });
 
-  it("keeps the row controls reachable on touch", () => {
+  it("keeps the row controls reachable on touch", async () => {
+    const user = userEvent.setup();
     renderAttention({
       nextMove: "Call the clinic",
       upNext: ["Book the scan"],
     });
+
+    await openUpNext(user);
 
     // `xl` is THREAD_PANE_BREAKPOINT: the rail hides them until the row is
     // hovered or focused, the drawer never does.

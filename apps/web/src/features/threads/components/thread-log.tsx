@@ -40,9 +40,9 @@ const NODE_LEFT = "left-[11.5px]";
 const ENTRY_PAD = "pl-9";
 
 /**
- * The Thread's continuity record: a heading, the scrolling timeline, and the
- * composer pinned to the floor beneath it. The log owns the whole body of the
- * pane — it is the only region that scrolls.
+ * The Thread's continuity record, written entirely by the system: a rail from
+ * "now" back through every automatic entry. It is a place you visit rather
+ * than a place you work, so it sits behind the Activity tab.
  */
 export function ActivityLog({
   logs,
@@ -54,20 +54,8 @@ export function ActivityLog({
   const automaticLogs = logs?.filter(isAutomaticActivityLogEntry);
 
   return (
+    // No heading: the tab that reveals this panel already names it.
     <section aria-label="Activity log" className="flex flex-col gap-2">
-      <div className="flex shrink-0 items-center gap-2">
-        <h2 className="font-heading text-sm font-semibold tracking-tight">
-          Activity log
-        </h2>
-        {automaticLogs && automaticLogs.length > 0 && (
-          <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-            {automaticLogs.length}
-            {canLoadMore ? "+" : ""}
-          </span>
-        )}
-        <span aria-hidden className="ml-1 h-px flex-1 bg-border/50" />
-      </div>
-
       <div className="relative pb-6">
         <div
           aria-hidden

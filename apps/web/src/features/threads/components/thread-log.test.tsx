@@ -32,10 +32,11 @@ describe("ActivityLog", () => {
   it("renders only automatic changes and offers no manual entry controls", () => {
     render(<ActivityLog logs={[areaMove, followUp]} />);
 
-    expect(screen.getByRole("heading", { name: "Activity log" })).toHaveClass(
-      "font-heading",
-      "text-sm",
-    );
+    // The Activity tab names the panel, so the log repeats no heading.
+    expect(
+      screen.queryByRole("heading", { name: "Activity log" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Activity log")).toBeVisible();
     expect(screen.getByText("Health → Finances")).toHaveClass(
       "text-muted-foreground/80",
     );
@@ -96,7 +97,6 @@ describe("ActivityLog", () => {
       <ActivityLog logs={[areaMove]} canLoadMore onLoadMore={onLoadMore} />,
     );
 
-    expect(screen.getByText("1+")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Show earlier" }));
     expect(onLoadMore).toHaveBeenCalledTimes(1);
   });

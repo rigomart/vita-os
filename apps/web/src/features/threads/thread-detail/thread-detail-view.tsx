@@ -19,12 +19,11 @@ import { useMemo } from "react";
 import { AreaConditionDot } from "@/features/areas/components/area-condition-dot";
 import { ThreadAreaSectionSection } from "@/features/threads/components/thread-area-section-section";
 import { ThreadAttentionSection } from "@/features/threads/components/thread-attention-section";
+import { ThreadBodyTabs } from "@/features/threads/components/thread-body-tabs";
 import { ThreadDefinitionSection } from "@/features/threads/components/thread-definition-section";
 import { ThreadDetailSkeleton } from "@/features/threads/components/thread-detail-skeleton";
 import { ThreadHeaderSection } from "@/features/threads/components/thread-header-section";
 import { ThreadLifecycleActionsSection } from "@/features/threads/components/thread-lifecycle-actions-section";
-import { ActivityLogSection } from "@/features/threads/components/thread-log-section";
-import { ThreadNotesSection } from "@/features/threads/components/thread-notes-section";
 import { ThreadResolvedNote } from "@/features/threads/components/thread-resolved-note";
 import { ThreadStateChip } from "@/features/threads/components/thread-state-chip";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -249,8 +248,9 @@ interface ThreadDetailContentProps {
 }
 
 /**
- * Identity and attention are stated in full at the top. Notes and the
- * automatic Activity Log share the one scrolling continuity region beneath.
+ * Identity and attention are stated at the top and stay put. Beneath them the
+ * body is a pair of tabs — Notes at rest, the Activity Log a click away — so
+ * only one of the two ever occupies the pane.
  */
 function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
   const isResolved = thread.state === "resolved";
@@ -281,16 +281,10 @@ function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
         <ThreadAttentionSection thread={thread} />
       )}
 
-      <div
-        data-slot="thread-continuity-scroll"
-        className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain pb-2"
-      >
-        <ThreadNotesSection threadId={thread._id} />
-        <ActivityLogSection
-          threadId={thread._id}
-          lastActivityAt={thread.lastActivityAt}
-        />
-      </div>
+      <ThreadBodyTabs
+        threadId={thread._id}
+        lastActivityAt={thread.lastActivityAt}
+      />
     </div>
   );
 }

@@ -39,7 +39,9 @@ describe("ThreadNotes", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Notes" })).toBeVisible();
+    // The Notes tab names the panel; the section repeats no heading.
+    expect(screen.queryByRole("heading", { name: "Notes" })).toBeNull();
+    expect(screen.getByText("No open Notes")).toBeVisible();
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(
@@ -50,7 +52,7 @@ describe("ThreadNotes", () => {
       screen.getByRole("textbox", { name: "New Thread Note" }),
       "Called the clinic{Enter}Waiting for a reply",
     );
-    await user.click(screen.getByRole("button", { name: "Add note" }));
+    await user.click(screen.getByRole("button", { name: "Add" }));
 
     expect(onCreate).toHaveBeenCalledExactlyOnceWith(
       "Called the clinic\nWaiting for a reply",
