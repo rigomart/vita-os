@@ -36,7 +36,6 @@ async function createNote(
 
 async function createLog(
   t: TestApi,
-  _as: SignedIn,
   spec: { threadId: Id<"threads">; content: string; createdAt: number },
 ): Promise<Id<"activityLogs">> {
   return t.run(async (ctx) => {
@@ -218,7 +217,7 @@ describe("bounded queries", () => {
         title: "Other",
         areaId: fixture.areaId,
       });
-      const elsewhere = await createLog(t, owner, {
+      const elsewhere = await createLog(t, {
         threadId: otherThread.id,
         content: "elsewhere",
         createdAt: 45,
@@ -227,7 +226,7 @@ describe("bounded queries", () => {
       const mine: Array<Id<"activityLogs">> = [];
       for (const createdAt of [10, 20, 30, 40, 50]) {
         mine.push(
-          await createLog(t, owner, {
+          await createLog(t, {
             threadId: fixture.threadId,
             content: `entry-${createdAt}`,
             createdAt,
@@ -291,12 +290,12 @@ describe("bounded queries", () => {
         title: "Survivor",
         areaId: fixture.areaId,
       });
-      await createLog(t, owner, {
+      await createLog(t, {
         threadId: fixture.threadId,
         content: "doomed note",
         createdAt: 10,
       });
-      const survivorLog = await createLog(t, owner, {
+      const survivorLog = await createLog(t, {
         threadId: survivor.id,
         content: "kept",
         createdAt: 20,
