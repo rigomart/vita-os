@@ -85,6 +85,7 @@ export interface Fixture {
   areaSlug: string;
   logId: Id<"activityLogs">;
   noteId: Id<"tasks">;
+  threadNoteId: Id<"threadNotes">;
   threadId: Id<"threads">;
   threadSlug: string;
 }
@@ -104,10 +105,15 @@ export async function seed(as: SignedIn): Promise<Fixture> {
     id: thread.id,
     nextMove: "Call the clinic",
   });
-  const noteId = await as.mutation(api.notes.create, { body: "Buy vitamins" });
-  const logId = await as.mutation(api.activityLogs.create, {
+  const activity = await as.query(api.activityLogs.listByThread, {
     threadId: thread.id,
-    content: "Left a voicemail",
+    paginationOpts: FIRST_PAGE,
+  });
+  const logId = activity.page[0]!._id;
+  const noteId = await as.mutation(api.notes.create, { body: "Buy vitamins" });
+  const threadNoteId = await as.mutation(api.threadNotes.create, {
+    threadId: thread.id,
+    body: "Left a voicemail",
   });
 
   return {
@@ -116,6 +122,7 @@ export async function seed(as: SignedIn): Promise<Fixture> {
     threadId: thread.id,
     threadSlug: thread.slug,
     noteId,
+    threadNoteId,
     logId,
   };
 }

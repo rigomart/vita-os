@@ -201,7 +201,16 @@ export const remove = mutation({
         q.eq("userId", userId).eq("threadId", thread._id),
       )
       .collect();
-    await Promise.all(logs.map((log) => ctx.db.delete(log._id)));
+    const notes = await ctx.db
+      .query("threadNotes")
+      .withIndex("by_user_thread_state", (q) =>
+        q.eq("userId", userId).eq("threadId", thread._id),
+      )
+      .collect();
+    await Promise.all([
+      ...logs.map((log) => ctx.db.delete(log._id)),
+      ...notes.map((note) => ctx.db.delete(note._id)),
+    ]);
 
     await ctx.db.delete(thread._id);
   },

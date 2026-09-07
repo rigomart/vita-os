@@ -1,6 +1,6 @@
 # Standalone Notes replace Inbox Tasks
 
-Issue #313 replaces the capture model in ADRs 0001 and 0003: a saved body is a valid standalone Note, whether information, a thought, or an action. Capture requires neither a title nor classification. Processing, conversion, and attachment to a Thread are removed from this version. Thread Activity Log entries stay outside the global Notes collection.
+Issue #313 replaces the capture model in ADRs 0001 and 0003: a saved body is a valid standalone Note, whether information, a thought, or an action. Capture requires neither a title nor classification. Processing, conversion, and attachment to a Thread are removed from this version. Thread Notes stay outside the global Notes collection.
 
 ## Decision
 
@@ -24,4 +24,4 @@ New Notes record `createdAt` and `updatedAt`. Subsequent body, attention-date, a
 
 ## Verification
 
-`convex/notes.test.ts` exercises legacy records through the Notes API, including exact preservation and separation from Thread log notes. Authorization, query projection, pagination, attention ordering, capture, editing, date changes, and deletion are covered at the existing API and UI boundaries.
+`convex/notes.test.ts` exercises legacy records through the Notes API, including exact preservation and separation from Thread Notes. Authorization, query projection, pagination, attention ordering, capture, editing, date changes, and deletion are covered at the existing API and UI boundaries.

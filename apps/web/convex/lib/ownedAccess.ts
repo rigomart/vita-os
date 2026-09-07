@@ -12,7 +12,12 @@ import type { DataModel, Doc, Id } from "../_generated/dataModel";
  */
 
 /** Tables whose documents belong to exactly one user through `userId`. */
-export type OwnedTable = "activityLogs" | "areas" | "tasks" | "threads";
+export type OwnedTable =
+  | "activityLogs"
+  | "areas"
+  | "tasks"
+  | "threadNotes"
+  | "threads";
 
 /**
  * Owned tables that also carry a user-scoped `slug` and a `by_user_slug`
@@ -54,6 +59,7 @@ const DOCUMENT_LABELS: Record<OwnedTable, string> = {
   activityLogs: "Activity log",
   areas: "Area",
   tasks: "Note",
+  threadNotes: "Thread note",
   threads: "Thread",
 };
 

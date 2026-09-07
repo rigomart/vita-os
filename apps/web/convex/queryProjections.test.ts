@@ -76,6 +76,10 @@ describe("query projections", () => {
         }),
       ],
       ["notes.list", await owner.query(api.notes.list, {})],
+      [
+        "threadNotes.list",
+        await owner.query(api.threadNotes.list, { threadId: owned.threadId }),
+      ],
     ];
 
     // The paginated queries need their own vacuity guard: the pagination
@@ -86,6 +90,18 @@ describe("query projections", () => {
     });
     expect(doneNotes.page.length).toBeGreaterThan(0);
     results.push(["notes.listDone", doneNotes]);
+
+    const doneThreadNote = await owner.mutation(api.threadNotes.create, {
+      threadId: owned.threadId,
+      body: "Filed on Thread",
+    });
+    await owner.mutation(api.threadNotes.markDone, { id: doneThreadNote });
+    const doneThreadNotes = await owner.query(api.threadNotes.listDone, {
+      threadId: owned.threadId,
+      paginationOpts: FIRST_PAGE,
+    });
+    expect(doneThreadNotes.page.length).toBeGreaterThan(0);
+    results.push(["threadNotes.listDone", doneThreadNotes]);
 
     const logs = await owner.query(api.activityLogs.listByThread, {
       threadId: owned.threadId,
@@ -172,6 +188,23 @@ describe("query projections", () => {
       expect(Object.keys(entry)).not.toContain("threadId");
       expect(Object.keys(entry)).not.toContain("_creationTime");
     }
+  });
+
+  it("keeps Thread Note ownership and parent linkage off the wire", async () => {
+    const [note] = await owner.query(api.threadNotes.list, {
+      threadId: owned.threadId,
+    });
+
+    expect(Object.keys(note!).sort()).toEqual([
+      "_creationTime",
+      "_id",
+      "body",
+      "createdAt",
+      "state",
+      "updatedAt",
+    ]);
+    expect(Object.keys(note!)).not.toContain("threadId");
+    expect(Object.keys(note!)).not.toContain("when");
   });
 
   it("keeps _creationTime on Notes, which the Inbox sorts by", async () => {

@@ -29,6 +29,7 @@ import type * as lib_validation from "../lib/validation.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as migrations from "../migrations.js";
 import type * as notes from "../notes.js";
+import type * as threadNotes from "../threadNotes.js";
 import type * as threads from "../threads.js";
 
 import type {
@@ -59,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   "lib/validators": typeof lib_validators;
   migrations: typeof migrations;
   notes: typeof notes;
+  threadNotes: typeof threadNotes;
   threads: typeof threads;
 }>;
 

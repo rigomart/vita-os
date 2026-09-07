@@ -53,16 +53,24 @@ A soft resurfacing point on a **Thread** that brings the situation back into awa
 _Avoid_: Due date, deadline, reminder.
 
 **Activity Log**:
-The continuity record for a **Thread**, mixing manual notes with meaningful actions, decisions, updates, and automatic changes.
+The automatic, read-only changelog of meaningful changes to a **Thread**.
 _Avoid_: Project log, activity feed, audit log, comments.
 
 **Activity Log Entry**:
-A user-facing note, decision, action, reference, or meaningful automatic update in an **Activity Log**.
+A meaningful automatic change recorded in an **Activity Log**.
 _Avoid_: Audit event, comment.
 
 **Note**:
-A body-only capture that is valid as soon as it is saved: information, a thought, or a standalone action. A standalone Note belongs to no **Area** or **Thread** and requires no classification.
+A body-only capture that is valid as soon as it is saved: information, a thought, or an action. A Note is either a **Standalone Note** or a **Thread Note**.
 _Avoid_: Task, item, todo, ticket.
+
+**Standalone Note**:
+A **Note** that belongs to no **Area** or **Thread** and requires no classification. It appears in the global **Notes** collection and may have an **Attention Date**.
+_Avoid_: Inbox item, task.
+
+**Thread Note**:
+A **Note** that belongs to exactly one **Thread**, appears only there, and has no **Attention Date**.
+_Avoid_: Manual Activity Log Entry, comment.
 
 **Open Note**:
 A **Note** that has not been marked Done.
@@ -90,16 +98,16 @@ _Avoid_: Task list, project board, backlog.
 - The app may suggest minimal **Starter Areas**, but users can edit, delete, and reorder **Areas**.
 - An **Area** has one **Area Icon**.
 - An **Area** **Condition** affects the Area's visual prominence, but it does not change a **Thread**'s derived attention state.
-- A **Thread** has zero or one **Summary**, zero or one **Next Move**, zero or more upcoming moves in its **Up Next** list, zero or one **Follow-up**, and one **Activity Log**.
+- A **Thread** has zero or one **Summary**, zero or one **Next Move**, zero or more upcoming moves in its **Up Next** list, zero or one **Follow-up**, zero or more **Thread Notes**, and one **Activity Log**.
 - While **Up Next** is non-empty, the **Thread** always has a **Next Move** — the **Next Move** is the front of the line.
 - **Up Next** moves are plain ordered text with no dates and no done states. A step that needs a date is a **Follow-up** or its own **Thread**.
 - A **Thread** is either **Open** or **Resolved**.
 - A **Thread** may move from one **Area** to another.
-- An **Activity Log** has zero or more **Activity Log Entries**.
-- A **Note** belongs to no **Area** and no **Thread**.
-- **Notes** are not created inside **Threads**.
+- An **Activity Log** has zero or more automatically recorded **Activity Log Entries**.
+- A **Standalone Note** belongs to no **Area** and no **Thread**.
+- A **Thread Note** belongs to exactly one **Thread** and never appears in the global **Notes** collection.
 - A visible **Note** is either **Open** or **Done**.
-- A **Note** has zero or one **Attention Date**.
+- A **Standalone Note** has zero or one **Attention Date**; a **Thread Note** has none because its **Thread** already has a **Follow-up**.
 - **Done Notes** remain available as collapsed **Notes** history in the MVP.
 - The **Notes** collection shows all visible **Notes**; **Attention Date** affects emphasis, not whether the **Note** exists in Notes.
 - The **Notes** collection orders **Open Notes** in one flat run: past attention date, today, no date, then coming up. Past and future Notes follow attention-date order; today and undated Notes are newest-first. Done Notes are separate, most-recently-completed first.
@@ -137,13 +145,16 @@ _Avoid_: Task list, project board, backlog.
 ## Note Handling
 
 - A **Note** can be captured and edited with just a body; it has no title or type selector.
-- A **Note** can have its **Attention Date** set, changed, or cleared.
+- A **Standalone Note** can have its **Attention Date** set, changed, or cleared.
+- A **Thread Note** appears only on its parent **Thread** and has no **Attention Date**.
 - Any **Note** can be marked **Done**, reopened, or permanently deleted from active Notes or completed history.
 - Creation time is preserved; last-edited time is retained going forward. An unknown historical edit time remains unknown.
-- Processing, conversion, and attaching an existing standalone **Note** to a **Thread** are outside this version.
+- Processing, conversion, and attaching an existing **Standalone Note** to a **Thread** are outside this version.
 
 ## Activity Rules
 
+- Capturing a **Thread Note** updates its **Thread**'s last-activity date without adding an **Activity Log Entry**.
+- Editing, completing, reopening, or deleting an existing **Thread Note** changes only the Note and does not update Thread activity.
 - Setting, changing, or intentionally clearing a saved **Next Move** adds an **Activity Log** entry.
 - Setting, changing, or intentionally clearing a saved **Follow-up** adds an **Activity Log** entry.
 - Completing a **Next Move** clears it and adds an **Activity Log** entry.
@@ -173,7 +184,7 @@ _Avoid_: Task list, project board, backlog.
 - "Project" was the old term for a multi-step effort with a defined end state. Resolved: **Thread** is canonical because these life situations may not have a clean execution plan or defined finish line.
 - "Task" and "Inbox" were the old capture vocabulary. Resolved by issue 313: **Note** and **Notes** are canonical; standalone Notes need no classification or processing.
 - "Action queue" was the old term for ordered tentative next steps. Resolved: **Next Move** stays singular and is the only move surfaced outside the **Thread**; **Up Next** holds a known sequence behind it with queue semantics — no done states, no dates — so a **Thread** stays directional without becoming a checklist (ADR 0010).
-- "Project log" was the old term for the timeline on a **Thread**. Resolved: **Activity Log** is canonical and should capture continuity, not every small edit.
+- "Project log" was the old term for the timeline on a **Thread**. Resolved: **Activity Log** is the automatic changelog; body-only manual continuity belongs in **Thread Notes**.
 - "Health status" was the old term for the manual judgment on an **Area**. Resolved: **Condition** is canonical.
 - "Definition of Done" belongs to project-management language and is not a **Thread** concept. Resolved: use **Summary** or the **Activity Log** when context is needed.
 - "Stale Thread" is not part of the MVP domain language. Resolved: use the plain **Open Thread** group until there is a stronger rule.

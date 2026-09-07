@@ -3,7 +3,6 @@ import type { Id } from "@convex/_generated/dataModel";
 import { api } from "@convex/_generated/api";
 import { usePaginatedQuery } from "convex/react";
 
-import { useCreateActivityLog } from "../use-create-thread-log";
 import { ActivityLog } from "./thread-log";
 
 interface ActivityLogSectionProps {
@@ -25,8 +24,6 @@ export function ActivityLogSection({
     { threadId },
     { initialNumItems: PAGE_SIZE },
   );
-  const createLog = useCreateActivityLog();
-
   return (
     <ActivityLog
       logs={status === "LoadingFirstPage" ? undefined : results}
@@ -34,9 +31,6 @@ export function ActivityLogSection({
       canLoadMore={status === "CanLoadMore"}
       isLoadingMore={status === "LoadingMore"}
       onLoadMore={() => loadMore(PAGE_SIZE)}
-      onAddNote={async (content) => {
-        await createLog({ threadId, content });
-      }}
     />
   );
 }

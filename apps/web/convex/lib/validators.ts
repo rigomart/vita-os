@@ -32,9 +32,10 @@ export const conditionValidator = v.union(
 );
 
 /**
- * Every kind of Activity Log entry the app writes — `note` by hand, the rest
- * automatically from a Thread change. Adding a member here is how a new kind
- * becomes writable; there are no variants kept "for later".
+ * Activity Log entry kinds. `note` remains temporarily as a storage
+ * compatibility value while the Thread Note migration is deployed; no public
+ * function writes it and list queries hide it. The other kinds are automatic
+ * Thread changes.
  */
 export const activityLogEntryTypeValidator = v.union(
   v.literal("note"),
@@ -142,6 +143,32 @@ export function projectNote(note: Doc<"tasks">): ProjectedNote {
     state: note.state,
     completedAt: note.completedAt,
     createdAt: note.createdAt,
+  };
+}
+
+export const projectedThreadNoteValidator = v.object({
+  _id: v.id("threadNotes"),
+  _creationTime: v.number(),
+  body: v.string(),
+  state: v.union(v.literal("open"), v.literal("done")),
+  completedAt: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});
+
+export type ProjectedThreadNote = Infer<typeof projectedThreadNoteValidator>;
+
+export function projectThreadNote(
+  note: Doc<"threadNotes">,
+): ProjectedThreadNote {
+  return {
+    _id: note._id,
+    _creationTime: note._creationTime,
+    body: note.body,
+    state: note.state,
+    completedAt: note.completedAt,
+    createdAt: note.createdAt,
+    updatedAt: note.updatedAt,
   };
 }
 

@@ -120,3 +120,35 @@ export const migrateLegacyActivityLogTypes = internalMutation({
     return { isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });
+
+/**
+ * Move hand-written Activity Log notes into the Thread Note table.
+ *
+ * The source row is deleted only after its replacement is inserted, so a
+ * failed page cannot lose prose. Re-running is safe because successful rows
+ * are no longer present in the source query. Creation time becomes both the
+ * Note's creation and initial edit time; every later edit advances updatedAt.
+ */
+export const migrateActivityLogNotesToThreadNotes = internalMutation({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const page = await ctx.db
+      .query("activityLogs")
+      .filter((q) => q.eq(q.field("type"), "note"))
+      .paginate(args.paginationOpts);
+
+    for (const entry of page.page) {
+      await ctx.db.insert("threadNotes", {
+        userId: entry.userId,
+        threadId: entry.threadId,
+        body: entry.content,
+        updatedAt: entry.createdAt,
+        state: "open",
+        createdAt: entry.createdAt,
+      });
+      await ctx.db.delete(entry._id);
+    }
+
+    return { isDone: page.isDone, continueCursor: page.continueCursor };
+  },
+});

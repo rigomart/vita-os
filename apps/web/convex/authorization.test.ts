@@ -283,29 +283,79 @@ describe("owned-document authorization", () => {
         ).page,
       ).toEqual([]);
     });
+  });
 
-    it("refuses writing to another user's Thread", async () => {
-      await expect(
-        intruder.mutation(api.activityLogs.create, {
+  describe("threadNotes", () => {
+    it("hides another user's Thread Notes from every read", async () => {
+      expect(
+        (
+          await owner.query(api.threadNotes.list, { threadId: owned.threadId })
+        ).map((note) => note._id),
+      ).toContain(owned.threadNoteId);
+      expect(
+        await intruder.query(api.threadNotes.list, {
           threadId: owned.threadId,
-          content: "Injected",
+        }),
+      ).toEqual([]);
+      expect(
+        await intruder.query(api.threadNotes.listDone, {
+          threadId: owned.threadId,
+          paginationOpts: FIRST_PAGE,
+        }),
+      ).toEqual({ page: [], isDone: true, continueCursor: "" });
+    });
+
+    it("refuses another user's Thread and Note in every mutation", async () => {
+      await expect(
+        intruder.mutation(api.threadNotes.create, {
+          threadId: owned.threadId,
+          body: "Injected",
         }),
       ).rejects.toThrow(/Thread not found/);
-
-      const logs = await owner.query(api.activityLogs.listByThread, {
-        threadId: owned.threadId,
-        paginationOpts: FIRST_PAGE,
-      });
-      expect(logs.page.map((log) => log._id)).toContain(owned.logId);
-      expect(logs.page.map((log) => log.content)).not.toContain("Injected");
+      await expect(
+        intruder.mutation(api.threadNotes.updateBody, {
+          id: owned.threadNoteId,
+          body: "Stolen",
+        }),
+      ).rejects.toThrow(/Thread note not found/);
+      await expect(
+        intruder.mutation(api.threadNotes.markDone, {
+          id: owned.threadNoteId,
+        }),
+      ).rejects.toThrow(/Thread note not found/);
+      await expect(
+        intruder.mutation(api.threadNotes.markOpen, {
+          id: owned.threadNoteId,
+        }),
+      ).rejects.toThrow(/Thread note not found/);
+      await expect(
+        intruder.mutation(api.threadNotes.remove, {
+          id: owned.threadNoteId,
+        }),
+      ).rejects.toThrow(/Thread note not found/);
     });
 
     it("refuses unauthenticated mutations", async () => {
       await expect(
-        t.mutation(api.activityLogs.create, {
+        t.mutation(api.threadNotes.create, {
           threadId: owned.threadId,
-          content: "Anon",
+          body: "Anon",
         }),
+      ).rejects.toThrow();
+      await expect(
+        t.mutation(api.threadNotes.updateBody, {
+          id: owned.threadNoteId,
+          body: "Anon",
+        }),
+      ).rejects.toThrow();
+      await expect(
+        t.mutation(api.threadNotes.markDone, { id: owned.threadNoteId }),
+      ).rejects.toThrow();
+      await expect(
+        t.mutation(api.threadNotes.markOpen, { id: owned.threadNoteId }),
+      ).rejects.toThrow();
+      await expect(
+        t.mutation(api.threadNotes.remove, { id: owned.threadNoteId }),
       ).rejects.toThrow();
     });
   });

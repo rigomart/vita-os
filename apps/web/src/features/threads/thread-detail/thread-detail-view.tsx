@@ -24,6 +24,7 @@ import { ThreadDetailSkeleton } from "@/features/threads/components/thread-detai
 import { ThreadHeaderSection } from "@/features/threads/components/thread-header-section";
 import { ThreadLifecycleActionsSection } from "@/features/threads/components/thread-lifecycle-actions-section";
 import { ActivityLogSection } from "@/features/threads/components/thread-log-section";
+import { ThreadNotesSection } from "@/features/threads/components/thread-notes-section";
 import { ThreadResolvedNote } from "@/features/threads/components/thread-resolved-note";
 import { ThreadStateChip } from "@/features/threads/components/thread-state-chip";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -248,9 +249,8 @@ interface ThreadDetailContentProps {
 }
 
 /**
- * A journal you write into. Identity and attention are stated in full at the
- * top — nothing about the Thread costs a click to read — and the Activity Log
- * takes the whole body beneath them, scrolling under a pinned composer.
+ * Identity and attention are stated in full at the top. Notes and the
+ * automatic Activity Log share the one scrolling continuity region beneath.
  */
 function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
   const isResolved = thread.state === "resolved";
@@ -281,10 +281,16 @@ function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
         <ThreadAttentionSection thread={thread} />
       )}
 
-      <ActivityLogSection
-        threadId={thread._id}
-        lastActivityAt={thread.lastActivityAt}
-      />
+      <div
+        data-slot="thread-continuity-scroll"
+        className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain pb-2"
+      >
+        <ThreadNotesSection threadId={thread._id} />
+        <ActivityLogSection
+          threadId={thread._id}
+          lastActivityAt={thread.lastActivityAt}
+        />
+      </div>
     </div>
   );
 }

@@ -8,7 +8,7 @@ import type { activityLogEntryTypeValidator } from "./validators";
  */
 export type ActivityLogEntryType = Infer<typeof activityLogEntryTypeValidator>;
 
-/** Every entry type written by a Thread change rather than by the user. */
+/** Every entry type the product writes to the read-only Activity Log. */
 export const AUTO_ACTIVITY_LOG_ENTRY_TYPES = [
   "area_move",
   "next_action_change",
