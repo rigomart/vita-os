@@ -4,24 +4,13 @@ import type { LucideIcon } from "lucide-react";
 import { Button } from "@vita-os/ui/components/button";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
-import {
-  ArrowRight,
-  Bell,
-  CircleCheck,
-  Loader2,
-  MapPin,
-  StickyNote,
-} from "lucide-react";
-import { useRef } from "react";
+import { ArrowRight, Bell, CircleCheck, Loader2, MapPin } from "lucide-react";
 
 import { getActivityLogEntryLabel } from "@/features/threads/activity-log-entry";
 import { cn } from "@/lib/utils";
 
-import { ActivityLogComposer } from "./thread-log-composer";
-
 interface ActivityLogProps {
   logs: ProjectedActivityLog[] | undefined;
-  onAddNote: (text: string) => Promise<void> | void;
   /** Drives the timeline's origin caption — when this Thread last moved. */
   lastActivityAt?: number;
   canLoadMore?: boolean;
@@ -51,77 +40,39 @@ const NODE_LEFT = "left-[11.5px]";
 const ENTRY_PAD = "pl-9";
 
 /**
- * The Thread's continuity record: a heading, the scrolling timeline, and the
- * composer pinned to the floor beneath it. The log owns the whole body of the
- * pane — it is the only region that scrolls.
+ * The Thread's continuity record, written entirely by the system: a rail from
+ * "now" back through every automatic entry.
  */
 export function ActivityLog({
   logs,
-  onAddNote,
   lastActivityAt,
   canLoadMore,
   isLoadingMore,
   onLoadMore,
 }: ActivityLogProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const automaticLogs = logs?.filter(isAutomaticActivityLogEntry);
 
   return (
-    <section
-      aria-label="Activity log"
-      className="flex min-h-0 flex-1 flex-col gap-2"
-    >
-      <div className="flex shrink-0 items-center gap-2">
-        <h2 className="font-heading text-sm font-semibold tracking-tight">
-          Activity log
-        </h2>
-        {logs && logs.length > 0 && (
-          <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
-            {logs.length}
-            {canLoadMore ? "+" : ""}
-          </span>
-        )}
-        <span aria-hidden className="ml-1 h-px flex-1 bg-border/50" />
+    <section aria-label="Activity log" className="flex flex-col gap-2">
+      <div className="relative pb-6">
+        <div
+          aria-hidden
+          className={cn(
+            "absolute top-1 bottom-0 w-px",
+            RAIL_LEFT,
+            "bg-gradient-to-b from-transparent via-border to-transparent",
+          )}
+        />
+
+        <TimelineOrigin lastActivityAt={lastActivityAt} />
+
+        <ActivityLogTimeline
+          logs={automaticLogs}
+          canLoadMore={canLoadMore}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={onLoadMore}
+        />
       </div>
-
-      {/* Only this region scrolls; the pane's header, attention bar and
-          composer stay put around it. The rail's `relative` box must live
-          inside the scroll container so the absolute rail spans the full entry
-          list instead of being clipped to the visible height. */}
-      <div
-        ref={scrollRef}
-        data-slot="activity-log-scroll"
-        className="min-h-0 flex-1 scroll-smooth overflow-y-auto overscroll-contain motion-reduce:scroll-auto"
-      >
-        <div className="relative pb-6">
-          {/* The continuous rail: fades in at the top (the "now" origin) and
-            fades out at the bottom past the oldest entry. */}
-          <div
-            aria-hidden
-            className={cn(
-              "absolute top-1 bottom-0 w-px",
-              RAIL_LEFT,
-              "bg-gradient-to-b from-transparent via-border to-transparent",
-            )}
-          />
-
-          <TimelineOrigin lastActivityAt={lastActivityAt} />
-
-          <ActivityLogTimeline
-            logs={logs}
-            canLoadMore={canLoadMore}
-            isLoadingMore={isLoadingMore}
-            onLoadMore={onLoadMore}
-          />
-        </div>
-      </div>
-
-      <ActivityLogComposer
-        onAddNote={onAddNote}
-        // A posted note lands at the top of a newest-first list, so bring the
-        // origin back into view instead of leaving it above the scroll. The
-        // easing is the container's `scroll-smooth`, so motion-reduce holds.
-        onPosted={() => scrollRef.current?.scrollTo?.({ top: 0 })}
-      />
     </section>
   );
 }
@@ -160,7 +111,7 @@ function ActivityLogTimeline({
   isLoadingMore,
   onLoadMore,
 }: {
-  logs: ActivityLogEntry[] | undefined;
+  logs: AutomaticActivityLogEntry[] | undefined;
   canLoadMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
@@ -178,8 +129,7 @@ function ActivityLogTimeline({
           )}
         />
         <p className="text-sm leading-snug text-muted-foreground">
-          Nothing on the timeline yet — the first note starts this Thread's
-          continuity record.
+          Automatic Thread changes will appear here as they happen.
         </p>
       </div>
     );
@@ -194,13 +144,9 @@ function ActivityLogTimeline({
           className="flex flex-col"
         >
           <DayMarker label={group.label} />
-          {group.logs.map((log) =>
-            isAutomaticActivityLogEntry(log) ? (
-              <AutomaticChange key={log._id} log={log} />
-            ) : (
-              <ManualNote key={log._id} log={log} />
-            ),
-          )}
+          {group.logs.map((log) => (
+            <AutomaticChange key={log._id} log={log} />
+          ))}
         </section>
       ))}
       {(canLoadMore || isLoadingMore) && (
@@ -241,36 +187,6 @@ function DayMarker({ label }: { label: string }) {
       <h3 className="text-2xs font-medium tracking-wide text-muted-foreground/80 uppercase">
         {label}
       </h3>
-    </div>
-  );
-}
-
-/** A note: gold filled node + raised card body. */
-function ManualNote({ log }: { log: ActivityLogEntry }) {
-  return (
-    <div className={cn("relative py-1.5", ENTRY_PAD)}>
-      <span
-        aria-hidden
-        className={cn(
-          "absolute top-4 size-2.5 -translate-x-1/2 rounded-full",
-          NODE_LEFT,
-          "border border-(--brand-gold)/60 bg-(--brand-gold)",
-          "ring-2 ring-background",
-        )}
-      />
-      <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <StickyNote
-            aria-hidden
-            className="size-3.5 shrink-0 text-(--brand-gold)"
-          />
-          <span className="sr-only">Note</span>
-          <ActivityLogTimestamp createdAt={log.createdAt} />
-        </div>
-        <p className="whitespace-pre-wrap text-sm leading-snug text-foreground">
-          {log.content}
-        </p>
-      </div>
     </div>
   );
 }
@@ -334,8 +250,8 @@ function ActivityLogSkeleton() {
   );
 }
 
-function groupLogsByDay(logs: ActivityLogEntry[]) {
-  const groups = new Map<string, ActivityLogEntry[]>();
+function groupLogsByDay(logs: AutomaticActivityLogEntry[]) {
+  const groups = new Map<string, AutomaticActivityLogEntry[]>();
 
   for (const log of [...logs].sort((a, b) => b.createdAt - a.createdAt)) {
     const key = format(new Date(log.createdAt), "yyyy-MM-dd");

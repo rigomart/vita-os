@@ -15,7 +15,7 @@ import {
   requireUpNextMoves,
   storedUpNext,
 } from "./lib/upNext";
-import { requireTitle } from "./lib/validation";
+import { requireNonBlankText } from "./lib/validation";
 import {
   projectArea,
   projectedAreaValidator,
@@ -110,7 +110,7 @@ export const create = mutation({
     const userId = await getAuthUserId(ctx);
     await requireOwned(ctx, "areas", { userId, id: args.areaId });
 
-    const title = requireTitle(args.title, "Thread title");
+    const title = requireNonBlankText(args.title, "Thread title");
 
     const nextOrder = await getNextOrder(ctx, "threads", userId);
     const slug = generateSlug(title);
@@ -154,7 +154,7 @@ export const update = mutation({
     const title =
       rest.title === undefined
         ? undefined
-        : requireTitle(rest.title, "Thread title");
+        : requireNonBlankText(rest.title, "Thread title");
 
     let newSlug: string | undefined;
     if (title !== undefined && title !== thread.title) {
@@ -201,7 +201,16 @@ export const remove = mutation({
         q.eq("userId", userId).eq("threadId", thread._id),
       )
       .collect();
-    await Promise.all(logs.map((log) => ctx.db.delete(log._id)));
+    const notes = await ctx.db
+      .query("threadNotes")
+      .withIndex("by_user_thread_state", (q) =>
+        q.eq("userId", userId).eq("threadId", thread._id),
+      )
+      .collect();
+    await Promise.all([
+      ...logs.map((log) => ctx.db.delete(log._id)),
+      ...notes.map((note) => ctx.db.delete(note._id)),
+    ]);
 
     await ctx.db.delete(thread._id);
   },

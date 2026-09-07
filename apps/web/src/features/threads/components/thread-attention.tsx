@@ -1,6 +1,11 @@
 import { Button } from "@vita-os/ui/components/button";
 import { Calendar } from "@vita-os/ui/components/calendar";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@vita-os/ui/components/collapsible";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -11,11 +16,12 @@ import {
   Bell,
   Check,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Plus,
   X,
 } from "lucide-react";
-import { useId, useState } from "react";
+import { useState } from "react";
 
 import { EditableField } from "@/components/ui/editable-field";
 import { whenTone } from "@/features/attention-list";
@@ -46,10 +52,10 @@ interface ThreadAttentionProps {
 }
 
 /**
- * The Thread's whole attention state, read without a single interaction: the
- * live Next Move in a gold-edged slot, and — hanging off one hairline that
- * leaves that slot — the line of moves already known to be waiting behind it,
- * with the Follow-up riding the same rule.
+ * The Thread's live attention: the Next Move in a gold-edged slot, and —
+ * hanging off one hairline that leaves that slot — the line of moves waiting
+ * behind it, with the Follow-up riding the same rule. The waiting line is
+ * folded by default; shut, its row still carries the count and the front move.
  *
  * `xl` is the Thread pane's breakpoint (THREAD_PANE_BREAKPOINT): from there up
  * the pane is a rail with room for hover affordances; below it the Thread is a
@@ -245,10 +251,11 @@ function Cascade({
   onClearFollowUp: () => void;
   isFollowUpPending?: boolean;
 }) {
-  const labelId = useId();
+  const [open, setOpen] = useState(false);
+  const front = moves[0];
 
   return (
-    <div className="flex flex-col">
+    <Collapsible open={open} onOpenChange={setOpen} className="flex flex-col">
       {/* The elbow drops out of the slot above and spurs right into the label.
           A fixed row height keeps the corner and the spine below it aligned. */}
       <div
@@ -261,18 +268,27 @@ function Cascade({
             SPINE_LEFT,
           )}
         />
-        <h2
-          id={labelId}
-          className="shrink-0 text-2xs font-medium tracking-wide text-muted-foreground/80 uppercase"
-        >
-          Up Next
-        </h2>
-        {moves.length > 0 && (
-          <span className="shrink-0 text-2xs font-medium tabular-nums text-muted-foreground/60">
-            {`· ${moves.length}`}
+        <CollapsibleTrigger className="group/up-next flex min-w-0 flex-1 items-center gap-2 text-left transition-colors hover:text-foreground motion-reduce:transition-none">
+          <ChevronRight
+            aria-hidden
+            className="size-3 shrink-0 text-muted-foreground/70 transition-transform group-data-panel-open/up-next:rotate-90 motion-reduce:transition-none"
+          />
+          <span className="shrink-0 text-2xs font-medium tracking-wide text-muted-foreground/80 uppercase">
+            Up Next
           </span>
-        )}
-        <span aria-hidden className="h-px flex-1 bg-border/50" />
+          {moves.length > 0 && (
+            <span className="shrink-0 text-2xs font-medium tabular-nums text-muted-foreground/60">
+              {moves.length}
+            </span>
+          )}
+          {front !== undefined && !open ? (
+            <span className="min-w-0 flex-1 truncate text-2xs text-muted-foreground/60">
+              {front}
+            </span>
+          ) : (
+            <span aria-hidden className="h-px flex-1 bg-border/50" />
+          )}
+        </CollapsibleTrigger>
         <FollowUpSatellite
           followUp={followUp}
           now={now}
@@ -282,34 +298,36 @@ function Cascade({
         />
       </div>
 
-      {moves.length > 0 && (
-        <ol aria-labelledby={labelId} className="relative flex flex-col">
-          {/* The spine: the elbow's line, continuing past every move still
-              waiting. It thins with depth and stops on the last tick. */}
-          <span
-            aria-hidden
-            className={cn(
-              // The negative top lifts it to the elbow's corner one row up.
-              "absolute -top-4 bottom-3 w-px bg-gradient-to-b from-border/70 via-border/45 to-border/15 xl:-top-3.5",
-              SPINE_LEFT,
-            )}
-          />
-          {moves.map((move, index) => (
-            <CascadeRow
-              key={`${index}-${move}`}
-              move={move}
-              index={index}
-              isLast={index === moves.length - 1}
-              onEdit={(text) => onReplace(withMoveAt(moves, index, text))}
-              onRemove={() => onReplace(withoutMove(moves, index))}
-              onShift={(to) => onReplace(withMoveShifted(moves, index, to))}
+      <CollapsibleContent>
+        {moves.length > 0 && (
+          <ol aria-label="Up Next" className="relative flex flex-col">
+            {/* The spine: the elbow's line, continuing past every move still
+                waiting. It thins with depth and stops on the last tick. */}
+            <span
+              aria-hidden
+              className={cn(
+                // The negative top lifts it to the elbow's corner one row up.
+                "absolute -top-4 bottom-3 w-px bg-gradient-to-b from-border/70 via-border/45 to-border/15 xl:-top-3.5",
+                SPINE_LEFT,
+              )}
             />
-          ))}
-        </ol>
-      )}
+            {moves.map((move, index) => (
+              <CascadeRow
+                key={`${index}-${move}`}
+                move={move}
+                index={index}
+                isLast={index === moves.length - 1}
+                onEdit={(text) => onReplace(withMoveAt(moves, index, text))}
+                onRemove={() => onReplace(withoutMove(moves, index))}
+                onShift={(to) => onReplace(withMoveShifted(moves, index, to))}
+              />
+            ))}
+          </ol>
+        )}
 
-      <AddMove onAdd={(text) => onReplace([...moves, text])} />
-    </div>
+        <AddMove onAdd={(text) => onReplace([...moves, text])} />
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

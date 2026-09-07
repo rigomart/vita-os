@@ -36,23 +36,23 @@ async function createNote(
 
 async function createLog(
   t: TestApi,
-  as: SignedIn,
   spec: { threadId: Id<"threads">; content: string; createdAt: number },
 ): Promise<Id<"activityLogs">> {
-  const id = await as.mutation(api.activityLogs.create, {
-    threadId: spec.threadId,
-    content: spec.content,
-  });
-  // Back-dating the entry has to back-date the Thread's denormalized stamp
-  // too, or last-activity assertions would read the real clock.
-  await t.run(async (ctx) => {
-    await ctx.db.patch("activityLogs", id, { createdAt: spec.createdAt });
+  return t.run(async (ctx) => {
+    const thread = await ctx.db.get("threads", spec.threadId);
+    const id = await ctx.db.insert("activityLogs", {
+      userId: thread!.userId,
+      threadId: spec.threadId,
+      type: "next_action_change",
+      content: spec.content,
+      createdAt: spec.createdAt,
+    });
     await ctx.db.patch("threads", spec.threadId, {
       lastActivityAt: spec.createdAt,
       lastActivityContent: spec.content,
     });
+    return id;
   });
-  return id;
 }
 
 describe("bounded queries", () => {
@@ -217,7 +217,7 @@ describe("bounded queries", () => {
         title: "Other",
         areaId: fixture.areaId,
       });
-      const elsewhere = await createLog(t, owner, {
+      const elsewhere = await createLog(t, {
         threadId: otherThread.id,
         content: "elsewhere",
         createdAt: 45,
@@ -226,7 +226,7 @@ describe("bounded queries", () => {
       const mine: Array<Id<"activityLogs">> = [];
       for (const createdAt of [10, 20, 30, 40, 50]) {
         mine.push(
-          await createLog(t, owner, {
+          await createLog(t, {
             threadId: fixture.threadId,
             content: `entry-${createdAt}`,
             createdAt,
@@ -253,11 +253,10 @@ describe("bounded queries", () => {
         expect(pages).toBeLessThan(10);
       }
 
-      // The seeded Thread already carries a note and the auto entry from its
-      // next move, both stamped with the clock and so newer than the entries
-      // created here.
+      // The seeded Thread already carries the automatic entry from its next
+      // move, stamped with the clock and newer than the entries created here.
       expect(seen.slice(-5)).toEqual([...mine].reverse());
-      expect(seen).toHaveLength(7);
+      expect(seen).toHaveLength(6);
       expect(seen).not.toContain(elsewhere);
     });
 
@@ -285,18 +284,18 @@ describe("bounded queries", () => {
   });
 
   describe("threads.remove", () => {
-    it("deletes the Thread's Activity Log and nothing else", async () => {
+    it("deletes the Thread's Activity Log and Notes and nothing else", async () => {
       const fixture = await seed(owner);
       const survivor = await owner.mutation(api.threads.create, {
         title: "Survivor",
         areaId: fixture.areaId,
       });
-      await createLog(t, owner, {
+      await createLog(t, {
         threadId: fixture.threadId,
         content: "doomed note",
         createdAt: 10,
       });
-      const survivorLog = await createLog(t, owner, {
+      const survivorLog = await createLog(t, {
         threadId: survivor.id,
         content: "kept",
         createdAt: 20,
@@ -313,6 +312,15 @@ describe("bounded queries", () => {
       );
       expect(remaining.map((log) => log._id)).toContain(survivorLog);
       expect(remaining.map((log) => log._id)).toContain(theirs.logId);
+      const remainingNotes = await t.run((ctx) =>
+        ctx.db.query("threadNotes").collect(),
+      );
+      expect(
+        remainingNotes.every((note) => note.threadId !== fixture.threadId),
+      ).toBe(true);
+      expect(remainingNotes.map((note) => note._id)).toContain(
+        theirs.threadNoteId,
+      );
     });
   });
 
@@ -390,16 +398,16 @@ describe("bounded queries", () => {
       expect(thread?.lastActivityContent).toBeUndefined();
     });
 
-    it("is stamped by activityLogs.create", async () => {
+    it("is stamped by Thread Note capture", async () => {
       const fixture = await seed(owner);
 
-      await owner.mutation(api.activityLogs.create, {
+      await owner.mutation(api.threadNotes.create, {
         threadId: fixture.threadId,
-        content: "Called the clinic back",
+        body: "Called the clinic back",
       });
 
       const thread = await threadDoc(fixture.threadId);
-      expect(thread?.lastActivityContent).toBe("Called the clinic back");
+      expect(thread?.lastActivityContent).toBeUndefined();
       expect(thread?.lastActivityAt).toEqual(expect.any(Number));
     });
 

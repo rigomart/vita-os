@@ -23,7 +23,8 @@ export function AttentionCollapsed({
   return (
     <Collapsible className="mt-4">
       <CollapsibleTrigger className="group flex w-full items-center gap-2 py-1 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
-        <ChevronRight className="size-3.5 transition-transform group-data-[state=open]:rotate-90" />
+        {/* Base UI marks an open trigger with `data-panel-open`, not a state. */}
+        <ChevronRight className="size-3.5 transition-transform group-data-panel-open:rotate-90" />
         {title}
         <span className="tabular-nums opacity-60">{count}</span>
         <div className="ml-1 h-px flex-1 bg-border/40" />

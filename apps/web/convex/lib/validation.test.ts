@@ -1,28 +1,30 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  requireTitle,
+  requireNonBlankText,
   RESERVED_AREA_SLUGS,
   validateAreaName,
 } from "./validation";
 
-describe("requireTitle", () => {
+describe("requireNonBlankText", () => {
   it("returns the trimmed value", () => {
-    expect(requireTitle("  Book checkup  ", "Thread title")).toBe(
+    expect(requireNonBlankText("  Book checkup  ", "Thread title")).toBe(
       "Book checkup",
     );
   });
 
   it("leaves an already-trimmed value alone", () => {
-    expect(requireTitle("Book checkup", "Thread title")).toBe("Book checkup");
+    expect(requireNonBlankText("Book checkup", "Thread title")).toBe(
+      "Book checkup",
+    );
   });
 
   it("keeps the whitespace inside", () => {
-    expect(requireTitle(" a  b ", "Thread title")).toBe("a  b");
+    expect(requireNonBlankText(" a  b ", "Thread title")).toBe("a  b");
   });
 
   it("rejects an empty value, naming the field", () => {
-    expect(() => requireTitle("", "Note text")).toThrow(
+    expect(() => requireNonBlankText("", "Note text")).toThrow(
       "Note text cannot be empty",
     );
   });
@@ -30,7 +32,7 @@ describe("requireTitle", () => {
   it.each(["   ", "\t", "\n", " \t\n "])(
     "rejects whitespace-only %j",
     (value) => {
-      expect(() => requireTitle(value, "Area name")).toThrow(
+      expect(() => requireNonBlankText(value, "Area name")).toThrow(
         "Area name cannot be empty",
       );
     },

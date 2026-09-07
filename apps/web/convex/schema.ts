@@ -64,6 +64,23 @@ export default defineSchema({
     .index("by_user_inbox", ["userId", "state", "createdAt"])
     .index("by_user_completed", ["userId", "state", "completedAt"]),
 
+  threadNotes: defineTable({
+    userId: v.string(),
+    threadId: v.id("threads"),
+    body: v.string(),
+    updatedAt: v.number(),
+    state: v.union(v.literal("open"), v.literal("done")),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_user_thread_state", ["userId", "threadId", "state", "createdAt"])
+    .index("by_user_thread_completed", [
+      "userId",
+      "threadId",
+      "state",
+      "completedAt",
+    ]),
+
   activityLogs: defineTable({
     userId: v.string(),
     threadId: v.id("threads"),

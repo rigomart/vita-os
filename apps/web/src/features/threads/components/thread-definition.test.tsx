@@ -1,58 +1,26 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ThreadDefinition } from "./thread-definition";
-
-const LINE_HEIGHT = 20;
-const CLAMP_LINES = 6;
-
-const lineCount = (element: HTMLElement) =>
-  (element.textContent ?? "").split("\n").length;
-
-/**
- * jsdom has no layout, so every height is 0. Stand in for one: a clamped
- * element is six lines tall, an unclamped one is as tall as its text.
- */
-function stubTextLayout() {
-  Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
-    configurable: true,
-    get(this: HTMLElement) {
-      return lineCount(this) * LINE_HEIGHT;
-    },
-  });
-  Object.defineProperty(HTMLElement.prototype, "clientHeight", {
-    configurable: true,
-    get(this: HTMLElement) {
-      const lines = this.className.includes("line-clamp-6")
-        ? Math.min(lineCount(this), CLAMP_LINES)
-        : lineCount(this);
-      return lines * LINE_HEIGHT;
-    },
-  });
-}
 
 const longSummary = Array.from(
   { length: 12 },
   (_, index) => `Line ${index + 1}`,
 ).join("\n");
 
-afterEach(() => {
-  Reflect.deleteProperty(HTMLElement.prototype, "scrollHeight");
-  Reflect.deleteProperty(HTMLElement.prototype, "clientHeight");
-});
-
 describe("ThreadDefinition", () => {
-  it("reveals a compact Summary editor from an optional text action", async () => {
+  it("reveals a compact Summary editor from a plain text action", async () => {
     const user = userEvent.setup();
 
     render(<ThreadDefinition summary="" onSave={vi.fn()} />);
 
     expect(screen.queryByText("Summary")).not.toBeInTheDocument();
     const addSummary = screen.getByRole("button", { name: "Add a summary…" });
-    expect(addSummary).toHaveClass("w-fit", "bg-secondary");
+    expect(addSummary).toHaveClass("w-fit");
+    expect(addSummary).not.toHaveClass("bg-secondary");
     expect(addSummary.closest('[data-slot="thread-summary"]')).toHaveClass(
-      "min-h-9",
+      "min-h-7",
     );
 
     await user.click(addSummary);
@@ -80,46 +48,35 @@ describe("ThreadDefinition", () => {
     );
   });
 
-  it("clamps a long Summary and leaves a short one alone", () => {
-    stubTextLayout();
-
+  it("holds every Summary to a single truncated line", () => {
     const { rerender } = render(
       <ThreadDefinition summary={longSummary} onSave={vi.fn()} />,
     );
 
     expect(screen.getByRole("button", { name: /Line 1/ })).toHaveClass(
-      "line-clamp-6!",
-      "whitespace-pre-wrap",
+      "block",
+      "truncate",
     );
-    expect(screen.getByRole("button", { name: "Show more" })).toBeVisible();
-
-    rerender(<ThreadDefinition summary="Brief context" onSave={vi.fn()} />);
-
     expect(
       screen.queryByRole("button", { name: "Show more" }),
     ).not.toBeInTheDocument();
+
+    rerender(<ThreadDefinition summary="Brief context" onSave={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Brief context" })).toHaveClass(
+      "truncate",
+    );
   });
 
-  it("expands and re-collapses a long Summary without opening the editor", async () => {
-    stubTextLayout();
+  it("opens the whole Summary in the editor from its one line", async () => {
     const user = userEvent.setup();
 
     render(<ThreadDefinition summary={longSummary} onSave={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: "Show more" }));
+    await user.click(screen.getByRole("button", { name: /Line 1/ }));
 
-    const expanded = screen.getByRole("button", { name: /Line 1/ });
-    expect(expanded).not.toHaveClass("line-clamp-6!");
-    expect(expanded).toHaveTextContent("Line 12");
-    expect(
-      screen.queryByRole("textbox", { name: "Thread summary" }),
-    ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Show less" }));
-
-    expect(screen.getByRole("button", { name: /Line 1/ })).toHaveClass(
-      "line-clamp-6!",
+    expect(screen.getByRole("textbox", { name: "Thread summary" })).toHaveValue(
+      longSummary,
     );
-    expect(screen.getByRole("button", { name: "Show more" })).toBeVisible();
   });
 });

@@ -19,11 +19,11 @@ import { useMemo } from "react";
 import { AreaConditionDot } from "@/features/areas/components/area-condition-dot";
 import { ThreadAreaSectionSection } from "@/features/threads/components/thread-area-section-section";
 import { ThreadAttentionSection } from "@/features/threads/components/thread-attention-section";
+import { ThreadBodyTabs } from "@/features/threads/components/thread-body-tabs";
 import { ThreadDefinitionSection } from "@/features/threads/components/thread-definition-section";
 import { ThreadDetailSkeleton } from "@/features/threads/components/thread-detail-skeleton";
 import { ThreadHeaderSection } from "@/features/threads/components/thread-header-section";
 import { ThreadLifecycleActionsSection } from "@/features/threads/components/thread-lifecycle-actions-section";
-import { ActivityLogSection } from "@/features/threads/components/thread-log-section";
 import { ThreadResolvedNote } from "@/features/threads/components/thread-resolved-note";
 import { ThreadStateChip } from "@/features/threads/components/thread-state-chip";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -248,9 +248,8 @@ interface ThreadDetailContentProps {
 }
 
 /**
- * A journal you write into. Identity and attention are stated in full at the
- * top — nothing about the Thread costs a click to read — and the Activity Log
- * takes the whole body beneath them, scrolling under a pinned composer.
+ * Identity and attention are stated at the top and stay put; beneath them the
+ * body is a pair of tabs, so only one of the two ever occupies the pane.
  */
 function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
   const isResolved = thread.state === "resolved";
@@ -281,7 +280,7 @@ function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
         <ThreadAttentionSection thread={thread} />
       )}
 
-      <ActivityLogSection
+      <ThreadBodyTabs
         threadId={thread._id}
         lastActivityAt={thread.lastActivityAt}
       />

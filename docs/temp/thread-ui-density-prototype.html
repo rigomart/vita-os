@@ -1,0 +1,2158 @@
+<title>Thread Pane Density Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Raleway:wght@500;600;700&display=swap"
+/>
+<style>
+  :root {
+    --brand-gold: oklch(0.914 0.111 90.3);
+    --brand-gold-strong: oklch(0.748 0.148 69.2);
+    --surface-1: oklch(0.982 0.005 68);
+    --surface-2: oklch(0.997 0.002 66);
+    --surface-3: oklch(0.947 0.014 82);
+    --fg: oklch(0.24 0.016 58);
+    --muted-fg: oklch(0.5 0.026 62);
+    --border: oklch(0.85 0.022 72);
+    --secondary: oklch(0.93 0.025 85);
+    --healthy: oklch(0.52 0.15 145);
+    --danger: oklch(0.55 0.19 27);
+    --shadow:
+      0 1px 2px oklch(0.24 0.016 58 / 0.06),
+      0 12px 32px -12px oklch(0.24 0.016 58 / 0.18);
+    --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    --font-heading: "Raleway", ui-sans-serif, system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --brand-gold: oklch(0.914 0.111 90.3);
+      --brand-gold-strong: oklch(0.86 0.12 84);
+      --surface-1: oklch(0.18 0.01 60);
+      --surface-2: oklch(0.225 0.012 62);
+      --surface-3: oklch(0.285 0.018 66);
+      --fg: oklch(0.94 0.018 86);
+      --muted-fg: oklch(0.72 0.028 76);
+      --border: oklch(0.9 0.02 80 / 14%);
+      --secondary: oklch(0.31 0.026 66);
+      --healthy: oklch(0.72 0.16 145);
+      --danger: oklch(0.7 0.16 25);
+      --shadow:
+        0 1px 2px oklch(0 0 0 / 0.4), 0 16px 40px -16px oklch(0 0 0 / 0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --brand-gold: oklch(0.914 0.111 90.3);
+    --brand-gold-strong: oklch(0.86 0.12 84);
+    --surface-1: oklch(0.18 0.01 60);
+    --surface-2: oklch(0.225 0.012 62);
+    --surface-3: oklch(0.285 0.018 66);
+    --fg: oklch(0.94 0.018 86);
+    --muted-fg: oklch(0.72 0.028 76);
+    --border: oklch(0.9 0.02 80 / 14%);
+    --secondary: oklch(0.31 0.026 66);
+    --healthy: oklch(0.72 0.16 145);
+    --danger: oklch(0.7 0.16 25);
+    --shadow:
+      0 1px 2px oklch(0 0 0 / 0.4), 0 16px 40px -16px oklch(0 0 0 / 0.6);
+  }
+
+  body {
+    background: var(--surface-1);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+    text-wrap: balance;
+    margin: 0;
+  }
+  p {
+    margin: 0;
+  }
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--brand-gold-strong);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* ---------- studio chrome ---------- */
+  .chrome {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 2rem clamp(1rem, 3vw, 2.5rem) 1.25rem;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  .chrome h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .chrome .sub {
+    color: var(--muted-fg);
+    max-width: 62ch;
+    margin-top: 0.4rem;
+  }
+  .chrome-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    background: var(--surface-2);
+  }
+  .toggle:hover {
+    background: var(--surface-3);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    padding: 0 clamp(1rem, 3vw, 2.5rem) 1.5rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    font-size: 0.8125rem;
+    color: var(--muted-fg);
+  }
+  .legend b {
+    color: var(--fg);
+    font-weight: 600;
+  }
+
+  /* ---------- the rail of panes ---------- */
+  .rail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(1.25rem, 2vw, 2rem);
+    padding: 0 clamp(1rem, 3vw, 2.5rem) 3rem;
+    overflow-x: auto;
+    align-items: start;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  .round {
+    flex: 1 0 100%;
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding-top: 0.5rem;
+  }
+  .round:not(:first-child) {
+    padding-top: 1.5rem;
+  }
+  .round h2 {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+  .round p {
+    color: var(--muted-fg);
+    font-size: 0.8125rem;
+  }
+  .round .rule {
+    flex: 1;
+    height: 1px;
+    background: color-mix(in oklab, var(--border) 80%, transparent);
+  }
+  .column {
+    flex: 0 0 30rem;
+    max-width: 30rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  @media (max-width: 640px) {
+    .column {
+      flex-basis: min(30rem, 88vw);
+    }
+  }
+
+  .caption .tag {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--brand-gold-strong);
+  }
+  .caption h2 {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    margin-top: 0.15rem;
+  }
+  .caption p {
+    color: var(--muted-fg);
+    font-size: 0.8125rem;
+    margin-top: 0.3rem;
+  }
+
+  /* ---------- the pane itself ---------- */
+  .pane {
+    position: relative;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    height: 41rem;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 1.5rem 1.25rem;
+    overflow: hidden;
+  }
+  .controls {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    background: var(--secondary);
+    border-radius: 999px;
+    padding: 0.15rem;
+  }
+  .controls button {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    color: var(--muted-fg);
+  }
+  .controls button:hover {
+    color: var(--fg);
+    background: var(--surface-2);
+  }
+
+  .scroll {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+  .scroll::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+  }
+
+  /* identity */
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-right: 5.5rem;
+    color: var(--muted-fg);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--healthy);
+    flex: none;
+  }
+  .eyebrow .sep {
+    opacity: 0.5;
+  }
+  .title {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin-top: 0.5rem;
+  }
+  .title.sm {
+    font-size: 1.0625rem;
+  }
+  .summary {
+    color: var(--muted-fg);
+    margin-top: 0.25rem;
+    max-width: 60ch;
+  }
+  .summary.clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .summary.clamp1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .linkish {
+    color: var(--muted-fg);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .linkish:hover {
+    color: var(--fg);
+  }
+
+  /* the one gold slot */
+  .slot {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--brand-gold);
+    border-radius: 10px;
+    background: color-mix(in oklab, var(--surface-3) 55%, transparent);
+    padding: 0.5rem 0.6rem;
+    min-height: 2.75rem;
+  }
+  .slot.thin {
+    min-height: 2.35rem;
+    border-radius: 8px;
+    background: transparent;
+  }
+  .slot .arrow {
+    color: var(--muted-fg);
+    flex: none;
+    opacity: 0.75;
+  }
+  .slot .move {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .check {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex: none;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--healthy) 45%, transparent);
+    color: var(--healthy);
+    display: grid;
+    place-items: center;
+  }
+  .check:hover {
+    background: color-mix(in oklab, var(--healthy) 12%, transparent);
+  }
+  .ghost-x {
+    color: color-mix(in oklab, var(--muted-fg) 65%, transparent);
+    width: 1.5rem;
+    height: 1.5rem;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    flex: none;
+  }
+  .ghost-x:hover {
+    color: var(--danger);
+  }
+
+  /* disclosure row - the single repeated object */
+  .disclosure {
+    border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  }
+  .disclosure:first-of-type {
+    border-top: 0;
+  }
+  .disclosure > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 0.1rem;
+    min-height: 2.5rem;
+  }
+  .disclosure > summary::-webkit-details-marker {
+    display: none;
+  }
+  .disclosure > summary:hover {
+    color: var(--fg);
+  }
+  .chev {
+    flex: none;
+    color: var(--muted-fg);
+    transition: transform 150ms ease;
+  }
+  .disclosure[open] > summary .chev {
+    transform: rotate(90deg);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .chev {
+      transition: none;
+    }
+  }
+  .d-label {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+  .d-count {
+    color: var(--muted-fg);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    flex: none;
+  }
+  .d-peek {
+    flex: 1;
+    min-width: 0;
+    color: var(--muted-fg);
+    font-size: 0.8125rem;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .disclosure[open] > summary .d-peek {
+    opacity: 0;
+  }
+  .d-body {
+    padding: 0.15rem 0 0.9rem;
+  }
+
+  /* up next: ticks off a single spine */
+  .upnext {
+    position: relative;
+    margin: 0;
+    padding: 0 0 0 1.35rem;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+  }
+  .upnext::before {
+    content: "";
+    position: absolute;
+    left: 0.42rem;
+    top: 0.35rem;
+    bottom: 1.1rem;
+    width: 1px;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--border) 90%, transparent),
+      color-mix(in oklab, var(--border) 25%, transparent)
+    );
+  }
+  .upnext li {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 1.9rem;
+  }
+  .upnext li::before {
+    content: "";
+    position: absolute;
+    left: -0.93rem;
+    top: 50%;
+    width: 9px;
+    height: 1px;
+    background: color-mix(in oklab, var(--border) 80%, transparent);
+  }
+  .upnext li:first-child::before {
+    background: color-mix(in oklab, var(--brand-gold) 80%, transparent);
+  }
+  .upnext li:first-child .txt {
+    color: var(--fg);
+  }
+  .upnext .txt {
+    flex: 1;
+    min-width: 0;
+    color: var(--muted-fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .upnext li:nth-child(n + 3) .txt {
+    color: color-mix(in oklab, var(--muted-fg) 78%, transparent);
+  }
+  .upnext .row-x {
+    opacity: 0;
+    color: var(--muted-fg);
+    flex: none;
+  }
+  .upnext li:hover .row-x,
+  .upnext li:focus-within .row-x {
+    opacity: 1;
+  }
+  .add-move {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--muted-fg);
+    font-size: 0.8125rem;
+    padding: 0.35rem 0 0.1rem 1.35rem;
+  }
+  .add-move:hover {
+    color: var(--fg);
+  }
+
+  /* follow-up chip */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted-fg);
+    background: var(--surface-2);
+    flex: none;
+  }
+  .chip.state {
+    border-color: transparent;
+    background: var(--secondary);
+    color: var(--fg);
+  }
+  .chip.gold {
+    color: var(--brand-gold-strong);
+    border-color: color-mix(
+      in oklab,
+      var(--brand-gold-strong) 35%,
+      transparent
+    );
+  }
+  button.chip:hover {
+    border-color: color-mix(in oklab, var(--fg) 25%, transparent);
+  }
+
+  /* notes */
+  .composer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    border: 1px dashed color-mix(in oklab, var(--border) 90%, transparent);
+    border-radius: 10px;
+    padding: 0.55rem 0.7rem;
+    color: var(--muted-fg);
+    background: transparent;
+    text-align: left;
+  }
+  .composer:hover {
+    border-style: solid;
+    color: var(--fg);
+    background: color-mix(in oklab, var(--surface-3) 40%, transparent);
+  }
+  .composer.live {
+    border-style: solid;
+    border-color: var(--border);
+    background: var(--surface-1);
+  }
+  .note {
+    display: flex;
+    gap: 0.55rem;
+    padding: 0.5rem 0;
+    border-top: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+  }
+  .note:first-of-type {
+    border-top: 0;
+  }
+  .note .box {
+    width: 1.05rem;
+    height: 1.05rem;
+    margin-top: 0.15rem;
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+  }
+  .note .box:hover {
+    border-color: var(--healthy);
+    background: color-mix(in oklab, var(--healthy) 10%, transparent);
+  }
+  .note .body {
+    min-width: 0;
+  }
+  .note .body p {
+    line-height: 1.45;
+  }
+  .note time {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.75rem;
+    color: color-mix(in oklab, var(--muted-fg) 85%, transparent);
+    font-variant-numeric: tabular-nums;
+  }
+  .note.done .body p {
+    color: var(--muted-fg);
+    text-decoration: line-through;
+    text-decoration-color: color-mix(
+      in oklab,
+      var(--muted-fg) 45%,
+      transparent
+    );
+  }
+  .note.done .box {
+    background: color-mix(in oklab, var(--healthy) 18%, transparent);
+    border-color: color-mix(in oklab, var(--healthy) 45%, transparent);
+    color: var(--healthy);
+    display: grid;
+    place-items: center;
+  }
+
+  /* activity */
+  .log {
+    position: relative;
+    margin: 0;
+    padding: 0 0 0 1.6rem;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .log::before {
+    content: "";
+    position: absolute;
+    left: 0.31rem;
+    top: 0.4rem;
+    bottom: 0.4rem;
+    width: 1px;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--border) 85%, transparent),
+      transparent
+    );
+  }
+  .log li {
+    position: relative;
+    font-size: 0.8125rem;
+    color: var(--muted-fg);
+  }
+  .log li::before {
+    content: "";
+    position: absolute;
+    left: -1.29rem;
+    top: 0.42rem;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+  }
+  .log li:first-child::before {
+    border-color: var(--brand-gold-strong);
+    background: var(--brand-gold);
+  }
+  .log strong {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .log time {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.8;
+  }
+
+  /* ---------- ways of making Activity a tab ---------- */
+
+  /* C2: segmented pair */
+  .seg {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    background: color-mix(in oklab, var(--surface-3) 70%, transparent);
+    border-radius: 999px;
+  }
+  .seg button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--muted-fg);
+  }
+  .seg button:hover {
+    color: var(--fg);
+  }
+  .seg button[aria-selected="true"] {
+    background: var(--surface-2);
+    color: var(--fg);
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--fg) 10%, transparent);
+  }
+  .seg .n {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
+    font-weight: 500;
+  }
+
+  /* C3: folder tabs */
+  .ftabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .ftabs button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    margin-bottom: -1px;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    font-family: var(--font-heading);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--muted-fg);
+  }
+  .ftabs button:hover {
+    color: var(--fg);
+  }
+  .ftabs button[aria-selected="true"] {
+    background: var(--surface-2);
+    border-color: var(--border);
+    color: var(--fg);
+  }
+  .ftabs .corner {
+    margin-left: auto;
+  }
+  .ftabs .n {
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    opacity: 0.75;
+  }
+
+  /* C4: dock at the floor */
+  .pane.docked {
+    padding-bottom: 3.25rem;
+  }
+  .dock {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-2);
+    border-top: 1px solid var(--border);
+    max-height: 2.9rem;
+    transition: max-height 220ms cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: 0 -8px 24px -18px
+      color-mix(in oklab, var(--fg) 60%, transparent);
+  }
+  .dock.open {
+    max-height: 21rem;
+    box-shadow: 0 -14px 32px -20px
+      color-mix(in oklab, var(--fg) 70%, transparent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dock {
+      transition: none;
+    }
+  }
+  .dock-handle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.7rem 1.5rem;
+    flex: none;
+    text-align: left;
+  }
+  .dock-handle:hover {
+    background: color-mix(in oklab, var(--surface-3) 45%, transparent);
+  }
+  .dock-handle .d-label {
+    flex: none;
+  }
+  .dock-handle .grip {
+    width: 1.75rem;
+    height: 3px;
+    border-radius: 999px;
+    background: var(--border);
+    flex: none;
+  }
+  .dock .chev {
+    transform: rotate(-90deg);
+  }
+  .dock.open .chev {
+    transform: rotate(90deg);
+  }
+  .dock-body {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.25rem 1.5rem 1.25rem;
+  }
+
+  .stack {
+    display: flex;
+    flex-direction: column;
+  }
+  .gap-3 {
+    gap: 0.75rem;
+  }
+  .gap-4 {
+    gap: 1rem;
+  }
+  .gap-5 {
+    gap: 1.25rem;
+  }
+  .head {
+    flex: none;
+  }
+  .hint {
+    font-size: 0.75rem;
+    color: var(--muted-fg);
+    padding-top: 0.35rem;
+  }
+  .icon {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex: none;
+  }
+  .icon.sm {
+    width: 12px;
+    height: 12px;
+  }
+</style>
+
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+  <defs>
+    <g id="i-arrow"><path d="M4 10h12M11 5l5 5-5 5" /></g>
+    <g id="i-check"><path d="M4 10.5l4 4 8-9" /></g>
+    <g id="i-x"><path d="M5 5l10 10M15 5L5 15" /></g>
+    <g id="i-chev"><path d="M7.5 4l6 6-6 6" /></g>
+    <g id="i-plus"><path d="M10 4v12M4 10h12" /></g>
+    <g id="i-bell">
+      <path
+        d="M10 3a4.5 4.5 0 00-4.5 4.5c0 4-1.5 5-1.5 5h12s-1.5-1-1.5-5A4.5 4.5 0 0010 3zM8.5 15.5a1.7 1.7 0 003 0"
+      />
+    </g>
+    <g id="i-more">
+      <circle cx="5" cy="10" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="10" cy="10" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="10" r="1.2" fill="currentColor" stroke="none" />
+    </g>
+  </defs>
+</svg>
+
+<header class="chrome">
+  <div>
+    <h1>Thread pane density study</h1>
+    <p class="sub">
+      Six framings of the same Thread, at the pane's real width. Same content,
+      same interactions &mdash; what changes is what leads and what stays
+      folded. Round one asks what the pane should lead with; round two takes the
+      notes-first answer and tries three ways of parking the Activity log.
+      Everything is live: open the chevrons, switch the tabs, pull up the dock.
+    </p>
+  </div>
+  <div class="chrome-actions">
+    <button class="toggle" id="theme" type="button" aria-pressed="false">
+      <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+        <circle cx="10" cy="10" r="4" />
+        <path
+          d="M10 1v2M10 17v2M3.6 3.6l1.4 1.4M15 15l1.4 1.4M1 10h2M17 10h2M3.6 16.4L5 15M15 5l1.4-1.4"
+        />
+      </svg>
+      <span id="theme-label">Dark</span>
+    </button>
+  </div>
+</header>
+
+<p class="legend">
+  <span
+    ><b>Shared across all three:</b> one line system per pane instead of three,
+    count badges become plain numerals, section hairlines dropped, Activity
+    always folded.</span
+  >
+</p>
+
+<main class="rail">
+  <div class="round">
+    <h2>Round one</h2>
+    <p>What leads the pane</p>
+    <span class="rule"></span>
+  </div>
+
+  <!-- ============ A: attention block whole ============ -->
+  <section class="column">
+    <div class="caption">
+      <span class="tag">Framing A</span>
+      <h2>Attention block whole</h2>
+      <p>
+        Next Move, the waiting line and the follow-up read as one unit at the
+        top. Identity compresses to an eyebrow; Notes stay open beneath,
+        Activity folds away.
+      </p>
+    </div>
+    <div class="pane">
+      <div class="controls">
+        <button type="button" aria-label="Thread actions">
+          <svg class="icon" viewBox="0 0 20 20"><use href="#i-more" /></svg>
+        </button>
+        <button type="button" aria-label="Close thread">
+          <svg class="icon" viewBox="0 0 20 20"><use href="#i-x" /></svg>
+        </button>
+      </div>
+
+      <div class="head stack gap-4">
+        <div>
+          <div class="eyebrow">
+            <span class="dot"></span> Home <span class="sep">&middot;</span>
+            <span class="chip state">Active</span>
+          </div>
+          <div class="title">Kitchen permit resubmission</div>
+          <p class="summary clamp">
+            The city bounced the first application over the missing structural
+            drawing for the load-bearing wall. Everything else in the packet was
+            accepted.
+          </p>
+        </div>
+
+        <div class="stack gap-3">
+          <div class="slot">
+            <svg class="icon arrow" viewBox="0 0 20 20">
+              <use href="#i-arrow" />
+            </svg>
+            <span class="move">Email Dana the stamped structural drawing</span>
+            <button class="check" type="button" aria-label="Complete next move">
+              <svg class="icon sm" viewBox="0 0 20 20">
+                <use href="#i-check" />
+              </svg>
+            </button>
+            <button class="ghost-x" type="button" aria-label="Clear next move">
+              <svg class="icon sm" viewBox="0 0 20 20"><use href="#i-x" /></svg>
+            </button>
+          </div>
+
+          <details class="disclosure">
+            <summary>
+              <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+                <use href="#i-chev" />
+              </svg>
+              <span class="d-label">Up Next</span>
+              <span class="d-count">3</span>
+              <span class="d-peek">Resubmit the packet online</span>
+            </summary>
+            <div class="d-body">
+              <ol class="upnext">
+                <li>
+                  <span class="txt">Resubmit the packet online</span
+                  ><button class="row-x" type="button" aria-label="Remove move">
+                    <svg class="icon sm" viewBox="0 0 20 20">
+                      <use href="#i-x" />
+                    </svg>
+                  </button>
+                </li>
+                <li>
+                  <span class="txt">Book the framing inspection window</span
+                  ><button class="row-x" type="button" aria-label="Remove move">
+                    <svg class="icon sm" viewBox="0 0 20 20">
+                      <use href="#i-x" />
+                    </svg>
+                  </button>
+                </li>
+                <li>
+                  <span class="txt"
+                    >Send the approved permit to the contractor</span
+                  ><button class="row-x" type="button" aria-label="Remove move">
+                    <svg class="icon sm" viewBox="0 0 20 20">
+                      <use href="#i-x" />
+                    </svg>
+                  </button>
+                </li>
+              </ol>
+              <button class="add-move" type="button">
+                <svg class="icon sm" viewBox="0 0 20 20">
+                  <use href="#i-plus" />
+                </svg>
+                Add a move
+              </button>
+            </div>
+          </details>
+
+          <div style="display: flex; align-items: center; gap: 0.5rem">
+            <button class="chip gold" type="button">
+              <svg class="icon sm" viewBox="0 0 20 20">
+                <use href="#i-bell" />
+              </svg>
+              Follow up Fri 12 Sep
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="scroll" style="margin-top: 1.1rem">
+        <details class="disclosure" open>
+          <summary>
+            <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="#i-chev" />
+            </svg>
+            <span class="d-label">Notes</span>
+            <span class="d-count">3</span>
+          </summary>
+          <div class="d-body stack gap-3">
+            <button class="composer" type="button">
+              <svg class="icon sm" viewBox="0 0 20 20">
+                <use href="#i-plus" />
+              </svg>
+              Write a note&hellip;
+            </button>
+            <div>
+              <div class="note">
+                <button
+                  class="box"
+                  type="button"
+                  aria-label="Complete note"
+                ></button>
+                <div class="body">
+                  <p>
+                    Dana's engineer stamps drawings on Tuesdays only &mdash;
+                    anything sent after Monday evening waits a week.
+                  </p>
+                  <time>2 Sep</time>
+                </div>
+              </div>
+              <div class="note">
+                <button
+                  class="box"
+                  type="button"
+                  aria-label="Complete note"
+                ></button>
+                <div class="body">
+                  <p>
+                    Permit fee already paid on the first submission;
+                    resubmission is free within 90 days.
+                  </p>
+                  <time>28 Aug</time>
+                </div>
+              </div>
+              <div class="note done">
+                <button class="box" type="button" aria-label="Reopen note">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-check" />
+                  </svg>
+                </button>
+                <div class="body">
+                  <p>
+                    Confirm the wall is load-bearing before paying for drawings.
+                  </p>
+                  <time>21 Aug</time>
+                </div>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="disclosure">
+          <summary>
+            <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="#i-chev" />
+            </svg>
+            <span class="d-label">Activity</span>
+            <span class="d-peek">Last moved 2 days ago</span>
+          </summary>
+          <div class="d-body">
+            <ol class="log">
+              <li>
+                <strong>Next move set</strong> &mdash; Email Dana the stamped
+                structural drawing &middot; <time>2 Sep</time>
+              </li>
+              <li>
+                <strong>Follow-up set</strong> for Fri 12 Sep &middot;
+                <time>2 Sep</time>
+              </li>
+              <li>
+                <strong>Next move completed</strong> &mdash; Call the permit
+                office about the rejection &middot; <time>29 Aug</time>
+              </li>
+              <li>
+                <strong>Moved</strong> to Home &middot; <time>21 Aug</time>
+              </li>
+            </ol>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ B: next move only ============ -->
+  <section class="column">
+    <div class="caption">
+      <span class="tag">Framing B</span>
+      <h2>Next Move only</h2>
+      <p>
+        One lit object in the pane. The summary clamps to a line, and everything
+        else &mdash; the waiting line included &mdash; becomes a folded row of
+        the same shape, so the slot has nothing to compete with.
+      </p>
+    </div>
+    <div class="pane">
+      <div class="controls">
+        <button type="button" aria-label="Thread actions">
+          <svg class="icon" viewBox="0 0 20 20"><use href="#i-more" /></svg>
+        </button>
+        <button type="button" aria-label="Close thread">
+          <svg class="icon" viewBox="0 0 20 20"><use href="#i-x" /></svg>
+        </button>
+      </div>
+
+      <div class="head stack gap-5">
+        <div>
+          <div class="eyebrow">
+            <span class="dot"></span> Home
+            <span class="sep">&middot;</span> Active
+          </div>
+          <div class="title sm">Kitchen permit resubmission</div>
+          <p class="summary clamp1">
+            The city bounced the first application over the missing structural
+            drawing.
+          </p>
+        </div>
+
+        <div class="slot">
+          <svg class="icon arrow" viewBox="0 0 20 20">
+            <use href="#i-arrow" />
+          </svg>
+          <span class="move">Email Dana the stamped structural drawing</span>
+          <button class="check" type="button" aria-label="Complete next move">
+            <svg class="icon sm" viewBox="0 0 20 20">
+              <use href="#i-check" />
+            </svg>
+          </button>
+          <button class="ghost-x" type="button" aria-label="Clear next move">
+            <svg class="icon sm" viewBox="0 0 20 20"><use href="#i-x" /></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="scroll" style="margin-top: 1.1rem">
+        <details class="disclosure">
+          <summary>
+            <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="#i-chev" />
+            </svg>
+            <span class="d-label">Up Next</span>
+            <span class="d-count">3</span>
+            <span class="d-peek">Resubmit the packet online</span>
+          </summary>
+          <div class="d-body">
+            <ol class="upnext">
+              <li>
+                <span class="txt">Resubmit the packet online</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+              <li>
+                <span class="txt">Book the framing inspection window</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+              <li>
+                <span class="txt"
+                  >Send the approved permit to the contractor</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+            </ol>
+            <button class="add-move" type="button">
+              <svg class="icon sm" viewBox="0 0 20 20">
+                <use href="#i-plus" />
+              </svg>
+              Add a move
+            </button>
+          </div>
+        </details>
+
+        <details class="disclosure">
+          <summary>
+            <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="#i-chev" />
+            </svg>
+            <span class="d-label">Follow-up</span>
+            <span class="d-peek">Fri 12 Sep &middot; in 6 days</span>
+          </summary>
+          <div class="d-body">
+            <div style="display: flex; gap: 0.4rem; flex-wrap: wrap">
+              <button class="chip" type="button">Tomorrow</button>
+              <button class="chip" type="button">Next week</button>
+              <button class="chip gold" type="button">
+                <svg class="icon sm" viewBox="0 0 20 20">
+                  <use href="#i-bell" />
+                </svg>
+                Fri 12 Sep
+              </button>
+              <button class="chip" type="button">Clear</button>
+            </div>
+          </div>
+        </details>
+
+        <details class="disclosure">
+          <summary>
+            <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="#i-chev" />
+            </svg>
+            <span class="d-label">Notes</span>
+            <span class="d-count">3</span>
+            <span class="d-peek">Dana's engineer stamps on Tuesdays</span>
+          </summary>
+          <div class="d-body stack gap-3">
+            <button class="composer" type="button">
+              <svg class="icon sm" viewBox="0 0 20 20">
+                <use href="#i-plus" />
+              </svg>
+              Write a note&hellip;
+            </button>
+            <div>
+              <div class="note">
+                <button
+                  class="box"
+                  type="button"
+                  aria-label="Complete note"
+                ></button>
+                <div class="body">
+                  <p>
+                    Dana's engineer stamps drawings on Tuesdays only &mdash;
+                    anything sent after Monday evening waits a week.
+                  </p>
+                  <time>2 Sep</time>
+                </div>
+              </div>
+              <div class="note">
+                <button
+                  class="box"
+                  type="button"
+                  aria-label="Complete note"
+                ></button>
+                <div class="body">
+                  <p>
+                    Permit fee already paid on the first submission;
+                    resubmission is free within 90 days.
+                  </p>
+                  <time>28 Aug</time>
+                </div>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="disclosure">
+          <summary>
+            <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="#i-chev" />
+            </svg>
+            <span class="d-label">Activity</span>
+            <span class="d-peek">Last moved 2 days ago</span>
+          </summary>
+          <div class="d-body">
+            <ol class="log">
+              <li>
+                <strong>Next move set</strong> &mdash; Email Dana the stamped
+                structural drawing &middot; <time>2 Sep</time>
+              </li>
+              <li>
+                <strong>Follow-up set</strong> for Fri 12 Sep &middot;
+                <time>2 Sep</time>
+              </li>
+              <li>
+                <strong>Next move completed</strong> &mdash; Call the permit
+                office about the rejection &middot; <time>29 Aug</time>
+              </li>
+              <li>
+                <strong>Moved</strong> to Home &middot; <time>21 Aug</time>
+              </li>
+            </ol>
+          </div>
+        </details>
+
+        <p class="hint">
+          At rest this pane is one lit slot and four quiet lines.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ C: notes as working surface ============ -->
+  <section class="column">
+    <div class="caption">
+      <span class="tag">Framing C</span>
+      <h2>Notes as the working surface</h2>
+      <p>
+        Attention collapses into one strip you can act on without opening
+        anything: the move, its tick, the follow-up, and a <b>+3</b> that
+        unfolds the waiting line. The rest of the pane is a place to write.
+      </p>
+    </div>
+    <div class="pane">
+      <div class="controls">
+        <button type="button" aria-label="Thread actions">
+          <svg class="icon" viewBox="0 0 20 20"><use href="#i-more" /></svg>
+        </button>
+        <button type="button" aria-label="Close thread">
+          <svg class="icon" viewBox="0 0 20 20"><use href="#i-x" /></svg>
+        </button>
+      </div>
+
+      <div class="head stack gap-3">
+        <div>
+          <div class="eyebrow">
+            <span class="dot"></span> Home
+            <span class="sep">&middot;</span> Active
+          </div>
+          <div class="title sm">Kitchen permit resubmission</div>
+          <button class="linkish" type="button" style="margin-top: 0.3rem">
+            Summary
+          </button>
+        </div>
+
+        <details class="disclosure" style="border: 0">
+          <summary style="padding: 0">
+            <div class="slot thin" style="flex: 1">
+              <svg class="icon arrow" viewBox="0 0 20 20">
+                <use href="#i-arrow" />
+              </svg>
+              <span class="move">Email Dana the stamped drawing</span>
+              <span class="d-count">+3</span>
+              <span class="chip gold"
+                ><svg class="icon sm" viewBox="0 0 20 20">
+                  <use href="#i-bell" />
+                </svg>
+                Fri</span
+              >
+              <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+                <use href="#i-chev" />
+              </svg>
+            </div>
+          </summary>
+          <div class="d-body" style="padding-top: 0.55rem">
+            <ol class="upnext">
+              <li>
+                <span class="txt">Resubmit the packet online</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+              <li>
+                <span class="txt">Book the framing inspection window</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+              <li>
+                <span class="txt"
+                  >Send the approved permit to the contractor</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+            </ol>
+            <button class="add-move" type="button">
+              <svg class="icon sm" viewBox="0 0 20 20">
+                <use href="#i-plus" />
+              </svg>
+              Add a move
+            </button>
+          </div>
+        </details>
+
+        <div class="composer live" style="margin-top: 0.35rem">
+          <span style="color: var(--muted-fg)">Write a note&hellip;</span>
+        </div>
+      </div>
+
+      <div class="scroll" style="margin-top: 0.85rem">
+        <div class="note">
+          <button class="box" type="button" aria-label="Complete note"></button>
+          <div class="body">
+            <p>
+              Dana's engineer stamps drawings on Tuesdays only &mdash; anything
+              sent after Monday evening waits a week.
+            </p>
+            <time>2 Sep</time>
+          </div>
+        </div>
+        <div class="note">
+          <button class="box" type="button" aria-label="Complete note"></button>
+          <div class="body">
+            <p>
+              Permit fee already paid on the first submission; resubmission is
+              free within 90 days. After that the whole fee is charged again.
+            </p>
+            <time>28 Aug</time>
+          </div>
+        </div>
+        <div class="note">
+          <button class="box" type="button" aria-label="Complete note"></button>
+          <div class="body">
+            <p>
+              The inspector prefers the framing window booked at least ten days
+              out &mdash; the Monday slots go first.
+            </p>
+            <time>26 Aug</time>
+          </div>
+        </div>
+        <div class="note done">
+          <button class="box" type="button" aria-label="Reopen note">
+            <svg class="icon sm" viewBox="0 0 20 20">
+              <use href="#i-check" />
+            </svg>
+          </button>
+          <div class="body">
+            <p>Confirm the wall is load-bearing before paying for drawings.</p>
+            <time>21 Aug</time>
+          </div>
+        </div>
+
+        <details class="disclosure" style="margin-top: 0.5rem">
+          <summary>
+            <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+              <use href="#i-chev" />
+            </svg>
+            <span class="d-label">Activity</span>
+            <span class="d-peek">Last moved 2 days ago</span>
+          </summary>
+          <div class="d-body">
+            <ol class="log">
+              <li>
+                <strong>Next move set</strong> &mdash; Email Dana the stamped
+                structural drawing &middot; <time>2 Sep</time>
+              </li>
+              <li>
+                <strong>Follow-up set</strong> for Fri 12 Sep &middot;
+                <time>2 Sep</time>
+              </li>
+              <li>
+                <strong>Next move completed</strong> &mdash; Call the permit
+                office about the rejection &middot; <time>29 Aug</time>
+              </li>
+              <li>
+                <strong>Moved</strong> to Home &middot; <time>21 Aug</time>
+              </li>
+            </ol>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <div class="round">
+    <h2>Round two</h2>
+    <p>
+      Inside framing C &mdash; notes are the surface, Activity is somewhere you
+      visit
+    </p>
+    <span class="rule"></span>
+  </div>
+
+  <!-- ============ C2: segmented pair ============ -->
+  <section class="column">
+    <div class="caption">
+      <span class="tag">C2</span>
+      <h2>Segmented pair</h2>
+      <p>
+        One small control under the attention strip: <b>Notes</b> is where you
+        land, <b>Activity</b> is one tap away and never occupies the pane at the
+        same time. The count lives on the tab, so it works as a status read too.
+      </p>
+    </div>
+    <div class="pane">
+      <div class="controls">
+        <button type="button" aria-label="Thread actions">
+          <svg class="icon" viewBox="0 0 20 20"><use href="#i-more" /></svg>
+        </button>
+        <button type="button" aria-label="Close thread">
+          <svg class="icon" viewBox="0 0 20 20"><use href="#i-x" /></svg>
+        </button>
+      </div>
+
+      <div class="head stack gap-3">
+        <div>
+          <div class="eyebrow">
+            <span class="dot"></span> Home
+            <span class="sep">&middot;</span> Active
+          </div>
+          <div class="title sm">Kitchen permit resubmission</div>
+          <button class="linkish" type="button" style="margin-top: 0.3rem">
+            Summary
+          </button>
+        </div>
+
+        <details class="disclosure" style="border: 0">
+          <summary style="padding: 0">
+            <div class="slot thin" style="flex: 1">
+              <svg class="icon arrow" viewBox="0 0 20 20">
+                <use href="#i-arrow" />
+              </svg>
+              <span class="move">Email Dana the stamped drawing</span>
+              <span class="d-count">+3</span>
+              <span class="chip gold"
+                ><svg class="icon sm" viewBox="0 0 20 20">
+                  <use href="#i-bell" />
+                </svg>
+                Fri</span
+              >
+              <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+                <use href="#i-chev" />
+              </svg>
+            </div>
+          </summary>
+          <div class="d-body" style="padding-top: 0.55rem">
+            <ol class="upnext">
+              <li>
+                <span class="txt">Resubmit the packet online</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+              <li>
+                <span class="txt">Book the framing inspection window</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+              <li>
+                <span class="txt"
+                  >Send the approved permit to the contractor</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+            </ol>
+            <button class="add-move" type="button">
+              <svg class="icon sm" viewBox="0 0 20 20">
+                <use href="#i-plus" />
+              </svg>
+              Add a move
+            </button>
+          </div>
+        </details>
+
+        <div
+          class="seg"
+          role="tablist"
+          aria-label="Thread body"
+          data-tabs
+          style="margin-top: 0.4rem; align-self: flex-start"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected="true"
+            data-target="c2-notes"
+          >
+            Notes <span class="n">3</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-target="c2-activity"
+          >
+            Activity
+          </button>
+        </div>
+      </div>
+
+      <div class="scroll" style="margin-top: 0.85rem">
+        <div id="c2-notes" role="tabpanel" class="stack gap-3">
+          <div class="composer live">
+            <span style="color: var(--muted-fg)">Write a note&hellip;</span>
+          </div>
+          <div>
+            <div class="note">
+              <button
+                class="box"
+                type="button"
+                aria-label="Complete note"
+              ></button>
+              <div class="body">
+                <p>
+                  Dana's engineer stamps drawings on Tuesdays only &mdash;
+                  anything sent after Monday evening waits a week.
+                </p>
+                <time>2 Sep</time>
+              </div>
+            </div>
+            <div class="note">
+              <button
+                class="box"
+                type="button"
+                aria-label="Complete note"
+              ></button>
+              <div class="body">
+                <p>
+                  Permit fee already paid on the first submission; resubmission
+                  is free within 90 days. After that the whole fee is charged
+                  again.
+                </p>
+                <time>28 Aug</time>
+              </div>
+            </div>
+            <div class="note">
+              <button
+                class="box"
+                type="button"
+                aria-label="Complete note"
+              ></button>
+              <div class="body">
+                <p>
+                  The inspector prefers the framing window booked at least ten
+                  days out &mdash; the Monday slots go first.
+                </p>
+                <time>26 Aug</time>
+              </div>
+            </div>
+            <div class="note done">
+              <button class="box" type="button" aria-label="Reopen note">
+                <svg class="icon sm" viewBox="0 0 20 20">
+                  <use href="#i-check" />
+                </svg>
+              </button>
+              <div class="body">
+                <p>
+                  Confirm the wall is load-bearing before paying for drawings.
+                </p>
+                <time>21 Aug</time>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="c2-activity" role="tabpanel" hidden>
+          <ol class="log">
+            <li>
+              <strong>Next move set</strong> &mdash; Email Dana the stamped
+              structural drawing &middot; <time>2 Sep</time>
+            </li>
+            <li>
+              <strong>Follow-up set</strong> for Fri 12 Sep &middot;
+              <time>2 Sep</time>
+            </li>
+            <li>
+              <strong>Next move completed</strong> &mdash; Call the permit
+              office about the rejection &middot; <time>29 Aug</time>
+            </li>
+            <li>
+              <strong>Up Next reordered</strong> &mdash; Resubmit the packet
+              online moved to the front &middot; <time>27 Aug</time>
+            </li>
+            <li>
+              <strong>Next move set</strong> &mdash; Call the permit office
+              about the rejection &middot; <time>24 Aug</time>
+            </li>
+            <li><strong>Moved</strong> to Home &middot; <time>21 Aug</time></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ C3: folder tab in the corner ============ -->
+  <section class="column">
+    <div class="caption">
+      <span class="tag">C3</span>
+      <h2>Folder tab in the corner</h2>
+      <p>
+        Notes aren't a tab &mdash; they're the open folder. <b>Activity</b> is a
+        single tab parked in the far corner, the way a divider sticks out of a
+        file. Nothing about the resting pane suggests you're meant to switch.
+      </p>
+    </div>
+    <div class="pane">
+      <div class="controls">
+        <button type="button" aria-label="Thread actions">
+          <svg class="icon" viewBox="0 0 20 20"><use href="#i-more" /></svg>
+        </button>
+        <button type="button" aria-label="Close thread">
+          <svg class="icon" viewBox="0 0 20 20"><use href="#i-x" /></svg>
+        </button>
+      </div>
+
+      <div class="head stack gap-3">
+        <div>
+          <div class="eyebrow">
+            <span class="dot"></span> Home
+            <span class="sep">&middot;</span> Active
+          </div>
+          <div class="title sm">Kitchen permit resubmission</div>
+          <button class="linkish" type="button" style="margin-top: 0.3rem">
+            Summary
+          </button>
+        </div>
+
+        <details class="disclosure" style="border: 0">
+          <summary style="padding: 0">
+            <div class="slot thin" style="flex: 1">
+              <svg class="icon arrow" viewBox="0 0 20 20">
+                <use href="#i-arrow" />
+              </svg>
+              <span class="move">Email Dana the stamped drawing</span>
+              <span class="d-count">+3</span>
+              <span class="chip gold"
+                ><svg class="icon sm" viewBox="0 0 20 20">
+                  <use href="#i-bell" />
+                </svg>
+                Fri</span
+              >
+              <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+                <use href="#i-chev" />
+              </svg>
+            </div>
+          </summary>
+          <div class="d-body" style="padding-top: 0.55rem">
+            <ol class="upnext">
+              <li>
+                <span class="txt">Resubmit the packet online</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+              <li>
+                <span class="txt">Book the framing inspection window</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+              <li>
+                <span class="txt"
+                  >Send the approved permit to the contractor</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+            </ol>
+            <button class="add-move" type="button">
+              <svg class="icon sm" viewBox="0 0 20 20">
+                <use href="#i-plus" />
+              </svg>
+              Add a move
+            </button>
+          </div>
+        </details>
+
+        <div
+          class="ftabs"
+          role="tablist"
+          aria-label="Thread body"
+          data-tabs
+          style="margin-top: 0.5rem"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected="true"
+            data-target="c3-notes"
+          >
+            Notes <span class="n">3</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-target="c3-activity"
+            class="corner"
+          >
+            Activity
+          </button>
+        </div>
+      </div>
+
+      <div class="scroll" style="margin-top: 0.75rem">
+        <div id="c3-notes" role="tabpanel" class="stack gap-3">
+          <div class="composer live">
+            <span style="color: var(--muted-fg)">Write a note&hellip;</span>
+          </div>
+          <div>
+            <div class="note">
+              <button
+                class="box"
+                type="button"
+                aria-label="Complete note"
+              ></button>
+              <div class="body">
+                <p>
+                  Dana's engineer stamps drawings on Tuesdays only &mdash;
+                  anything sent after Monday evening waits a week.
+                </p>
+                <time>2 Sep</time>
+              </div>
+            </div>
+            <div class="note">
+              <button
+                class="box"
+                type="button"
+                aria-label="Complete note"
+              ></button>
+              <div class="body">
+                <p>
+                  Permit fee already paid on the first submission; resubmission
+                  is free within 90 days. After that the whole fee is charged
+                  again.
+                </p>
+                <time>28 Aug</time>
+              </div>
+            </div>
+            <div class="note">
+              <button
+                class="box"
+                type="button"
+                aria-label="Complete note"
+              ></button>
+              <div class="body">
+                <p>
+                  The inspector prefers the framing window booked at least ten
+                  days out &mdash; the Monday slots go first.
+                </p>
+                <time>26 Aug</time>
+              </div>
+            </div>
+            <div class="note done">
+              <button class="box" type="button" aria-label="Reopen note">
+                <svg class="icon sm" viewBox="0 0 20 20">
+                  <use href="#i-check" />
+                </svg>
+              </button>
+              <div class="body">
+                <p>
+                  Confirm the wall is load-bearing before paying for drawings.
+                </p>
+                <time>21 Aug</time>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="c3-activity" role="tabpanel" hidden>
+          <ol class="log">
+            <li>
+              <strong>Next move set</strong> &mdash; Email Dana the stamped
+              structural drawing &middot; <time>2 Sep</time>
+            </li>
+            <li>
+              <strong>Follow-up set</strong> for Fri 12 Sep &middot;
+              <time>2 Sep</time>
+            </li>
+            <li>
+              <strong>Next move completed</strong> &mdash; Call the permit
+              office about the rejection &middot; <time>29 Aug</time>
+            </li>
+            <li>
+              <strong>Up Next reordered</strong> &mdash; Resubmit the packet
+              online moved to the front &middot; <time>27 Aug</time>
+            </li>
+            <li>
+              <strong>Next move set</strong> &mdash; Call the permit office
+              about the rejection &middot; <time>24 Aug</time>
+            </li>
+            <li><strong>Moved</strong> to Home &middot; <time>21 Aug</time></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ C4: dock at the floor ============ -->
+  <section class="column">
+    <div class="caption">
+      <span class="tag">C4</span>
+      <h2>Dock at the floor</h2>
+      <p>
+        No tab bar at all &mdash; notes own the full pane. Activity is a strip
+        along the bottom edge that already answers the usual question (<b
+          >last moved 2 days ago</b
+        >) and slides up over the notes when you want the rest.
+      </p>
+    </div>
+    <div class="pane docked">
+      <div class="controls">
+        <button type="button" aria-label="Thread actions">
+          <svg class="icon" viewBox="0 0 20 20"><use href="#i-more" /></svg>
+        </button>
+        <button type="button" aria-label="Close thread">
+          <svg class="icon" viewBox="0 0 20 20"><use href="#i-x" /></svg>
+        </button>
+      </div>
+
+      <div class="head stack gap-3">
+        <div>
+          <div class="eyebrow">
+            <span class="dot"></span> Home
+            <span class="sep">&middot;</span> Active
+          </div>
+          <div class="title sm">Kitchen permit resubmission</div>
+          <button class="linkish" type="button" style="margin-top: 0.3rem">
+            Summary
+          </button>
+        </div>
+
+        <details class="disclosure" style="border: 0">
+          <summary style="padding: 0">
+            <div class="slot thin" style="flex: 1">
+              <svg class="icon arrow" viewBox="0 0 20 20">
+                <use href="#i-arrow" />
+              </svg>
+              <span class="move">Email Dana the stamped drawing</span>
+              <span class="d-count">+3</span>
+              <span class="chip gold"
+                ><svg class="icon sm" viewBox="0 0 20 20">
+                  <use href="#i-bell" />
+                </svg>
+                Fri</span
+              >
+              <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+                <use href="#i-chev" />
+              </svg>
+            </div>
+          </summary>
+          <div class="d-body" style="padding-top: 0.55rem">
+            <ol class="upnext">
+              <li>
+                <span class="txt">Resubmit the packet online</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+              <li>
+                <span class="txt">Book the framing inspection window</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+              <li>
+                <span class="txt"
+                  >Send the approved permit to the contractor</span
+                ><button class="row-x" type="button" aria-label="Remove move">
+                  <svg class="icon sm" viewBox="0 0 20 20">
+                    <use href="#i-x" />
+                  </svg>
+                </button>
+              </li>
+            </ol>
+            <button class="add-move" type="button">
+              <svg class="icon sm" viewBox="0 0 20 20">
+                <use href="#i-plus" />
+              </svg>
+              Add a move
+            </button>
+          </div>
+        </details>
+
+        <div class="composer live" style="margin-top: 0.35rem">
+          <span style="color: var(--muted-fg)">Write a note&hellip;</span>
+        </div>
+      </div>
+
+      <div class="scroll" style="margin-top: 0.85rem">
+        <div class="note">
+          <button class="box" type="button" aria-label="Complete note"></button>
+          <div class="body">
+            <p>
+              Dana's engineer stamps drawings on Tuesdays only &mdash; anything
+              sent after Monday evening waits a week.
+            </p>
+            <time>2 Sep</time>
+          </div>
+        </div>
+        <div class="note">
+          <button class="box" type="button" aria-label="Complete note"></button>
+          <div class="body">
+            <p>
+              Permit fee already paid on the first submission; resubmission is
+              free within 90 days. After that the whole fee is charged again.
+            </p>
+            <time>28 Aug</time>
+          </div>
+        </div>
+        <div class="note">
+          <button class="box" type="button" aria-label="Complete note"></button>
+          <div class="body">
+            <p>
+              The inspector prefers the framing window booked at least ten days
+              out &mdash; the Monday slots go first.
+            </p>
+            <time>26 Aug</time>
+          </div>
+        </div>
+        <div class="note">
+          <button class="box" type="button" aria-label="Complete note"></button>
+          <div class="body">
+            <p>
+              Ask Dana whether the stamp covers the beam spec too, or only the
+              wall section.
+            </p>
+            <time>25 Aug</time>
+          </div>
+        </div>
+        <div class="note done">
+          <button class="box" type="button" aria-label="Reopen note">
+            <svg class="icon sm" viewBox="0 0 20 20">
+              <use href="#i-check" />
+            </svg>
+          </button>
+          <div class="body">
+            <p>Confirm the wall is load-bearing before paying for drawings.</p>
+            <time>21 Aug</time>
+          </div>
+        </div>
+      </div>
+
+      <div class="dock" data-dock>
+        <button class="dock-handle" type="button" aria-expanded="false">
+          <svg class="icon chev" viewBox="0 0 20 20" aria-hidden="true">
+            <use href="#i-chev" />
+          </svg>
+          <span class="d-label">Activity</span>
+          <span class="d-peek">Last moved 2 days ago</span>
+          <span class="grip" aria-hidden="true"></span>
+        </button>
+        <div class="dock-body">
+          <ol class="log">
+            <li>
+              <strong>Next move set</strong> &mdash; Email Dana the stamped
+              structural drawing &middot; <time>2 Sep</time>
+            </li>
+            <li>
+              <strong>Follow-up set</strong> for Fri 12 Sep &middot;
+              <time>2 Sep</time>
+            </li>
+            <li>
+              <strong>Next move completed</strong> &mdash; Call the permit
+              office about the rejection &middot; <time>29 Aug</time>
+            </li>
+            <li>
+              <strong>Up Next reordered</strong> &mdash; Resubmit the packet
+              online moved to the front &middot; <time>27 Aug</time>
+            </li>
+            <li>
+              <strong>Next move set</strong> &mdash; Call the permit office
+              about the rejection &middot; <time>24 Aug</time>
+            </li>
+            <li><strong>Moved</strong> to Home &middot; <time>21 Aug</time></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById("theme");
+    var label = document.getElementById("theme-label");
+    function isDark() {
+      var stamped = root.getAttribute("data-theme");
+      if (stamped) return stamped === "dark";
+      return !!(
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches
+      );
+    }
+    function sync() {
+      var dark = isDark();
+      label.textContent = dark ? "Light" : "Dark";
+      btn.setAttribute("aria-pressed", String(dark));
+    }
+    btn.addEventListener("click", function () {
+      root.setAttribute("data-theme", isDark() ? "light" : "dark");
+      sync();
+    });
+    sync();
+  })();
+
+  /* Tabs: Notes / Activity, in both the segmented and folder forms. */
+  (function () {
+    var lists = document.querySelectorAll("[data-tabs]");
+    Array.prototype.forEach.call(lists, function (list) {
+      var tabs = list.querySelectorAll("[role='tab']");
+      Array.prototype.forEach.call(tabs, function (tab) {
+        tab.addEventListener("click", function () {
+          Array.prototype.forEach.call(tabs, function (other) {
+            var selected = other === tab;
+            other.setAttribute("aria-selected", String(selected));
+            var panel = document.getElementById(
+              other.getAttribute("data-target"),
+            );
+            if (panel) panel.hidden = !selected;
+          });
+        });
+      });
+    });
+  })();
+
+  /* The floor dock: Activity slides up over the notes. */
+  (function () {
+    var docks = document.querySelectorAll("[data-dock]");
+    Array.prototype.forEach.call(docks, function (dock) {
+      var handle = dock.querySelector(".dock-handle");
+      handle.addEventListener("click", function () {
+        var open = dock.classList.toggle("open");
+        handle.setAttribute("aria-expanded", String(open));
+      });
+    });
+  })();
+</script>

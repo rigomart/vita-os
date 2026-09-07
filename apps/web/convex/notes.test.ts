@@ -131,15 +131,12 @@ describe("standalone Notes", () => {
       completedAt: 300,
       updatedAt: 250,
     });
-    // The fixture includes a Thread Activity Log note, which never joins Notes.
+    // The fixture includes a Thread Note, which never joins standalone Notes.
     expect(await owner.query(api.notes.count, {})).toBe(1);
     expect(
       (
-        await owner.query(api.activityLogs.listByThread, {
-          threadId: fixture.threadId,
-          paginationOpts: FIRST_PAGE,
-        })
-      ).page.some((entry) => entry._id === fixture.logId),
+        await owner.query(api.threadNotes.list, { threadId: fixture.threadId })
+      ).some((entry) => entry._id === fixture.threadNoteId),
     ).toBe(true);
     await owner.mutation(api.notes.updateBody, {
       id: open._id,

@@ -244,7 +244,7 @@ describe("ThreadDetailView", () => {
     expect(pane).toHaveAttribute("data-state", "open");
   });
 
-  it("subscribes once: the composite plus the shared Area picker list", async () => {
+  it("subscribes to Thread detail, its Notes, and the shared Area picker list", async () => {
     mocks.showDesktopPane = true;
     renderThreadDetail();
 
@@ -253,7 +253,7 @@ describe("ThreadDetailView", () => {
     });
 
     expect(new Set(mocks.seen)).toEqual(
-      new Set(["threads:detailBySlug", "areas:list"]),
+      new Set(["threads:detailBySlug", "threadNotes:list", "areas:list"]),
     );
   });
 
@@ -329,7 +329,8 @@ describe("ThreadDetailView", () => {
     const attention = screen.getByRole("region", {
       name: "Thread attention",
     });
-    const activity = screen.getByRole("heading", { name: "Activity log" });
+    const notes = screen.getByRole("tab", { name: /Notes/ });
+    const activity = screen.getByRole("tab", { name: "Activity" });
 
     expect(
       within(header).getByRole("button", { name: "Family Health" }),
@@ -354,7 +355,11 @@ describe("ThreadDetailView", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      attention.compareDocumentPosition(activity) &
+      attention.compareDocumentPosition(notes) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      notes.compareDocumentPosition(activity) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
@@ -368,6 +373,7 @@ describe("ThreadDetailView", () => {
       name: "Sister's front teeth",
     });
 
+    await userEvent.click(screen.getByRole("button", { name: /Up Next/ }));
     const moves = within(
       screen.getByRole("list", { name: "Up Next" }),
     ).getAllByRole("listitem");
@@ -399,7 +405,7 @@ describe("ThreadDetailView", () => {
     });
   });
 
-  it("scrolls only the activity log, keeping header, attention and composer fixed", async () => {
+  it("scrolls Notes and the read-only Activity Log below fixed orientation", async () => {
     mocks.showDesktopPane = true;
     renderThreadDetail();
 
@@ -408,7 +414,7 @@ describe("ThreadDetailView", () => {
     });
 
     const scrollRegion = pane.querySelector(
-      '[data-slot="activity-log-scroll"]',
+      '[data-slot="thread-continuity-scroll"]',
     );
     expect(scrollRegion).not.toBeNull();
     // Exactly one region in the pane scrolls.
@@ -418,18 +424,21 @@ describe("ThreadDetailView", () => {
     const attention = screen.getByRole("region", { name: "Thread attention" });
     expect(scrollRegion!.contains(header)).toBe(false);
     expect(scrollRegion!.contains(attention)).toBe(false);
-    // The activity log heading stays visible while entries scroll beneath it.
     expect(
       scrollRegion!.contains(
-        screen.getByRole("heading", { name: "Activity log" }),
+        screen.getByRole("textbox", { name: "New Thread Note" }),
       ),
-    ).toBe(false);
-    // The composer is docked at the pane's floor, not at the rail's origin.
+    ).toBe(true);
+    const notesTab = screen.getByRole("tab", { name: /Notes/ });
+    expect(scrollRegion!.contains(notesTab)).toBe(false);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Activity" }));
     expect(
-      scrollRegion!.contains(
-        screen.getByRole("textbox", { name: "Activity log note" }),
-      ),
-    ).toBe(false);
+      scrollRegion!.contains(await screen.findByLabelText("Activity log")),
+    ).toBe(true);
+    expect(
+      screen.queryByRole("textbox", { name: "Activity log note" }),
+    ).toBeNull();
     // No scroll container wraps the whole pane content.
     expect(header.closest(".overflow-y-auto")).toBeNull();
   });

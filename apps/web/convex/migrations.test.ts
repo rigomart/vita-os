@@ -103,7 +103,7 @@ describe("migrations.backfillThreadLastActivity", () => {
       areaId: area.id,
     });
 
-    // Raw inserts, not activityLogs.create: pre-migration rows exist without
+    // Raw inserts bypass recordActivity: pre-migration rows exist without
     // a denormalized stamp on their Thread. Out-of-order createdAt pins that
     // the migration reads the index newest-first, not insertion order.
     await t.run(async (ctx) => {
@@ -397,5 +397,90 @@ describe("migrations.migrateLegacyActivityLogTypes", () => {
     expect((await t.run((ctx) => ctx.db.get("activityLogs", id)))?.type).toBe(
       "note",
     );
+  });
+});
+
+describe("migrations.migrateActivityLogNotesToThreadNotes", () => {
+  it("moves manual entries without losing body or creation time and is safe to resume", async () => {
+    const t = setupLegacyTest();
+    const threadId = await t.run(async (ctx) => {
+      const areaId = await ctx.db.insert("areas", {
+        userId: "user-1",
+        name: "Family Health",
+        slug: "family-health",
+        condition: "healthy" as const,
+        icon: "HeartPulse" as const,
+        order: 0,
+        createdAt: 0,
+      });
+      return ctx.db.insert("threads", {
+        userId: "user-1",
+        title: "Book checkup",
+        slug: "book-checkup",
+        areaId,
+        order: 0,
+        state: "open" as const,
+        createdAt: 0,
+      });
+    });
+
+    const legacy = await t.run(async (ctx) => {
+      const note = await ctx.db.insert("activityLogs", {
+        userId: "user-1",
+        threadId,
+        type: "note",
+        content: "  Called the clinic\nWaiting for a reply  ",
+        createdAt: 123,
+      });
+      const automatic = await ctx.db.insert("activityLogs", {
+        userId: "user-1",
+        threadId,
+        type: "follow_up_change",
+        content: "Follow-up set",
+        createdAt: 456,
+      });
+      await ctx.db.patch("threads", threadId, {
+        lastActivityAt: 123,
+        lastActivityContent: "  Called the clinic\nWaiting for a reply  ",
+      });
+      return { note, automatic };
+    });
+
+    const pages = await runToCompletion((paginationOpts) =>
+      t.mutation(internal.migrations.migrateActivityLogNotesToThreadNotes, {
+        paginationOpts,
+      }),
+    );
+    expect(pages).toBeGreaterThan(1);
+
+    const { logs, notes } = await t.run(async (ctx) => ({
+      logs: await ctx.db.query("activityLogs").collect(),
+      notes: await ctx.db.query("threadNotes").collect(),
+    }));
+    expect(logs.map((entry) => entry._id)).toEqual([legacy.automatic]);
+    expect(notes).toEqual([
+      expect.objectContaining({
+        userId: "user-1",
+        threadId,
+        body: "  Called the clinic\nWaiting for a reply  ",
+        state: "open",
+        createdAt: 123,
+        updatedAt: 123,
+      }),
+    ]);
+    const migratedThread = await t.run((ctx) =>
+      ctx.db.get("threads", threadId),
+    );
+    expect(migratedThread?.lastActivityAt).toBe(123);
+    expect(migratedThread).not.toHaveProperty("lastActivityContent");
+
+    await runToCompletion((paginationOpts) =>
+      t.mutation(internal.migrations.migrateActivityLogNotesToThreadNotes, {
+        paginationOpts,
+      }),
+    );
+    expect(
+      await t.run((ctx) => ctx.db.query("threadNotes").collect()),
+    ).toHaveLength(1);
   });
 });
