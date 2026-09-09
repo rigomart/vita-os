@@ -46,8 +46,11 @@ once the remaining question is settled.
   chips read as filters, so the pill outline came off.
 - **Round 7** (`c1e69df`, settled in `d7a7218`) — inline card actions, three
   ways. A1 won; A2 (always-on controls) and A3 (card as action menu) retired.
-- **Round 8** (`32ce9df`) — Notes redrawn as paper; the three placements it
-  offered were superseded by the No date column below.
+- **Round 8** (`32ce9df`) — Notes redrawn as paper; its three placements were
+  superseded by the No date column.
+- **Round 9** (`a37c973`) — No date column, three readings of "undated". P3
+  (strict + sections) won and was then restyled as an aside, since as a fourth
+  peer column it read as part of the time sequence.
 
 ## Run it
 
@@ -59,8 +62,7 @@ bun install
 bun run dev
 ```
 
-Then open `/?variant=P1`. The floating bar cycles variants (← / →) and
-toggles **Wide / Constrained** (`?narrow=true`) and **Fixture / Live data**
+Then open `/`. Nothing varies right now; the floating bar toggles **Wide / Constrained** (`?narrow=true`) and **Fixture / Live data**
 (`?source=live`). Cards still open a Thread in place (`?thread=`); a Note opens
 the Notes surface (`?inbox=true`).
 
@@ -85,24 +87,19 @@ Thread Notes are absent by construction.
   for a column: no Area glyph, no title, no move, and the date as a bell rather
   than a token.
 
-## Still open — round 9: the No date column
-
-The fourth column stops being "Resting" — a status bucket sitting beside three
-time buckets — and becomes **No date**, holding every unscheduled Thread *and*
-Note. The four columns are then one axis (when), and Notes without a date
-finally have a home rather than a tray.
-
-What "undated" may include is the variable, because it is the last live part of
-#236: a Thread with a Next Move and no date is unscheduled, but it is also the
-most actionable thing on the board.
-
-- `/?variant=P1` — **Strict.** Now holds only dates; every unscheduled Thread
-  and Note falls into No date. Answers #236: a date outranks an undated move.
-- `/?variant=P2` — **Moves stay.** Undated Next Moves keep their place in Now
-  because you can act on them today; No date takes Threads with nothing queued,
-  plus the Notes.
-- `/?variant=P3` — **Sectioned.** Strict, but the No date column admits its
-  seams: Ready to move · Open · Notes, labelled inside the one column.
+- **Fourth column → a No date aside.** "Resting" was a status bucket sitting
+  beside three time buckets; it becomes **No date** — every unscheduled Thread
+  *and* Note — so the columns are one axis (when). Because it is not a time
+  bucket it is not drawn as a fourth peer: the three time columns are a group,
+  and the aside sits outside them behind a rule, with no panel and no card
+  edge, in labelled runs — **Ready to move · Open · Notes**.
+- **#236 is answered.** Now holds only what is late or due today; an undated
+  Next Move goes to the aside, where it keeps top billing under "Ready to move".
+  A date outranks an undated move.
+- **The second line on a card names the Thread, and only the Thread.** When the
+  headline is already the Thread title there is no second line: the Area name
+  in that slot read as a title. The Area survives as the glyph beside the
+  headline.
 
 ## Pending after that
 

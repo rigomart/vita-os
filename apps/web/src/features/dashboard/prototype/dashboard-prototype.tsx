@@ -14,9 +14,10 @@
  * Settled in round 8: standalone Notes are drawn as paper rather than as Thread
  * cards (`note-paper.tsx`).
  *
- * Open — round 9: the fourth column becomes **No date**, holding unscheduled
- * Threads and Notes together instead of "Resting". `?variant=P1|P2|P3` decides
- * what "undated" may include — the last live piece of #236.
+ * Settled in round 9: "Resting" becomes **No date** — every unscheduled Thread
+ * and Note — drawn as a ruled aside rather than a fourth column, because it is
+ * not a time bucket. Now holds only dates, which settles #236: a date outranks
+ * an undated Next Move, and the moves keep their own labelled run in the aside.
  *
  * `?narrow=true` constrains the viewport; `?source=live` swaps the fixture for
  * real Convex data. Throwaway: no tests, no error handling, read-only.
@@ -44,38 +45,16 @@ import { DashboardHeader } from "./headers";
 import { NotePaper } from "./note-paper";
 import { buildPrototypeData } from "./prototype-fixture";
 import { PrototypeSwitcher } from "./prototype-switcher";
-import {
-  VariantE1TimeColumns,
-  type NoDateMode,
-} from "./variant-e1-time-columns";
+import { VariantE1TimeColumns } from "./variant-e1-time-columns";
 
-const NO_DATE_MODES: (VariantMeta & { mode: NoDateMode })[] = [
-  {
-    key: "P1",
-    name: "Strict",
-    mode: "strict",
-    stance:
-      "One clean axis: Now holds only dates, and every unscheduled Thread and Note falls into No date. Answers #236 by saying a date outranks an undated move.",
-  },
-  {
-    key: "P2",
-    name: "Moves stay",
-    mode: "moves",
-    stance:
-      "Undated Next Moves keep their place in Now because you can act on them today; No date takes the Threads with nothing queued, plus the Notes.",
-  },
+export const PROTOTYPE_VARIANTS: VariantMeta[] = [
   {
     key: "P3",
-    name: "Sectioned",
-    mode: "sectioned",
+    name: "No date aside",
     stance:
-      "Strict, but the No date column admits its seams: Ready to move · Open · Notes, labelled inside one column.",
+      "Settled: three time columns plus a ruled No date margin — Ready to move · Open · Notes. A date outranks an undated move (#236).",
   },
 ];
-
-export const PROTOTYPE_VARIANTS: VariantMeta[] = NO_DATE_MODES.map(
-  ({ key, name, stance }) => ({ key, name, stance }),
-);
 
 /** One stubbed write, kept so the session line can undo it. */
 interface Edit {
@@ -139,9 +118,7 @@ export function DashboardPrototype({
       pushes.has(note.id) ? { ...note, when: pushes.get(note.id) } : note,
     );
 
-  const noDate =
-    NO_DATE_MODES.find((candidate) => candidate.key === variant) ??
-    NO_DATE_MODES[0]!;
+  void variant;
 
   const record = (edit: Edit) =>
     setEdits((previous) => [
@@ -163,7 +140,6 @@ export function DashboardPrototype({
         <VariantE1TimeColumns
           areas={areas}
           currentDate={currentDate}
-          noDateMode={noDate.mode}
           notes={notes}
           threads={threads}
           header={(entries) => (
@@ -223,7 +199,7 @@ export function DashboardPrototype({
       </div>
 
       <PrototypeSwitcher
-        current={noDate.key}
+        current="P3"
         narrow={narrow}
         source={source}
         variants={PROTOTYPE_VARIANTS}

@@ -40,10 +40,15 @@ function headline(entry: PrototypeEntry) {
   return entry.isNextMove && entry.detail ? entry.detail : entry.title;
 }
 
+/**
+ * The second line names the **Thread**, and only ever the Thread. When the
+ * headline is already the Thread's title there is no second line at all: the
+ * Area name in that slot read as a title, so "Health" sat exactly where
+ * "Marathon training block" sits on the card above it. The Area survives as
+ * the glyph beside the headline.
+ */
 function context(entry: PrototypeEntry) {
-  if (entry.kind === "note") return "Note";
-  if (entry.isNextMove && entry.detail) return entry.title;
-  return entry.area?.name ?? "";
+  return entry.isNextMove && entry.detail ? entry.title : undefined;
 }
 
 /** Only a captured move or a Note is a thing you can finish. */
@@ -74,10 +79,12 @@ function Headline({ entry }: { entry: PrototypeEntry }) {
 }
 
 function ContextLine({ entry }: { entry: PrototypeEntry }) {
+  const thread = context(entry);
+  if (thread === undefined) return null;
   return (
     <p className="mt-0.5 flex items-center gap-1.5 text-[12px] leading-snug text-muted-foreground/75">
       <AreaGlyph entry={entry} />
-      <span className="truncate">{context(entry)}</span>
+      <span className="truncate">{thread}</span>
     </p>
   );
 }
@@ -152,6 +159,10 @@ export function ActionCard({
   return (
     <div className={shellClassName(entry, currentDate)}>
       <div className="flex items-start gap-2">
+        {/* With no second line, the glyph rides the headline instead. */}
+        {context(entry) === undefined && (
+          <AreaGlyph entry={entry} className="mt-1" />
+        )}
         <Headline entry={entry} />
         <DateToken
           className="mt-0.5 transition-opacity group-hover:opacity-0 group-focus-within:opacity-0"
