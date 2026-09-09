@@ -46,6 +46,8 @@ once the remaining question is settled.
   chips read as filters, so the pill outline came off.
 - **Round 7** (`c1e69df`, settled in `d7a7218`) — inline card actions, three
   ways. A1 won; A2 (always-on controls) and A3 (card as action menu) retired.
+- **Round 8** (`32ce9df`) — Notes redrawn as paper; the three placements it
+  offered were superseded by the No date column below.
 
 ## Run it
 
@@ -57,7 +59,7 @@ bun install
 bun run dev
 ```
 
-Then open `/?variant=N1`. The floating bar cycles variants (← / →) and
+Then open `/?variant=P1`. The floating bar cycles variants (← / →) and
 toggles **Wide / Constrained** (`?narrow=true`) and **Fixture / Live data**
 (`?source=live`). Cards still open a Thread in place (`?thread=`); a Note opens
 the Notes surface (`?inbox=true`).
@@ -75,26 +77,32 @@ Thread Notes are absent by construction.
   to session state — finishing removes a card, pushing a date moves it between
   columns, and a line under the header counts changes and undoes the last one.
 
-## Still open — round 8: standalone Notes
+- **Notes are paper, not Thread cards.** `NoteCard` and `ThreadNoteCard`
+  already agree on what a Note looks like — `rounded-3xl border-2 bg-surface-2`,
+  body first with nothing in front of it, controls floating on the surface —
+  and the NoteCard comment states the rule: *"a Note is a thing you wrote, not
+  a line item with a state in front."* `note-paper.tsx` is that grammar scaled
+  for a column: no Area glyph, no title, no move, and the date as a bell rather
+  than a token.
 
-A Note is no longer drawn as a Thread card with a dashed glyph. `NoteCard` and
-`ThreadNoteCard` already agree on what a Note looks like — `rounded-3xl
-border-2 bg-surface-2`, body first with nothing in front of it, controls
-floating on the surface — and the NoteCard comment states the rule: *"a Note is
-a thing you wrote, not a line item with a state in front."* `note-paper.tsx` is
-that grammar scaled for a column: one radius and one padding step down, heavy
-edge kept, no Area glyph, no title, no move. The date is a bell, not a token.
+## Still open — round 9: the No date column
 
-Where that paper lives is the question:
+The fourth column stops being "Resting" — a status bucket sitting beside three
+time buckets — and becomes **No date**, holding every unscheduled Thread *and*
+Note. The four columns are then one axis (when), and Notes without a date
+finally have a home rather than a tray.
 
-- `/?variant=N1` — **Notes column.** Every standalone Note leaves the time
-  columns for a column of its own. Notes stop competing with Threads entirely —
-  but a dated Note no longer sits under its date.
-- `/?variant=N2` — **Mixed.** Notes sit under their own date beside Threads,
-  told apart by the paper; the undated ones fall into a "Notes, no date" tray at
-  the foot of Now.
-- `/?variant=N3` — **Hybrid.** Dated Notes keep their place in time; only the
-  undated ones get the column. The smallest change that gives them a home.
+What "undated" may include is the variable, because it is the last live part of
+#236: a Thread with a Next Move and no date is unscheduled, but it is also the
+most actionable thing on the board.
+
+- `/?variant=P1` — **Strict.** Now holds only dates; every unscheduled Thread
+  and Note falls into No date. Answers #236: a date outranks an undated move.
+- `/?variant=P2` — **Moves stay.** Undated Next Moves keep their place in Now
+  because you can act on them today; No date takes Threads with nothing queued,
+  plus the Notes.
+- `/?variant=P3` — **Sectioned.** Strict, but the No date column admits its
+  seams: Ready to move · Open · Notes, labelled inside the one column.
 
 ## Pending after that
 

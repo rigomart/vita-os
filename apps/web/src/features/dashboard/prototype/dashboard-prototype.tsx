@@ -11,9 +11,12 @@
  * item removes it from the board and pushing a date really does move a card
  * into another column, with an Undo under the header.
  *
- * Open — round 8: standalone Notes. They are now drawn as paper rather than as
- * Thread cards (`note-paper.tsx`), and `?variant=N1|N2|N3` moves where that
- * paper lives.
+ * Settled in round 8: standalone Notes are drawn as paper rather than as Thread
+ * cards (`note-paper.tsx`).
+ *
+ * Open — round 9: the fourth column becomes **No date**, holding unscheduled
+ * Threads and Notes together instead of "Resting". `?variant=P1|P2|P3` decides
+ * what "undated" may include — the last live piece of #236.
  *
  * `?narrow=true` constrains the viewport; `?source=live` swaps the fixture for
  * real Convex data. Throwaway: no tests, no error handling, read-only.
@@ -41,33 +44,36 @@ import { DashboardHeader } from "./headers";
 import { NotePaper } from "./note-paper";
 import { buildPrototypeData } from "./prototype-fixture";
 import { PrototypeSwitcher } from "./prototype-switcher";
-import { VariantE1TimeColumns, type NoteMode } from "./variant-e1-time-columns";
+import {
+  VariantE1TimeColumns,
+  type NoDateMode,
+} from "./variant-e1-time-columns";
 
-const NOTE_MODES: (VariantMeta & { mode: NoteMode })[] = [
+const NO_DATE_MODES: (VariantMeta & { mode: NoDateMode })[] = [
   {
-    key: "N1",
-    name: "Notes column",
-    mode: "column",
+    key: "P1",
+    name: "Strict",
+    mode: "strict",
     stance:
-      "Every standalone Note leaves the time columns for a column of its own — Notes stop competing with Threads, but a dated Note no longer sits under its date.",
+      "One clean axis: Now holds only dates, and every unscheduled Thread and Note falls into No date. Answers #236 by saying a date outranks an undated move.",
   },
   {
-    key: "N2",
-    name: "Mixed",
-    mode: "mixed",
+    key: "P2",
+    name: "Moves stay",
+    mode: "moves",
     stance:
-      "Notes sit under their own date beside Threads, told apart by the paper; the undated ones fall into a tray at the foot of Now.",
+      "Undated Next Moves keep their place in Now because you can act on them today; No date takes the Threads with nothing queued, plus the Notes.",
   },
   {
-    key: "N3",
-    name: "Hybrid",
-    mode: "hybrid",
+    key: "P3",
+    name: "Sectioned",
+    mode: "sectioned",
     stance:
-      "Dated Notes keep their place in time; only the undated ones get the column — the smallest change that gives them a home.",
+      "Strict, but the No date column admits its seams: Ready to move · Open · Notes, labelled inside one column.",
   },
 ];
 
-export const PROTOTYPE_VARIANTS: VariantMeta[] = NOTE_MODES.map(
+export const PROTOTYPE_VARIANTS: VariantMeta[] = NO_DATE_MODES.map(
   ({ key, name, stance }) => ({ key, name, stance }),
 );
 
@@ -133,8 +139,9 @@ export function DashboardPrototype({
       pushes.has(note.id) ? { ...note, when: pushes.get(note.id) } : note,
     );
 
-  const noteMode =
-    NOTE_MODES.find((candidate) => candidate.key === variant) ?? NOTE_MODES[0]!;
+  const noDate =
+    NO_DATE_MODES.find((candidate) => candidate.key === variant) ??
+    NO_DATE_MODES[0]!;
 
   const record = (edit: Edit) =>
     setEdits((previous) => [
@@ -156,7 +163,7 @@ export function DashboardPrototype({
         <VariantE1TimeColumns
           areas={areas}
           currentDate={currentDate}
-          noteMode={noteMode.mode}
+          noDateMode={noDate.mode}
           notes={notes}
           threads={threads}
           header={(entries) => (
@@ -216,7 +223,7 @@ export function DashboardPrototype({
       </div>
 
       <PrototypeSwitcher
-        current={noteMode.key}
+        current={noDate.key}
         narrow={narrow}
         source={source}
         variants={PROTOTYPE_VARIANTS}
