@@ -9,8 +9,11 @@
  * ...and the A1 card actions: a rail that fades in at the card's edge on hover
  * or focus. Every write is stubbed to the local state below, so finishing an
  * item removes it from the board and pushing a date really does move a card
- * into another column. A session line under the header counts what you changed
- * and undoes the last one.
+ * into another column, with an Undo under the header.
+ *
+ * Open — round 8: standalone Notes. They are now drawn as paper rather than as
+ * Thread cards (`note-paper.tsx`), and `?variant=N1|N2|N3` moves where that
+ * paper lives.
  *
  * `?narrow=true` constrains the viewport; `?source=live` swaps the fixture for
  * real Convex data. Throwaway: no tests, no error handling, read-only.
@@ -35,18 +38,38 @@ import {
 } from "../components/dashboard-model";
 import { ActionCard } from "./card-actions";
 import { DashboardHeader } from "./headers";
+import { NotePaper } from "./note-paper";
 import { buildPrototypeData } from "./prototype-fixture";
 import { PrototypeSwitcher } from "./prototype-switcher";
-import { VariantE1TimeColumns } from "./variant-e1-time-columns";
+import { VariantE1TimeColumns, type NoteMode } from "./variant-e1-time-columns";
 
-export const PROTOTYPE_VARIANTS: VariantMeta[] = [
+const NOTE_MODES: (VariantMeta & { mode: NoteMode })[] = [
   {
-    key: "A1",
-    name: "Hover rail",
+    key: "N1",
+    name: "Notes column",
+    mode: "column",
     stance:
-      "Settled: nothing at rest; tick and clock fade in at the card's edge on hover or focus. Writes are stubbed to this session — Undo under the header.",
+      "Every standalone Note leaves the time columns for a column of its own — Notes stop competing with Threads, but a dated Note no longer sits under its date.",
+  },
+  {
+    key: "N2",
+    name: "Mixed",
+    mode: "mixed",
+    stance:
+      "Notes sit under their own date beside Threads, told apart by the paper; the undated ones fall into a tray at the foot of Now.",
+  },
+  {
+    key: "N3",
+    name: "Hybrid",
+    mode: "hybrid",
+    stance:
+      "Dated Notes keep their place in time; only the undated ones get the column — the smallest change that gives them a home.",
   },
 ];
+
+export const PROTOTYPE_VARIANTS: VariantMeta[] = NOTE_MODES.map(
+  ({ key, name, stance }) => ({ key, name, stance }),
+);
 
 /** One stubbed write, kept so the session line can undo it. */
 interface Edit {
@@ -110,7 +133,8 @@ export function DashboardPrototype({
       pushes.has(note.id) ? { ...note, when: pushes.get(note.id) } : note,
     );
 
-  void variant;
+  const noteMode =
+    NOTE_MODES.find((candidate) => candidate.key === variant) ?? NOTE_MODES[0]!;
 
   const record = (edit: Edit) =>
     setEdits((previous) => [
@@ -132,6 +156,7 @@ export function DashboardPrototype({
         <VariantE1TimeColumns
           areas={areas}
           currentDate={currentDate}
+          noteMode={noteMode.mode}
           notes={notes}
           threads={threads}
           header={(entries) => (
@@ -177,11 +202,21 @@ export function DashboardPrototype({
               }
             />
           )}
+          renderNote={(entry: PrototypeEntry) => (
+            <NotePaper
+              currentDate={currentDate}
+              entry={entry}
+              onDone={(target) => record({ entryId: target.id, kind: "done" })}
+              onPush={(target, when) =>
+                record({ entryId: target.id, kind: "push", when })
+              }
+            />
+          )}
         />
       </div>
 
       <PrototypeSwitcher
-        current="A1"
+        current={noteMode.key}
         narrow={narrow}
         source={source}
         variants={PROTOTYPE_VARIANTS}

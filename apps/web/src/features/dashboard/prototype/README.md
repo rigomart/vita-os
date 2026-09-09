@@ -44,8 +44,8 @@ once the remaining question is settled.
 - **Round 6** (`3f7c891`, restyled in `5c3306d`) — the header band, three ways.
   H2 won; H1 (two bands with reason text) and H3 (per-Area tiles) retired. The
   chips read as filters, so the pill outline came off.
-- **Round 7** (`c1e69df`) — inline card actions, three ways. A1 won; A2
-  (always-on controls) and A3 (card as action menu) retired.
+- **Round 7** (`c1e69df`, settled in `d7a7218`) — inline card actions, three
+  ways. A1 won; A2 (always-on controls) and A3 (card as action menu) retired.
 
 ## Run it
 
@@ -57,7 +57,8 @@ bun install
 bun run dev
 ```
 
-Then open `/`. Nothing varies right now; the floating bar toggles **Wide / Constrained** (`?narrow=true`) and **Fixture / Live data**
+Then open `/?variant=N1`. The floating bar cycles variants (← / →) and
+toggles **Wide / Constrained** (`?narrow=true`) and **Fixture / Live data**
 (`?source=live`). Cards still open a Thread in place (`?thread=`); a Note opens
 the Notes surface (`?inbox=true`).
 
@@ -74,9 +75,30 @@ Thread Notes are absent by construction.
   to session state — finishing removes a card, pushing a date moves it between
   columns, and a line under the header counts changes and undoes the last one.
 
-## Pending
+## Still open — round 8: standalone Notes
 
-1. **Undated Notes** — the columns are time-shaped, so a Note with no date
+A Note is no longer drawn as a Thread card with a dashed glyph. `NoteCard` and
+`ThreadNoteCard` already agree on what a Note looks like — `rounded-3xl
+border-2 bg-surface-2`, body first with nothing in front of it, controls
+floating on the surface — and the NoteCard comment states the rule: *"a Note is
+a thing you wrote, not a line item with a state in front."* `note-paper.tsx` is
+that grammar scaled for a column: one radius and one padding step down, heavy
+edge kept, no Area glyph, no title, no move. The date is a bell, not a token.
+
+Where that paper lives is the question:
+
+- `/?variant=N1` — **Notes column.** Every standalone Note leaves the time
+  columns for a column of its own. Notes stop competing with Threads entirely —
+  but a dated Note no longer sits under its date.
+- `/?variant=N2` — **Mixed.** Notes sit under their own date beside Threads,
+  told apart by the paper; the undated ones fall into a "Notes, no date" tray at
+  the foot of Now.
+- `/?variant=N3` — **Hybrid.** Dated Notes keep their place in time; only the
+  undated ones get the column. The smallest change that gives them a home.
+
+## Pending after that
+
+1. ~~**Undated Notes**~~ — this round. — the columns are time-shaped, so a Note with no date
    currently lands nowhere and Resting only accepts Threads.
 3. Column overflow caps, empty states, keyboard movement between cards.
 4. **#236**: with time as columns the question shrinks to "which column does an

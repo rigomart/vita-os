@@ -47,7 +47,7 @@ function context(entry: PrototypeEntry) {
 }
 
 /** Only a captured move or a Note is a thing you can finish. */
-function completable(entry: PrototypeEntry) {
+export function completable(entry: PrototypeEntry) {
   return entry.kind === "note" || entry.isNextMove;
 }
 
@@ -82,15 +82,15 @@ function ContextLine({ entry }: { entry: PrototypeEntry }) {
   );
 }
 
-const PUSH_OPTIONS: { days: number | undefined; label: string }[] = [
+export const PUSH_OPTIONS: { days: number | undefined; label: string }[] = [
   { label: "Today", days: 0 },
   { label: "Tomorrow", days: 1 },
   { label: "Next week", days: 7 },
   { label: "In a month", days: 30 },
 ];
 
-/** The date menu, shared by all three treatments — only its trigger differs. */
-function PushMenu({
+/** The date menu, shared by Thread cards and Note paper alike. */
+export function PushMenu({
   children,
   currentDate,
   entry,
