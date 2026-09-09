@@ -9,7 +9,7 @@ import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 export interface VariantMeta {
-  /** How this variant answers issue #236. */
+  /** One line on what this variant claims. */
   stance: string;
   key: string;
   name: string;
@@ -95,7 +95,7 @@ export function PrototypeSwitcher({
           />
         </div>
         <p className="max-w-[46rem] px-1 text-center text-[10px] leading-tight text-muted-foreground">
-          #236: {meta?.stance}
+          {meta?.stance}
         </p>
       </div>
     </div>

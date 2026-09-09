@@ -4,83 +4,71 @@ Throwaway. Not production code, no tests, read-only, dev-only. Delete this
 directory (and the prototype block in `src/routes/_authenticated/index.tsx`)
 once a direction is picked.
 
+## Round 2 — the Thread row (current)
+
+Round 1 varied the page layout across four whole-Dashboard variations. Verdict:
+all four read badly, for two reasons that are upstream of layout — **the row
+reads like a ledger** (date rail · title · detail · quiet counter · Area, all
+competing on one line) and **there is too much information per row**. Those
+variants are preserved in this branch's history at commit `103f42e`.
+
+So this round holds the page still — one plain column, one thin rule between
+"asking now" and "just open", a curated 11-item run — and varies only how a
+single row is drawn. Every treatment is under a hard budget: **at most two
+pieces of metadata visible at rest.**
+
+- `/?variant=R1` — **Quiet lines**
+- `/?variant=R2` — **Sentences**
+- `/?variant=R3` — **Cards**
+- `/?variant=R4` — **Peek**
+
+They disagree about *where the metadata goes*:
+
+| | What it does with the columns |
+| --- | --- |
+| R1 Quiet lines | Drops them. One line, title-led; a date only when it is pressing, the Next Move only on rows that need you now. Area is a single coloured dot. |
+| R2 Sentences | Folds them into prose. The Next Move becomes the row and the Thread title and date are the tail of the sentence — no chips, no rail, nothing right-aligned. |
+| R3 Cards | Moves them off the title's line onto a card footer. Costs vertical space; buys a title with nothing next to it. |
+| R4 Peek | Hides them. Bare titles at rest; everything but a late date appears only on the row you are hovering or focusing. |
+
 ## Run it
 
-From the repo root of **this worktree**:
+The dev server must run from **this worktree** — a server started in the main
+checkout does not have the prototype:
 
 ```bash
+cd .claude/worktrees/prototype-314-dashboard
 bun install
 bun run dev
 ```
 
-Then open the Dashboard with a variant param:
+Then open `/?variant=R1`. The floating bar cycles treatments (← / → work too)
+and carries two toggles:
 
-- `/?variant=A` — Now / Ahead
-- `/?variant=B` — Time bands
-- `/?variant=C` — Horizon ribbon
-- `/?variant=D` — Area lanes
-
-The floating bar at the bottom cycles variants (← / → also work) and carries
-two extra toggles:
-
-- **Wide / Constrained** — `?narrow=true` clamps the page to ~26rem so every
-  variant can be judged at a phone-ish width without resizing the window.
-- **Fixture / Live data** — `?source=live` swaps the fixture for the real
-  Convex queries. The fixture is the default because it guarantees overdue,
-  today, near-term, and distant examples are all on screen at once.
+- **Wide / Constrained** — `?narrow=true` clamps the column to ~26rem.
+- **Fixture / Live data** — `?source=live` swaps in the real Convex queries;
+  the fixture is default and shows a curated run.
 
 Rows still behave like the real Dashboard: a Thread opens in place
-(`?thread=`), a standalone Note opens the Notes surface (`?inbox=true`). The
-real Area condition strip sits above every variant, so nothing is judged in a
-vacuum.
+(`?thread=`), a standalone Note opens the Notes surface (`?inbox=true`).
 
 ## The fixture
 
-`prototype-fixture.ts` — 5 Areas (one critical, two needs-attention, two
-healthy), 19 Threads and 7 standalone Notes, dated relative to now:
-
-| Case | Threads | Notes |
-| --- | --- | --- |
-| Overdue | 2 (−6d, −2d) | 2 (−4d, −1d) |
-| Today | 2 | 1 |
-| Near-term (1–6d) | 3 | 1 (+3d) |
-| Distant (10d+) | 3 (+12d, +27d, +45d) | 1 (+21d) |
-| Undated, has Next Move | 4 | — |
-| Plain open | 5 | 2 undated |
-
+`prototype-fixture.ts` — 5 Areas, 19 Threads, 7 standalone Notes, dated
+relative to now (overdue, today, near-term, distant, undated-with-Next-Move,
+plain open). The row lab shows a curated subset; `?source=live` uses real data.
 Thread Notes are absent by construction — the Notes here are standalone only.
-
-## What each variant claims about #236
-
-The question in #236 is whether an actionable undated Thread should outrank a
-scheduled-but-distant Follow-up. Each variant commits to a different answer, so
-picking a variant *is* the decision:
-
-- **A — Now / Ahead.** Actionability wins outright. The primary run holds only
-  what can be acted on today; every future date leaves the run and becomes a
-  forward agenda in a second column. The main list can never go non-monotonic,
-  because it has no future dates in it at all.
-- **B — Time bands.** No global rule; membership decides. The Today band holds
-  overdue + due-today + undated Next Moves together (late first). Future dates
-  live in quieter side bands and never compete with Today.
-- **C — Horizon ribbon.** The in-between outcome #236 names. Only Follow-ups
-  within two days outrank undated Next Moves; anything further out drops below
-  the plain open Threads onto a "Scheduled" shelf and is represented on a
-  21-day ribbon across the top. Calendar awareness moves out of the list order
-  and into the ribbon.
-- **D — Area lanes.** The ordering question mostly dissolves. Only the top
-  strip is attention-ordered; below it the width is organised by Area, not by
-  time, and each lane sorts its own items. A distant Follow-up is never near
-  the top — it is a quiet chip in its Area, with the lane header carrying that
-  Area's next date.
 
 ## What the review has to answer
 
-1. Which variant's answer to #236 is right — or which pieces of which?
-2. Is "current attention" still unmistakably primary at both widths?
-3. Does a distant Follow-up (+27d, +45d) read as *awareness* rather than as
-   something demanding action, in whichever variant wins?
-4. Do dated Notes returning to attention belong in the same run as Threads
-   (A, B, C) or in their own lane (D)?
-5. What does the extra horizontal space genuinely buy — a second column of
-   future (A), parallel bands (B), a calendar ribbon (C), or Area lanes (D)?
+1. Which row treatment stops the ledger feeling — and at what cost?
+2. What is the row's *irreducible* content? Title alone (R4), title + date
+   (R1), or the Next Move as the headline (R2)?
+3. Is losing the aligned date rail a real loss, or was the alignment the thing
+   that made it read as a ledger?
+4. Should a resting Thread look different from one that is asking, or just
+   sit lower in the list?
+
+Once the row is settled, layout comes back as round 3 — including the ordering
+question in #236, which round 1 could not usefully settle while every variant
+looked wrong.

@@ -1,8 +1,11 @@
 /**
- * PROTOTYPE — issue #314. Four Dashboard variations on the real Dashboard
- * route, switchable via `?variant=`, plus `?narrow=true` for a constrained
- * viewport and `?source=live` to run the variant against real Convex data
- * instead of the fixture.
+ * PROTOTYPE — issue #314, round 2. The Thread row lab.
+ *
+ * Round 1 varied the page layout and every variant read as a ledger, so this
+ * round holds the page still — one plain column, one thin "now" rule — and
+ * varies only how a single Thread row is drawn: `?variant=R1|R2|R3|R4`.
+ * `?narrow=true` constrains the viewport; `?source=live` swaps the fixture for
+ * real Convex data.
  *
  * Throwaway: no tests, no error handling, read-only. Clicking a Thread row
  * still opens the Thread in place; a Note row opens the Notes surface.
@@ -16,45 +19,48 @@ import { cn } from "@/lib/utils";
 
 import type { VariantMeta } from "./prototype-switcher";
 
-import { AreaStatusBar } from "../components/area-status-bar";
 import {
+  dayDelta,
   toDashboardArea,
   toDashboardNote,
   toDashboardThread,
 } from "../components/dashboard-model";
 import { buildPrototypeData } from "./prototype-fixture";
+import {
+  areaMap,
+  noteEntry,
+  type PrototypeEntry,
+  threadEntry,
+} from "./prototype-shared";
 import { PrototypeSwitcher } from "./prototype-switcher";
-import { VariantANowAhead, variantAName } from "./variant-a-now-ahead";
-import { VariantBBands, variantBName } from "./variant-b-bands";
-import { VariantCRibbon, variantCName } from "./variant-c-ribbon";
-import { VariantDLanes, variantDName } from "./variant-d-lanes";
+import { ROW_TREATMENTS } from "./row-treatments";
 
-export const PROTOTYPE_VARIANTS: VariantMeta[] = [
-  {
-    key: "A",
-    name: variantAName,
-    stance:
-      "Actionability wins outright — every future date leaves the main run and becomes a forward agenda beside it.",
-  },
-  {
-    key: "B",
-    name: variantBName,
-    stance:
-      "No global rule: today's band holds dated-today and undated Next Moves together; future dates sit in quieter bands.",
-  },
-  {
-    key: "C",
-    name: variantCName,
-    stance:
-      "The in-between: only Follow-ups within two days outrank Next Moves; distant dates drop to a shelf and live on the ribbon.",
-  },
-  {
-    key: "D",
-    name: variantDName,
-    stance:
-      "The question dissolves — only the top strip is attention-ordered; below it space is organised by Area, not by time.",
-  },
+export const PROTOTYPE_VARIANTS: VariantMeta[] = ROW_TREATMENTS.map(
+  (treatment) => ({
+    key: treatment.key,
+    name: treatment.name,
+    stance: treatment.claim,
+  }),
+);
+
+/**
+ * A short, curated run. Round 1's list was long enough that length itself read
+ * as density, which hid what the row was doing — so the lab shows only what a
+ * treatment has to survive: two late things, today, a couple of moves, a
+ * couple of resting Threads, one dated Note, one distant date.
+ */
+const LAB_THREADS = [
+  "t-overdue-1",
+  "t-overdue-2",
+  "t-today-1",
+  "t-near-1",
+  "t-move-2",
+  "t-move-3",
+  "t-open-1",
+  "t-open-2",
+  "t-far-2",
 ];
+const LAB_NOTES = ["n-overdue-1", "n-today-1"];
 
 export function DashboardPrototype({
   narrow,
@@ -81,37 +87,82 @@ export function DashboardPrototype({
         }
       : fixture;
 
-  const props = { ...data, currentDate };
+  const byArea = areaMap(data.areas);
+  const threads =
+    source === "live"
+      ? data.threads
+      : LAB_THREADS.map((id) =>
+          data.threads.find((thread) => thread.id === id),
+        ).filter((thread) => thread !== undefined);
+  const notes =
+    source === "live"
+      ? data.notes
+      : LAB_NOTES.map((id) => data.notes.find((note) => note.id === id)).filter(
+          (note) => note !== undefined,
+        );
+
+  const entries: PrototypeEntry[] = [
+    ...threads.map((thread) => threadEntry(thread, byArea, currentDate)),
+    ...notes.map(noteEntry),
+  ];
+
+  // Two runs only: what is asking now, and what is simply open.
+  const now = entries
+    .filter(
+      (entry) =>
+        (entry.when !== undefined && dayDelta(entry.when, currentDate) <= 0) ||
+        (entry.when === undefined && entry.isNextMove),
+    )
+    .sort((a, b) => (a.when ?? Infinity) - (b.when ?? Infinity));
+  const rest = entries.filter((entry) => !now.includes(entry));
+
+  const treatment =
+    ROW_TREATMENTS.find((candidate) => candidate.key === variant) ??
+    ROW_TREATMENTS[0]!;
+  const { Row } = treatment;
 
   return (
     <>
       <div
         className={cn(
-          "pb-24",
-          narrow ? "mx-auto max-w-[26rem]" : "mx-auto max-w-[1600px]",
+          "mx-auto pb-28",
+          narrow ? "max-w-[26rem]" : "max-w-[46rem]",
         )}
       >
-        <div className="flex flex-col gap-6">
-          {/* The real condition strip stays, so each variant is judged against
-              the rest of the page rather than in a vacuum. */}
-          <AreaStatusBar
-            areas={data.areas}
-            threads={data.threads}
-            currentDate={currentDate}
-            onNewThreadInArea={() => {}}
-          />
+        <ul className={cn(treatment.listClassName, "mt-2")}>
+          {now.map((entry) => (
+            <Row
+              key={entry.id}
+              currentDate={currentDate}
+              entry={entry}
+              urgent
+            />
+          ))}
+        </ul>
 
-          {variant === "B" && <VariantBBands {...props} />}
-          {variant === "C" && <VariantCRibbon {...props} />}
-          {variant === "D" && <VariantDLanes {...props} />}
-          {variant !== "B" && variant !== "C" && variant !== "D" && (
-            <VariantANowAhead {...props} />
-          )}
-        </div>
+        {rest.length > 0 && (
+          <>
+            <div
+              aria-hidden
+              className="my-4 h-px bg-border/50"
+              title="Below this rule: open, nothing asking"
+            />
+            <ul className={treatment.listClassName}>
+              {rest.map((entry) => (
+                <Row
+                  key={entry.id}
+                  currentDate={currentDate}
+                  entry={entry}
+                  urgent={false}
+                />
+              ))}
+            </ul>
+          </>
+        )}
       </div>
 
       <PrototypeSwitcher
-        current={variant}
+        current={treatment.key}
         narrow={narrow}
         source={source}
         variants={PROTOTYPE_VARIANTS}
