@@ -17,7 +17,6 @@ import type {
   DashboardInboxNote,
   DashboardThread,
 } from "../components/dashboard-model";
-import type { CardTreatment } from "./attention-card";
 import type { PrototypeEntry } from "./prototype-shared";
 
 import { dayDelta } from "../components/dashboard-model";
@@ -27,22 +26,21 @@ export const variantE1Name = "Time columns";
 
 export function VariantE1TimeColumns({
   areas,
-  card,
   currentDate,
   header,
   notes,
+  renderCard,
   threads,
 }: {
   areas: DashboardArea[];
-  /** The card treatment under test; the layout is settled. */
-  card: CardTreatment;
   currentDate: number;
   /** The header band under test, rendered above the columns. */
   header: (entries: PrototypeEntry[]) => React.ReactNode;
+  /** The card, supplied by the round under test. */
+  renderCard: (entry: PrototypeEntry) => React.ReactNode;
   notes: DashboardInboxNote[];
   threads: DashboardThread[];
 }) {
-  const { Card } = card;
   const byArea = areaMap(areas);
   const entries = [
     ...threads.map((thread) => threadEntry(thread, byArea, currentDate)),
@@ -126,9 +124,7 @@ export function VariantE1TimeColumns({
             {/* Each column scrolls itself: no column can leave a hole. */}
             <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1.5 pb-2">
               {column.entries.map((entry) => (
-                <li key={entry.id}>
-                  <Card currentDate={currentDate} entry={entry} />
-                </li>
+                <li key={entry.id}>{renderCard(entry)}</li>
               ))}
               {column.entries.length === 0 && (
                 <li className="px-1 py-2 text-xs text-muted-foreground/50">
