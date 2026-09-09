@@ -17,20 +17,31 @@ once the remaining question is settled.
   `Today` / `Tue` / `12d` / `Mar 4`, Areas are condition-coloured icons, and
   summaries and last-activity stay off the Dashboard.
 
-## Still open — round 5
+- **Card: C1 "Move over title."** The Next Move is the headline; the Thread
+  name sits under it in quiet small text beside the Area glyph. A Thread with
+  no move falls back to its title.
 
-Dropping the Thread title entirely was disorienting, so the only question left
-is **how the title stays present while the move leads**. Three treatments of
-the same card inside the same fixed layout:
+## Still open — round 6: the header band
 
-- `/?variant=C1` — **Move over title.** Move is the headline; the Thread name
-  sits under it in quiet small text next to the Area glyph. Reads as "do this —
-  on that Thread".
-- `/?variant=C2` — **Eyebrow.** The Thread name rides above the move as a small
-  uppercase eyebrow: you know where you are before you read what to do, and the
-  title never competes for weight.
-- `/?variant=C3` — **Inline.** One line — move first, Thread name trailing in
-  muted text. Roughly twice the cards per column; the title is easier to miss.
+Area condition returns to the Dashboard, and clicking an Area opens the Quick
+Panel (Condition segments that re-sort the header, the Standard, capture into
+that Area). Both writes are **stubbed to local state** — the fixture's Area ids
+are not real and a prototype has no business writing.
+
+The tension: the Dashboard now wants two summaries at once — time-shaped counts
+and space-shaped Area conditions — and the columns are full-height, so every
+rem the header takes comes off the board.
+
+- `/?variant=H1` — **Two bands.** Production's shape: Areas with their reason
+  on top (only non-healthy Areas get words; healthy ones trail as a glyph
+  cluster), counts underneath. Most information, most height. Tests whether the
+  reason text still earns its line now that every card says what to do.
+- `/?variant=H2` — **Merged bar.** One row: Area chips with condition colour
+  and a pending count on the left, the five stats at the right end. No reason
+  text — the why is one click away. Cheapest in height.
+- `/?variant=H3` — **Area tiles.** A tile per Area: name, its own pending
+  count, condition, and its soonest date token, with the global counts below.
+  Bigger click target and per-Area numbers, at the cost of a taller header.
 
 ## Round history
 
@@ -43,6 +54,8 @@ the same card inside the same fixed layout:
   time but close to the rejected plan view and prone to empty cells.
 - **Round 4** (`2b62fdc`) — where time lives, three ways. E1 (time as layout)
   won; E2 (time as chart) and E3 (time as spine) retired.
+- **Round 5** (`6fc6dc0`) — move-led card, three ways of keeping the Thread
+  title. C1 won; C2 (eyebrow) and C3 (inline) retired.
 
 ## Run it
 
@@ -54,7 +67,7 @@ bun install
 bun run dev
 ```
 
-Then open `/?variant=C1`. The floating bar cycles treatments (← / →) and
+Then open `/?variant=H1`. The floating bar cycles variants (← / →) and
 toggles **Wide / Constrained** (`?narrow=true`) and **Fixture / Live data**
 (`?source=live`). Cards still open a Thread in place (`?thread=`); a Note opens
 the Notes surface (`?inbox=true`).
@@ -67,11 +80,19 @@ Thread Notes are absent by construction.
 
 ## What is left to decide
 
-1. Which card treatment — C1, C2, or C3?
-2. Is the fallback right when a Thread has no Next Move (title as headline), or
-   should those Threads look visibly different from ones you can act on?
-3. Does a Note need to be distinguishable from a Thread card by more than the
-   dashed glyph?
-4. #236: with time as columns, the ordering question becomes "which column does
-   an undated Next Move belong in?" — it currently sits in **Now**. Confirm or
-   change that, and the issue can be closed with the answer.
+1. Which header — H1, H2, or H3?
+2. Does the reason text (H1) earn its height, or is condition colour plus the
+   panel enough (H2)?
+3. Should an Area chip/tile also *filter* the board, or is click reserved for
+   the Quick Panel?
+
+## Parked, in order
+
+1. **Inline card actions** — mark the move done, push the Follow-up, complete a
+   Note. The round that most changes daily use.
+2. **Undated Notes** — the columns are time-shaped, so a Note with no date
+   currently lands nowhere and Resting only accepts Threads.
+3. Column overflow caps, empty states, keyboard movement between cards.
+4. **#236**: with time as columns the question shrinks to "which column does an
+   undated Next Move belong in?" — it currently sits in **Now**. Confirm that
+   and the issue closes.

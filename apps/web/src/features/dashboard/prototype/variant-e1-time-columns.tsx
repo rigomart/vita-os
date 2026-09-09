@@ -22,7 +22,6 @@ import type { PrototypeEntry } from "./prototype-shared";
 
 import { dayDelta } from "../components/dashboard-model";
 import { areaMap, noteEntry, threadEntry } from "./prototype-shared";
-import { StatStrip } from "./stat-strip";
 
 export const variantE1Name = "Time columns";
 
@@ -30,6 +29,7 @@ export function VariantE1TimeColumns({
   areas,
   card,
   currentDate,
+  header,
   notes,
   threads,
 }: {
@@ -37,6 +37,8 @@ export function VariantE1TimeColumns({
   /** The card treatment under test; the layout is settled. */
   card: CardTreatment;
   currentDate: number;
+  /** The header band under test, rendered above the columns. */
+  header: (entries: PrototypeEntry[]) => React.ReactNode;
   notes: DashboardInboxNote[];
   threads: DashboardThread[];
 }) {
@@ -97,7 +99,7 @@ export function VariantE1TimeColumns({
 
   return (
     <div className="flex h-[calc(100svh-10rem)] min-h-[34rem] flex-col gap-3">
-      <StatStrip currentDate={currentDate} entries={entries} />
+      {header(entries)}
 
       <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {columns.map((column) => (
