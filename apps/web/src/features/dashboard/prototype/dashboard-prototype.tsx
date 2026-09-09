@@ -1,15 +1,14 @@
 /**
- * PROTOTYPE — issue #314, round 6.
+ * PROTOTYPE — issue #314.
  *
- * Settled: E1's four full-height, self-scrolling time columns (Now · This week
- * · Later · Resting), and the C1 card — Next Move as the headline with the
- * Thread name quiet underneath.
+ * Settled so far: E1's four full-height, self-scrolling time columns (Now ·
+ * This week · Later · Resting); the C1 card (Next Move as the headline, Thread
+ * name quiet underneath); and the H2 header — one row, Areas drawn as status
+ * on the left with the Quick Panel on click, the five counts on the right.
  *
- * Open: the header band. The Dashboard wants two summaries at once — the
- * time-shaped counts and the space-shaped Area conditions — and the columns
- * are full-height, so every rem the header takes comes off the board.
- * `?variant=H1|H2|H3` swaps the band; clicking an Area opens the Quick Panel
- * (condition segments + capture), with both writes stubbed to local state.
+ * Nothing varies right now: the next round is inline card actions. Area
+ * Condition writes are stubbed to local state — the fixture's ids are not real
+ * and a prototype has no business writing.
  *
  * `?narrow=true` constrains the viewport; `?source=live` swaps the fixture for
  * real Convex data. Throwaway: no tests, no error handling, read-only.
@@ -31,18 +30,19 @@ import {
   toDashboardThread,
 } from "../components/dashboard-model";
 import { CARD_TREATMENTS } from "./attention-card";
-import { HEADER_VARIANTS } from "./headers";
+import { DashboardHeader } from "./headers";
 import { buildPrototypeData } from "./prototype-fixture";
 import { PrototypeSwitcher } from "./prototype-switcher";
 import { VariantE1TimeColumns } from "./variant-e1-time-columns";
 
-export const PROTOTYPE_VARIANTS: VariantMeta[] = HEADER_VARIANTS.map(
-  (header) => ({
-    key: header.key,
-    name: header.name,
-    stance: header.claim,
-  }),
-);
+export const PROTOTYPE_VARIANTS: VariantMeta[] = [
+  {
+    key: "H2",
+    name: "Merged bar",
+    stance:
+      "Settled: one row — Areas as status (icon, name, pending count; click for the Quick Panel), the five counts at the right end.",
+  },
+];
 
 /** The card is settled at C1; only the header varies this round. */
 const CARD = CARD_TREATMENTS[0]!;
@@ -78,10 +78,7 @@ export function DashboardPrototype({
     conditions[area.id] ? { ...area, condition: conditions[area.id]! } : area,
   );
 
-  const header =
-    HEADER_VARIANTS.find((candidate) => candidate.key === variant) ??
-    HEADER_VARIANTS[0]!;
-  const { Header } = header;
+  void variant;
 
   return (
     <>
@@ -98,7 +95,7 @@ export function DashboardPrototype({
           notes={data.notes}
           threads={data.threads}
           header={(entries) => (
-            <Header
+            <DashboardHeader
               areas={areas}
               currentDate={currentDate}
               entries={entries}
@@ -114,7 +111,7 @@ export function DashboardPrototype({
       </div>
 
       <PrototypeSwitcher
-        current={header.key}
+        current="H2"
         narrow={narrow}
         source={source}
         variants={PROTOTYPE_VARIANTS}

@@ -21,27 +21,12 @@ once the remaining question is settled.
   name sits under it in quiet small text beside the Area glyph. A Thread with
   no move falls back to its title.
 
-## Still open — round 6: the header band
-
-Area condition returns to the Dashboard, and clicking an Area opens the Quick
-Panel (Condition segments that re-sort the header, the Standard, capture into
-that Area). Both writes are **stubbed to local state** — the fixture's Area ids
-are not real and a prototype has no business writing.
-
-The tension: the Dashboard now wants two summaries at once — time-shaped counts
-and space-shaped Area conditions — and the columns are full-height, so every
-rem the header takes comes off the board.
-
-- `/?variant=H1` — **Two bands.** Production's shape: Areas with their reason
-  on top (only non-healthy Areas get words; healthy ones trail as a glyph
-  cluster), counts underneath. Most information, most height. Tests whether the
-  reason text still earns its line now that every card says what to do.
-- `/?variant=H2` — **Merged bar.** One row: Area chips with condition colour
-  and a pending count on the left, the five stats at the right end. No reason
-  text — the why is one click away. Cheapest in height.
-- `/?variant=H3` — **Area tiles.** A tile per Area: name, its own pending
-  count, condition, and its soonest date token, with the global counts below.
-  Bigger click target and per-Area numbers, at the cost of a taller header.
+- **Header: H2 "Merged bar."** One row — the date, then each Area as *status*
+  (condition-coloured icon, name, pending count) with no pill outline, then the
+  five counts at the right end. Clicking an Area opens the Quick Panel:
+  Condition segments, the Standard, capture into that Area. Both writes are
+  **stubbed to local state** — the fixture's Area ids are not real and a
+  prototype has no business writing.
 
 ## Round history
 
@@ -56,6 +41,9 @@ rem the header takes comes off the board.
   won; E2 (time as chart) and E3 (time as spine) retired.
 - **Round 5** (`6fc6dc0`) — move-led card, three ways of keeping the Thread
   title. C1 won; C2 (eyebrow) and C3 (inline) retired.
+- **Round 6** (`3f7c891`) — the header band, three ways. H2 won; H1 (two bands
+  with reason text) and H3 (per-Area tiles) retired. The chips were restyled
+  after review: they read as filters, so the pill outline came off.
 
 ## Run it
 
@@ -67,7 +55,7 @@ bun install
 bun run dev
 ```
 
-Then open `/?variant=H1`. The floating bar cycles variants (← / →) and
+Then open `/`. Nothing varies between rounds right now; the floating bar
 toggles **Wide / Constrained** (`?narrow=true`) and **Fixture / Live data**
 (`?source=live`). Cards still open a Thread in place (`?thread=`); a Note opens
 the Notes surface (`?inbox=true`).
@@ -78,19 +66,14 @@ the Notes surface (`?inbox=true`).
 near-term (1–6d), distant (+12/+27/+45d), undated-with-Next-Move, plain open.
 Thread Notes are absent by construction.
 
-## What is left to decide
+## Next up
 
-1. Which header — H1, H2, or H3?
-2. Does the reason text (H1) earn its height, or is condition colour plus the
-   panel enough (H2)?
-3. Should an Area chip/tile also *filter* the board, or is click reserved for
-   the Quick Panel?
+**Inline card actions** — mark the move done, push the Follow-up, complete a
+Note — the round that most changes daily use.
 
-## Parked, in order
+## Parked after that
 
-1. **Inline card actions** — mark the move done, push the Follow-up, complete a
-   Note. The round that most changes daily use.
-2. **Undated Notes** — the columns are time-shaped, so a Note with no date
+1. **Undated Notes** — the columns are time-shaped, so a Note with no date
    currently lands nowhere and Resting only accepts Threads.
 3. Column overflow caps, empty states, keyboard movement between cards.
 4. **#236**: with time as columns the question shrinks to "which column does an
