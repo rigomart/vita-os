@@ -1,10 +1,13 @@
-import type { ComponentPropsWithoutRef, ComponentProps } from "react";
+import type {
+  ProjectedArea,
+  ProjectedNote,
+  ProjectedThread,
+} from "@convex/lib/validators";
+import type { ComponentProps, ComponentPropsWithoutRef } from "react";
 
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-
-import type { DashboardThread } from "./dashboard-model";
 
 import { DashboardOverview } from "./dashboard-overview";
 
@@ -26,69 +29,98 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-vi.mock("@/features/areas/components/area-quick-panel", () => {
-  return {
-    AreaQuickPanel: ({
-      area,
-      children,
-      onNewThread,
-    }: {
-      area: { condition: string; id: string; name: string };
-      children: React.ReactNode;
-      onNewThread: (areaId: string) => void;
-    }) => (
-      <button
-        type="button"
-        aria-label={`Area panel for ${area.name}`}
-        title={
-          area.condition === "healthy" ? `${area.name} — steady` : area.name
-        }
-        onClick={() => onNewThread(area.id)}
-      >
-        {children}
-      </button>
-    ),
-  };
-});
+vi.mock("@/features/areas/components/area-quick-panel", () => ({
+  AreaQuickPanel: ({
+    area,
+    children,
+    onNewThread,
+  }: {
+    area: { condition: string; id: string; name: string };
+    children: React.ReactNode;
+    onNewThread: (areaId: string) => void;
+  }) => (
+    <button
+      type="button"
+      aria-label={`Area panel for ${area.name}`}
+      title={`${area.name} — ${area.condition}`}
+      onClick={() => onNewThread(area.id)}
+    >
+      {children}
+    </button>
+  ),
+}));
+
+// The cards' writes belong to the hooks; this suite is about what lands where.
+vi.mock("@/features/threads/use-complete-next-move", () => ({
+  useCompleteNextMove: () => vi.fn(),
+}));
+vi.mock("@/features/threads/use-update-thread", () => ({
+  useUpdateThread: () => vi.fn(),
+}));
+vi.mock("@/features/notes/use-complete-note", () => ({
+  useCompleteNote: () => vi.fn(),
+}));
+vi.mock("@/features/notes/use-update-note-when", () => ({
+  useUpdateNoteWhen: () => vi.fn(),
+}));
 
 const currentDate = new Date(2026, 6, 17, 12).getTime();
+const DAY = 86_400_000;
 
 function thread(
-  id: string,
-  fields: Partial<DashboardThread> = {},
-): DashboardThread {
+  title: string,
+  fields: Partial<ProjectedThread> = {},
+): ProjectedThread {
   return {
-    id,
-    title: id,
-    slug: id,
-    areaId: "health",
+    _id: title as ProjectedThread["_id"],
+    title,
+    slug: title.toLowerCase().replaceAll(" ", "-"),
+    areaId: "health" as ProjectedThread["areaId"],
     order: 0,
+    state: "open",
+    createdAt: currentDate,
     ...fields,
-  };
+  } as ProjectedThread;
 }
+
+function note(
+  body: string,
+  fields: Partial<ProjectedNote> = {},
+): ProjectedNote {
+  return {
+    _id: body as ProjectedNote["_id"],
+    _creationTime: currentDate,
+    body,
+    state: "open",
+    createdAt: currentDate,
+    ...fields,
+  } as ProjectedNote;
+}
+
+const areas = [
+  {
+    _id: "health",
+    name: "Health",
+    slug: "health",
+    icon: "HeartPulse",
+    condition: "critical",
+    order: 0,
+  },
+  {
+    _id: "home",
+    name: "Home",
+    slug: "home",
+    icon: "Home",
+    condition: "healthy",
+    order: 1,
+  },
+] as unknown as ProjectedArea[];
 
 type OverviewProps = ComponentProps<typeof DashboardOverview>;
 
 function renderOverview(overrides: Partial<OverviewProps> = {}) {
   const props: OverviewProps = {
-    areas: [
-      {
-        id: "health",
-        name: "Health",
-        slug: "health",
-        icon: "HeartPulse",
-        condition: "critical",
-        order: 0,
-      },
-      {
-        id: "home",
-        name: "Home",
-        slug: "home",
-        icon: "Home",
-        condition: "healthy",
-        order: 1,
-      },
-    ],
+    areas,
     threads: [],
     notes: [],
     currentDate,
@@ -99,157 +131,105 @@ function renderOverview(overrides: Partial<OverviewProps> = {}) {
   return { ...render(<DashboardOverview {...props} />), props };
 }
 
+function columnText(name: string) {
+  return within(screen.getByRole("region", { name }))
+    .getAllByRole("listitem")
+    .map((item) => item.textContent);
+}
+
 describe("DashboardOverview", () => {
-  it("keeps attention-bearing Areas prominent in the status bar", () => {
-    renderOverview({
-      threads: [thread("Insurance appeal", { nextMove: "Call the clinic" })],
-    });
+  it("offers the first Area when there are none", async () => {
+    const { props } = renderOverview({ areas: [] });
 
-    // The page's only heading is the one assistive tech reads.
-    expect(
-      screen.getByRole("heading", { level: 1, name: "Life Areas" }),
-    ).toBeInTheDocument();
-
-    const bar = screen.getByRole("region", {
-      name: "Life Areas by condition",
-    });
-
-    const attention = within(bar).getByTitle("Health");
-    expect(attention).toBeVisible();
-    expect(attention).toHaveTextContent("Health");
-    expect(attention).toHaveTextContent("Call the clinic");
-
-    const healthyGlyph = within(bar).getByRole("button", {
-      name: "Area panel for Home",
-    });
-    expect(within(healthyGlyph).getByText("Home")).toHaveClass("sr-only");
-    expect(healthyGlyph).toHaveAttribute("title", "Home — steady");
-    expect(healthyGlyph).not.toHaveTextContent("Call the clinic");
-
-    expect(
-      attention.compareDocumentPosition(healthyGlyph) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create Life Area" }),
+    );
+    expect(props.onCreateArea).toHaveBeenCalled();
   });
 
-  it("collapses to a steady line when every Area is healthy", () => {
-    renderOverview({
-      areas: [
-        {
-          id: "health",
-          name: "Health",
-          slug: "health",
-          icon: "HeartPulse",
-          condition: "healthy",
-          order: 0,
-        },
-        {
-          id: "home",
-          name: "Home",
-          slug: "home",
-          icon: "Home",
-          condition: "healthy",
-          order: 1,
-        },
-      ],
-    });
+  it("sorts the Areas worst condition first and captures into one", async () => {
+    const { props } = renderOverview();
 
-    const bar = screen.getByRole("region", {
-      name: "Life Areas by condition",
-    });
-    expect(within(bar).getByText("All 2 areas steady")).toBeVisible();
-
-    // Only the two quiet glyphs are left — no reason group to read.
+    const bar = screen.getByRole("region", { name: "Life Areas by condition" });
     const buttons = within(bar).getAllByRole("button");
-    expect(buttons.map((button) => button.getAttribute("title"))).toEqual([
-      "Health — steady",
-      "Home — steady",
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Area panel for Health",
+      "Area panel for Home",
     ]);
+
+    await userEvent.click(buttons[0]!);
+    expect(props.onNewThreadInArea).toHaveBeenCalledWith("health");
   });
 
-  it("lays every Thread out in canonical attention order", () => {
+  it("counts each Area's share of the board", () => {
     renderOverview({
       threads: [
-        thread("Plain open", { order: 0 }),
-        thread("Next move", { nextMove: "Call", order: 1 }),
-        thread("Upcoming", { followUp: currentDate + 86_400_000 }),
-        thread("Overdue", { followUp: currentDate - 86_400_000 }),
-      ],
-    });
-
-    const rows = within(
-      screen.getByRole("list", { name: "Threads in attention order" }),
-    ).getAllByRole("listitem");
-    expect(rows.map((row) => row.textContent)).toEqual([
-      expect.stringContaining("Overdue"),
-      expect.stringContaining("Upcoming"),
-      expect.stringContaining("Next move"),
-      expect.stringContaining("Plain open"),
-    ]);
-  });
-
-  it("keeps dated Inbox Notes visible without mixing them into the Thread run", () => {
-    renderOverview({
-      notes: [
-        {
-          id: "dated",
-          body: "Renew passport",
-          createdAt: currentDate,
-          when: currentDate,
-        },
-        { id: "loose", body: "Buy stamps", createdAt: currentDate },
-      ],
-    });
-
-    const synopsis = screen.getByRole("region", { name: "Notes synopsis" });
-    expect(within(synopsis).getByText("Renew passport")).toBeVisible();
-    expect(within(synopsis).getByText("+1 more")).toBeVisible();
-    expect(within(synopsis).getByText(/2 open/)).toBeVisible();
-  });
-
-  it("describes a long-quiet Thread without fading it or changing its order", () => {
-    renderOverview({
-      threads: [
-        thread("Quiet concern", {
-          lastActivityAt: currentDate - 45 * 86_400_000,
+        thread("Late one", { followUp: currentDate - DAY }),
+        thread("Elsewhere", {
+          areaId: "home" as ProjectedThread["areaId"],
+          order: 1,
         }),
       ],
     });
 
-    const row = screen.getByRole("link", { name: /Quiet concern/ });
-    expect(row).toHaveTextContent("quiet 45d");
-    expect(row.className).not.toMatch(/opacity/);
+    const bar = screen.getByRole("region", { name: "Life Areas by condition" });
+    expect(
+      within(bar).getByRole("button", { name: "Area panel for Health" }),
+    ).toHaveTextContent("1");
   });
 
-  it("preserves Area onboarding until the first Area exists", async () => {
-    const user = userEvent.setup();
-    const onCreateArea = vi.fn();
-    const { rerender, props } = renderOverview({ areas: [], onCreateArea });
+  it("puts dated Threads and Notes in the column their date earns", () => {
+    renderOverview({
+      threads: [
+        thread("Overdue", { followUp: currentDate - DAY }),
+        thread("Midweek", { followUp: currentDate + 2 * DAY, order: 1 }),
+        thread("Distant", { followUp: currentDate + 30 * DAY, order: 2 }),
+      ],
+      notes: [note("Water the plants", { when: currentDate })],
+    });
 
-    await user.click(screen.getByRole("button", { name: "Create Life Area" }));
-    expect(onCreateArea).toHaveBeenCalledOnce();
-    expect(
-      screen.queryByRole("list", { name: "Threads in attention order" }),
-    ).toBeNull();
+    expect(columnText("Now")).toEqual([
+      expect.stringContaining("Overdue"),
+      expect.stringContaining("Water the plants"),
+    ]);
+    expect(columnText("This week")).toEqual([
+      expect.stringContaining("Midweek"),
+    ]);
+    expect(columnText("Later")).toEqual([expect.stringContaining("Distant")]);
+  });
 
-    rerender(
-      <DashboardOverview
-        {...props}
-        areas={[
-          {
-            id: "health",
-            name: "Health",
-            slug: "health",
-            icon: "HeartPulse",
-            condition: "critical",
-            order: 0,
-          },
-        ]}
-      />,
-    );
+  /**
+   * #236, settled: a Follow-up outranks an undated Next Move, so an actionable
+   * Thread with no date keeps its own run in the margin rather than in Now.
+   */
+  it("keeps undated Next Moves out of Now and in the No date margin", () => {
+    renderOverview({
+      threads: [
+        thread("Dated", { followUp: currentDate }),
+        thread("Actionable", { nextMove: "Call the clinic", order: 1 }),
+        thread("Idle", { order: 2 }),
+      ],
+      notes: [note("Loose thought")],
+    });
+
+    expect(columnText("Now")).toEqual([expect.stringContaining("Dated")]);
+
+    // The margin is an <aside>, so it lands as a complementary landmark.
+    const margin = screen.getByRole("complementary", { name: "No date" });
+    expect(within(margin).getByText("Ready to move")).toBeVisible();
+    // The move leads the card; the Thread's own name sits under it.
+    expect(within(margin).getByText("Call the clinic")).toBeVisible();
+    expect(within(margin).getByText("Actionable")).toBeVisible();
+    expect(within(margin).getByText("Idle")).toBeVisible();
+    expect(within(margin).getByText("Loose thought")).toBeVisible();
+  });
+
+  it("says so plainly when nothing is asking", () => {
+    renderOverview();
+
+    expect(screen.getByText("Nothing is asking for you.")).toBeVisible();
     expect(
-      screen.queryByRole("button", { name: "Create Life Area" }),
-    ).toBeNull();
-    expect(screen.getByText("No open Threads right now.")).toBeVisible();
+      screen.queryByRole("region", { name: "Now" }),
+    ).not.toBeInTheDocument();
   });
 });

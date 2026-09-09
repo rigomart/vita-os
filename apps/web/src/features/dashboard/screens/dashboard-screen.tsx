@@ -3,14 +3,9 @@ import type { Id } from "@convex/_generated/dataModel";
 import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex-helpers/react/cache/hooks";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
-import {
-  toDashboardArea,
-  toDashboardNote,
-  toDashboardThread,
-} from "@/features/dashboard/components/dashboard-model";
 import { DashboardOverview } from "@/features/dashboard/components/dashboard-overview";
 import { DashboardOverviewSkeleton } from "@/features/dashboard/components/dashboard-overview-skeleton";
 import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread-dialog";
@@ -24,39 +19,23 @@ import { useAttentionClock } from "@/hooks/use-attention-clock";
  */
 export function DashboardScreen() {
   const currentDate = useAttentionClock();
-  const areaDocs = useQuery(api.areas.list);
-  const threadDocs = useQuery(api.threads.list);
-  const noteDocs = useQuery(api.notes.list);
+  const areas = useQuery(api.areas.list);
+  const threads = useQuery(api.threads.list);
+  const notes = useQuery(api.notes.list);
   const [showCreateArea, setShowCreateArea] = useState(false);
   const navigate = useNavigate();
   /**
-   * The Area a lane header's Quick Panel asked to capture into. The dialog
-   * lives up here rather than in the panel: the panel closes on the way to it,
-   * and the Areas the picker needs are already on this screen.
+   * The Area a Quick Panel asked to capture into. The dialog lives up here
+   * rather than in the panel: the panel closes on the way to it, and the Areas
+   * the picker needs are already on this screen.
    */
   const [newThreadAreaId, setNewThreadAreaId] = useState<string | null>(null);
 
-  // Keep the three projections stable while their source query is unchanged.
-  const areas = useMemo(
-    () => (areaDocs ?? []).map(toDashboardArea),
-    [areaDocs],
-  );
-  const threads = useMemo(
-    () => (threadDocs ?? []).map(toDashboardThread),
-    [threadDocs],
-  );
-  const notes = useMemo(
-    () => (noteDocs ?? []).map(toDashboardNote),
-    [noteDocs],
-  );
-
   const loading =
-    areaDocs === undefined ||
-    threadDocs === undefined ||
-    noteDocs === undefined;
+    areas === undefined || threads === undefined || notes === undefined;
 
   return (
-    <div className="mx-auto max-w-7xl pb-16">
+    <div className="mx-auto max-w-400 pb-4">
       {loading ? (
         <DashboardOverviewSkeleton />
       ) : (
@@ -75,13 +54,13 @@ export function DashboardScreen() {
         onOpenChange={setShowCreateArea}
       />
 
-      {newThreadAreaId != null && areaDocs !== undefined && (
+      {newThreadAreaId != null && areas !== undefined && (
         <CreateThreadDialog
           open
           onOpenChange={(open) => {
             if (!open) setNewThreadAreaId(null);
           }}
-          areas={areaDocs}
+          areas={areas}
           defaultAreaId={newThreadAreaId as Id<"areas">}
           onCreated={({ slug }) => {
             setNewThreadAreaId(null);

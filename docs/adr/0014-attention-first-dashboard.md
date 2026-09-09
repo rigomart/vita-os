@@ -1,5 +1,7 @@
 # Attention-first Dashboard
 
+Status: Superseded by ADR 0017 — the flat global run is replaced by time columns with an unscheduled margin. The thesis it defends (no planning canvas; the Dashboard is for orientation, not maintenance) still holds; its flat-run form, read-only Follow-ups, Notes synopsis, and quiet-age annotation do not.
+
 The **Dashboard** replaces the **Plan** timeline with one flat, global run of every **Open Thread** in canonical attention order: overdue **Follow-ups**, upcoming **Follow-ups**, **Threads** with a **Next Move**, then plain **Open Threads**. A **Follow-up** appears as a compact row annotation rather than a coordinate, and the **Inbox** reports in through a small read-only synopsis of dated **Open Tasks** plus the total open count. The **Area Condition** strip remains above the run and becomes the **Area Quick Panel** trigger. The same surface is used at every screen size.
 
 This enforces the product thesis: Vita OS restores continuity of awareness; it does not ask the user to maintain a calendar or planning canvas. The **Plan** and its drag-to-reschedule interaction are retired rather than kept as a secondary view because the row order and annotations already answer the useful Follow-up question, while the timeline reintroduced scheduling semantics and hid undated slow loops at its edges.

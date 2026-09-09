@@ -89,7 +89,7 @@ The global collection of standalone **Notes**, with **Open Notes** in attention 
 _Avoid_: Inbox, backlog.
 
 **Dashboard**:
-The main awareness surface: a dense **Condition** strip of **Life Areas**, one flat attention-ordered run of every **Open Thread**, and a lightweight **Notes** synopsis.
+The main awareness surface: a row of **Life Area** **Conditions** and counts over three time columns — **Now**, **This week**, **Later** — beside a margin of everything unscheduled, holding every **Open Thread** and open **Standalone Note**.
 _Avoid_: Task list, project board, backlog.
 
 ## Relationships
@@ -115,31 +115,32 @@ _Avoid_: Task list, project board, backlog.
 
 ## Thread Attention
 
-- **Open Threads** on the **Dashboard** sit in one flat attention-ordered list with no visible group headings at every screen size. Attention groups survive as ordering only; a compact date annotation on each row carries the Follow-up signal. The ordering and state language come from ADR 0005; the canonical Dashboard form is recorded in ADR 0014.
-- The **Area** inventory groups the same attention order into visible, collapsible **attention lanes** — **Due now**, **Upcoming**, **Next moves**, **Open** — introduced by a census line that states each lane's count and hosts the **New Thread** action (ADR 0009). Every lane starts expanded; collapsing is session-local, a collapsed lane keeps its count, and empty lanes are omitted.
-- The flat order is **Overdue Follow-ups**, **Upcoming Follow-ups**, **Threads with Next Moves**, then plain **Open Threads**. On the **Dashboard**, dated upcoming **Follow-ups** come before undated **Threads with Next Moves**.
-- **Overdue Follow-ups** have a **Follow-up** before today. **Upcoming Follow-ups** have a **Follow-up** today or later.
-- **Due now** (the Area lane) covers **Threads** whose **Follow-up** is today or earlier — **Overdue Follow-ups** plus due-today ones. In the lane vocabulary, **Upcoming** narrows to a **Follow-up** strictly after today.
+- **Open Threads** and open **Standalone Notes** share one axis on the **Dashboard**: three time columns — **Now**, **This week**, **Later** — beside a margin for everything unscheduled. A **Follow-up** and an **Attention Date** are the same kind of signal there, so a dated Note sits beside a dated Thread. The form is recorded in ADR 0017, which supersedes ADR 0014; the state language still comes from ADR 0005.
+- **Now** holds a **Follow-up** or **Attention Date** today or earlier — overdue and due-today together. **This week** is the next six days. **Later** is day seven onward.
+- The unscheduled margin reads in three labelled runs: **Ready to move** (**Threads with Next Moves**), **Open** (plain **Open Threads**), then **Notes** (**Standalone Notes** with no **Attention Date**).
+- **A date outranks an undated Next Move.** A **Thread with a Next Move** and no **Follow-up** never appears in **Now**; it leads the unscheduled margin instead. This settles the ordering question ADR 0005 left open.
 - A **Follow-up** takes precedence when a **Thread** also has a **Next Move**.
-- **Threads with Next Moves** have a **Next Move** and no **Follow-up**.
-- Plain **Open Threads** have neither field and appear inline at the end of the flat run.
-- The **Dashboard** shows every plain **Open Thread** inline after attention-bearing Threads; none are capped or hidden. The **Area** inventory also always lists every Thread.
-- **Follow-ups** are ordered oldest-first when overdue and soonest-first when upcoming. The user's **Thread** order breaks ties and orders undated attention groups.
+- **Threads with Next Moves** have a **Next Move** and no **Follow-up**. Plain **Open Threads** have neither field.
+- Dated items are ordered soonest-first within a column; the user's **Thread** order breaks ties and orders the undated runs, and undated **Notes** read newest-first.
+- Every **Open Thread** and open **Standalone Note** appears in exactly one column or run. Nothing is capped or hidden; each column scrolls itself.
+- The **Area** inventory groups the same attention order into visible, collapsible **attention lanes** — **Due now**, **Upcoming**, **Next moves**, **Open** — introduced by a census line that states each lane's count and hosts the **New Thread** action (ADR 0009). Every lane starts expanded; collapsing is session-local, a collapsed lane keeps its count, and empty lanes are omitted.
+- **Due now** (the Area lane) covers **Threads** whose **Follow-up** is today or earlier. In the lane vocabulary, **Upcoming** narrows to a **Follow-up** strictly after today.
 - An **Open Thread** with no **Next Move** and no **Follow-up** is valid; it is not automatically overdue, stale, or broken.
 - **Up Next** never affects attention: the **Dashboard** and attention lanes derive from **Next Move** and **Follow-up** only. Only the **Next Move** surfaces outside its **Thread**; **Up Next** is visible only in **Thread** detail.
-- The Dashboard may annotate a Thread as `quiet Nd` when its latest Activity Log movement is at least seven days old. Quiet age is neutral continuity context: it never changes attention order, opacity, Condition, or group, and missing activity says nothing. It does not create a **Stale Thread** state.
 - Opening or reviewing a **Thread** does not clear its **Follow-up**; the user must clear, reschedule, or resolve it explicitly.
 
 ## Dashboard Structure
 
-- The Dashboard has one attention-first view and no tabs or secondary schedule.
-- **Life Areas** appear as one dense **Condition** strip above the Thread run, grouped Critical, Needs Attention, then Healthy with the user's Area order preserved inside each group. Critical and Needs Attention Areas name the strongest reason they are asking for attention; Healthy Areas trail as quiet icons behind a steady tally. When nothing needs attention the strip says all areas are steady.
-- Activating an Area in the Condition strip opens the **Area** Quick Panel — the Area's Condition, its Standard as read-only text when one exists, a new Thread scoped to that Area, and a link to the Area page. The persistent top-bar Area strip remains pure navigation.
-- Every **Open Thread** appears in one global run: Overdue Follow-ups, Upcoming Follow-ups, Threads with Next Moves, then plain Open Threads. Follow-up is a row annotation, never a layout coordinate. Opening a row summons Thread detail in place.
-- The Dashboard is read-only with respect to Follow-up and Thread placement. Setting, clearing, or rescheduling a Follow-up and moving a Thread between Areas happen in Thread detail.
-- A lightweight Notes synopsis shows at most three dated Open Notes in attention-date order, the total open count, and how many Notes remain. Activating it summons Notes in place.
+- The Dashboard has one attention-first view and no tabs or secondary schedule. It fills the viewport: the columns are full height and scroll independently, so a busy column never pushes the others down and a quiet one never leaves a hole.
+- One row above the board carries today's date, the **Life Areas**, and four counts — **Now**, **This week**, **Ready to move**, **Open**.
+- **Life Areas** appear in that row as status, not as filters: each is its icon in its **Condition** colour, its name, and how much of the board belongs to it, worst Condition first with the user's Area order preserved inside each group. Healthy Areas are drawn grey so the only colour in the row belongs to the Areas that are asking.
+- Activating an Area opens the **Area** Quick Panel — the Area's Condition, its Standard as read-only text when one exists, a new Thread scoped to that Area, and a link to the Area page (ADR 0013). The persistent top-bar Area strip remains pure navigation.
+- A **Thread** card leads with its **Next Move**, with the **Thread** title quiet underneath; where no **Next Move** is captured the title leads and there is no second line. The **Area** appears only as a Condition-coloured glyph. Dates are compact tokens rather than phrases.
+- The Dashboard **can act on attention in place**: a card's rail — shown on hover or keyboard focus — completes the **Next Move** or sets, changes, and clears the **Follow-up**; a **Standalone Note** offers done and its **Attention Date**. Moving a **Thread** between **Areas**, editing its text, and resolving it still happen in **Thread** detail.
+- Opening a card summons **Thread** detail in place; opening a **Note** summons **Notes** in place.
+- When nothing is open at all the board is replaced by a single line saying nothing is asking.
 - Opening a **Thread** from any surface — **Dashboard**, **Notes**, the palette, or an **Area** inventory — shows its detail pane in place over the current page rather than navigating to the **Area** page; closing the pane returns the user to where they were. The in-place behavior is recorded in ADR 0007.
-- Opening the **Notes** from any surface — the top bar, the palette, the Dashboard synopsis, or the mobile tab — summons it in place over the current page rather than navigating; closing returns the user exactly where they were. `/notes` opens Notes over the Dashboard; `/inbox` remains a compatibility deep link. The in-place behavior and chosen form are recorded in ADR 0012.
+- Opening the **Notes** from any surface — the top bar, the palette, a Dashboard Note, or the mobile tab — summons it in place over the current page rather than navigating; closing returns the user exactly where they were. `/notes` opens Notes over the Dashboard; `/inbox` remains a compatibility deep link. The in-place behavior and chosen form are recorded in ADR 0012.
 - Acting on an **Area** from the **Dashboard** — setting its Condition, reading its Standard, capturing a Thread scoped to it — happens in the summoned Area Quick Panel, and the command palette offers the same actions per Area. The top-bar strip stays pure navigation, and Condition changes are still recorded nowhere. The panel, its action set, and its limits are recorded in ADR 0013.
 
 ## Note Handling
