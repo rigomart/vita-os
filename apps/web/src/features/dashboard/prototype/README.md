@@ -44,6 +44,8 @@ once the remaining question is settled.
 - **Round 6** (`3f7c891`, restyled in `5c3306d`) — the header band, three ways.
   H2 won; H1 (two bands with reason text) and H3 (per-Area tiles) retired. The
   chips read as filters, so the pill outline came off.
+- **Round 7** (`c1e69df`) — inline card actions, three ways. A1 won; A2
+  (always-on controls) and A3 (card as action menu) retired.
 
 ## Run it
 
@@ -55,8 +57,7 @@ bun install
 bun run dev
 ```
 
-Then open `/?variant=A1`. The floating bar cycles variants (← / →) and
-toggles **Wide / Constrained** (`?narrow=true`) and **Fixture / Live data**
+Then open `/`. Nothing varies right now; the floating bar toggles **Wide / Constrained** (`?narrow=true`) and **Fixture / Live data**
 (`?source=live`). Cards still open a Thread in place (`?thread=`); a Note opens
 the Notes surface (`?inbox=true`).
 
@@ -66,28 +67,14 @@ the Notes surface (`?inbox=true`).
 near-term (1–6d), distant (+12/+27/+45d), undated-with-Next-Move, plain open.
 Thread Notes are absent by construction.
 
-## Still open — round 7: inline card actions
+- **Card actions: A1 "Hover rail."** Nothing at rest; a tick and a clock fade
+  in at the card's top-right on hover or keyboard focus, and the date token
+  fades out to make room. A Thread with no Next Move has nothing to finish, so
+  it offers only the date; a Note offers Done and its date. Writes are stubbed
+  to session state — finishing removes a card, pushing a date moves it between
+  columns, and a line under the header counts changes and undoes the last one.
 
-The Dashboard can say what needs attention but not let you clear it, so every
-correction happens elsewhere and the board is always slightly wrong. The verbs
-are small — **complete the move**, **push the Follow-up**, **done** for a Note.
-The question is where they live.
-
-- `/?variant=A1` — **Hover rail.** Nothing at rest; a tick and a clock fade in
-  at the card's top-right on hover or keyboard focus. No cost to the card, but
-  actions you can't see are actions you forget you have.
-- `/?variant=A2` — **Always on.** No new chrome: a leading tick box finishes the
-  move, and the date token itself opens the date menu (undated cards get a faint
-  "+ date" on hover). Always reachable, permanently busier.
-- `/?variant=A3` — **Action menu.** The card becomes a menu — every verb listed,
-  including Open Thread. Nothing hidden, but opening a Thread costs two clicks.
-
-A Thread with no Next Move has nothing to finish, so it offers only the date; a
-Note offers Done and its date. Writes are stubbed to session state: finishing
-removes the card, pushing a date really moves it into another column, and a
-line under the header counts the changes and undoes the last one.
-
-## Parked after that
+## Pending
 
 1. **Undated Notes** — the columns are time-shaped, so a Note with no date
    currently lands nowhere and Resting only accepts Threads.
