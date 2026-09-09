@@ -1,15 +1,16 @@
 /**
- * PROTOTYPE — issue #314, round 3. Dense Dashboard variations.
+ * PROTOTYPE — issue #314, round 4.
  *
- * Round 1 varied whole-page layout (rejected: every row read as a ledger).
- * Round 2 answered "too much density" by removing information (rejected: a
- * dashboard should use the desktop, not leave it empty). Round 3 keeps the
- * density and spends it better — short tokens instead of phrases, icons
- * instead of names, ~26px rows, no summaries — across three ways of filling
- * the width: `?variant=D1|D2|D3`.
+ * Rounds so far: 1 varied page layout (rows read as a ledger), 2 varied the
+ * row and removed information (wrong — the desktop should be used), 3 went
+ * dense but showed the Next Move *instead of* the Thread title (disorienting)
+ * and left vertical dead space.
  *
- * `?narrow=true` constrains the viewport; `?source=live` swaps the fixture for
- * real Convex data. Throwaway: no tests, no error handling, read-only.
+ * Round 4 keeps the parts that worked — cards and the stat strip — restores
+ * the Thread title above its Next Move, and asks one question three ways:
+ * where does TIME live if the page must not become a plan view?
+ *
+ * `?variant=D2|E1|E2|E3`, `?narrow=true`, `?source=live`. Throwaway.
  */
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex-helpers/react/cache/hooks";
@@ -27,28 +28,38 @@ import {
 } from "../components/dashboard-model";
 import { buildPrototypeData } from "./prototype-fixture";
 import { PrototypeSwitcher } from "./prototype-switcher";
-import { VariantD1Columns, variantD1Name } from "./variant-d1-columns";
 import { VariantD2Board, variantD2Name } from "./variant-d2-board";
-import { VariantD3Matrix, variantD3Name } from "./variant-d3-matrix";
+import { VariantE1TimeColumns, variantE1Name } from "./variant-e1-time-columns";
+import {
+  VariantE2TimelineBoard,
+  variantE2Name,
+} from "./variant-e2-timeline-board";
+import { VariantE3AgendaSpine, variantE3Name } from "./variant-e3-agenda-spine";
 
 export const PROTOTYPE_VARIANTS: VariantMeta[] = [
   {
-    key: "D1",
-    name: variantD1Name,
+    key: "E1",
+    name: variantE1Name,
     stance:
-      "One attention run, tight rows, wrapped into columns — the width buys more of the list, not more per row.",
+      "Time IS the layout: four full-height columns (Now · This week · Later · Resting), each scrolling itself so no column leaves a hole.",
+  },
+  {
+    key: "E2",
+    name: variantE2Name,
+    stance:
+      "Time is a chart: a 28-day bar strip over an attention-ordered board. Click a day to filter; the board is never reorganised by date.",
+  },
+  {
+    key: "E3",
+    name: variantE3Name,
+    stance:
+      "Time is a spine: cards keep the width, a narrow chronological agenda runs full height down the right.",
   },
   {
     key: "D2",
     name: variantD2Name,
     stance:
-      "Uniform tiles packed 4–5 across, sorted by attention, with a five-number status strip above.",
-  },
-  {
-    key: "D3",
-    name: variantD3Name,
-    stance:
-      "Areas down, time across. A chip's position carries its Area and its date, so the chip is only text.",
+      "Baseline — round 3's board with the title restored and no time axis at all, so the other three can be judged against it.",
   },
 ];
 
@@ -83,14 +94,15 @@ export function DashboardPrototype({
     <>
       <div
         className={cn(
-          "mx-auto pb-28",
+          "mx-auto pb-16",
           narrow ? "max-w-[26rem]" : "max-w-[1600px]",
         )}
       >
+        {variant === "E2" && <VariantE2TimelineBoard {...props} />}
+        {variant === "E3" && <VariantE3AgendaSpine {...props} />}
         {variant === "D2" && <VariantD2Board {...props} />}
-        {variant === "D3" && <VariantD3Matrix {...props} />}
-        {variant !== "D2" && variant !== "D3" && (
-          <VariantD1Columns {...props} />
+        {variant !== "E2" && variant !== "E3" && variant !== "D2" && (
+          <VariantE1TimeColumns {...props} />
         )}
       </div>
 
