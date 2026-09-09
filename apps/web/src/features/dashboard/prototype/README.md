@@ -4,32 +4,40 @@ Throwaway. Not production code, no tests, read-only, dev-only. Delete this
 directory (and the prototype block in `src/routes/_authenticated/index.tsx`)
 once a direction is picked.
 
-## Round 2 — the Thread row (current)
+## Where the rounds went
 
-Round 1 varied the page layout across four whole-Dashboard variations. Verdict:
-all four read badly, for two reasons that are upstream of layout — **the row
-reads like a ledger** (date rail · title · detail · quiet counter · Area, all
-competing on one line) and **there is too much information per row**. Those
-variants are preserved in this branch's history at commit `103f42e`.
+- **Round 1** (`103f42e`) — four whole-page layouts. Rejected: every row read
+  like a ledger (date rail · title · detail · quiet counter · Area) and there
+  was too much information per row.
+- **Round 2** (`40ee270`) — four row treatments under a two-metadata budget.
+  Rejected: it answered density by *removing* information and leaving the
+  desktop empty. Of the four, only **R1 (quiet lines)** was the right instinct
+  — one line, title-led, metadata as a token — so round 3 keeps that row and
+  scales it up. R2 (prose) added text, R3 (cards) wasted vertical space, R4
+  (hover-to-reveal) hid what a dashboard exists to show.
+- **Round 3** (current) — density is the *goal*, spent better: short tokens
+  instead of phrases, Area icons instead of names, no summaries anywhere,
+  ~26px rows, and three ways of actually filling the desktop.
 
-So this round holds the page still — one plain column, one thin rule between
-"asking now" and "just open", a curated 11-item run — and varies only how a
-single row is drawn. Every treatment is under a hard budget: **at most two
-pieces of metadata visible at rest.**
+## Round 3 variants
 
-- `/?variant=R1` — **Quiet lines**
-- `/?variant=R2` — **Sentences**
-- `/?variant=R3` — **Cards**
-- `/?variant=R4` — **Peek**
+- `/?variant=D1` — **Wrapped run**
+- `/?variant=D2` — **Board**
+- `/?variant=D3` — **Matrix**
 
-They disagree about *where the metadata goes*:
+| | How it uses the width | What a row/chip says |
+| --- | --- | --- |
+| D1 Wrapped run | One continuous attention run (Late · Today · Can move now · This week · Later · Open) flowing down and wrapping into 2–3 columns. Width buys *more list*, not more per row. | Area icon · text · date token |
+| D2 Board | Uniform tiles packed 4–5 across, sorted by attention, under a five-number status strip. A whole life above the fold. | Area icon · text (2 lines max) · date token |
+| D3 Matrix | Areas down the side, time across the top (Late · Today · This week · Later · No date). Position carries the metadata. | text only — its cell already says which Area and when |
 
-| | What it does with the columns |
-| --- | --- |
-| R1 Quiet lines | Drops them. One line, title-led; a date only when it is pressing, the Next Move only on rows that need you now. Area is a single coloured dot. |
-| R2 Sentences | Folds them into prose. The Next Move becomes the row and the Thread title and date are the tail of the sentence — no chips, no rail, nothing right-aligned. |
-| R3 Cards | Moves them off the title's line onto a card footer. Costs vertical space; buys a title with nothing next to it. |
-| R4 Peek | Hides them. Bare titles at rest; everything but a late date appears only on the row you are hovering or focusing. |
+Shared vocabulary (`dense-shared.tsx`), so the variants differ in structure
+rather than in wording:
+
+- **Dates are tokens, never sentences**: `−6d`, `Today`, `Tue`, `12d`, `Mar 4`.
+- **Areas are icons**, coloured by condition; the name lives in the tooltip.
+- **A row says one thing**: the Next Move if there is one, else the Thread
+  title. Summaries, last-activity and "quiet Nd" are gone.
 
 ## Run it
 
@@ -42,33 +50,26 @@ bun install
 bun run dev
 ```
 
-Then open `/?variant=R1`. The floating bar cycles treatments (← / → work too)
-and carries two toggles:
-
-- **Wide / Constrained** — `?narrow=true` clamps the column to ~26rem.
-- **Fixture / Live data** — `?source=live` swaps in the real Convex queries;
-  the fixture is default and shows a curated run.
-
-Rows still behave like the real Dashboard: a Thread opens in place
-(`?thread=`), a standalone Note opens the Notes surface (`?inbox=true`).
+Then open `/?variant=D1`. The floating bar cycles variants (← / →) and toggles
+**Wide / Constrained** (`?narrow=true`) and **Fixture / Live data**
+(`?source=live`). Rows still open a Thread in place (`?thread=`); a Note row
+opens the Notes surface (`?inbox=true`).
 
 ## The fixture
 
 `prototype-fixture.ts` — 5 Areas, 19 Threads, 7 standalone Notes, dated
-relative to now (overdue, today, near-term, distant, undated-with-Next-Move,
-plain open). The row lab shows a curated subset; `?source=live` uses real data.
-Thread Notes are absent by construction — the Notes here are standalone only.
+relative to now: overdue, today, near-term (1–6d), distant (+12/+27/+45d),
+undated-with-Next-Move, and plain open. Thread Notes are absent by
+construction; the Notes here are standalone only.
 
 ## What the review has to answer
 
-1. Which row treatment stops the ledger feeling — and at what cost?
-2. What is the row's *irreducible* content? Title alone (R4), title + date
-   (R1), or the Next Move as the headline (R2)?
-3. Is losing the aligned date rail a real loss, or was the alignment the thing
-   that made it read as a ledger?
-4. Should a resting Thread look different from one that is asking, or just
-   sit lower in the list?
-
-Once the row is settled, layout comes back as round 3 — including the ordering
-question in #236, which round 1 could not usefully settle while every variant
-looked wrong.
+1. Which shape earns the width — a wrapped run, a tile board, or a matrix?
+2. Is the token vocabulary (`−6d`, icon-only Areas) intuitive without a legend,
+   or does something need its word back?
+3. Is dropping summaries and last-activity from the Dashboard right, or is one
+   of them load-bearing at a glance?
+4. Does showing the Next Move *instead of* the Thread title work, or does the
+   Thread need to be identifiable first?
+5. #236 is now visible as structure: D1 makes it a group order, D2 a sort key,
+   D3 a column. Which framing makes the answer obvious?

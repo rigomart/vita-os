@@ -1,14 +1,15 @@
 /**
- * PROTOTYPE — issue #314, round 2. The Thread row lab.
+ * PROTOTYPE — issue #314, round 3. Dense Dashboard variations.
  *
- * Round 1 varied the page layout and every variant read as a ledger, so this
- * round holds the page still — one plain column, one thin "now" rule — and
- * varies only how a single Thread row is drawn: `?variant=R1|R2|R3|R4`.
+ * Round 1 varied whole-page layout (rejected: every row read as a ledger).
+ * Round 2 answered "too much density" by removing information (rejected: a
+ * dashboard should use the desktop, not leave it empty). Round 3 keeps the
+ * density and spends it better — short tokens instead of phrases, icons
+ * instead of names, ~26px rows, no summaries — across three ways of filling
+ * the width: `?variant=D1|D2|D3`.
+ *
  * `?narrow=true` constrains the viewport; `?source=live` swaps the fixture for
- * real Convex data.
- *
- * Throwaway: no tests, no error handling, read-only. Clicking a Thread row
- * still opens the Thread in place; a Note row opens the Notes surface.
+ * real Convex data. Throwaway: no tests, no error handling, read-only.
  */
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex-helpers/react/cache/hooks";
@@ -20,47 +21,36 @@ import { cn } from "@/lib/utils";
 import type { VariantMeta } from "./prototype-switcher";
 
 import {
-  dayDelta,
   toDashboardArea,
   toDashboardNote,
   toDashboardThread,
 } from "../components/dashboard-model";
 import { buildPrototypeData } from "./prototype-fixture";
-import {
-  areaMap,
-  noteEntry,
-  type PrototypeEntry,
-  threadEntry,
-} from "./prototype-shared";
 import { PrototypeSwitcher } from "./prototype-switcher";
-import { ROW_TREATMENTS } from "./row-treatments";
+import { VariantD1Columns, variantD1Name } from "./variant-d1-columns";
+import { VariantD2Board, variantD2Name } from "./variant-d2-board";
+import { VariantD3Matrix, variantD3Name } from "./variant-d3-matrix";
 
-export const PROTOTYPE_VARIANTS: VariantMeta[] = ROW_TREATMENTS.map(
-  (treatment) => ({
-    key: treatment.key,
-    name: treatment.name,
-    stance: treatment.claim,
-  }),
-);
-
-/**
- * A short, curated run. Round 1's list was long enough that length itself read
- * as density, which hid what the row was doing — so the lab shows only what a
- * treatment has to survive: two late things, today, a couple of moves, a
- * couple of resting Threads, one dated Note, one distant date.
- */
-const LAB_THREADS = [
-  "t-overdue-1",
-  "t-overdue-2",
-  "t-today-1",
-  "t-near-1",
-  "t-move-2",
-  "t-move-3",
-  "t-open-1",
-  "t-open-2",
-  "t-far-2",
+export const PROTOTYPE_VARIANTS: VariantMeta[] = [
+  {
+    key: "D1",
+    name: variantD1Name,
+    stance:
+      "One attention run, tight rows, wrapped into columns — the width buys more of the list, not more per row.",
+  },
+  {
+    key: "D2",
+    name: variantD2Name,
+    stance:
+      "Uniform tiles packed 4–5 across, sorted by attention, with a five-number status strip above.",
+  },
+  {
+    key: "D3",
+    name: variantD3Name,
+    stance:
+      "Areas down, time across. A chip's position carries its Area and its date, so the chip is only text.",
+  },
 ];
-const LAB_NOTES = ["n-overdue-1", "n-today-1"];
 
 export function DashboardPrototype({
   narrow,
@@ -87,82 +77,25 @@ export function DashboardPrototype({
         }
       : fixture;
 
-  const byArea = areaMap(data.areas);
-  const threads =
-    source === "live"
-      ? data.threads
-      : LAB_THREADS.map((id) =>
-          data.threads.find((thread) => thread.id === id),
-        ).filter((thread) => thread !== undefined);
-  const notes =
-    source === "live"
-      ? data.notes
-      : LAB_NOTES.map((id) => data.notes.find((note) => note.id === id)).filter(
-          (note) => note !== undefined,
-        );
-
-  const entries: PrototypeEntry[] = [
-    ...threads.map((thread) => threadEntry(thread, byArea, currentDate)),
-    ...notes.map(noteEntry),
-  ];
-
-  // Two runs only: what is asking now, and what is simply open.
-  const now = entries
-    .filter(
-      (entry) =>
-        (entry.when !== undefined && dayDelta(entry.when, currentDate) <= 0) ||
-        (entry.when === undefined && entry.isNextMove),
-    )
-    .sort((a, b) => (a.when ?? Infinity) - (b.when ?? Infinity));
-  const rest = entries.filter((entry) => !now.includes(entry));
-
-  const treatment =
-    ROW_TREATMENTS.find((candidate) => candidate.key === variant) ??
-    ROW_TREATMENTS[0]!;
-  const { Row } = treatment;
+  const props = { ...data, currentDate };
 
   return (
     <>
       <div
         className={cn(
           "mx-auto pb-28",
-          narrow ? "max-w-[26rem]" : "max-w-[46rem]",
+          narrow ? "max-w-[26rem]" : "max-w-[1600px]",
         )}
       >
-        <ul className={cn(treatment.listClassName, "mt-2")}>
-          {now.map((entry) => (
-            <Row
-              key={entry.id}
-              currentDate={currentDate}
-              entry={entry}
-              urgent
-            />
-          ))}
-        </ul>
-
-        {rest.length > 0 && (
-          <>
-            <div
-              aria-hidden
-              className="my-4 h-px bg-border/50"
-              title="Below this rule: open, nothing asking"
-            />
-            <ul className={treatment.listClassName}>
-              {rest.map((entry) => (
-                <Row
-                  key={entry.id}
-                  currentDate={currentDate}
-                  entry={entry}
-                  urgent={false}
-                />
-              ))}
-            </ul>
-          </>
+        {variant === "D2" && <VariantD2Board {...props} />}
+        {variant === "D3" && <VariantD3Matrix {...props} />}
+        {variant !== "D2" && variant !== "D3" && (
+          <VariantD1Columns {...props} />
         )}
       </div>
 
       <PrototypeSwitcher
-        current={treatment.key}
+        current={variant}
         narrow={narrow}
         source={source}
         variants={PROTOTYPE_VARIANTS}
