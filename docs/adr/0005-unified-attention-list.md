@@ -1,6 +1,6 @@
 # Unified attention list
 
-Status: Amended by ADR 0014 — the Dashboard keeps this ordering and date-state language but owns a compact read-only row; the Inbox and Area inventory continue sharing the interactive row implementation.
+Status: Amended by ADR 0017 — the Dashboard keeps this date-state language but lays it out as time columns with an unscheduled margin, and acts on Follow-ups in place; the open ordering question is settled there as "a date outranks an undated Next Move". Notes and the Area inventory continue sharing the interactive row implementation.
 
 The **Inbox**, the **Dashboard Overview** thread column and the **Area** thread inventory all answer the same question — what needs attention — but had drifted into three row layouts, three date vocabularies and three section-heading patterns. They will share one list built from a single row: a fixed left date rail whose shape encodes the attention state, a single 40px line of content, and no section headings. It lives in `features/attention-list/` and each surface supplies only its ordering.
 

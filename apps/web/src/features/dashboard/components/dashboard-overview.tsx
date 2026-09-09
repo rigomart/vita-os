@@ -1,36 +1,42 @@
+import type {
+  ProjectedArea,
+  ProjectedNote,
+  ProjectedThread,
+} from "@convex/lib/validators";
+
 import { Button } from "@vita-os/ui/components/button";
 
-import type {
-  DashboardArea,
-  DashboardInboxNote,
-  DashboardThread,
-} from "./dashboard-model";
-
-import { AreaStatusBar } from "./area-status-bar";
-import { DashboardAttention } from "./dashboard-attention";
+import { boardItems, buildAttentionBoard } from "./attention-board-model";
+import { DashboardBoard } from "./dashboard-board";
+import { DashboardHeader } from "./dashboard-header";
 
 interface DashboardOverviewProps {
-  areas: DashboardArea[];
+  areas: ProjectedArea[];
   currentDate: number;
+  notes: ProjectedNote[];
   onCreateArea: () => void;
-  /** Capture scoped to an Area, raised from the Condition strip's Quick Panel. */
+  /** Capture scoped to an Area, raised from an Area's Quick Panel. */
   onNewThreadInArea: (areaId: string) => void;
-  notes: DashboardInboxNote[];
-  threads: DashboardThread[];
+  threads: ProjectedThread[];
 }
 
+/**
+ * The Dashboard answers one question — what needs attention now? — by laying
+ * every open Thread and standalone Note on a single axis of time, with the
+ * Areas' Condition over it and everything unscheduled in the margin beside it.
+ */
 export function DashboardOverview({
   areas,
-  threads,
-  notes,
   currentDate,
+  notes,
   onCreateArea,
   onNewThreadInArea,
+  threads,
 }: DashboardOverviewProps) {
   if (areas.length === 0) {
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="sr-only">Life Areas</h1>
+        <h1 className="sr-only">Dashboard</h1>
         <section className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed px-6 text-center">
           <h2 className="font-heading text-lg font-semibold">
             Start with a Life Area
@@ -46,23 +52,29 @@ export function DashboardOverview({
     );
   }
 
+  const board = buildAttentionBoard(threads, notes, currentDate);
+  const items = boardItems(board);
+
   return (
-    <div className="flex flex-col gap-6">
-      {/* The page's identity is the state of the Areas, not a title — the
-          heading survives only for assistive tech. */}
-      <h1 className="sr-only">Life Areas</h1>
-      <AreaStatusBar
+    <div className="flex h-[calc(100svh-10rem)] min-h-136 flex-col gap-3">
+      <DashboardHeader
         areas={areas}
-        threads={threads}
+        board={board}
         currentDate={currentDate}
+        items={items}
         onNewThreadInArea={onNewThreadInArea}
       />
-      <DashboardAttention
-        areas={areas}
-        currentDate={currentDate}
-        notes={notes}
-        threads={threads}
-      />
+
+      {items.length === 0 ? (
+        <section className="flex flex-1 flex-col items-center justify-center rounded-xl bg-surface-2 px-6 text-center">
+          <p className="text-sm font-medium">Nothing is asking for you.</p>
+          <p className="mt-1 max-w-md text-sm text-muted-foreground">
+            Every Thread is resolved and every Note is done.
+          </p>
+        </section>
+      ) : (
+        <DashboardBoard areas={areas} board={board} currentDate={currentDate} />
+      )}
     </div>
   );
 }

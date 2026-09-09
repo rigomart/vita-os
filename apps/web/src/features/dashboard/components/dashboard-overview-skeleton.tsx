@@ -1,31 +1,40 @@
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 
+/** The board's shape before its three queries land: header, columns, margin. */
 export function DashboardOverviewSkeleton() {
   return (
     <div
-      className="flex flex-col gap-6"
+      className="flex h-[calc(100svh-10rem)] min-h-136 flex-col gap-3"
       data-testid="dashboard-overview-skeleton"
     >
-      <div className="flex flex-wrap items-center gap-3 border-b border-border/60 pb-3">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border/50 pb-2">
         <Skeleton className="h-4 w-20" />
-        <Skeleton className="h-6 w-44 rounded-md" />
-        <Skeleton className="h-6 w-36 rounded-md" />
-        <Skeleton className="ml-auto h-6 w-20 rounded-md" />
+        <Skeleton className="h-6 w-32 rounded-md" />
+        <Skeleton className="h-6 w-28 rounded-md" />
+        <Skeleton className="ml-auto h-6 w-48 rounded-md" />
       </div>
 
-      <div className="flex flex-col gap-2">
-        {Array.from({ length: 6 }, (_, index) => (
-          <div key={index} className="flex h-10 items-center gap-3 px-2">
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-3 flex-1" />
-            <Skeleton className="hidden h-3 w-24 sm:block" />
-          </div>
-        ))}
-      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 xl:flex-row">
+        <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }, (_, column) => (
+            <div
+              key={column}
+              className="flex min-h-0 flex-col gap-2 rounded-xl border border-border/50 p-2.5"
+            >
+              <Skeleton className="h-4 w-24" />
+              {Array.from({ length: 3 }, (_, row) => (
+                <Skeleton key={row} className="h-12 rounded-lg" />
+              ))}
+            </div>
+          ))}
+        </div>
 
-      <div className="border-t border-border/50 pt-3">
-        <Skeleton className="h-4 w-24" />
+        <div className="flex flex-col gap-2 xl:w-68 xl:shrink-0 xl:border-l xl:border-border/60 xl:pl-4">
+          <Skeleton className="h-3 w-16" />
+          {Array.from({ length: 3 }, (_, row) => (
+            <Skeleton key={row} className="h-12 rounded-lg" />
+          ))}
+        </div>
       </div>
     </div>
   );

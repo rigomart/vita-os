@@ -1,43 +1,42 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  dayDelta,
-  daysSince,
-  followUpDateLabel,
-  relativeDayLabel,
-} from "./dashboard-model";
+import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
 
-describe("followUpDateLabel", () => {
-  const today = new Date(2026, 6, 17, 12).getTime();
+const today = new Date(2026, 6, 17, 12).getTime();
+const at = (offset: number) => new Date(2026, 6, 17 + offset, 9).getTime();
 
-  it("uses exact dashboard labels", () => {
-    expect(followUpDateLabel(today, today)).toBe("Today");
-    expect(followUpDateLabel(new Date(2026, 6, 18, 12).getTime(), today)).toBe(
-      "Tomorrow",
-    );
-    expect(followUpDateLabel(new Date(2026, 6, 20, 12).getTime(), today)).toBe(
-      "Jul 20",
-    );
+describe("dayDelta", () => {
+  it("measures local calendar days in either direction", () => {
+    expect(dayDelta(at(-3), today)).toBe(-3);
+    expect(dayDelta(at(0), today)).toBe(0);
+    expect(dayDelta(at(4), today)).toBe(4);
   });
 });
 
-describe("Dashboard date annotations", () => {
-  const today = new Date(2026, 6, 17, 12).getTime();
-  const at = (offset: number) => new Date(2026, 6, 17 + offset, 9).getTime();
-
-  it("measures local calendar days in either direction", () => {
-    expect(dayDelta(at(-3), today)).toBe(-3);
-    expect(dayDelta(at(4), today)).toBe(4);
-    expect(daysSince(at(-45), today)).toBe(45);
-    expect(daysSince(at(2), today)).toBe(0);
+describe("dateToken", () => {
+  it("counts days down when a date has passed", () => {
+    expect(dateToken(at(-6), today)).toBe("−6d");
+    expect(dateToken(at(-1), today)).toBe("−1d");
   });
 
-  it("keeps soft dates compact and relative near today", () => {
-    expect(relativeDayLabel(at(-3), today)).toBe("3d late");
-    expect(relativeDayLabel(at(-1), today)).toBe("Yesterday");
-    expect(relativeDayLabel(at(0), today)).toBe("Today");
-    expect(relativeDayLabel(at(1), today)).toBe("Tomorrow");
-    expect(relativeDayLabel(at(3), today)).toBe("Mon");
-    expect(relativeDayLabel(at(10), today)).toBe("Jul 27");
+  it("names today, then weekdays inside the week", () => {
+    expect(dateToken(at(0), today)).toBe("Today");
+    expect(dateToken(at(1), today)).toBe("Sat");
+    expect(dateToken(at(6), today)).toBe("Thu");
+  });
+
+  it("counts days out to four weeks, then falls back to a date", () => {
+    expect(dateToken(at(7), today)).toBe("7d");
+    expect(dateToken(at(27), today)).toBe("27d");
+    expect(dateToken(at(28), today)).toBe("Aug 14");
+  });
+});
+
+describe("dateToneClassName", () => {
+  it("keeps overdue in the attention colour and distant dates quiet", () => {
+    expect(dateToneClassName(at(-1), today)).toBe("text-condition-attention");
+    expect(dateToneClassName(at(0), today)).toBe("text-foreground");
+    expect(dateToneClassName(at(3), today)).toBe("text-foreground/60");
+    expect(dateToneClassName(at(30), today)).toBe("text-muted-foreground/45");
   });
 });
