@@ -1,27 +1,26 @@
 import { cn } from "@/lib/utils";
 
 /**
- * PROTOTYPE — issue #314, round 4. E1: "Time columns".
+ * PROTOTYPE — issue #314. E1: "Time columns" — the settled layout.
  *
- * The straight marriage of what worked: D2's cards and stat strip, arranged
- * into four full-height time columns so the page occupies the viewport instead
- * of compressing into its top half. Each column owns its own scroll, so a busy
- * column never pushes the others down and an empty one never leaves a hole —
- * the answer to "a matrix leaves a lot of empty space if not managed".
+ * Four full-height columns (Now · This week · Later · Resting) of cards under
+ * the stat strip. Each column owns its own scroll, so a busy column never
+ * pushes the others down and an empty one never leaves a hole — that is what
+ * fixed round 3's dead space at the bottom of the page.
  *
- * This is the closest thing here to the round-1 band layout, and it is here
- * deliberately: round 1's bands failed on the ROW, not on the columns. With a
- * real card in them, the question is worth asking again.
+ * The card is now a parameter: the layout is decided, and what is under test
+ * is how the Thread title stays present now that the Next Move leads. See
+ * `attention-card.tsx`.
  */
 import type {
   DashboardArea,
   DashboardInboxNote,
   DashboardThread,
 } from "../components/dashboard-model";
+import type { CardTreatment } from "./attention-card";
 import type { PrototypeEntry } from "./prototype-shared";
 
 import { dayDelta } from "../components/dashboard-model";
-import { AttentionCard } from "./attention-card";
 import { areaMap, noteEntry, threadEntry } from "./prototype-shared";
 import { StatStrip } from "./stat-strip";
 
@@ -29,15 +28,19 @@ export const variantE1Name = "Time columns";
 
 export function VariantE1TimeColumns({
   areas,
+  card,
   currentDate,
   notes,
   threads,
 }: {
   areas: DashboardArea[];
+  /** The card treatment under test; the layout is settled. */
+  card: CardTreatment;
   currentDate: number;
   notes: DashboardInboxNote[];
   threads: DashboardThread[];
 }) {
+  const { Card } = card;
   const byArea = areaMap(areas);
   const entries = [
     ...threads.map((thread) => threadEntry(thread, byArea, currentDate)),
@@ -122,7 +125,7 @@ export function VariantE1TimeColumns({
             <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1.5 pb-2">
               {column.entries.map((entry) => (
                 <li key={entry.id}>
-                  <AttentionCard currentDate={currentDate} entry={entry} flat />
+                  <Card currentDate={currentDate} entry={entry} />
                 </li>
               ))}
               {column.entries.length === 0 && (

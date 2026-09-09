@@ -2,48 +2,47 @@
 
 Throwaway. Not production code, no tests, read-only, dev-only. Delete this
 directory (and the prototype block in `src/routes/_authenticated/index.tsx`)
-once a direction is picked.
+once the remaining question is settled.
 
-## Where the rounds went
+## Settled so far
 
-- **Round 1** (`103f42e`) — four whole-page layouts. Rejected: every row read
-  like a ledger; too much information per row.
-- **Round 2** (`40ee270`) — four row treatments under a two-metadata budget.
-  Rejected: it answered density by *removing* information and left the desktop
-  empty. Only R1's one-line, title-led row was the right instinct.
-- **Round 3** (`cf58032`) — dense: tokens instead of phrases, icons instead of
-  names. Verdict: D1 was too small and filled only the top half of the page;
-  D2's cards and stat strip were liked but had no way to see time; D3's matrix
-  made time legible but risked being the rejected plan view and leaves empty
-  cells. And across all three, showing the Next Move *instead of* the Thread
-  title was disorienting.
-- **Round 4** (current) — keep the cards and the stat strip, put the Thread
-  title back above its Next Move, fill the viewport vertically, and ask one
-  question three ways: **where does time live if the page must not become a
-  plan view?**
+- **Layout: E1 "Time columns."** Four full-height columns — Now · This week ·
+  Later · Resting — of cards, under a five-number stat strip. Each column
+  scrolls itself, so a busy column can't push the others down and an empty one
+  can't leave a hole.
+- **The Next Move is the most relevant thing on a card**, not the Thread title.
+  The move is the headline; a Thread with no move captured falls back to its
+  title, since there is nothing more relevant to show.
+- **Dense is the goal**, spent on tokens rather than prose: dates are `−6d` /
+  `Today` / `Tue` / `12d` / `Mar 4`, Areas are condition-coloured icons, and
+  summaries and last-activity stay off the Dashboard.
 
-## Round 4 variants
+## Still open — round 5
 
-- `/?variant=E1` — **Time columns**
-- `/?variant=E2` — **Timeline board**
-- `/?variant=E3` — **Agenda spine**
-- `/?variant=D2` — **Board (no time)** — round 3's board, title restored, kept
-  as the baseline so the other three show exactly what a time axis buys.
+Dropping the Thread title entirely was disorienting, so the only question left
+is **how the title stays present while the move leads**. Three treatments of
+the same card inside the same fixed layout:
 
-| | Where time lives | How the height is used |
-| --- | --- | --- |
-| E1 Time columns | Time *is* the layout: Now · This week · Later · Resting, four columns of cards. | Full-height columns, each scrolling itself — a busy column can't push the others down, an empty one can't leave a hole. |
-| E2 Timeline board | Time is a *chart*: a 28-day bar strip above an attention-ordered board. Click a bar to filter the board to that day; nothing is permanently reorganised by date. | Board grows down the page; the strip is fixed height. |
-| E3 Agenda spine | Time is a *spine*: a narrow chronological agenda down the right, day markers and all dated items in order. | Both panes full height and independently scrolling; cards keep the width. |
+- `/?variant=C1` — **Move over title.** Move is the headline; the Thread name
+  sits under it in quiet small text next to the Area glyph. Reads as "do this —
+  on that Thread".
+- `/?variant=C2` — **Eyebrow.** The Thread name rides above the move as a small
+  uppercase eyebrow: you know where you are before you read what to do, and the
+  title never competes for weight.
+- `/?variant=C3` — **Inline.** One line — move first, Thread name trailing in
+  muted text. Roughly twice the cards per column; the title is easier to miss.
 
-Shared and held constant on purpose (round 4 is about layout, not the card):
+## Round history
 
-- `attention-card.tsx` — **Thread title is the headline; the Next Move is the
-  line under it.** Both visible at rest.
-- `stat-strip.tsx` — five numbers, no prose: Late · Today · This week · Ready
-  to move · Open.
-- Dates are tokens (`−6d`, `Today`, `Tue`, `12d`, `Mar 4`); Areas are
-  condition-coloured icons with the name in the tooltip.
+- **Round 1** (`103f42e`) — four whole-page layouts. Rejected: rows read as a
+  ledger, too much per row.
+- **Round 2** (`40ee270`) — four row treatments. Rejected: answered density by
+  removing information and left the desktop empty.
+- **Round 3** (`cf58032`) — dense variants. D1 too small and only filled the top
+  half; D2's cards and stats liked but no time axis; D3's matrix legible for
+  time but close to the rejected plan view and prone to empty cells.
+- **Round 4** (`2b62fdc`) — where time lives, three ways. E1 (time as layout)
+  won; E2 (time as chart) and E3 (time as spine) retired.
 
 ## Run it
 
@@ -55,9 +54,9 @@ bun install
 bun run dev
 ```
 
-Then open `/?variant=E1`. The floating bar cycles variants (← / →) and toggles
-**Wide / Constrained** (`?narrow=true`) and **Fixture / Live data**
-(`?source=live`). Rows still open a Thread in place (`?thread=`); a Note opens
+Then open `/?variant=C1`. The floating bar cycles treatments (← / →) and
+toggles **Wide / Constrained** (`?narrow=true`) and **Fixture / Live data**
+(`?source=live`). Cards still open a Thread in place (`?thread=`); a Note opens
 the Notes surface (`?inbox=true`).
 
 ## The fixture
@@ -66,14 +65,13 @@ the Notes surface (`?inbox=true`).
 near-term (1–6d), distant (+12/+27/+45d), undated-with-Next-Move, plain open.
 Thread Notes are absent by construction.
 
-## What the review has to answer
+## What is left to decide
 
-1. Is time better as layout (E1), as a chart (E2), or as a spine (E3)?
-2. Does E1 read as the rejected plan view now that the rows are real cards, or
-   does the card change the verdict?
-3. Is the card right — title + move, one date token, one Area glyph — or does
-   it still need something (last activity, Area name in words)?
-4. Do the full-height, independently scrolling panes solve the dead space, or
-   do they just move the scrolling problem?
-5. #236 is still open: E1 answers it by column, E2 by sort order, E3 by which
-   pane an item lands in. Which framing makes the answer obvious?
+1. Which card treatment — C1, C2, or C3?
+2. Is the fallback right when a Thread has no Next Move (title as headline), or
+   should those Threads look visibly different from ones you can act on?
+3. Does a Note need to be distinguishable from a Thread card by more than the
+   dashed glyph?
+4. #236: with time as columns, the ordering question becomes "which column does
+   an undated Next Move belong in?" — it currently sits in **Now**. Confirm or
+   change that, and the issue can be closed with the answer.

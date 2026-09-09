@@ -1,16 +1,15 @@
 /**
- * PROTOTYPE — issue #314, round 4.
+ * PROTOTYPE — issue #314, round 5.
  *
- * Rounds so far: 1 varied page layout (rows read as a ledger), 2 varied the
- * row and removed information (wrong — the desktop should be used), 3 went
- * dense but showed the Next Move *instead of* the Thread title (disorienting)
- * and left vertical dead space.
+ * The layout is settled: E1's four full-height, self-scrolling time columns
+ * (Now · This week · Later · Resting) with the stat strip above. What is still
+ * open is the card, now that the **Next Move leads instead of the Thread
+ * title** — specifically, how the title stays present without taking the
+ * headline back.
  *
- * Round 4 keeps the parts that worked — cards and the stat strip — restores
- * the Thread title above its Next Move, and asks one question three ways:
- * where does TIME live if the page must not become a plan view?
- *
- * `?variant=D2|E1|E2|E3`, `?narrow=true`, `?source=live`. Throwaway.
+ * `?variant=C1|C2|C3` switches the card treatment inside that fixed layout;
+ * `?narrow=true` constrains the viewport; `?source=live` swaps the fixture for
+ * real Convex data. Throwaway: no tests, no error handling, read-only.
  */
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex-helpers/react/cache/hooks";
@@ -26,42 +25,18 @@ import {
   toDashboardNote,
   toDashboardThread,
 } from "../components/dashboard-model";
+import { CARD_TREATMENTS } from "./attention-card";
 import { buildPrototypeData } from "./prototype-fixture";
 import { PrototypeSwitcher } from "./prototype-switcher";
-import { VariantD2Board, variantD2Name } from "./variant-d2-board";
-import { VariantE1TimeColumns, variantE1Name } from "./variant-e1-time-columns";
-import {
-  VariantE2TimelineBoard,
-  variantE2Name,
-} from "./variant-e2-timeline-board";
-import { VariantE3AgendaSpine, variantE3Name } from "./variant-e3-agenda-spine";
+import { VariantE1TimeColumns } from "./variant-e1-time-columns";
 
-export const PROTOTYPE_VARIANTS: VariantMeta[] = [
-  {
-    key: "E1",
-    name: variantE1Name,
-    stance:
-      "Time IS the layout: four full-height columns (Now · This week · Later · Resting), each scrolling itself so no column leaves a hole.",
-  },
-  {
-    key: "E2",
-    name: variantE2Name,
-    stance:
-      "Time is a chart: a 28-day bar strip over an attention-ordered board. Click a day to filter; the board is never reorganised by date.",
-  },
-  {
-    key: "E3",
-    name: variantE3Name,
-    stance:
-      "Time is a spine: cards keep the width, a narrow chronological agenda runs full height down the right.",
-  },
-  {
-    key: "D2",
-    name: variantD2Name,
-    stance:
-      "Baseline — round 3's board with the title restored and no time axis at all, so the other three can be judged against it.",
-  },
-];
+export const PROTOTYPE_VARIANTS: VariantMeta[] = CARD_TREATMENTS.map(
+  (treatment) => ({
+    key: treatment.key,
+    name: treatment.name,
+    stance: treatment.claim,
+  }),
+);
 
 export function DashboardPrototype({
   narrow,
@@ -88,7 +63,9 @@ export function DashboardPrototype({
         }
       : fixture;
 
-  const props = { ...data, currentDate };
+  const card =
+    CARD_TREATMENTS.find((treatment) => treatment.key === variant) ??
+    CARD_TREATMENTS[0]!;
 
   return (
     <>
@@ -98,16 +75,11 @@ export function DashboardPrototype({
           narrow ? "max-w-[26rem]" : "max-w-[1600px]",
         )}
       >
-        {variant === "E2" && <VariantE2TimelineBoard {...props} />}
-        {variant === "E3" && <VariantE3AgendaSpine {...props} />}
-        {variant === "D2" && <VariantD2Board {...props} />}
-        {variant !== "E2" && variant !== "E3" && variant !== "D2" && (
-          <VariantE1TimeColumns {...props} />
-        )}
+        <VariantE1TimeColumns {...data} card={card} currentDate={currentDate} />
       </div>
 
       <PrototypeSwitcher
-        current={variant}
+        current={card.key}
         narrow={narrow}
         source={source}
         variants={PROTOTYPE_VARIANTS}
