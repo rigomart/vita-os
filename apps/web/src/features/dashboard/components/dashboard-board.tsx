@@ -15,24 +15,11 @@ import { DashboardNote } from "./dashboard-note";
  * column never pushes the others down and a quiet one never leaves a hole at
  * the foot of the page.
  *
- * **The board has no boxes.** Panels around each column meant the chrome was
- * drawn four times over and competed with the cards' own edges for the eye.
- * Separation is wide gutters and a single heavy rule under each heading
- * instead — and that rule is the only place colour appears on the board, on
- * **Now**. What is left to draw an edge is the cards themselves, on hover.
- *
- * **No date** is deliberately not a fourth column. It is not a time bucket, so
- * drawing it as another panel in the row made it read as the step after
- * "Later". It gets no heading rule of its own — only a line down its left,
- * which is doing the opposite job to a panel: it closes the row of dated
- * columns rather than fencing off another one, and says the margin is beside
- * the board rather than at the end of it.
- *
- * Its own seams are admitted as labelled runs — what you could do now, what is
- * merely open, and the Notes. Those labels are **sentence case on purpose**:
- * uppercase appears exactly once per column, on the column's own heading, so
- * the eye can tell a heading from a subheading by shape alone. Three tiers of
- * muted uppercase in one narrow column left nothing outranking anything.
+ * No boxes: separation is gutters and one rule under each heading, and that
+ * rule is the only colour on the board. **No date** is not a fourth column —
+ * it is not a time bucket — so its left rule closes the row of dated columns
+ * rather than fencing off another one. Uppercase appears once per column, on
+ * the heading, which is what keeps its labelled runs subordinate to it.
  */
 export function DashboardBoard({
   areas,
