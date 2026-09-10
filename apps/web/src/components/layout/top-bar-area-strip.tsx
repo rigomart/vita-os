@@ -77,8 +77,8 @@ export function TopBarAreaStrip() {
                   className={cn(
                     "size-6 transition-colors",
                     active
-                      ? "bg-brand-ink text-brand-gold"
-                      : "bg-muted-foreground/15 text-muted-foreground group-hover:bg-brand-ink group-hover:text-brand-gold",
+                      ? "bg-brand-ink text-brand-accent"
+                      : "bg-muted-foreground/15 text-muted-foreground group-hover:bg-brand-ink group-hover:text-brand-accent",
                   )}
                 >
                   <AreaIcon icon={area.icon} className="size-3" />

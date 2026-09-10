@@ -14,7 +14,7 @@ import {
 import { useNoteRowActions } from "@/features/notes/note-row/use-note-row-actions";
 
 const whenToneClassName = {
-  due: "text-brand-accent-foreground",
+  due: "text-brand-accent-text",
   overdue: "text-condition-attention",
 } as const;
 
@@ -132,7 +132,7 @@ export function NoteCard({ note, now }: { note: ProjectedNote; now: number }) {
           size="icon-sm"
           className={cn(
             "group/toggle shrink-0 rounded-full",
-            done && "bg-transparent text-brand-accent-foreground",
+            done && "bg-transparent text-brand-accent-text",
           )}
           disabled={isTogglePending}
           aria-busy={isTogglePending}

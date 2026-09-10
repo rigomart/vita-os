@@ -89,10 +89,10 @@ function TimelineOrigin({ lastActivityAt }: { lastActivityAt?: number }) {
         className={cn(
           "absolute top-0.5 size-2.5 -translate-x-1/2 rounded-full",
           NODE_LEFT,
-          "border border-(--brand-gold) bg-background",
+          "border border-(--brand-accent) bg-background",
         )}
       >
-        <span className="absolute inset-[3px] rounded-full bg-(--brand-gold)" />
+        <span className="absolute inset-[3px] rounded-full bg-(--brand-accent)" />
       </span>
       <p className="text-2xs font-medium tracking-wide text-muted-foreground/80 uppercase">
         {lastActivityAt === undefined

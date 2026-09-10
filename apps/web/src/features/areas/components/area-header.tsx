@@ -95,7 +95,7 @@ export function AreaHeader({
                 />
               }
             >
-              <BrandHexagon className="size-8 bg-brand-ink text-brand-gold">
+              <BrandHexagon className="size-8 bg-brand-ink text-brand-accent">
                 <AreaIcon icon={selectedIcon} />
               </BrandHexagon>
             </PopoverTrigger>

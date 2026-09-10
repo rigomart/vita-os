@@ -254,7 +254,7 @@ function ThreadNoteCard({
           size="icon-sm"
           className={cn(
             "group/toggle shrink-0 rounded-full",
-            done && "bg-transparent text-brand-accent-foreground",
+            done && "bg-transparent text-brand-accent-text",
           )}
           disabled={isToggling}
           aria-busy={isToggling}

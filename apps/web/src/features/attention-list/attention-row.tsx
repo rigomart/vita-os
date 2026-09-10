@@ -11,7 +11,7 @@ import { whenTone } from "./date-parts";
 import { AreaTag, RowCheckbox, RowShell, WhenPopover } from "./row-parts";
 
 const railToneClassName = {
-  due: "bg-surface-3 text-brand-accent-foreground",
+  due: "bg-surface-3 text-brand-accent-text",
   overdue:
     "bg-condition-attention-fill text-condition-attention-fill-foreground",
   scheduled: "text-muted-foreground",

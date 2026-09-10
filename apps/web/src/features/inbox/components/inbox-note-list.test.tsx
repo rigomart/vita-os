@@ -89,7 +89,7 @@ describe("InboxNoteList", () => {
     const attentionDate = () =>
       screen.getByRole("button", { name: "Change attention date" });
 
-    expect(attentionDate()).toHaveClass("text-brand-accent-foreground");
+    expect(attentionDate()).toHaveClass("text-brand-accent-text");
 
     act(() => vi.advanceTimersByTime(30 * 60_000));
 
