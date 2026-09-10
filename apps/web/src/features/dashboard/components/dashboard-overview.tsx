@@ -6,8 +6,19 @@ import type {
 
 import { Button } from "@vita-os/ui/components/button";
 
+import {
+  PrototypeSwitcher,
+  usePrototypeVariant,
+} from "@/components/prototype-switcher";
+
+import type { Chrome } from "./dashboard-board-prototype";
+
 import { boardItems, buildAttentionBoard } from "./attention-board-model";
-import { DashboardBoard } from "./dashboard-board";
+import {
+  CHROME_COMPONENTS,
+  CHROME_NAMES,
+  CHROMES,
+} from "./dashboard-board-prototype";
 import { DashboardHeader } from "./dashboard-header";
 
 interface DashboardOverviewProps {
@@ -33,6 +44,9 @@ export function DashboardOverview({
   onNewThreadInArea,
   threads,
 }: DashboardOverviewProps) {
+  // PROTOTYPE — `?chrome=A|B|C|D` swaps the chrome around the board.
+  const [chrome, setChrome] = usePrototypeVariant<Chrome>("chrome", CHROMES);
+
   if (areas.length === 0) {
     return (
       <div className="flex flex-col gap-6">
@@ -55,6 +69,8 @@ export function DashboardOverview({
   const board = buildAttentionBoard(threads, notes, currentDate);
   const items = boardItems(board);
 
+  const Board = CHROME_COMPONENTS[chrome];
+
   return (
     <div className="flex h-[calc(100svh-10rem)] min-h-136 flex-col gap-3">
       <DashboardHeader
@@ -73,8 +89,15 @@ export function DashboardOverview({
           </p>
         </section>
       ) : (
-        <DashboardBoard areas={areas} board={board} currentDate={currentDate} />
+        <Board areas={areas} board={board} currentDate={currentDate} />
       )}
+
+      <PrototypeSwitcher
+        current={chrome}
+        names={CHROME_NAMES}
+        onSelect={setChrome}
+        variants={CHROMES}
+      />
     </div>
   );
 }

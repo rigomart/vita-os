@@ -8,7 +8,9 @@ import { AppShell } from "@/components/layout/app-shell";
 export const Route = createFileRoute("/_authenticated")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { thread?: string; inbox?: true } => ({
+  ): { thread?: string; inbox?: true; chrome?: string } => ({
+    // PROTOTYPE — board chrome variants. Drop with the prototype branch.
+    chrome: typeof search.chrome === "string" ? search.chrome : undefined,
     thread:
       typeof search.thread === "string" && search.thread.length > 0
         ? search.thread
