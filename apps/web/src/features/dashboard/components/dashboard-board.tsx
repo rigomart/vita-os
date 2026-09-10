@@ -137,7 +137,7 @@ export function DashboardBoard({
 
       <aside
         aria-label="No date"
-        className="flex min-h-0 flex-col border-t border-border/50 pt-4 xl:w-64 xl:shrink-0 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-8"
+        className="flex min-h-0 flex-col border-t border-border/50 pt-4 xl:w-64 xl:shrink-0 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5"
       >
         {/* A transparent rule of the same weight as the dated columns' keeps
             every heading on one line without drawing a fourth one. */}
@@ -150,7 +150,7 @@ export function DashboardBoard({
           </span>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-2">
+        <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 pb-2">
           {runs.map((run) => (
             <section key={run.key}>
               <h3 className="flex items-baseline gap-1.5 pb-1 text-[11px] leading-snug font-medium text-muted-foreground/70">
