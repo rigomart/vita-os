@@ -17,11 +17,15 @@ const SKINS = [
     attr: "graphite",
   },
   {
-    key: "cobalt",
-    label: "B — Cobalt (paper white, saturated blue)",
-    attr: "cobalt",
+    key: "ember",
+    label: "D — Ember (warm taupe, flat surfaces, amber)",
+    attr: "ember",
   },
-  { key: "moss", label: "C — Moss (sage paper, serif headings)", attr: "moss" },
+  {
+    key: "iris",
+    label: "E — Iris (violet-tinted neutrals, airy)",
+    attr: "iris",
+  },
 ] as const;
 
 type SkinKey = (typeof SKINS)[number]["key"];
