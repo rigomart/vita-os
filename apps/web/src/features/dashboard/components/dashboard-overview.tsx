@@ -11,14 +11,15 @@ import {
   usePrototypeVariant,
 } from "@/components/prototype-switcher";
 
-import type { Chrome } from "./dashboard-board-prototype";
+import type { Card } from "./attention-card-prototype";
 
 import { boardItems, buildAttentionBoard } from "./attention-board-model";
 import {
-  CHROME_COMPONENTS,
-  CHROME_NAMES,
-  CHROMES,
-} from "./dashboard-board-prototype";
+  CARD_NAMES,
+  CARDS,
+  CardVariantProvider,
+} from "./attention-card-prototype";
+import { DashboardBoard } from "./dashboard-board";
 import { DashboardHeader } from "./dashboard-header";
 
 interface DashboardOverviewProps {
@@ -44,8 +45,8 @@ export function DashboardOverview({
   onNewThreadInArea,
   threads,
 }: DashboardOverviewProps) {
-  // PROTOTYPE — `?chrome=A|B|C|D` swaps the chrome around the board.
-  const [chrome, setChrome] = usePrototypeVariant<Chrome>("chrome", CHROMES);
+  // PROTOTYPE — `?card=A|B|C|D` swaps the Thread card.
+  const [card, setCard] = usePrototypeVariant<Card>("card", CARDS);
 
   if (areas.length === 0) {
     return (
@@ -69,8 +70,6 @@ export function DashboardOverview({
   const board = buildAttentionBoard(threads, notes, currentDate);
   const items = boardItems(board);
 
-  const Board = CHROME_COMPONENTS[chrome];
-
   return (
     <div className="flex h-[calc(100svh-10rem)] min-h-136 flex-col gap-3">
       <DashboardHeader
@@ -89,14 +88,20 @@ export function DashboardOverview({
           </p>
         </section>
       ) : (
-        <Board areas={areas} board={board} currentDate={currentDate} />
+        <CardVariantProvider value={card}>
+          <DashboardBoard
+            areas={areas}
+            board={board}
+            currentDate={currentDate}
+          />
+        </CardVariantProvider>
       )}
 
       <PrototypeSwitcher
-        current={chrome}
-        names={CHROME_NAMES}
-        onSelect={setChrome}
-        variants={CHROMES}
+        current={card}
+        names={CARD_NAMES}
+        onSelect={setCard}
+        variants={CARDS}
       />
     </div>
   );
