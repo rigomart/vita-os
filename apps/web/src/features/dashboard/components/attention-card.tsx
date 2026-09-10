@@ -13,27 +13,21 @@ import { cn } from "@/lib/utils";
 
 import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
 
+/** Held in place at rest, so the meta line never reflows on hover. */
+const revealed =
+  "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100";
+
 /**
  * A Thread on the board.
  *
- * **Each line means one thing on every card.** The first line is the Next
- * Move and only ever the Next Move; the second is the Thread it belongs to.
- * Letting the title climb into the headline when there was no move meant the
- * strongest line on the card said "here is what to do" on one card and "here
- * is a Thread" on the next, with nothing to tell them apart — so a Thread that
- * has decided nothing looked exactly like one with a crisp move. When there is
- * no move the slot holds an em dash instead: the table convention for *nothing
- * here*, quiet enough to scan past and unmistakably not a sentence to act on.
- * The Area is always the glyph, never a word.
+ * Each line means one thing on every card: the first is the Next Move, the
+ * second the Thread it belongs to. A Thread with no move holds an em dash in
+ * the first slot rather than promoting its title into it, so "nothing decided
+ * here" stays legible at a glance. The Area is always the glyph, never a word.
  *
- * **The controls sit in the footer beside the date**, in the same grammar as
- * `DashboardNote`: the meta line already exists on every card, so the buttons
- * cost the card no height, and they hold their space whether shown or not, so
- * nothing is covered and nothing shifts when the pointer arrives. A rail down
- * the side was two buttons tall — taller than the two lines of text it stood
- * next to — and stretched every card with a move to fit its own chrome. The
- * date is not one of those controls: it *is* its own button, because a date
- * shown beside a button that changes it says the same thing twice.
+ * The controls live in the meta line beside the date, in `DashboardNote`'s
+ * grammar — a row that already exists, so they cost the card no height. The
+ * date is not one of them: it is the button that changes it.
  */
 export function AttentionCard({
   area,
@@ -79,15 +73,17 @@ export function AttentionCard({
         <span className="truncate">{thread.title}</span>
 
         <span className="ml-auto flex shrink-0 items-center gap-1 pl-1">
-          {/* The date is the button that changes it — showing it and then
-              offering a separate control for it says the same thing twice. */}
-          {followUp !== undefined && (
-            <WhenPopover
-              when={followUp}
-              onSetWhen={(when) =>
-                void updateThread({ id: thread._id, followUp: when ?? null })
-              }
-              trigger={
+          <WhenPopover
+            when={followUp}
+            onSetWhen={(when) =>
+              void updateThread({ id: thread._id, followUp: when ?? null })
+            }
+            trigger={
+              followUp === undefined ? (
+                <ControlButton className={revealed} label="Set Follow-up">
+                  <CalendarClock className="size-3.5" />
+                </ControlButton>
+              ) : (
                 <button
                   type="button"
                   aria-label="Change Follow-up"
@@ -98,47 +94,29 @@ export function AttentionCard({
                 >
                   {dateToken(followUp, currentDate)}
                 </button>
-              }
-            />
-          )}
+              )
+            }
+          />
 
-          {/* The controls keep their space at rest, so the meta line neither
-              reflows nor grows when the card is pointed at. */}
-          <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-            {followUp === undefined && (
-              <WhenPopover
-                when={followUp}
-                onSetWhen={(when) =>
-                  void updateThread({ id: thread._id, followUp: when ?? null })
-                }
-                trigger={
-                  <ControlButton label="Set Follow-up">
-                    <CalendarClock className="size-3.5" />
-                  </ControlButton>
-                }
-              />
-            )}
-            {move && (
-              <ControlButton
-                label="Complete Next Move"
-                onClick={() => void completeNextMove()}
-                className="bg-muted hover:bg-condition-healthy/15 hover:text-condition-healthy"
-              >
-                <Check className="size-3.5" />
-              </ControlButton>
-            )}
-          </span>
+          {move && (
+            <ControlButton
+              label="Complete Next Move"
+              onClick={() => void completeNextMove()}
+              className={cn(
+                revealed,
+                "bg-muted hover:bg-condition-healthy/15 hover:text-condition-healthy",
+              )}
+            >
+              <Check className="size-3.5" />
+            </ControlButton>
+          )}
         </span>
       </div>
     </div>
   );
 }
 
-/**
- * A control on the card's footer, in `DashboardNote`'s shape: a round target
- * that fills on hover. The negative margin lets it stand taller than the meta
- * text it sits on without pushing the line open.
- */
+/** The negative margin lets it stand taller than the meta text it sits on. */
 function ControlButton({
   children,
   className,
@@ -157,7 +135,7 @@ function ControlButton({
       title={label}
       onClick={onClick}
       className={cn(
-        "relative z-10 -my-1 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform] hover:bg-muted hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40",
+        "relative z-10 -my-1 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform,opacity] hover:bg-muted hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40",
         className,
       )}
     >
@@ -166,13 +144,7 @@ function ControlButton({
   );
 }
 
-function AreaGlyph({
-  area,
-  className,
-}: {
-  area?: ProjectedArea;
-  className?: string;
-}) {
+function AreaGlyph({ area }: { area?: ProjectedArea }) {
   if (!area) return null;
   return (
     <span
@@ -180,7 +152,6 @@ function AreaGlyph({
       className={cn(
         "inline-flex shrink-0",
         conditionTextClassName[area.condition],
-        className,
       )}
     >
       <AreaIcon icon={area.icon} className="size-3.5" />
