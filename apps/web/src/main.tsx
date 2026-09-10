@@ -13,6 +13,7 @@ import {
   AppErrorBoundary,
   RouteErrorFallback,
 } from "./components/error-boundary";
+import { PrototypeSkinSwitcher } from "./features/theme/prototype-skin-switcher";
 import {
   initializeTheme,
   ThemeProvider,
@@ -22,6 +23,9 @@ import { authClient } from "./lib/auth-client";
 import { CONVEX_URL } from "./lib/env";
 import { routeTree } from "./routeTree.gen";
 import "@vita-os/ui/globals.css";
+
+// PROTOTYPE — design-style skins; remove with the prototype.
+import "./features/theme/prototype-skins.css";
 
 initializeTheme();
 
@@ -59,6 +63,7 @@ createRoot(root).render(
             <FeedbackProvider>
               <RouterProvider router={router} />
               <ThemeAwareToaster />
+              {!import.meta.env.PROD && <PrototypeSkinSwitcher />}
             </FeedbackProvider>
           </ConvexQueryCacheProvider>
         </ConvexBetterAuthProvider>

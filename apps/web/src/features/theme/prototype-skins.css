@@ -1,0 +1,260 @@
+/*
+  PROTOTYPE — throwaway. Delete with the rest of the design-style prototype.
+
+  Question: what should Vita OS's color palette / design style be?
+  Three candidate skins plus the current one, switchable on any page via
+  `?variant=`. Each skin re-declares the same token set globals.css defines,
+  scoped to `html[data-proto-skin="…"]`, so the whole app re-skins live.
+*/
+
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource-variable/source-serif-4";
+
+/* ─────────────────────────────────────────────────────────────────────
+   A — Graphite
+   Cool monochrome. Near-black primary, indigo reserved for focus and
+   links only. Tight radius, high contrast, dense and technical.
+   ───────────────────────────────────────────────────────────────────── */
+
+html[data-proto-skin="graphite"] {
+  --radius: 0.5rem;
+  --brand-ink: oklch(0.24 0.014 265);
+  /* The signature accent that plays the old gold's role on area chips and
+     thread markers. */
+  --brand-gold: oklch(0.72 0.14 268);
+  --brand-gold-strong: oklch(0.55 0.16 268);
+  --brand-cream: oklch(0.985 0.001 265);
+  --brand-accent-foreground: oklch(0.5 0.16 268);
+  --surface-1: oklch(0.974 0.002 265);
+  --surface-2: oklch(1 0 0);
+  --surface-3: oklch(0.951 0.004 265);
+  --foreground: oklch(0.22 0.012 265);
+  --primary: oklch(0.27 0.018 265);
+  --primary-foreground: oklch(0.985 0.001 265);
+  --secondary: oklch(0.94 0.005 265);
+  --secondary-foreground: oklch(0.24 0.014 265);
+  --muted-foreground: oklch(0.53 0.012 265);
+  --accent-foreground: oklch(0.24 0.014 265);
+  --destructive: oklch(0.53 0.19 26);
+  --condition-healthy: oklch(0.5 0.13 162);
+  --condition-attention: oklch(0.56 0.13 70);
+  --condition-critical: oklch(0.53 0.19 26);
+  --condition-healthy-fill: oklch(0.68 0.12 164);
+  --condition-healthy-fill-foreground: oklch(0.2 0.02 265);
+  --condition-attention-fill: oklch(0.79 0.13 78);
+  --condition-attention-fill-foreground: oklch(0.24 0.03 70);
+  --condition-critical-fill: oklch(0.56 0.19 26);
+  --border: oklch(0.902 0.005 265);
+  --input: oklch(0.878 0.006 265);
+  --ring: oklch(0.55 0.16 268);
+  --chart-1: oklch(0.52 0.16 268);
+  --chart-2: oklch(0.62 0.13 235);
+  --chart-3: oklch(0.68 0.1 200);
+  --chart-4: oklch(0.45 0.06 265);
+  --chart-5: oklch(0.27 0.018 265);
+}
+
+html[data-proto-skin="graphite"].dark {
+  --brand-gold: oklch(0.75 0.14 268);
+  --brand-gold-strong: oklch(0.66 0.15 268);
+  --brand-accent-foreground: oklch(0.74 0.13 268);
+  --surface-1: oklch(0.168 0.005 265);
+  --surface-2: oklch(0.207 0.007 265);
+  --surface-3: oklch(0.262 0.009 265);
+  --foreground: oklch(0.952 0.003 265);
+  --primary: oklch(0.93 0.004 265);
+  --primary-foreground: oklch(0.2 0.012 265);
+  --secondary: oklch(0.285 0.01 265);
+  --secondary-foreground: oklch(0.952 0.003 265);
+  --muted-foreground: oklch(0.71 0.011 265);
+  --accent-foreground: oklch(0.952 0.003 265);
+  --destructive: oklch(0.68 0.17 26);
+  --condition-healthy: oklch(0.74 0.14 162);
+  --condition-attention: oklch(0.8 0.13 78);
+  --condition-critical: oklch(0.7 0.17 26);
+  --border: oklch(0.93 0.008 265 / 13%);
+  --input: oklch(0.93 0.008 265 / 18%);
+  --ring: oklch(0.66 0.15 268);
+  --chart-1: oklch(0.68 0.15 268);
+  --chart-2: oklch(0.72 0.12 235);
+  --chart-3: oklch(0.78 0.09 200);
+  --chart-4: oklch(0.6 0.06 265);
+  --chart-5: oklch(0.93 0.004 265);
+}
+
+html[data-proto-skin="graphite"] body,
+html[data-proto-skin="graphite"] .font-sans {
+  font-family: "Inter Variable", sans-serif;
+  font-feature-settings:
+    "cv05" 1,
+    "ss03" 1;
+}
+
+html[data-proto-skin="graphite"] .font-heading {
+  font-family: "Inter Variable", sans-serif;
+  letter-spacing: -0.018em;
+  font-weight: 620;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   B — Cobalt
+   Paper-white ground with a saturated cobalt primary. Generous radius,
+   softer borders, colour used confidently rather than sparingly.
+   ───────────────────────────────────────────────────────────────────── */
+
+html[data-proto-skin="cobalt"] {
+  --radius: 0.875rem;
+  --brand-ink: oklch(0.25 0.032 265);
+  --brand-gold: oklch(0.78 0.13 225);
+  --brand-gold-strong: oklch(0.6 0.15 232);
+  --brand-cream: oklch(0.985 0.008 255);
+  --brand-accent-foreground: oklch(0.5 0.19 259);
+  --surface-1: oklch(0.979 0.008 250);
+  --surface-2: oklch(1 0.002 250);
+  --surface-3: oklch(0.945 0.019 250);
+  --foreground: oklch(0.25 0.032 265);
+  --primary: oklch(0.52 0.192 259);
+  --primary-foreground: oklch(0.985 0.008 255);
+  --secondary: oklch(0.928 0.032 253);
+  --secondary-foreground: oklch(0.3 0.06 262);
+  --muted-foreground: oklch(0.53 0.035 262);
+  --accent-foreground: oklch(0.32 0.07 261);
+  --destructive: oklch(0.55 0.2 20);
+  --condition-healthy: oklch(0.53 0.14 168);
+  --condition-attention: oklch(0.6 0.15 60);
+  --condition-critical: oklch(0.55 0.2 20);
+  --condition-healthy-fill: oklch(0.72 0.14 170);
+  --condition-healthy-fill-foreground: oklch(0.22 0.04 200);
+  --condition-attention-fill: oklch(0.8 0.14 72);
+  --condition-attention-fill-foreground: oklch(0.26 0.05 60);
+  --condition-critical-fill: oklch(0.58 0.2 20);
+  --border: oklch(0.888 0.021 252);
+  --input: oklch(0.86 0.026 253);
+  --ring: oklch(0.52 0.192 259);
+  --chart-1: oklch(0.52 0.192 259);
+  --chart-2: oklch(0.64 0.16 232);
+  --chart-3: oklch(0.7 0.14 195);
+  --chart-4: oklch(0.6 0.19 300);
+  --chart-5: oklch(0.72 0.16 40);
+}
+
+html[data-proto-skin="cobalt"].dark {
+  --brand-gold: oklch(0.8 0.12 225);
+  --brand-gold-strong: oklch(0.7 0.14 230);
+  --brand-accent-foreground: oklch(0.76 0.14 256);
+  --surface-1: oklch(0.188 0.026 262);
+  --surface-2: oklch(0.236 0.031 262);
+  --surface-3: oklch(0.296 0.036 263);
+  --foreground: oklch(0.952 0.015 260);
+  --primary: oklch(0.655 0.176 258);
+  --primary-foreground: oklch(0.16 0.032 262);
+  --secondary: oklch(0.322 0.04 262);
+  --secondary-foreground: oklch(0.952 0.015 260);
+  --muted-foreground: oklch(0.735 0.03 260);
+  --accent-foreground: oklch(0.952 0.015 260);
+  --destructive: oklch(0.7 0.18 20);
+  --condition-healthy: oklch(0.75 0.15 168);
+  --condition-attention: oklch(0.81 0.14 72);
+  --condition-critical: oklch(0.71 0.18 20);
+  --border: oklch(0.82 0.06 260 / 18%);
+  --input: oklch(0.82 0.06 260 / 24%);
+  --ring: oklch(0.655 0.176 258);
+  --chart-1: oklch(0.655 0.176 258);
+  --chart-2: oklch(0.74 0.15 232);
+  --chart-3: oklch(0.8 0.13 195);
+  --chart-4: oklch(0.7 0.17 300);
+  --chart-5: oklch(0.79 0.15 45);
+}
+
+html[data-proto-skin="cobalt"] body,
+html[data-proto-skin="cobalt"] .font-sans,
+html[data-proto-skin="cobalt"] .font-heading {
+  font-family: "Plus Jakarta Sans Variable", sans-serif;
+}
+
+html[data-proto-skin="cobalt"] .font-heading {
+  letter-spacing: -0.022em;
+  font-weight: 700;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   C — Moss
+   Organic and low-contrast. Sage-tinted paper, deep moss ink, clay for
+   accents, and a serif for headings. Calm rather than technical.
+   ───────────────────────────────────────────────────────────────────── */
+
+html[data-proto-skin="moss"] {
+  --radius: 0.75rem;
+  --brand-ink: oklch(0.27 0.032 152);
+  --brand-gold: oklch(0.78 0.11 62);
+  --brand-gold-strong: oklch(0.58 0.11 50);
+  --brand-cream: oklch(0.973 0.016 122);
+  --brand-accent-foreground: oklch(0.49 0.11 46);
+  --surface-1: oklch(0.968 0.013 128);
+  --surface-2: oklch(0.991 0.006 126);
+  --surface-3: oklch(0.936 0.021 132);
+  --foreground: oklch(0.26 0.03 152);
+  --primary: oklch(0.375 0.068 152);
+  --primary-foreground: oklch(0.973 0.016 122);
+  --secondary: oklch(0.918 0.031 136);
+  --secondary-foreground: oklch(0.27 0.032 152);
+  --muted-foreground: oklch(0.51 0.028 146);
+  --accent-foreground: oklch(0.27 0.032 152);
+  --destructive: oklch(0.51 0.16 32);
+  --condition-healthy: oklch(0.48 0.11 150);
+  --condition-attention: oklch(0.55 0.12 62);
+  --condition-critical: oklch(0.51 0.16 32);
+  --condition-healthy-fill: oklch(0.71 0.12 152);
+  --condition-healthy-fill-foreground: oklch(0.23 0.03 152);
+  --condition-attention-fill: oklch(0.78 0.11 68);
+  --condition-attention-fill-foreground: oklch(0.26 0.04 62);
+  --condition-critical-fill: oklch(0.56 0.16 32);
+  --border: oklch(0.862 0.025 136);
+  --input: oklch(0.838 0.03 138);
+  --ring: oklch(0.54 0.095 150);
+  --chart-1: oklch(0.5 0.1 150);
+  --chart-2: oklch(0.62 0.11 118);
+  --chart-3: oklch(0.6 0.11 46);
+  --chart-4: oklch(0.45 0.05 165);
+  --chart-5: oklch(0.375 0.068 152);
+}
+
+html[data-proto-skin="moss"].dark {
+  --brand-gold: oklch(0.81 0.1 65);
+  --brand-gold-strong: oklch(0.72 0.11 58);
+  --brand-accent-foreground: oklch(0.76 0.11 55);
+  --surface-1: oklch(0.168 0.017 155);
+  --surface-2: oklch(0.214 0.021 155);
+  --surface-3: oklch(0.274 0.025 152);
+  --foreground: oklch(0.932 0.019 128);
+  --primary: oklch(0.715 0.125 146);
+  --primary-foreground: oklch(0.16 0.02 155);
+  --secondary: oklch(0.298 0.028 150);
+  --secondary-foreground: oklch(0.932 0.019 128);
+  --muted-foreground: oklch(0.715 0.024 136);
+  --accent-foreground: oklch(0.932 0.019 128);
+  --destructive: oklch(0.68 0.15 32);
+  --condition-healthy: oklch(0.73 0.13 150);
+  --condition-attention: oklch(0.79 0.12 68);
+  --condition-critical: oklch(0.7 0.15 32);
+  --border: oklch(0.86 0.04 140 / 15%);
+  --input: oklch(0.86 0.04 140 / 20%);
+  --ring: oklch(0.68 0.11 148);
+  --chart-1: oklch(0.715 0.125 146);
+  --chart-2: oklch(0.78 0.11 118);
+  --chart-3: oklch(0.74 0.11 55);
+  --chart-4: oklch(0.6 0.06 165);
+  --chart-5: oklch(0.88 0.06 128);
+}
+
+html[data-proto-skin="moss"] body,
+html[data-proto-skin="moss"] .font-sans {
+  font-family: "Inter Variable", sans-serif;
+}
+
+html[data-proto-skin="moss"] .font-heading {
+  font-family: "Source Serif 4 Variable", Georgia, serif;
+  letter-spacing: -0.006em;
+  font-weight: 600;
+}
