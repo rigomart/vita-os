@@ -16,15 +16,21 @@ import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
 /**
  * A Thread on the board.
  *
- * The **Next Move leads**: it is the most relevant thing the Thread can say,
- * so it takes the headline and the Thread's own name drops to a second line.
- * When there is no move the title takes the headline instead — and then there
- * is no second line at all, because the Area name in that slot reads as a
- * title and would sit exactly where the neighbouring card's title sits. The
- * Area is always the glyph, never a word.
+ * **Each line means one thing on every card.** The first line is the Next
+ * Move and only ever the Next Move; the second is the Thread it belongs to.
+ * Letting the title climb into the headline when there was no move meant the
+ * strongest line on the card said "here is what to do" on one card and "here
+ * is a Thread" on the next, with nothing to tell them apart — so a Thread that
+ * has decided nothing looked exactly like one with a crisp move. When there is
+ * no move the slot holds an em dash instead: the table convention for *nothing
+ * here*, quiet enough to scan past and unmistakably not a sentence to act on.
+ * The Area is always the glyph, never a word.
  *
- * The card is inert until pointed at: the actions fade in on hover or keyboard
- * focus, so a still board is only its content.
+ * **The controls hold real space.** They live in a reserved rail down the
+ * right rather than floating over the text, so nothing is ever covered and the
+ * date never has to fade out to make room for them. The rail is a fixed 24px —
+ * about a word of the column's width — and rests at low contrast until the
+ * card is pointed at, so a still board is only its content.
  */
 export function AttentionCard({
   area,
@@ -45,43 +51,45 @@ export function AttentionCard({
   return (
     <div
       className={cn(
-        "group relative rounded-lg px-2.5 py-2 transition-colors hover:bg-muted/60",
+        "group relative flex gap-1.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-muted/60",
         late && "bg-condition-attention/[0.06]",
       )}
     >
-      <div className="flex items-start gap-2">
-        {/* With no second line, the glyph rides the headline instead. */}
-        {!move && <AreaGlyph area={area} className="mt-1" />}
-
+      <div className="min-w-0 flex-1">
         <Link
           to="."
           search={(previous) => ({ ...previous, thread: thread.slug })}
-          className="line-clamp-2 min-w-0 flex-1 text-sm leading-snug font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-ring/40"
+          className={cn(
+            "block min-w-0 text-sm leading-snug outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-ring/40",
+            move ? "line-clamp-2 font-medium" : "text-muted-foreground/40",
+          )}
         >
-          {move ?? thread.title}
+          {move ?? (
+            <>
+              <span aria-hidden>—</span>
+              <span className="sr-only">No Next Move</span>
+            </>
+          )}
         </Link>
 
-        {followUp !== undefined && (
-          <time
-            dateTime={new Date(followUp).toISOString()}
-            className={cn(
-              "mt-0.5 shrink-0 text-[11px] tabular-nums transition-opacity group-hover:opacity-0 group-focus-within:opacity-0",
-              dateToneClassName(followUp, currentDate),
-            )}
-          >
-            {dateToken(followUp, currentDate)}
-          </time>
-        )}
-      </div>
-
-      {move && (
         <p className="mt-0.5 flex items-center gap-1.5 text-[12px] leading-snug text-muted-foreground/75">
           <AreaGlyph area={area} />
           <span className="truncate">{thread.title}</span>
+          {followUp !== undefined && (
+            <time
+              dateTime={new Date(followUp).toISOString()}
+              className={cn(
+                "ml-auto shrink-0 pl-1 tabular-nums",
+                dateToneClassName(followUp, currentDate),
+              )}
+            >
+              {dateToken(followUp, currentDate)}
+            </time>
+          )}
         </p>
-      )}
+      </div>
 
-      <div className="pointer-events-none absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+      <div className="flex w-6 shrink-0 flex-col items-center gap-0.5 opacity-35 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
         {move && (
           <RailButton
             label="Complete Next Move"
@@ -125,7 +133,7 @@ function RailButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="inline-flex size-6 items-center justify-center rounded-md bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border/60 transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+      className="relative z-10 inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
     >
       {children}
     </button>

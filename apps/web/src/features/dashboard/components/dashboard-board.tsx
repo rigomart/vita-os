@@ -5,8 +5,7 @@ import { cn } from "@/lib/utils";
 import type { AttentionBoard, BoardItem } from "./attention-board-model";
 
 import { itemId, unscheduledCount } from "./attention-board-model";
-// PROTOTYPE — variant-dispatching card. Restore "./attention-card" after.
-import { AttentionCard } from "./attention-card-prototype";
+import { AttentionCard } from "./attention-card";
 import { DashboardNote } from "./dashboard-note";
 
 /**

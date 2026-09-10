@@ -6,19 +6,7 @@ import type {
 
 import { Button } from "@vita-os/ui/components/button";
 
-import {
-  PrototypeSwitcher,
-  usePrototypeVariant,
-} from "@/components/prototype-switcher";
-
-import type { Card } from "./attention-card-prototype";
-
 import { boardItems, buildAttentionBoard } from "./attention-board-model";
-import {
-  CARD_NAMES,
-  CARDS,
-  CardVariantProvider,
-} from "./attention-card-prototype";
 import { DashboardBoard } from "./dashboard-board";
 import { DashboardHeader } from "./dashboard-header";
 
@@ -45,9 +33,6 @@ export function DashboardOverview({
   onNewThreadInArea,
   threads,
 }: DashboardOverviewProps) {
-  // PROTOTYPE — `?card=A|B|C|D` swaps the Thread card.
-  const [card, setCard] = usePrototypeVariant<Card>("card", CARDS);
-
   if (areas.length === 0) {
     return (
       <div className="flex flex-col gap-6">
@@ -88,21 +73,8 @@ export function DashboardOverview({
           </p>
         </section>
       ) : (
-        <CardVariantProvider value={card}>
-          <DashboardBoard
-            areas={areas}
-            board={board}
-            currentDate={currentDate}
-          />
-        </CardVariantProvider>
+        <DashboardBoard areas={areas} board={board} currentDate={currentDate} />
       )}
-
-      <PrototypeSwitcher
-        current={card}
-        names={CARD_NAMES}
-        onSelect={setCard}
-        variants={CARDS}
-      />
     </div>
   );
 }
