@@ -75,16 +75,16 @@ export function TypographySection() {
     <Section
       id="typography"
       title="Typography"
-      description="Raleway Variable drives headings (font-heading); Manrope Variable drives body text (font-sans). Both are variable fonts spanning weights 300 through 800."
+      description="Inter Variable carries the whole interface. Headings (font-heading) and body text (font-sans) share the face and separate on weight and tracking instead; font-heading stays a seam for reintroducing a display face later."
     >
       <div className="grid gap-10 lg:grid-cols-2">
         <FamilySpecimen
-          title="Raleway Variable — font-heading"
+          title="Inter Variable — font-heading"
           fontClassName="font-heading"
           sample="Design system reference"
         />
         <FamilySpecimen
-          title="Manrope Variable — font-sans"
+          title="Inter Variable — font-sans"
           fontClassName="font-sans"
           sample="Design system reference"
         />
@@ -94,9 +94,10 @@ export function TypographySection() {
           Paragraph sample
         </p>
         <p className="font-sans text-base leading-relaxed text-foreground">
-          Vita OS pairs Raleway Variable for headings with Manrope Variable for
-          body copy, keeping interface text legible at small sizes while giving
-          section titles a distinct, editorial character.
+          Vita OS runs on a single face, Inter Variable, with its cv05 and ss03
+          alternates enabled so dense lists of times and counts stay legible at
+          small sizes. Hierarchy comes from weight and tracking, not contrast
+          between families.
         </p>
       </div>
     </Section>

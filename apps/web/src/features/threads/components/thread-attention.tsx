@@ -123,7 +123,7 @@ function NextMoveSlot({
   pending?: ThreadAttentionPending;
 }) {
   return (
-    <div className="group/next-move flex min-h-11 items-center gap-2 rounded-lg border border-border border-l-2 border-l-(--brand-gold) bg-muted/40 px-2.5 py-1.5">
+    <div className="group/next-move flex min-h-11 items-center gap-2 rounded-lg border border-border border-l-2 border-l-(--brand-accent) bg-muted/40 px-2.5 py-1.5">
       <ArrowRight
         aria-hidden
         className="size-3.5 shrink-0 text-muted-foreground/70"
@@ -207,7 +207,7 @@ const DEPTH_TONE = [
 
 /** The tick is gold on the move that fills the slot next, then fades with it. */
 const TICK_TONE = [
-  "bg-(--brand-gold)/70",
+  "bg-(--brand-accent)/70",
   "bg-border/70",
   "bg-border/55",
   "bg-border/40",
@@ -505,7 +505,7 @@ function NextMoveInput({
 /** Lateness reads in the tone the rest of the app uses for a slipping date. */
 const FOLLOW_UP_TONE = {
   overdue: "text-condition-attention",
-  due: "text-brand-accent-foreground",
+  due: "text-brand-accent-text",
 } as const;
 
 /**
