@@ -13,18 +13,21 @@ import { cn } from "@/lib/utils";
 
 import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
 
+/** Held in place at rest, so the meta line never reflows on hover. */
+const revealed =
+  "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100";
+
 /**
  * A Thread on the board.
  *
- * The **Next Move leads**: it is the most relevant thing the Thread can say,
- * so it takes the headline and the Thread's own name drops to a second line.
- * When there is no move the title takes the headline instead — and then there
- * is no second line at all, because the Area name in that slot reads as a
- * title and would sit exactly where the neighbouring card's title sits. The
- * Area is always the glyph, never a word.
+ * Each line means one thing on every card: the first is the Next Move, the
+ * second the Thread it belongs to. A Thread with no move holds an em dash in
+ * the first slot rather than promoting its title into it, so "nothing decided
+ * here" stays legible at a glance. The Area is always the glyph, never a word.
  *
- * The card is inert until pointed at: the actions fade in on hover or keyboard
- * focus, so a still board is only its content.
+ * The controls live in the meta line beside the date, in `DashboardNote`'s
+ * grammar — a row that already exists, so they cost the card no height. The
+ * date is not one of them: it is the button that changes it.
  */
 export function AttentionCard({
   area,
@@ -49,73 +52,79 @@ export function AttentionCard({
         late && "bg-condition-attention/[0.06]",
       )}
     >
-      <div className="flex items-start gap-2">
-        {/* With no second line, the glyph rides the headline instead. */}
-        {!move && <AreaGlyph area={area} className="mt-1" />}
-
-        <Link
-          to="."
-          search={(previous) => ({ ...previous, thread: thread.slug })}
-          className="line-clamp-2 min-w-0 flex-1 text-sm leading-snug font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-ring/40"
-        >
-          {move ?? thread.title}
-        </Link>
-
-        {followUp !== undefined && (
-          <time
-            dateTime={new Date(followUp).toISOString()}
-            className={cn(
-              "mt-0.5 shrink-0 text-[11px] tabular-nums transition-opacity group-hover:opacity-0 group-focus-within:opacity-0",
-              dateToneClassName(followUp, currentDate),
-            )}
-          >
-            {dateToken(followUp, currentDate)}
-          </time>
+      <Link
+        to="."
+        search={(previous) => ({ ...previous, thread: thread.slug })}
+        className={cn(
+          "block min-w-0 text-sm leading-snug outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-ring/40",
+          move ? "line-clamp-2 font-medium" : "text-muted-foreground/40",
         )}
-      </div>
-
-      {move && (
-        <p className="mt-0.5 flex items-center gap-1.5 text-[12px] leading-snug text-muted-foreground/75">
-          <AreaGlyph area={area} />
-          <span className="truncate">{thread.title}</span>
-        </p>
-      )}
-
-      <div className="pointer-events-none absolute top-1.5 right-1.5 z-10 flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
-        {move && (
-          <RailButton
-            label="Complete Next Move"
-            onClick={() => void completeNextMove()}
-          >
-            <Check className="size-3.5" />
-          </RailButton>
+      >
+        {move ?? (
+          <>
+            <span aria-hidden>—</span>
+            <span className="sr-only">No Next Move</span>
+          </>
         )}
-        <WhenPopover
-          when={followUp}
-          onSetWhen={(when) =>
-            void updateThread({ id: thread._id, followUp: when ?? null })
-          }
-          trigger={
-            <RailButton
-              label={
-                followUp === undefined ? "Set Follow-up" : "Change Follow-up"
-              }
+      </Link>
+
+      <div className="mt-1 flex items-center gap-1.5 text-[12px] leading-snug text-muted-foreground/75">
+        <AreaGlyph area={area} />
+        <span className="truncate">{thread.title}</span>
+
+        <span className="ml-auto flex shrink-0 items-center gap-1 pl-1">
+          <WhenPopover
+            when={followUp}
+            onSetWhen={(when) =>
+              void updateThread({ id: thread._id, followUp: when ?? null })
+            }
+            trigger={
+              followUp === undefined ? (
+                <ControlButton className={revealed} label="Set Follow-up">
+                  <CalendarClock className="size-3.5" />
+                </ControlButton>
+              ) : (
+                <button
+                  type="button"
+                  aria-label="Change Follow-up"
+                  className={cn(
+                    "relative z-10 -my-0.5 rounded-full px-1 py-0.5 tabular-nums transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40",
+                    dateToneClassName(followUp, currentDate),
+                  )}
+                >
+                  {dateToken(followUp, currentDate)}
+                </button>
+              )
+            }
+          />
+
+          {move && (
+            <ControlButton
+              label="Complete Next Move"
+              onClick={() => void completeNextMove()}
+              className={cn(
+                revealed,
+                "bg-muted hover:bg-condition-healthy/15 hover:text-condition-healthy",
+              )}
             >
-              <CalendarClock className="size-3.5" />
-            </RailButton>
-          }
-        />
+              <Check className="size-3.5" />
+            </ControlButton>
+          )}
+        </span>
       </div>
     </div>
   );
 }
 
-function RailButton({
+/** The negative margin lets it stand taller than the meta text it sits on. */
+function ControlButton({
   children,
+  className,
   label,
   onClick,
 }: {
   children: React.ReactNode;
+  className?: string;
   label: string;
   onClick?: () => void;
 }) {
@@ -125,20 +134,17 @@ function RailButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="inline-flex size-6 items-center justify-center rounded-md bg-background/90 text-muted-foreground shadow-sm ring-1 ring-border/60 transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+      className={cn(
+        "relative z-10 -my-1 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform,opacity] hover:bg-muted hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40",
+        className,
+      )}
     >
       {children}
     </button>
   );
 }
 
-function AreaGlyph({
-  area,
-  className,
-}: {
-  area?: ProjectedArea;
-  className?: string;
-}) {
+function AreaGlyph({ area }: { area?: ProjectedArea }) {
   if (!area) return null;
   return (
     <span
@@ -146,7 +152,6 @@ function AreaGlyph({
       className={cn(
         "inline-flex shrink-0",
         conditionTextClassName[area.condition],
-        className,
       )}
     >
       <AreaIcon icon={area.icon} className="size-3.5" />
