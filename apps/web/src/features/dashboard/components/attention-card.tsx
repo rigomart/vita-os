@@ -26,11 +26,14 @@ import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
  * here*, quiet enough to scan past and unmistakably not a sentence to act on.
  * The Area is always the glyph, never a word.
  *
- * **The controls hold real space.** They live in a reserved rail down the
- * right rather than floating over the text, so nothing is ever covered and the
- * date never has to fade out to make room for them. The rail is a fixed 28px —
- * about a word of the column's width — and rests at low contrast until the
- * card is pointed at, so a still board is only its content.
+ * **The controls sit in the footer beside the date**, in the same grammar as
+ * `DashboardNote`: the meta line already exists on every card, so the buttons
+ * cost the card no height, and they hold their space whether shown or not, so
+ * nothing is covered and nothing shifts when the pointer arrives. A rail down
+ * the side was two buttons tall — taller than the two lines of text it stood
+ * next to — and stretched every card with a move to fit its own chrome. The
+ * date is not one of those controls: it *is* its own button, because a date
+ * shown beside a button that changes it says the same thing twice.
  */
 export function AttentionCard({
   area,
@@ -51,81 +54,92 @@ export function AttentionCard({
   return (
     <div
       className={cn(
-        "group relative flex gap-1.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-muted/60",
+        "group relative rounded-lg px-2.5 py-2 transition-colors hover:bg-muted/60",
         late && "bg-condition-attention/[0.06]",
       )}
     >
-      <div className="min-w-0 flex-1">
-        <Link
-          to="."
-          search={(previous) => ({ ...previous, thread: thread.slug })}
-          className={cn(
-            "block min-w-0 text-sm leading-snug outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-ring/40",
-            move ? "line-clamp-2 font-medium" : "text-muted-foreground/40",
-          )}
-        >
-          {move ?? (
-            <>
-              <span aria-hidden>—</span>
-              <span className="sr-only">No Next Move</span>
-            </>
-          )}
-        </Link>
-
-        <p className="mt-0.5 flex items-center gap-1.5 text-[12px] leading-snug text-muted-foreground/75">
-          <AreaGlyph area={area} />
-          <span className="truncate">{thread.title}</span>
-          {followUp !== undefined && (
-            <time
-              dateTime={new Date(followUp).toISOString()}
-              className={cn(
-                "ml-auto shrink-0 pl-1 tabular-nums",
-                dateToneClassName(followUp, currentDate),
-              )}
-            >
-              {dateToken(followUp, currentDate)}
-            </time>
-          )}
-        </p>
-      </div>
-
-      <div className="flex w-7 shrink-0 flex-col items-center gap-0.5 opacity-40 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-        {move && (
-          <RailButton
-            label="Complete Next Move"
-            onClick={() => void completeNextMove()}
-            className="hover:border-condition-healthy/40 hover:text-condition-healthy"
-          >
-            <Check className="size-4" />
-          </RailButton>
+      <Link
+        to="."
+        search={(previous) => ({ ...previous, thread: thread.slug })}
+        className={cn(
+          "block min-w-0 text-sm leading-snug outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-ring/40",
+          move ? "line-clamp-2 font-medium" : "text-muted-foreground/40",
         )}
-        <WhenPopover
-          when={followUp}
-          onSetWhen={(when) =>
-            void updateThread({ id: thread._id, followUp: when ?? null })
-          }
-          trigger={
-            <RailButton
-              label={
-                followUp === undefined ? "Set Follow-up" : "Change Follow-up"
+      >
+        {move ?? (
+          <>
+            <span aria-hidden>—</span>
+            <span className="sr-only">No Next Move</span>
+          </>
+        )}
+      </Link>
+
+      <div className="mt-1 flex items-center gap-1.5 text-[12px] leading-snug text-muted-foreground/75">
+        <AreaGlyph area={area} />
+        <span className="truncate">{thread.title}</span>
+
+        <span className="ml-auto flex shrink-0 items-center gap-1 pl-1">
+          {/* The date is the button that changes it — showing it and then
+              offering a separate control for it says the same thing twice. */}
+          {followUp !== undefined && (
+            <WhenPopover
+              when={followUp}
+              onSetWhen={(when) =>
+                void updateThread({ id: thread._id, followUp: when ?? null })
               }
-            >
-              <CalendarClock className="size-4" />
-            </RailButton>
-          }
-        />
+              trigger={
+                <button
+                  type="button"
+                  aria-label="Change Follow-up"
+                  className={cn(
+                    "relative z-10 -my-0.5 rounded-full px-1 py-0.5 tabular-nums transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40",
+                    dateToneClassName(followUp, currentDate),
+                  )}
+                >
+                  {dateToken(followUp, currentDate)}
+                </button>
+              }
+            />
+          )}
+
+          {/* The controls keep their space at rest, so the meta line neither
+              reflows nor grows when the card is pointed at. */}
+          <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+            {followUp === undefined && (
+              <WhenPopover
+                when={followUp}
+                onSetWhen={(when) =>
+                  void updateThread({ id: thread._id, followUp: when ?? null })
+                }
+                trigger={
+                  <ControlButton label="Set Follow-up">
+                    <CalendarClock className="size-3.5" />
+                  </ControlButton>
+                }
+              />
+            )}
+            {move && (
+              <ControlButton
+                label="Complete Next Move"
+                onClick={() => void completeNextMove()}
+                className="bg-muted hover:bg-condition-healthy/15 hover:text-condition-healthy"
+              >
+                <Check className="size-3.5" />
+              </ControlButton>
+            )}
+          </span>
+        </span>
       </div>
     </div>
   );
 }
 
 /**
- * A control in the card's rail. It answers the pointer with a real chip —
- * a filled, outlined surface that lifts off the card's own hover fill — rather
- * than a shade of grey, and it presses in when clicked, because these two
- * buttons are the only things on the board that change data.
+ * A control on the card's footer, in `DashboardNote`'s shape: a round target
+ * that fills on hover. The negative margin lets it stand taller than the meta
+ * text it sits on without pushing the line open.
  */
-function RailButton({
+function ControlButton({
   children,
   className,
   label,
@@ -143,7 +157,7 @@ function RailButton({
       title={label}
       onClick={onClick}
       className={cn(
-        "relative z-10 inline-flex size-7 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-[color,background-color,border-color,transform] hover:border-border/70 hover:bg-background hover:text-foreground hover:shadow-sm active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40",
+        "relative z-10 -my-1 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform] hover:bg-muted hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40",
         className,
       )}
     >

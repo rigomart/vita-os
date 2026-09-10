@@ -52,40 +52,49 @@ export function DashboardNote({
       </Link>
 
       <div className="mt-1.5 flex items-center gap-1">
+        {/* The date is the button that changes it. Showing the date and then
+            offering a separate control for it said the same thing twice. */}
         {when !== undefined && (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 text-2xs",
-              late
-                ? "text-condition-attention"
-                : due
-                  ? "text-foreground/80"
-                  : "text-muted-foreground/70",
-            )}
-          >
-            <Bell className="size-3" />
-            {shortDate(when)}
-          </span>
-        )}
-
-        <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within/note:opacity-100 group-hover/note:opacity-100">
           <WhenPopover
             when={when}
             onSetWhen={(next) => void updateNoteWhen(note._id, next)}
             trigger={
               <button
                 type="button"
-                aria-label={
-                  when === undefined
-                    ? "Set attention date"
-                    : "Change attention date"
-                }
-                className="relative z-10 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+                aria-label="Change attention date"
+                className={cn(
+                  "relative z-10 -mx-1 -my-0.5 inline-flex items-center gap-1 rounded-full px-1 py-0.5 text-2xs transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40",
+                  late
+                    ? "text-condition-attention"
+                    : due
+                      ? "text-foreground/80"
+                      : "text-muted-foreground/70",
+                )}
               >
-                <Bell className="size-3.5" />
+                <Bell className="size-3" />
+                {shortDate(when)}
               </button>
             }
           />
+        )}
+
+        <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within/note:opacity-100 group-hover/note:opacity-100">
+          {when === undefined && (
+            <WhenPopover
+              when={when}
+              onSetWhen={(next) => void updateNoteWhen(note._id, next)}
+              trigger={
+                <button
+                  type="button"
+                  aria-label="Set attention date"
+                  title="Set attention date"
+                  className="relative z-10 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+                >
+                  <Bell className="size-3.5" />
+                </button>
+              }
+            />
+          )}
           <button
             type="button"
             aria-label="Mark note done"
