@@ -28,7 +28,7 @@ import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
  *
  * **The controls hold real space.** They live in a reserved rail down the
  * right rather than floating over the text, so nothing is ever covered and the
- * date never has to fade out to make room for them. The rail is a fixed 24px —
+ * date never has to fade out to make room for them. The rail is a fixed 28px —
  * about a word of the column's width — and rests at low contrast until the
  * card is pointed at, so a still board is only its content.
  */
@@ -89,13 +89,14 @@ export function AttentionCard({
         </p>
       </div>
 
-      <div className="flex w-6 shrink-0 flex-col items-center gap-0.5 opacity-35 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+      <div className="flex w-7 shrink-0 flex-col items-center gap-0.5 opacity-40 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
         {move && (
           <RailButton
             label="Complete Next Move"
             onClick={() => void completeNextMove()}
+            className="hover:border-condition-healthy/40 hover:text-condition-healthy"
           >
-            <Check className="size-3.5" />
+            <Check className="size-4" />
           </RailButton>
         )}
         <WhenPopover
@@ -109,7 +110,7 @@ export function AttentionCard({
                 followUp === undefined ? "Set Follow-up" : "Change Follow-up"
               }
             >
-              <CalendarClock className="size-3.5" />
+              <CalendarClock className="size-4" />
             </RailButton>
           }
         />
@@ -118,12 +119,20 @@ export function AttentionCard({
   );
 }
 
+/**
+ * A control in the card's rail. It answers the pointer with a real chip —
+ * a filled, outlined surface that lifts off the card's own hover fill — rather
+ * than a shade of grey, and it presses in when clicked, because these two
+ * buttons are the only things on the board that change data.
+ */
 function RailButton({
   children,
+  className,
   label,
   onClick,
 }: {
   children: React.ReactNode;
+  className?: string;
   label: string;
   onClick?: () => void;
 }) {
@@ -133,7 +142,10 @@ function RailButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="relative z-10 inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+      className={cn(
+        "relative z-10 inline-flex size-7 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-[color,background-color,border-color,transform] hover:border-border/70 hover:bg-background hover:text-foreground hover:shadow-sm active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40",
+        className,
+      )}
     >
       {children}
     </button>

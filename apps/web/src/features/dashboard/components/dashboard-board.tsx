@@ -23,10 +23,16 @@ import { DashboardNote } from "./dashboard-note";
  *
  * **No date** is deliberately not a fourth column. It is not a time bucket, so
  * drawing it as another panel in the row made it read as the step after
- * "Later". It gets no rule and no line beside it: it is simply set further
- * out, pitched quieter than the dated columns, and labelled — with its own
- * seams admitted as labelled runs (what you could do now, what is merely open,
- * and the Notes).
+ * "Later". It gets no heading rule of its own — only a line down its left,
+ * which is doing the opposite job to a panel: it closes the row of dated
+ * columns rather than fencing off another one, and says the margin is beside
+ * the board rather than at the end of it.
+ *
+ * Its own seams are admitted as labelled runs — what you could do now, what is
+ * merely open, and the Notes. Those labels are **sentence case on purpose**:
+ * uppercase appears exactly once per column, on the column's own heading, so
+ * the eye can tell a heading from a subheading by shape alone. Three tiers of
+ * muted uppercase in one narrow column left nothing outranking anything.
  */
 export function DashboardBoard({
   areas,
@@ -79,7 +85,7 @@ export function DashboardBoard({
     );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6 xl:flex-row xl:gap-10">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 xl:flex-row xl:gap-8">
       <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-2 xl:grid-cols-3 xl:gap-8">
         {columns.map((column) => (
           <section
@@ -131,23 +137,27 @@ export function DashboardBoard({
 
       <aside
         aria-label="No date"
-        className="flex min-h-0 flex-col xl:w-64 xl:shrink-0"
+        className="flex min-h-0 flex-col border-t border-border/50 pt-4 xl:w-64 xl:shrink-0 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-8"
       >
-        <header className="mb-1.5 flex items-baseline gap-2 pb-1.5">
-          <h2 className="text-[11px] font-semibold tracking-widest text-muted-foreground/50 uppercase">
+        {/* A transparent rule of the same weight as the dated columns' keeps
+            every heading on one line without drawing a fourth one. */}
+        <header className="mb-1.5 flex items-baseline gap-2 border-b-2 border-transparent pb-1.5">
+          <h2 className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
             No date
           </h2>
-          <span className="text-[11px] tabular-nums text-muted-foreground/40">
+          <span className="text-[11px] tabular-nums text-muted-foreground/60">
             {unscheduledCount(board)}
           </span>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-2">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-2">
           {runs.map((run) => (
             <section key={run.key}>
-              <h3 className="flex items-center gap-1.5 pb-1 text-[10px] font-medium tracking-wider text-muted-foreground/40 uppercase">
+              <h3 className="flex items-baseline gap-1.5 pb-1 text-[11px] leading-snug font-medium text-muted-foreground/70">
                 {run.title}
-                <span className="tabular-nums">{run.items.length}</span>
+                <span className="tabular-nums text-muted-foreground/45">
+                  {run.items.length}
+                </span>
               </h3>
               <ul className="flex flex-col gap-1">
                 {run.items.map((item) => (
