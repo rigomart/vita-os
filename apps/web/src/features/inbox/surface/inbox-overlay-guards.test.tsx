@@ -16,7 +16,11 @@ function mountOverlay(slot = "dialog-content") {
 }
 
 afterEach(() => {
-  document.querySelectorAll("[data-slot]").forEach((node) => node.remove());
+  // Only the stand-ins parked directly on the body — anything rendered inside
+  // a test's own tree is React's to unmount.
+  document
+    .querySelectorAll("body > [data-slot]")
+    .forEach((node) => node.remove());
 });
 
 describe("useCloseOnEscape", () => {
@@ -54,6 +58,9 @@ describe("useCloseOnOutsidePointerDown", () => {
         <button type="button" data-inbox-surface-trigger="">
           trigger
         </button>
+        <aside data-slot="thread-detail-pane">
+          <button type="button">thread pane</button>
+        </aside>
       </>
     );
   }
@@ -70,6 +77,9 @@ describe("useCloseOnOutsidePointerDown", () => {
   it.each([
     ["inside the panel", "inside"],
     ["on the trigger that toggles it", "trigger"],
+    // The pane sits beside the panel rather than under it: the two surfaces
+    // coexist, so working in one must not dismiss the other.
+    ["inside the open thread pane", "thread pane"],
   ])("stays open on a pointer down %s", (_case, name) => {
     const onOutside = vi.fn();
     render(<Panel onOutside={onOutside} />);

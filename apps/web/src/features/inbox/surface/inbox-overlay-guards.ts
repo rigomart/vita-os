@@ -24,6 +24,13 @@ const NESTED_OVERLAY_SELECTOR = [
   '[data-slot="combobox-content"]',
 ].join(",");
 
+/**
+ * The thread detail rail is a peer of the surface, not page background: it sits
+ * beside the panel rather than under it, so reading or editing a Thread while
+ * Notes is up must leave Notes alone.
+ */
+const COEXISTING_SURFACE_SELECTOR = '[data-slot="thread-detail-pane"]';
+
 /** True while any portaled overlay is mounted above the surface. */
 function hasNestedOverlay() {
   if (typeof document === "undefined") return false;
@@ -65,6 +72,7 @@ export function useCloseOnOutsidePointerDown(
       if (!target) return;
       if (panelRef.current?.contains(target)) return;
       if (target.closest?.(INBOX_SURFACE_TRIGGER_SELECTOR)) return;
+      if (target.closest?.(COEXISTING_SURFACE_SELECTOR)) return;
       onOutsidePointerDownRef.current();
     }
     document.addEventListener("pointerdown", handlePointerDown, true);

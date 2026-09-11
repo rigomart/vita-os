@@ -114,6 +114,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           onNewNote={dialogs.openNewNote}
           onOpenPalette={() => setPaletteOpen(true)}
         />
+        {/* Inside the column, not beside it: the Notes panel hangs off the
+            column's right edge, which the thread rail's spacer moves. */}
+        <InboxSurface />
         <main className="w-full min-w-0 flex-1 px-4 pt-3 pb-24 md:pb-8">
           {children}
         </main>
@@ -125,7 +128,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           onOpenPalette={() => setPaletteOpen(true)}
         />
       </div>
-      <InboxSurface />
       {openThreadSlug !== undefined && (
         <ThreadDetailView
           threadSlug={openThreadSlug}

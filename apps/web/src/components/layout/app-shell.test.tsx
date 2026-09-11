@@ -44,6 +44,8 @@ Element.prototype.scrollIntoView ??= vi.fn();
 
 const queryCall = vi.fn<(name: string, args: unknown) => void>();
 
+const mocks = vi.hoisted(() => ({ search: {} as Record<string, unknown> }));
+
 vi.mock("convex-helpers/react/cache/hooks", () => ({
   useQuery: (query: unknown, args: unknown) => {
     const name = getFunctionName(query as never);
@@ -70,7 +72,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...actual,
-    useSearch: () => ({}),
+    useSearch: () => mocks.search,
     useMatch: () => undefined,
     useNavigate: () => vi.fn(),
   };
@@ -95,6 +97,12 @@ vi.mock("./app-top-bar", () => ({
       </button>
     </div>
   ),
+}));
+
+// The Notes screen is Convex-backed and covered by its own tests; the shell
+// only cares where its panel is mounted.
+vi.mock("@/features/inbox/screens/inbox-screen", () => ({
+  InboxScreen: () => <p>inbox screen</p>,
 }));
 
 vi.mock("./mobile-tab-bar", () => ({
@@ -131,7 +139,29 @@ function renderShell() {
 }
 
 describe("AppShell", () => {
-  beforeEach(() => queryCall.mockClear());
+  beforeEach(() => {
+    queryCall.mockClear();
+    mocks.search = {};
+  });
+
+  it("keeps the Notes panel in the column the thread rail pushes", async () => {
+    mocks.search = { inbox: true };
+    renderShell();
+
+    const positioner = await waitFor(() => {
+      const node = document.querySelector(
+        '[data-slot="inbox-surface-positioner"]',
+      );
+      expect(node).not.toBeNull();
+      return node as HTMLElement;
+    });
+
+    // Sharing the chrome column with the top bar is what keeps the panel under
+    // its trigger — and off the thread rail — once that column is squeezed.
+    expect(positioner.parentElement).toContainElement(
+      screen.getByRole("button", { name: "top bar new note" }),
+    );
+  });
 
   it("mounts no create surface and no palette-only subscription while closed", () => {
     renderShell();
