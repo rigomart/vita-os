@@ -1,6 +1,6 @@
 # Summoned in-place Inbox surface
 
-Status: Amended by ADR 0014 — Plan Task chips are gone; the Dashboard Inbox synopsis is now one of the surface's openers.
+Status: Amended by ADR 0014 — Plan Task chips are gone; the Dashboard Inbox synopsis is now one of the surface's openers. Amended by #307 — the panel rides the pushed content column instead of floating above it; the decision (coexistence, non-modal) stands.
 
 The **Inbox** lived at `/inbox` as a full page, so triaging a handful of **Tasks** navigated the user off whatever they were doing — the same context loss ADR 0007 removed for **Threads** — and the page was more chrome than content. The Inbox screen was already self-contained (it fetches its own data and hosts the full process flow), so it becomes a summoned surface: an `inbox` search param on the authenticated layout opens it over whatever page the user is on, and every opener (top bar, palette, **Plan** Task chips, mobile tab) sets the param instead of navigating. The form is a compact non-modal floating panel under the top bar on wide screens and a bottom Drawer below 768px. Three candidate forms were compared as switchable chrome over the real app on branch `worktree-prototype-inbox-291`, the method ADR 0006 established.
 
@@ -15,7 +15,7 @@ The **Inbox** lived at `/inbox` as a full page, so triaging a handful of **Tasks
 
 - `?inbox=true` on any authenticated route opens the surface over the current page. Closing strips only that param; the page underneath was never left.
 - `/inbox` remains the supported deep link. Its route renders nothing itself; it lands on the **Dashboard** with the surface open, preserving any other params (including `?thread=`).
-- The surface coexists with the Thread rail: both can be open, the rail keeps pushing the page while the panel floats above it.
+- The surface coexists with the Thread rail: both can be open, and the rail pushes the panel along with the rest of the page. Floating the panel above the rail was the original reading, and it was wrong in practice (#307): a viewport-pinned panel landed on top of the rail and detached from its trigger. The panel is mounted in the chrome column the rail's spacer squeezes, so it stays under its trigger and beside the rail — and a click on the rail leaves it open, since the two are peers rather than surface-over-page.
 
 ## Consequences
 

@@ -99,6 +99,11 @@ vi.mock("./app-top-bar", () => ({
   ),
 }));
 
+// The rail only exists at >=1280px; jsdom reports no width worth believing.
+vi.mock("@/hooks/use-thread-pane-viewport", () => ({
+  useThreadPaneViewport: () => true,
+}));
+
 // The Notes screen is Convex-backed and covered by its own tests; the shell
 // only cares where its panel is mounted.
 vi.mock("@/features/inbox/screens/inbox-screen", () => ({
@@ -161,6 +166,26 @@ describe("AppShell", () => {
     expect(positioner.parentElement).toContainElement(
       screen.getByRole("button", { name: "top bar new note" }),
     );
+  });
+
+  it("keeps Notes out of the thread rail when both are open", async () => {
+    mocks.search = { inbox: true, thread: thread.slug };
+    renderShell();
+
+    const positioner = await waitFor(() => {
+      const node = document.querySelector(
+        '[data-slot="inbox-surface-positioner"]',
+      );
+      expect(node).not.toBeNull();
+      return node as HTMLElement;
+    });
+    const rail = document.querySelector('[data-slot="thread-detail-pane"]');
+
+    // The rail is the column's sibling, not its ancestor: whatever width it
+    // takes comes out of the column, carrying the panel left with it.
+    expect(rail).not.toBeNull();
+    expect(rail).not.toContainElement(positioner);
+    expect(positioner.parentElement).not.toContainElement(rail as HTMLElement);
   });
 
   it("mounts no create surface and no palette-only subscription while closed", () => {
