@@ -16,8 +16,7 @@ function mountOverlay(slot = "dialog-content") {
 }
 
 afterEach(() => {
-  // Only the stand-ins parked directly on the body — anything rendered inside
-  // a test's own tree is React's to unmount.
+  // Only the stand-ins parked on the body; a test's own tree is React's.
   document
     .querySelectorAll("body > [data-slot]")
     .forEach((node) => node.remove());
@@ -77,8 +76,6 @@ describe("useCloseOnOutsidePointerDown", () => {
   it.each([
     ["inside the panel", "inside"],
     ["on the trigger that toggles it", "trigger"],
-    // The pane sits beside the panel rather than under it: the two surfaces
-    // coexist, so working in one must not dismiss the other.
     ["inside the open thread pane", "thread pane"],
   ])("stays open on a pointer down %s", (_case, name) => {
     const onOutside = vi.fn();

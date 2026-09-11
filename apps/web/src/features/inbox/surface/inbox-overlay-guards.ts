@@ -24,11 +24,7 @@ const NESTED_OVERLAY_SELECTOR = [
   '[data-slot="combobox-content"]',
 ].join(",");
 
-/**
- * The thread detail rail is a peer of the surface, not page background: it sits
- * beside the panel rather than under it, so reading or editing a Thread while
- * Notes is up must leave Notes alone.
- */
+/** A peer surface beside the panel, not page background: its clicks are its own. */
 const THREAD_DETAIL_PANE_SELECTOR = '[data-slot="thread-detail-pane"]';
 
 /** True while any portaled overlay is mounted above the surface. */

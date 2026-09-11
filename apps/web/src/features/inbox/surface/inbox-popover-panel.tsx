@@ -36,8 +36,8 @@ export function InboxPopoverPanel({
   useReturnFocusOnClose(panelRef, open);
 
   return (
-    // Zero height so it costs the column no space, sticky so it holds its place
-    // under the sticky top bar as the page scrolls.
+    // Zero height so it costs the column no space; sticky so it keeps its
+    // place under the sticky top bar as the page scrolls.
     <div
       data-slot="inbox-surface-positioner"
       className="sticky top-14 z-50 h-0"

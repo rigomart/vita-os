@@ -68,8 +68,6 @@ describe("InboxSurface", () => {
     renderSurface();
     await waitFor(() => expect(panel()).toHaveAttribute("data-state", "open"));
 
-    // The positioner rides the chrome column, so an open thread rail carries
-    // the panel left with the trigger instead of being painted over.
     expect(panel()?.parentElement).toHaveAttribute(
       "data-slot",
       "inbox-surface-positioner",

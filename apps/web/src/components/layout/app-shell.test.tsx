@@ -104,8 +104,7 @@ vi.mock("@/hooks/use-thread-pane-viewport", () => ({
   useThreadPaneViewport: () => true,
 }));
 
-// The Notes screen is Convex-backed and covered by its own tests; the shell
-// only cares where its panel is mounted.
+// Convex-backed and covered by its own tests; the shell cares only where it sits.
 vi.mock("@/features/inbox/screens/inbox-screen", () => ({
   InboxScreen: () => <p>inbox screen</p>,
 }));
@@ -161,8 +160,6 @@ describe("AppShell", () => {
       return node as HTMLElement;
     });
 
-    // Sharing the chrome column with the top bar is what keeps the panel under
-    // its trigger — and off the thread rail — once that column is squeezed.
     expect(positioner.parentElement).toContainElement(
       screen.getByRole("button", { name: "top bar new note" }),
     );
@@ -181,8 +178,7 @@ describe("AppShell", () => {
     });
     const rail = document.querySelector('[data-slot="thread-detail-pane"]');
 
-    // The rail is the column's sibling, not its ancestor: whatever width it
-    // takes comes out of the column, carrying the panel left with it.
+    // Sibling, not ancestor: the rail's width comes out of the column.
     expect(rail).not.toBeNull();
     expect(rail).not.toContainElement(positioner);
     expect(positioner.parentElement).not.toContainElement(rail as HTMLElement);
