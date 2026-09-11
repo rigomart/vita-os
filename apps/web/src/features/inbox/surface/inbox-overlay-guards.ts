@@ -24,6 +24,9 @@ const NESTED_OVERLAY_SELECTOR = [
   '[data-slot="combobox-content"]',
 ].join(",");
 
+/** A peer surface beside the panel, not page background: its clicks are its own. */
+const THREAD_DETAIL_PANE_SELECTOR = '[data-slot="thread-detail-pane"]';
+
 /** True while any portaled overlay is mounted above the surface. */
 function hasNestedOverlay() {
   if (typeof document === "undefined") return false;
@@ -65,6 +68,7 @@ export function useCloseOnOutsidePointerDown(
       if (!target) return;
       if (panelRef.current?.contains(target)) return;
       if (target.closest?.(INBOX_SURFACE_TRIGGER_SELECTOR)) return;
+      if (target.closest?.(THREAD_DETAIL_PANE_SELECTOR)) return;
       onOutsidePointerDownRef.current();
     }
     document.addEventListener("pointerdown", handlePointerDown, true);

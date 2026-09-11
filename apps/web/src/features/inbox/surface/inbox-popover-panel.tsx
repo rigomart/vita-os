@@ -19,6 +19,10 @@ interface InboxPopoverPanelProps {
  * Non-modal on purpose: the page behind stays live and scrollable, focus moves
  * in without being trapped, and Escape, the close button or a click outside
  * dismiss it.
+ *
+ * Rendered inside the chrome column rather than pinned to the viewport, so the
+ * thread rail — which squeezes that column — carries the panel left along with
+ * the trigger instead of being painted over.
  */
 export function InboxPopoverPanel({
   open,
@@ -32,27 +36,34 @@ export function InboxPopoverPanel({
   useReturnFocusOnClose(panelRef, open);
 
   return (
+    // Zero height so it costs the column no space; sticky so it keeps its
+    // place under the sticky top bar as the page scrolls.
     <div
-      ref={panelRef}
-      id={INBOX_SURFACE_PANEL_ID}
-      role="dialog"
-      aria-label="Notes"
-      aria-hidden={open ? undefined : true}
-      tabIndex={-1}
-      data-slot="inbox-surface-panel"
-      data-state={open ? "open" : "closed"}
-      className="pointer-events-none fixed top-14 right-4 z-50 flex max-h-[min(44rem,78dvh)] w-[26rem] origin-top-right scale-95 flex-col overflow-hidden rounded-xl border bg-popover text-sm text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 ease-out outline-none data-[state=open]:pointer-events-auto data-[state=open]:translate-y-0 data-[state=open]:scale-100 data-[state=open]:opacity-100 data-[state=closed]:-translate-y-1 motion-reduce:transition-none"
-      onTransitionEnd={(event) => {
-        if (
-          event.target === event.currentTarget &&
-          event.propertyName === "opacity" &&
-          !open
-        ) {
-          onExited();
-        }
-      }}
+      data-slot="inbox-surface-positioner"
+      className="sticky top-14 z-50 h-0"
     >
-      <InboxSurfaceBody onClose={onClose} />
+      <div
+        ref={panelRef}
+        id={INBOX_SURFACE_PANEL_ID}
+        role="dialog"
+        aria-label="Notes"
+        aria-hidden={open ? undefined : true}
+        tabIndex={-1}
+        data-slot="inbox-surface-panel"
+        data-state={open ? "open" : "closed"}
+        className="pointer-events-none absolute top-0 right-4 flex max-h-[min(44rem,78dvh)] w-[26rem] origin-top-right scale-95 flex-col overflow-hidden rounded-xl border bg-popover text-sm text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 ease-out outline-none data-[state=open]:pointer-events-auto data-[state=open]:translate-y-0 data-[state=open]:scale-100 data-[state=open]:opacity-100 data-[state=closed]:-translate-y-1 motion-reduce:transition-none"
+        onTransitionEnd={(event) => {
+          if (
+            event.target === event.currentTarget &&
+            event.propertyName === "opacity" &&
+            !open
+          ) {
+            onExited();
+          }
+        }}
+      >
+        <InboxSurfaceBody onClose={onClose} />
+      </div>
     </div>
   );
 }

@@ -44,6 +44,8 @@ Element.prototype.scrollIntoView ??= vi.fn();
 
 const queryCall = vi.fn<(name: string, args: unknown) => void>();
 
+const mocks = vi.hoisted(() => ({ search: {} as Record<string, unknown> }));
+
 vi.mock("convex-helpers/react/cache/hooks", () => ({
   useQuery: (query: unknown, args: unknown) => {
     const name = getFunctionName(query as never);
@@ -70,7 +72,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...actual,
-    useSearch: () => ({}),
+    useSearch: () => mocks.search,
     useMatch: () => undefined,
     useNavigate: () => vi.fn(),
   };
@@ -95,6 +97,16 @@ vi.mock("./app-top-bar", () => ({
       </button>
     </div>
   ),
+}));
+
+// The rail only exists at >=1280px; jsdom reports no width worth believing.
+vi.mock("@/hooks/use-thread-pane-viewport", () => ({
+  useThreadPaneViewport: () => true,
+}));
+
+// Convex-backed and covered by its own tests; the shell cares only where it sits.
+vi.mock("@/features/inbox/screens/inbox-screen", () => ({
+  InboxScreen: () => <p>inbox screen</p>,
 }));
 
 vi.mock("./mobile-tab-bar", () => ({
@@ -131,7 +143,46 @@ function renderShell() {
 }
 
 describe("AppShell", () => {
-  beforeEach(() => queryCall.mockClear());
+  beforeEach(() => {
+    queryCall.mockClear();
+    mocks.search = {};
+  });
+
+  it("keeps the Notes panel in the column the thread rail pushes", async () => {
+    mocks.search = { inbox: true };
+    renderShell();
+
+    const positioner = await waitFor(() => {
+      const node = document.querySelector(
+        '[data-slot="inbox-surface-positioner"]',
+      );
+      expect(node).not.toBeNull();
+      return node as HTMLElement;
+    });
+
+    expect(positioner.parentElement).toContainElement(
+      screen.getByRole("button", { name: "top bar new note" }),
+    );
+  });
+
+  it("keeps Notes out of the thread rail when both are open", async () => {
+    mocks.search = { inbox: true, thread: thread.slug };
+    renderShell();
+
+    const positioner = await waitFor(() => {
+      const node = document.querySelector(
+        '[data-slot="inbox-surface-positioner"]',
+      );
+      expect(node).not.toBeNull();
+      return node as HTMLElement;
+    });
+    const rail = document.querySelector('[data-slot="thread-detail-pane"]');
+
+    // Sibling, not ancestor: the rail's width comes out of the column.
+    expect(rail).not.toBeNull();
+    expect(rail).not.toContainElement(positioner);
+    expect(positioner.parentElement).not.toContainElement(rail as HTMLElement);
+  });
 
   it("mounts no create surface and no palette-only subscription while closed", () => {
     renderShell();
