@@ -64,6 +64,12 @@ vi.mock("@/features/notes/use-update-note-when", () => ({
   useUpdateNoteWhen: () => vi.fn(),
 }));
 
+const isMobile = vi.hoisted(() => ({ value: false }));
+vi.mock("@/hooks/use-mobile", () => ({
+  useIsMobile: () => isMobile.value,
+  useIsCompact: () => isMobile.value,
+}));
+
 const currentDate = new Date(2026, 6, 17, 12).getTime();
 const DAY = 86_400_000;
 
@@ -222,6 +228,35 @@ describe("DashboardOverview", () => {
     expect(within(margin).getByText("Actionable")).toBeVisible();
     expect(within(margin).getByText("Idle")).toBeVisible();
     expect(within(margin).getByText("Loose thought")).toBeVisible();
+  });
+
+  /**
+   * A phone stacks the lanes and scrolls the page, so the two that carry what
+   * is not urgent open folded — Now and This week are what the screen shows.
+   */
+  it("folds Later and the No date margin on a phone", async () => {
+    isMobile.value = true;
+    try {
+      renderOverview({
+        threads: [
+          thread("Overdue", { followUp: currentDate - DAY }),
+          thread("Distant", { followUp: currentDate + 30 * DAY, order: 1 }),
+          thread("Actionable", { nextMove: "Call the clinic", order: 2 }),
+        ],
+      });
+
+      expect(columnText("Now")).toEqual([expect.stringContaining("Overdue")]);
+      expect(screen.queryByText("Distant")).not.toBeInTheDocument();
+      expect(screen.queryByText("Call the clinic")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: /Later/ }));
+      expect(screen.getByText("Distant")).toBeVisible();
+
+      await userEvent.click(screen.getByRole("button", { name: /No date/ }));
+      expect(screen.getByText("Call the clinic")).toBeVisible();
+    } finally {
+      isMobile.value = false;
+    }
   });
 
   it("says so plainly when nothing is asking", () => {
