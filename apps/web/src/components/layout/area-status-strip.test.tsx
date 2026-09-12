@@ -36,8 +36,7 @@ let threads: ProjectedThread[] | undefined;
 let activeSlug: string | undefined;
 const navigate = vi.fn();
 
-// The strip holds two subscriptions now — the Areas, and the Threads behind
-// each Area's share of the board.
+// Two subscriptions now: the Areas, and the Threads behind their counts.
 vi.mock("convex-helpers/react/cache/hooks", () => ({
   useQuery: (query: unknown) =>
     getFunctionName(query as never) === "threads:list" ? threads : areas,
@@ -129,7 +128,6 @@ describe("AreaStatusStrip rendering", () => {
 
     const links = screen.getAllByRole("link");
 
-    // Healthy stays grey, so the only colour in the strip is what is slipping.
     expect(links[0]?.querySelector('[class*="bg-condition-"]')).toBeNull();
     expect(
       links[1]?.querySelector('[class*="bg-condition-attention-fill"]'),
@@ -137,7 +135,6 @@ describe("AreaStatusStrip rendering", () => {
     expect(
       links[2]?.querySelector('[class*="bg-condition-critical-fill"]'),
     ).toBeInTheDocument();
-    // The fill is the shared Condition treatment, not a bespoke one.
     expect(conditionPillClassName.critical).toContain(
       "bg-condition-critical-fill",
     );
@@ -154,11 +151,10 @@ describe("AreaStatusStrip rendering", () => {
 
     const links = screen.getAllByRole("link");
 
-    // Resolved Threads are not asking for anything, so they are not counted.
     expect(links[0]).toHaveTextContent("2");
     expect(links[0]).toHaveAccessibleName(/2 open/);
     expect(links[1]).toHaveTextContent("1");
-    // Nothing open: no badge at all rather than a zero.
+    // No badge rather than a zero.
     expect(links[2]).toHaveAccessibleName("Area 3");
   });
 

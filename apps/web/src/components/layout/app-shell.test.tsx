@@ -78,8 +78,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   };
 });
 
-// The chrome pulls in auth and theme providers; the shell's own wiring is what
-// these tests exercise, so each entry point is reduced to a labelled button.
+// The chrome pulls in auth and theme providers; these tests are about the
+// shell's wiring, so each entry point becomes a labelled button.
 vi.mock("./app-chrome", () => ({
   AppChrome: ({
     onNewNote,

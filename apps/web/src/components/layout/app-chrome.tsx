@@ -35,18 +35,13 @@ interface AppChromeProps {
 }
 
 /**
- * The app chrome: three floating clusters over the page rather than a bar
- * across the top of it.
+ * The app chrome (ADR 0018): three floating clusters instead of a bar — the
+ * mark and Area status top-left, the date and personal controls top-right,
+ * the dock bottom-centre.
  *
- *   top-left       where you are — the mark and the Areas' status
- *   top-right      where you are in time, and what wants you — the date,
- *                  Notes, and your account
- *   bottom-centre  what you can do — jump anywhere, and the three creates
- *
- * Nothing spans the width, so the board reads to the top edge of the viewport.
- * The clusters are `fixed`, which would put them under the thread rail (z-30),
- * so both the right-hand cluster and the dock shift by the rail's own width
- * and borrow its easing; closed, `--rail` is 0px and nothing moves.
+ * The clusters are `fixed`, so they would sit under the thread rail (z-30).
+ * The right-hand cluster and the dock offset by `--rail` instead, which is
+ * 0px whenever the rail is closed.
  */
 const RAIL_WIDTH = "clamp(28rem,34vw,34rem)";
 
@@ -110,8 +105,6 @@ export function AppChrome({
             FLOATING,
           )}
         >
-          {/* Today leads the cluster: the Dashboard used to state the date in
-              its own header, and it is the same date on every page. */}
           <time
             dateTime={today.toISOString()}
             title={format(today, "EEEE, MMMM d, yyyy")}
@@ -161,8 +154,7 @@ export function AppChrome({
             FLOATING,
           )}
         >
-          {/* The palette keeps its full field: it is the primary way to go
-              anywhere, and an icon would hide the shortcut that says so. */}
+          {/* Not an icon: collapsing it would hide the shortcut hint. */}
           <button
             type="button"
             onClick={onOpenPalette}
@@ -194,7 +186,7 @@ export function AppChrome({
   );
 }
 
-/** The floating surface every cluster shares. */
+/** The surface every cluster shares. */
 const FLOATING =
   "border bg-background/80 shadow-lg backdrop-blur-md supports-[backdrop-filter]:bg-background/70";
 

@@ -102,9 +102,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-svh">
-      {/* The content column sits beside the thread rail's width spacer. The
-          chrome is fixed rather than in this column, so it clears the rail by
-          its own offset instead of being pushed — see AppChrome. */}
+      {/* The content column sits beside the thread rail's width spacer; the
+          chrome is fixed and clears the rail by its own offset instead. */}
       <div className="flex min-h-svh min-w-0 flex-1 flex-col">
         <AppChrome
           noteCount={noteCount}
@@ -118,8 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
         {/* Inside the column, not beside it — see InboxPopoverPanel. */}
         <InboxSurface />
-        {/* The chrome floats over the page, so this padding is what keeps the
-            content clear of it: identity cluster above, dock below. */}
+        {/* The chrome floats, so this padding is what clears it. */}
         <main className="w-full min-w-0 flex-1 px-4 pt-20 pb-24">
           {children}
         </main>

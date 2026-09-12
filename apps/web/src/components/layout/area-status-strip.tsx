@@ -30,17 +30,13 @@ function conditionLabel(condition: string) {
  * Persistent Area switcher in the chrome (ADR 0011): one hexagon per Area in
  * the user's own order, each a one-click jump with a visible 1..9 digit.
  *
- * It also carries the Areas' **status**, which the Dashboard used to state a
- * second time in its own header. Condition is the hexagon's own colour rather
- * than a dot beside it — healthy Areas stay grey, so the only colour in the
- * strip belongs to the parts of life that are slipping — and the corner badge
- * is how much of the board is that Area's, so the strip answers "what is off,
- * and how much of it" without the Dashboard repeating itself.
+ * It carries the Areas' status too (ADR 0018): Condition is the hexagon's own
+ * colour, so healthy Areas stay grey and only what is slipping has colour, and
+ * the corner badge is that Area's share of the board.
  */
 export function AreaStatusStrip() {
   const areas = useQuery(api.areas.list);
-  // The same cached subscription the Dashboard and palette already hold, so
-  // the counts cost a read of state this client has rather than a new query.
+  // The cache the Dashboard and palette already hold, not a new subscription.
   const threads = useQuery(api.threads.list);
   const areaRouteMatch = useMatch({
     from: "/_authenticated/$areaSlug",
@@ -62,8 +58,7 @@ export function AreaStatusStrip() {
     <TooltipProvider delay={200}>
       <nav
         aria-label="Life Areas"
-        // min-w-0 + scroll keeps a long Area list from widening the cluster
-        // past the room the chrome has for it.
+        // min-w-0 + scroll: a long Area list must not widen the cluster.
         className="hidden min-w-0 items-center gap-1 overflow-x-auto py-1 -my-1 md:flex [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {areas.map((area, index) => {
@@ -99,8 +94,7 @@ export function AreaStatusStrip() {
                 >
                   <AreaIcon icon={area.icon} className="size-3" />
                 </BrandHexagon>
-                {/* The Area's share of the board. Rides outside the hexagon —
-                    clipPath would eat it. */}
+                {/* Outside the hexagon: clipPath would eat it. */}
                 {open > 0 && (
                   <span
                     aria-hidden

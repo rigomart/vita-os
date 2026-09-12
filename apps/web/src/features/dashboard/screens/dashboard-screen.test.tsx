@@ -39,8 +39,7 @@ vi.mock("@/features/areas/area-form/create-area-dialog", () => ({
   CreateAreaDialog: () => null,
 }));
 
-// The board now renders real cards in this suite; their writes belong to the
-// hooks' own tests, and a mutation here would want a ConvexProvider.
+// The board renders real cards here; their writes have their own tests.
 vi.mock("@/features/threads/use-complete-next-move", () => ({
   useCompleteNextMove: () => vi.fn(),
 }));
@@ -104,9 +103,7 @@ describe("DashboardScreen", () => {
   it("reclassifies the board when the day rolls over, without requerying", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 17, 23, 30));
-    // Due tomorrow at 23:30 tonight; due today once midnight passes. The date
-    // itself is stated by the app chrome now, so the board's own answer to the
-    // clock is what this screen has left to prove.
+    // Due tomorrow at 23:30 tonight; due today once midnight passes.
     useQuery.mockImplementation((query: unknown) => {
       const name = getFunctionName(query as never);
       if (name === "areas:list") {

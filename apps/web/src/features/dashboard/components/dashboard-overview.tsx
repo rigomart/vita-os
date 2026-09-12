@@ -53,8 +53,7 @@ export function DashboardOverview({
   const items = boardItems(board);
 
   return (
-    // 12rem, not 10rem: the Dashboard header is gone, but the floating
-    // chrome's clearance is what the board now has to sit inside.
+    // 12rem: the chrome's clearance is what the board sits inside now.
     <div className="flex flex-col gap-3 xl:h-[calc(100svh-12rem)] xl:min-h-136">
       <h1 className="sr-only">Dashboard</h1>
 

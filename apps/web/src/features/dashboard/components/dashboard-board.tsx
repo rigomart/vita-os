@@ -179,9 +179,7 @@ function BoardLane({
       >
         {title}
       </span>
-      {/* The count the chrome used to state separately, said where the work
-          actually is. It carries colour only when it is urgent and non-empty —
-          the one number on the board worth alarming. */}
+      {/* Colour only when urgent and non-empty: the one number worth alarming. */}
       <span
         title={hint}
         className={cn(
