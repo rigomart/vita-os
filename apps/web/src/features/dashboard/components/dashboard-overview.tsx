@@ -8,29 +8,26 @@ import { Button } from "@vita-os/ui/components/button";
 
 import { boardItems, buildAttentionBoard } from "./attention-board-model";
 import { DashboardBoard } from "./dashboard-board";
-import { DashboardHeader } from "./dashboard-header";
 
 interface DashboardOverviewProps {
   areas: ProjectedArea[];
   currentDate: number;
   notes: ProjectedNote[];
   onCreateArea: () => void;
-  /** Capture scoped to an Area, raised from an Area's Quick Panel. */
-  onNewThreadInArea: (areaId: string) => void;
   threads: ProjectedThread[];
 }
 
 /**
  * The Dashboard answers one question — what needs attention now? — by laying
- * every open Thread and standalone Note on a single axis of time, with the
- * Areas' Condition over it and everything unscheduled in the margin beside it.
+ * every open Thread and standalone Note on a single axis of time, with
+ * everything unscheduled in the margin beside it. The Areas' Condition and
+ * today's date live in the app chrome, which states them on every page.
  */
 export function DashboardOverview({
   areas,
   currentDate,
   notes,
   onCreateArea,
-  onNewThreadInArea,
   threads,
 }: DashboardOverviewProps) {
   if (areas.length === 0) {
@@ -56,14 +53,10 @@ export function DashboardOverview({
   const items = boardItems(board);
 
   return (
-    <div className="flex flex-col gap-3 xl:h-[calc(100svh-10rem)] xl:min-h-136">
-      <DashboardHeader
-        areas={areas}
-        board={board}
-        currentDate={currentDate}
-        items={items}
-        onNewThreadInArea={onNewThreadInArea}
-      />
+    // 12rem, not 10rem: the Dashboard header is gone, but the floating
+    // chrome's clearance is what the board now has to sit inside.
+    <div className="flex flex-col gap-3 xl:h-[calc(100svh-12rem)] xl:min-h-136">
+      <h1 className="sr-only">Dashboard</h1>
 
       {items.length === 0 ? (
         <section className="flex min-h-48 flex-col items-center justify-center rounded-xl bg-surface-2 px-6 text-center xl:flex-1">

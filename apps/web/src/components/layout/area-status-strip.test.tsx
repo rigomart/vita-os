@@ -1,10 +1,11 @@
 import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 import type { ComponentProps } from "react";
 
+import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { conditionDotClassName } from "@/features/areas/condition-presentation";
+import { conditionPillClassName } from "@/features/areas/condition-presentation";
 import {
   fireEvent,
   render,
@@ -12,7 +13,7 @@ import {
   within,
 } from "@/test/render-with-providers";
 
-import { TopBarAreaStrip } from "./top-bar-area-strip";
+import { AreaStatusStrip } from "./area-status-strip";
 
 function makeArea(
   index: number,
@@ -31,11 +32,15 @@ function makeArea(
 }
 
 let areas: ProjectedArea[] | undefined;
+let threads: ProjectedThread[] | undefined;
 let activeSlug: string | undefined;
 const navigate = vi.fn();
 
+// The strip holds two subscriptions now — the Areas, and the Threads behind
+// each Area's share of the board.
 vi.mock("convex-helpers/react/cache/hooks", () => ({
-  useQuery: () => areas,
+  useQuery: (query: unknown) =>
+    getFunctionName(query as never) === "threads:list" ? threads : areas,
 }));
 
 // The strip only needs a clickable anchor and the Area route's params; the real
@@ -63,13 +68,14 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 
 beforeEach(() => {
   areas = [makeArea(1), makeArea(2), makeArea(3)];
+  threads = [];
   activeSlug = undefined;
   navigate.mockClear();
 });
 
-describe("TopBarAreaStrip rendering", () => {
+describe("AreaStatusStrip rendering", () => {
   it("renders one link per Area in the user's own order", () => {
-    render(<TopBarAreaStrip />);
+    render(<AreaStatusStrip />);
 
     const links = within(
       screen.getByRole("navigation", { name: "Life Areas" }),
@@ -83,7 +89,7 @@ describe("TopBarAreaStrip rendering", () => {
 
   it("marks only the routed Area as the current page", () => {
     activeSlug = "area-2";
-    render(<TopBarAreaStrip />);
+    render(<AreaStatusStrip />);
 
     expect(screen.getByRole("link", { name: "Area 2" })).toHaveAttribute(
       "aria-current",
@@ -103,7 +109,7 @@ describe("TopBarAreaStrip rendering", () => {
     areas = Array.from({ length: 10 }, (_, index) =>
       makeArea(index + 1, { name: `Area ${String.fromCharCode(65 + index)}` }),
     );
-    render(<TopBarAreaStrip />);
+    render(<AreaStatusStrip />);
 
     const links = screen.getAllByRole("link");
 
@@ -113,43 +119,67 @@ describe("TopBarAreaStrip rendering", () => {
     expect(links[9]).toHaveTextContent(/^Area J$/);
   });
 
-  it("shows a condition dot only for Areas that are not healthy", () => {
+  it("colours the hexagon itself for Areas that are not healthy", () => {
     areas = [
       makeArea(1),
       makeArea(2, { condition: "needs_attention" }),
       makeArea(3, { condition: "critical" }),
     ];
-    render(<TopBarAreaStrip />);
+    render(<AreaStatusStrip />);
 
     const links = screen.getAllByRole("link");
 
+    // Healthy stays grey, so the only colour in the strip is what is slipping.
     expect(links[0]?.querySelector('[class*="bg-condition-"]')).toBeNull();
     expect(
-      links[1]?.querySelector(`.${conditionDotClassName.needs_attention}`),
+      links[1]?.querySelector('[class*="bg-condition-attention-fill"]'),
     ).toBeInTheDocument();
     expect(
-      links[2]?.querySelector(`.${conditionDotClassName.critical}`),
+      links[2]?.querySelector('[class*="bg-condition-critical-fill"]'),
     ).toBeInTheDocument();
+    // The fill is the shared Condition treatment, not a bespoke one.
+    expect(conditionPillClassName.critical).toContain(
+      "bg-condition-critical-fill",
+    );
+  });
+
+  it("counts each Area's open Threads and leaves an empty Area bare", () => {
+    threads = [
+      { _id: "t1", areaId: "area1", state: "open" },
+      { _id: "t2", areaId: "area1", state: "open" },
+      { _id: "t3", areaId: "area1", state: "resolved" },
+      { _id: "t4", areaId: "area2", state: "open" },
+    ] as unknown as ProjectedThread[];
+    render(<AreaStatusStrip />);
+
+    const links = screen.getAllByRole("link");
+
+    // Resolved Threads are not asking for anything, so they are not counted.
+    expect(links[0]).toHaveTextContent("2");
+    expect(links[0]).toHaveAccessibleName(/2 open/);
+    expect(links[1]).toHaveTextContent("1");
+    // Nothing open: no badge at all rather than a zero.
+    expect(links[2]).toHaveAccessibleName("Area 3");
   });
 
   it("renders nothing while the Areas are loading", () => {
     areas = undefined;
-    const { container } = render(<TopBarAreaStrip />);
+    const { container } = render(<AreaStatusStrip />);
 
     expect(container).toBeEmptyDOMElement();
   });
 
   it("renders nothing when there are no Areas", () => {
     areas = [];
-    const { container } = render(<TopBarAreaStrip />);
+    const { container } = render(<AreaStatusStrip />);
 
     expect(container).toBeEmptyDOMElement();
   });
 });
 
-describe("TopBarAreaStrip shortcuts", () => {
+describe("AreaStatusStrip shortcuts", () => {
   it("jumps to the Nth Area on a bare digit, shifted or not", () => {
-    render(<TopBarAreaStrip />);
+    render(<AreaStatusStrip />);
 
     fireEvent.keyDown(document.body, { code: "Digit2" });
 
@@ -169,7 +199,7 @@ describe("TopBarAreaStrip shortcuts", () => {
   });
 
   it("leaves modifier chords to the browser", () => {
-    render(<TopBarAreaStrip />);
+    render(<AreaStatusStrip />);
 
     fireEvent.keyDown(document.body, { code: "Digit2", metaKey: true });
     fireEvent.keyDown(document.body, { code: "Digit2", ctrlKey: true });
@@ -182,7 +212,7 @@ describe("TopBarAreaStrip shortcuts", () => {
     render(
       <>
         <input aria-label="Search" />
-        <TopBarAreaStrip />
+        <AreaStatusStrip />
       </>,
     );
 
@@ -194,7 +224,7 @@ describe("TopBarAreaStrip shortcuts", () => {
   });
 
   it("ignores a digit with no Area behind it", () => {
-    render(<TopBarAreaStrip />);
+    render(<AreaStatusStrip />);
 
     fireEvent.keyDown(document.body, { code: "Digit9" });
 

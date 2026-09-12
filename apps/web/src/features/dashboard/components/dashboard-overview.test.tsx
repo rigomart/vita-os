@@ -29,27 +29,6 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-vi.mock("@/features/areas/components/area-quick-panel", () => ({
-  AreaQuickPanel: ({
-    area,
-    children,
-    onNewThread,
-  }: {
-    area: { condition: string; id: string; name: string };
-    children: React.ReactNode;
-    onNewThread: (areaId: string) => void;
-  }) => (
-    <button
-      type="button"
-      aria-label={`Area panel for ${area.name}`}
-      title={`${area.name} — ${area.condition}`}
-      onClick={() => onNewThread(area.id)}
-    >
-      {children}
-    </button>
-  ),
-}));
-
 // The cards' writes belong to the hooks; this suite is about what lands where.
 vi.mock("@/features/threads/use-complete-next-move", () => ({
   useCompleteNextMove: () => vi.fn(),
@@ -131,7 +110,6 @@ function renderOverview(overrides: Partial<OverviewProps> = {}) {
     notes: [],
     currentDate,
     onCreateArea: vi.fn(),
-    onNewThreadInArea: vi.fn(),
     ...overrides,
   };
   return { ...render(<DashboardOverview {...props} />), props };
@@ -153,35 +131,19 @@ describe("DashboardOverview", () => {
     expect(props.onCreateArea).toHaveBeenCalled();
   });
 
-  it("sorts the Areas worst condition first and captures into one", async () => {
-    const { props } = renderOverview();
-
-    const bar = screen.getByRole("region", { name: "Life Areas by condition" });
-    const buttons = within(bar).getAllByRole("button");
-    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
-      "Area panel for Health",
-      "Area panel for Home",
-    ]);
-
-    await userEvent.click(buttons[0]!);
-    expect(props.onNewThreadInArea).toHaveBeenCalledWith("health");
-  });
-
-  it("counts each Area's share of the board", () => {
+  it("states each lane's count on the lane", () => {
     renderOverview({
       threads: [
         thread("Late one", { followUp: currentDate - DAY }),
-        thread("Elsewhere", {
-          areaId: "home" as ProjectedThread["areaId"],
-          order: 1,
-        }),
+        thread("Also late", { followUp: currentDate - DAY, order: 1 }),
+        thread("Midweek", { followUp: currentDate + 2 * DAY, order: 2 }),
       ],
     });
 
-    const bar = screen.getByRole("region", { name: "Life Areas by condition" });
-    expect(
-      within(bar).getByRole("button", { name: "Area panel for Health" }),
-    ).toHaveTextContent("1");
+    const now = screen.getByRole("region", { name: "Now" });
+    expect(within(now).getByText("2")).toBeVisible();
+    const week = screen.getByRole("region", { name: "This week" });
+    expect(within(week).getByText("1")).toBeVisible();
   });
 
   it("puts dated Threads and Notes in the column their date earns", () => {

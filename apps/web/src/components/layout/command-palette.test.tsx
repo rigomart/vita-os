@@ -100,15 +100,13 @@ vi.mock("@/features/threads/thread-form/create-thread-dialog", () => ({
   ),
 }));
 
-vi.mock("./app-top-bar", () => ({
-  AppTopBar: ({ onOpenPalette }: { onOpenPalette: () => void }) => (
+vi.mock("./app-chrome", () => ({
+  AppChrome: ({ onOpenPalette }: { onOpenPalette: () => void }) => (
     <button type="button" onClick={onOpenPalette}>
-      top bar palette
+      chrome palette
     </button>
   ),
 }));
-
-vi.mock("./mobile-tab-bar", () => ({ MobileTabBar: () => null }));
 
 const PLACEHOLDER = "Jump to an area, thread, or action…";
 
@@ -121,7 +119,7 @@ function renderShell() {
 }
 
 async function openPalette(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "top bar palette" }));
+  await user.click(screen.getByRole("button", { name: "chrome palette" }));
   await screen.findByPlaceholderText(PLACEHOLDER);
 }
 

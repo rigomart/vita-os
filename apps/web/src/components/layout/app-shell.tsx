@@ -17,9 +17,8 @@ import { useCreateNote } from "@/features/notes/use-create-note";
 import { ThreadDetailView } from "@/features/threads/thread-detail/thread-detail-view";
 import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread-dialog";
 
-import { AppTopBar } from "./app-top-bar";
+import { AppChrome } from "./app-chrome";
 import { CommandPalette } from "./command-palette";
-import { MobileTabBar } from "./mobile-tab-bar";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const noteCount = useQuery(api.notes.count);
@@ -103,29 +102,27 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-svh">
-      {/* The whole chrome column — topbar included — sits beside the thread
-          rail's width spacer, so an open rail pushes the topbar too instead
-          of sliding over it. */}
+      {/* The content column sits beside the thread rail's width spacer. The
+          chrome is fixed rather than in this column, so it clears the rail by
+          its own offset instead of being pushed — see AppChrome. */}
       <div className="flex min-h-svh min-w-0 flex-1 flex-col">
-        <AppTopBar
+        <AppChrome
           noteCount={noteCount}
           inboxOpen={inbox.isOpen}
           onToggleInbox={inbox.toggle}
           onNewNote={dialogs.openNewNote}
+          onNewThread={() => dialogs.openCreateThread()}
+          onNewArea={dialogs.openCreateArea}
           onOpenPalette={() => setPaletteOpen(true)}
+          railOpen={openThreadSlug !== undefined}
         />
         {/* Inside the column, not beside it — see InboxPopoverPanel. */}
         <InboxSurface />
-        <main className="w-full min-w-0 flex-1 px-4 pt-3 pb-24 md:pb-8">
+        {/* The chrome floats over the page, so this padding is what keeps the
+            content clear of it: identity cluster above, dock below. */}
+        <main className="w-full min-w-0 flex-1 px-4 pt-20 pb-24">
           {children}
         </main>
-        <MobileTabBar
-          noteCount={noteCount}
-          inboxOpen={inbox.isOpen}
-          onToggleInbox={inbox.toggle}
-          onNewNote={dialogs.openNewNote}
-          onOpenPalette={() => setPaletteOpen(true)}
-        />
       </div>
       {openThreadSlug !== undefined && (
         <ThreadDetailView

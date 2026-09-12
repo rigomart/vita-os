@@ -1,5 +1,7 @@
 # Palette-first navigation
 
+Status: Amended by ADR 0018 — the top bar and the mobile tab bar are replaced by three floating clusters. Palette-first stands: the palette is still the sole jumping surface, and it keeps its full field in the dock.
+
 The sidebar (Dashboard, Inbox, Area → Thread tree, New task, user menu) was the wrong navigation model for a hub-and-spoke app: its thread tree competed with the **Dashboard** — the attention-ordered awareness surface — and lost, and without the tree it was a full-width column justifying itself with roughly eight rows (#247). Navigation chrome is now a minimal top bar where a ⌘K command palette is the primary way to go anywhere, with a Dashboard / Inbox / New task tab bar on mobile. The **Dashboard** is the sole browsing surface; the palette is the sole jumping surface.
 
 ## Considered Options

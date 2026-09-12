@@ -179,9 +179,17 @@ function BoardLane({
       >
         {title}
       </span>
+      {/* The count the chrome used to state separately, said where the work
+          actually is. It carries colour only when it is urgent and non-empty —
+          the one number on the board worth alarming. */}
       <span
         title={hint}
-        className="text-[11px] tabular-nums text-muted-foreground/60"
+        className={cn(
+          "text-base leading-none font-semibold tabular-nums",
+          tone === "urgent" && count > 0
+            ? "text-condition-attention"
+            : "text-muted-foreground/70",
+        )}
       >
         {count}
       </span>

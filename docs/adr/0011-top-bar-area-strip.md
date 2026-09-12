@@ -1,5 +1,7 @@
 # Top-bar Area strip
 
+Status: Amended by ADR 0018 — the strip moves into the floating identity cluster and carries Condition as the hexagon's own colour plus an open-Thread count. The one-click jump and the 1..9 digits are unchanged.
+
 Switching to a sibling **Area** from inside one was palette-only (⌘K) or two hops via the Dashboard — the trade-off accepted in ADR 0006. With Areas being a small, stable, user-ordered set, that put a modal between the user and a one-of-eight choice, and hid the app's primary containers from the chrome entirely. The top bar's left wing now carries a persistent **Area strip**: one hexagon per Area in the user's own order, each a one-click jump, with a visible `1..9` digit under each hexagon and a condition dot on Areas asking for attention. ⌘K stays the jumping surface for **Threads** and everything else; this amends ADR 0006's "the palette is the sole jumping surface" for Areas only.
 
 ## Considered Options
