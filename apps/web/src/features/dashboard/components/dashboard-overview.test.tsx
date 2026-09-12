@@ -230,10 +230,6 @@ describe("DashboardOverview", () => {
     expect(within(margin).getByText("Loose thought")).toBeVisible();
   });
 
-  /**
-   * A phone stacks the lanes and scrolls the page, so the two that carry what
-   * is not urgent open folded — Now and This week are what the screen shows.
-   */
   it("folds Later and the No date margin on a phone", async () => {
     isMobile.value = true;
     try {

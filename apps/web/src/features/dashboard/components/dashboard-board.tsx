@@ -19,11 +19,9 @@ import { itemId, unscheduledCount } from "./attention-board-model";
 import { DashboardNote } from "./dashboard-note";
 
 /**
- * The board is a board only where the four lanes fit side by side. Below `xl`
- * they stack and the **page** scrolls: giving each stacked lane the viewport's
- * height would leave four short panes, each with its own scrollbar. On a phone
- * the two lanes that carry what is not urgent — Later and the No date margin —
- * start folded, so Now and This week are what the screen opens on.
+ * The lanes sit side by side only at `xl`, where the board owns the viewport's
+ * height and each lane scrolls. Below it they stack and the page scrolls, and
+ * on a phone Later and the No date margin start folded.
  */
 export function DashboardBoard({
   areas,
@@ -147,12 +145,7 @@ const tones = {
   muted: { border: "border-transparent", title: "text-muted-foreground" },
 };
 
-/**
- * One lane of the board: a ruled heading with its count, and its cards under
- * it. A collapsible lane keeps the same heading and makes the whole rule its
- * trigger, so a stacked board reads as a list of lanes rather than as a stack
- * of scroll panes.
- */
+/** One lane: a ruled heading with its count, and its cards under it. */
 function BoardLane({
   children,
   className,
