@@ -24,6 +24,24 @@ function note(
 }
 
 describe("ThreadNotes", () => {
+  it("keeps the space below the composer empty while Notes initially load", () => {
+    render(
+      <ThreadNotes
+        notes={undefined}
+        doneNotes={[]}
+        isDoneExhausted={false}
+        isDoneInitialLoading
+        onCreate={vi.fn()}
+        onUpdateBody={vi.fn()}
+        onToggleDone={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Loading Notes…")).toBeNull();
+    expect(screen.queryByRole("button", { name: /completed/i })).toBeNull();
+  });
+
   it("captures a multiline body without title, type, or attention date", async () => {
     const user = userEvent.setup();
     const onCreate = vi.fn(async () => undefined);

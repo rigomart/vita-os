@@ -15,6 +15,7 @@ interface ThreadNotesProps {
   notes: ProjectedThreadNote[] | undefined;
   doneNotes?: ProjectedThreadNote[];
   isDoneExhausted?: boolean;
+  isDoneInitialLoading?: boolean;
   canLoadMoreDone?: boolean;
   isLoadingMoreDone?: boolean;
   onLoadMoreDone?: () => void;
@@ -31,6 +32,7 @@ export function ThreadNotes({
   notes,
   doneNotes = [],
   isDoneExhausted = true,
+  isDoneInitialLoading = false,
   canLoadMoreDone = false,
   isLoadingMoreDone = false,
   onLoadMoreDone,
@@ -39,15 +41,14 @@ export function ThreadNotes({
   onToggleDone,
   onRemove,
 }: ThreadNotesProps) {
-  const showCompleted = doneNotes.length > 0 || !isDoneExhausted;
+  const showCompleted =
+    doneNotes.length > 0 || (!isDoneInitialLoading && !isDoneExhausted);
 
   return (
     <section aria-label="Thread Notes" className="flex flex-col gap-3">
       <ThreadNoteComposer onCreate={onCreate} />
 
-      {notes === undefined ? (
-        <p className="text-sm text-muted-foreground">Loading Notes…</p>
-      ) : notes.length === 0 ? null : (
+      {notes && notes.length > 0 ? (
         <div className="flex flex-col gap-2.5">
           {notes.map((note) => (
             <ThreadNoteCard
@@ -59,7 +60,7 @@ export function ThreadNotes({
             />
           ))}
         </div>
-      )}
+      ) : null}
 
       {showCompleted && (
         <AttentionCollapsed title="Completed" count={doneNotes.length}>
@@ -214,7 +215,7 @@ function ThreadNoteCard({
     <article
       className={cn(
         "group/card flex flex-col rounded-3xl border-2 border-border/70 bg-surface-2 p-4",
-        "transition-colors hover:border-border has-focus-visible:border-ring/50",
+        "animate-in fade-in slide-in-from-bottom-2 transition-colors duration-300 hover:border-border has-focus-visible:border-ring/50 motion-reduce:animate-none",
         done && "border-border/40 bg-transparent opacity-70",
       )}
     >

@@ -125,10 +125,17 @@ describe("InboxNoteList", () => {
     expect(screen.queryByRole("button", { name: /completed/i })).toBeNull();
   });
 
-  it("shows the Completed section while the Done page is still loading", () => {
-    render(<InboxNoteList notes={[]} doneNotes={[]} isDoneExhausted={false} />);
+  it("hides the Completed section while the first Done page is loading", () => {
+    render(
+      <InboxNoteList
+        notes={[]}
+        doneNotes={[]}
+        isDoneExhausted={false}
+        isDoneInitialLoading
+      />,
+    );
 
-    expect(screen.getByRole("button", { name: /completed/i })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /completed/i })).toBeNull();
   });
 
   it("offers to load more Done Notes when another page is available", async () => {
