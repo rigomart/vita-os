@@ -179,9 +179,15 @@ function BoardLane({
       >
         {title}
       </span>
+      {/* Colour only when urgent and non-empty: the one number worth alarming. */}
       <span
         title={hint}
-        className="text-[11px] tabular-nums text-muted-foreground/60"
+        className={cn(
+          "text-base leading-none font-semibold tabular-nums",
+          tone === "urgent" && count > 0
+            ? "text-condition-attention"
+            : "text-muted-foreground/70",
+        )}
       >
         {count}
       </span>

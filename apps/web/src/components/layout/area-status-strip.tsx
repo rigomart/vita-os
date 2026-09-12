@@ -12,7 +12,7 @@ import { useQuery } from "convex-helpers/react/cache/hooks";
 
 import { BrandHexagon } from "@/components/ui/brand-hexagon";
 import { AreaIcon } from "@/features/areas/components/area-icon";
-import { conditionDotClassName } from "@/features/areas/condition-presentation";
+import { conditionPillClassName } from "@/features/areas/condition-presentation";
 import { useAreaJumpShortcuts } from "@/features/navigation/use-area-jump-shortcuts";
 import { cn } from "@/lib/utils";
 
@@ -27,14 +27,17 @@ function conditionLabel(condition: string) {
 }
 
 /**
- * Persistent Area switcher in the top bar (ADR 0011): one hexagon per Area in
- * the user's own order, each a one-click jump with a visible 1..9 digit and a
- * condition dot for Areas asking for attention. Desktop-only — the strip is
- * hidden below md, but the component stays mounted so the shortcuts follow
- * the same rule everywhere.
+ * Persistent Area switcher in the chrome (ADR 0011): one hexagon per Area in
+ * the user's own order, each a one-click jump with a visible 1..9 digit.
+ *
+ * It carries the Areas' status too (ADR 0018): Condition is the hexagon's own
+ * colour, so healthy Areas stay grey and only what is slipping has colour, and
+ * the corner badge is that Area's share of the board.
  */
-export function TopBarAreaStrip() {
+export function AreaStatusStrip() {
   const areas = useQuery(api.areas.list);
+  // The cache the Dashboard and palette already hold, not a new subscription.
+  const threads = useQuery(api.threads.list);
   const areaRouteMatch = useMatch({
     from: "/_authenticated/$areaSlug",
     shouldThrow: false,
@@ -45,19 +48,25 @@ export function TopBarAreaStrip() {
 
   if (areas === undefined || areas.length === 0) return null;
 
+  const openPerArea = new Map<string, number>();
+  for (const thread of threads ?? []) {
+    if (thread.state !== "open") continue;
+    openPerArea.set(thread.areaId, (openPerArea.get(thread.areaId) ?? 0) + 1);
+  }
+
   return (
     <TooltipProvider delay={200}>
       <nav
         aria-label="Life Areas"
-        // Lives in the left 1fr cell beside the brand mark: min-w-0 + scroll
-        // keeps a long Area list from shoving the centred search off-centre.
+        // min-w-0 + scroll: a long Area list must not widen the cluster.
         className="hidden min-w-0 items-center gap-1 overflow-x-auto py-1 -my-1 md:flex [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        <span aria-hidden className="mr-1 h-5 w-px shrink-0 bg-border" />
         {areas.map((area, index) => {
           const active = area.slug === activeSlug;
           const shortcut = index < MAX_SHORTCUTS ? index + 1 : undefined;
           const flagged = area.condition !== "healthy";
+          const open = openPerArea.get(area._id) ?? 0;
+
           return (
             <Tooltip key={area._id}>
               <TooltipTrigger
@@ -76,22 +85,23 @@ export function TopBarAreaStrip() {
                 <BrandHexagon
                   className={cn(
                     "size-6 transition-colors",
-                    active
-                      ? "bg-brand-ink text-brand-accent"
-                      : "bg-muted-foreground/15 text-muted-foreground group-hover:bg-brand-ink group-hover:text-brand-accent",
+                    flagged
+                      ? conditionPillClassName[area.condition]
+                      : active
+                        ? "bg-brand-ink text-brand-accent"
+                        : "bg-muted-foreground/15 text-muted-foreground group-hover:bg-brand-ink group-hover:text-brand-accent",
                   )}
                 >
                   <AreaIcon icon={area.icon} className="size-3" />
                 </BrandHexagon>
-                {/* Condition rides outside the hexagon — clipPath would eat it. */}
-                {flagged && (
+                {/* Outside the hexagon: clipPath would eat it. */}
+                {open > 0 && (
                   <span
                     aria-hidden
-                    className={cn(
-                      "absolute top-0.5 right-0.5 size-1.5 rounded-full ring-2 ring-background",
-                      conditionDotClassName[area.condition],
-                    )}
-                  />
+                    className="absolute top-0 right-0 min-w-3.5 rounded-full bg-background px-0.5 text-center text-2xs leading-3.5 font-semibold tabular-nums text-muted-foreground ring-1 ring-border"
+                  >
+                    {open}
+                  </span>
                 )}
                 <span
                   aria-hidden
@@ -104,21 +114,16 @@ export function TopBarAreaStrip() {
                 >
                   {shortcut ?? ""}
                 </span>
-                <span className="sr-only">{area.name}</span>
+                <span className="sr-only">
+                  {area.name}
+                  {open > 0 ? `, ${open} open` : ""}
+                </span>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={6}>
                 <span className="font-medium">{area.name}</span>
-                <span className="flex items-center gap-1 opacity-80">
-                  {/* The vivid dot fill reads on the dark tooltip; the text
-                      tints are tuned for cream surfaces and would vanish. */}
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "size-1.5 rounded-full",
-                      conditionDotClassName[area.condition],
-                    )}
-                  />
+                <span className="opacity-80">
                   {conditionLabel(area.condition)}
+                  {open > 0 ? ` · ${open} open` : ""}
                 </span>
                 {shortcut !== undefined && <Kbd>{shortcut}</Kbd>}
               </TooltipContent>

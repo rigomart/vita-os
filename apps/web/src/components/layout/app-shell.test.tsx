@@ -78,10 +78,10 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   };
 });
 
-// The chrome pulls in auth and theme providers; the shell's own wiring is what
-// these tests exercise, so each entry point is reduced to a labelled button.
-vi.mock("./app-top-bar", () => ({
-  AppTopBar: ({
+// The chrome pulls in auth and theme providers; these tests are about the
+// shell's wiring, so each entry point becomes a labelled button.
+vi.mock("./app-chrome", () => ({
+  AppChrome: ({
     onNewNote,
     onOpenPalette,
   }: {
@@ -90,10 +90,10 @@ vi.mock("./app-top-bar", () => ({
   }) => (
     <div>
       <button type="button" onClick={onNewNote}>
-        top bar new note
+        chrome new note
       </button>
       <button type="button" onClick={onOpenPalette}>
-        top bar palette
+        chrome palette
       </button>
     </div>
   ),
@@ -107,25 +107,6 @@ vi.mock("@/hooks/use-thread-pane-viewport", () => ({
 // Convex-backed and covered by its own tests; the shell cares only where it sits.
 vi.mock("@/features/inbox/screens/inbox-screen", () => ({
   InboxScreen: () => <p>inbox screen</p>,
-}));
-
-vi.mock("./mobile-tab-bar", () => ({
-  MobileTabBar: ({
-    onNewNote,
-    onOpenPalette,
-  }: {
-    onNewNote: () => void;
-    onOpenPalette: () => void;
-  }) => (
-    <div>
-      <button type="button" onClick={onNewNote}>
-        mobile new note
-      </button>
-      <button type="button" onClick={onOpenPalette}>
-        mobile palette
-      </button>
-    </div>
-  ),
 }));
 
 function subscribedTo(name: string) {
@@ -161,7 +142,7 @@ describe("AppShell", () => {
     });
 
     expect(positioner.parentElement).toContainElement(
-      screen.getByRole("button", { name: "top bar new note" }),
+      screen.getByRole("button", { name: "chrome new note" }),
     );
   });
 
@@ -194,14 +175,11 @@ describe("AppShell", () => {
     expect(subscribedTo("notes:count")).toBe(true);
   });
 
-  it.each([
-    ["top bar", "top bar new note"],
-    ["mobile tab bar", "mobile new note"],
-  ])("opens the new note dialog from the %s", async (_source, label) => {
+  it("opens the new note dialog from the chrome", async () => {
     const user = userEvent.setup();
     renderShell();
 
-    await user.click(screen.getByRole("button", { name: label }));
+    await user.click(screen.getByRole("button", { name: "chrome new note" }));
 
     expect(
       await screen.findByPlaceholderText("What's on your mind?"),
@@ -237,7 +215,7 @@ describe("AppShell", () => {
     const user = userEvent.setup();
     renderShell();
 
-    await user.click(screen.getByRole("button", { name: "top bar new note" }));
+    await user.click(screen.getByRole("button", { name: "chrome new note" }));
     const textarea = await screen.findByPlaceholderText("What's on your mind?");
     await user.type(textarea, "Buy milk");
     expect(textarea).toHaveValue("Buy milk");
@@ -249,7 +227,7 @@ describe("AppShell", () => {
       ).not.toBeInTheDocument(),
     );
 
-    await user.click(screen.getByRole("button", { name: "top bar new note" }));
+    await user.click(screen.getByRole("button", { name: "chrome new note" }));
     expect(
       await screen.findByPlaceholderText("What's on your mind?"),
     ).toHaveValue("");
@@ -301,7 +279,7 @@ describe("AppShell", () => {
     const user = userEvent.setup();
     renderShell();
 
-    const trigger = screen.getByRole("button", { name: "top bar palette" });
+    const trigger = screen.getByRole("button", { name: "chrome palette" });
     await user.click(trigger);
     await user.click(
       await screen.findByPlaceholderText("Jump to an area, thread, or action…"),
@@ -318,7 +296,7 @@ describe("AppShell", () => {
 
     queryCall.mockClear();
     // A re-render after the close must not re-subscribe.
-    await user.click(screen.getByRole("button", { name: "top bar new note" }));
+    await user.click(screen.getByRole("button", { name: "chrome new note" }));
     await screen.findByPlaceholderText("What's on your mind?");
     expect(subscribedTo("threads:list")).toBe(false);
   });
@@ -329,7 +307,7 @@ describe("AppShell", () => {
 
     expect(subscribedTo("areas:list")).toBe(false);
 
-    await user.click(screen.getByRole("button", { name: "top bar palette" }));
+    await user.click(screen.getByRole("button", { name: "chrome palette" }));
     await user.click(await screen.findByText("New thread"));
 
     expect(await screen.findByLabelText("Title")).toBeVisible();
@@ -340,7 +318,7 @@ describe("AppShell", () => {
     const user = userEvent.setup();
     renderShell();
 
-    await user.click(screen.getByRole("button", { name: "top bar palette" }));
+    await user.click(screen.getByRole("button", { name: "chrome palette" }));
     await user.click(await screen.findByText("New note"));
 
     const textarea = await screen.findByPlaceholderText("What's on your mind?");
@@ -351,7 +329,7 @@ describe("AppShell", () => {
     const user = userEvent.setup();
     renderShell();
 
-    await user.click(screen.getByRole("button", { name: "top bar palette" }));
+    await user.click(screen.getByRole("button", { name: "chrome palette" }));
     await user.click(await screen.findByText("New thread"));
 
     const titleInput = await screen.findByLabelText("Title");
@@ -362,7 +340,7 @@ describe("AppShell", () => {
     const user = userEvent.setup();
     renderShell();
 
-    await user.click(screen.getByRole("button", { name: "top bar palette" }));
+    await user.click(screen.getByRole("button", { name: "chrome palette" }));
     await user.click(await screen.findByText("New area"));
 
     expect(await screen.findByLabelText("Name")).toBeVisible();
