@@ -56,7 +56,7 @@ export function DashboardOverview({
   const items = boardItems(board);
 
   return (
-    <div className="flex h-[calc(100svh-10rem)] min-h-136 flex-col gap-3">
+    <div className="flex flex-col gap-3 xl:h-[calc(100svh-10rem)] xl:min-h-136">
       <DashboardHeader
         areas={areas}
         board={board}
@@ -66,7 +66,7 @@ export function DashboardOverview({
       />
 
       {items.length === 0 ? (
-        <section className="flex flex-1 flex-col items-center justify-center rounded-xl bg-surface-2 px-6 text-center">
+        <section className="flex min-h-48 flex-col items-center justify-center rounded-xl bg-surface-2 px-6 text-center xl:flex-1">
           <p className="text-sm font-medium">Nothing is asking for you.</p>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">
             Every Thread is resolved and every Note is done.

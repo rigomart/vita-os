@@ -1,6 +1,16 @@
 import type { ProjectedArea } from "@convex/lib/validators";
+import type { ReactNode } from "react";
+
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@vita-os/ui/components/collapsible";
+import { ChevronRight } from "lucide-react";
+import { useState } from "react";
 
 import { ConnectedThreadAttentionCard } from "@/features/threads/components/thread-attention-card";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 import type { AttentionBoard, BoardItem } from "./attention-board-model";
@@ -8,6 +18,11 @@ import type { AttentionBoard, BoardItem } from "./attention-board-model";
 import { itemId, unscheduledCount } from "./attention-board-model";
 import { DashboardNote } from "./dashboard-note";
 
+/**
+ * The lanes sit side by side only at `xl`, where the board owns the viewport's
+ * height and each lane scrolls. Below it they stack and the page scrolls, and
+ * on a phone Later and the No date margin start folded.
+ */
 export function DashboardBoard({
   areas,
   board,
@@ -18,6 +33,7 @@ export function DashboardBoard({
   currentDate: number;
 }) {
   const areaById = new Map(areas.map((area) => [area._id, area]));
+  const isMobile = useIsMobile();
 
   const columns = [
     {
@@ -59,41 +75,18 @@ export function DashboardBoard({
     );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 xl:flex-row xl:gap-8">
-      <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-2 xl:grid-cols-3 xl:gap-8">
+    <div className="flex flex-col gap-6 xl:min-h-0 xl:flex-1 xl:flex-row xl:gap-8">
+      <div className="grid gap-6 md:grid-cols-2 xl:min-h-0 xl:flex-1 xl:grid-cols-3 xl:gap-8">
         {columns.map((column) => (
-          <section
+          <BoardLane
             key={column.key}
-            aria-label={column.title}
-            className="flex min-h-0 flex-col"
+            collapsible={isMobile && column.key === "later"}
+            count={column.items.length}
+            hint={column.hint}
+            title={column.title}
+            tone={column.urgent ? "urgent" : "default"}
           >
-            <header
-              className={cn(
-                "mb-1.5 flex items-baseline gap-2 border-b-2 pb-1.5",
-                column.urgent
-                  ? "border-condition-attention/60"
-                  : "border-border/70",
-              )}
-            >
-              <h2
-                className={cn(
-                  "text-[11px] font-semibold tracking-widest uppercase",
-                  column.urgent
-                    ? "text-condition-attention"
-                    : "text-foreground/70",
-                )}
-              >
-                {column.title}
-              </h2>
-              <span
-                title={column.hint}
-                className="text-[11px] tabular-nums text-muted-foreground/60"
-              >
-                {column.items.length}
-              </span>
-            </header>
-
-            <ul className="-mx-1 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1">
+            <ul className="-mx-1 flex flex-col gap-1 px-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
               {column.items.map((item) => (
                 <li key={itemId(item)}>{renderItem(item)}</li>
               ))}
@@ -103,24 +96,19 @@ export function DashboardBoard({
                 </li>
               )}
             </ul>
-          </section>
+          </BoardLane>
         ))}
       </div>
 
-      <aside
-        aria-label="No date"
-        className="flex min-h-0 flex-col border-t border-border/50 pt-4 xl:w-64 xl:shrink-0 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5"
+      <BoardLane
+        className="border-t border-border/50 pt-5 xl:w-64 xl:shrink-0 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5"
+        collapsible={isMobile}
+        count={unscheduledCount(board)}
+        element="aside"
+        title="No date"
+        tone="muted"
       >
-        <header className="mb-1.5 flex items-baseline gap-2 border-b-2 border-transparent pb-1.5">
-          <h2 className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
-            No date
-          </h2>
-          <span className="text-[11px] tabular-nums text-muted-foreground/60">
-            {unscheduledCount(board)}
-          </span>
-        </header>
-
-        <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 pb-2">
+        <div className="-mx-1 flex flex-col gap-3 px-1 pb-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
           {runs.map((run) => (
             <section key={run.key}>
               <h3 className="flex items-baseline gap-1.5 pb-1 text-[11px] leading-snug font-medium text-muted-foreground/70">
@@ -143,7 +131,96 @@ export function DashboardBoard({
             </p>
           )}
         </div>
-      </aside>
+      </BoardLane>
     </div>
+  );
+}
+
+const tones = {
+  urgent: {
+    border: "border-condition-attention/60",
+    title: "text-condition-attention",
+  },
+  default: { border: "border-border/70", title: "text-foreground/70" },
+  muted: { border: "border-transparent", title: "text-muted-foreground" },
+};
+
+/** One lane: a ruled heading with its count, and its cards under it. */
+function BoardLane({
+  children,
+  className,
+  collapsible = false,
+  count,
+  element = "section",
+  hint,
+  title,
+  tone,
+}: {
+  children: ReactNode;
+  className?: string;
+  collapsible?: boolean;
+  count: number;
+  element?: "aside" | "section";
+  hint?: string;
+  title: string;
+  tone: keyof typeof tones;
+}) {
+  const [open, setOpen] = useState(false);
+  const Element = element;
+  const { border, title: titleClass } = tones[tone];
+
+  const label = (
+    <>
+      <span
+        className={cn(
+          "text-[11px] font-semibold tracking-widest uppercase",
+          titleClass,
+        )}
+      >
+        {title}
+      </span>
+      <span
+        title={hint}
+        className="text-[11px] tabular-nums text-muted-foreground/60"
+      >
+        {count}
+      </span>
+    </>
+  );
+
+  const headingClassName = cn("mb-1.5 flex items-baseline border-b-2", border);
+
+  if (!collapsible) {
+    return (
+      <Element
+        aria-label={title}
+        className={cn("flex flex-col xl:min-h-0", className)}
+      >
+        <h2 className={cn(headingClassName, "gap-2 pb-1.5")}>{label}</h2>
+        {children}
+      </Element>
+    );
+  }
+
+  return (
+    <Element aria-label={title} className={cn("flex flex-col", className)}>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        {/* Keep a real heading while making the whole rule the trigger. */}
+        <h2 className={headingClassName}>
+          <CollapsibleTrigger className="group flex w-full items-baseline gap-2 pb-1.5 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/30">
+            {label}
+            <ChevronRight
+              aria-hidden
+              className={cn(
+                "ml-auto size-4 shrink-0 self-center text-muted-foreground/60 transition-transform group-hover:text-foreground motion-reduce:transition-none",
+                open && "rotate-90",
+              )}
+            />
+          </CollapsibleTrigger>
+        </h2>
+
+        <CollapsibleContent>{children}</CollapsibleContent>
+      </Collapsible>
+    </Element>
   );
 }

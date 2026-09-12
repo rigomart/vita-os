@@ -4,7 +4,7 @@ import { Skeleton } from "@vita-os/ui/components/skeleton";
 export function DashboardOverviewSkeleton() {
   return (
     <div
-      className="flex h-[calc(100svh-10rem)] min-h-136 flex-col gap-3"
+      className="flex flex-col gap-3 xl:h-[calc(100svh-10rem)] xl:min-h-136"
       data-testid="dashboard-overview-skeleton"
     >
       <div className="flex flex-wrap items-center gap-3 border-b border-border/50 pb-2">
@@ -14,12 +14,12 @@ export function DashboardOverviewSkeleton() {
         <Skeleton className="ml-auto h-6 w-48 rounded-md" />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 xl:flex-row">
-        <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="flex flex-col gap-3 xl:min-h-0 xl:flex-1 xl:flex-row">
+        <div className="grid gap-3 md:grid-cols-2 xl:min-h-0 xl:flex-1 xl:grid-cols-3">
           {Array.from({ length: 3 }, (_, column) => (
             <div
               key={column}
-              className="flex min-h-0 flex-col gap-2 rounded-xl border border-border/50 p-2.5"
+              className="flex flex-col gap-2 rounded-xl border border-border/50 p-2.5 xl:min-h-0"
             >
               <Skeleton className="h-4 w-24" />
               {Array.from({ length: 3 }, (_, row) => (
