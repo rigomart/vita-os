@@ -38,8 +38,9 @@ interface AppChromeProps {
  * The app chrome: three floating clusters over the page rather than a bar
  * across the top of it.
  *
- *   top-left       where you are — the mark, today's date, the Areas' status
- *   top-right      what is waiting for you — Notes, and your account
+ *   top-left       where you are — the mark and the Areas' status
+ *   top-right      where you are in time, and what wants you — the date,
+ *                  Notes, and your account
  *   bottom-centre  what you can do — jump anywhere, and the three creates
  *
  * Nothing spans the width, so the board reads to the top edge of the viewport.
@@ -98,19 +99,6 @@ export function AppChrome({
             </span>
           </Link>
 
-          {/* Today, next to the mark: the Dashboard used to state the date in
-              its own header, and it is the same date on every page. */}
-          <time
-            dateTime={today.toISOString()}
-            title={format(today, "EEEE, MMMM d, yyyy")}
-            className="hidden shrink-0 text-xs text-muted-foreground sm:block"
-          >
-            <span className="font-semibold text-foreground">
-              {format(today, "EEE")}
-            </span>{" "}
-            · {format(today, "MMM d")}
-          </time>
-
           <span aria-hidden className="h-5 w-px shrink-0 bg-border" />
           <AreaStatusStrip />
         </header>
@@ -122,6 +110,23 @@ export function AppChrome({
             FLOATING,
           )}
         >
+          {/* Today leads the cluster: the Dashboard used to state the date in
+              its own header, and it is the same date on every page. */}
+          <time
+            dateTime={today.toISOString()}
+            title={format(today, "EEEE, MMMM d, yyyy")}
+            className="hidden shrink-0 pl-0.5 text-xs text-muted-foreground sm:block"
+          >
+            <span className="font-semibold text-foreground">
+              {format(today, "EEE")}
+            </span>{" "}
+            · {format(today, "MMM d")}
+          </time>
+          <span
+            aria-hidden
+            className="hidden h-5 w-px shrink-0 bg-border sm:block"
+          />
+
           <button
             type="button"
             aria-label="Notes"
