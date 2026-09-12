@@ -7,6 +7,7 @@ import { api } from "@convex/_generated/api";
 import { nullsToUndefined } from "@convex/lib/patch";
 import { generateSlug } from "@convex/lib/slugs";
 import { storedUpNext, takeFrontUpNextMove } from "@convex/lib/upNext";
+import { decideNextMoveCompletion } from "@vita-os/core";
 
 import { patchAreaDetail } from "@/features/areas/optimistic";
 import {
@@ -77,7 +78,10 @@ function fillNextMoveFromUpNext<T extends AttentionFields>(thread: T): T {
 }
 
 export function completeNextMove<T extends AttentionFields>(thread: T): T {
-  return fillNextMoveFromUpNext({ ...thread, nextMove: undefined });
+  const decision = decideNextMoveCompletion(thread);
+  return decision.status === "unchanged"
+    ? thread
+    : { ...thread, ...decision.patch };
 }
 
 /** The whole line, rewritten — the shape every Up Next edit sends. */

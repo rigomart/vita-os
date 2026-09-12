@@ -1,6 +1,5 @@
-import type { GenericMutationCtx } from "convex/server";
-
 import type { CompleteNextMoveStore } from "@vita-os/core";
+import type { GenericMutationCtx } from "convex/server";
 
 import { completeNextMove as completeNextMoveOperation } from "@vita-os/core";
 

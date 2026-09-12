@@ -62,10 +62,9 @@ describe("Up Next", () => {
     await storeUpNext(["Book the appointment", "Collect the results"]);
     const before = await readActivityLog();
 
-    const outcome = await owner.mutation(
-      api.threads.completeNextMoveMutation,
-      { id: owned.threadId },
-    );
+    const outcome = await owner.mutation(api.threads.completeNextMoveMutation, {
+      id: owned.threadId,
+    });
 
     expect(outcome).toEqual({ status: "completed" });
 
@@ -141,10 +140,9 @@ describe("Up Next", () => {
     const beforeThread = await readThread();
     const beforeActivity = await readActivityLog();
 
-    const outcome = await owner.mutation(
-      api.threads.completeNextMoveMutation,
-      { id: owned.threadId },
-    );
+    const outcome = await owner.mutation(api.threads.completeNextMoveMutation, {
+      id: owned.threadId,
+    });
 
     expect(outcome).toEqual({ status: "unchanged" });
     expect(await readThread()).toEqual(beforeThread);
