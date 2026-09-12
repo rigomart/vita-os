@@ -51,7 +51,7 @@ export function NoteCard({ note, now }: { note: ProjectedNote; now: number }) {
     <article
       className={cn(
         "group/card flex flex-col rounded-3xl border-2 border-border/70 bg-surface-2 p-4",
-        "transition-colors hover:border-border has-focus-visible:border-ring/50",
+        "animate-in fade-in slide-in-from-bottom-2 transition-colors duration-300 hover:border-border has-focus-visible:border-ring/50 motion-reduce:animate-none",
         done && "border-border/40 bg-transparent opacity-70",
       )}
     >

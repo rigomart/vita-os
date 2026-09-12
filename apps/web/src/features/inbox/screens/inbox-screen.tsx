@@ -29,6 +29,7 @@ export function InboxScreen() {
         notes={notes}
         doneNotes={doneNotes}
         isDoneExhausted={doneStatus === "Exhausted"}
+        isDoneInitialLoading={doneStatus === "LoadingFirstPage"}
         canLoadMoreDone={doneStatus === "CanLoadMore"}
         isLoadingMoreDone={doneStatus === "LoadingMore"}
         onLoadMoreDone={() => loadMoreDone(DONE_PAGE_SIZE)}

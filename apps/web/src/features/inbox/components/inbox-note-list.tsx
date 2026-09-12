@@ -14,6 +14,7 @@ interface InboxNoteListProps {
   doneNotes?: ProjectedNote[];
   /** Defaults to `true`: non-paginating callers render Completed only when non-empty. */
   isDoneExhausted?: boolean;
+  isDoneInitialLoading?: boolean;
   canLoadMoreDone?: boolean;
   isLoadingMoreDone?: boolean;
   onLoadMoreDone?: () => void;
@@ -23,6 +24,7 @@ export function InboxNoteList({
   notes,
   doneNotes = [],
   isDoneExhausted = true,
+  isDoneInitialLoading = false,
   canLoadMoreDone = false,
   isLoadingMoreDone = false,
   onLoadMoreDone,
@@ -40,7 +42,8 @@ export function InboxNoteList({
     ...groups.noDate,
     ...groups.comingUp,
   ];
-  const showCompleted = doneNotes.length > 0 || !isDoneExhausted;
+  const showCompleted =
+    doneNotes.length > 0 || (!isDoneInitialLoading && !isDoneExhausted);
 
   return (
     <div>
