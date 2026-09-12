@@ -62,9 +62,12 @@ describe("Up Next", () => {
     await storeUpNext(["Book the appointment", "Collect the results"]);
     const before = await readActivityLog();
 
-    await owner.mutation(api.threads.completeNextMoveMutation, {
-      id: owned.threadId,
-    });
+    const outcome = await owner.mutation(
+      api.threads.completeNextMoveMutation,
+      { id: owned.threadId },
+    );
+
+    expect(outcome).toEqual({ status: "completed" });
 
     const thread = await readThread();
     expect(thread?.nextMove).toBe("Book the appointment");
@@ -129,6 +132,23 @@ describe("Up Next", () => {
       }),
     );
     expect(after[0]?.newValue).toBeUndefined();
+  });
+
+  it("reports no change and writes nothing when there is no Next Move", async () => {
+    await owner.mutation(api.threads.completeNextMoveMutation, {
+      id: owned.threadId,
+    });
+    const beforeThread = await readThread();
+    const beforeActivity = await readActivityLog();
+
+    const outcome = await owner.mutation(
+      api.threads.completeNextMoveMutation,
+      { id: owned.threadId },
+    );
+
+    expect(outcome).toEqual({ status: "unchanged" });
+    expect(await readThread()).toEqual(beforeThread);
+    expect(await readActivityLog()).toEqual(beforeActivity);
   });
 
   it("leaves the Next Move empty when it is cleared with nothing lined up", async () => {

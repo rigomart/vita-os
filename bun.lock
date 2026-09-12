@@ -34,6 +34,8 @@
       "version": "0.0.0",
       "dependencies": {
         "@convex-dev/better-auth": "^0.12.5",
+        "@vita-os/contracts": "workspace:*",
+        "@vita-os/core": "workspace:*",
         "@vita-os/ui": "workspace:*",
         "better-auth": "1.6.25",
         "clsx": "catalog:",
