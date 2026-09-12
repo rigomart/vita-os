@@ -20,6 +20,15 @@ import { CreateThreadDialog } from "@/features/threads/thread-form/create-thread
 import { AppTopBar } from "./app-top-bar";
 import { CommandPalette } from "./command-palette";
 import { MobileTabBar } from "./mobile-tab-bar";
+// PROTOTYPE — header variants. Drop this block with `prototype-header/`.
+import { HEADER_VARIANT_MAIN_CLASS } from "./prototype-header/header-variants";
+import {
+  PrototypeSwitcher,
+  useHeaderVariant,
+} from "./prototype-header/prototype-switcher";
+import { TopBarIsland } from "./prototype-header/top-bar-b-island";
+import { TopBarClusters } from "./prototype-header/top-bar-c-clusters";
+import { TopBarDock } from "./prototype-header/top-bar-e-dock";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const noteCount = useQuery(api.notes.count);
@@ -28,6 +37,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const dialogs = useCreateDialogs();
   const inbox = useInboxSurface();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // PROTOTYPE — `?headerVariant=A|B|C|E`; A is what ships today.
+  const headerVariant = useHeaderVariant();
 
   // The area list is only read by the create-thread dialog here; the palette
   // subscribes for itself while it is mounted.
@@ -107,25 +118,38 @@ export function AppShell({ children }: { children: ReactNode }) {
           rail's width spacer, so an open rail pushes the topbar too instead
           of sliding over it. */}
       <div className="flex min-h-svh min-w-0 flex-1 flex-col">
-        <AppTopBar
-          noteCount={noteCount}
-          inboxOpen={inbox.isOpen}
-          onToggleInbox={inbox.toggle}
-          onNewNote={dialogs.openNewNote}
-          onOpenPalette={() => setPaletteOpen(true)}
-        />
+        {/* PROTOTYPE — only the chrome swaps; every prop below is unchanged. */}
+        {(() => {
+          const chromeProps = {
+            noteCount,
+            inboxOpen: inbox.isOpen,
+            onToggleInbox: inbox.toggle,
+            onNewNote: dialogs.openNewNote,
+            onOpenPalette: () => setPaletteOpen(true),
+          };
+          if (headerVariant === "B") return <TopBarIsland {...chromeProps} />;
+          if (headerVariant === "C") return <TopBarClusters {...chromeProps} />;
+          if (headerVariant === "E") return <TopBarDock {...chromeProps} />;
+          return <AppTopBar {...chromeProps} />;
+        })()}
         {/* Inside the column, not beside it — see InboxPopoverPanel. */}
         <InboxSurface />
-        <main className="w-full min-w-0 flex-1 px-4 pt-3 pb-24 md:pb-8">
+        <main
+          className={`w-full min-w-0 flex-1 px-4 ${HEADER_VARIANT_MAIN_CLASS[headerVariant]}`}
+        >
           {children}
         </main>
-        <MobileTabBar
-          noteCount={noteCount}
-          inboxOpen={inbox.isOpen}
-          onToggleInbox={inbox.toggle}
-          onNewNote={dialogs.openNewNote}
-          onOpenPalette={() => setPaletteOpen(true)}
-        />
+        {/* E's dock replaces the tab bar rather than stacking on it. */}
+        {headerVariant !== "E" && (
+          <MobileTabBar
+            noteCount={noteCount}
+            inboxOpen={inbox.isOpen}
+            onToggleInbox={inbox.toggle}
+            onNewNote={dialogs.openNewNote}
+            onOpenPalette={() => setPaletteOpen(true)}
+          />
+        )}
+        <PrototypeSwitcher current={headerVariant} />
       </div>
       {openThreadSlug !== undefined && (
         <ThreadDetailView
