@@ -1,4 +1,4 @@
-import type { ProjectedActivityLog } from "@convex/lib/validators";
+import type { ActivityLogEntry } from "@vita-os/contracts";
 import type { LucideIcon } from "lucide-react";
 
 import { Button } from "@vita-os/ui/components/button";
@@ -10,7 +10,7 @@ import { getActivityLogEntryLabel } from "@/features/threads/activity-log-entry"
 import { cn } from "@/lib/utils";
 
 interface ActivityLogProps {
-  logs: ProjectedActivityLog[] | undefined;
+  logs: ActivityLogEntry[] | undefined;
   /** Drives the timeline's origin caption — when this Thread last moved. */
   lastActivityAt?: number;
   canLoadMore?: boolean;
@@ -18,10 +18,7 @@ interface ActivityLogProps {
   onLoadMore?: () => void;
 }
 
-type ActivityLogEntry = ProjectedActivityLog;
-type AutomaticActivityLogEntry = ActivityLogEntry & {
-  type: Exclude<ActivityLogEntry["type"], "note">;
-};
+type AutomaticActivityLogEntry = ActivityLogEntry;
 
 const ACTIVITY_LOG_ICONS: Record<
   AutomaticActivityLogEntry["type"],
@@ -50,8 +47,6 @@ export function ActivityLog({
   isLoadingMore,
   onLoadMore,
 }: ActivityLogProps) {
-  const automaticLogs = logs?.filter(isAutomaticActivityLogEntry);
-
   return (
     <section aria-label="Activity log" className="flex flex-col gap-2">
       <div className="relative pb-6">
@@ -67,7 +62,7 @@ export function ActivityLog({
         <TimelineOrigin lastActivityAt={lastActivityAt} />
 
         <ActivityLogTimeline
-          logs={automaticLogs}
+          logs={logs}
           canLoadMore={canLoadMore}
           isLoadingMore={isLoadingMore}
           onLoadMore={onLoadMore}
@@ -289,10 +284,4 @@ function getAutomaticChangeSummary(log: AutomaticActivityLogEntry) {
   }
 
   return log.content;
-}
-
-function isAutomaticActivityLogEntry(
-  log: ActivityLogEntry,
-): log is AutomaticActivityLogEntry {
-  return log.type !== "note";
 }

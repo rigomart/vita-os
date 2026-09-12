@@ -1,12 +1,11 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
+import type { AreaId, AreaSummary, Thread } from "@vita-os/contracts";
 
 import { AreaPicker } from "@/features/areas/components/area-picker";
 
 interface ThreadAreaSectionProps {
-  areas: ProjectedArea[];
-  thread: ProjectedThread;
-  onMove: (areaId: Id<"areas">) => void;
+  areas: AreaSummary[];
+  thread: Thread;
+  onMove: (areaId: AreaId) => void;
   isMoving?: boolean;
 }
 
@@ -20,7 +19,7 @@ export function ThreadAreaSection({
     <AreaPicker
       areas={areas}
       selectedAreaId={thread.areaId}
-      onSelect={(id) => onMove(id as Id<"areas">)}
+      onSelect={onMove}
       disabled={isMoving}
     />
   );

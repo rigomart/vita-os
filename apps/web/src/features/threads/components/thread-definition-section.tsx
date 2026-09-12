@@ -1,11 +1,11 @@
-import type { ProjectedThread } from "@convex/lib/validators";
+import type { Thread } from "@vita-os/contracts";
 
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 
 import { ThreadDefinition } from "./thread-definition";
 
 interface ThreadDefinitionSectionProps {
-  thread: ProjectedThread;
+  thread: Thread;
 }
 
 export function ThreadDefinitionSection({

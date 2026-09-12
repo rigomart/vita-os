@@ -1,9 +1,9 @@
-import type { ProjectedThread } from "@convex/lib/validators";
+import type { Thread } from "@vita-os/contracts";
 
 import { EditableField } from "@/components/ui/editable-field";
 
 interface ThreadHeaderProps {
-  thread: ProjectedThread;
+  thread: Thread;
   onTitleSave: (title: string) => void;
 }
 

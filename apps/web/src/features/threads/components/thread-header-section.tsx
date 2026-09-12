@@ -1,4 +1,4 @@
-import type { ProjectedThread } from "@convex/lib/validators";
+import type { Thread } from "@vita-os/contracts";
 
 import { useThreadPaneNav } from "@/features/threads/thread-detail/thread-pane-nav";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
@@ -6,7 +6,7 @@ import { useUpdateThread } from "@/features/threads/use-update-thread";
 import { ThreadHeader } from "./thread-header";
 
 interface ThreadHeaderProps {
-  thread: ProjectedThread;
+  thread: Thread;
   areaSlug: string;
 }
 

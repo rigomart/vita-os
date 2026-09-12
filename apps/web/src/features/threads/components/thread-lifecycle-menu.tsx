@@ -1,4 +1,4 @@
-import type { ProjectedThread } from "@convex/lib/validators";
+import type { Thread } from "@vita-os/contracts";
 
 import {
   AlertDialog,
@@ -25,7 +25,7 @@ import { CheckCircle2, Ellipsis, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 interface ThreadLifecycleMenuProps {
-  thread: ProjectedThread;
+  thread: Thread;
   onResolve: (resolutionNote?: string) => void;
   onReopen: () => void;
   onDelete: () => void;

@@ -1,4 +1,5 @@
 import type { Id } from "@convex/_generated/dataModel";
+import type { ThreadId } from "@vita-os/contracts";
 
 import { api } from "@convex/_generated/api";
 import {
@@ -13,7 +14,7 @@ import { ActivityLogSection } from "./thread-log-section";
 import { ThreadNotesSection } from "./thread-notes-section";
 
 interface ThreadBodyTabsProps {
-  threadId: Id<"threads">;
+  threadId: ThreadId;
   lastActivityAt?: number;
 }
 
@@ -26,9 +27,10 @@ export function ThreadBodyTabs({
   threadId,
   lastActivityAt,
 }: ThreadBodyTabsProps) {
+  const convexThreadId = threadId as Id<"threads">;
   // The cached query hook shares one subscription with ThreadNotesSection, so
   // reading the count here costs nothing beyond what the panel already pays.
-  const notes = useQuery(api.threadNotes.list, { threadId });
+  const notes = useQuery(api.threadNotes.list, { threadId: convexThreadId });
 
   return (
     <Tabs defaultValue="notes" className="flex min-h-0 flex-1 flex-col gap-3">
@@ -48,7 +50,7 @@ export function ThreadBodyTabs({
       >
         {/* Kept mounted so a half-written Note survives a look at Activity. */}
         <TabsContent value="notes" keepMounted>
-          <ThreadNotesSection threadId={threadId} />
+          <ThreadNotesSection threadId={convexThreadId} />
         </TabsContent>
         <TabsContent value="activity">
           <ActivityLogSection

@@ -1,5 +1,4 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
+import type { AreaId, AreaSummary, Thread } from "@vita-os/contracts";
 
 import { api } from "@convex/_generated/api";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
@@ -10,8 +9,8 @@ import { useThreadPaneNav } from "@/features/threads/thread-detail/thread-pane-n
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 
 interface ThreadAreaSectionSectionProps {
-  thread: ProjectedThread;
-  area: ProjectedArea;
+  thread: Thread;
+  area: AreaSummary;
 }
 
 export function ThreadAreaSectionSection({
@@ -24,7 +23,7 @@ export function ThreadAreaSectionSection({
   const updateThread = useUpdateThread(thread, { areas: areas ?? [] });
 
   const { run: moveThread, isPending: isMoving } = useGuardedAsyncAction(
-    async (areaId: Id<"areas">) => {
+    async (areaId: AreaId) => {
       if (!areas || areaId === thread.areaId) return null;
 
       await updateThread({ id: thread._id, areaId });
@@ -35,7 +34,7 @@ export function ThreadAreaSectionSection({
 
   if (!areas) return null;
 
-  const handleMove = (areaId: Id<"areas">) => {
+  const handleMove = (areaId: AreaId) => {
     if (areaId === thread.areaId) return;
 
     void moveThread(areaId).then((result) => {

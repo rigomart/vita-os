@@ -1,4 +1,4 @@
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaSummary } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
 import {
@@ -12,7 +12,7 @@ import { useState } from "react";
 import { AreaIcon } from "./area-icon";
 
 interface AreaPickerProps {
-  areas: ProjectedArea[];
+  areas: AreaSummary[];
   selectedAreaId: string | undefined;
   onSelect: (id: string) => void;
   disabled?: boolean;
