@@ -29,6 +29,7 @@ import {
 import { TopBarIsland } from "./prototype-header/top-bar-b-island";
 import { TopBarClusters } from "./prototype-header/top-bar-c-clusters";
 import { TopBarDock } from "./prototype-header/top-bar-e-dock";
+import { TopBarRefined } from "./prototype-header/top-bar-f-refined";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const noteCount = useQuery(api.notes.count);
@@ -37,7 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const dialogs = useCreateDialogs();
   const inbox = useInboxSurface();
   const [paletteOpen, setPaletteOpen] = useState(false);
-  // PROTOTYPE — `?headerVariant=A|B|C|E`; A is what ships today.
+  // PROTOTYPE — `?headerVariant=A|B|C|E|F`; A is what ships today.
   const headerVariant = useHeaderVariant();
 
   // The area list is only read by the create-thread dialog here; the palette
@@ -126,10 +127,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             onToggleInbox: inbox.toggle,
             onNewNote: dialogs.openNewNote,
             onOpenPalette: () => setPaletteOpen(true),
+            onNewThread: () => dialogs.openCreateThread(),
+            onNewArea: dialogs.openCreateArea,
+            railOpen: openThreadSlug !== undefined,
           };
           if (headerVariant === "B") return <TopBarIsland {...chromeProps} />;
           if (headerVariant === "C") return <TopBarClusters {...chromeProps} />;
           if (headerVariant === "E") return <TopBarDock {...chromeProps} />;
+          if (headerVariant === "F") return <TopBarRefined {...chromeProps} />;
           return <AppTopBar {...chromeProps} />;
         })()}
         {/* Inside the column, not beside it — see InboxPopoverPanel. */}
@@ -139,8 +144,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           {children}
         </main>
-        {/* E's dock replaces the tab bar rather than stacking on it. */}
-        {headerVariant !== "E" && (
+        {/* The E and F docks replace the tab bar rather than stacking on it. */}
+        {headerVariant !== "E" && headerVariant !== "F" && (
           <MobileTabBar
             noteCount={noteCount}
             inboxOpen={inbox.isOpen}
