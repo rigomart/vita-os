@@ -5,10 +5,17 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@vita-os/ui/components/collapsible";
+import { cn } from "@vita-os/ui/lib/utils";
 import { ChevronRight } from "lucide-react";
 
-export function AttentionList({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col">{children}</div>;
+export function AttentionList({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={cn("flex flex-col", className)}>{children}</div>;
 }
 
 export function AttentionCollapsed({
