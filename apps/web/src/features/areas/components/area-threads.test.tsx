@@ -18,6 +18,7 @@ vi.mock("@tanstack/react-router", () => ({
 const today = new Date(2026, 4, 20, 12).getTime();
 const yesterday = new Date(2026, 4, 19, 12).getTime();
 const tomorrow = new Date(2026, 4, 21, 12).getTime();
+const noop = () => undefined;
 
 function thread(
   id: string,
@@ -39,6 +40,38 @@ function thread(
 }
 
 describe("AreaThreads", () => {
+  it("uses the Dashboard card grammar inside the existing attention lanes", () => {
+    render(
+      <AreaThreads
+        threads={[
+          thread("call-clinic", "Annual checkup", {
+            nextMove: "Call the clinic",
+          }),
+        ]}
+        currentDate={today}
+        onCreateThread={noop}
+        onCompleteNextMove={noop}
+        onRemoveThread={noop}
+        onSetFollowUp={noop}
+      />,
+    );
+
+    const nextMove = screen.getByText("Call the clinic");
+    const title = screen.getByText("Annual checkup");
+    expect(nextMove.compareDocumentPosition(title)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(
+      screen.getByRole("button", { name: "Set Follow-up" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Complete Next Move" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete thread" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders attention lanes with a census line", () => {
     render(
       <AreaThreads
@@ -47,8 +80,10 @@ describe("AreaThreads", () => {
           thread("renew-passport", "Renew passport"),
         ]}
         currentDate={today}
-        onCreateThread={vi.fn()}
-        onRemoveThread={vi.fn()}
+        onCreateThread={noop}
+        onCompleteNextMove={noop}
+        onRemoveThread={noop}
+        onSetFollowUp={noop}
       />,
     );
 
@@ -67,6 +102,27 @@ describe("AreaThreads", () => {
     expect(screen.getByText("Renew passport")).toBeInTheDocument();
   });
 
+  it("spaces cards within the same attention lane", () => {
+    render(
+      <AreaThreads
+        threads={[
+          thread("renew-passport", "Renew passport"),
+          thread("book-dentist", "Book dentist"),
+        ]}
+        currentDate={today}
+        onCreateThread={noop}
+        onCompleteNextMove={noop}
+        onRemoveThread={noop}
+        onSetFollowUp={noop}
+      />,
+    );
+
+    const firstCard = screen.getByText("Renew passport").closest(".group");
+    const secondCard = screen.getByText("Book dentist").closest(".group");
+    expect(firstCard?.parentElement).toBe(secondCard?.parentElement);
+    expect(firstCard?.parentElement).toHaveClass("gap-1");
+  });
+
   it("collapses and re-expands a lane, keeping its count visible", async () => {
     const user = userEvent.setup();
     render(
@@ -76,8 +132,10 @@ describe("AreaThreads", () => {
           thread("open", "Plain Open Thread"),
         ]}
         currentDate={today}
-        onCreateThread={vi.fn()}
-        onRemoveThread={vi.fn()}
+        onCreateThread={noop}
+        onCompleteNextMove={noop}
+        onRemoveThread={noop}
+        onSetFollowUp={noop}
       />,
     );
 
@@ -105,8 +163,10 @@ describe("AreaThreads", () => {
         threads={[]}
         currentDate={today}
         isLoading
-        onCreateThread={vi.fn()}
-        onRemoveThread={vi.fn()}
+        onCreateThread={noop}
+        onCompleteNextMove={noop}
+        onRemoveThread={noop}
+        onSetFollowUp={noop}
       />,
     );
 
@@ -121,8 +181,10 @@ describe("AreaThreads", () => {
       <AreaThreads
         threads={[]}
         currentDate={today}
-        onCreateThread={vi.fn()}
-        onRemoveThread={vi.fn()}
+        onCreateThread={noop}
+        onCompleteNextMove={noop}
+        onRemoveThread={noop}
+        onSetFollowUp={noop}
       />,
     );
 
@@ -131,7 +193,7 @@ describe("AreaThreads", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows each scheduled date once and hides empty Next Move lines", () => {
+  it("shows Dashboard date tokens once on scheduled cards", () => {
     render(
       <AreaThreads
         threads={[
@@ -140,22 +202,24 @@ describe("AreaThreads", () => {
           thread("sort-receipts", "Sort receipts", { nextMove: "Scan them" }),
         ]}
         currentDate={today}
-        onCreateThread={vi.fn()}
-        onRemoveThread={vi.fn()}
+        onCreateThread={noop}
+        onCompleteNextMove={noop}
+        onRemoveThread={noop}
+        onSetFollowUp={noop}
       />,
     );
 
-    expect(screen.getAllByText("May")).toHaveLength(2);
-    expect(screen.getByText("19")).toBeVisible();
-    expect(screen.getByText("21")).toBeVisible();
-    expect(screen.getByText("19").closest("time")?.parentElement).toHaveClass(
-      "bg-condition-attention-fill",
-    );
+    expect(screen.getByText("−1d")).toBeVisible();
+    expect(screen.getByText("Thu")).toBeVisible();
     expect(
-      screen.getByText("21").closest("time")?.parentElement,
-    ).not.toHaveClass("bg-condition-attention-fill");
+      screen.getAllByRole("button", { name: "Change Follow-up" }),
+    ).toHaveLength(2);
+    expect(
+      screen
+        .getAllByRole("button", { name: "Change Follow-up" })[0]
+        ?.querySelector("svg"),
+    ).not.toBeNull();
     expect(screen.getByText("Scan them")).toBeVisible();
-    expect(screen.queryByText("No next move")).not.toBeInTheDocument();
   });
 
   it("orders due Follow-ups before Next Move Threads and plain Open Threads", () => {
@@ -172,8 +236,10 @@ describe("AreaThreads", () => {
           }),
         ]}
         currentDate={today}
-        onCreateThread={vi.fn()}
-        onRemoveThread={vi.fn()}
+        onCreateThread={noop}
+        onCompleteNextMove={noop}
+        onRemoveThread={noop}
+        onSetFollowUp={noop}
       />,
     );
 

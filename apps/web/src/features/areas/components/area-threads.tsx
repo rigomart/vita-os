@@ -22,10 +22,9 @@ import { Fragment, useEffect, useState } from "react";
 import {
   AttentionEmpty,
   AttentionList,
-  AttentionRow,
-  type AttentionRowModel,
   RowDeleteAction,
 } from "@/features/attention-list";
+import { ThreadAttentionCard } from "@/features/threads/components/thread-attention-card";
 import { cn } from "@/lib/utils";
 
 import { AreaThreadsSkeleton } from "./area-threads-skeleton";
@@ -35,7 +34,9 @@ interface AreaThreadsProps {
   currentDate: number;
   isLoading?: boolean;
   onCreateThread: () => void;
+  onCompleteNextMove: (threadId: Id<"threads">) => void;
   onRemoveThread: (threadId: Id<"threads">) => void;
+  onSetFollowUp: (threadId: Id<"threads">, when: number | undefined) => void;
 }
 
 interface Lane {
@@ -43,7 +44,6 @@ interface Lane {
   icon: LucideIcon;
   id: string;
   label: string;
-  /** Sentence-case fragment for the census line: "3 due now". */
   summaryLabel: string;
   threads: ProjectedThread[];
 }
@@ -53,10 +53,11 @@ export function AreaThreads({
   currentDate,
   isLoading = false,
   onCreateThread,
+  onCompleteNextMove,
   onRemoveThread,
+  onSetFollowUp,
 }: AreaThreadsProps) {
-  // Session-local only: every lane starts open, collapsing is a user action
-  // and is deliberately not persisted.
+  // Lane state is session-local.
   const [collapsedIds, setCollapsedIds] = useState<ReadonlySet<string>>(
     () => new Set<string>(),
   );
@@ -99,8 +100,7 @@ export function AreaThreads({
   const filledLanes = lanes.filter((lane) => lane.threads.length > 0);
   const total = filledLanes.reduce((sum, lane) => sum + lane.threads.length, 0);
 
-  // A lane that empties out resets to expanded, so it can never reappear
-  // pre-collapsed later without a user action.
+  // Reappearing lanes start expanded.
   const filledLaneKey = filledLanes.map((lane) => lane.id).join(" ");
   useEffect(() => {
     setCollapsedIds((previous) => {
@@ -160,7 +160,9 @@ export function AreaThreads({
             now={currentDate}
             open={!collapsedIds.has(lane.id)}
             onOpenChange={(open) => setLaneOpen(lane.id, open)}
+            onCompleteNextMove={onCompleteNextMove}
             onRemoveThread={onRemoveThread}
+            onSetFollowUp={onSetFollowUp}
           />
         ))}
       </div>
@@ -168,10 +170,6 @@ export function AreaThreads({
   );
 }
 
-/**
- * One quiet line stating the shape of the inventory. It scrolls away with the
- * page — no anchors, no controls; the due-now fragment is the only escalation.
- */
 function TriageCensus({ lanes }: { lanes: Lane[] }) {
   return (
     <p className="flex flex-wrap items-baseline gap-x-1.5 text-xs tabular-nums text-muted-foreground">
@@ -191,21 +189,21 @@ function TriageCensus({ lanes }: { lanes: Lane[] }) {
   );
 }
 
-/**
- * One collapsible attention lane. The heading row is the toggle; a collapsed
- * lane keeps reporting its count, so the full inventory stays legible.
- */
 function AttentionLane({
   lane,
   now,
+  onCompleteNextMove,
   onOpenChange,
   onRemoveThread,
+  onSetFollowUp,
   open,
 }: {
   lane: Lane;
   now: number;
+  onCompleteNextMove: (threadId: Id<"threads">) => void;
   onOpenChange: (open: boolean) => void;
   onRemoveThread: (threadId: Id<"threads">) => void;
+  onSetFollowUp: (threadId: Id<"threads">, when: number | undefined) => void;
   open: boolean;
 }) {
   const LaneIcon = lane.icon;
@@ -215,8 +213,7 @@ function AttentionLane({
   return (
     <section aria-label={`${lane.label} Threads`}>
       <Collapsible open={open} onOpenChange={onOpenChange}>
-        {/* Accordion pattern: the heading wraps the trigger, so the lane keeps
-            a real document outline while the whole row stays clickable. */}
+        {/* Keep a real heading while making the whole row the trigger. */}
         <h2 className="flex">
           <CollapsibleTrigger className="group -mx-2 flex w-full items-center gap-2 rounded-md px-2 py-1 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/30 motion-reduce:transition-none">
             <ChevronRight
@@ -263,16 +260,17 @@ function AttentionLane({
           </CollapsibleTrigger>
         </h2>
 
-        {/* No panel animation: matches AttentionCollapsed, which snaps. */}
         <CollapsibleContent>
           <div className="mt-1">
-            <AttentionList>
+            <AttentionList className="gap-1">
               {lane.threads.map((thread) => (
                 <AreaThreadRow
                   key={thread._id}
                   thread={thread}
                   now={now}
+                  onCompleteNextMove={onCompleteNextMove}
                   onRemoveThread={onRemoveThread}
+                  onSetFollowUp={onSetFollowUp}
                 />
               ))}
             </AttentionList>
@@ -286,30 +284,31 @@ function AttentionLane({
 function AreaThreadRow({
   thread,
   now,
+  onCompleteNextMove,
   onRemoveThread,
+  onSetFollowUp,
 }: {
   thread: ProjectedThread;
   now: number;
+  onCompleteNextMove: (threadId: Id<"threads">) => void;
   onRemoveThread: (threadId: Id<"threads">) => void;
+  onSetFollowUp: (threadId: Id<"threads">, when: number | undefined) => void;
 }) {
-  const nextMove = thread.nextMove?.trim();
-  const summary = thread.summary?.trim();
-  const row: AttentionRowModel = {
-    title: thread.title,
-    detail: nextMove || summary || undefined,
-    detailKind: nextMove ? "next-move" : "summary",
-    when: thread.followUp,
-    linkTo: { threadSlug: thread.slug },
-    actions: (
-      <RowDeleteAction
-        label="Delete thread"
-        title="Delete thread?"
-        description={`“${thread.title}” will be permanently removed.`}
-        confirmLabel="Delete"
-        onConfirm={() => onRemoveThread(thread._id)}
-      />
-    ),
-  };
-
-  return <AttentionRow now={now} row={row} />;
+  return (
+    <ThreadAttentionCard
+      currentDate={now}
+      thread={thread}
+      onCompleteNextMove={() => onCompleteNextMove(thread._id)}
+      onSetFollowUp={(when) => onSetFollowUp(thread._id, when)}
+      actions={
+        <RowDeleteAction
+          label="Delete thread"
+          title="Delete thread?"
+          description={`“${thread.title}” will be permanently removed.`}
+          confirmLabel="Delete"
+          onConfirm={() => onRemoveThread(thread._id)}
+        />
+      }
+    />
+  );
 }

@@ -1,26 +1,13 @@
 import type { ProjectedArea } from "@convex/lib/validators";
 
+import { ConnectedThreadAttentionCard } from "@/features/threads/components/thread-attention-card";
 import { cn } from "@/lib/utils";
 
 import type { AttentionBoard, BoardItem } from "./attention-board-model";
 
 import { itemId, unscheduledCount } from "./attention-board-model";
-import { AttentionCard } from "./attention-card";
 import { DashboardNote } from "./dashboard-note";
 
-/**
- * The board: three columns of dates and a margin for everything else.
- *
- * Each column scrolls itself and the board fills the viewport, so a busy
- * column never pushes the others down and a quiet one never leaves a hole at
- * the foot of the page.
- *
- * No boxes: separation is gutters and one rule under each heading, and that
- * rule is the only colour on the board. **No date** is not a fourth column —
- * it is not a time bucket — so its left rule closes the row of dated columns
- * rather than fencing off another one. Uppercase appears once per column, on
- * the heading, which is what keeps its labelled runs subordinate to it.
- */
 export function DashboardBoard({
   areas,
   board,
@@ -64,7 +51,7 @@ export function DashboardBoard({
     item.kind === "note" ? (
       <DashboardNote currentDate={currentDate} note={item.note} />
     ) : (
-      <AttentionCard
+      <ConnectedThreadAttentionCard
         area={areaById.get(item.thread.areaId)}
         currentDate={currentDate}
         thread={item.thread}
@@ -106,8 +93,6 @@ export function DashboardBoard({
               </span>
             </header>
 
-            {/* The negative margin lets a card's hover fill breathe past the
-                column's text edge without widening the column itself. */}
             <ul className="-mx-1 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1">
               {column.items.map((item) => (
                 <li key={itemId(item)}>{renderItem(item)}</li>
@@ -126,8 +111,6 @@ export function DashboardBoard({
         aria-label="No date"
         className="flex min-h-0 flex-col border-t border-border/50 pt-4 xl:w-64 xl:shrink-0 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5"
       >
-        {/* A transparent rule of the same weight as the dated columns' keeps
-            every heading on one line without drawing a fourth one. */}
         <header className="mb-1.5 flex items-baseline gap-2 border-b-2 border-transparent pb-1.5">
           <h2 className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
             No date
