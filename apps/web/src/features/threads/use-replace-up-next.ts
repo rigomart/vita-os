@@ -1,9 +1,10 @@
 import type { Id } from "@convex/_generated/dataModel";
 import type { ProjectedThread } from "@convex/lib/validators";
-import type { Thread } from "@vita-os/contracts";
 
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
+
+import type { ThreadView } from "@/features/threads/thread-view";
 
 import { optimisticallyReplaceUpNext } from "@/features/threads/optimistic";
 
@@ -12,12 +13,12 @@ import { optimisticallyReplaceUpNext } from "@/features/threads/optimistic";
  * all send the whole ordered line, so a rewrite never depends on what the last
  * one did. Blank moves are refused by the server — callers trim first.
  */
-export function useReplaceUpNext(thread: Thread) {
+export function useReplaceUpNext(thread: ThreadView) {
   const replaceUpNextMutation = useMutation(
     api.threads.replaceUpNext,
   ).withOptimisticUpdate((localStore, args) => {
     optimisticallyReplaceUpNext(localStore, args, {
-      thread: thread as ProjectedThread,
+      thread: thread as unknown as ProjectedThread,
     });
   });
 

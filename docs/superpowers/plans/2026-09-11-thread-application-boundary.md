@@ -41,7 +41,7 @@
 - Produces: `ApplicationClient`, `LiveResource<T>`, `PaginatedLiveResource<T>`, `QueryState<T>`, `OperationResult<T>`, `Thread`, `ThreadDetail`, `ActivityLogPage`, and related public values from `@vita-os/contracts`.
 - Produces: `decideNextMoveCompletion(state: NextMoveCompletionState): NextMoveCompletionDecision` and `CompleteNextMoveStore` from `@vita-os/core`.
 
-- [ ] **Step 1: Write a failing core rule test**
+- [x] **Step 1: Write a failing core rule test**
 
 ```ts
 it("promotes the front Up Next move and describes one atomic change", () => {
@@ -69,13 +69,13 @@ it("promotes the front Up Next move and describes one atomic change", () => {
 
 Also cover clearing the final move and returning `{ status: "unchanged" }` when no Next Move exists. Each expected value is a hand-written literal.
 
-- [ ] **Step 2: Run the test and verify RED**
+- [x] **Step 2: Run the test and verify RED**
 
 Run: `bunx vitest run packages/core/src/complete-next-move.test.ts`
 
 Expected: FAIL because `@vita-os/core` and `decideNextMoveCompletion` do not exist.
 
-- [ ] **Step 3: Add the package contracts and minimal completion decision**
+- [x] **Step 3: Add the package contracts and minimal completion decision**
 
 ```ts
 export function decideNextMoveCompletion(
@@ -104,7 +104,7 @@ export function decideNextMoveCompletion(
 
 Define the focused store as one atomic method accepting `actorId`, `threadId`, and the decision function. Do not expose separate get, patch, or insert methods.
 
-- [ ] **Step 4: Run the core test and package typechecks and verify GREEN**
+- [x] **Step 4: Run the core test and package typechecks and verify GREEN**
 
 Run: `bunx vitest run packages/core/src/complete-next-move.test.ts`
 
@@ -112,7 +112,7 @@ Run: `bunx turbo run typecheck --filter=@vita-os/contracts --filter=@vita-os/cor
 
 Expected: all tests and both typechecks pass.
 
-- [ ] **Step 5: Commit the shared boundary**
+- [x] **Step 5: Commit the shared boundary**
 
 ```bash
 git add packages/contracts packages/core package.json bun.lock
@@ -134,7 +134,7 @@ git commit -m "feat(core): define Thread completion boundary"
 - Consumes: `decideNextMoveCompletion` and `CompleteNextMoveOutput`.
 - Produces: `completeNextMove(ctx, args): Promise<CompleteNextMoveOutput>` while preserving the public `api.threads.completeNextMoveMutation` transaction.
 
-- [ ] **Step 1: Add failing mutation outcome and failure-safety assertions**
+- [x] **Step 1: Add failing mutation outcome and failure-safety assertions**
 
 ```ts
 expect(
@@ -146,13 +146,13 @@ expect(
 
 Add a no-Next-Move case expecting `{ status: "unchanged" }` with no new log or metadata change. Strengthen the foreign-user test to reread the owner's Thread and Activity Log after rejection and prove both remain unchanged.
 
-- [ ] **Step 2: Run the two Convex files and verify RED**
+- [x] **Step 2: Run the two Convex files and verify RED**
 
 Run: `bun run --cwd apps/web test:run convex/upNext.test.ts convex/authorization.test.ts`
 
 Expected: FAIL because the mutation currently returns `null`/`undefined` instead of an explicit outcome.
 
-- [ ] **Step 3: Replace the Convex-local decision with the shared rule**
+- [x] **Step 3: Replace the Convex-local decision with the shared rule**
 
 ```ts
 const decision = decideNextMoveCompletion({
@@ -173,7 +173,7 @@ return { status: "completed" };
 
 Keep `requireOwned` before `completeNextMove`, and return its outcome from the public mutation.
 
-- [ ] **Step 4: Run the focused Convex tests and web typecheck and verify GREEN**
+- [x] **Step 4: Run the focused Convex tests and web typecheck and verify GREEN**
 
 Run: `bun run --cwd apps/web test:run convex/upNext.test.ts convex/authorization.test.ts convex/lib/threadChanges.test.ts`
 
@@ -181,7 +181,7 @@ Run: `bunx turbo run typecheck --filter=@vita-os/web`
 
 Expected: tests and typechecking pass.
 
-- [ ] **Step 5: Commit the server migration**
+- [x] **Step 5: Commit the server migration**
 
 ```bash
 git add apps/web/convex packages/core
@@ -203,7 +203,7 @@ git commit -m "refactor(convex): share Next Move completion rule"
 - Consumes: `ApplicationClient` contracts, `decideNextMoveCompletion`, the generated Convex API, and the existing optimistic cache helpers.
 - Produces: `createConvexApplicationClient(convex): ApplicationClient`.
 
-- [ ] **Step 1: Write failing adapter resource tests**
+- [x] **Step 1: Write failing adapter resource tests**
 
 Use a boundary fake that mirrors the complete Convex watch shape. Assert real resource behavior:
 
@@ -224,13 +224,13 @@ expect(onChange).toHaveBeenCalledTimes(1);
 
 Add separate tests for loading, not found, query failure, Activity Log pagination translation and `loadMore`, successful/unchanged completion, mutation error mapping, and the mutation's observable optimistic effect on the existing Thread caches.
 
-- [ ] **Step 2: Run the adapter test and verify RED**
+- [x] **Step 2: Run the adapter test and verify RED**
 
 Run: `bun run --cwd apps/web test:run src/application/convex/convex-application-client.test.ts`
 
 Expected: FAIL because `createConvexApplicationClient` does not exist.
 
-- [ ] **Step 3: Implement live resources and the Convex adapter**
+- [x] **Step 3: Implement live resources and the Convex adapter**
 
 ```ts
 export function createConvexApplicationClient(
@@ -261,7 +261,7 @@ The live-resource implementation caches each translated snapshot until Convex si
 
 Use `decideNextMoveCompletion` inside `completeNextMove`'s Convex optimistic update and reuse the existing helpers that patch `threads.list`, `threads.detailBySlug`, and `areas.detailBySlug`.
 
-- [ ] **Step 4: Run adapter and optimistic tests and web typecheck and verify GREEN**
+- [x] **Step 4: Run adapter and optimistic tests and web typecheck and verify GREEN**
 
 Run: `bun run --cwd apps/web test:run src/application/convex/convex-application-client.test.ts src/features/threads/optimistic.test.ts`
 
@@ -269,7 +269,7 @@ Run: `bunx turbo run typecheck --filter=@vita-os/web`
 
 Expected: tests and typechecking pass.
 
-- [ ] **Step 5: Commit the Convex adapter**
+- [x] **Step 5: Commit the Convex adapter**
 
 ```bash
 git add apps/web/src/application apps/web/src/features/threads/optimistic.ts apps/web/src/features/threads/optimistic.test.ts
@@ -295,7 +295,7 @@ git commit -m "feat(web): adapt Convex to application client"
 - Consumes: injected `ApplicationClient` and its live resources.
 - Produces: `ApplicationClientProvider`, `useThreadDetail`, `useThreadActivity`, and `useApplicationClient` for transport-neutral React consumers.
 
-- [ ] **Step 1: Write failing React-boundary and migrated-flow tests**
+- [x] **Step 1: Write failing React-boundary and migrated-flow tests**
 
 ```tsx
 const detail = createMutableResource<QueryState<ThreadDetail>>({
@@ -314,13 +314,13 @@ expect(
 
 Cover not found, thrown query errors reaching the error boundary, slug-change unsubscribe, unmount cleanup, Activity Log loading/load-more states, and completion through the fake client's public method. Remove mocks of Convex detail, Activity Log, and completion APIs from the migrated-flow tests; retain mocks only for explicitly unmigrated controls.
 
-- [ ] **Step 2: Run the React tests and verify RED**
+- [x] **Step 2: Run the React tests and verify RED**
 
 Run: `bun run --cwd apps/web test:run src/application/application-client-context.test.tsx src/features/threads/thread-detail/thread-detail-view.test.tsx`
 
 Expected: FAIL because the provider and transport-neutral hooks do not exist.
 
-- [ ] **Step 3: Implement the provider/hooks and inject the adapter**
+- [x] **Step 3: Implement the provider/hooks and inject the adapter**
 
 ```tsx
 export function useThreadDetail(slug: string): QueryState<ThreadDetail> {
@@ -341,7 +341,7 @@ Create the adapter once beside the existing `ConvexReactClient` and place `Appli
 
 Map the explicit detail states to the current skeleton/not-found/error behavior. Map public Activity Log pagination state to the existing `ActivityLog` props. Make `useCompleteNextMove` call the injected client and throw the returned `ApplicationError` on `{ ok: false }` so the guarded action keeps its current toast path.
 
-- [ ] **Step 4: Run the focused React tests and web typecheck and verify GREEN**
+- [x] **Step 4: Run the focused React tests and web typecheck and verify GREEN**
 
 Run: `bun run --cwd apps/web test:run src/application/application-client-context.test.tsx src/features/threads/thread-detail/thread-detail-view.test.tsx src/features/threads/components/thread-log.test.tsx`
 
@@ -349,7 +349,7 @@ Run: `bunx turbo run typecheck --filter=@vita-os/web`
 
 Expected: tests and typechecking pass.
 
-- [ ] **Step 5: Commit the injected UI flow**
+- [x] **Step 5: Commit the injected UI flow**
 
 ```bash
 git add apps/web/src/application apps/web/src/main.tsx apps/web/src/test apps/web/src/features/threads
@@ -368,17 +368,17 @@ git commit -m "refactor(web): inject Thread application client"
 - Consumes: the completed shared boundary and issue 325 acceptance criteria.
 - Produces: an explicit list of remaining Convex dependencies and HTTP-adapter follow-on work.
 
-- [ ] **Step 1: Record the demonstrated flow and remaining dependencies**
+- [x] **Step 1: Record the demonstrated flow and remaining dependencies**
 
 Document that the migrated flow is `ThreadDetailView -> ApplicationClient -> Convex`, and list the still-direct Convex integrations: unrelated Thread edits/lifecycle, Thread Notes, Areas, Dashboard, Notes, auth, and application bootstrap. State that HTTP must provide a realtime strategy, transaction-backed `CompleteNextMoveStore`, authorization/error mapping, pagination, and equivalent optimistic reconciliation.
 
-- [ ] **Step 2: Run focused regression tests**
+- [x] **Step 2: Run focused regression tests**
 
 Run: `bun run --cwd apps/web test:run convex/upNext.test.ts convex/authorization.test.ts convex/lib/threadChanges.test.ts src/application src/features/threads src/features/dashboard src/features/areas`
 
 Expected: all selected tests pass without warnings.
 
-- [ ] **Step 3: Run repository verification**
+- [x] **Step 3: Run repository verification**
 
 Run: `bun run lint`
 
@@ -388,11 +388,11 @@ Run: `bun run test:run`
 
 Expected: every command exits zero; the full suite reports zero failed tests.
 
-- [ ] **Step 4: Review against standards and spec**
+- [x] **Step 4: Review against standards and spec**
 
 Use `/code-review` with fixed point `origin/main`. Run Standards and Spec review axes in parallel. Resolve every confirmed hard violation or issue-325 requirement gap, then rerun the relevant focused test and all three repository verification commands.
 
-- [ ] **Step 5: Commit the final reviewed implementation**
+- [x] **Step 5: Commit the final reviewed implementation**
 
 ```bash
 git add docs/migrations apps/web packages package.json bun.lock

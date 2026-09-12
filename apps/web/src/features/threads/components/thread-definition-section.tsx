@@ -1,11 +1,11 @@
-import type { Thread } from "@vita-os/contracts";
+import type { ThreadView } from "@/features/threads/thread-view";
 
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 
 import { ThreadDefinition } from "./thread-definition";
 
 interface ThreadDefinitionSectionProps {
-  thread: Thread;
+  thread: ThreadView;
 }
 
 export function ThreadDefinitionSection({

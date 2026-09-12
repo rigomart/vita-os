@@ -1,6 +1,6 @@
 import type { Id } from "@convex/_generated/dataModel";
 import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
-import type { ApplicationClient } from "@vita-os/contracts";
+import type { ApplicationClient, AreaId, ThreadId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { getFunctionName } from "convex/server";
@@ -143,7 +143,14 @@ function subscribedTo(name: string) {
 function renderShell() {
   const detailSnapshot = {
     status: "ready" as const,
-    data: { thread, area },
+    data: {
+      thread: {
+        ...thread,
+        _id: thread._id as unknown as ThreadId,
+        areaId: thread.areaId as unknown as AreaId,
+      },
+      area: { ...area, _id: area._id as unknown as AreaId },
+    },
   };
   const activitySnapshot = {
     status: "ready" as const,

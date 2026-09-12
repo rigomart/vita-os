@@ -4,6 +4,7 @@ import type { ProjectedThread } from "./lib/validators";
 import type { Fixture, SignedIn, TestApi } from "./test.helpers";
 
 import { api } from "./_generated/api";
+import { completeNextMove } from "./lib/threadChanges";
 import { FIRST_PAGE, seed, setupTest, signIn } from "./test.helpers";
 
 /**
@@ -146,6 +147,40 @@ describe("Up Next", () => {
 
     expect(outcome).toEqual({ status: "unchanged" });
     expect(await readThread()).toEqual(beforeThread);
+    expect(await readActivityLog()).toEqual(beforeActivity);
+  });
+
+  it("rolls back every completion write when the Activity Log insert fails", async () => {
+    await storeUpNext(["Book the appointment"]);
+    const beforeThread = await t.run((ctx) => ctx.db.get(owned.threadId));
+    const beforeActivity = await readActivityLog();
+    if (!beforeThread) throw new Error("Missing Thread fixture");
+
+    await expect(
+      t.run(async (ctx) => {
+        const db = new Proxy(ctx.db, {
+          get(target, property, receiver) {
+            if (property === "insert") {
+              return () => Promise.reject(new Error("Activity insert failed"));
+            }
+            const value = Reflect.get(target, property, receiver) as unknown;
+            return typeof value === "function" ? value.bind(target) : value;
+          },
+        });
+
+        await completeNextMove(
+          { ...ctx, db } as Parameters<typeof completeNextMove>[0],
+          {
+            userId: beforeThread.userId,
+            threadId: owned.threadId,
+          },
+        );
+      }),
+    ).rejects.toThrow("Activity insert failed");
+
+    expect(await t.run((ctx) => ctx.db.get(owned.threadId))).toEqual(
+      beforeThread,
+    );
     expect(await readActivityLog()).toEqual(beforeActivity);
   });
 

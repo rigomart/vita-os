@@ -1,5 +1,8 @@
-export type ThreadId = string;
-export type AreaId = string;
+declare const threadIdBrand: unique symbol;
+declare const areaIdBrand: unique symbol;
+
+export type ThreadId = string & { readonly [threadIdBrand]: "ThreadId" };
+export type AreaId = string & { readonly [areaIdBrand]: "AreaId" };
 
 export type Condition = "healthy" | "needs_attention" | "critical";
 

@@ -1,10 +1,11 @@
 import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedThread } from "@convex/lib/validators";
+import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 import type {
   ActivityLogEntry,
   ActivityLogPage,
   ApplicationClient,
   ApplicationError,
+  AreaId,
   CompleteNextMoveOutput,
   AreaSummary,
   LiveResource,
@@ -13,6 +14,7 @@ import type {
   QueryState,
   Thread,
   ThreadDetail,
+  ThreadId,
 } from "@vita-os/contracts";
 import type { OptimisticLocalStore } from "convex/browser";
 import type { ConvexReactClient } from "convex/react";
@@ -76,14 +78,26 @@ export interface ConvexApplicationGateway extends ConvexCompletionGateway {
     slug: string;
   }): ConvexWatch<ConvexThreadDetail | null>;
   watchThreadActivity(input: {
-    threadId: string;
+    threadId: ThreadId;
     initialPageSize: number;
   }): ConvexPaginatedWatch<ConvexActivityLogEntry>;
 }
 
 export interface ConvexThreadDetail {
-  thread: Thread;
-  area: AreaSummary | null;
+  thread: ProjectedThread;
+  area: ProjectedArea | null;
+}
+
+function toThread(thread: ProjectedThread): Thread {
+  return {
+    ...thread,
+    _id: thread._id as unknown as ThreadId,
+    areaId: thread.areaId as unknown as AreaId,
+  };
+}
+
+function toAreaSummary(area: ProjectedArea): AreaSummary {
+  return { ...area, _id: area._id as unknown as AreaId };
 }
 
 export function toApplicationError(error: unknown): ApplicationError {
@@ -135,7 +149,13 @@ export function createThreadDetailResource(
     readSnapshot: (detail): QueryState<ThreadDetail> => {
       if (detail === undefined) return LOADING_THREAD_DETAIL;
       if (detail === null || detail.area === null) return THREAD_NOT_FOUND;
-      return { status: "ready", data: detail as ThreadDetail };
+      return {
+        status: "ready",
+        data: {
+          thread: toThread(detail.thread),
+          area: toAreaSummary(detail.area),
+        },
+      };
     },
     readError: (error) => ({
       status: "error",
@@ -199,14 +219,14 @@ export function createThreadActivityResource(
 
 export async function completeNextMoveThroughConvex(
   gateway: ConvexCompletionGateway,
-  input: { threadId: string; thread: Thread },
+  input: { threadId: ThreadId; thread: Thread },
 ): Promise<OperationResult<CompleteNextMoveOutput>> {
   try {
     const value = await gateway.completeNextMove(
-      { id: input.threadId as Id<"threads"> },
+      { id: input.threadId as unknown as Id<"threads"> },
       (localStore, args) => {
         optimisticallyCompleteNextMove(localStore, args, {
-          thread: input.thread as ProjectedThread,
+          thread: input.thread as unknown as ProjectedThread,
         });
       },
     );
@@ -250,7 +270,7 @@ export function createConvexGateway(
     watchThreadActivity: ({ threadId, initialPageSize }) =>
       (convex as unknown as ConvexClientWithPaginatedWatch).watchPaginatedQuery(
         api.activityLogs.listByThread,
-        { threadId: threadId as Id<"threads"> },
+        { threadId: threadId as unknown as Id<"threads"> },
         { initialNumItems: initialPageSize, id: paginationId++ },
       ),
     completeNextMove: (input, optimisticUpdate) =>

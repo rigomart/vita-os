@@ -1,8 +1,10 @@
 import type {
   ApplicationClient,
+  AreaId,
   LiveResource,
   QueryState,
   ThreadDetail,
+  ThreadId,
 } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
@@ -71,16 +73,16 @@ describe("ApplicationClientProvider", () => {
 
     const detail = {
       thread: {
-        _id: "thread1",
+        _id: "thread1" as ThreadId,
         title: "Book checkup",
         slug: "book-checkup",
-        areaId: "area1",
+        areaId: "area1" as AreaId,
         order: 0,
         state: "open",
         createdAt: 1,
       },
       area: {
-        _id: "area1",
+        _id: "area1" as AreaId,
         name: "Health",
         slug: "health",
         condition: "healthy",
@@ -124,17 +126,17 @@ describe("ApplicationClientProvider", () => {
     });
     const detail = {
       thread: {
-        _id: "thread1",
+        _id: "thread1" as ThreadId,
         title: "Book checkup",
         slug: "book-checkup",
-        areaId: "area1",
+        areaId: "area1" as AreaId,
         order: 0,
         state: "open",
         nextMove: "Book appointment",
         createdAt: 1,
       },
       area: {
-        _id: "area1",
+        _id: "area1" as AreaId,
         name: "Health",
         slug: "health",
         condition: "healthy",

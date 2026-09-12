@@ -1,5 +1,3 @@
-import type { Thread } from "@vita-os/contracts";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,8 +22,10 @@ import { Textarea } from "@vita-os/ui/components/textarea";
 import { CheckCircle2, Ellipsis, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 
+import type { ThreadView } from "@/features/threads/thread-view";
+
 interface ThreadLifecycleMenuProps {
-  thread: Thread;
+  thread: ThreadView;
   onResolve: (resolutionNote?: string) => void;
   onReopen: () => void;
   onDelete: () => void;

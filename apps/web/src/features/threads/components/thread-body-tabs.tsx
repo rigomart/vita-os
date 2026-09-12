@@ -27,7 +27,7 @@ export function ThreadBodyTabs({
   threadId,
   lastActivityAt,
 }: ThreadBodyTabsProps) {
-  const convexThreadId = threadId as Id<"threads">;
+  const convexThreadId = threadId as unknown as Id<"threads">;
   // The cached query hook shares one subscription with ThreadNotesSection, so
   // reading the count here costs nothing beyond what the panel already pays.
   const notes = useQuery(api.threadNotes.list, { threadId: convexThreadId });

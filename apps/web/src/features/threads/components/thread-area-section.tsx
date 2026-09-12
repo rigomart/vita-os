@@ -1,11 +1,11 @@
-import type { AreaId, AreaSummary, Thread } from "@vita-os/contracts";
+import type { AreaView, ThreadView } from "@/features/threads/thread-view";
 
 import { AreaPicker } from "@/features/areas/components/area-picker";
 
 interface ThreadAreaSectionProps {
-  areas: AreaSummary[];
-  thread: Thread;
-  onMove: (areaId: AreaId) => void;
+  areas: AreaView[];
+  thread: ThreadView;
+  onMove: (areaId: string) => void;
   isMoving?: boolean;
 }
 

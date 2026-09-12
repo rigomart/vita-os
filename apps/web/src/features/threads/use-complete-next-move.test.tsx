@@ -1,4 +1,9 @@
-import type { ApplicationClient, Thread } from "@vita-os/contracts";
+import type {
+  ApplicationClient,
+  AreaId,
+  Thread,
+  ThreadId,
+} from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import { act, renderHook } from "@testing-library/react";
@@ -9,10 +14,10 @@ import { ApplicationClientProvider } from "@/application/application-client-cont
 import { useCompleteNextMove } from "./use-complete-next-move";
 
 const thread = {
-  _id: "thread1",
+  _id: "thread1" as ThreadId,
   title: "Book checkup",
   slug: "book-checkup",
-  areaId: "area1",
+  areaId: "area1" as AreaId,
   order: 0,
   state: "open",
   nextMove: "Call clinic",

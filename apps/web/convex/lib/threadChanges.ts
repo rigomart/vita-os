@@ -1,3 +1,4 @@
+import type { ThreadId } from "@vita-os/contracts";
 import type { CompleteNextMoveStore } from "@vita-os/core";
 import type { GenericMutationCtx } from "convex/server";
 
@@ -310,7 +311,7 @@ export async function completeNextMove(
     completeAtomically: async (input, decide) => {
       const thread = await requireOwned(ctx, "threads", {
         userId: input.actorId,
-        id: input.threadId as Id<"threads">,
+        id: input.threadId as unknown as Id<"threads">,
       });
       const decision = decide({
         nextMove: thread.nextMove,
@@ -331,6 +332,6 @@ export async function completeNextMove(
 
   return completeNextMoveOperation(store, {
     actorId: args.userId,
-    threadId: args.threadId,
+    threadId: args.threadId as unknown as ThreadId,
   });
 }

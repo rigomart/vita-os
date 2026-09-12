@@ -1,5 +1,3 @@
-import type { AreaSummary } from "@vita-os/contracts";
-
 import { Button } from "@vita-os/ui/components/button";
 import {
   Popover,
@@ -9,10 +7,12 @@ import {
 import { Compass } from "lucide-react";
 import { useState } from "react";
 
+import type { AreaView } from "@/features/threads/thread-view";
+
 import { AreaIcon } from "./area-icon";
 
 interface AreaPickerProps {
-  areas: AreaSummary[];
+  areas: AreaView[];
   selectedAreaId: string | undefined;
   onSelect: (id: string) => void;
   disabled?: boolean;
