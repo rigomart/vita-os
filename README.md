@@ -18,6 +18,46 @@ Backend variables live in the Convex deployment, not in any file. Set each with 
 
 Missing variables throw at startup naming the variable, on both the client and the Convex backend.
 
+## Web deployment
+
+The Vite application uses Cloudflare's Vite plugin and is configured for
+deployment as static assets on Cloudflare Workers. Its input configuration lives
+in `apps/web/wrangler.jsonc`; unmatched navigation requests fall back to
+`index.html` so client-side routes also work when loaded directly. The plugin
+creates the deployable Worker configuration as part of `vite build`.
+
+For a manual preview or deployment, first provide the two `VITE_CONVEX_*`
+variables in your shell, then run from `apps/web`:
+
+```bash
+bun run build
+bun run preview
+bun run deploy
+```
+
+For Cloudflare Workers Builds, use the repository root so Bun installs the root
+lockfile and resolves workspace packages consistently:
+
+- Root directory: `/`
+- Build command: `bunx turbo run build --filter=@vita-os/web`
+- Production deploy command: `bun run --cwd apps/web deploy:built`
+- Non-production deploy command: `bun run --cwd apps/web deploy:preview:built`
+- Build variables: `BUN_VERSION=1.3.14`, `VITE_CONVEX_URL`, and
+  `VITE_CONVEX_SITE_URL`
+
+The Vite variables are build-time settings, not Worker runtime variables.
+Cloudflare preview URLs use a different browser origin and are not included in
+Better Auth's production `SITE_URL`; use them for unauthenticated deployment
+checks unless that preview origin is deliberately trusted.
+
+Keep the Vercel project and `apps/web/vercel.json` active while validating the
+Worker. Before production cutover, attach the final hostname to the Worker. If
+that changes the browser origin, update Convex's `SITE_URL` to the exact new
+origin; OAuth callback URLs remain on the Convex site. Verify sign-in, social
+authentication, sign-out, and direct loading of an authenticated deep link,
+then switch traffic. Remove the Vercel project and configuration only after the
+rollback window has passed.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
