@@ -4,7 +4,6 @@ import type { ProjectedThread } from "./lib/validators";
 import type { Fixture, SignedIn, TestApi } from "./test.helpers";
 
 import { api } from "./_generated/api";
-import { completeNextMove } from "./lib/threadChanges";
 import { FIRST_PAGE, seed, setupTest, signIn } from "./test.helpers";
 
 /**
@@ -151,37 +150,49 @@ describe("Up Next", () => {
   });
 
   it("rolls back every completion write when the Activity Log insert fails", async () => {
-    await storeUpNext(["Book the appointment"]);
-    const beforeThread = await t.run((ctx) => ctx.db.get(owned.threadId));
-    const beforeActivity = await readActivityLog();
-    if (!beforeThread) throw new Error("Missing Thread fixture");
+    const limited = setupTest({ documentsWritten: 1 });
+    const limitedOwner = await signIn(limited, "limited-owner@example.com");
+    const createdArea = await limitedOwner.mutation(api.areas.create, {
+      name: "Limited Area",
+      condition: "healthy",
+      icon: "HeartPulse",
+    });
+    const createdThread = await limitedOwner.mutation(api.threads.create, {
+      title: "Limited Thread",
+      areaId: createdArea.id,
+    });
+    await limited.run((ctx) =>
+      ctx.db.patch(createdThread.id, {
+        nextMove: "Call the clinic",
+        upNext: ["Book the appointment"],
+      }),
+    );
+    const beforeThread = await limitedOwner.query(api.threads.get, {
+      id: createdThread.id,
+    });
+    const beforeActivity = await limitedOwner.query(
+      api.activityLogs.listByThread,
+      {
+        threadId: createdThread.id,
+        paginationOpts: FIRST_PAGE,
+      },
+    );
 
     await expect(
-      t.run(async (ctx) => {
-        const db = new Proxy(ctx.db, {
-          get(target, property, receiver) {
-            if (property === "insert") {
-              return () => Promise.reject(new Error("Activity insert failed"));
-            }
-            const value = Reflect.get(target, property, receiver) as unknown;
-            return typeof value === "function" ? value.bind(target) : value;
-          },
-        });
-
-        await completeNextMove(
-          { ...ctx, db } as Parameters<typeof completeNextMove>[0],
-          {
-            userId: beforeThread.userId,
-            threadId: owned.threadId,
-          },
-        );
+      limitedOwner.mutation(api.threads.completeNextMoveMutation, {
+        id: createdThread.id,
       }),
-    ).rejects.toThrow("Activity insert failed");
+    ).rejects.toThrow("Wrote too many documents");
 
-    expect(await t.run((ctx) => ctx.db.get(owned.threadId))).toEqual(
-      beforeThread,
-    );
-    expect(await readActivityLog()).toEqual(beforeActivity);
+    expect(
+      await limitedOwner.query(api.threads.get, { id: createdThread.id }),
+    ).toEqual(beforeThread);
+    expect(
+      await limitedOwner.query(api.activityLogs.listByThread, {
+        threadId: createdThread.id,
+        paginationOpts: FIRST_PAGE,
+      }),
+    ).toEqual(beforeActivity);
   });
 
   it("leaves the Next Move empty when it is cleared with nothing lined up", async () => {

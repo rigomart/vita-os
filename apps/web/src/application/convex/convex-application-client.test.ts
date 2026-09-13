@@ -7,15 +7,18 @@ import type {
   Thread,
   ThreadId,
 } from "@vita-os/contracts";
+import type { OptimisticLocalStore } from "convex/browser";
 import type { ConvexReactClient } from "convex/react";
 
 import { api } from "@convex/_generated/api";
+import { FIRST_PAGE, seed, setupTest, signIn } from "@convex/test.helpers";
 import { getFunctionName } from "convex/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { createLocalStore } from "@/test/optimistic-local-store";
 
 import type {
+  ConvexActivityLogEntry,
   ConvexApplicationGateway,
   ConvexPaginatedWatch,
   ConvexCompletionGateway,
@@ -230,17 +233,36 @@ describe("Convex application client", () => {
       { slug: area.slug },
       { area: convexArea, threads: [convexThread] },
     );
-    const gateway: ConvexCompletionGateway = {
-      completeNextMove: async (input, optimisticUpdate) => {
-        optimisticUpdate(localStore.store, input);
+    const convex = {
+      mutation: async (
+        reference: unknown,
+        input: { id: Id<"threads"> },
+        options: {
+          optimisticUpdate: (
+            store: OptimisticLocalStore,
+            args: { id: Id<"threads"> },
+          ) => void;
+        },
+      ) => {
+        expect(getFunctionName(reference as never)).toBe(
+          "threads:completeNextMoveMutation",
+        );
+        expect(input).toEqual({ id: convexThread._id });
+        options.optimisticUpdate(localStore.store, input);
         return { status: "completed" };
       },
-    };
+      watchQuery: () => new MutableWatch<ConvexThreadDetail | null>(),
+      watchPaginatedQuery: () =>
+        new MutablePaginatedWatch<ConvexActivityLogEntry>(),
+    } as unknown as ConvexReactClient;
 
-    const outcome = await completeNextMoveThroughConvex(gateway, {
-      threadId: thread._id,
-      thread,
-    });
+    const outcome = await completeNextMoveThroughConvex(
+      createConvexGateway(convex),
+      {
+        threadId: thread._id,
+        thread,
+      },
+    );
 
     const promoted = {
       ...convexThread,
@@ -261,39 +283,41 @@ describe("Convex application client", () => {
   });
 
   it("exposes Convex rollback after a failed optimistic completion", async () => {
-    const localStore = createLocalStore();
-    localStore.set(api.threads.list, {}, [convexThread]);
-    localStore.set(
+    const authoritativeStore = createLocalStore();
+    authoritativeStore.set(api.threads.list, {}, [convexThread]);
+    authoritativeStore.set(
       api.threads.detailBySlug,
       { slug: thread.slug },
       { thread: convexThread, area: convexArea },
     );
-    localStore.set(
+    authoritativeStore.set(
       api.areas.detailBySlug,
       { slug: area.slug },
       { area: convexArea, threads: [convexThread] },
     );
+    let optimisticThread: ProjectedThread | undefined;
     const gateway: ConvexCompletionGateway = {
       completeNextMove: async (input, optimisticUpdate) => {
-        optimisticUpdate(localStore.store, input);
-        expect(
-          (localStore.get(api.threads.list, {}) as ProjectedThread[])[0]
-            ?.nextMove,
-        ).toBe("Book appointment");
-
-        // Convex owns the optimistic layer. A rejected mutation removes that
-        // layer before the application receives the failure.
-        localStore.set(api.threads.list, {}, [convexThread]);
-        localStore.set(
+        const optimisticLayer = createLocalStore();
+        optimisticLayer.set(api.threads.list, {}, [convexThread]);
+        optimisticLayer.set(
           api.threads.detailBySlug,
           { slug: thread.slug },
           { thread: convexThread, area: convexArea },
         );
-        localStore.set(
+        optimisticLayer.set(
           api.areas.detailBySlug,
           { slug: area.slug },
           { area: convexArea, threads: [convexThread] },
         );
+
+        optimisticUpdate(optimisticLayer.store, input);
+        optimisticThread = (
+          optimisticLayer.get(api.threads.list, {}) as ProjectedThread[]
+        )[0];
+
+        // A rejected Convex mutation discards its separate optimistic layer.
+        // The authoritative cache was never rewritten by the application.
         throw new Error("WebSocket disconnected");
       },
     };
@@ -311,13 +335,16 @@ describe("Convex application client", () => {
         retryable: true,
       },
     });
-    expect(localStore.get(api.threads.list, {})).toEqual([convexThread]);
+    expect(optimisticThread?.nextMove).toBe("Book appointment");
+    expect(authoritativeStore.get(api.threads.list, {})).toEqual([
+      convexThread,
+    ]);
     expect(
-      localStore.get(api.threads.detailBySlug, { slug: thread.slug }),
+      authoritativeStore.get(api.threads.detailBySlug, { slug: thread.slug }),
     ).toEqual({ thread: convexThread, area: convexArea });
-    expect(localStore.get(api.areas.detailBySlug, { slug: area.slug })).toEqual(
-      { area: convexArea, threads: [convexThread] },
-    );
+    expect(
+      authoritativeStore.get(api.areas.detailBySlug, { slug: area.slug }),
+    ).toEqual({ area: convexArea, threads: [convexThread] });
   });
 
   it("hides missing and foreign Threads behind the same client error", async () => {
@@ -361,24 +388,72 @@ describe("Convex application client", () => {
     unsubscribe();
   });
 
-  it("delivers confirmed Thread and Activity Log updates to a second client", () => {
-    const detailWatch = new MutableWatch<ConvexThreadDetail | null>();
-    const activityWatch = new MutablePaginatedWatch<ActivityLogEntry>();
-    const gateway: ConvexApplicationGateway = {
-      watchThreadDetail: () => detailWatch,
-      watchThreadActivity: () => activityWatch,
-      completeNextMove: async () => ({ status: "completed" }),
-    };
-    const first = createConvexApplicationClient(gateway);
-    const second = createConvexApplicationClient(gateway);
-    const firstDetail = first.watchThreadDetail({ slug: thread.slug });
-    const secondDetail = second.watchThreadDetail({ slug: thread.slug });
+  it("delivers a public mutation's confirmed updates to a second client", async () => {
+    const backend = setupTest();
+    const owner = await signIn(backend, "adapter-owner@example.com");
+    const fixture = await seed(owner);
+    await owner.mutation(api.threads.replaceUpNext, {
+      id: fixture.threadId,
+      moves: ["Book appointment"],
+    });
+
+    const detailWatches: Array<{
+      slug: string;
+      watch: MutableWatch<ConvexThreadDetail | null>;
+    }> = [];
+    const activityWatches: Array<{
+      threadId: ThreadId;
+      watch: MutablePaginatedWatch<ConvexActivityLogEntry>;
+    }> = [];
+
+    async function publishConfirmedState(): Promise<void> {
+      await Promise.all([
+        ...detailWatches.map(async ({ slug, watch }) => {
+          watch.publish(await owner.query(api.threads.detailBySlug, { slug }));
+        }),
+        ...activityWatches.map(async ({ threadId, watch }) => {
+          const result = await owner.query(api.activityLogs.listByThread, {
+            threadId: threadId as unknown as Id<"threads">,
+            paginationOpts: FIRST_PAGE,
+          });
+          watch.publish(result.page, "Exhausted");
+        }),
+      ]);
+    }
+
+    function connectedGateway(): ConvexApplicationGateway {
+      return {
+        watchThreadDetail: ({ slug }) => {
+          const watch = new MutableWatch<ConvexThreadDetail | null>();
+          detailWatches.push({ slug, watch });
+          return watch;
+        },
+        watchThreadActivity: ({ threadId }) => {
+          const watch = new MutablePaginatedWatch<ConvexActivityLogEntry>();
+          activityWatches.push({ threadId, watch });
+          return watch;
+        },
+        completeNextMove: async ({ id }) => {
+          const result = await owner.mutation(
+            api.threads.completeNextMoveMutation,
+            { id },
+          );
+          await publishConfirmedState();
+          return result;
+        },
+      };
+    }
+
+    const first = createConvexApplicationClient(connectedGateway());
+    const second = createConvexApplicationClient(connectedGateway());
+    const firstDetail = first.watchThreadDetail({ slug: fixture.threadSlug });
+    const secondDetail = second.watchThreadDetail({ slug: fixture.threadSlug });
     const firstActivity = first.watchThreadActivity({
-      threadId: thread._id,
+      threadId: fixture.threadId as unknown as ThreadId,
       initialPageSize: 20,
     });
     const secondActivity = second.watchThreadActivity({
-      threadId: thread._id,
+      threadId: fixture.threadId as unknown as ThreadId,
       initialPageSize: 20,
     });
     const cleanups = [
@@ -387,41 +462,40 @@ describe("Convex application client", () => {
       firstActivity.subscribe(() => undefined),
       secondActivity.subscribe(() => undefined),
     ];
-    const confirmedThread = {
-      ...convexThread,
-      nextMove: "Book appointment",
-      upNext: undefined,
-    };
-    const confirmedEntry = {
-      _id: "log2",
-      type: "next_action_change",
-      content: 'Completed "Call clinic" — next move set to "Book appointment"',
-      previousValue: "Call clinic",
-      newValue: "Book appointment",
-      createdAt: 20,
-    } satisfies ActivityLogEntry;
 
-    detailWatch.publish({ thread: confirmedThread, area: convexArea });
-    activityWatch.publish([confirmedEntry], "Exhausted");
+    await publishConfirmedState();
+    const before = firstDetail.getSnapshot();
+    if (before.status !== "ready") throw new Error("Thread did not load");
 
-    const expectedDetail = {
-      status: "ready",
-      data: {
-        thread: {
-          ...thread,
-          nextMove: "Book appointment",
-          upNext: undefined,
-        },
-        area,
-      },
-    };
-    expect(firstDetail.getSnapshot()).toEqual(expectedDetail);
-    expect(secondDetail.getSnapshot()).toEqual(expectedDetail);
-    expect(firstActivity.getSnapshot()).toEqual({
-      status: "ready",
-      data: { entries: [confirmedEntry], pagination: "exhausted" },
+    await first.completeNextMove({
+      threadId: before.data.thread._id,
+      thread: before.data.thread,
     });
-    expect(secondActivity.getSnapshot()).toEqual(firstActivity.getSnapshot());
+
+    for (const resource of [firstDetail, secondDetail]) {
+      const snapshot = resource.getSnapshot();
+      expect(snapshot).toMatchObject({
+        status: "ready",
+        data: {
+          thread: { nextMove: "Book appointment" },
+        },
+      });
+      if (snapshot.status !== "ready") throw new Error("Thread did not load");
+      expect(snapshot.data.thread.upNext).toBeUndefined();
+    }
+    for (const resource of [firstActivity, secondActivity]) {
+      const snapshot = resource.getSnapshot();
+      if (snapshot.status !== "ready") {
+        throw new Error("Activity Log did not load");
+      }
+      expect(snapshot.data.entries[0]).toMatchObject({
+        type: "next_action_change",
+        content:
+          'Completed "Call the clinic" — next move set to "Book appointment"',
+        previousValue: "Call the clinic",
+        newValue: "Book appointment",
+      });
+    }
 
     for (const cleanup of cleanups) cleanup();
   });
@@ -451,6 +525,37 @@ describe("Convex application client", () => {
       status: "ready",
       data: { thread, area },
     });
+    unsubscribe();
+  });
+
+  it("connects the public Activity Log watch to Convex pagination", () => {
+    const activityWatch = new MutablePaginatedWatch<ConvexActivityLogEntry>();
+    const watchPaginatedQuery = vi.fn(
+      (reference: unknown, args: unknown, options: unknown) => {
+        expect(getFunctionName(reference as never)).toBe(
+          "activityLogs:listByThread",
+        );
+        expect(args).toEqual({ threadId: convexThread._id });
+        expect(options).toEqual({
+          initialNumItems: 7,
+          id: expect.any(Number),
+        });
+        return activityWatch;
+      },
+    );
+    const convex = {
+      watchQuery: () => new MutableWatch<ConvexThreadDetail | null>(),
+      watchPaginatedQuery,
+      mutation: async () => ({ status: "unchanged" }),
+    } as unknown as ConvexReactClient;
+    const client = createConvexApplicationClient(createConvexGateway(convex));
+    const resource = client.watchThreadActivity({
+      threadId: thread._id,
+      initialPageSize: 7,
+    });
+    const unsubscribe = resource.subscribe(() => undefined);
+
+    expect(watchPaginatedQuery).toHaveBeenCalledTimes(1);
     unsubscribe();
   });
 });

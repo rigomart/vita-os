@@ -34,8 +34,14 @@ const HOUR_MS = 60 * 60 * 1000;
 /** A first page big enough to hold any fixture a test seeds. */
 export const FIRST_PAGE = { numItems: 50, cursor: null };
 
-export function setupTest(): TestApi {
-  const t = convexTest(schema, modules);
+export function setupTest(
+  transactionLimits:
+    | boolean
+    | {
+        documentsWritten?: number;
+      } = false,
+): TestApi {
+  const t = convexTest({ schema, modules, transactionLimits });
   betterAuthTest.register(t);
   return t;
 }
