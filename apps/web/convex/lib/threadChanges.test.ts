@@ -4,7 +4,6 @@ import type { Doc, Id } from "../_generated/dataModel";
 
 import {
   applyThreadPatch,
-  buildCompleteNextMoveChange,
   buildThreadLifecyclePatch,
   buildThreadPatchLogEntries,
   completeNextMove,
@@ -287,36 +286,20 @@ describe("applyThreadPatch", () => {
   });
 });
 
-describe("buildCompleteNextMoveChange", () => {
-  it("logs the completed next move", () => {
-    const change = buildCompleteNextMoveChange("Call clinic");
-
-    expect(change).toEqual({
-      log: {
-        type: "next_action_change",
-        content: 'Completed "Call clinic" — next move cleared',
-        previousValue: "Call clinic",
-        newValue: undefined,
-      },
-    });
-  });
-
-  it("does nothing when there is no next move", () => {
-    expect(buildCompleteNextMoveChange(undefined)).toBeNull();
-  });
-});
-
 describe("completeNextMove", () => {
   it("stamps the Thread's last activity with the completion entry", async () => {
     const thread = makeThread({ nextMove: "Call clinic" });
     const db = {
-      get: vi.fn(),
+      get: vi.fn().mockResolvedValue(thread),
       insert: vi.fn(),
       patch: vi.fn(),
     };
     const ctx = { db } as unknown as Parameters<typeof completeNextMove>[0];
 
-    await completeNextMove(ctx, { userId: "user1", thread });
+    await completeNextMove(ctx, {
+      userId: "user1",
+      threadId: thread._id,
+    });
 
     expect(db.patch.mock.calls[0]).toEqual([
       thread._id,

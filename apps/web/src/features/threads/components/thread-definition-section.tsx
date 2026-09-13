@@ -1,11 +1,11 @@
-import type { ProjectedThread } from "@convex/lib/validators";
+import type { ThreadView } from "@/features/threads/thread-view";
 
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 
 import { ThreadDefinition } from "./thread-definition";
 
 interface ThreadDefinitionSectionProps {
-  thread: ProjectedThread;
+  thread: ThreadView;
 }
 
 export function ThreadDefinitionSection({

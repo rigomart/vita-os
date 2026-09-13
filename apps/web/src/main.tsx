@@ -9,6 +9,11 @@ import { ConvexReactClient } from "convex/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { ApplicationClientProvider } from "./application/application-client-context";
+import {
+  createConvexApplicationClient,
+  createConvexGateway,
+} from "./application/convex/convex-application-client";
 import {
   AppErrorBoundary,
   RouteErrorFallback,
@@ -28,6 +33,9 @@ initializeTheme();
 const convex = new ConvexReactClient(CONVEX_URL, {
   expectAuth: true,
 });
+const applicationClient = createConvexApplicationClient(
+  createConvexGateway(convex),
+);
 
 // Every match gets a branded boundary; routes that own the whole viewport
 // override this with the full-page `AppErrorFallback`.
@@ -55,12 +63,14 @@ createRoot(root).render(
           // under TypeScript 7, despite this matching its documented plugin setup.
           authClient={authClient as unknown as AuthClient}
         >
-          <ConvexQueryCacheProvider expiration={300_000}>
-            <FeedbackProvider>
-              <RouterProvider router={router} />
-              <ThemeAwareToaster />
-            </FeedbackProvider>
-          </ConvexQueryCacheProvider>
+          <ApplicationClientProvider client={applicationClient}>
+            <ConvexQueryCacheProvider expiration={300_000}>
+              <FeedbackProvider>
+                <RouterProvider router={router} />
+                <ThemeAwareToaster />
+              </FeedbackProvider>
+            </ConvexQueryCacheProvider>
+          </ApplicationClientProvider>
         </ConvexBetterAuthProvider>
       </ThemeProvider>
     </AppErrorBoundary>

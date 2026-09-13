@@ -1,0 +1,26 @@
+{
+  "name": "@vita-os/core",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "oxlint --fix --deny-warnings . && oxfmt --write .",
+    "lint:check": "oxlint --deny-warnings . && oxfmt --check .",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "@vita-os/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "4.1.7"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

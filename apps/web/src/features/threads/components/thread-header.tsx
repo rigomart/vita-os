@@ -1,9 +1,9 @@
-import type { ProjectedThread } from "@convex/lib/validators";
+import type { ThreadView } from "@/features/threads/thread-view";
 
 import { EditableField } from "@/components/ui/editable-field";
 
 interface ThreadHeaderProps {
-  thread: ProjectedThread;
+  thread: ThreadView;
   onTitleSave: (title: string) => void;
 }
 

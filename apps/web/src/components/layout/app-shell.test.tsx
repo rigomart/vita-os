@@ -1,5 +1,6 @@
 import type { Id } from "@convex/_generated/dataModel";
 import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
+import type { ApplicationClient, AreaId, ThreadId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { getFunctionName } from "convex/server";
@@ -65,6 +66,11 @@ vi.mock("convex/react", () => ({
       withOptimisticUpdate: () => mutation,
     });
   },
+  usePaginatedQuery: () => ({
+    results: [],
+    status: "Exhausted",
+    loadMore: vi.fn(),
+  }),
 }));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -116,10 +122,42 @@ function subscribedTo(name: string) {
 }
 
 function renderShell() {
+  const detailSnapshot = {
+    status: "ready" as const,
+    data: {
+      thread: {
+        ...thread,
+        _id: thread._id as unknown as ThreadId,
+        areaId: thread.areaId as unknown as AreaId,
+      },
+      area: { ...area, _id: area._id as unknown as AreaId },
+    },
+  };
+  const activitySnapshot = {
+    status: "ready" as const,
+    data: { entries: [], pagination: "exhausted" as const },
+  };
   return render(
     <AppShell>
       <p>page body</p>
     </AppShell>,
+    {
+      applicationClient: {
+        watchThreadDetail: () => ({
+          getSnapshot: () => detailSnapshot,
+          subscribe: () => () => undefined,
+        }),
+        watchThreadActivity: () => ({
+          getSnapshot: () => activitySnapshot,
+          subscribe: () => () => undefined,
+          loadMore: vi.fn(),
+        }),
+        completeNextMove: vi.fn().mockResolvedValue({
+          ok: true,
+          value: { status: "completed" },
+        }),
+      } satisfies ApplicationClient,
+    },
   );
 }
 

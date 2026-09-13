@@ -1,7 +1,7 @@
-import type { ProjectedThread } from "@convex/lib/validators";
-
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
+
+import type { ThreadView } from "@/features/threads/thread-view";
 
 import { useAttentionClock } from "@/hooks/use-attention-clock";
 
@@ -11,7 +11,7 @@ import { useUpdateThread } from "../use-update-thread";
 import { ThreadAttention } from "./thread-attention";
 
 interface ThreadAttentionSectionProps {
-  thread: ProjectedThread;
+  thread: ThreadView;
 }
 
 export function ThreadAttentionSection({

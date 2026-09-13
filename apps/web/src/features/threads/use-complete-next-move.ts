@@ -1,16 +1,23 @@
-import type { ProjectedThread } from "@convex/lib/validators";
+import type { AreaId, Thread, ThreadId } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
+import type { ThreadView } from "@/features/threads/thread-view";
 
-import { optimisticallyCompleteNextMove } from "@/features/threads/optimistic";
+import { useApplicationClient } from "@/application/application-client-context";
 
-export function useCompleteNextMove(thread: ProjectedThread) {
-  const completeNextMoveMutation = useMutation(
-    api.threads.completeNextMoveMutation,
-  ).withOptimisticUpdate((localStore, args) => {
-    optimisticallyCompleteNextMove(localStore, args, { thread });
-  });
+export function useCompleteNextMove(thread: ThreadView) {
+  const client = useApplicationClient();
 
-  return () => completeNextMoveMutation({ id: thread._id });
+  return async () => {
+    const applicationThread: Thread = {
+      ...thread,
+      _id: thread._id as ThreadId,
+      areaId: thread.areaId as AreaId,
+    };
+    const result = await client.completeNextMove({
+      threadId: applicationThread._id,
+      thread: applicationThread,
+    });
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  };
 }

@@ -1,6 +1,5 @@
-import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
+import type { AreaSummary, Thread } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
 import { Button } from "@vita-os/ui/components/button";
 import {
   ButtonGroup,
@@ -12,10 +11,10 @@ import {
   DrawerDescription,
   DrawerTitle,
 } from "@vita-os/ui/components/drawer";
-import { useQuery } from "convex-helpers/react/cache/hooks";
 import { X } from "lucide-react";
 import { useMemo } from "react";
 
+import { useThreadDetail } from "@/application/application-client-context";
 import { AreaConditionDot } from "@/features/areas/components/area-condition-dot";
 import { ThreadAreaSectionSection } from "@/features/threads/components/thread-area-section-section";
 import { ThreadAttentionSection } from "@/features/threads/components/thread-attention-section";
@@ -57,7 +56,8 @@ export function ThreadDetailView({
   const showDesktopPane = useThreadPaneViewport();
   // One subscription serves both URL forms: `?thread=` reads the Area straight
   // off the composite, the canonical deep link validates against it.
-  const detail = useQuery(api.threads.detailBySlug, { slug: threadSlug });
+  const detailState = useThreadDetail(threadSlug);
+  const detail = detailState.status === "ready" ? detailState.data : null;
 
   useDocumentTitle(detail?.thread.title ?? "Thread");
 
@@ -66,8 +66,12 @@ export function ThreadDetailView({
     [onThreadLocationChange],
   );
 
+  if (detailState.status === "error") {
+    throw new Error(detailState.error.message);
+  }
+
   const title = detail?.thread.title ?? "Thread detail";
-  const isLoading = detail === undefined;
+  const isLoading = detailState.status === "loading";
   const area = detail?.area ?? null;
   const hasMatchingThread =
     detail != null &&
@@ -111,7 +115,7 @@ export function ThreadDetailView({
 
 interface ThreadShellProps {
   title: string;
-  thread: ProjectedThread | null;
+  thread: Thread | null;
   showActions: boolean;
   onClosed: () => void;
   children: React.ReactNode;
@@ -212,7 +216,7 @@ function ThreadControls({
   showActions,
   onRequestClose,
 }: {
-  thread: ProjectedThread | null;
+  thread: Thread | null;
   showActions: boolean;
   onRequestClose: () => void;
 }) {
@@ -243,8 +247,8 @@ function ThreadControls({
 }
 
 interface ThreadDetailContentProps {
-  thread: ProjectedThread;
-  area: ProjectedArea;
+  thread: Thread;
+  area: AreaSummary;
 }
 
 /**

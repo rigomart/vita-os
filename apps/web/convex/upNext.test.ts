@@ -62,9 +62,11 @@ describe("Up Next", () => {
     await storeUpNext(["Book the appointment", "Collect the results"]);
     const before = await readActivityLog();
 
-    await owner.mutation(api.threads.completeNextMoveMutation, {
+    const outcome = await owner.mutation(api.threads.completeNextMoveMutation, {
       id: owned.threadId,
     });
+
+    expect(outcome).toEqual({ status: "completed" });
 
     const thread = await readThread();
     expect(thread?.nextMove).toBe("Book the appointment");
@@ -129,6 +131,68 @@ describe("Up Next", () => {
       }),
     );
     expect(after[0]?.newValue).toBeUndefined();
+  });
+
+  it("reports no change and writes nothing when there is no Next Move", async () => {
+    await owner.mutation(api.threads.completeNextMoveMutation, {
+      id: owned.threadId,
+    });
+    const beforeThread = await readThread();
+    const beforeActivity = await readActivityLog();
+
+    const outcome = await owner.mutation(api.threads.completeNextMoveMutation, {
+      id: owned.threadId,
+    });
+
+    expect(outcome).toEqual({ status: "unchanged" });
+    expect(await readThread()).toEqual(beforeThread);
+    expect(await readActivityLog()).toEqual(beforeActivity);
+  });
+
+  it("rolls back every completion write when the Activity Log insert fails", async () => {
+    const limited = setupTest({ documentsWritten: 1 });
+    const limitedOwner = await signIn(limited, "limited-owner@example.com");
+    const createdArea = await limitedOwner.mutation(api.areas.create, {
+      name: "Limited Area",
+      condition: "healthy",
+      icon: "HeartPulse",
+    });
+    const createdThread = await limitedOwner.mutation(api.threads.create, {
+      title: "Limited Thread",
+      areaId: createdArea.id,
+    });
+    await limited.run((ctx) =>
+      ctx.db.patch(createdThread.id, {
+        nextMove: "Call the clinic",
+        upNext: ["Book the appointment"],
+      }),
+    );
+    const beforeThread = await limitedOwner.query(api.threads.get, {
+      id: createdThread.id,
+    });
+    const beforeActivity = await limitedOwner.query(
+      api.activityLogs.listByThread,
+      {
+        threadId: createdThread.id,
+        paginationOpts: FIRST_PAGE,
+      },
+    );
+
+    await expect(
+      limitedOwner.mutation(api.threads.completeNextMoveMutation, {
+        id: createdThread.id,
+      }),
+    ).rejects.toThrow("Wrote too many documents");
+
+    expect(
+      await limitedOwner.query(api.threads.get, { id: createdThread.id }),
+    ).toEqual(beforeThread);
+    expect(
+      await limitedOwner.query(api.activityLogs.listByThread, {
+        threadId: createdThread.id,
+        paginationOpts: FIRST_PAGE,
+      }),
+    ).toEqual(beforeActivity);
   });
 
   it("leaves the Next Move empty when it is cleared with nothing lined up", async () => {

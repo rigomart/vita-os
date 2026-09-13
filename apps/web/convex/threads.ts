@@ -246,11 +246,6 @@ export const completeNextMoveMutation = mutation({
   args: { id: v.id("threads") },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
-    const thread = await requireOwned(ctx, "threads", {
-      userId,
-      id: args.id,
-    });
-
-    await completeNextMove(ctx, { userId, thread });
+    return completeNextMove(ctx, { userId, threadId: args.id });
   },
 });

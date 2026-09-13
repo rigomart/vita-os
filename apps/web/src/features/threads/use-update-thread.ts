@@ -4,13 +4,15 @@ import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
 
+import type { AreaView, ThreadView } from "@/features/threads/thread-view";
+
 import { optimisticallyUpdateThread } from "@/features/threads/optimistic";
 
 export type UpdateThreadValue = {
-  id: Id<"threads">;
+  id: string;
   title?: string;
   summary?: string | null;
-  areaId?: Id<"areas">;
+  areaId?: string;
   nextMove?: string | null;
   followUp?: number | null;
   state?: "open" | "resolved";
@@ -23,8 +25,8 @@ export type UpdateThreadValue = {
  * step; callers that never pass `areaId` can omit it.
  */
 export function useUpdateThread(
-  thread: ProjectedThread,
-  options: { areas?: ProjectedArea[] } = {},
+  thread: ThreadView,
+  options: { areas?: AreaView[] } = {},
 ) {
   const { areas } = options;
   const updateThread = useMutation(api.threads.update).withOptimisticUpdate(
@@ -33,9 +35,19 @@ export function useUpdateThread(
         args.areaId === undefined
           ? undefined
           : areas?.find((area) => area._id === args.areaId);
-      optimisticallyUpdateThread(localStore, args, { thread, destinationArea });
+      optimisticallyUpdateThread(localStore, args, {
+        thread: thread as unknown as ProjectedThread,
+        destinationArea: destinationArea as unknown as
+          | ProjectedArea
+          | undefined,
+      });
     },
   );
 
-  return (value: UpdateThreadValue) => updateThread(value);
+  return (value: UpdateThreadValue) =>
+    updateThread({
+      ...value,
+      id: value.id as Id<"threads">,
+      areaId: value.areaId as Id<"areas"> | undefined,
+    });
 }

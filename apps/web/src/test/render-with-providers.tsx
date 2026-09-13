@@ -1,3 +1,5 @@
+import type { ApplicationClient } from "@vita-os/contracts";
+
 import {
   createMemoryHistory,
   createRootRoute,
@@ -14,9 +16,12 @@ import { FeedbackProvider, type Feedback } from "@vita-os/ui/lib/feedback";
 import { useMemo, type ReactElement, type ReactNode } from "react";
 import { vi } from "vitest";
 
+import { ApplicationClientProvider } from "@/application/application-client-context";
+
 export type FeedbackMock = Feedback;
 
 type ProviderOptions = {
+  applicationClient?: ApplicationClient;
   feedback?: Feedback;
 };
 
@@ -36,7 +41,10 @@ export function createFeedbackMock(): FeedbackMock {
   };
 }
 
-function createWrapper(feedback: Feedback) {
+function createWrapper(
+  feedback: Feedback,
+  applicationClient?: ApplicationClient,
+) {
   return function Providers({ children }: { children: ReactNode }) {
     const router = useMemo(() => {
       const rootRoute = createRootRoute();
@@ -46,12 +54,19 @@ function createWrapper(feedback: Feedback) {
       });
     }, []);
 
-    return (
+    const content = (
       <FeedbackProvider feedback={feedback}>
         <RouterContextProvider router={router}>
           {children}
         </RouterContextProvider>
       </FeedbackProvider>
+    );
+    return applicationClient ? (
+      <ApplicationClientProvider client={applicationClient}>
+        {content}
+      </ApplicationClientProvider>
+    ) : (
+      content
     );
   };
 }
@@ -59,13 +74,14 @@ function createWrapper(feedback: Feedback) {
 function customRender(
   ui: ReactElement,
   {
+    applicationClient,
     feedback = createFeedbackMock(),
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
   const result = rtlRender(ui, {
     ...options,
-    wrapper: createWrapper(feedback),
+    wrapper: createWrapper(feedback, applicationClient),
   });
   return { ...result, feedback };
 }
@@ -73,13 +89,14 @@ function customRender(
 function customRenderHook<TResult, TProps>(
   hook: (initialProps: TProps) => TResult,
   {
+    applicationClient,
     feedback = createFeedbackMock(),
     ...options
   }: RenderHookWithProvidersOptions<TProps> = {},
 ) {
   const result = rtlRenderHook(hook, {
     ...options,
-    wrapper: createWrapper(feedback),
+    wrapper: createWrapper(feedback, applicationClient),
   });
   return { ...result, feedback };
 }

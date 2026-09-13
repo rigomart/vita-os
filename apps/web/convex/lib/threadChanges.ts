@@ -1,13 +1,17 @@
+import type { ThreadId } from "@vita-os/contracts";
+import type { CompleteNextMoveStore } from "@vita-os/core";
 import type { GenericMutationCtx } from "convex/server";
 
-import type { DataModel, Doc } from "../_generated/dataModel";
+import { completeNextMove as completeNextMoveOperation } from "@vita-os/core";
+
+import type { DataModel, Doc, Id } from "../_generated/dataModel";
 
 import {
   type AutoActivityLogEntry,
   buildAreaMoveLogEntry,
 } from "./activityLog";
 import { recordActivity } from "./activityWrites";
-import { getOwned } from "./ownedAccess";
+import { getOwned, requireOwned } from "./ownedAccess";
 import { takeFrontUpNextMove } from "./upNext";
 
 type MutationCtx = GenericMutationCtx<DataModel>;
@@ -301,43 +305,33 @@ export function buildThreadLifecyclePatch(
  */
 export async function completeNextMove(
   ctx: MutationCtx,
-  args: { userId: string; thread: Doc<"threads"> },
-): Promise<void> {
-  const promotion = takeFrontUpNextMove(args.thread.upNext);
-  const change = buildCompleteNextMoveChange(
-    args.thread.nextMove ?? undefined,
-    promotion?.nextMove,
-  );
-  if (!change) return;
+  args: { userId: string; threadId: Id<"threads"> },
+): Promise<{ status: "completed" } | { status: "unchanged" }> {
+  const store: CompleteNextMoveStore = {
+    completeAtomically: async (input, decide) => {
+      const thread = await requireOwned(ctx, "threads", {
+        userId: input.actorId,
+        id: input.threadId as unknown as Id<"threads">,
+      });
+      const decision = decide({
+        nextMove: thread.nextMove,
+        upNext: thread.upNext,
+      });
+      if (decision.status === "unchanged") return { status: "unchanged" };
 
-  await ctx.db.patch(
-    args.thread._id,
-    promotion
-      ? { nextMove: promotion.nextMove, upNext: promotion.upNext }
-      : { nextMove: undefined },
-  );
-  await recordActivity(ctx, {
-    userId: args.userId,
-    threadId: args.thread._id,
-    entry: change.log,
-    createdAt: Date.now(),
-  });
-}
-
-export function buildCompleteNextMoveChange(
-  nextMove: string | undefined,
-  promotedUpNextMove?: string,
-): { log: AutoActivityLog } | null {
-  if (!nextMove) return null;
-
-  return {
-    log: {
-      type: "next_action_change",
-      content: promotedUpNextMove
-        ? `Completed "${nextMove}" — next move set to "${promotedUpNextMove}"`
-        : `Completed "${nextMove}" — next move cleared`,
-      previousValue: nextMove,
-      newValue: promotedUpNextMove,
+      await ctx.db.patch(thread._id, decision.patch);
+      await recordActivity(ctx, {
+        userId: input.actorId,
+        threadId: thread._id,
+        entry: decision.activity,
+        createdAt: Date.now(),
+      });
+      return { status: "completed" };
     },
   };
+
+  return completeNextMoveOperation(store, {
+    actorId: args.userId,
+    threadId: args.threadId as unknown as ThreadId,
+  });
 }

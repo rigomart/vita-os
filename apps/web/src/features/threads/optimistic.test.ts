@@ -101,6 +101,12 @@ describe("Thread optimistic updates", () => {
     });
   });
 
+  it("leaves a Thread without a Next Move unchanged", () => {
+    const thread = makeThread({ upNext: ["Book the scan"] });
+
+    expect(completeNextMove(thread)).toBe(thread);
+  });
+
   it("rewrites Up Next, storing an emptied line as absent", () => {
     const thread = makeThread({
       nextMove: "Call clinic",

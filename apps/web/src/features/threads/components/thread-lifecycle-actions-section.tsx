@@ -1,6 +1,6 @@
-import type { ProjectedThread } from "@convex/lib/validators";
-
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
+
+import type { ThreadView } from "@/features/threads/thread-view";
 
 import { useRemoveThread } from "@/features/threads/use-remove-thread";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
@@ -8,7 +8,7 @@ import { useUpdateThread } from "@/features/threads/use-update-thread";
 import { ThreadLifecycleMenu } from "./thread-lifecycle-menu";
 
 interface ThreadLifecycleActionsProps {
-  thread: ProjectedThread;
+  thread: ThreadView;
   onRequestClose: () => void;
 }
 

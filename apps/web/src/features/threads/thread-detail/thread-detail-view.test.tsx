@@ -1,10 +1,20 @@
 import type { Id } from "@convex/_generated/dataModel";
 import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
+import type {
+  ApplicationClient,
+  ActivityLogEntry,
+  AreaId,
+  LiveResource,
+  QueryState,
+  ThreadDetail,
+  ThreadId,
+} from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AppErrorBoundary } from "@/components/error-boundary";
 import {
   fireEvent,
   render,
@@ -21,10 +31,22 @@ const mocks = vi.hoisted(() => ({
   onThreadLocationChange: vi.fn(),
   threadState: "open" as "open" | "resolved",
   threadExists: true,
+  detailError: false,
+  nextMove: undefined as string | undefined,
   upNext: undefined as string[] | undefined,
   /** Slugs the composite resolves; null lets every slug resolve. */
   knownSlugs: null as string[] | null,
   seen: [] as string[],
+  applicationDetailSlugs: [] as string[],
+  applicationActivityThreadIds: [] as string[],
+  activityPagination: "exhausted" as
+    | "can_load_more"
+    | "loading_more"
+    | "exhausted",
+  activityEntries: [] as ActivityLogEntry[],
+  activityLoadMore: vi.fn(),
+  completeNextMove: vi.fn(),
+  activeDetailSubscriptions: 0,
   /** One mock per mutation, so a test can assert what the view dispatched. */
   mutations: new Map<string, ReturnType<typeof vi.fn>>(),
 }));
@@ -61,23 +83,88 @@ vi.mock("convex-helpers/react/cache/hooks", () => ({
     if (args === "skip") return undefined;
     if (name === "areas:list") return [area];
     if (name === "threads:detailBySlug") {
-      const { slug } = args as { slug: string };
-      if (mocks.knownSlugs !== null && !mocks.knownSlugs.includes(slug)) {
-        return undefined;
-      }
-      if (!mocks.threadExists) return null;
-      return {
-        thread: {
-          ...thread,
-          state: mocks.threadState,
-          ...(mocks.upNext && { upNext: mocks.upNext }),
-        },
-        area,
-      };
+      throw new Error("Thread detail must use the application client");
     }
     return undefined;
   },
 }));
+
+function constantResource<T>(snapshot: T): LiveResource<T> {
+  return {
+    getSnapshot: () => snapshot,
+    subscribe: () => () => undefined,
+  };
+}
+
+function detailResource(
+  snapshot: QueryState<ThreadDetail>,
+): LiveResource<QueryState<ThreadDetail>> {
+  return {
+    getSnapshot: () => snapshot,
+    subscribe: () => {
+      mocks.activeDetailSubscriptions += 1;
+      return () => {
+        mocks.activeDetailSubscriptions -= 1;
+      };
+    },
+  };
+}
+
+function createApplicationClient(): ApplicationClient {
+  return {
+    watchThreadDetail: ({ slug }) => {
+      mocks.applicationDetailSlugs.push(slug);
+      if (mocks.detailError) {
+        return detailResource({
+          status: "error",
+          error: {
+            code: "unavailable",
+            message: "The service is temporarily unavailable.",
+            retryable: true,
+          },
+        });
+      }
+      if (mocks.knownSlugs !== null && !mocks.knownSlugs.includes(slug)) {
+        return detailResource({
+          status: "loading",
+        });
+      }
+      if (!mocks.threadExists) {
+        return detailResource({
+          status: "not_found",
+        });
+      }
+      return detailResource({
+        status: "ready",
+        data: {
+          thread: {
+            ...thread,
+            _id: thread._id as unknown as ThreadId,
+            areaId: thread.areaId as unknown as AreaId,
+            state: mocks.threadState,
+            ...(mocks.nextMove && { nextMove: mocks.nextMove }),
+            ...(mocks.upNext && { upNext: mocks.upNext }),
+          },
+          area: { ...area, _id: area._id as unknown as AreaId },
+        },
+      });
+    },
+    watchThreadActivity: ({ threadId }) => {
+      mocks.applicationActivityThreadIds.push(threadId);
+      return {
+        ...constantResource({
+          status: "ready" as const,
+          data: {
+            entries: mocks.activityEntries,
+            pagination: mocks.activityPagination,
+          },
+        }),
+        loadMore: mocks.activityLoadMore,
+      };
+    },
+    completeNextMove: mocks.completeNextMove,
+  };
+}
 
 vi.mock("convex/react", () => ({
   useMutation: (reference: unknown) => {
@@ -91,12 +178,18 @@ vi.mock("convex/react", () => ({
     mocks.mutations.set(name, mutation);
     return mutation;
   },
-  usePaginatedQuery: () => ({
-    results: [],
-    status: "Exhausted",
-    loadMore: vi.fn(),
-    isLoading: false,
-  }),
+  usePaginatedQuery: (query: unknown) => {
+    const name = getFunctionName(query as never);
+    if (name === "activityLogs:listByThread") {
+      throw new Error("Activity Log must use the application client");
+    }
+    return {
+      results: [],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+      isLoading: false,
+    };
+  },
 }));
 
 function renderThreadDetail(
@@ -113,6 +206,7 @@ function renderThreadDetail(
       onClose={mocks.onClose}
       onThreadLocationChange={mocks.onThreadLocationChange}
     />,
+    { applicationClient: createApplicationClient() },
   );
 }
 
@@ -123,9 +217,21 @@ describe("ThreadDetailView", () => {
     mocks.onThreadLocationChange.mockReset();
     mocks.threadState = "open";
     mocks.threadExists = true;
+    mocks.detailError = false;
+    mocks.nextMove = undefined;
     mocks.upNext = undefined;
     mocks.knownSlugs = null;
     mocks.seen = [];
+    mocks.applicationDetailSlugs = [];
+    mocks.applicationActivityThreadIds = [];
+    mocks.activityPagination = "exhausted";
+    mocks.activityEntries = [];
+    mocks.activityLoadMore.mockReset();
+    mocks.completeNextMove.mockReset().mockResolvedValue({
+      ok: true,
+      value: { status: "completed" },
+    });
+    mocks.activeDetailSubscriptions = 0;
     mocks.mutations.clear();
   });
 
@@ -253,8 +359,9 @@ describe("ThreadDetailView", () => {
     });
 
     expect(new Set(mocks.seen)).toEqual(
-      new Set(["threads:detailBySlug", "threadNotes:list", "areas:list"]),
+      new Set(["threadNotes:list", "areas:list"]),
     );
+    expect(mocks.applicationDetailSlugs).toEqual([thread.slug]);
   });
 
   it("shows a skeleton, not the previous Thread, while a new slug loads", async () => {
@@ -314,6 +421,40 @@ describe("ThreadDetailView", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(mocks.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases its Thread subscription when the pane unmounts", async () => {
+    mocks.showDesktopPane = true;
+    const { unmount } = renderThreadDetail();
+
+    await waitFor(() => expect(mocks.activeDetailSubscriptions).toBe(1));
+    unmount();
+
+    expect(mocks.activeDetailSubscriptions).toBe(0);
+  });
+
+  it("sends application subscription failures to the error boundary", async () => {
+    mocks.detailError = true;
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    render(
+      <AppErrorBoundary>
+        <ThreadDetailView
+          areaSlug="family-health"
+          threadSlug={thread.slug}
+          onClose={mocks.onClose}
+          onThreadLocationChange={mocks.onThreadLocationChange}
+        />
+      </AppErrorBoundary>,
+      { applicationClient: createApplicationClient() },
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Something went wrong",
+    );
+    consoleError.mockRestore();
   });
 
   it("restores orientation before presenting attention and continuity", async () => {
@@ -405,8 +546,38 @@ describe("ThreadDetailView", () => {
     });
   });
 
+  it("completes the Next Move through the application client", async () => {
+    mocks.showDesktopPane = true;
+    mocks.nextMove = "Call the specialist";
+    renderThreadDetail();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Complete next move" }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.completeNextMove).toHaveBeenCalledWith({
+        threadId: thread._id,
+        thread: expect.objectContaining({
+          _id: thread._id,
+          nextMove: "Call the specialist",
+        }),
+      });
+    });
+  });
+
   it("scrolls Notes and the read-only Activity Log below fixed orientation", async () => {
     mocks.showDesktopPane = true;
+    mocks.activityPagination = "can_load_more";
+    mocks.activityEntries = [
+      {
+        _id: "log1",
+        type: "next_action_change",
+        content: "Next move set",
+        newValue: "Call the specialist",
+        createdAt: Date.now(),
+      },
+    ];
     renderThreadDetail();
 
     const pane = await screen.findByRole("complementary", {
@@ -439,6 +610,9 @@ describe("ThreadDetailView", () => {
     expect(
       screen.queryByRole("textbox", { name: "Activity log note" }),
     ).toBeNull();
+    expect(mocks.applicationActivityThreadIds).toEqual([thread._id]);
+    await userEvent.click(screen.getByRole("button", { name: "Show earlier" }));
+    expect(mocks.activityLoadMore).toHaveBeenCalledTimes(1);
     // No scroll container wraps the whole pane content.
     expect(header.closest(".overflow-y-auto")).toBeNull();
   });
