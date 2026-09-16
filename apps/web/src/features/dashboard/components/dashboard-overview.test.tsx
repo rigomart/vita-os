@@ -39,6 +39,9 @@ vi.mock("@/features/threads/use-update-thread", () => ({
 vi.mock("@/features/notes/use-complete-note", () => ({
   useCompleteNote: () => vi.fn(),
 }));
+vi.mock("@/features/notes/use-update-note-body", () => ({
+  useUpdateNoteBody: () => vi.fn(),
+}));
 vi.mock("@/features/notes/use-update-note-when", () => ({
   useUpdateNoteWhen: () => vi.fn(),
 }));
@@ -156,10 +159,9 @@ describe("DashboardOverview", () => {
       notes: [note("Water the plants", { when: currentDate })],
     });
 
-    expect(columnText("Now")).toEqual([
-      expect.stringContaining("Overdue"),
-      expect.stringContaining("Water the plants"),
-    ]);
+    const now = screen.getByRole("region", { name: "Now" });
+    expect(within(now).getByText("Overdue")).toBeVisible();
+    expect(within(now).getByDisplayValue("Water the plants")).toBeVisible();
     expect(columnText("This week")).toEqual([
       expect.stringContaining("Midweek"),
     ]);
@@ -189,7 +191,7 @@ describe("DashboardOverview", () => {
     expect(within(margin).getByText("Call the clinic")).toBeVisible();
     expect(within(margin).getByText("Actionable")).toBeVisible();
     expect(within(margin).getByText("Idle")).toBeVisible();
-    expect(within(margin).getByText("Loose thought")).toBeVisible();
+    expect(within(margin).getByDisplayValue("Loose thought")).toBeVisible();
   });
 
   it("folds Later and the No date margin on a phone", async () => {

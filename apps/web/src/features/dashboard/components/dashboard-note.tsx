@@ -1,11 +1,12 @@
 import type { ProjectedNote } from "@convex/lib/validators";
 
-import { Link } from "@tanstack/react-router";
 import { format, isThisYear } from "date-fns";
 import { Bell, Check } from "lucide-react";
 
+import { EditableField } from "@/components/ui/editable-field";
 import { WhenPopover } from "@/features/attention-list";
 import { useCompleteNote } from "@/features/notes/use-complete-note";
+import { useUpdateNoteBody } from "@/features/notes/use-update-note-body";
 import { useUpdateNoteWhen } from "@/features/notes/use-update-note-when";
 import { cn } from "@/lib/utils";
 
@@ -23,8 +24,10 @@ const revealed =
  * Thread cards it stays visibly a different kind of object, which is what lets
  * the two share a column without confusion.
  *
- * One radius and one padding step down from the full card, because here it
- * lives in a column rather than on the Notes page.
+ * The body is the writing surface: click it to edit in place, the same way a
+ * Note edits in the Notes panel and on a Thread. One radius and one padding
+ * step down from the full card, because here it lives in a column rather than
+ * on the Notes page.
  */
 export function DashboardNote({
   currentDate,
@@ -34,6 +37,7 @@ export function DashboardNote({
   note: ProjectedNote;
 }) {
   const completeNote = useCompleteNote();
+  const updateNoteBody = useUpdateNoteBody();
   const updateNoteWhen = useUpdateNoteWhen();
 
   const when = note.when ?? undefined;
@@ -43,17 +47,23 @@ export function DashboardNote({
   return (
     <article
       className={cn(
-        "group/note relative flex flex-col rounded-2xl border-2 border-border/70 bg-surface-2 px-3 py-2.5 transition-colors hover:border-border",
+        "group/note relative flex flex-col rounded-2xl border-2 border-border/70 bg-surface-2 px-3 py-2.5 transition-colors hover:border-border has-focus-visible:border-ring/50",
         late && "border-condition-attention/45",
       )}
     >
-      <Link
-        to="."
-        search={(previous) => ({ ...previous, inbox: true as const })}
-        className="text-[13px] leading-relaxed outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-ring/40"
-      >
-        {note.body}
-      </Link>
+      <EditableField
+        value={note.body}
+        variant="textarea"
+        onSave={(text) => {
+          if (!text) return;
+          void updateNoteBody(note._id, text);
+        }}
+        inputAriaLabel="Edit note body"
+        editOnFocus
+        textareaRows={1}
+        chromeless
+        className="min-h-0 py-0 text-left text-[13px] leading-relaxed whitespace-pre-wrap wrap-anywhere caret-ring"
+      />
 
       <div className="mt-1.5 flex items-center gap-1">
         <WhenPopover
