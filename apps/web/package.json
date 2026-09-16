@@ -14,10 +14,13 @@
     "test": "vitest",
     "test:run": "vitest run",
     "preview": "vite preview",
-    "deploy": "bun run build && wrangler deploy",
-    "deploy:preview": "bun run build && wrangler versions upload",
-    "deploy:built": "wrangler deploy",
-    "deploy:preview:built": "wrangler versions upload",
+    "build:staging": "tsc -b && CLOUDFLARE_ENV=staging vite build",
+    "build:preview": "tsc -b && CLOUDFLARE_ENV=preview vite build",
+    "build:production": "tsc -b && CLOUDFLARE_ENV=production vite build",
+    "deploy:staging": "bun run build:staging && node scripts/assert-deploy-target.mjs vita-os-web-staging && wrangler deploy",
+    "deploy:preview": "bun run build:preview && node scripts/assert-deploy-target.mjs vita-os-web-preview && wrangler deploy",
+    "deploy:production": "bun run build:production && EXPECT_CUSTOM_DOMAIN=vita.rigos.dev node scripts/assert-deploy-target.mjs vita-os-web && wrangler deploy",
+    "smoke": "node scripts/smoke-deployment.mjs",
     "convex": "convex dev"
   },
   "dependencies": {

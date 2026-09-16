@@ -20,43 +20,67 @@ Missing variables throw at startup naming the variable, on both the client and t
 
 ## Web deployment
 
-The Vite application uses Cloudflare's Vite plugin and is configured for
-deployment as static assets on Cloudflare Workers. Its input configuration lives
-in `apps/web/wrangler.jsonc`; unmatched navigation requests fall back to
-`index.html` so client-side routes also work when loaded directly. The plugin
-creates the deployable Worker configuration as part of `vite build`.
+The Vite application deploys as static assets on Cloudflare Workers, through
+GitHub Actions. Unmatched navigation requests fall back to `index.html` so
+client-side routes work when loaded directly.
 
-For a manual preview or deployment, first provide the two `VITE_CONVEX_*`
-variables in your shell, then run from `apps/web`:
+`apps/web/wrangler.jsonc` defines three environments. The Cloudflare Vite plugin
+flattens the one named by `CLOUDFLARE_ENV` into `dist/wrangler.json` during
+`vite build`, and wrangler deploys that file — `wrangler deploy --env` has no
+effect. Only `production` carries the `vita.rigos.dev` custom domain.
+
+| Environment | Worker | Serves |
+| --- | --- | --- |
+| `staging` | `vita-os-web-staging` | workers.dev, deployed on every push to `main` |
+| `preview` | `vita-os-web-preview` | workers.dev, for pre-cutover qualification |
+| `production` | `vita-os-web` | `vita.rigos.dev`, deployed only on demand |
+
+### Pipelines
+
+- **CI** (`ci.yml`) verifies pull requests.
+- **Deploy staging** (`deploy-staging.yml`) verifies and deploys staging on every
+  push to `main`.
+- **Deploy production** (`deploy-production.yml`) is `workflow_dispatch` only.
+  Its `deployment_target` input chooses `worker-origin` (deploys the `preview`
+  Worker on workers.dev) or `public-domain` (deploys `production` on
+  `vita.rigos.dev`). Qualify on `worker-origin` first.
+
+All three run the same checks through the reusable `verify.yml`. Each deploy
+asserts the built Worker name and custom domain before uploading, then smoke
+tests the origin and uploads the log as a run artifact.
+
+Required repository secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
+Required variables: `VITE_CONVEX_URL`, `VITE_CONVEX_SITE_URL`,
+`WORKERS_DEV_SUBDOMAIN`. Set `VITE_CONVEX_URL_NONPROD` and
+`VITE_CONVEX_SITE_URL_NONPROD` to point staging at a non-production Convex
+deployment; without them staging reads production data and the run warns.
+
+Add required reviewers to the `production` GitHub environment to gate the public
+domain behind an approval.
+
+### Deploying by hand
+
+Only for emergencies — the pipelines are the supported path. Provide the two
+`VITE_CONVEX_*` variables, then from `apps/web`:
 
 ```bash
-bun run build
-bun run preview
-bun run deploy
+bun run deploy:staging
+bun run deploy:production
+bun run smoke https://vita.rigos.dev
 ```
 
-For Cloudflare Workers Builds, use the repository root so Bun installs the root
-lockfile and resolves workspace packages consistently:
+### Rollback
 
-- Root directory: `/`
-- Build command: `bunx turbo run build --filter=@vita-os/web`
-- Production deploy command: `bun run --cwd apps/web deploy:built`
-- Non-production deploy command: `bun run --cwd apps/web deploy:preview:built`
-- Build variables: `BUN_VERSION=1.3.14`, `VITE_CONVEX_URL`, and
-  `VITE_CONVEX_SITE_URL`
+`bunx wrangler rollback --name vita-os-web` returns the Worker to its previous
+version. The Vercel project and `apps/web/vercel.json` stay active as a second
+rollback path; remove them only after the Worker deployment has been trusted for
+a full rollback window.
 
-The Vite variables are build-time settings, not Worker runtime variables.
-Cloudflare preview URLs use a different browser origin and are not included in
-Better Auth's production `SITE_URL`; use them for unauthenticated deployment
-checks unless that preview origin is deliberately trusted.
-
-Keep the Vercel project and `apps/web/vercel.json` active while validating the
-Worker. Before production cutover, attach the final hostname to the Worker. If
-that changes the browser origin, update Convex's `SITE_URL` to the exact new
-origin; OAuth callback URLs remain on the Convex site. Verify sign-in, social
-authentication, sign-out, and direct loading of an authenticated deep link,
-then switch traffic. Remove the Vercel project and configuration only after the
-rollback window has passed.
+The `VITE_CONVEX_*` values are build-time settings, not Worker runtime
+variables. workers.dev origins are not in Better Auth's `SITE_URL`, so staging
+and preview are for unauthenticated checks unless that origin is deliberately
+trusted. If the production hostname ever changes, update Convex's `SITE_URL` to
+the exact new origin; OAuth callback URLs remain on the Convex site.
 
 Currently, two official plugins are available:
 

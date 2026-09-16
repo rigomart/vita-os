@@ -3,14 +3,53 @@
   "name": "vita-os-web",
   "compatibility_date": "2026-09-11",
   "workers_dev": true,
-  "preview_urls": true,
-  "routes": [
-    {
-      "pattern": "vita.rigos.dev",
-      "custom_domain": true,
-    },
-  ],
   "assets": {
     "not_found_handling": "single-page-application",
+  },
+  "observability": {
+    "enabled": true,
+  },
+
+  // The Vite plugin flattens one environment into dist/wrangler.json at build
+  // time, so CLOUDFLARE_ENV selects it and `wrangler deploy --env` is ignored.
+  // Only production carries the custom domain.
+  "env": {
+    "staging": {
+      "name": "vita-os-web-staging",
+      "workers_dev": true,
+      "assets": {
+        "not_found_handling": "single-page-application",
+      },
+      "observability": {
+        "enabled": true,
+      },
+    },
+    "preview": {
+      "name": "vita-os-web-preview",
+      "workers_dev": true,
+      "assets": {
+        "not_found_handling": "single-page-application",
+      },
+      "observability": {
+        "enabled": true,
+      },
+    },
+    "production": {
+      "name": "vita-os-web",
+      "workers_dev": true,
+      "preview_urls": true,
+      "routes": [
+        {
+          "pattern": "vita.rigos.dev",
+          "custom_domain": true,
+        },
+      ],
+      "assets": {
+        "not_found_handling": "single-page-application",
+      },
+      "observability": {
+        "enabled": true,
+      },
+    },
   },
 }
