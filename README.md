@@ -47,8 +47,8 @@ to gate the domain behind an approval.
 
 For an emergency manual deploy, run `bun run deploy:staging`,
 `deploy:production`, or `smoke <origin>` from `apps/web`. To roll back,
-`bunx wrangler rollback --name vita-os-web`; the Vercel project and
-`apps/web/vercel.json` stay active as a second path.
+`bunx wrangler rollback --name vita-os-web`, which restores the previous Worker
+version without touching DNS.
 
 The `VITE_CONVEX_*` values are build-time, not Worker runtime, variables.
 workers.dev origins are not in Better Auth's `SITE_URL`, so staging and preview
