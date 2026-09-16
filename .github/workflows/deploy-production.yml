@@ -1,0 +1,119 @@
+name: Deploy production
+
+# Production is never deployed by merging; someone runs this on purpose.
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_target:
+        description: Deploy to workers.dev for qualification, or attach the public domain
+        type: choice
+        required: true
+        default: worker-origin
+        options:
+          - worker-origin
+          - public-domain
+      run_smoke:
+        description: Smoke test the deployment afterwards
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/verify.yml
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.target.outputs.origin }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PUBLIC_DOMAIN: vita.rigos.dev
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Resolve deployment target
+        id: target
+        env:
+          DEPLOYMENT_TARGET: ${{ inputs.deployment_target }}
+          SUBDOMAIN: ${{ vars.WORKERS_DEV_SUBDOMAIN }}
+        run: |
+          if [ "$DEPLOYMENT_TARGET" = "public-domain" ]; then
+            echo "cloudflare_env=production" >> "$GITHUB_OUTPUT"
+            echo "worker_name=vita-os-web" >> "$GITHUB_OUTPUT"
+            echo "expect_domain=$PUBLIC_DOMAIN" >> "$GITHUB_OUTPUT"
+            echo "origin=https://$PUBLIC_DOMAIN" >> "$GITHUB_OUTPUT"
+          else
+            echo "cloudflare_env=preview" >> "$GITHUB_OUTPUT"
+            echo "worker_name=vita-os-web-preview" >> "$GITHUB_OUTPUT"
+            echo "expect_domain=" >> "$GITHUB_OUTPUT"
+            echo "origin=https://vita-os-web-preview.$SUBDOMAIN.workers.dev" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Deployment target: $DEPLOYMENT_TARGET"
+
+      - name: Build production
+        env:
+          VITE_CONVEX_URL: ${{ vars.VITE_CONVEX_URL }}
+          VITE_CONVEX_SITE_URL: ${{ vars.VITE_CONVEX_SITE_URL }}
+        run: bun run --cwd apps/web build:${{ steps.target.outputs.cloudflare_env }}
+
+      - name: Route-split chunk check
+        working-directory: apps/web
+        run: node scripts/check-chunks.mjs
+
+      - name: Assert deploy target
+        working-directory: apps/web
+        env:
+          EXPECT_CUSTOM_DOMAIN: ${{ steps.target.outputs.expect_domain }}
+        run: node scripts/assert-deploy-target.mjs "${{ steps.target.outputs.worker_name }}"
+
+      - name: Deploy Worker
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/web
+          command: deploy
+
+      - name: Smoke test deployment
+        if: ${{ inputs.run_smoke && env.CLOUDFLARE_API_TOKEN != '' }}
+        working-directory: apps/web
+        run: |
+          origin="${{ steps.target.outputs.origin }}"
+          echo "Deployed origin: $origin"
+          node scripts/smoke-deployment.mjs "$origin" | tee smoke-production.log
+
+      - name: Upload production evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-deploy-evidence
+          path: |
+            apps/web/smoke-production.log
+            apps/web/dist/wrangler.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Report missing Cloudflare credentials
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "::warning::CLOUDFLARE_API_TOKEN is not configured; the build was verified but nothing was deployed."
