@@ -49,6 +49,9 @@ vi.mock("@/features/threads/use-update-thread", () => ({
 vi.mock("@/features/notes/use-complete-note", () => ({
   useCompleteNote: () => vi.fn(),
 }));
+vi.mock("@/features/notes/use-update-note-body", () => ({
+  useUpdateNoteBody: () => vi.fn(),
+}));
 vi.mock("@/features/notes/use-update-note-when", () => ({
   useUpdateNoteWhen: () => vi.fn(),
 }));
