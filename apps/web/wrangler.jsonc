@@ -12,7 +12,6 @@
 
   // The Vite plugin flattens one environment into dist/wrangler.json at build
   // time, so CLOUDFLARE_ENV selects it and `wrangler deploy --env` is ignored.
-  // Only production carries the custom domain.
   "env": {
     "staging": {
       "name": "vita-os-web-staging",

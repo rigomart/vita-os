@@ -35,9 +35,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # Staging points at a non-production Convex deployment when one is
-      # configured. Better Auth only trusts the production origin, so an
-      # unconfigured staging is still useful for unauthenticated checks.
+      # Falls back to production Convex when no non-production deployment is
+      # configured, which is still enough for unauthenticated checks.
       - name: Resolve Convex target
         id: convex
         env:

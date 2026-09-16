@@ -1,7 +1,6 @@
 name: CI
 
-# Pushes to main are verified by Deploy staging, which runs the same checks
-# before it deploys.
+# Pushes to main are verified by Deploy staging, which runs the same checks.
 on:
   pull_request:
 

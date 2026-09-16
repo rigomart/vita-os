@@ -1,12 +1,9 @@
 #!/usr/bin/env node
-// Checks which Worker a build is about to replace. dist/wrangler.json — not
-// wrangler.jsonc — decides that, so it is what gets asserted.
+// Checks which Worker a build will replace — dist/wrangler.json decides that,
+// not wrangler.jsonc. EXPECT_CUSTOM_DOMAIN is the hostname production must
+// serve; unset means the build must carry none.
 //
 //   node scripts/assert-deploy-target.mjs <expected-worker-name> [distDir]
-//
-// EXPECT_CUSTOM_DOMAIN names the hostname production must serve. Unset means
-// the build must carry none: a staging build that inherited vita.rigos.dev
-// would take over production on deploy.
 
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -55,8 +52,8 @@ if (expectedDomain) {
   }
 } else if (customDomains.length > 0) {
   failures.push(
-    `Build carries custom domain(s) ${customDomains.join(", ")} but this ` +
-      "environment must not serve one. Deploying would move a production hostname.",
+    `Build carries custom domain(s) ${customDomains.join(", ")}; deploying ` +
+      "would move a production hostname.",
   );
 }
 

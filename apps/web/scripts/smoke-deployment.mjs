@@ -1,11 +1,9 @@
 #!/usr/bin/env node
-// Verifies a deployed origin actually serves the app.
+// Checks a deployed origin serves the shell, its hashed assets, and the SPA
+// fallback — the ways a static-asset deploy fails while still returning 200.
+// Sign-in needs a trusted origin, so it is not covered.
 //
 //   node scripts/smoke-deployment.mjs <origin>
-//
-// Covers the three ways a Workers static-asset deploy fails while still
-// returning 200: a stale shell, assets that 404, and SPA fallback serving the
-// shell without the app. Sign-in is not checked; that needs a trusted origin.
 
 const origin = process.argv[2]?.replace(/\/$/, "");
 
@@ -50,8 +48,6 @@ try {
     }
   }
 
-  // Direct navigation to a client route must fall back to the shell rather
-  // than 404, which is the whole point of not_found_handling.
   const deepLink = await get("/areas");
   if (!deepLink.response.ok) {
     failures.push(

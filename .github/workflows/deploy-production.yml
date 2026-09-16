@@ -1,7 +1,6 @@
 name: Deploy production
 
-# Production is never deployed by merging. Someone runs this on purpose and
-# chooses whether the build answers on the public domain.
+# Production is never deployed by merging; someone runs this on purpose.
 on:
   workflow_dispatch:
     inputs:
