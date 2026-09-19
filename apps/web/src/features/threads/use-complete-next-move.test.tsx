@@ -1,13 +1,10 @@
-import type {
-  ApplicationClient,
-  AreaId,
-  Thread,
-  ThreadId,
-} from "@vita-os/contracts";
+import type { AreaId, Thread, ThreadId } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+import type { ConvexApplicationClient } from "@/application/convex/convex-application-client-compatibility";
 
 import { ApplicationClientProvider } from "@/application/application-client-context";
 
@@ -24,7 +21,7 @@ const thread = {
   createdAt: 1,
 } satisfies Thread;
 
-function renderCompleteNextMove(client: ApplicationClient) {
+function renderCompleteNextMove(client: ConvexApplicationClient) {
   return renderHook(() => useCompleteNextMove(thread), {
     wrapper: ({ children }: { children: ReactNode }) => (
       <ApplicationClientProvider client={client}>
@@ -39,7 +36,7 @@ describe("useCompleteNextMove", () => {
     const completeNextMove = vi
       .fn()
       .mockResolvedValue({ ok: true, value: { status: "completed" } });
-    const client: ApplicationClient = {
+    const client: ConvexApplicationClient = {
       watchThreadDetail: vi.fn(),
       watchThreadActivity: vi.fn(),
       completeNextMove,
@@ -55,7 +52,7 @@ describe("useCompleteNextMove", () => {
   });
 
   it("rejects with the public application error", async () => {
-    const client: ApplicationClient = {
+    const client: ConvexApplicationClient = {
       watchThreadDetail: vi.fn(),
       watchThreadActivity: vi.fn(),
       completeNextMove: vi.fn().mockResolvedValue({

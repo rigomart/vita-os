@@ -1,5 +1,3 @@
-import type { ApplicationClient } from "@vita-os/contracts";
-
 import {
   createMemoryHistory,
   createRootRoute,
@@ -16,12 +14,14 @@ import { FeedbackProvider, type Feedback } from "@vita-os/ui/lib/feedback";
 import { useMemo, type ReactElement, type ReactNode } from "react";
 import { vi } from "vitest";
 
+import type { ConvexApplicationClient } from "@/application/convex/convex-application-client-compatibility";
+
 import { ApplicationClientProvider } from "@/application/application-client-context";
 
 export type FeedbackMock = Feedback;
 
 type ProviderOptions = {
-  applicationClient?: ApplicationClient;
+  applicationClient?: ConvexApplicationClient;
   feedback?: Feedback;
 };
 
@@ -43,7 +43,7 @@ export function createFeedbackMock(): FeedbackMock {
 
 function createWrapper(
   feedback: Feedback,
-  applicationClient?: ApplicationClient,
+  applicationClient?: ConvexApplicationClient,
 ) {
   return function Providers({ children }: { children: ReactNode }) {
     const router = useMemo(() => {

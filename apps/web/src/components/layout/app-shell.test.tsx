@@ -1,10 +1,12 @@
 import type { Id } from "@convex/_generated/dataModel";
 import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
-import type { ApplicationClient, AreaId, ThreadId } from "@vita-os/contracts";
+import type { AreaId, ThreadId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { ConvexApplicationClient } from "@/application/convex/convex-application-client-compatibility";
 
 import {
   fireEvent,
@@ -156,7 +158,7 @@ function renderShell() {
           ok: true,
           value: { status: "completed" },
         }),
-      } satisfies ApplicationClient,
+      } satisfies ConvexApplicationClient,
     },
   );
 }
