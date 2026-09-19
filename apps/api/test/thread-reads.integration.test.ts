@@ -59,6 +59,19 @@ async function seedDetailFixture() {
       1_500_000_000_001,
     ),
     env.DB.prepare(
+      "INSERT INTO areas (id, user_id, name, slug, standard, condition, icon, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    ).bind(
+      "area-owner-null-standard",
+      owner.actorId,
+      "Unwritten Standard",
+      "unwritten-standard",
+      null,
+      "healthy",
+      "Compass",
+      3,
+      1_500_000_000_002,
+    ),
+    env.DB.prepare(
       "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, next_move, up_next_json, follow_up, last_activity_at, last_activity_content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).bind(
       "thread-owner",
@@ -142,6 +155,19 @@ async function seedDetailFixture() {
       7,
       "open",
       1_600_000_000_005,
+    ),
+    env.DB.prepare(
+      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    ).bind(
+      "thread-owner-null-standard",
+      owner.actorId,
+      "area-owner-null-standard",
+      "Thread under unwritten Standard",
+      "null-standard-thread",
+      null,
+      8,
+      "open",
+      1_600_000_000_006,
     ),
   ]);
 
@@ -427,6 +453,35 @@ describe("Thread detail", () => {
         icon: "HeartPulse",
         order: 2,
         createdAt: 1_500_000_000_000,
+      },
+    });
+  });
+
+  it("omits a SQL NULL Area Standard from the public contract", async () => {
+    const response = await SELF.fetch(
+      "http://api.test/v1/threads/null-standard-thread",
+      { headers: { cookie: fixture.owner.cookie } },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      thread: {
+        _id: "thread-owner-null-standard",
+        title: "Thread under unwritten Standard",
+        slug: "null-standard-thread",
+        areaId: "area-owner-null-standard",
+        order: 8,
+        state: "open",
+        createdAt: 1_600_000_000_006,
+      },
+      area: {
+        _id: "area-owner-null-standard",
+        name: "Unwritten Standard",
+        slug: "unwritten-standard",
+        condition: "healthy",
+        icon: "Compass",
+        order: 3,
+        createdAt: 1_500_000_000_002,
       },
     });
   });
