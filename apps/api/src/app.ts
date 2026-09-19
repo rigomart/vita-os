@@ -3,19 +3,28 @@ import { cors } from "hono/cors";
 
 import type { WorkerEnv } from "./env";
 
+import {
+  decodeActivityCursor,
+  InvalidActivityCursorError,
+} from "./activity-cursor";
 import { createAuth } from "./auth";
 import { authenticatedActor, type Actor } from "./authenticated-actor";
-import { unexpectedFailure } from "./errors";
+import { D1ThreadStore } from "./d1-thread-store";
+import {
+  invalidActivityPagination,
+  threadNotFound,
+  unexpectedFailure,
+} from "./errors";
 
 type AppEnvironment = {
   Bindings: WorkerEnv;
   Variables: {
     actor: Actor;
-    store: unknown;
+    store: D1ThreadStore;
   };
 };
 
-export type CreateStore = (actor: Actor) => unknown;
+export type CreateStore = (actor: Actor) => D1ThreadStore;
 
 export interface AppDependencies {
   createStore?: CreateStore;
@@ -26,7 +35,8 @@ export function createApp(
   dependencies: AppDependencies = {},
 ): Hono<AppEnvironment> {
   const auth = createAuth(env);
-  const createStore = dependencies.createStore ?? (() => undefined);
+  const createStore =
+    dependencies.createStore ?? (() => new D1ThreadStore(env.DB));
   const credentialedCors = cors({
     origin: env.BROWSER_ORIGIN,
     credentials: true,
@@ -45,6 +55,53 @@ export function createApp(
   app.use("/v1/*", async (context, next) => {
     context.set("store", createStore(context.get("actor")));
     await next();
+  });
+
+  app.get("/v1/threads/:slug", async (context) => {
+    const detail = await context.get("store").getThreadDetail({
+      actorId: context.get("actor").actorId,
+      slug: context.req.param("slug"),
+    });
+
+    if (detail === null) {
+      return context.json({ error: threadNotFound }, 404);
+    }
+
+    return context.json(detail);
+  });
+
+  app.get("/v1/threads/:threadId/activity", async (context) => {
+    const limitQuery = context.req.query("limit");
+    const limit = limitQuery === undefined ? 20 : Number(limitQuery);
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
+      return context.json({ error: invalidActivityPagination }, 400);
+    }
+
+    const cursorQuery = context.req.query("cursor");
+    let cursor;
+    try {
+      cursor =
+        cursorQuery === undefined
+          ? undefined
+          : decodeActivityCursor(cursorQuery);
+    } catch (error) {
+      if (error instanceof InvalidActivityCursorError) {
+        return context.json({ error: invalidActivityPagination }, 400);
+      }
+      throw error;
+    }
+
+    const page = await context.get("store").getThreadActivityPage({
+      actorId: context.get("actor").actorId,
+      threadId: context.req.param("threadId"),
+      limit,
+      cursor,
+    });
+    if (page === null) {
+      return context.json({ error: threadNotFound }, 404);
+    }
+
+    return context.json(page);
   });
 
   return app;

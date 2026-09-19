@@ -6,6 +6,18 @@ export const authenticationRequired: ApplicationError = {
   retryable: false,
 };
 
+export const threadNotFound: ApplicationError = {
+  code: "not_found",
+  message: "Thread not found.",
+  retryable: false,
+};
+
+export const invalidActivityPagination: ApplicationError = {
+  code: "validation",
+  message: "Invalid Activity Log pagination.",
+  retryable: false,
+};
+
 export const unexpectedFailure: ApplicationError = {
   code: "unexpected",
   message: "Unexpected error.",
