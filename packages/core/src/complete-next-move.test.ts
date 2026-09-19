@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
+import type { ThreadId } from "@vita-os/contracts";
 
-import { decideNextMoveCompletion } from "./complete-next-move";
+import { describe, expect, it, vi } from "vitest";
+
+import {
+  completeNextMove,
+  decideNextMoveCompletion,
+} from "./complete-next-move";
 
 describe("decideNextMoveCompletion", () => {
   it("clears the final Next Move and records its completion", () => {
@@ -73,5 +78,31 @@ describe("decideNextMoveCompletion", () => {
         upNext: ["Impossible under the invariant"],
       }),
     ).toEqual({ status: "unchanged" });
+  });
+});
+
+describe("completeNextMove", () => {
+  it("passes the caller's expected Next Move to atomic storage", async () => {
+    const completeAtomically = vi
+      .fn()
+      .mockResolvedValue({ status: "completed" });
+
+    await completeNextMove(
+      { completeAtomically },
+      {
+        actorId: "user-1",
+        threadId: "thread-1" as ThreadId,
+        expectedNextMove: "Call clinic",
+      },
+    );
+
+    expect(completeAtomically).toHaveBeenCalledWith(
+      {
+        actorId: "user-1",
+        threadId: "thread-1",
+        expectedNextMove: "Call clinic",
+      },
+      decideNextMoveCompletion,
+    );
   });
 });

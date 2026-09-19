@@ -2,9 +2,12 @@ import type {
   ActivityLogEntry,
   ActivityLogPage,
   AreaSummary,
+  CompleteNextMoveOutput,
   Thread,
   ThreadDetail,
 } from "@vita-os/contracts";
+
+import { decideNextMoveCompletion } from "@vita-os/core";
 
 import type { WorkerEnv } from "./env";
 
@@ -43,6 +46,24 @@ type ActivityRow = {
   created_at: number;
 };
 
+type CompletionRow = {
+  id: string;
+  revision: number;
+  next_move: string | null;
+  up_next_json: string | null;
+};
+
+export type D1CompleteNextMoveOutput =
+  | CompleteNextMoveOutput
+  | { status: "not_found" }
+  | { status: "conflict" };
+
+export interface D1ThreadStoreDependencies {
+  now?: () => number;
+  newActivityLogId?: () => string;
+  newOperationToken?: () => string;
+}
+
 function parseUpNext(value: string | null): string[] | undefined {
   if (value === null) return undefined;
 
@@ -65,7 +86,20 @@ function parseUpNext(value: string | null): string[] | undefined {
 }
 
 export class D1ThreadStore {
-  constructor(private readonly database: WorkerEnv["DB"]) {}
+  private readonly now: () => number;
+  private readonly newActivityLogId: () => string;
+  private readonly newOperationToken: () => string;
+
+  constructor(
+    private readonly database: WorkerEnv["DB"],
+    dependencies: D1ThreadStoreDependencies = {},
+  ) {
+    this.now = dependencies.now ?? Date.now;
+    this.newActivityLogId =
+      dependencies.newActivityLogId ?? (() => crypto.randomUUID());
+    this.newOperationToken =
+      dependencies.newOperationToken ?? (() => crypto.randomUUID());
+  }
 
   async getThreadDetail(input: {
     actorId: string;
@@ -186,5 +220,97 @@ export class D1ThreadStore {
             }),
           }),
     };
+  }
+
+  async completeNextMove(input: {
+    actorId: string;
+    threadId: string;
+    expectedNextMove: string | null;
+  }): Promise<D1CompleteNextMoveOutput> {
+    const thread = await this.database
+      .prepare(
+        `SELECT id, revision, next_move, up_next_json
+        FROM threads
+        WHERE id = ? AND user_id = ?
+        LIMIT 1`,
+      )
+      .bind(input.threadId, input.actorId)
+      .first<CompletionRow>();
+    if (thread === null) return { status: "not_found" };
+
+    if (thread.next_move !== input.expectedNextMove) {
+      return { status: "conflict" };
+    }
+
+    const decision = decideNextMoveCompletion({
+      ...(thread.next_move === null ? {} : { nextMove: thread.next_move }),
+      ...(thread.up_next_json === null
+        ? {}
+        : { upNext: parseUpNext(thread.up_next_json) }),
+    });
+    if (decision.status === "unchanged") return { status: "unchanged" };
+
+    const completedAt = this.now();
+    const activityLogId = this.newActivityLogId();
+    const operationToken = this.newOperationToken();
+    const [update, insert] = await this.database.batch([
+      this.database
+        .prepare(
+          `UPDATE threads
+          SET next_move = ?,
+              up_next_json = ?,
+              last_activity_at = ?,
+              last_activity_content = ?,
+              revision = revision + 1,
+              last_completion_token = ?
+          WHERE id = ?
+            AND user_id = ?
+            AND revision = ?
+            AND next_move IS ?`,
+        )
+        .bind(
+          decision.patch.nextMove ?? null,
+          decision.patch.upNext === undefined
+            ? null
+            : JSON.stringify(decision.patch.upNext),
+          completedAt,
+          decision.activity.content,
+          operationToken,
+          thread.id,
+          input.actorId,
+          thread.revision,
+          input.expectedNextMove,
+        ),
+      this.database
+        .prepare(
+          `INSERT INTO activity_log_entries (
+            id, user_id, thread_id, type, content,
+            previous_value, new_value, created_at
+          )
+          SELECT ?, user_id, id, ?, ?, ?, ?, ?
+          FROM threads
+          WHERE id = ?
+            AND user_id = ?
+            AND last_completion_token = ?`,
+        )
+        .bind(
+          activityLogId,
+          decision.activity.type,
+          decision.activity.content,
+          decision.activity.previousValue,
+          decision.activity.newValue ?? null,
+          completedAt,
+          thread.id,
+          input.actorId,
+          operationToken,
+        ),
+    ]);
+
+    if (update.meta.changes === 0) return { status: "conflict" };
+    if (update.meta.changes !== 1 || insert.meta.changes !== 1) {
+      throw new Error("Next Move completion batch had an unexpected result");
+    }
+
+    return { status: "completed" };
   }
 }

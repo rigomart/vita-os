@@ -12,6 +12,8 @@ import { authenticatedActor, type Actor } from "./authenticated-actor";
 import { D1ThreadStore } from "./d1-thread-store";
 import {
   invalidActivityPagination,
+  invalidNextMoveCompletion,
+  nextMoveConflict,
   threadNotFound,
   unexpectedFailure,
 } from "./errors";
@@ -28,6 +30,10 @@ export type CreateStore = (actor: Actor) => D1ThreadStore;
 
 export interface AppDependencies {
   createStore?: CreateStore;
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function createApp(
@@ -102,6 +108,37 @@ export function createApp(
     }
 
     return context.json(page);
+  });
+
+  app.post("/v1/threads/:threadId/complete-next-move", async (context) => {
+    let body: unknown;
+    try {
+      body = await context.req.json();
+    } catch {
+      return context.json({ error: invalidNextMoveCompletion }, 400);
+    }
+    if (
+      !isObject(body) ||
+      !Object.hasOwn(body, "expectedNextMove") ||
+      (body.expectedNextMove !== null &&
+        typeof body.expectedNextMove !== "string")
+    ) {
+      return context.json({ error: invalidNextMoveCompletion }, 400);
+    }
+
+    const result = await context.get("store").completeNextMove({
+      actorId: context.get("actor").actorId,
+      threadId: context.req.param("threadId"),
+      expectedNextMove: body.expectedNextMove,
+    });
+    if (result.status === "not_found") {
+      return context.json({ error: threadNotFound }, 404);
+    }
+    if (result.status === "conflict") {
+      return context.json({ error: nextMoveConflict }, 409);
+    }
+
+    return context.json(result);
   });
 
   return app;

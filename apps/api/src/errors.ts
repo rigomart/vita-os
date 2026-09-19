@@ -18,6 +18,18 @@ export const invalidActivityPagination: ApplicationError = {
   retryable: false,
 };
 
+export const invalidNextMoveCompletion: ApplicationError = {
+  code: "validation",
+  message: "Invalid Next Move completion.",
+  retryable: false,
+};
+
+export const nextMoveConflict: ApplicationError = {
+  code: "conflict",
+  message: "Next Move has changed.",
+  retryable: false,
+};
+
 export const unexpectedFailure: ApplicationError = {
   code: "unexpected",
   message: "Unexpected error.",
