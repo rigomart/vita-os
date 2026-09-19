@@ -5,3 +5,9 @@ export const authenticationRequired: ApplicationError = {
   message: "Authentication required.",
   retryable: false,
 };
+
+export const unexpectedFailure: ApplicationError = {
+  code: "unexpected",
+  message: "Unexpected error.",
+  retryable: false,
+};
