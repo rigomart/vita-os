@@ -117,6 +117,32 @@ async function seedDetailFixture() {
       '["Book appointment",1]',
       1_600_000_000_003,
     ),
+    env.DB.prepare(
+      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    ).bind(
+      "thread-owner-nullable",
+      owner.actorId,
+      "area-owner",
+      "Nullable Thread",
+      "nullable-thread",
+      null,
+      6,
+      "resolved",
+      1_600_000_000_004,
+    ),
+    env.DB.prepare(
+      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    ).bind(
+      "thread-owner-foreign-area",
+      owner.actorId,
+      "area-other",
+      "Cross-owner Area Thread",
+      "foreign-area-thread",
+      null,
+      7,
+      "open",
+      1_600_000_000_005,
+    ),
   ]);
 
   return { owner, other };
@@ -235,6 +261,18 @@ async function seedActivityFixture(owner: Session, other: Session) {
       "resolved",
       600,
     ),
+    env.DB.prepare(
+      "INSERT INTO activity_log_entries (id, user_id, thread_id, type, content, previous_value, new_value, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    ).bind(
+      "log-foreign-on-owner-thread",
+      other.actorId,
+      "thread-owner",
+      "state_change",
+      "Leaked log that must not be visible",
+      "open",
+      "resolved",
+      700,
+    ),
     ...defaultPageEntries,
   ]);
 }
@@ -244,6 +282,19 @@ function cursorFor(value: object): string {
     .replaceAll("+", "-")
     .replaceAll("/", "_")
     .replace(/=+$/, "");
+}
+
+function nonCanonicalBase64UrlAlias(cursor: string): string {
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const remainder = cursor.length % 4;
+  const lastCharacter = cursor.at(-1);
+  if ((remainder !== 2 && remainder !== 3) || lastCharacter === undefined) {
+    throw new Error("Cursor must have trailing base64url padding bits");
+  }
+
+  const index = alphabet.indexOf(lastCharacter);
+  return `${cursor.slice(0, -1)}${alphabet[index + 1]}`;
 }
 
 const validationError = {
@@ -303,9 +354,12 @@ describe("Thread detail", () => {
   it("returns indistinguishable not-found results for missing and foreign slugs", async () => {
     const { owner } = fixture;
     const headers = { cookie: owner.cookie, origin: env.BROWSER_ORIGIN };
-    const [missing, foreign] = await Promise.all([
+    const [missing, foreign, inconsistentArea] = await Promise.all([
       SELF.fetch("http://api.test/v1/threads/missing-thread", { headers }),
       SELF.fetch("http://api.test/v1/threads/other-private-thread", {
+        headers,
+      }),
+      SELF.fetch("http://api.test/v1/threads/foreign-area-thread", {
         headers,
       }),
     ]);
@@ -322,6 +376,14 @@ describe("Thread detail", () => {
       credentials: foreign.headers.get("access-control-allow-credentials"),
       body: await foreign.json(),
     };
+    const inconsistentAreaResult = {
+      status: inconsistentArea.status,
+      cors: inconsistentArea.headers.get("access-control-allow-origin"),
+      credentials: inconsistentArea.headers.get(
+        "access-control-allow-credentials",
+      ),
+      body: await inconsistentArea.json(),
+    };
 
     expect(missingResult).toEqual({
       status: 404,
@@ -336,6 +398,37 @@ describe("Thread detail", () => {
       },
     });
     expect(foreignResult).toEqual(missingResult);
+    expect(inconsistentAreaResult).toEqual(missingResult);
+  });
+
+  it("omits SQL NULL optional Thread fields from the public contract", async () => {
+    const response = await SELF.fetch(
+      "http://api.test/v1/threads/nullable-thread",
+      { headers: { cookie: fixture.owner.cookie } },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      thread: {
+        _id: "thread-owner-nullable",
+        title: "Nullable Thread",
+        slug: "nullable-thread",
+        areaId: "area-owner",
+        order: 6,
+        state: "resolved",
+        createdAt: 1_600_000_000_004,
+      },
+      area: {
+        _id: "area-owner",
+        name: "Family Health",
+        slug: "family-health",
+        standard: "Appointments are current",
+        condition: "needs_attention",
+        icon: "HeartPulse",
+        order: 2,
+        createdAt: 1_500_000_000_000,
+      },
+    });
   });
 
   it.each(["empty-up-next", "invalid-up-next"])(
@@ -487,6 +580,39 @@ describe("Activity Log", () => {
       "log-oldest",
       ...defaultPageExtraLogIds,
     ]);
+  });
+
+  it("rejects a non-canonical base64url cursor alias", async () => {
+    const cursor = cursorFor({ v: 1, createdAt: 1, id: "xx" });
+    const response = await SELF.fetch(
+      `http://api.test/v1/threads/thread-owner/activity?limit=2&cursor=${encodeURIComponent(nonCanonicalBase64UrlAlias(cursor))}`,
+      { headers: { cookie: fixture.owner.cookie } },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual(validationError);
+  });
+
+  it("excludes a foreign user's log even when it references the owner's Thread", async () => {
+    const response = await SELF.fetch(
+      "http://api.test/v1/threads/thread-owner/activity?limit=1",
+      { headers: { cookie: fixture.owner.cookie } },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      entries: [
+        {
+          _id: "log-new",
+          type: "state_change",
+          content: "Resolved the Thread",
+          previousValue: "open",
+          newValue: "resolved",
+          createdAt: 400,
+        },
+      ],
+      nextCursor: expect.any(String),
+    });
   });
 
   it("returns indistinguishable not-found results for a missing and foreign Thread", async () => {

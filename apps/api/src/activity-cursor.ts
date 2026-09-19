@@ -71,5 +71,9 @@ export function decodeActivityCursor(value: string): ActivityCursor {
     throw new InvalidActivityCursorError("Cursor has invalid values");
   }
 
+  if (value !== encodeActivityCursor({ createdAt, id })) {
+    throw new InvalidActivityCursorError("Cursor is not canonical");
+  }
+
   return { createdAt, id };
 }
