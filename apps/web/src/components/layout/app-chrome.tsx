@@ -154,16 +154,23 @@ export function AppChrome({
             FLOATING,
           )}
         >
-          {/* Not an icon: collapsing it would hide the shortcut hint. */}
+          {/* Icon on mobile so the dock stays a row of taps; the field and
+              shortcut hint return from sm up, where there is room to read them. */}
           <button
             type="button"
             onClick={onOpenPalette}
             aria-label={`Jump anywhere, ${paletteShortcutLabel}`}
-            className="flex h-9 w-auto min-w-32 items-center gap-2 rounded-full border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted sm:min-w-48"
+            className={cn(
+              "flex items-center rounded-full text-muted-foreground ring-ring outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2",
+              "size-10 justify-center",
+              "sm:h-9 sm:w-auto sm:min-w-48 sm:justify-start sm:gap-2 sm:border sm:bg-muted/40 sm:px-3 sm:text-sm sm:hover:text-muted-foreground",
+            )}
           >
-            <Search className="size-4 shrink-0" />
+            <Search className="size-[18px] shrink-0 sm:size-4" />
             <span className="hidden truncate sm:inline">Jump anywhere…</span>
-            <Kbd className="ml-auto shrink-0">{paletteHint}</Kbd>
+            <Kbd className="ml-auto hidden shrink-0 sm:inline-flex">
+              {paletteHint}
+            </Kbd>
           </button>
 
           <span aria-hidden className="mx-1 h-6 w-px shrink-0 bg-border" />

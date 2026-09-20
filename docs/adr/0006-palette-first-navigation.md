@@ -1,6 +1,6 @@
 # Palette-first navigation
 
-Status: Amended by ADR 0018 — the top bar and the mobile tab bar are replaced by three floating clusters. Palette-first stands: the palette is still the sole jumping surface, and it keeps its full field in the dock.
+Status: Amended by ADR 0018 — the top bar and the mobile tab bar are replaced by three floating clusters. Palette-first stands: the palette is still the sole jumping surface. The dock shows the palette as a full field from `sm` up, and as an icon on mobile.
 
 The sidebar (Dashboard, Inbox, Area → Thread tree, New task, user menu) was the wrong navigation model for a hub-and-spoke app: its thread tree competed with the **Dashboard** — the attention-ordered awareness surface — and lost, and without the tree it was a full-width column justifying itself with roughly eight rows (#247). Navigation chrome is now a minimal top bar where a ⌘K command palette is the primary way to go anywhere, with a Dashboard / Inbox / New task tab bar on mobile. The **Dashboard** is the sole browsing surface; the palette is the sole jumping surface.
 
@@ -16,7 +16,7 @@ Four directions were compared as interactive variants on the real app (prototype
 ## Consequences
 
 - The authenticated layout is `AppShell` (`components/layout/app-shell.tsx`): top bar + mobile tab bar + command palette + the create dialogs. The shadcn sidebar component is no longer mounted.
-- The command palette (`components/layout/command-palette.tsx`, shadcn `command` on `cmdk`, adapted to the Base UI dialog) lists actions (New task/thread/area), fixed destinations (Dashboard, Inbox), all **Areas**, and all **Threads** with their Area as context.
+- The command palette (`components/layout/command-palette.tsx`, shadcn `command` on `cmdk`, adapted to the Base UI dialog) lists all **Threads** with their Area as context, all **Areas**, fixed destinations (Dashboard, Notes), then create actions (New note/thread/area) last so they stay searchable without crowding the jump list. The dock already offers those create actions as one-tap controls.
 - On mobile the phone loop (glance at Dashboard, process Inbox, capture a task) is three always-visible tabs instead of a hamburger drawer.
 - From deep inside a **Thread**, reaching a different **Area** is palette-first (⌘K) or two hops via the Dashboard; there are no breadcrumbs.
 - The create dialogs, the global `Q` new-task shortcut, and the theme/user menu — previously hosted by the sidebar — live in `AppShell` chrome; area creation moved from the sidebar's "Add area" row into the palette.
