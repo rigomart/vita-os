@@ -13,11 +13,11 @@ bun run build        # Type-check (tsc) then build for production
 
 If tests exist for the affected code, also run `bun run test:run`.
 
+When the change is user-visible UI, also verify it in the browser (see Dev servers and Browser sign-in). Lint and tests are not a substitute for that.
+
 ## Commands
 
 All commands use **bun** (not npm/yarn/pnpm). Run from the **repo root**:
-
-Do **not** run the dev server, Convex dev, or Convex generation unless the user explicitly asks. Assume the user is already running Vite and Convex locally. If those are needed, remind the user to run them: Vite dev generates the route tree, and Convex dev uploads functions and schema to Convex.
 
 ```bash
 bun run dev          # Start all dev servers via turbo
@@ -38,6 +38,26 @@ bunx turbo run dev --filter=@vita-os/web
 ```
 
 Add **new** shadcn components from `apps/web/`: `bunx shadcn@latest add <component>`. **Do NOT use `--overwrite`** — existing components in `src/components/ui/` may have custom modifications.
+
+## Dev servers
+
+Start Vite and Convex when you need them — browser verification, a missing route tree, or uploading functions and schema. Reuse whatever is already running.
+
+```bash
+bunx turbo run dev --filter=@vita-os/web   # Vite at http://localhost:5173
+bun run convex                             # Convex dev (functions + schema)
+```
+
+Two agents must not push Convex at the same time. There is a single deployment; overlapping `convex dev` or schema pushes overwrite each other.
+
+## Browser sign-in
+
+Authenticated surfaces (dock, command palette, Dashboard) require a signed-in user. Use the throwaway account from the environment:
+
+- `VITA_TEST_EMAIL`
+- `VITA_TEST_PASSWORD`
+
+Sign in at `/sign-in` with email and password. Do not use GitHub or Google. Do not use the owner's personal account. If those variables are unset, skip live browser checks of authenticated UI and say so.
 
 ## Path Aliases
 
