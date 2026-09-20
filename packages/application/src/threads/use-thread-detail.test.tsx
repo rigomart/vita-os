@@ -10,13 +10,13 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { ApplicationClientProvider } from "../application-client-provider";
+import { threadQueryKeys } from "../query-keys";
 import {
   createFakeApplicationClient,
   deferred,
   success,
 } from "../test/fake-application-client";
-import { threadQueryKeys } from "./query-keys";
-import { useThreadDetail } from "./use-thread-detail";
+import { useThreadDetail } from "./hooks";
 
 const detail: ThreadDetail = {
   thread: {
@@ -74,16 +74,32 @@ describe("useThreadDetail", () => {
     ).toEqual(detail);
   });
 
-  it.each([
-    {
+  it("reads a Thread that is not there as absent rather than as a failure", async () => {
+    const error: ApplicationError = {
       code: "not_found",
       message: "Thread not found.",
       retryable: false,
-    },
+    };
+    const { wrapper } = wrapperFor(Promise.resolve({ ok: false, error }));
+    const { result } = renderHook(() => useThreadDetail("book-checkup"), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.isPending).toBe(false));
+    expect(result.current.data).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it.each([
     {
       code: "unavailable",
       message: "Temporarily unavailable.",
       retryable: true,
+    },
+    {
+      code: "unauthorized",
+      message: "Authentication required.",
+      retryable: false,
     },
   ] satisfies ApplicationError[])(
     "preserves the $code error",

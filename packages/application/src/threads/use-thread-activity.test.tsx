@@ -1,4 +1,5 @@
 import type {
+  ActivityLogEntryId,
   ActivityLogPage,
   ApplicationClient,
   ThreadId,
@@ -10,18 +11,18 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ApplicationClientProvider } from "../application-client-provider";
+import { threadQueryKeys } from "../query-keys";
 import {
   createFakeApplicationClient,
   success,
 } from "../test/fake-application-client";
-import { threadQueryKeys } from "./query-keys";
-import { useThreadActivity } from "./use-thread-activity";
+import { useThreadActivity } from "./hooks";
 
 const threadId = "thread-1" as ThreadId;
 const firstPage: ActivityLogPage = {
   entries: [
     {
-      _id: "log-2",
+      _id: "log-2" as ActivityLogEntryId,
       type: "next_action_change",
       content: "Second",
       createdAt: 2,
@@ -32,7 +33,7 @@ const firstPage: ActivityLogPage = {
 const lastPage: ActivityLogPage = {
   entries: [
     {
-      _id: "log-1",
+      _id: "log-1" as ActivityLogEntryId,
       type: "next_action_change",
       content: "First",
       createdAt: 1,

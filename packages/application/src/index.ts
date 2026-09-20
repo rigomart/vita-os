@@ -2,10 +2,47 @@ export {
   ApplicationClientProvider,
   useApplicationClient,
 } from "./application-client-provider";
-export { threadQueryKeys } from "./thread/query-keys";
-export { useCompleteNextMove } from "./thread/use-complete-next-move";
 export {
+  useAreaDetail,
+  useAreas,
+  useCreateArea,
+  useRemoveArea,
+  useUpdateArea,
+} from "./areas/hooks";
+export type { ApplicationMutationResult } from "./cache/use-application-mutation";
+export {
+  useCaptureNote,
+  useCompleteNote,
+  useDiscardNote,
+  useDoneNotes,
+  useOpenNoteCount,
+  useOpenNotes,
+  useReopenNote,
+  useUpdateNoteAttentionDate,
+  useUpdateNoteBody,
+  type CaptureNoteVariables,
+  type DoneNotesResult,
+} from "./notes/hooks";
+export { queryKeys, threadQueryKeys } from "./query-keys";
+export {
+  useCaptureThreadNote,
+  useCompleteThreadNote,
+  useDiscardThreadNote,
+  useDoneThreadNotes,
+  useReopenThreadNote,
+  useThreadNotes,
+  useUpdateThreadNoteBody,
+  type DoneThreadNotesResult,
+} from "./thread-notes/hooks";
+export {
+  useCompleteNextMove,
+  useCreateThread,
+  useOpenThreads,
+  useRemoveThread,
+  useReplaceUpNext,
   useThreadActivity,
+  useThreadDetail,
+  useUpdateThread,
+  type CompleteNextMoveVariables,
   type ThreadActivityResult,
-} from "./thread/use-thread-activity";
-export { useThreadDetail } from "./thread/use-thread-detail";
+} from "./threads/hooks";

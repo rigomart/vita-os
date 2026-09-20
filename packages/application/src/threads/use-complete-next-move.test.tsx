@@ -1,4 +1,5 @@
 import type {
+  ActivityLogEntryId,
   ActivityLogPage,
   ApplicationClient,
   ApplicationError,
@@ -13,15 +14,15 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ApplicationClientProvider } from "../application-client-provider";
+import { threadQueryKeys } from "../query-keys";
 import {
   createFakeApplicationClient,
   deferred,
   success,
 } from "../test/fake-application-client";
-import { threadQueryKeys } from "./query-keys";
-import { useCompleteNextMove } from "./use-complete-next-move";
-import { useThreadActivity } from "./use-thread-activity";
-import { useThreadDetail } from "./use-thread-detail";
+import { useCompleteNextMove } from "./hooks";
+import { useThreadActivity } from "./hooks";
+import { useThreadDetail } from "./hooks";
 
 const threadId = "thread-1" as ThreadId;
 const slug = "book-checkup";
@@ -53,7 +54,7 @@ const initialActivity: InfiniteData<ActivityLogPage, string | undefined> = {
     {
       entries: [
         {
-          _id: "log-2",
+          _id: "log-2" as ActivityLogEntryId,
           type: "next_action_change",
           content: "Captured Call clinic",
           createdAt: 2,
@@ -64,7 +65,7 @@ const initialActivity: InfiniteData<ActivityLogPage, string | undefined> = {
     {
       entries: [
         {
-          _id: "log-1",
+          _id: "log-1" as ActivityLogEntryId,
           type: "next_action_change",
           content: "Earlier",
           createdAt: 1,
@@ -96,7 +97,7 @@ function createHarness(client: ApplicationClient) {
     () => ({
       detail: useThreadDetail(slug),
       activity: useThreadActivity(threadId, 2),
-      completion: useCompleteNextMove({ threadId, slug }),
+      completion: useCompleteNextMove({ threadId }),
     }),
     { wrapper },
   );
@@ -137,11 +138,8 @@ describe("useCompleteNextMove", () => {
       </ApplicationClientProvider>
     );
     const { result, rerender } = renderHook(
-      ({ currentThreadId, currentSlug }) =>
-        useCompleteNextMove({
-          threadId: currentThreadId,
-          slug: currentSlug,
-        }),
+      ({ currentThreadId }) =>
+        useCompleteNextMove({ threadId: currentThreadId }),
       {
         initialProps: { currentThreadId: threadId, currentSlug: slug },
         wrapper,
@@ -259,7 +257,7 @@ describe("useCompleteNextMove", () => {
     staleActivity.resolve({
       entries: [
         {
-          _id: "stale-log",
+          _id: "stale-log" as ActivityLogEntryId,
           type: "next_action_change",
           content: "Stale",
           createdAt: 99,
@@ -291,7 +289,7 @@ describe("useCompleteNextMove", () => {
     const authoritativePage: ActivityLogPage = {
       entries: [
         {
-          _id: "log-3",
+          _id: "log-3" as ActivityLogEntryId,
           type: "next_action_change",
           content: "Completed Call clinic",
           createdAt: 3,
