@@ -1,23 +1,33 @@
 import type {
-  ActivityLogEntry,
-  ActivityLogPage,
   ApplicationClient,
   ApplicationError,
-  AreaIcon,
-  AreaId,
-  AreaSummary,
-  CompleteNextMoveOutput,
-  Condition,
   OperationResult,
-  ThreadDetail,
-  ThreadId,
-  VersionedThread,
 } from "@vita-os/contracts";
 
-type JsonObject = Record<string, unknown>;
+import {
+  decodeAcknowledgement,
+  decodeActivityLogPage,
+  decodeAreaDetail,
+  decodeAreaList,
+  decodeAreaSummary,
+  decodeCompletion,
+  decodeCount,
+  decodeNote,
+  decodeNoteList,
+  decodeNotePage,
+  decodeThread,
+  decodeThreadDetail,
+  decodeThreadList,
+  decodeThreadNote,
+  decodeThreadNoteList,
+  decodeThreadNotePage,
+  isObject,
+} from "./decode";
+
 type BrowserRequestInit = RequestInit & {
   credentials?: "include" | "omit" | "same-origin";
 };
+
 type FetchImplementation = (
   input: string | URL | Request,
   init?: BrowserRequestInit,
@@ -40,224 +50,6 @@ const unavailable: ApplicationError = {
   retryable: true,
 };
 
-function isObject(value: unknown): value is JsonObject {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isThreadId(value: unknown): value is ThreadId {
-  return typeof value === "string";
-}
-
-function isAreaId(value: unknown): value is AreaId {
-  return typeof value === "string";
-}
-
-function isSafeInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value);
-}
-
-function isOptionalString(value: unknown): value is string | undefined {
-  return value === undefined || typeof value === "string";
-}
-
-function isOptionalSafeInteger(value: unknown): value is number | undefined {
-  return value === undefined || isSafeInteger(value);
-}
-
-function isCondition(value: unknown): value is Condition {
-  return (
-    value === "healthy" || value === "needs_attention" || value === "critical"
-  );
-}
-
-function isAreaIcon(value: unknown): value is AreaIcon {
-  switch (value) {
-    case "Compass":
-    case "HeartPulse":
-    case "Dumbbell":
-    case "Users":
-    case "Home":
-    case "BriefcaseBusiness":
-    case "WalletCards":
-    case "BookOpen":
-    case "Utensils":
-    case "Car":
-    case "CalendarDays":
-    case "Palette":
-    case "Leaf":
-    case "Shield":
-    case "Plane":
-      return true;
-    default:
-      return false;
-  }
-}
-
-function isThreadState(value: unknown): value is VersionedThread["state"] {
-  return value === "open" || value === "resolved";
-}
-
-function isActivityLogEntryType(
-  value: unknown,
-): value is ActivityLogEntry["type"] {
-  return (
-    value === "area_move" ||
-    value === "next_action_change" ||
-    value === "state_change" ||
-    value === "follow_up_change"
-  );
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) && value.every((item) => typeof item === "string")
-  );
-}
-
-function decodeThread(value: unknown): VersionedThread | undefined {
-  if (!isObject(value)) return undefined;
-
-  const {
-    _id,
-    title,
-    slug,
-    summary,
-    areaId,
-    order,
-    state,
-    nextMove,
-    upNext,
-    followUp,
-    lastActivityAt,
-    lastActivityContent,
-    revision,
-    createdAt,
-  } = value;
-  if (
-    !isThreadId(_id) ||
-    typeof title !== "string" ||
-    typeof slug !== "string" ||
-    !isOptionalString(summary) ||
-    !isAreaId(areaId) ||
-    !isSafeInteger(order) ||
-    !isThreadState(state) ||
-    !isOptionalString(nextMove) ||
-    (upNext !== undefined && !isStringArray(upNext)) ||
-    !isOptionalSafeInteger(followUp) ||
-    !isOptionalSafeInteger(lastActivityAt) ||
-    !isOptionalString(lastActivityContent) ||
-    !isSafeInteger(revision) ||
-    revision < 0 ||
-    !isSafeInteger(createdAt)
-  ) {
-    return undefined;
-  }
-
-  return {
-    _id,
-    title,
-    slug,
-    ...(summary === undefined ? {} : { summary }),
-    areaId,
-    order,
-    state,
-    ...(nextMove === undefined ? {} : { nextMove }),
-    ...(upNext === undefined ? {} : { upNext }),
-    ...(followUp === undefined ? {} : { followUp }),
-    ...(lastActivityAt === undefined ? {} : { lastActivityAt }),
-    ...(lastActivityContent === undefined ? {} : { lastActivityContent }),
-    revision,
-    createdAt,
-  };
-}
-
-function decodeAreaSummary(value: unknown): AreaSummary | undefined {
-  if (!isObject(value)) return undefined;
-
-  const { _id, name, slug, standard, condition, icon, order, createdAt } =
-    value;
-  if (
-    !isAreaId(_id) ||
-    typeof name !== "string" ||
-    typeof slug !== "string" ||
-    !isOptionalString(standard) ||
-    !isCondition(condition) ||
-    !isAreaIcon(icon) ||
-    !isSafeInteger(order) ||
-    !isSafeInteger(createdAt)
-  ) {
-    return undefined;
-  }
-
-  return {
-    _id,
-    name,
-    slug,
-    ...(standard === undefined ? {} : { standard }),
-    condition,
-    icon,
-    order,
-    createdAt,
-  };
-}
-
-function decodeThreadDetail(value: unknown): ThreadDetail | undefined {
-  if (!isObject(value)) return undefined;
-
-  const thread = decodeThread(value.thread);
-  const area = decodeAreaSummary(value.area);
-  if (thread === undefined || area === undefined) return undefined;
-
-  return { thread, area };
-}
-
-function decodeActivityLogEntry(value: unknown): ActivityLogEntry | undefined {
-  if (!isObject(value)) return undefined;
-
-  const { _id, type, content, previousValue, newValue, createdAt } = value;
-  if (
-    typeof _id !== "string" ||
-    !isActivityLogEntryType(type) ||
-    typeof content !== "string" ||
-    !isOptionalString(previousValue) ||
-    !isOptionalString(newValue) ||
-    !isSafeInteger(createdAt)
-  ) {
-    return undefined;
-  }
-
-  return {
-    _id,
-    type,
-    content,
-    ...(previousValue === undefined ? {} : { previousValue }),
-    ...(newValue === undefined ? {} : { newValue }),
-    createdAt,
-  };
-}
-
-function decodeActivityLogPage(value: unknown): ActivityLogPage | undefined {
-  if (!isObject(value) || !Array.isArray(value.entries)) return undefined;
-
-  const entries = value.entries.map(decodeActivityLogEntry);
-  if (entries.some((entry) => entry === undefined)) return undefined;
-  if (!isOptionalString(value.nextCursor)) return undefined;
-
-  return {
-    entries: entries.filter(
-      (entry): entry is ActivityLogEntry => entry !== undefined,
-    ),
-    ...(value.nextCursor === undefined ? {} : { nextCursor: value.nextCursor }),
-  };
-}
-
-function decodeCompletion(value: unknown): CompleteNextMoveOutput | undefined {
-  if (!isObject(value)) return undefined;
-  if (value.status === "completed") return { status: "completed" };
-  if (value.status === "unchanged") return { status: "unchanged" };
-  return undefined;
-}
-
 function decodeApplicationError(value: unknown): ApplicationError | undefined {
   if (!isObject(value) || !isObject(value.error)) return undefined;
 
@@ -278,9 +70,14 @@ function decodeApplicationError(value: unknown): ApplicationError | undefined {
   return { code, message, retryable };
 }
 
+/**
+ * The status the service answered with decides the error's code, so a caller's
+ * handling of "not found" or "unauthorized" never depends on a message.
+ */
 function statusErrorCode(status: number): ApplicationError["code"] | undefined {
   switch (status) {
     case 400:
+    case 415:
       return "validation";
     case 401:
     case 403:
@@ -289,8 +86,6 @@ function statusErrorCode(status: number): ApplicationError["code"] | undefined {
       return "not_found";
     case 409:
       return "conflict";
-    case 415:
-      return "validation";
     case 502:
     case 503:
     case 504:
@@ -300,7 +95,7 @@ function statusErrorCode(status: number): ApplicationError["code"] | undefined {
   }
 }
 
-async function readJson(response: Response): Promise<unknown | undefined> {
+async function readJson(response: Response): Promise<unknown> {
   try {
     return await response.json();
   } catch {
@@ -318,6 +113,8 @@ async function request<T>(input: {
   try {
     response = await input.fetchImpl(input.url, input.init);
   } catch {
+    // A request that never reached the service is worth retrying; nothing is
+    // known about whether it was applied, so callers treat it as unavailable.
     return { ok: false, error: unavailable };
   }
 
@@ -336,11 +133,7 @@ async function request<T>(input: {
   if (code === undefined) return { ok: false, error };
   return {
     ok: false,
-    error: {
-      code,
-      message: error.message,
-      retryable: code === "unavailable",
-    },
+    error: { code, message: error.message, retryable: code === "unavailable" },
   };
 }
 
@@ -348,48 +141,199 @@ function normalizeApiBaseUrl(apiBaseUrl: string): string {
   return apiBaseUrl.replace(/\/+$/, "");
 }
 
-function threadUrl(apiBaseUrl: string, segment: string): string {
-  return `${apiBaseUrl}/v1/threads/${encodeURIComponent(segment)}`;
-}
-
+/**
+ * The browser's implementation of the application contract.
+ *
+ * Every request carries credentials, and every response is validated before it
+ * becomes a Vita OS value. Nothing here caches, retries, or holds loading state:
+ * that belongs to the shared React application.
+ */
 export function createHttpApplicationClient({
   apiBaseUrl,
   fetchImpl = fetch,
 }: HttpApplicationClientOptions): ApplicationClient {
   const baseUrl = normalizeApiBaseUrl(apiBaseUrl);
+  const path = (...segments: string[]) =>
+    `${baseUrl}/v1/${segments.map((segment) => encodeURIComponent(segment)).join("/")}`;
+  const literalPath = (path_: string) => `${baseUrl}/v1/${path_}`;
+
+  const read = <T>(
+    url: string,
+    decodeSuccess: (value: unknown) => T | undefined,
+  ) =>
+    request({
+      fetchImpl,
+      url,
+      init: { method: "GET", credentials: "include" },
+      decodeSuccess,
+    });
+
+  const send = <T>(
+    method: "POST" | "PATCH" | "PUT" | "DELETE",
+    url: string,
+    body: unknown,
+    decodeSuccess: (value: unknown) => T | undefined,
+  ) =>
+    request({
+      fetchImpl,
+      url,
+      init: {
+        method,
+        credentials: "include",
+        ...(body === undefined
+          ? {}
+          : {
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(body),
+            }),
+      },
+      decodeSuccess,
+    });
+
+  const pageQuery = (input: { limit: number; cursor?: string }) => {
+    const query = new URLSearchParams({ limit: input.limit.toString() });
+    if (input.cursor !== undefined) query.set("cursor", input.cursor);
+    return query.toString();
+  };
 
   return {
+    /* Areas */
+    listAreas: () => read(literalPath("areas"), decodeAreaList),
+    getAreaDetail: (input) => read(path("areas", input.slug), decodeAreaDetail),
+    createArea: (input) =>
+      send("POST", literalPath("areas"), input, decodeAreaSummary),
+    updateArea: ({ areaId, ...change }) =>
+      send("PATCH", path("areas", areaId), change, decodeAreaSummary),
+    removeArea: (input) =>
+      send(
+        "DELETE",
+        path("areas", input.areaId),
+        undefined,
+        decodeAcknowledgement,
+      ),
+
+    /* Threads */
+    listOpenThreads: () => read(literalPath("threads"), decodeThreadList),
     getThreadDetail: (input) =>
-      request({
-        fetchImpl,
-        url: threadUrl(baseUrl, input.slug),
-        init: { method: "GET", credentials: "include" },
-        decodeSuccess: decodeThreadDetail,
-      }),
-    getThreadActivityPage: (input) => {
-      const query = new URLSearchParams({ limit: input.limit.toString() });
-      if (input.cursor !== undefined) query.set("cursor", input.cursor);
-      return request({
-        fetchImpl,
-        url: `${threadUrl(baseUrl, input.threadId)}/activity?${query}`,
-        init: { method: "GET", credentials: "include" },
-        decodeSuccess: decodeActivityLogPage,
-      });
-    },
-    completeNextMove: (input) =>
-      request({
-        fetchImpl,
-        url: `${threadUrl(baseUrl, input.threadId)}/complete-next-move`,
-        init: {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            expectedNextMove: input.expectedNextMove,
-            expectedRevision: input.expectedRevision,
-          }),
-        },
-        decodeSuccess: decodeCompletion,
-      }),
+      read(path("threads", input.slug), decodeThreadDetail),
+    createThread: (input) =>
+      send("POST", literalPath("threads"), input, decodeThread),
+    updateThread: ({ threadId, ...change }) =>
+      send("PATCH", path("threads", threadId), change, decodeThread),
+    removeThread: (input) =>
+      send(
+        "DELETE",
+        path("threads", input.threadId),
+        undefined,
+        decodeAcknowledgement,
+      ),
+    replaceUpNext: (input) =>
+      send(
+        "PUT",
+        `${path("threads", input.threadId)}/up-next`,
+        { moves: input.moves },
+        decodeThread,
+      ),
+    completeNextMove: ({ threadId, ...expectation }) =>
+      send(
+        "POST",
+        `${path("threads", threadId)}/complete-next-move`,
+        expectation,
+        decodeCompletion,
+      ),
+
+    /* Activity Log */
+    getThreadActivityPage: ({ threadId, ...page }) =>
+      read(
+        `${path("threads", threadId)}/activity?${pageQuery(page)}`,
+        decodeActivityLogPage,
+      ),
+
+    /* Standalone Notes */
+    listOpenNotes: () => read(literalPath("notes"), decodeNoteList),
+    getDoneNotePage: (input) =>
+      read(literalPath(`notes/done?${pageQuery(input)}`), decodeNotePage),
+    countOpenNotes: () => read(literalPath("notes/open-count"), decodeCount),
+    createNote: (input) =>
+      send("POST", literalPath("notes"), input, decodeNote),
+    updateNoteBody: (input) =>
+      send(
+        "PATCH",
+        `${path("notes", input.noteId)}/body`,
+        { body: input.body },
+        decodeNote,
+      ),
+    updateNoteAttentionDate: (input) =>
+      send(
+        "PATCH",
+        `${path("notes", input.noteId)}/attention-date`,
+        { when: input.when },
+        decodeNote,
+      ),
+    markNoteDone: (input) =>
+      send(
+        "PATCH",
+        `${path("notes", input.noteId)}/state`,
+        { state: "done" },
+        decodeNote,
+      ),
+    markNoteOpen: (input) =>
+      send(
+        "PATCH",
+        `${path("notes", input.noteId)}/state`,
+        { state: "open" },
+        decodeNote,
+      ),
+    removeNote: (input) =>
+      send(
+        "DELETE",
+        path("notes", input.noteId),
+        undefined,
+        decodeAcknowledgement,
+      ),
+
+    /* Thread Notes */
+    listOpenThreadNotes: (input) =>
+      read(`${path("threads", input.threadId)}/notes`, decodeThreadNoteList),
+    getDoneThreadNotePage: ({ threadId, ...page }) =>
+      read(
+        `${path("threads", threadId)}/notes/done?${pageQuery(page)}`,
+        decodeThreadNotePage,
+      ),
+    createThreadNote: (input) =>
+      send(
+        "POST",
+        `${path("threads", input.threadId)}/notes`,
+        { body: input.body },
+        decodeThreadNote,
+      ),
+    updateThreadNoteBody: (input) =>
+      send(
+        "PATCH",
+        `${path("thread-notes", input.threadNoteId)}/body`,
+        { body: input.body },
+        decodeThreadNote,
+      ),
+    markThreadNoteDone: (input) =>
+      send(
+        "PATCH",
+        `${path("thread-notes", input.threadNoteId)}/state`,
+        { state: "done" },
+        decodeThreadNote,
+      ),
+    markThreadNoteOpen: (input) =>
+      send(
+        "PATCH",
+        `${path("thread-notes", input.threadNoteId)}/state`,
+        { state: "open" },
+        decodeThreadNote,
+      ),
+    removeThreadNote: (input) =>
+      send(
+        "DELETE",
+        path("thread-notes", input.threadNoteId),
+        undefined,
+        decodeAcknowledgement,
+      ),
   };
 }
