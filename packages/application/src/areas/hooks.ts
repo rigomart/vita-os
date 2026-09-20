@@ -69,8 +69,8 @@ export function useCreateArea(): ApplicationMutationResult<
   return useApplicationMutation<CreateAreaInput, AreaSummary, AreaId>({
     run: (client, input) => client.createArea(input),
     affected: (_input, cache) => areaChangeKeys(cache),
-    optimistic: (cache, input) => {
-      const pendingId = newRecordId() as AreaId;
+    optimistic: (cache, input, previousLocal) => {
+      const pendingId = previousLocal ?? (newRecordId() as AreaId);
       showPendingArea(cache, input, { id: pendingId, now: Date.now() });
       return pendingId;
     },

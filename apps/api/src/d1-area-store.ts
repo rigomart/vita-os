@@ -25,7 +25,7 @@ const SLUG_ATTEMPTS = 3;
 function isUniqueSlugViolation(error: unknown): boolean {
   return (
     error instanceof Error &&
-    /UNIQUE constraint failed: areas\.(user_id, )?slug/.test(error.message)
+    /UNIQUE constraint failed: areas\.user_id, areas\.slug/.test(error.message)
   );
 }
 
@@ -214,29 +214,26 @@ export class D1AreaStore implements AreaStore {
   async removeArea(
     input: Actored<{ areaId: string }>,
   ): Promise<StoreResult<CommandAcknowledgement>> {
-    const area = await this.database
-      .prepare("SELECT id FROM areas WHERE user_id = ? AND id = ? LIMIT 1")
-      .bind(input.actorId, input.areaId)
-      .first<{ id: string }>();
-    if (area === null) return notFound;
-
-    const blocker = await this.database
+    const removed = await this.database
       .prepare(
-        `SELECT id FROM threads WHERE user_id = ? AND area_id = ? LIMIT 1`,
+        `DELETE FROM areas
+         WHERE user_id = ? AND id = ?
+           AND NOT EXISTS (SELECT 1 FROM threads WHERE area_id = areas.id)
+         RETURNING id`,
       )
       .bind(input.actorId, input.areaId)
       .first<{ id: string }>();
-    if (blocker !== null) {
+    if (removed === null) {
+      const area = await this.database
+        .prepare("SELECT id FROM areas WHERE user_id = ? AND id = ? LIMIT 1")
+        .bind(input.actorId, input.areaId)
+        .first<{ id: string }>();
+      if (area === null) return notFound;
+
       throw new ConflictError(
         "Cannot delete an area that has threads. Move or delete the threads first.",
       );
     }
-
-    const removed = await this.database
-      .prepare("DELETE FROM areas WHERE user_id = ? AND id = ? RETURNING id")
-      .bind(input.actorId, input.areaId)
-      .first<{ id: string }>();
-    if (removed === null) return notFound;
 
     return found(commandAcknowledged);
   }

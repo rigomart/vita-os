@@ -1,3 +1,5 @@
+import type { InfiniteData } from "@tanstack/react-query";
+import type { Page } from "@vita-os/contracts";
 import type {
   ApplicationError,
   ThreadId,
@@ -236,4 +238,62 @@ describe("changing a Thread Note", () => {
     expect(notes?.map((entry) => entry._id)).toEqual([done._id, note._id]);
     expect(notes?.[0]).toMatchObject({ state: "open", completedAt: undefined });
   });
+});
+
+describe("Done ThreadNote optimistic changes", () => {
+  it.each(["edit", "reopen", "discard"] as const)(
+    "updates cached history for %s and restores it on failure",
+    async (operation) => {
+      const done = aThreadNote({ state: "done", completedAt: 5000 });
+      const pending = deferred<{ ok: false; error: ApplicationError }>();
+      const client = createFakeApplicationClient({
+        updateThreadNoteBody: () => pending.promise,
+        markThreadNoteOpen: () => pending.promise,
+        removeThreadNote: () => pending.promise,
+      });
+      const key = queryKeys.threadNotes.done(threadId, 20);
+      const original = {
+        pages: [{ entries: [done], nextCursor: "next-page" }],
+        pageParams: [undefined],
+      };
+      const { cache, wrapper } = createHarness(client, (seeded) =>
+        seeded.setQueryData(key, original),
+      );
+      const { result } = renderHook(
+        () => ({
+          edit: useUpdateThreadNoteBody(),
+          reopen: useReopenThreadNote(),
+          discard: useDiscardThreadNote(),
+        }),
+        { wrapper },
+      );
+      act(() => {
+        if (operation === "edit")
+          result.current.edit.mutate({
+            threadId,
+            threadNoteId: done._id,
+            body: "Changed",
+          });
+        else if (operation === "reopen")
+          result.current.reopen.mutate({ threadId, note: done });
+        else
+          result.current.discard.mutate({ threadId, threadNoteId: done._id });
+      });
+      await waitFor(() => {
+        const entries =
+          cache.getQueryData<InfiniteData<Page<ThreadNote>>>(key)?.pages[0]
+            ?.entries;
+        expect(entries).toEqual(
+          operation === "edit" ? [{ ...done, body: "Changed" }] : [],
+        );
+      });
+      expect(
+        cache.getQueryData<InfiniteData<Page<ThreadNote>>>(key)?.pages[0]
+          ?.nextCursor,
+      ).toBe("next-page");
+      await act(async () => pending.resolve({ ok: false, error: unavailable }));
+      await waitFor(() => expect(result.current[operation].isError).toBe(true));
+      expect(cache.getQueryData(key)).toEqual(original);
+    },
+  );
 });

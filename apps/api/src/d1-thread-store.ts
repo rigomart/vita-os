@@ -59,7 +59,9 @@ const SLUG_ATTEMPTS = 3;
 function isUniqueSlugViolation(error: unknown): boolean {
   return (
     error instanceof Error &&
-    /UNIQUE constraint failed: threads\.(user_id, )?slug/.test(error.message)
+    /UNIQUE constraint failed: threads\.user_id, threads\.slug/.test(
+      error.message,
+    )
   );
 }
 
@@ -464,12 +466,19 @@ export class D1ThreadStore implements ThreadStore {
 
     const nextMoveCondition =
       input.expectedNextMove === undefined ? "" : " AND next_move IS ?";
+    // A destination may disappear after the decision read it. Guard it in
+    // the write so the normal re-read reports the missing Area without a
+    // foreign-key failure or any Activity Log entries.
+    const areaCondition =
+      patch.areaId === undefined
+        ? ""
+        : " AND EXISTS (SELECT 1 FROM areas WHERE id = ? AND user_id = ?)";
     const statements = [
       this.database
         .prepare(
           `UPDATE threads
            SET ${assignments.join(", ")}
-           WHERE user_id = ? AND id = ? AND revision = ?${nextMoveCondition}
+           WHERE user_id = ? AND id = ? AND revision = ?${nextMoveCondition}${areaCondition}
            RETURNING ${THREAD_COLUMNS}`,
         )
         .bind(
@@ -480,6 +489,7 @@ export class D1ThreadStore implements ThreadStore {
           ...(input.expectedNextMove === undefined
             ? []
             : [input.expectedNextMove]),
+          ...(patch.areaId === undefined ? [] : [patch.areaId, input.actorId]),
         ),
       ...logs.map((log) =>
         this.database

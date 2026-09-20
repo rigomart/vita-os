@@ -18,7 +18,7 @@ vi.mock("../../hooks/use-mobile", () => ({
   useIsMobile: () => mocks.isMobile,
 }));
 
-// The screen itself is Convex-backed and covered by its own tests; what matters
+// The screen itself is client-backed and covered by its own tests; what matters
 // here is which shell it is mounted in and when that shell goes away.
 vi.mock("../screens/inbox-screen", () => ({
   InboxScreen: () => <p>inbox screen</p>,

@@ -41,9 +41,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   // The thread pane opens from two sources: the global `?thread=<slug>`
   // search param (any page, in place) or the /$areaSlug/$threadSlug deep
   // link. When both are present, the search param wins.
-  const { thread: searchThreadSlug } = useSearch({
+  const { thread: searchThreadSlug }: ProductSearch = useSearch({
     from: "/_authenticated",
-  }) as ProductSearch;
+  });
   const threadRouteMatch = useMatch({
     from: "/_authenticated/$areaSlug/$threadSlug",
     shouldThrow: false,

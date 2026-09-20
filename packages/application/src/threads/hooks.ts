@@ -92,8 +92,8 @@ export function useCreateThread(): ApplicationMutationResult<
     run: (client, input) => client.createThread(input),
     affected: (input, cache) =>
       threadChangeKeys(cache, { areaIds: [input.areaId] }),
-    optimistic: (cache, input) => {
-      const pendingId = newRecordId() as ThreadId;
+    optimistic: (cache, input, previousLocal) => {
+      const pendingId = previousLocal ?? (newRecordId() as ThreadId);
       showPendingThread(cache, input, { id: pendingId, now: Date.now() });
       return pendingId;
     },

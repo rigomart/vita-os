@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { render, screen } from "../test/render-with-providers";
-
 import { AppChrome } from "./app-chrome";
 
 vi.mock("../viewer/viewer-context", () => ({

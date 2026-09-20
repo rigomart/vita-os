@@ -10,7 +10,7 @@ import type { ProductSearch } from "../../navigation/search-params";
  */
 export function useInboxSurface() {
   const navigate = useNavigate();
-  const { inbox } = useSearch({ from: "/_authenticated" }) as ProductSearch;
+  const { inbox }: ProductSearch = useSearch({ from: "/_authenticated" });
   const isOpen = inbox === true;
 
   const open = () => {

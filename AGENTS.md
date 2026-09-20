@@ -41,13 +41,13 @@ Add **new** shadcn components from `apps/web/`: `bunx shadcn@latest add <compone
 
 ## Where the product lives
 
-Vita OS itself is `packages/application`: every authenticated screen, the reads
+Vita OS itself is `packages/application`: product routes, every authenticated screen, the reads
 and commands behind them, the TanStack Query cache, and the optimistic behavior.
 Its modules import each other by relative path — never by the package's own name.
 
 `apps/web` is only a host: Better Auth in the browser, `VITE_API_BASE_URL`, the
-HTTP implementation of the application contract, and the route files that mount
-the shared screens. `apps/api` is the Hono Worker over D1. See
+HTTP implementation of the application contract, session gating, and authentication
+routes. It mounts the shared product route tree. `apps/api` is the Hono Worker over D1. See
 `docs/migrations/cloudflare-application.md`.
 
 ## Dev servers

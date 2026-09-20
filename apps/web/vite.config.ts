@@ -1,17 +1,14 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
-import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    tanstackRouter({
-      target: "react",
-      autoCodeSplitting: true,
-    }),
+    // No route-file plugin: the product's routes are code-based and come from
+    // `@vita-os/application`, and this host defines its own beside them.
     react(),
     cloudflare(),
     babel({

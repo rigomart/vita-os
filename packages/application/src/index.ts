@@ -13,6 +13,7 @@ export {
   ApplicationClientProvider,
   useApplicationClient,
 } from "./application-client-provider";
+export { SessionGateProvider, type SessionGate } from "./viewer/session-gate";
 export {
   useViewer,
   ViewerProvider,
@@ -33,7 +34,11 @@ export {
 } from "./layout/error-boundary";
 export { ThreadDetailView } from "./threads/thread-detail/thread-detail-view";
 
-/* The product's own navigation contract */
+/* The product's own routes, for a host to mount, and the contract they read */
+export {
+  authenticatedRouteTree,
+  productRootRoute,
+} from "./routes/product-route-tree";
 export {
   readProductSearch,
   type ProductSearch,

@@ -21,7 +21,6 @@ export default defineConfig({
   ignorePatterns: [
     "**/*.md",
     "apps/api/worker-configuration.d.ts",
-    "apps/web/src/routeTree.gen.ts",
     "apps/web/convex/_generated/**",
   ],
 });

@@ -9,7 +9,12 @@ import type {
   OperationResult,
 } from "@vita-os/contracts";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  hashKey,
+  notifyManager,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { useApplicationClient } from "../application-client-provider";
 
@@ -40,9 +45,14 @@ export interface ApplicationMutationOptions<TVariables, TValue, TLocal = void> {
   affected: (variables: TVariables, cache: QueryClient) => QueryKey[];
   /**
    * The change to show immediately. Whatever it returns — the ID it minted for a
-   * pending record, say — is handed back to `reconcile`.
+   * pending record, say — is handed back to `reconcile`. This callback must only
+   * change the cache: it can be replayed when another command settles.
    */
-  optimistic?: (cache: QueryClient, variables: TVariables) => TLocal;
+  optimistic?: (
+    cache: QueryClient,
+    variables: TVariables,
+    previousLocal: TLocal | undefined,
+  ) => TLocal;
   /** The service's answer, folded into what is on screen. */
   reconcile?: (
     cache: QueryClient,
@@ -54,10 +64,29 @@ export interface ApplicationMutationOptions<TVariables, TValue, TLocal = void> {
   alsoInvalidate?: (variables: TVariables, cache: QueryClient) => QueryKey[];
 }
 
+interface MutationBatch {
+  pending: number;
+  base: Map<string, [QueryKey, unknown]>;
+  layers: Array<{ apply: () => void }>;
+  invalidate: Map<string, QueryKey>;
+}
+
 interface Snapshot<TLocal> {
-  entries: Array<[QueryKey, unknown]>;
-  invalidate: QueryKey[];
+  batch: MutationBatch;
+  layer: { apply: () => void };
   local: TLocal | undefined;
+}
+
+// Keep successful commands in the batch until every overlapping command settles.
+// Otherwise an older failure can restore data from before a newer success.
+const batches = new WeakMap<QueryClient, MutationBatch>();
+
+function replay(cache: QueryClient, batch: MutationBatch) {
+  notifyManager.batch(() => {
+    for (const [key, value] of batch.base.values())
+      cache.setQueryData(key, value);
+    for (const layer of batch.layers) layer.apply();
+  });
 }
 
 export type ApplicationMutationResult<
@@ -80,40 +109,70 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
       return result.value;
     },
     onMutate: async (variables) => {
+      let batch = batches.get(cache);
+      if (!batch) {
+        batch = {
+          pending: 0,
+          base: new Map(),
+          layers: [],
+          invalidate: new Map(),
+        };
+        batches.set(cache, batch);
+      }
+      batch.pending += 1;
       const affected = options.affected(variables, cache);
       await Promise.all(
         affected.map((queryKey) => cache.cancelQueries({ queryKey })),
       );
-
-      const entries = affected.flatMap((queryKey) =>
-        cache.getQueriesData({ queryKey }),
-      );
-      const local = options.optimistic?.(cache, variables);
-
-      return {
-        entries,
-        invalidate: [
-          ...affected,
-          ...(options.alsoInvalidate?.(variables, cache) ?? []),
-        ],
-        local,
+      for (const key of [
+        ...affected,
+        ...(options.alsoInvalidate?.(variables, cache) ?? []),
+      ])
+        batch.invalidate.set(hashKey(key), key);
+      for (const queryKey of affected) {
+        for (const entry of cache.getQueriesData({ queryKey })) {
+          const hash = hashKey(entry[0]);
+          if (!batch.base.has(hash)) batch.base.set(hash, entry);
+        }
+      }
+      const snapshot: Snapshot<TLocal> = {
+        batch,
+        layer: {
+          apply: () => {
+            snapshot.local = options.optimistic?.(
+              cache,
+              variables,
+              snapshot.local,
+            );
+          },
+        },
+        local: undefined,
       };
+      batch.layers.push(snapshot.layer);
+      snapshot.layer.apply();
+      return snapshot;
     },
     onError: (_error, _variables, snapshot) => {
-      if (snapshot === undefined) return;
-
-      for (const [queryKey, data] of snapshot.entries) {
-        cache.setQueryData(queryKey, data);
-      }
+      if (snapshot) snapshot.layer.apply = () => {};
     },
     onSuccess: (value, variables, snapshot) => {
-      options.reconcile?.(cache, value, variables, snapshot?.local);
+      if (!snapshot) return;
+      const optimistic = snapshot.layer.apply;
+      snapshot.layer.apply = () => {
+        optimistic();
+        options.reconcile?.(cache, value, variables, snapshot.local);
+      };
     },
     onSettled: (_value, _error, _variables, snapshot) => {
-      if (snapshot === undefined) return;
-
+      if (!snapshot) return;
+      const { batch } = snapshot;
+      replay(cache, batch);
+      batch.pending -= 1;
+      // Refetching while a command is pending would erase its optimistic changes.
+      if (batch.pending !== 0) return;
+      batches.delete(cache);
       return Promise.all(
-        snapshot.invalidate.map((queryKey) =>
+        [...batch.invalidate.values()].map((queryKey) =>
           cache.invalidateQueries({ queryKey }),
         ),
       );

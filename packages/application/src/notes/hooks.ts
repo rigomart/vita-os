@@ -80,8 +80,8 @@ export function useCaptureNote(): ApplicationMutationResult<
   return useApplicationMutation<CaptureNoteVariables, Note, NoteId>({
     run: (client, input) => client.createNote(input),
     affected: () => noteKeys(),
-    optimistic: (cache, input) => {
-      const pendingId = newRecordId() as NoteId;
+    optimistic: (cache, input, previousLocal) => {
+      const pendingId = previousLocal ?? (newRecordId() as NoteId);
       const now = Date.now();
       showCapturedNote(cache, {
         _id: pendingId,

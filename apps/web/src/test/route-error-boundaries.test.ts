@@ -1,23 +1,23 @@
+import { authenticatedRouteTree, productRootRoute } from "@vita-os/application";
 import { describe, expect, it } from "vitest";
 
-import { Route as rootRoute } from "@/routes/__root";
-import { Route as authenticatedRoute } from "@/routes/_authenticated/route";
-import { Route as unauthenticatedRoute } from "@/routes/_unauthenticated/route";
-import { Route as signInRoute } from "@/routes/_unauthenticated/sign-in";
-import { Route as signUpRoute } from "@/routes/_unauthenticated/sign-up";
+import {
+  signInRoute,
+  signUpRoute,
+  unauthenticatedRoute,
+} from "@/routing/unauthenticated-routes";
 
 /**
  * Every full-page route declares a boundary.
  *
  * The fallbacks themselves belong to the shared application and are tested
- * there; what a host owns is mounting them, which is what this checks. Code
- * splitting rewrites file-route components into lazy shells, so this guards the
- * wiring rather than the rendering.
+ * there; what a host owns is mounting them — its own routes, and the product's
+ * root and authenticated layout it hangs them beside.
  */
 describe("full-page routes", () => {
   it.each([
-    ["root", rootRoute],
-    ["authenticated layout", authenticatedRoute],
+    ["root", productRootRoute],
+    ["authenticated layout", authenticatedRouteTree],
     ["unauthenticated layout", unauthenticatedRoute],
     ["sign in", signInRoute],
     ["sign up", signUpRoute],

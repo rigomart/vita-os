@@ -1,4 +1,9 @@
-import type { QueryClient, QueryKey } from "@tanstack/react-query";
+import type {
+  InfiniteData,
+  QueryClient,
+  QueryKey,
+} from "@tanstack/react-query";
+import type { Page } from "@vita-os/contracts";
 
 /**
  * Rewriting what the application already holds.
@@ -88,4 +93,19 @@ export function insertNewestFirst<T extends { _id: string }>(
   return index === -1
     ? [...records, record]
     : [...records.slice(0, index), record, ...records.slice(index)];
+}
+
+/** Update entries already loaded without changing the service's pagination cursors. */
+export function patchPagedEntries<T>(
+  cache: QueryClient,
+  key: QueryKey,
+  patch: (entries: T[]) => T[],
+): void {
+  patchQueries<InfiniteData<Page<T>>>(cache, key, (data) => ({
+    ...data,
+    pages: data.pages.map((page) => ({
+      ...page,
+      entries: patch(page.entries),
+    })),
+  }));
 }

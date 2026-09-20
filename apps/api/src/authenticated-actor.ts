@@ -13,10 +13,10 @@ type ActorEnvironment = {
 };
 
 export function authenticatedActor(
-  auth: ReturnType<typeof createAuth>,
+  getAuth: () => ReturnType<typeof createAuth>,
 ): MiddlewareHandler<ActorEnvironment> {
   return async (context, next) => {
-    const session = await auth.api.getSession({
+    const session = await getAuth().api.getSession({
       headers: context.req.raw.headers,
     });
 

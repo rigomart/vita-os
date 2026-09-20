@@ -3,6 +3,7 @@ import type {
   AreaId,
   ApplicationError,
   AreaSummary,
+  ThreadDetail,
 } from "@vita-os/contracts";
 
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -192,6 +193,38 @@ describe("useUpdateArea", () => {
     ).toEqual(home);
 
     pending.resolve(success({ ...health, condition: "critical" }));
+  });
+
+  it("updates embedded Areas in Thread panes and rolls them back on failure", async () => {
+    const pending = deferred<{ ok: false; error: ApplicationError }>();
+    const thread = aThread();
+    const key = queryKeys.threads.detail(thread.slug);
+    const unrelatedKey = queryKeys.threads.detail("other-thread");
+    const { wrapper, cache } = createHarness(
+      createFakeApplicationClient({
+        updateArea: () => pending.promise,
+      }),
+      (seeded) => {
+        seeded.setQueryData(key, { thread, area: health });
+        seeded.setQueryData(unrelatedKey, {
+          thread: aThread({ areaId: home._id }),
+          area: home,
+        });
+      },
+    );
+    const { result } = renderHook(() => useUpdateArea(), { wrapper });
+    act(() => result.current.mutate({ areaId: health._id, name: "Wellbeing" }));
+    await waitFor(() =>
+      expect(cache.getQueryData<ThreadDetail>(key)?.area.name).toBe(
+        "Wellbeing",
+      ),
+    );
+    expect(cache.getQueryData<ThreadDetail>(unrelatedKey)?.area).toEqual(home);
+    await act(async () => pending.resolve({ ok: false, error: unavailable }));
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(cache.getQueryData<ThreadDetail>(key)?.area).toEqual(health);
+    expect(cache.getQueryState(key)?.isInvalidated).toBe(true);
+    expect(cache.getQueryState(unrelatedKey)?.isInvalidated).toBe(false);
   });
 
   it("clears the Standard when the change carries null", async () => {

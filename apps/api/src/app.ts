@@ -41,7 +41,6 @@ export function createApp(
   env: WorkerEnv,
   dependencies: AppDependencies = {},
 ): Hono<AppEnvironment> {
-  const auth = createAuth(env);
   const createStore =
     dependencies.createStore ?? (() => createD1VitaStore(env.DB));
   const browserOrigin = new URL(env.BROWSER_ORIGIN).origin;
@@ -64,7 +63,7 @@ export function createApp(
   });
 
   app.use("/api/auth/*", credentialedCors);
-  app.all("/api/auth/*", (context) => auth.handler(context.req.raw));
+  app.all("/api/auth/*", (context) => createAuth(env).handler(context.req.raw));
 
   app.use("/v1/*", credentialedCors);
   app.use("/v1/*", async (context, next) => {
@@ -91,7 +90,12 @@ export function createApp(
 
     await next();
   });
-  app.use("/v1/*", authenticatedActor(auth));
+  // Better Auth starts asynchronous initialization when constructed. Keep that
+  // work in the request that uses it; preflight/rejected requests need no auth.
+  app.use(
+    "/v1/*",
+    authenticatedActor(() => createAuth(env)),
+  );
   app.use("/v1/*", async (context, next) => {
     context.set("store", createStore(context.get("actor")));
     await next();

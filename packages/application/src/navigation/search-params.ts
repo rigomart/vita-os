@@ -3,15 +3,14 @@
  *
  * `?thread=<slug>` summons a Thread in place over whatever page is showing, and
  * `?inbox=true` summons the Notes panel the same way. The shared application
- * defines them because they belong to the product's behavior; a host mounts the
- * routes that validate them.
+ * defines them and validates them in its own route tree.
  */
 export interface ProductSearch {
   thread?: string | undefined;
   inbox?: true | undefined;
 }
 
-/** What a host's route should make of an unvalidated search object. */
+/** Validate the product's URL search parameters. */
 export function readProductSearch(
   search: Record<string, unknown>,
 ): ProductSearch {

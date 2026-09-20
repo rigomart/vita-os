@@ -12,7 +12,12 @@ import { newRecordId } from "@vita-os/core";
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
 import type { PagedResult } from "../cache/use-paged-application-query";
 
-import { patchById, patchQuery, removeById } from "../cache/patch";
+import {
+  patchById,
+  patchPagedEntries,
+  patchQuery,
+  removeById,
+} from "../cache/patch";
 import { useApplicationMutation } from "../cache/use-application-mutation";
 import { useOptionalApplicationQuery } from "../cache/use-application-query";
 import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
@@ -89,8 +94,8 @@ export function useCaptureThreadNote(): ApplicationMutationResult<
   >({
     run: (client, input) => client.createThreadNote(input),
     affected: (input) => threadNoteKeys(input.threadId),
-    optimistic: (cache, input) => {
-      const pendingId = newRecordId() as ThreadNoteId;
+    optimistic: (cache, input, previousLocal) => {
+      const pendingId = previousLocal ?? (newRecordId() as ThreadNoteId);
       const now = Date.now();
       patchOpenThreadNotes(cache, input.threadId, (notes) => [
         {
@@ -131,10 +136,16 @@ export function useUpdateThreadNoteBody(): ApplicationMutationResult<
         body: input.body,
       }),
     affected: (input) => threadNoteKeys(input.threadId),
-    optimistic: (cache, input) =>
-      patchOpenThreadNotes(cache, input.threadId, (notes) =>
-        patchById(notes, input.threadNoteId, { body: input.body }),
-      ),
+    optimistic: (cache, input) => {
+      const patch = (notes: ThreadNote[]) =>
+        patchById(notes, input.threadNoteId, { body: input.body });
+      patchOpenThreadNotes(cache, input.threadId, patch);
+      patchPagedEntries(
+        cache,
+        queryKeys.threadNotes.doneAll(input.threadId),
+        patch,
+      );
+    },
   });
 }
 
@@ -149,10 +160,16 @@ export function useCompleteThreadNote(): ApplicationMutationResult<
     run: (client, input) =>
       client.markThreadNoteDone({ threadNoteId: input.threadNoteId }),
     affected: (input) => threadNoteKeys(input.threadId),
-    optimistic: (cache, input) =>
-      patchOpenThreadNotes(cache, input.threadId, (notes) =>
-        removeById(notes, input.threadNoteId),
-      ),
+    optimistic: (cache, input) => {
+      const patch = (notes: ThreadNote[]) =>
+        removeById(notes, input.threadNoteId);
+      patchOpenThreadNotes(cache, input.threadId, patch);
+      patchPagedEntries(
+        cache,
+        queryKeys.threadNotes.doneAll(input.threadId),
+        patch,
+      );
+    },
   });
 }
 
@@ -171,7 +188,12 @@ export function useReopenThreadNote(): ApplicationMutationResult<
     run: (client, input) =>
       client.markThreadNoteOpen({ threadNoteId: input.note._id }),
     affected: (input) => threadNoteKeys(input.threadId),
-    optimistic: (cache, input) =>
+    optimistic: (cache, input) => {
+      patchPagedEntries<ThreadNote>(
+        cache,
+        queryKeys.threadNotes.doneAll(input.threadId),
+        (notes) => removeById(notes, input.note._id),
+      );
       patchOpenThreadNotes(cache, input.threadId, (notes) =>
         notes.some((existing) => existing._id === input.note._id)
           ? notes
@@ -179,7 +201,8 @@ export function useReopenThreadNote(): ApplicationMutationResult<
               { ...input.note, state: "open", completedAt: undefined },
               ...notes,
             ],
-      ),
+      );
+    },
   });
 }
 
@@ -194,9 +217,15 @@ export function useDiscardThreadNote(): ApplicationMutationResult<
     run: (client, input) =>
       client.removeThreadNote({ threadNoteId: input.threadNoteId }),
     affected: (input) => threadNoteKeys(input.threadId),
-    optimistic: (cache, input) =>
-      patchOpenThreadNotes(cache, input.threadId, (notes) =>
-        removeById(notes, input.threadNoteId),
-      ),
+    optimistic: (cache, input) => {
+      const patch = (notes: ThreadNote[]) =>
+        removeById(notes, input.threadNoteId);
+      patchOpenThreadNotes(cache, input.threadId, patch);
+      patchPagedEntries(
+        cache,
+        queryKeys.threadNotes.doneAll(input.threadId),
+        patch,
+      );
+    },
   });
 }

@@ -5,6 +5,7 @@ import type {
   AreaSummary,
   CreateAreaInput,
   UpdateAreaInput,
+  ThreadDetail,
 } from "@vita-os/contracts";
 
 import { clearedToAbsent, generateSlug } from "@vita-os/core";
@@ -73,6 +74,12 @@ export function areaChangeKeys(
     if (detail !== null && detail?.area._id === areaId) keys.push(queryKey);
   }
 
+  for (const [queryKey, detail] of cache.getQueriesData<ThreadDetail | null>({
+    queryKey: queryKeys.threads.details(),
+  })) {
+    if (detail?.area._id === areaId) keys.push(queryKey);
+  }
+
   return keys;
 }
 
@@ -108,6 +115,14 @@ export function showAreaChange(
 
   patchQuery<AreaSummary[]>(cache, queryKeys.areas.list(), (areas) =>
     patchById(areas, areaId, patch),
+  );
+  patchQueries<ThreadDetail | null>(
+    cache,
+    queryKeys.threads.details(),
+    (detail) =>
+      detail?.area._id === areaId
+        ? { ...detail, area: { ...detail.area, ...patch } }
+        : detail,
   );
   patchAreaDetail(cache, areaId, (detail) => ({
     ...detail,

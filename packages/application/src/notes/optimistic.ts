@@ -4,6 +4,7 @@ import type { Note, NoteId } from "@vita-os/contracts";
 import {
   insertNewestFirst,
   patchById,
+  patchPagedEntries,
   patchQuery,
   removeById,
 } from "../cache/patch";
@@ -78,6 +79,9 @@ export function showNoteEdit(
   patch: Partial<Note>,
 ): void {
   patchOpenNotes(cache, (notes) => patchById(notes, noteId, patch));
+  patchPagedEntries<Note>(cache, queryKeys.notes.doneAll(), (notes) =>
+    patchById(notes, noteId, patch),
+  );
 }
 
 /**
@@ -89,15 +93,20 @@ export function showNoteLeavingOpenNotes(
   noteId: NoteId,
 ): void {
   patchOpenNotes(cache, (notes) => removeById(notes, noteId));
+  patchPagedEntries<Note>(cache, queryKeys.notes.doneAll(), (notes) =>
+    removeById(notes, noteId),
+  );
 }
 
 /**
  * Reopening a Note puts it back on the Open Notes, which is why the caller passes
  * the whole record: a Done Note was never in the open list to rebuild it from. The
- * Done pages are deliberately left alone, so for one round trip the Note shows in
- * both places until the service drops it from that page.
+ * Done pages drop it immediately while retaining the service's pagination cursors.
  */
 export function showReopenedNote(cache: QueryClient, note: Note): void {
+  patchPagedEntries<Note>(cache, queryKeys.notes.doneAll(), (notes) =>
+    removeById(notes, note._id),
+  );
   patchOpenNotes(cache, (notes) =>
     notes.some((existing) => existing._id === note._id)
       ? notes

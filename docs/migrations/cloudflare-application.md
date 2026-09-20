@@ -13,17 +13,18 @@ browser imports it any more.
 ```text
 packages/contracts     plain models, inputs, outputs, errors, ApplicationClient
 packages/core          the domain rules, framework-free
-packages/application   Vita OS as an application: screens, cache, commands
+packages/application   Vita OS as an application: routes, screens, cache, commands
 apps/api               Hono routes, Better Auth, canonical D1 storage
-apps/web               the browser host: auth, configuration, HTTP client, routes
+apps/web               the browser host: auth, configuration, HTTP client, session gate
 apps/web/convex        the behavioral reference, until cutover retires it
 ```
 
 The shared application imports no Convex, Hono, database, Cloudflare, or Better
 Auth type. The web host is what remains once the product is taken out of it:
 Better Auth in the browser, `VITE_API_BASE_URL`, the HTTP implementation of the
-contract, and the route files that mount the shared screens. A desktop host will
-mount the same screens against a local client and a `Viewer` of its own.
+contract, the session gate, and its sign-in/sign-up routes. It mounts the shared
+product route tree. A desktop host can mount that tree against a local client,
+a `Viewer` of its own, and its own session gate.
 
 ## The application boundary
 
@@ -73,7 +74,11 @@ TanStack Query owns the cache. Reads fetch when observed and refresh stale data
 on mount, focus, and reconnect; nothing polls, and nothing is delivered across
 tabs. One mutation machine gives every command the same shape: cancel the reads
 it touches, remember exactly what they held, show the change, fold in the
-service's answer, and put the remembered values back on failure. Affected reads
+service's answer, and discard only the failed command on failure. Overlapping commands share a
+base snapshot and replay their remaining changes, so one failure cannot undo
+another pending or successful command. Refetch waits until those commands settle.
+The browser creates a fresh cache when the authenticated account changes.
+Affected reads
 are chosen from what the cache actually holds, so a command against one Thread
 leaves another Thread's rail alone.
 
@@ -103,18 +108,19 @@ VITE_API_BASE_URL=http://localhost:8787
   forced-failure rollback, and competing completions.
 - `apps/web/convex` — kept as the behavioral reference until cutover.
 
-## Where the route definitions still live
+## Shared routing
 
-The shared application owns the product's screens, its navigation contract, and
-the search parameters those screens read and write. The route *definitions* are
-still files in the host, because the host's build generates the route tree from
-them and registers its types.
+`packages/application/src/routes/product-route-tree.tsx` owns the Dashboard,
+Area, Thread deep links, and legacy `/inbox` and `/notes` redirects. Product
+search parameters preserve in-place Thread and Notes surfaces. The host mounts
+`authenticatedRouteTree` under `productRootRoute` and adds its authentication
+routes, then registers the complete router's types. No generated route tree or
+file-based route plugin is needed.
 
-Moving them into the shared application means giving it a code-based route tree
-that a host mounts — which changes how routing and type registration work — or
-having the host inject navigation, which a desktop host with no URLs would
-prefer. That decision is worth making deliberately rather than as a side effect
-of this migration.
+`SessionGateProvider` supplies the host's session gate. It wraps the product
+before any authenticated screen or read mounts; Better Auth stays in the browser.
+Screen hooks refer to route IDs without importing the route composition module,
+which avoids circular dependencies between routes and screens.
 
 ## Still ahead
 

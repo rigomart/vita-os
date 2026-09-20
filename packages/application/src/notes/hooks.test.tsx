@@ -1,3 +1,5 @@
+import type { InfiniteData } from "@tanstack/react-query";
+import type { Page } from "@vita-os/contracts";
 import type { ApplicationError, Note, NoteId } from "@vita-os/contracts";
 
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -260,4 +262,55 @@ describe("completing, reopening, and discarding", () => {
     expect(cache.getQueryData(queryKeys.notes.open())).toEqual([note, older]);
     expect(cache.getQueryData(queryKeys.notes.openCount())).toBe(2);
   });
+});
+
+describe("Done Note optimistic changes", () => {
+  it.each(["edit", "reopen", "discard"] as const)(
+    "updates cached history for %s and restores it on failure",
+    async (operation) => {
+      const done = aNote({ state: "done", completedAt: 5000 });
+      const pending = deferred<{ ok: false; error: ApplicationError }>();
+      const client = createFakeApplicationClient({
+        updateNoteBody: () => pending.promise,
+        markNoteOpen: () => pending.promise,
+        removeNote: () => pending.promise,
+      });
+      const key = queryKeys.notes.done(20);
+      const original = {
+        pages: [{ entries: [done], nextCursor: "next-page" }],
+        pageParams: [undefined],
+      };
+      const { cache, wrapper } = createHarness(client, (seeded) =>
+        seeded.setQueryData(key, original),
+      );
+      const { result } = renderHook(
+        () => ({
+          edit: useUpdateNoteBody(),
+          reopen: useReopenNote(),
+          discard: useDiscardNote(),
+        }),
+        { wrapper },
+      );
+      act(() => {
+        if (operation === "edit")
+          result.current.edit.mutate({ noteId: done._id, body: "Changed" });
+        else if (operation === "reopen")
+          result.current.reopen.mutate({ note: done });
+        else result.current.discard.mutate({ noteId: done._id });
+      });
+      await waitFor(() => {
+        const entries =
+          cache.getQueryData<InfiniteData<Page<Note>>>(key)?.pages[0]?.entries;
+        expect(entries).toEqual(
+          operation === "edit" ? [{ ...done, body: "Changed" }] : [],
+        );
+      });
+      expect(
+        cache.getQueryData<InfiniteData<Page<Note>>>(key)?.pages[0]?.nextCursor,
+      ).toBe("next-page");
+      await act(async () => pending.resolve({ ok: false, error: unavailable }));
+      await waitFor(() => expect(result.current[operation].isError).toBe(true));
+      expect(cache.getQueryData(key)).toEqual(original);
+    },
+  );
 });
