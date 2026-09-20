@@ -1,4 +1,4 @@
-import type { LiveResource } from "@vita-os/contracts";
+import type { ConvexLiveResource } from "./convex-application-client-compatibility";
 
 export interface ConvexWatch<T> {
   onUpdate(listener: () => void): () => void;
@@ -10,7 +10,7 @@ export function createConvexLiveResource<TSource, TSnapshot>(options: {
   initialSnapshot: TSnapshot;
   readSnapshot: (value: TSource | undefined) => TSnapshot;
   readError: (error: unknown) => TSnapshot;
-}): LiveResource<TSnapshot> {
+}): ConvexLiveResource<TSnapshot> {
   let snapshot = options.initialSnapshot;
   let watch: ConvexWatch<TSource> | undefined;
   let stopWatching: (() => void) | undefined;

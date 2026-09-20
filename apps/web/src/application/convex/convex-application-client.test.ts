@@ -22,7 +22,7 @@ import type {
   ConvexApplicationGateway,
   ConvexPaginatedWatch,
   ConvexCompletionGateway,
-  ConvexThreadDetail,
+  ConvexProjectedThreadDetail,
   ConvexWatch,
 } from "./convex-application-client";
 
@@ -136,7 +136,7 @@ class MutablePaginatedWatch<T> implements ConvexPaginatedWatch<T> {
 
 describe("Convex application client", () => {
   it("publishes Thread detail and stops listening after cleanup", () => {
-    const watch = new MutableWatch<ConvexThreadDetail | null>();
+    const watch = new MutableWatch<ConvexProjectedThreadDetail | null>();
     const resource = createThreadDetailResource(() => watch);
     const onChange = vi.fn();
 
@@ -158,7 +158,7 @@ describe("Convex application client", () => {
   });
 
   it("represents a missing Thread without exposing backend details", () => {
-    const watch = new MutableWatch<ConvexThreadDetail | null>();
+    const watch = new MutableWatch<ConvexProjectedThreadDetail | null>();
     const resource = createThreadDetailResource(() => watch);
     const unsubscribe = resource.subscribe(() => undefined);
 
@@ -169,7 +169,7 @@ describe("Convex application client", () => {
   });
 
   it("represents a failed subscription with a transport-neutral error", () => {
-    const watch = new MutableWatch<ConvexThreadDetail | null>();
+    const watch = new MutableWatch<ConvexProjectedThreadDetail | null>();
     const resource = createThreadDetailResource(() => watch);
     const unsubscribe = resource.subscribe(() => undefined);
 
@@ -251,7 +251,7 @@ describe("Convex application client", () => {
         options.optimisticUpdate(localStore.store, input);
         return { status: "completed" };
       },
-      watchQuery: () => new MutableWatch<ConvexThreadDetail | null>(),
+      watchQuery: () => new MutableWatch<ConvexProjectedThreadDetail | null>(),
       watchPaginatedQuery: () =>
         new MutablePaginatedWatch<ConvexActivityLogEntry>(),
     } as unknown as ConvexReactClient;
@@ -368,7 +368,7 @@ describe("Convex application client", () => {
   });
 
   it("exposes Thread detail through the complete application client", () => {
-    const detailWatch = new MutableWatch<ConvexThreadDetail | null>();
+    const detailWatch = new MutableWatch<ConvexProjectedThreadDetail | null>();
     const activityWatch = new MutablePaginatedWatch<ActivityLogEntry>();
     const gateway: ConvexApplicationGateway = {
       watchThreadDetail: () => detailWatch,
@@ -399,7 +399,7 @@ describe("Convex application client", () => {
 
     const detailWatches: Array<{
       slug: string;
-      watch: MutableWatch<ConvexThreadDetail | null>;
+      watch: MutableWatch<ConvexProjectedThreadDetail | null>;
     }> = [];
     const activityWatches: Array<{
       threadId: ThreadId;
@@ -424,7 +424,7 @@ describe("Convex application client", () => {
     function connectedGateway(): ConvexApplicationGateway {
       return {
         watchThreadDetail: ({ slug }) => {
-          const watch = new MutableWatch<ConvexThreadDetail | null>();
+          const watch = new MutableWatch<ConvexProjectedThreadDetail | null>();
           detailWatches.push({ slug, watch });
           return watch;
         },
@@ -501,7 +501,7 @@ describe("Convex application client", () => {
   });
 
   it("connects the public Thread watch to the Convex detail query", () => {
-    const detailWatch = new MutableWatch<ConvexThreadDetail | null>();
+    const detailWatch = new MutableWatch<ConvexProjectedThreadDetail | null>();
     const convex = {
       watchQuery: (reference: unknown, args: unknown) => {
         if (getFunctionName(reference as never) !== "threads:detailBySlug") {
@@ -544,7 +544,7 @@ describe("Convex application client", () => {
       },
     );
     const convex = {
-      watchQuery: () => new MutableWatch<ConvexThreadDetail | null>(),
+      watchQuery: () => new MutableWatch<ConvexProjectedThreadDetail | null>(),
       watchPaginatedQuery,
       mutation: async () => ({ status: "unchanged" }),
     } as unknown as ConvexReactClient;

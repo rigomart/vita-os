@@ -9,10 +9,13 @@
     "lint:check": "oxlint --deny-warnings . && oxfmt --check .",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
+    "test": "vitest",
+    "test:run": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "4.1.7"
   },
   "exports": {
     ".": "./src/index.ts"

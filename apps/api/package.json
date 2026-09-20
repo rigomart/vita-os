@@ -1,0 +1,27 @@
+{
+  "name": "@vita-os/api",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit && wrangler deploy --dry-run --outdir dist",
+    "dev": "wrangler dev",
+    "lint": "oxlint --fix --deny-warnings . && oxfmt --write .",
+    "lint:check": "oxlint --deny-warnings . && oxfmt --check .",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@vita-os/contracts": "workspace:*",
+    "@vita-os/core": "workspace:*",
+    "better-auth": "1.6.25",
+    "hono": "^4.12.18"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.0.0",
+    "typescript": "catalog:",
+    "vitest": "4.1.7",
+    "wrangler": "4.131.0"
+  }
+}

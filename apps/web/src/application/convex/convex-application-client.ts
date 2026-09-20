@@ -2,18 +2,12 @@ import type { Id } from "@convex/_generated/dataModel";
 import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
 import type {
   ActivityLogEntry,
-  ActivityLogPage,
-  ApplicationClient,
   ApplicationError,
   AreaId,
   CompleteNextMoveOutput,
   AreaSummary,
-  LiveResource,
-  PaginatedLiveResource,
   OperationResult,
-  QueryState,
   Thread,
-  ThreadDetail,
   ThreadId,
 } from "@vita-os/contracts";
 import type { OptimisticLocalStore } from "convex/browser";
@@ -22,6 +16,15 @@ import type { ConvexReactClient } from "convex/react";
 import { api } from "@convex/_generated/api";
 
 import { optimisticallyCompleteNextMove } from "@/features/threads/optimistic";
+
+import type {
+  ConvexActivityLogPage,
+  ConvexApplicationClient,
+  ConvexThreadDetail,
+  ConvexLiveResource,
+  ConvexPaginatedLiveResource,
+  ConvexQueryState,
+} from "./convex-application-client-compatibility";
 
 import {
   createConvexLiveResource,
@@ -76,14 +79,14 @@ export interface ConvexCompletionGateway {
 export interface ConvexApplicationGateway extends ConvexCompletionGateway {
   watchThreadDetail(input: {
     slug: string;
-  }): ConvexWatch<ConvexThreadDetail | null>;
+  }): ConvexWatch<ConvexProjectedThreadDetail | null>;
   watchThreadActivity(input: {
     threadId: ThreadId;
     initialPageSize: number;
   }): ConvexPaginatedWatch<ConvexActivityLogEntry>;
 }
 
-export interface ConvexThreadDetail {
+export interface ConvexProjectedThreadDetail {
   thread: ProjectedThread;
   area: ProjectedArea | null;
 }
@@ -141,12 +144,12 @@ const THREAD_NOT_FOUND = { status: "not_found" } as const;
 const LOADING_THREAD_ACTIVITY = { status: "loading" } as const;
 
 export function createThreadDetailResource(
-  createWatch: () => ConvexWatch<ConvexThreadDetail | null>,
-): LiveResource<QueryState<ThreadDetail>> {
+  createWatch: () => ConvexWatch<ConvexProjectedThreadDetail | null>,
+): ConvexLiveResource<ConvexQueryState<ConvexThreadDetail>> {
   return createConvexLiveResource({
     createWatch,
     initialSnapshot: LOADING_THREAD_DETAIL,
-    readSnapshot: (detail): QueryState<ThreadDetail> => {
+    readSnapshot: (detail): ConvexQueryState<ConvexThreadDetail> => {
       if (detail === undefined) return LOADING_THREAD_DETAIL;
       if (detail === null || detail.area === null) return THREAD_NOT_FOUND;
       return {
@@ -167,15 +170,15 @@ export function createThreadDetailResource(
 export function createThreadActivityResource(
   createWatch: () => ConvexPaginatedWatch<ConvexActivityLogEntry>,
   pageSize: number,
-): PaginatedLiveResource<QueryState<ActivityLogPage>> {
+): ConvexPaginatedLiveResource<ConvexQueryState<ConvexActivityLogPage>> {
   let loadMore: ((pageSize: number) => boolean) | undefined;
   const resource = createConvexLiveResource<
     ConvexPaginatedResult<ConvexActivityLogEntry>,
-    QueryState<ActivityLogPage>
+    ConvexQueryState<ConvexActivityLogPage>
   >({
     createWatch,
     initialSnapshot: LOADING_THREAD_ACTIVITY,
-    readSnapshot: (result): QueryState<ActivityLogPage> => {
+    readSnapshot: (result): ConvexQueryState<ConvexActivityLogPage> => {
       if (result === undefined || result.status === "LoadingFirstPage") {
         return LOADING_THREAD_ACTIVITY;
       }
@@ -238,7 +241,7 @@ export async function completeNextMoveThroughConvex(
 
 export function createConvexApplicationClient(
   gateway: ConvexApplicationGateway,
-): ApplicationClient {
+): ConvexApplicationClient {
   return {
     watchThreadDetail: (input) =>
       createThreadDetailResource(() => gateway.watchThreadDetail(input)),

@@ -49,14 +49,24 @@ export function decideNextMoveCompletion(
 
 export interface CompleteNextMoveStore {
   completeAtomically(
-    input: { actorId: string; threadId: ThreadId },
+    input: {
+      actorId: string;
+      threadId: ThreadId;
+      expectedNextMove?: string | null;
+      expectedRevision?: number;
+    },
     decide: typeof decideNextMoveCompletion,
   ): Promise<CompleteNextMoveOutput>;
 }
 
 export function completeNextMove(
   store: CompleteNextMoveStore,
-  input: { actorId: string; threadId: ThreadId },
+  input: {
+    actorId: string;
+    threadId: ThreadId;
+    expectedNextMove?: string | null;
+    expectedRevision?: number;
+  },
 ): Promise<CompleteNextMoveOutput> {
   return store.completeAtomically(input, decideNextMoveCompletion);
 }

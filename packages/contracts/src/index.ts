@@ -50,8 +50,12 @@ export interface Thread {
   createdAt: number;
 }
 
+export interface VersionedThread extends Thread {
+  revision: number;
+}
+
 export interface ThreadDetail {
-  thread: Thread;
+  thread: VersionedThread;
   area: AreaSummary;
 }
 
@@ -82,12 +86,6 @@ export interface ApplicationError {
   retryable: boolean;
 }
 
-export type QueryState<T> =
-  | { status: "loading" }
-  | { status: "ready"; data: T }
-  | { status: "not_found" }
-  | { status: "error"; error: ApplicationError };
-
 export type OperationResult<T> =
   | { ok: true; value: T }
   | { ok: false; error: ApplicationError };
@@ -96,35 +94,23 @@ export type CompleteNextMoveOutput =
   | { status: "completed" }
   | { status: "unchanged" };
 
-export type ActivityLogPagination =
-  | "can_load_more"
-  | "loading_more"
-  | "exhausted";
-
 export interface ActivityLogPage {
   entries: ActivityLogEntry[];
-  pagination: ActivityLogPagination;
-}
-
-export interface LiveResource<T> {
-  getSnapshot: () => T;
-  subscribe: (listener: () => void) => () => void;
-}
-
-export interface PaginatedLiveResource<T> extends LiveResource<T> {
-  loadMore: () => void;
+  nextCursor?: string;
 }
 
 export interface ApplicationClient {
-  watchThreadDetail(input: {
+  getThreadDetail(input: {
     slug: string;
-  }): LiveResource<QueryState<ThreadDetail>>;
-  watchThreadActivity(input: {
+  }): Promise<OperationResult<ThreadDetail>>;
+  getThreadActivityPage(input: {
     threadId: ThreadId;
-    initialPageSize: number;
-  }): PaginatedLiveResource<QueryState<ActivityLogPage>>;
+    limit: number;
+    cursor?: string;
+  }): Promise<OperationResult<ActivityLogPage>>;
   completeNextMove(input: {
     threadId: ThreadId;
-    thread: Thread;
+    expectedNextMove: string | null;
+    expectedRevision: number;
   }): Promise<OperationResult<CompleteNextMoveOutput>>;
 }

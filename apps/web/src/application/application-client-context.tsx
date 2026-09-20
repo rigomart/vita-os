@@ -1,11 +1,4 @@
-import type {
-  ActivityLogPage,
-  ApplicationClient,
-  LiveResource,
-  QueryState,
-  ThreadDetail,
-  ThreadId,
-} from "@vita-os/contracts";
+import type { ThreadId } from "@vita-os/contracts";
 
 import {
   createContext,
@@ -15,13 +8,23 @@ import {
   useSyncExternalStore,
 } from "react";
 
-const ApplicationClientContext = createContext<ApplicationClient | null>(null);
+import type {
+  ConvexActivityLogPage,
+  ConvexApplicationClient,
+  ConvexLiveResource,
+  ConvexQueryState,
+  ConvexThreadDetail,
+} from "./convex/convex-application-client-compatibility";
+
+const ApplicationClientContext = createContext<ConvexApplicationClient | null>(
+  null,
+);
 
 export function ApplicationClientProvider({
   client,
   children,
 }: {
-  client: ApplicationClient;
+  client: ConvexApplicationClient;
   children: ReactNode;
 }) {
   return (
@@ -31,7 +34,7 @@ export function ApplicationClientProvider({
   );
 }
 
-export function useApplicationClient(): ApplicationClient {
+export function useApplicationClient(): ConvexApplicationClient {
   const client = useContext(ApplicationClientContext);
   if (client === null) {
     throw new Error("ApplicationClientProvider is missing.");
@@ -39,7 +42,7 @@ export function useApplicationClient(): ApplicationClient {
   return client;
 }
 
-function useLiveResource<T>(resource: LiveResource<T>): T {
+function useLiveResource<T>(resource: ConvexLiveResource<T>): T {
   return useSyncExternalStore(
     resource.subscribe,
     resource.getSnapshot,
@@ -47,7 +50,9 @@ function useLiveResource<T>(resource: LiveResource<T>): T {
   );
 }
 
-export function useThreadDetail(slug: string): QueryState<ThreadDetail> {
+export function useThreadDetail(
+  slug: string,
+): ConvexQueryState<ConvexThreadDetail> {
   const client = useApplicationClient();
   const resource = useMemo(
     () => client.watchThreadDetail({ slug }),
@@ -60,7 +65,7 @@ export function useThreadActivity(
   threadId: ThreadId,
   initialPageSize: number,
 ): {
-  state: QueryState<ActivityLogPage>;
+  state: ConvexQueryState<ConvexActivityLogPage>;
   loadMore: () => void;
 } {
   const client = useApplicationClient();

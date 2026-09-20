@@ -1,22 +1,22 @@
-import type {
-  ApplicationClient,
-  AreaId,
-  LiveResource,
-  QueryState,
-  ThreadDetail,
-  ThreadId,
-} from "@vita-os/contracts";
+import type { AreaId, ThreadId } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+import type {
+  ConvexApplicationClient,
+  ConvexLiveResource,
+  ConvexQueryState,
+  ConvexThreadDetail,
+} from "./convex/convex-application-client-compatibility";
 
 import {
   ApplicationClientProvider,
   useThreadDetail,
 } from "./application-client-context";
 
-class MutableResource<T> implements LiveResource<T> {
+class MutableResource<T> implements ConvexLiveResource<T> {
   private listeners = new Set<() => void>();
   private snapshot: T;
 
@@ -45,11 +45,13 @@ describe("ApplicationClientProvider", () => {
   it("publishes Thread detail and cleans up when the slug changes", () => {
     const resources = new Map<
       string,
-      MutableResource<QueryState<ThreadDetail>>
+      MutableResource<ConvexQueryState<ConvexThreadDetail>>
     >();
-    const client: ApplicationClient = {
+    const client: ConvexApplicationClient = {
       watchThreadDetail: ({ slug }) => {
-        const resource = new MutableResource<QueryState<ThreadDetail>>({
+        const resource = new MutableResource<
+          ConvexQueryState<ConvexThreadDetail>
+        >({
           status: "loading",
         });
         resources.set(slug, resource);
@@ -90,7 +92,7 @@ describe("ApplicationClientProvider", () => {
         order: 0,
         createdAt: 1,
       },
-    } satisfies ThreadDetail;
+    } satisfies ConvexThreadDetail;
     act(() =>
       resources.get("first")?.publish({ status: "ready", data: detail }),
     );
@@ -105,10 +107,10 @@ describe("ApplicationClientProvider", () => {
   });
 
   it("publishes the same live update to a second mounted consumer", () => {
-    const resource = new MutableResource<QueryState<ThreadDetail>>({
+    const resource = new MutableResource<ConvexQueryState<ConvexThreadDetail>>({
       status: "loading",
     });
-    const client: ApplicationClient = {
+    const client: ConvexApplicationClient = {
       watchThreadDetail: () => resource,
       watchThreadActivity: vi.fn(),
       completeNextMove: vi.fn(),
@@ -144,7 +146,7 @@ describe("ApplicationClientProvider", () => {
         order: 0,
         createdAt: 1,
       },
-    } satisfies ThreadDetail;
+    } satisfies ConvexThreadDetail;
 
     act(() => resource.publish({ status: "ready", data: detail }));
 

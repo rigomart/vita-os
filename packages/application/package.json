@@ -1,0 +1,35 @@
+{
+  "name": "@vita-os/application",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "oxlint --fix --deny-warnings . && oxfmt --write .",
+    "lint:check": "oxlint --deny-warnings . && oxfmt --check .",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.90.19",
+    "@vita-os/contracts": "workspace:*",
+    "@vita-os/core": "workspace:*",
+    "react": "catalog:"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.10.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "29.1.1",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "4.1.7"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

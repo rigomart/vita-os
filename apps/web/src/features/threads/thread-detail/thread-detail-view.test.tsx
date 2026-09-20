@@ -1,18 +1,17 @@
 import type { Id } from "@convex/_generated/dataModel";
 import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
-import type {
-  ApplicationClient,
-  ActivityLogEntry,
-  AreaId,
-  LiveResource,
-  QueryState,
-  ThreadDetail,
-  ThreadId,
-} from "@vita-os/contracts";
+import type { ActivityLogEntry, AreaId, ThreadId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import type {
+  ConvexApplicationClient,
+  ConvexLiveResource,
+  ConvexQueryState,
+  ConvexThreadDetail,
+} from "@/application/convex/convex-application-client-compatibility";
 
 import { AppErrorBoundary } from "@/components/error-boundary";
 import {
@@ -89,7 +88,7 @@ vi.mock("convex-helpers/react/cache/hooks", () => ({
   },
 }));
 
-function constantResource<T>(snapshot: T): LiveResource<T> {
+function constantResource<T>(snapshot: T): ConvexLiveResource<T> {
   return {
     getSnapshot: () => snapshot,
     subscribe: () => () => undefined,
@@ -97,8 +96,8 @@ function constantResource<T>(snapshot: T): LiveResource<T> {
 }
 
 function detailResource(
-  snapshot: QueryState<ThreadDetail>,
-): LiveResource<QueryState<ThreadDetail>> {
+  snapshot: ConvexQueryState<ConvexThreadDetail>,
+): ConvexLiveResource<ConvexQueryState<ConvexThreadDetail>> {
   return {
     getSnapshot: () => snapshot,
     subscribe: () => {
@@ -110,7 +109,7 @@ function detailResource(
   };
 }
 
-function createApplicationClient(): ApplicationClient {
+function createApplicationClient(): ConvexApplicationClient {
   return {
     watchThreadDetail: ({ slug }) => {
       mocks.applicationDetailSlugs.push(slug);
