@@ -1,8 +1,6 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
+import type { AreaId, AreaSummary, Thread, ThreadId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
-import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render, screen, waitFor } from "@/test/render-with-providers";
@@ -10,7 +8,7 @@ import { render, screen, waitFor } from "@/test/render-with-providers";
 import { AppShell } from "./app-shell";
 
 const health = {
-  _id: "area1" as Id<"areas">,
+  _id: "area1" as AreaId,
   name: "Family Health",
   slug: "family-health",
   icon: "HeartPulse",
@@ -18,29 +16,30 @@ const health = {
   standard: "Everyone sees a dentist twice a year.",
   order: 0,
   createdAt: 0,
-} satisfies ProjectedArea;
+} satisfies AreaSummary;
 
 const money = {
-  _id: "area2" as Id<"areas">,
+  _id: "area2" as AreaId,
   name: "Money",
   slug: "money",
   icon: "WalletCards",
   condition: "healthy",
   order: 1,
   createdAt: 0,
-} satisfies ProjectedArea;
+} satisfies AreaSummary;
 
 // Parked in Money so a query for "Family Health" matches the Area row alone —
 // a Thread carries its Area's name as a keyword.
 const thread = {
-  _id: "thread1" as Id<"threads">,
+  _id: "thread1" as ThreadId,
   title: "Sister's front teeth",
   slug: "sister-s-front-teeth",
   areaId: money._id,
   state: "open",
+  revision: 0,
   order: 0,
   createdAt: 0,
-} satisfies ProjectedThread;
+} satisfies Thread;
 
 // cmdk observes and scrolls its list container; jsdom provides neither.
 globalThis.ResizeObserver ??= class {
@@ -55,15 +54,21 @@ const mutationCall = vi.hoisted(() =>
   vi.fn<(name: string, args: unknown) => void>(),
 );
 
-vi.mock("convex-helpers/react/cache/hooks", () => ({
-  useQuery: (query: unknown, args: unknown) => {
-    const name = getFunctionName(query as never);
-    if (args === "skip") return undefined;
-    if (name === "areas:list") return [health, money];
-    if (name === "threads:list") return [thread];
-    if (name === "notes:count") return 0;
-    return undefined;
-  },
+vi.mock("@vita-os/application", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@vita-os/application")>()),
+  // The palette reads nothing while it is closed.
+  useAreas: ({ enabled }: { enabled?: boolean } = {}) => ({
+    data: enabled === false ? undefined : [health, money],
+  }),
+  useOpenThreads: ({ enabled }: { enabled?: boolean } = {}) => ({
+    data: enabled === false ? undefined : [thread],
+  }),
+  useUpdateArea: () => ({
+    mutateAsync: (input: unknown) => {
+      mutationCall("updateArea", input);
+      return Promise.resolve(health);
+    },
+  }),
 }));
 
 vi.mock("convex/react", async () => {
@@ -191,9 +196,9 @@ describe("CommandPalette area drill-in", () => {
 
     await user.click(screen.getByText(`Set ${health.name} to Critical`));
 
-    expect(mutationCall).toHaveBeenCalledWith("areas:update", {
+    expect(mutationCall).toHaveBeenCalledWith("updateArea", {
+      areaId: health._id,
       condition: "critical",
-      id: health._id,
     });
     expect(
       screen.getByPlaceholderText(`Actions in ${health.name}…`),

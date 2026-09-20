@@ -1,51 +1,54 @@
-import type { Id } from "@convex/_generated/dataModel";
+import type { ThreadId } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
-import { useQuery } from "convex-helpers/react/cache/hooks";
-import { usePaginatedQuery, useMutation } from "convex/react";
+import {
+  useCaptureThreadNote,
+  useCompleteThreadNote,
+  useDiscardThreadNote,
+  useDoneThreadNotes,
+  useReopenThreadNote,
+  useThreadNotes,
+  useUpdateThreadNoteBody,
+} from "@vita-os/application";
 
 import { ThreadNotes } from "./thread-notes";
 
 const PAGE_SIZE = 20;
 
-export function ThreadNotesSection({ threadId }: { threadId: Id<"threads"> }) {
-  const notes = useQuery(api.threadNotes.list, { threadId });
-  const {
-    results: doneNotes,
-    status: doneStatus,
-    loadMore: loadMoreDone,
-  } = usePaginatedQuery(
-    api.threadNotes.listDone,
-    { threadId },
-    { initialNumItems: PAGE_SIZE },
-  );
-  const create = useMutation(api.threadNotes.create);
-  const updateBody = useMutation(api.threadNotes.updateBody);
-  const markDone = useMutation(api.threadNotes.markDone);
-  const markOpen = useMutation(api.threadNotes.markOpen);
-  const remove = useMutation(api.threadNotes.remove);
+export function ThreadNotesSection({ threadId }: { threadId: ThreadId }) {
+  const openNotes = useThreadNotes(threadId);
+  const doneNotes = useDoneThreadNotes(threadId, PAGE_SIZE);
+  const capture = useCaptureThreadNote();
+  const updateBody = useUpdateThreadNoteBody();
+  const complete = useCompleteThreadNote();
+  const reopen = useReopenThreadNote();
+  const discard = useDiscardThreadNote();
 
   return (
     <ThreadNotes
-      notes={notes}
-      doneNotes={doneNotes}
-      isDoneExhausted={doneStatus === "Exhausted"}
-      isDoneInitialLoading={doneStatus === "LoadingFirstPage"}
-      canLoadMoreDone={doneStatus === "CanLoadMore"}
-      isLoadingMoreDone={doneStatus === "LoadingMore"}
-      onLoadMoreDone={() => loadMoreDone(PAGE_SIZE)}
+      // A Thread that is gone reads as no Notes, the way it always did.
+      notes={openNotes.data ?? undefined}
+      doneNotes={doneNotes.notes}
+      isDoneExhausted={!doneNotes.hasNextPage && !doneNotes.isPending}
+      isDoneInitialLoading={doneNotes.isPending}
+      canLoadMoreDone={doneNotes.hasNextPage && !doneNotes.isFetchingNextPage}
+      isLoadingMoreDone={doneNotes.isFetchingNextPage}
+      onLoadMoreDone={() => void doneNotes.fetchNextPage()}
       onCreate={async (body) => {
-        await create({ threadId, body });
+        await capture.mutateAsync({ threadId, body });
       }}
       onUpdateBody={async (note, body) => {
-        await updateBody({ id: note._id, body });
+        await updateBody.mutateAsync({
+          threadId,
+          threadNoteId: note._id,
+          body,
+        });
       }}
       onToggleDone={async (note) => {
-        if (note.state === "done") await markOpen({ id: note._id });
-        else await markDone({ id: note._id });
+        if (note.state === "done") await reopen.mutateAsync({ threadId, note });
+        else await complete.mutateAsync({ threadId, threadNoteId: note._id });
       }}
       onRemove={async (note) => {
-        await remove({ id: note._id });
+        await discard.mutateAsync({ threadId, threadNoteId: note._id });
       }}
     />
   );

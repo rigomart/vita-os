@@ -80,6 +80,7 @@ export function buildPendingThread(
     order: minted.order,
     state: "open",
     createdAt: minted.now,
+    revision: 0,
   };
 }
 

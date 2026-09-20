@@ -1,12 +1,16 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
-import type { AreaId, ThreadId } from "@vita-os/contracts";
+import type {
+  ApplicationClient,
+  AreaId,
+  AreaSummary,
+  NoteId,
+  Thread,
+  ThreadId,
+} from "@vita-os/contracts";
+import type { Mock } from "vitest";
 
 import userEvent from "@testing-library/user-event";
-import { getFunctionName } from "convex/server";
+import { createFakeApplicationClient } from "@vita-os/application/test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-import type { ConvexApplicationClient } from "@/application/convex/convex-application-client-compatibility";
 
 import {
   fireEvent,
@@ -18,24 +22,33 @@ import {
 import { AppShell } from "./app-shell";
 
 const area = {
-  _id: "area1" as Id<"areas">,
+  _id: "area1" as AreaId,
   name: "Family Health",
   slug: "family-health",
   icon: "HeartPulse",
   condition: "needs_attention",
   order: 0,
   createdAt: 0,
-} satisfies ProjectedArea;
+} satisfies AreaSummary;
 
 const thread = {
-  _id: "thread1" as Id<"threads">,
+  _id: "thread1" as ThreadId,
   title: "Sister's front teeth",
   slug: "sister-s-front-teeth",
   areaId: area._id,
   state: "open",
+  revision: 0,
   order: 0,
   createdAt: 0,
-} satisfies ProjectedThread;
+} satisfies Thread;
+
+const newNote = {
+  _id: "note1" as NoteId,
+  body: "Buy milk",
+  state: "open" as const,
+  createdAt: 0,
+  updatedAt: 0,
+};
 
 // cmdk observes and scrolls its list container; jsdom provides neither.
 globalThis.ResizeObserver ??= class {
@@ -45,35 +58,7 @@ globalThis.ResizeObserver ??= class {
 };
 Element.prototype.scrollIntoView ??= vi.fn();
 
-const queryCall = vi.fn<(name: string, args: unknown) => void>();
-
 const mocks = vi.hoisted(() => ({ search: {} as Record<string, unknown> }));
-
-vi.mock("convex-helpers/react/cache/hooks", () => ({
-  useQuery: (query: unknown, args: unknown) => {
-    const name = getFunctionName(query as never);
-    queryCall(name, args);
-    if (args === "skip") return undefined;
-    if (name === "areas:list") return [area];
-    if (name === "threads:list") return [thread];
-    if (name === "notes:count") return 0;
-    return undefined;
-  },
-}));
-
-vi.mock("convex/react", () => ({
-  useMutation: () => {
-    const mutation = vi.fn().mockResolvedValue({ slug: thread.slug });
-    return Object.assign(mutation, {
-      withOptimisticUpdate: () => mutation,
-    });
-  },
-  usePaginatedQuery: () => ({
-    results: [],
-    status: "Exhausted",
-    loadMore: vi.fn(),
-  }),
-}));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual =
@@ -112,60 +97,73 @@ vi.mock("@/hooks/use-thread-pane-viewport", () => ({
   useThreadPaneViewport: () => true,
 }));
 
-// Convex-backed and covered by its own tests; the shell cares only where it sits.
+// Covered by its own tests; the shell cares only where it sits.
 vi.mock("@/features/inbox/screens/inbox-screen", () => ({
   InboxScreen: () => <p>inbox screen</p>,
 }));
 
-function subscribedTo(name: string) {
-  return queryCall.mock.calls.some(
-    ([calledName, args]) => calledName === name && args !== "skip",
-  );
+/**
+ * The shell's own reads, as spies.
+ *
+ * Which of them the shell actually performs is the behavior under test: the
+ * palette's inventories must stay unread until the palette is open.
+ */
+type ReadSpies = {
+  listAreas: Mock<ApplicationClient["listAreas"]>;
+  listOpenThreads: Mock<ApplicationClient["listOpenThreads"]>;
+  countOpenNotes: Mock<ApplicationClient["countOpenNotes"]>;
+};
+
+let reads: ReadSpies;
+
+function read(name: keyof ReadSpies) {
+  return reads[name].mock.calls.length > 0;
 }
 
 function renderShell() {
-  const detailSnapshot = {
-    status: "ready" as const,
-    data: {
-      thread: {
-        ...thread,
-        _id: thread._id as unknown as ThreadId,
-        areaId: thread.areaId as unknown as AreaId,
-      },
-      area: { ...area, _id: area._id as unknown as AreaId },
-    },
+  reads = {
+    listAreas: vi.fn<ApplicationClient["listAreas"]>(async () => ({
+      ok: true,
+      value: [area],
+    })),
+    listOpenThreads: vi.fn<ApplicationClient["listOpenThreads"]>(async () => ({
+      ok: true,
+      value: [thread],
+    })),
+    countOpenNotes: vi.fn<ApplicationClient["countOpenNotes"]>(async () => ({
+      ok: true,
+      value: 0,
+    })),
   };
-  const activitySnapshot = {
-    status: "ready" as const,
-    data: { entries: [], pagination: "exhausted" as const },
-  };
+
   return render(
     <AppShell>
       <p>page body</p>
     </AppShell>,
     {
-      applicationClient: {
-        watchThreadDetail: () => ({
-          getSnapshot: () => detailSnapshot,
-          subscribe: () => () => undefined,
-        }),
-        watchThreadActivity: () => ({
-          getSnapshot: () => activitySnapshot,
-          subscribe: () => () => undefined,
-          loadMore: vi.fn(),
-        }),
-        completeNextMove: vi.fn().mockResolvedValue({
+      applicationClient: createFakeApplicationClient({
+        ...reads,
+        getThreadDetail: async () => ({
           ok: true,
-          value: { status: "completed" },
+          value: { thread, area },
         }),
-      } satisfies ConvexApplicationClient,
+        getThreadActivityPage: async () => ({
+          ok: true,
+          value: { entries: [] },
+        }),
+        listOpenThreadNotes: async () => ({ ok: true, value: [] }),
+        getDoneThreadNotePage: async () => ({
+          ok: true,
+          value: { entries: [] },
+        }),
+        createNote: async () => ({ ok: true, value: newNote }),
+      }),
     },
   );
 }
 
 describe("AppShell", () => {
   beforeEach(() => {
-    queryCall.mockClear();
     mocks.search = {};
   });
 
@@ -210,9 +208,9 @@ describe("AppShell", () => {
 
     expect(screen.getByText("page body")).toBeVisible();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(subscribedTo("areas:list")).toBe(false);
-    expect(subscribedTo("threads:list")).toBe(false);
-    expect(subscribedTo("notes:count")).toBe(true);
+    expect(read("listAreas")).toBe(false);
+    expect(read("listOpenThreads")).toBe(false);
+    expect(read("countOpenNotes")).toBe(true);
   });
 
   it("opens the new note dialog from the chrome", async () => {
@@ -277,15 +275,15 @@ describe("AppShell", () => {
     const user = userEvent.setup();
     renderShell();
 
-    expect(subscribedTo("threads:list")).toBe(false);
+    expect(read("listOpenThreads")).toBe(false);
 
     await user.keyboard("{Meta>}k{/Meta}");
 
     expect(
       await screen.findByPlaceholderText("Jump to an area, thread, or action…"),
     ).toBeVisible();
-    expect(subscribedTo("areas:list")).toBe(true);
-    expect(subscribedTo("threads:list")).toBe(true);
+    expect(read("listAreas")).toBe(true);
+    expect(read("listOpenThreads")).toBe(true);
     expect(screen.getAllByText(area.name).length).toBeGreaterThan(0);
     expect(screen.getByText(thread.title)).toBeVisible();
   });
@@ -334,24 +332,24 @@ describe("AppShell", () => {
     // Dismissing without running an action must still hand focus back.
     await waitFor(() => expect(trigger).toHaveFocus());
 
-    queryCall.mockClear();
-    // A re-render after the close must not re-subscribe.
+    for (const spy of Object.values(reads)) spy.mockClear();
+    // A re-render after the close must not read the palette's inventories again.
     await user.click(screen.getByRole("button", { name: "chrome new note" }));
     await screen.findByPlaceholderText("What's on your mind?");
-    expect(subscribedTo("threads:list")).toBe(false);
+    expect(read("listOpenThreads")).toBe(false);
   });
 
   it("opens the create thread dialog from the palette and subscribes to areas only then", async () => {
     const user = userEvent.setup();
     renderShell();
 
-    expect(subscribedTo("areas:list")).toBe(false);
+    expect(read("listAreas")).toBe(false);
 
     await user.click(screen.getByRole("button", { name: "chrome palette" }));
     await user.click(await screen.findByText("New thread"));
 
     expect(await screen.findByLabelText("Title")).toBeVisible();
-    expect(subscribedTo("areas:list")).toBe(true);
+    expect(read("listAreas")).toBe(true);
   });
 
   it("focuses the new note input when New note is chosen from the palette", async () => {

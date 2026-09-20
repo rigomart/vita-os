@@ -1,4 +1,4 @@
-import type { ProjectedThreadNote } from "@convex/lib/validators";
+import type { ThreadNote } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
 import { Textarea } from "@vita-os/ui/components/textarea";
@@ -12,20 +12,17 @@ import { EditableField } from "@/components/ui/editable-field";
 import { AttentionCollapsed, RowDeleteAction } from "@/features/attention-list";
 
 interface ThreadNotesProps {
-  notes: ProjectedThreadNote[] | undefined;
-  doneNotes?: ProjectedThreadNote[];
+  notes: ThreadNote[] | undefined;
+  doneNotes?: ThreadNote[];
   isDoneExhausted?: boolean;
   isDoneInitialLoading?: boolean;
   canLoadMoreDone?: boolean;
   isLoadingMoreDone?: boolean;
   onLoadMoreDone?: () => void;
   onCreate: (body: string) => Promise<void> | void;
-  onUpdateBody: (
-    note: ProjectedThreadNote,
-    body: string,
-  ) => Promise<void> | void;
-  onToggleDone: (note: ProjectedThreadNote) => Promise<void> | void;
-  onRemove: (note: ProjectedThreadNote) => Promise<void> | void;
+  onUpdateBody: (note: ThreadNote, body: string) => Promise<void> | void;
+  onToggleDone: (note: ThreadNote) => Promise<void> | void;
+  onRemove: (note: ThreadNote) => Promise<void> | void;
 }
 
 export function ThreadNotes({
@@ -189,13 +186,10 @@ function ThreadNoteCard({
   onToggleDone,
   onRemove,
 }: {
-  note: ProjectedThreadNote;
-  onUpdateBody: (
-    note: ProjectedThreadNote,
-    body: string,
-  ) => Promise<void> | void;
-  onToggleDone: (note: ProjectedThreadNote) => Promise<void> | void;
-  onRemove: (note: ProjectedThreadNote) => Promise<void> | void;
+  note: ThreadNote;
+  onUpdateBody: (note: ThreadNote, body: string) => Promise<void> | void;
+  onToggleDone: (note: ThreadNote) => Promise<void> | void;
+  onRemove: (note: ThreadNote) => Promise<void> | void;
 }) {
   const done = note.state === "done";
   const { run: updateBody, isPending: isSaving } = useGuardedAsyncAction(
@@ -278,7 +272,7 @@ function ThreadNoteCard({
   );
 }
 
-function ThreadNoteTimestamp({ note }: { note: ProjectedThreadNote }) {
+function ThreadNoteTimestamp({ note }: { note: ThreadNote }) {
   const stamp =
     note.state === "done" && note.completedAt !== undefined
       ? note.completedAt

@@ -1,4 +1,4 @@
-import type { ThreadView } from "@/features/threads/thread-view";
+import type { Thread } from "@vita-os/contracts";
 
 import { useThreadPaneNav } from "@/features/threads/thread-detail/thread-pane-nav";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
@@ -6,7 +6,7 @@ import { useUpdateThread } from "@/features/threads/use-update-thread";
 import { ThreadHeader } from "./thread-header";
 
 interface ThreadHeaderProps {
-  thread: ThreadView;
+  thread: Thread;
   areaSlug: string;
 }
 
@@ -16,7 +16,7 @@ export function ThreadHeaderSection({ thread, areaSlug }: ThreadHeaderProps) {
 
   const handleTitleSave = async (title: string) => {
     if (!title) return;
-    const result = await updateThread({ id: thread._id, title });
+    const result = await updateThread({ title });
     if (result?.slug && result.slug !== thread.slug) {
       onThreadLocationChange({ areaSlug, threadSlug: result.slug });
     }

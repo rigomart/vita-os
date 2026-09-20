@@ -1,14 +1,9 @@
-import type { Id } from "@convex/_generated/dataModel";
+import type { NoteId } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
-
-import { optimisticallyRemoveFromOpenNotes } from "./optimistic";
+import { useDiscardNote } from "@vita-os/application";
 
 export function useRemoveNote() {
-  const removeNote = useMutation(api.notes.remove).withOptimisticUpdate(
-    (localStore, args) => optimisticallyRemoveFromOpenNotes(localStore, args),
-  );
+  const discard = useDiscardNote();
 
-  return (id: Id<"tasks">) => removeNote({ id });
+  return (noteId: NoteId) => discard.mutateAsync({ noteId });
 }

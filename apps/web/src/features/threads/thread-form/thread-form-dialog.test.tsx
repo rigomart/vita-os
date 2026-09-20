@@ -1,5 +1,4 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaId, AreaSummary } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -10,7 +9,7 @@ import { ThreadFormDialog } from "./thread-form-dialog";
 
 const areas = [
   {
-    _id: "area1" as Id<"areas">,
+    _id: "area1" as AreaId,
     name: "Health",
     slug: "health",
     icon: "HeartPulse",
@@ -18,7 +17,7 @@ const areas = [
     order: 0,
     createdAt: 0,
   },
-] satisfies ProjectedArea[];
+] satisfies AreaSummary[];
 
 function deferred() {
   let resolve!: () => void;

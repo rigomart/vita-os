@@ -1,8 +1,8 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
-import { useConvexAuth } from "convex/react";
 
 import { AuthVerifyingLoader } from "@/components/auth/auth-verifying-loader";
 import { AppErrorFallback } from "@/components/error-boundary";
+import { useSessionGate } from "@/lib/session";
 
 export const Route = createFileRoute("/_unauthenticated")({
   errorComponent: AppErrorFallback,
@@ -10,7 +10,7 @@ export const Route = createFileRoute("/_unauthenticated")({
 });
 
 function UnauthenticatedLayout() {
-  const { isAuthenticated, isLoading } = useConvexAuth();
+  const { isAuthenticated, isLoading } = useSessionGate();
 
   if (isLoading) {
     return <AuthVerifyingLoader />;

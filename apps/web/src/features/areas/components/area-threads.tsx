@@ -1,8 +1,7 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedThread } from "@convex/lib/validators";
+import type { Thread, ThreadId } from "@vita-os/contracts";
 import type { LucideIcon } from "lucide-react";
 
-import { groupAreaThreadsByAttention } from "@convex/lib/attentionOrdering";
+import { groupAreaThreadsByAttention } from "@vita-os/core";
 import { Button } from "@vita-os/ui/components/button";
 import {
   Collapsible,
@@ -30,13 +29,13 @@ import { cn } from "@/lib/utils";
 import { AreaThreadsSkeleton } from "./area-threads-skeleton";
 
 interface AreaThreadsProps {
-  threads: ProjectedThread[];
+  threads: Thread[];
   currentDate: number;
   isLoading?: boolean;
   onCreateThread: () => void;
-  onCompleteNextMove: (threadId: Id<"threads">) => void;
-  onRemoveThread: (threadId: Id<"threads">) => void;
-  onSetFollowUp: (threadId: Id<"threads">, when: number | undefined) => void;
+  onCompleteNextMove: (threadId: ThreadId) => void;
+  onRemoveThread: (threadId: ThreadId) => void;
+  onSetFollowUp: (threadId: ThreadId, when: number | undefined) => void;
 }
 
 interface Lane {
@@ -45,7 +44,7 @@ interface Lane {
   id: string;
   label: string;
   summaryLabel: string;
-  threads: ProjectedThread[];
+  threads: Thread[];
 }
 
 export function AreaThreads({
@@ -200,10 +199,10 @@ function AttentionLane({
 }: {
   lane: Lane;
   now: number;
-  onCompleteNextMove: (threadId: Id<"threads">) => void;
+  onCompleteNextMove: (threadId: ThreadId) => void;
   onOpenChange: (open: boolean) => void;
-  onRemoveThread: (threadId: Id<"threads">) => void;
-  onSetFollowUp: (threadId: Id<"threads">, when: number | undefined) => void;
+  onRemoveThread: (threadId: ThreadId) => void;
+  onSetFollowUp: (threadId: ThreadId, when: number | undefined) => void;
   open: boolean;
 }) {
   const LaneIcon = lane.icon;
@@ -288,11 +287,11 @@ function AreaThreadRow({
   onRemoveThread,
   onSetFollowUp,
 }: {
-  thread: ProjectedThread;
+  thread: Thread;
   now: number;
-  onCompleteNextMove: (threadId: Id<"threads">) => void;
-  onRemoveThread: (threadId: Id<"threads">) => void;
-  onSetFollowUp: (threadId: Id<"threads">, when: number | undefined) => void;
+  onCompleteNextMove: (threadId: ThreadId) => void;
+  onRemoveThread: (threadId: ThreadId) => void;
+  onSetFollowUp: (threadId: ThreadId, when: number | undefined) => void;
 }) {
   return (
     <ThreadAttentionCard

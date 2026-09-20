@@ -1,5 +1,5 @@
-import type { AreaIcon as AreaIconName } from "@convex/lib/areaIcons";
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaIcon as AreaIconName } from "@vita-os/contracts";
+import type { AreaSummary } from "@vita-os/contracts";
 
 import {
   AlertDialog,
@@ -37,10 +37,10 @@ import { AreaIcon } from "./area-icon";
 import { AreaIconPicker } from "./area-icon-picker";
 
 interface AreaHeaderProps {
-  area: ProjectedArea;
+  area: AreaSummary;
   onEdit: () => void;
   onDelete: () => void;
-  onConditionChange: (value: ProjectedArea["condition"]) => void;
+  onConditionChange: (value: AreaSummary["condition"]) => void;
   onIconChange: (value: AreaIconName) => Promise<void> | void;
 }
 

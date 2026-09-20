@@ -37,7 +37,6 @@ import {
   toActivityLogEntry,
   toAreaSummary,
   toThread,
-  toVersionedThread,
 } from "./rows";
 import { conflicted, found, missing, notFound } from "./store";
 
@@ -111,7 +110,7 @@ export class D1ThreadStore implements ThreadStore {
     if (row === null) return notFound;
 
     return found({
-      thread: toVersionedThread(row),
+      thread: toThread(row),
       area: toAreaSummary(unprefix(row, "area__") as unknown as AreaRow),
     });
   }

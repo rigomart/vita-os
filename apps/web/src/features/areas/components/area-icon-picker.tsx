@@ -1,6 +1,6 @@
-import type { AreaIcon as AreaIconName } from "@convex/lib/areaIcons";
+import type { AreaIcon as AreaIconName } from "@vita-os/contracts";
 
-import { AREA_ICONS, areaIconLabels } from "@convex/lib/areaIcons";
+import { AREA_ICONS, areaIconLabels } from "@vita-os/core";
 
 import { cn } from "@/lib/utils";
 

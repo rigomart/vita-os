@@ -1,4 +1,4 @@
-import type { AreaIcon as AreaIconName } from "@convex/lib/areaIcons";
+import type { AreaIcon as AreaIconName } from "@vita-os/contracts";
 
 import {
   BookOpen,

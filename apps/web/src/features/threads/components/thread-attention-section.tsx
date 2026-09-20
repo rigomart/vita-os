@@ -1,7 +1,7 @@
+import type { Thread } from "@vita-os/contracts";
+
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
-
-import type { ThreadView } from "@/features/threads/thread-view";
 
 import { useAttentionClock } from "@/hooks/use-attention-clock";
 
@@ -11,7 +11,7 @@ import { useUpdateThread } from "../use-update-thread";
 import { ThreadAttention } from "./thread-attention";
 
 interface ThreadAttentionSectionProps {
-  thread: ThreadView;
+  thread: Thread;
 }
 
 export function ThreadAttentionSection({
@@ -25,7 +25,7 @@ export function ThreadAttentionSection({
 
   const { run: setNextMove, isPending: isSetPending } = useGuardedAsyncAction(
     async (nextMove: string) => {
-      await updateThread({ id: thread._id, nextMove });
+      await updateThread({ nextMove });
     },
     { errorToast: true },
   );
@@ -33,7 +33,7 @@ export function ThreadAttentionSection({
   const { run: clearNextMove, isPending: isClearPending } =
     useGuardedAsyncAction(
       async () => {
-        await updateThread({ id: thread._id, nextMove: null });
+        await updateThread({ nextMove: null });
       },
       { errorToast: true },
     );
@@ -49,7 +49,7 @@ export function ThreadAttentionSection({
   const { run: saveFollowUp, isPending: isFollowUpPending } =
     useGuardedAsyncAction(
       async (followUp: number | null) => {
-        await updateThread({ id: thread._id, followUp });
+        await updateThread({ followUp });
       },
       { errorToast: true },
     );

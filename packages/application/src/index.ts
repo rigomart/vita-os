@@ -43,6 +43,6 @@ export {
   useThreadActivity,
   useThreadDetail,
   useUpdateThread,
-  type CompleteNextMoveVariables,
   type ThreadActivityResult,
+  type UpdateThreadVariables,
 } from "./threads/hooks";

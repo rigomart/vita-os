@@ -1,23 +1,15 @@
-import type { AreaId, Thread, ThreadId } from "@vita-os/contracts";
+import type { Thread } from "@vita-os/contracts";
 
-import type { ThreadView } from "@/features/threads/thread-view";
+import { useCompleteNextMove as useCompleteNextMoveCommand } from "@vita-os/application";
 
-import { useApplicationClient } from "@/application/application-client-context";
+/**
+ * Complete this Thread's Next Move.
+ *
+ * The Thread carries the move being completed and the revision it was read at,
+ * so a second click cannot complete the move that was promoted into its place.
+ */
+export function useCompleteNextMove(thread: Thread) {
+  const completeNextMove = useCompleteNextMoveCommand();
 
-export function useCompleteNextMove(thread: ThreadView) {
-  const client = useApplicationClient();
-
-  return async () => {
-    const applicationThread: Thread = {
-      ...thread,
-      _id: thread._id as ThreadId,
-      areaId: thread.areaId as AreaId,
-    };
-    const result = await client.completeNextMove({
-      threadId: applicationThread._id,
-      thread: applicationThread,
-    });
-    if (!result.ok) throw new Error(result.error.message);
-    return result.value;
-  };
+  return () => completeNextMove.mutateAsync({ thread });
 }

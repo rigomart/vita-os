@@ -1,4 +1,4 @@
-import type { AreaIcon } from "@convex/lib/areaIcons";
+import type { AreaIcon } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 export interface AttentionRowModel {

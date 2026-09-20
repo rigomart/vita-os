@@ -1,9 +1,9 @@
-import type { AreaIcon } from "@convex/lib/areaIcons";
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaIcon } from "@vita-os/contracts";
+import type { AreaSummary } from "@vita-os/contracts";
 
 export type AreaFormValue = {
   name: string;
   standard?: string;
-  condition: ProjectedArea["condition"];
+  condition: AreaSummary["condition"];
   icon: AreaIcon;
 };

@@ -1,8 +1,7 @@
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaSummary } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
-import { useQuery } from "convex-helpers/react/cache/hooks";
+import { useAreas, useOpenThreads } from "@vita-os/application";
 import {
   ChevronLeft,
   ChevronRight,
@@ -54,8 +53,8 @@ export function CommandPalette({
   const navigate = useNavigate();
   // The palette is mounted only while it is open, so these subscriptions live
   // exactly as long as the surface that reads them.
-  const areas = useQuery(api.areas.list, open ? {} : "skip");
-  const threads = useQuery(api.threads.list, open ? {} : "skip");
+  const areas = useAreas({ enabled: open }).data;
+  const threads = useOpenThreads({ enabled: open }).data;
   const areaById = useMemo(
     () => new Map((areas ?? []).map((area) => [area._id, area])),
     [areas],
@@ -307,7 +306,7 @@ function AreaActionsPage({
   onNewThread,
   run,
 }: {
-  area: ProjectedArea;
+  area: AreaSummary;
   onNewThread: (areaId?: string) => void;
   run: (action: () => void) => void;
 }) {

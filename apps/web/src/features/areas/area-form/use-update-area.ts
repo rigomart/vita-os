@@ -1,33 +1,30 @@
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaSummary } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
-
-import { optimisticallyUpdateArea } from "@/features/areas/optimistic";
+import { useUpdateArea as useUpdateAreaCommand } from "@vita-os/application";
 
 import type { AreaFormValue } from "./types";
 
+/**
+ * Save the Area form. Renaming mints a new slug, so the route follows the slug
+ * the service chose rather than the placeholder the optimistic change showed.
+ */
 export function useUpdateArea() {
   const navigate = useNavigate();
-  const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyUpdateArea(localStore, args);
-    },
-  );
+  const updateArea = useUpdateAreaCommand();
 
-  return async (area: ProjectedArea, value: AreaFormValue) => {
-    const result = await updateArea({
-      id: area._id,
+  return async (area: AreaSummary, value: AreaFormValue) => {
+    const saved = await updateArea.mutateAsync({
+      areaId: area._id,
       name: value.name,
       condition: value.condition,
       icon: value.icon,
     });
 
-    if (value.name !== area.name && result?.slug) {
+    if (value.name !== area.name) {
       navigate({
         to: "/$areaSlug",
-        params: { areaSlug: result.slug },
+        params: { areaSlug: saved.slug },
         replace: true,
       });
     }

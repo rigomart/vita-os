@@ -1,4 +1,4 @@
-import { startOfLocalDay } from "@convex/lib/attentionOrdering";
+import { startOfLocalDay } from "@vita-os/core";
 
 const DAY = 86_400_000;
 

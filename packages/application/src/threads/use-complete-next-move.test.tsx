@@ -97,17 +97,15 @@ function createHarness(client: ApplicationClient) {
     () => ({
       detail: useThreadDetail(slug),
       activity: useThreadActivity(threadId, 2),
-      completion: useCompleteNextMove({ threadId }),
+      completion: useCompleteNextMove(),
     }),
     { wrapper },
   );
   return { ...hook, queryClient };
 }
 
-const completionInput = {
-  expectedNextMove: "Call clinic",
-  expectedRevision: 0,
-};
+/** The Thread as the person sees it: the move to complete and its revision. */
+const completionInput = { thread: initialDetail.thread };
 
 describe("useCompleteNextMove", () => {
   it("restores and invalidates the mutation's original Thread after navigation", async () => {
@@ -137,14 +135,9 @@ describe("useCompleteNextMove", () => {
         {children}
       </ApplicationClientProvider>
     );
-    const { result, rerender } = renderHook(
-      ({ currentThreadId }) =>
-        useCompleteNextMove({ threadId: currentThreadId }),
-      {
-        initialProps: { currentThreadId: threadId, currentSlug: slug },
-        wrapper,
-      },
-    );
+    const { result, rerender } = renderHook(() => useCompleteNextMove(), {
+      wrapper,
+    });
 
     let mutation!: Promise<unknown>;
     act(() => {
@@ -209,7 +202,8 @@ describe("useCompleteNextMove", () => {
     ).toEqual(initialActivity);
     expect(completeNextMove).toHaveBeenCalledWith({
       threadId,
-      ...completionInput,
+      expectedNextMove: "Call clinic",
+      expectedRevision: 0,
     });
 
     pending.resolve(success({ status: "completed" }));

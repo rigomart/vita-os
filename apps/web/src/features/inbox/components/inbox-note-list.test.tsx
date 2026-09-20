@@ -1,5 +1,4 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedNote } from "@convex/lib/validators";
+import type { Note, NoteId } from "@vita-os/contracts";
 
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -23,10 +22,9 @@ vi.mock("@/features/notes/note-row/use-note-row-actions", () => ({
 
 const today = new Date(2026, 6, 17, 12).getTime();
 
-function note(id: string, fields: Partial<ProjectedNote> = {}): ProjectedNote {
+function note(id: string, fields: Partial<Note> = {}): Note {
   return {
-    _id: id as Id<"tasks">,
-    _creationTime: 0,
+    _id: id as NoteId,
     body: id,
     state: "open",
     createdAt: 0,

@@ -1,19 +1,11 @@
-import type { AuthClient } from "@convex-dev/better-auth/react";
-
-import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { ApplicationClientProvider } from "@vita-os/application";
 import { Toaster } from "@vita-os/ui/components/sonner";
 import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
-import { ConvexQueryCacheProvider } from "convex-helpers/react/cache";
-import { ConvexReactClient } from "convex/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { ApplicationClientProvider } from "./application/application-client-context";
-import {
-  createConvexApplicationClient,
-  createConvexGateway,
-} from "./application/convex/convex-application-client";
+import { createHttpApplicationClient } from "./application/http/http-application-client";
 import {
   AppErrorBoundary,
   RouteErrorFallback,
@@ -23,19 +15,23 @@ import {
   ThemeProvider,
   useTheme,
 } from "./features/theme/theme-provider";
-import { authClient } from "./lib/auth-client";
-import { CONVEX_URL } from "./lib/env";
+import { API_BASE_URL } from "./lib/env";
 import { routeTree } from "./routeTree.gen";
 import "@vita-os/ui/globals.css";
 
 initializeTheme();
 
-const convex = new ConvexReactClient(CONVEX_URL, {
-  expectAuth: true,
+/**
+ * The browser host's composition.
+ *
+ * It owns exactly three things the shared application does not: Better Auth in
+ * the browser, the runtime API address, and the HTTP implementation of the
+ * application contract. Everything above that — the product screens, the cache,
+ * the optimistic behavior — belongs to `@vita-os/application`.
+ */
+const applicationClient = createHttpApplicationClient({
+  apiBaseUrl: API_BASE_URL,
 });
-const applicationClient = createConvexApplicationClient(
-  createConvexGateway(convex),
-);
 
 // Every match gets a branded boundary; routes that own the whole viewport
 // override this with the full-page `AppErrorFallback`.
@@ -57,21 +53,12 @@ createRoot(root).render(
   <StrictMode>
     <AppErrorBoundary>
       <ThemeProvider>
-        <ConvexBetterAuthProvider
-          client={convex}
-          // The component's AuthClient union reduces useSession data to `never`
-          // under TypeScript 7, despite this matching its documented plugin setup.
-          authClient={authClient as unknown as AuthClient}
-        >
-          <ApplicationClientProvider client={applicationClient}>
-            <ConvexQueryCacheProvider expiration={300_000}>
-              <FeedbackProvider>
-                <RouterProvider router={router} />
-                <ThemeAwareToaster />
-              </FeedbackProvider>
-            </ConvexQueryCacheProvider>
-          </ApplicationClientProvider>
-        </ConvexBetterAuthProvider>
+        <ApplicationClientProvider client={applicationClient}>
+          <FeedbackProvider>
+            <RouterProvider router={router} />
+            <ThemeAwareToaster />
+          </FeedbackProvider>
+        </ApplicationClientProvider>
       </ThemeProvider>
     </AppErrorBoundary>
   </StrictMode>,

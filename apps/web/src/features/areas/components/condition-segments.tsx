@@ -1,6 +1,6 @@
-import type { Condition } from "@convex/lib/condition";
+import type { Condition } from "@vita-os/contracts";
 
-import { CONDITIONS, conditionLabels } from "@convex/lib/condition";
+import { CONDITIONS, conditionLabels } from "@vita-os/core";
 import { useRef } from "react";
 
 import {

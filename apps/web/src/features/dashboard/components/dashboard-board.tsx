@@ -1,4 +1,4 @@
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaSummary } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import {
@@ -28,7 +28,7 @@ export function DashboardBoard({
   board,
   currentDate,
 }: {
-  areas: ProjectedArea[];
+  areas: AreaSummary[];
   board: AttentionBoard;
   currentDate: number;
 }) {

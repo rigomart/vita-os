@@ -1,19 +1,12 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedNote } from "@convex/lib/validators";
+import type { Note, NoteId } from "@vita-os/contracts";
 
 import { describe, expect, it } from "vitest";
 
-import {
-  isNoteWhenDue,
-  isNoteWhenEmphasized,
-  removeNoteFromInbox,
-  updateNoteWhenInInbox,
-} from "./inbox";
+import { isNoteWhenDue, isNoteWhenEmphasized } from "./inbox";
 
-function makeNote(overrides: Partial<ProjectedNote> = {}): ProjectedNote {
+function makeNote(overrides: Partial<Note> = {}): Note {
   return {
-    _id: "note1" as Id<"tasks">,
-    _creationTime: 0,
+    _id: "note1" as NoteId,
     body: "Call clinic",
     state: "open",
     createdAt: 0,
@@ -46,41 +39,5 @@ describe("Note When emphasis", () => {
         may18_2026,
       ),
     ).toBe(false);
-  });
-});
-
-describe("Note inbox mutations", () => {
-  it("removes a Note from the open Inbox list — completing and discarding both take it out", () => {
-    const keeping = makeNote({ _id: "keeping" as Id<"tasks"> });
-    const removing = makeNote({ _id: "removing" as Id<"tasks"> });
-
-    expect(removeNoteFromInbox([removing, keeping], removing._id)).toEqual([
-      keeping,
-    ]);
-  });
-
-  it("is a no-op when the Note isn't in the cached open list", () => {
-    const keeping = makeNote({ _id: "keeping" as Id<"tasks"> });
-
-    expect(removeNoteFromInbox([keeping], "elsewhere" as Id<"tasks">)).toEqual([
-      keeping,
-    ]);
-  });
-
-  it("updates or clears Note When without removing the Note from the Inbox", () => {
-    const updating = makeNote({ _id: "updating" as Id<"tasks"> });
-    const unchanged = makeNote({ _id: "unchanged" as Id<"tasks"> });
-
-    const withWhen = updateNoteWhenInInbox(
-      [updating, unchanged],
-      updating._id,
-      may19_2026,
-    );
-
-    expect(withWhen).toEqual([{ ...updating, when: may19_2026 }, unchanged]);
-    expect(updateNoteWhenInInbox(withWhen, updating._id, undefined)).toEqual([
-      { ...updating, when: undefined },
-      unchanged,
-    ]);
   });
 });

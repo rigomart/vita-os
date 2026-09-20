@@ -43,10 +43,13 @@ import {
 const ACTIVITY_PAGE_SIZE = 20;
 
 /** Every Open Thread, in the person's manual order. */
-export function useOpenThreads(): UseQueryResult<Thread[], ApplicationError> {
+export function useOpenThreads(
+  options: { enabled?: boolean } = {},
+): UseQueryResult<Thread[], ApplicationError> {
   return useApplicationQuery({
     queryKey: queryKeys.threads.open(),
     run: (client) => client.listOpenThreads(),
+    ...(options.enabled === undefined ? {} : { enabled: options.enabled }),
   });
 }
 
@@ -136,48 +139,56 @@ export function useCreateThread(): ApplicationMutationResult<
 /**
  * One Thread edit.
  *
- * The caller supplies the Thread as it sees it, and the Areas it knows about when
- * the edit can move the Thread: the optimistic change needs both to keep the open
- * list, the rail, and both Area pages in step without reading them back.
+ * Every command carries the Thread as the caller sees it, rather than being bound
+ * to one at render: the optimistic change needs the Thread's current values, and a
+ * surface that lists many Threads has one command for all of them. A change that
+ * moves the Thread carries the destination Area too, so the rail's embedded Area
+ * keeps up without reading it back.
  */
-export function useUpdateThread(context: {
+export interface UpdateThreadVariables extends Omit<
+  UpdateThreadInput,
+  "threadId"
+> {
   thread: Thread;
-  areas?: AreaSummary[];
-}): ApplicationMutationResult<UpdateThreadInput, Thread> {
-  return useApplicationMutation<UpdateThreadInput, Thread>({
-    run: (client, input) => client.updateThread(input),
-    affected: (input, cache) =>
+  destinationArea?: AreaSummary;
+}
+
+export function useUpdateThread(): ApplicationMutationResult<
+  UpdateThreadVariables,
+  Thread
+> {
+  return useApplicationMutation<UpdateThreadVariables, Thread>({
+    run: (client, { thread, destinationArea: _destination, ...change }) =>
+      client.updateThread({ threadId: thread._id, ...change }),
+    affected: ({ thread, areaId }, cache) =>
       threadChangeKeys(cache, {
-        threadId: input.threadId,
-        areaIds: [context.thread.areaId, input.areaId],
+        threadId: thread._id,
+        areaIds: [thread.areaId, areaId],
       }),
-    optimistic: (cache, input) => {
-      const destinationArea =
-        input.areaId === undefined
-          ? undefined
-          : context.areas?.find((area) => area._id === input.areaId);
-      showThreadChange(cache, input, {
-        thread: context.thread,
-        ...(destinationArea === undefined ? {} : { destinationArea }),
-      });
-    },
+    optimistic: (cache, { thread, destinationArea, ...change }) =>
+      showThreadChange(
+        cache,
+        { threadId: thread._id, ...change },
+        {
+          thread,
+          ...(destinationArea === undefined ? {} : { destinationArea }),
+        },
+      ),
     // A Thread change can write Activity Log entries, which are read separately.
-    alsoInvalidate: (input) => [queryKeys.threads.activity(input.threadId)],
+    alsoInvalidate: ({ thread }) => [queryKeys.threads.activity(thread._id)],
   });
 }
 
 export function useRemoveThread(): ApplicationMutationResult<
-  { threadId: ThreadId },
+  { thread: Thread },
   CommandAcknowledgement
 > {
-  return useApplicationMutation<{ threadId: ThreadId }, CommandAcknowledgement>(
-    {
-      run: (client, input) => client.removeThread(input),
-      affected: (input, cache) =>
-        threadChangeKeys(cache, { threadId: input.threadId }),
-      optimistic: (cache, input) => showThreadRemoval(cache, input.threadId),
-    },
-  );
+  return useApplicationMutation<{ thread: Thread }, CommandAcknowledgement>({
+    run: (client, { thread }) => client.removeThread({ threadId: thread._id }),
+    affected: ({ thread }, cache) =>
+      threadChangeKeys(cache, { threadId: thread._id }),
+    optimistic: (cache, { thread }) => showThreadRemoval(cache, thread._id),
+  });
 }
 
 /**
@@ -186,25 +197,22 @@ export function useRemoveThread(): ApplicationMutationResult<
  * did. Blank moves are refused by the service — callers trim first.
  */
 export function useReplaceUpNext(): ApplicationMutationResult<
-  { threadId: ThreadId; moves: string[] },
+  { thread: Thread; moves: string[] },
   Thread
 > {
-  return useApplicationMutation<
-    { threadId: ThreadId; moves: string[] },
-    Thread
-  >({
+  return useApplicationMutation<{ thread: Thread; moves: string[] }, Thread>({
     run: (client, input) =>
       client.replaceUpNext({
-        threadId: input.threadId,
+        threadId: input.thread._id,
         moves: sanitizeMoves(input.moves),
       }),
-    affected: (input, cache) =>
-      threadChangeKeys(cache, { threadId: input.threadId }),
+    affected: ({ thread }, cache) =>
+      threadChangeKeys(cache, { threadId: thread._id }),
     optimistic: (cache, input) =>
-      showThreadAttention(cache, input.threadId, (thread) =>
+      showThreadAttention(cache, input.thread._id, (thread) =>
         replaceUpNextLocally(thread, sanitizeMoves(input.moves)),
       ),
-    alsoInvalidate: (input) => [queryKeys.threads.activity(input.threadId)],
+    alsoInvalidate: ({ thread }) => [queryKeys.threads.activity(thread._id)],
   });
 }
 
@@ -213,39 +221,34 @@ function sanitizeMoves(moves: readonly string[]): string[] {
   return moves.map((move) => move.trim()).filter((move) => move.length > 0);
 }
 
-export interface CompleteNextMoveVariables {
-  expectedNextMove: string | null;
-  expectedRevision: number;
-}
-
 /**
  * Complete the Next Move, promoting the front of Up Next when there is one.
  *
- * The expectation the caller read with the Thread travels with the command, so a
- * repeated click cannot complete a promoted move whose text matches the one
- * already completed. A stale expectation comes back as a conflict, which is
- * treated as stale data: the reads are restored and refetched, not handed to the
- * person to resolve.
+ * The Thread the caller is looking at carries both the move being completed and
+ * the revision it was read at, and both travel with the command. A repeated click
+ * therefore cannot complete a promoted move whose text matches the one already
+ * completed, and a stale click comes back as a conflict — treated as stale data,
+ * so the reads are restored and refetched rather than handed to the person to
+ * resolve.
  */
-export function useCompleteNextMove(context: {
-  threadId: ThreadId;
-}): ApplicationMutationResult<
-  CompleteNextMoveVariables,
+export function useCompleteNextMove(): ApplicationMutationResult<
+  { thread: Thread },
   CompleteNextMoveOutput
 > {
-  return useApplicationMutation<
-    CompleteNextMoveVariables,
-    CompleteNextMoveOutput
-  >({
-    run: (client, variables) =>
-      client.completeNextMove({ threadId: context.threadId, ...variables }),
-    affected: (_variables, cache) => [
-      ...threadChangeKeys(cache, { threadId: context.threadId }),
-      queryKeys.threads.activity(context.threadId),
+  return useApplicationMutation<{ thread: Thread }, CompleteNextMoveOutput>({
+    run: (client, { thread }) =>
+      client.completeNextMove({
+        threadId: thread._id,
+        expectedNextMove: thread.nextMove ?? null,
+        expectedRevision: thread.revision,
+      }),
+    affected: ({ thread }, cache) => [
+      ...threadChangeKeys(cache, { threadId: thread._id }),
+      queryKeys.threads.activity(thread._id),
     ],
-    optimistic: (cache, variables) =>
-      showThreadAttention(cache, context.threadId, (thread) =>
-        completeThreadWhenExpected(thread, variables),
+    optimistic: (cache, { thread }) =>
+      showThreadAttention(cache, thread._id, (cached) =>
+        completeWhereUnchanged(cached, thread),
       ),
   });
 }
@@ -255,16 +258,13 @@ export function useCompleteNextMove(context: {
  * read it. The Activity Log stays the service's to write: inventing an entry here
  * would mean inventing an ID and a time.
  */
-function completeThreadWhenExpected<
+function completeWhereUnchanged<
   T extends { nextMove?: string; upNext?: string[]; revision?: number },
->(thread: T, variables: CompleteNextMoveVariables): T {
-  if ((thread.nextMove ?? null) !== variables.expectedNextMove) return thread;
-  if (
-    thread.revision !== undefined &&
-    thread.revision !== variables.expectedRevision
-  ) {
-    return thread;
+>(cached: T, expected: Thread): T {
+  if ((cached.nextMove ?? null) !== (expected.nextMove ?? null)) return cached;
+  if (cached.revision !== undefined && cached.revision !== expected.revision) {
+    return cached;
   }
 
-  return completeNextMoveLocally(thread);
+  return completeNextMoveLocally(cached);
 }

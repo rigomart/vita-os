@@ -1,6 +1,6 @@
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaSummary } from "@vita-os/contracts";
 
-import { conditionLabels } from "@convex/lib/condition";
+import { conditionLabels } from "@vita-os/core";
 
 import { conditionDotClassName } from "@/features/areas/condition-presentation";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ export function AreaConditionDot({
   condition,
   className,
 }: {
-  condition: ProjectedArea["condition"];
+  condition: AreaSummary["condition"];
   className?: string;
 }) {
   return (

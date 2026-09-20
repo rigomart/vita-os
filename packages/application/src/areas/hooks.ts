@@ -27,11 +27,19 @@ import {
   showPendingArea,
 } from "./optimistic";
 
-/** Every Area the person keeps, in their own manual order. */
-export function useAreas(): UseQueryResult<AreaSummary[], ApplicationError> {
+/**
+ * Every Area the person keeps, in their own manual order.
+ *
+ * `enabled: false` leaves the read alone entirely, for a surface — a closed
+ * command palette — that is not showing Areas yet.
+ */
+export function useAreas(
+  options: { enabled?: boolean } = {},
+): UseQueryResult<AreaSummary[], ApplicationError> {
   return useApplicationQuery({
     queryKey: queryKeys.areas.list(),
     run: (client) => client.listAreas(),
+    ...(options.enabled === undefined ? {} : { enabled: options.enabled }),
   });
 }
 

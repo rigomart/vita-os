@@ -9,7 +9,6 @@ import type {
   ThreadId,
   ThreadNote,
   ThreadNoteId,
-  VersionedThread,
 } from "@vita-os/contracts";
 
 /**
@@ -166,11 +165,8 @@ export function toThread(row: ThreadRow): Thread {
       ? {}
       : { lastActivityContent: row.last_activity_content }),
     createdAt: row.created_at,
+    revision: row.revision,
   };
-}
-
-export function toVersionedThread(row: ThreadRow): VersionedThread {
-  return { ...toThread(row), revision: row.revision };
 }
 
 export function toNote(row: NoteRow): Note {

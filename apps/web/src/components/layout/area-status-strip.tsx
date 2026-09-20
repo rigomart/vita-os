@@ -1,6 +1,6 @@
-import { api } from "@convex/_generated/api";
-import { CONDITION_OPTIONS } from "@convex/lib/condition";
 import { Link, useMatch } from "@tanstack/react-router";
+import { useAreas, useOpenThreads } from "@vita-os/application";
+import { CONDITION_OPTIONS } from "@vita-os/core";
 import { Kbd } from "@vita-os/ui/components/kbd";
 import {
   Tooltip,
@@ -8,7 +8,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@vita-os/ui/components/tooltip";
-import { useQuery } from "convex-helpers/react/cache/hooks";
 
 import { BrandHexagon } from "@/components/ui/brand-hexagon";
 import { AreaIcon } from "@/features/areas/components/area-icon";
@@ -35,9 +34,9 @@ function conditionLabel(condition: string) {
  * the corner badge is that Area's share of the board.
  */
 export function AreaStatusStrip() {
-  const areas = useQuery(api.areas.list);
-  // The cache the Dashboard and palette already hold, not a new subscription.
-  const threads = useQuery(api.threads.list);
+  const areas = useAreas().data;
+  // The reads the Dashboard and palette already hold, not new ones.
+  const threads = useOpenThreads().data;
   const areaRouteMatch = useMatch({
     from: "/_authenticated/$areaSlug",
     shouldThrow: false,

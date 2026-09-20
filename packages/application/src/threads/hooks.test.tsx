@@ -125,12 +125,12 @@ describe("useUpdateThread", () => {
       client,
       seedThreadReads({ thread: lined }),
     );
-    const { result } = renderHook(() => useUpdateThread({ thread: lined }), {
+    const { result } = renderHook(() => useUpdateThread(), {
       wrapper,
     });
 
     act(() => {
-      result.current.mutate({ threadId: lined._id, nextMove: null });
+      result.current.mutate({ thread: lined, nextMove: null });
     });
 
     await waitFor(() => {
@@ -166,13 +166,10 @@ describe("useUpdateThread", () => {
       client,
       seedThreadReads({ thread: attentive }),
     );
-    const { result } = renderHook(
-      () => useUpdateThread({ thread: attentive }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useUpdateThread(), { wrapper });
 
     act(() => {
-      result.current.mutate({ threadId: attentive._id, state: "resolved" });
+      result.current.mutate({ thread: attentive, state: "resolved" });
     });
 
     await waitFor(() => {
@@ -202,13 +199,14 @@ describe("useUpdateThread", () => {
         threads: [],
       });
     });
-    const { result } = renderHook(
-      () => useUpdateThread({ thread, areas: [health, home] }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useUpdateThread(), { wrapper });
 
     act(() => {
-      result.current.mutate({ threadId: thread._id, areaId: home._id });
+      result.current.mutate({
+        thread,
+        areaId: home._id,
+        destinationArea: home,
+      });
     });
 
     await waitFor(() => {
@@ -238,13 +236,11 @@ describe("useUpdateThread", () => {
       rail: cache.getQueryData(queryKeys.threads.detail(thread.slug)),
       area: cache.getQueryData(queryKeys.areas.detail(health.slug)),
     };
-    const { result } = renderHook(() => useUpdateThread({ thread }), {
-      wrapper,
-    });
+    const { result } = renderHook(() => useUpdateThread(), { wrapper });
 
     await act(async () => {
       await result.current
-        .mutateAsync({ threadId: thread._id, nextMove: "Something else" })
+        .mutateAsync({ thread, nextMove: "Something else" })
         .catch(() => undefined);
     });
 
@@ -270,7 +266,7 @@ describe("useReplaceUpNext", () => {
 
     act(() => {
       result.current.mutate({
-        threadId: thread._id,
+        thread,
         moves: ["  Book appointment  ", "   ", "Collect results"],
       });
     });
@@ -302,7 +298,7 @@ describe("useReplaceUpNext", () => {
 
     act(() => {
       result.current.mutate({
-        threadId: empty._id,
+        thread: empty,
         moves: ["Book appointment", "Collect results"],
       });
     });
@@ -326,7 +322,7 @@ describe("useRemoveThread", () => {
     const { result } = renderHook(() => useRemoveThread(), { wrapper });
 
     await act(async () => {
-      await result.current.mutateAsync({ threadId: thread._id });
+      await result.current.mutateAsync({ thread });
     });
 
     expect(cache.getQueryData(queryKeys.threads.open())).toEqual([]);

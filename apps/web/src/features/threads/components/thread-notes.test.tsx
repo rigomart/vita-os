@@ -1,5 +1,4 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedThreadNote } from "@convex/lib/validators";
+import type { ThreadNote, ThreadNoteId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -8,13 +7,9 @@ import { render, screen } from "@/test/render-with-providers";
 
 import { ThreadNotes } from "./thread-notes";
 
-function note(
-  id: string,
-  fields: Partial<ProjectedThreadNote> = {},
-): ProjectedThreadNote {
+function note(id: string, fields: Partial<ThreadNote> = {}): ThreadNote {
   return {
-    _id: id as Id<"threadNotes">,
-    _creationTime: 0,
+    _id: id as ThreadNoteId,
     body: id,
     state: "open",
     createdAt: 1_000,

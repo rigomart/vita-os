@@ -1,6 +1,5 @@
-import { api } from "@convex/_generated/api";
 import { useNavigate } from "@tanstack/react-router";
-import { useQuery } from "convex-helpers/react/cache/hooks";
+import { useAreaDetail, useAreas } from "@vita-os/application";
 import { useState } from "react";
 
 import { EditAreaDialog } from "@/features/areas/area-form/edit-area-dialog";
@@ -18,14 +17,14 @@ interface AreaDetailScreenProps {
 }
 
 export function AreaDetailScreen({ areaSlug }: AreaDetailScreenProps) {
-  const detail = useQuery(api.areas.detailBySlug, { slug: areaSlug });
+  const detail = useAreaDetail(areaSlug).data;
   const navigate = useNavigate();
   const [showEdit, setShowEdit] = useState(false);
   const [showCreateThread, setShowCreateThread] = useState(false);
 
   // Picker data for the create-thread dialog only; the page itself renders
-  // from the composite.
-  const areas = useQuery(api.areas.list, showCreateThread ? {} : "skip");
+  // from its own read.
+  const areas = useAreas({ enabled: showCreateThread }).data;
 
   useDocumentTitle(detail?.area.name ?? "Area");
 

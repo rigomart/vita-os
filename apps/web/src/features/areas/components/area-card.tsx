@@ -1,4 +1,4 @@
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaSummary } from "@vita-os/contracts";
 
 import { Link } from "@tanstack/react-router";
 import { cn } from "@vita-os/ui/lib/utils";
@@ -9,7 +9,7 @@ import { flatListRowHoverClassName } from "@/lib/flat-surface";
 import { AreaIcon } from "./area-icon";
 
 interface AreaCardProps {
-  area: ProjectedArea;
+  area: AreaSummary;
   threadCount: number;
   attentionCount: number;
 }

@@ -1,4 +1,4 @@
-import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
+import type { AreaSummary, Thread } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
 import {
@@ -12,8 +12,8 @@ import { useState } from "react";
 import { AreaIcon } from "@/features/areas/components/area-icon";
 
 interface ThreadPickerProps {
-  threads: ProjectedThread[];
-  areas: ProjectedArea[];
+  threads: Thread[];
+  areas: AreaSummary[];
   selectedThreadId: string | undefined;
   onSelect: (id: string) => void;
 }

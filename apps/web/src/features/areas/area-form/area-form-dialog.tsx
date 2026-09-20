@@ -1,13 +1,13 @@
 import {
   type AreaIcon as AreaIconName,
   DEFAULT_AREA_ICON,
-} from "@convex/lib/areaIcons";
+} from "@vita-os/core";
 import {
   CONDITION_OPTIONS,
   type Condition,
   DEFAULT_CONDITION,
   isCondition,
-} from "@convex/lib/condition";
+} from "@vita-os/core";
 import { Button } from "@vita-os/ui/components/button";
 import { Input } from "@vita-os/ui/components/input";
 import { Label } from "@vita-os/ui/components/label";

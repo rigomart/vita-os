@@ -1,5 +1,4 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedThread } from "@convex/lib/validators";
+import type { AreaId, Thread, ThreadId } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import { render, screen } from "@testing-library/react";
@@ -23,16 +22,15 @@ const noop = () => undefined;
 function thread(
   id: string,
   title: string,
-  fields: Partial<
-    Pick<ProjectedThread, "followUp" | "nextMove" | "order">
-  > = {},
-): ProjectedThread {
+  fields: Partial<Pick<Thread, "followUp" | "nextMove" | "order">> = {},
+): Thread {
   return {
-    _id: id as Id<"threads">,
+    _id: id as ThreadId,
     title,
     slug: id,
-    areaId: "area1" as Id<"areas">,
+    areaId: "area1" as AreaId,
     state: "open",
+    revision: 0,
     order: 0,
     createdAt: 0,
     ...fields,

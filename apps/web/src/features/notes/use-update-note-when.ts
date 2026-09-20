@@ -1,21 +1,11 @@
-import type { Id } from "@convex/_generated/dataModel";
+import type { NoteId } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
+import { useUpdateNoteAttentionDate } from "@vita-os/application";
 
-import { patchQuery } from "@/features/shared/optimistic";
-
-import { updateNoteWhenInInbox } from "./optimistic";
-
+/** The Attention Date, set or cleared. */
 export function useUpdateNoteWhen() {
-  const updateNoteWhen = useMutation(api.notes.updateWhen).withOptimisticUpdate(
-    (localStore, args) => {
-      patchQuery(localStore, api.notes.list, {}, (notes) =>
-        updateNoteWhenInInbox(notes, args.id, args.when),
-      );
-    },
-  );
+  const updateAttentionDate = useUpdateNoteAttentionDate();
 
-  return (id: Id<"tasks">, when: number | undefined) =>
-    updateNoteWhen({ id, when });
+  return (noteId: NoteId, when: number | undefined) =>
+    updateAttentionDate.mutateAsync({ noteId, when: when ?? null });
 }

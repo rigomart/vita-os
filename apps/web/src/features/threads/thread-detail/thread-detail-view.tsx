@@ -1,5 +1,6 @@
 import type { AreaSummary, Thread } from "@vita-os/contracts";
 
+import { useThreadDetail } from "@vita-os/application";
 import { Button } from "@vita-os/ui/components/button";
 import {
   ButtonGroup,
@@ -14,7 +15,6 @@ import {
 import { X } from "lucide-react";
 import { useMemo } from "react";
 
-import { useThreadDetail } from "@/application/application-client-context";
 import { AreaConditionDot } from "@/features/areas/components/area-condition-dot";
 import { ThreadAreaSectionSection } from "@/features/threads/components/thread-area-section-section";
 import { ThreadAttentionSection } from "@/features/threads/components/thread-attention-section";
@@ -54,10 +54,10 @@ export function ThreadDetailView({
   onThreadLocationChange,
 }: ThreadDetailViewProps) {
   const showDesktopPane = useThreadPaneViewport();
-  // One subscription serves both URL forms: `?thread=` reads the Area straight
-  // off the composite, the canonical deep link validates against it.
+  // One read serves both URL forms: `?thread=` takes the Area straight off it,
+  // and the canonical deep link validates against it.
   const detailState = useThreadDetail(threadSlug);
-  const detail = detailState.status === "ready" ? detailState.data : null;
+  const detail = detailState.data ?? null;
 
   useDocumentTitle(detail?.thread.title ?? "Thread");
 
@@ -66,12 +66,12 @@ export function ThreadDetailView({
     [onThreadLocationChange],
   );
 
-  if (detailState.status === "error") {
+  if (detailState.error !== null) {
     throw new Error(detailState.error.message);
   }
 
   const title = detail?.thread.title ?? "Thread detail";
-  const isLoading = detailState.status === "loading";
+  const isLoading = detailState.isPending;
   const area = detail?.area ?? null;
   const hasMatchingThread =
     detail != null &&

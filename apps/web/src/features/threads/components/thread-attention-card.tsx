@@ -1,8 +1,8 @@
-import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
+import type { AreaSummary, Thread } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
-import { conditionLabels } from "@convex/lib/condition";
 import { Link } from "@tanstack/react-router";
+import { conditionLabels } from "@vita-os/core";
 import { CalendarClock, Check } from "lucide-react";
 
 import { AreaIcon } from "@/features/areas/components/area-icon";
@@ -29,11 +29,11 @@ export function ThreadAttentionCard({
   thread,
 }: {
   actions?: ReactNode;
-  area?: ProjectedArea;
+  area?: AreaSummary;
   currentDate: number;
   onCompleteNextMove: () => void;
   onSetFollowUp: (when: number | undefined) => void;
-  thread: ProjectedThread;
+  thread: Thread;
 }) {
   const move = thread.nextMove?.trim();
   const followUp = thread.followUp ?? undefined;
@@ -120,9 +120,9 @@ export function ConnectedThreadAttentionCard({
   currentDate,
   thread,
 }: {
-  area?: ProjectedArea;
+  area?: AreaSummary;
   currentDate: number;
-  thread: ProjectedThread;
+  thread: Thread;
 }) {
   const completeNextMove = useCompleteNextMove(thread);
   const updateThread = useUpdateThread(thread);
@@ -133,9 +133,7 @@ export function ConnectedThreadAttentionCard({
       currentDate={currentDate}
       thread={thread}
       onCompleteNextMove={() => void completeNextMove()}
-      onSetFollowUp={(when) =>
-        void updateThread({ id: thread._id, followUp: when ?? null })
-      }
+      onSetFollowUp={(when) => void updateThread({ followUp: when ?? null })}
     />
   );
 }
@@ -167,7 +165,7 @@ function ControlButton({
   );
 }
 
-function AreaGlyph({ area }: { area?: ProjectedArea }) {
+function AreaGlyph({ area }: { area?: AreaSummary }) {
   if (!area) return null;
   return (
     <span

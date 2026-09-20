@@ -34,6 +34,7 @@ export function aThread(overrides: Partial<Thread> = {}): Thread {
     order: 0,
     state: "open",
     createdAt: 2_000,
+    revision: 0,
     ...overrides,
   };
 }

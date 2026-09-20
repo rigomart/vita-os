@@ -1,28 +1,22 @@
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaSummary } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
-
-import { optimisticallyUpdateArea } from "@/features/areas/optimistic";
+import { useUpdateArea } from "@vita-os/application";
 
 import { AreaStandardCard } from "./area-standard-card";
 
 interface AreaStandardCardSectionProps {
-  area: ProjectedArea;
+  area: AreaSummary;
 }
 
 export function AreaStandardCardSection({
   area,
 }: AreaStandardCardSectionProps) {
-  const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyUpdateArea(localStore, args);
-    },
-  );
+  const updateArea = useUpdateArea();
 
+  // An emptied card clears the Standard rather than storing blank text.
   const handleSave = (standard: string) => {
-    updateArea({
-      id: area._id,
+    void updateArea.mutateAsync({
+      areaId: area._id,
       standard: standard || null,
     });
   };

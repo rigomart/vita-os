@@ -1,5 +1,4 @@
-import { api } from "@convex/_generated/api";
-import { useQuery } from "convex-helpers/react/cache/hooks";
+import { useAreas, useOpenNotes, useOpenThreads } from "@vita-os/application";
 import { useState } from "react";
 
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
@@ -8,16 +7,15 @@ import { DashboardOverviewSkeleton } from "@/features/dashboard/components/dashb
 import { useAttentionClock } from "@/hooks/use-attention-clock";
 
 /**
- * The Dashboard composes the three list queries the rest of the app already
- * subscribes to, so a Note write reruns only the Notes source, an Area
- * condition change only the Areas source — and the palette's caches are the
- * same caches.
+ * The Dashboard composes the three inventories the rest of the app already
+ * reads, so a Note write refreshes only the Notes source and an Area Condition
+ * change only the Areas source — and the palette reads the same three.
  */
 export function DashboardScreen() {
   const currentDate = useAttentionClock();
-  const areas = useQuery(api.areas.list);
-  const threads = useQuery(api.threads.list);
-  const notes = useQuery(api.notes.list);
+  const areas = useAreas().data;
+  const threads = useOpenThreads().data;
+  const notes = useOpenNotes().data;
   const [showCreateArea, setShowCreateArea] = useState(false);
 
   const loading =

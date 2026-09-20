@@ -1,9 +1,9 @@
-import type { ThreadView } from "@/features/threads/thread-view";
+import type { Thread } from "@vita-os/contracts";
 
 import { EditableField } from "@/components/ui/editable-field";
 
 interface ThreadHeaderProps {
-  thread: ThreadView;
+  thread: Thread;
   onTitleSave: (title: string) => void;
 }
 

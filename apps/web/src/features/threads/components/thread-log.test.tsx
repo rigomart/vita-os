@@ -1,5 +1,4 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedActivityLog } from "@convex/lib/validators";
+import type { ActivityLogEntry, ActivityLogEntryId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { subDays } from "date-fns";
@@ -12,21 +11,21 @@ import { ActivityLog } from "./thread-log";
 const now = new Date("2026-05-19T12:00:00Z").getTime();
 
 const areaMove = {
-  _id: "log1" as Id<"activityLogs">,
+  _id: "log1" as ActivityLogEntryId,
   type: "area_move",
   content: 'Moved from "Health" to "Finances"',
   previousValue: "Health",
   newValue: "Finances",
   createdAt: now,
-} satisfies ProjectedActivityLog;
+} satisfies ActivityLogEntry;
 
 const followUp = {
-  _id: "log2" as Id<"activityLogs">,
+  _id: "log2" as ActivityLogEntryId,
   type: "follow_up_change",
   content: "Follow-up set",
   newValue: "May 20, 2026",
   createdAt: now - 60_000,
-} satisfies ProjectedActivityLog;
+} satisfies ActivityLogEntry;
 
 describe("ActivityLog", () => {
   it("renders only automatic changes and offers no manual entry controls", () => {

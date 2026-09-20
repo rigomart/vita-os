@@ -29,6 +29,7 @@ const thread = {
   state: "open" as const,
   nextMove: "Call clinic",
   createdAt: 2,
+  revision: 3,
 };
 
 const note = {
@@ -64,10 +65,7 @@ const client = {
   removeArea: async () => ({ ok: true, value: commandAcknowledged }),
 
   listOpenThreads: async () => ({ ok: true, value: [thread] }),
-  getThreadDetail: async () => ({
-    ok: true,
-    value: { thread: { ...thread, revision: 3 }, area },
-  }),
+  getThreadDetail: async () => ({ ok: true, value: { thread, area } }),
   createThread: async () => ({ ok: true, value: thread }),
   updateThread: async () => ({ ok: true, value: thread }),
   removeThread: async () => ({ ok: true, value: commandAcknowledged }),

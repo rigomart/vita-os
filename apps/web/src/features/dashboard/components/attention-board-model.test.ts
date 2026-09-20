@@ -1,4 +1,4 @@
-import type { ProjectedNote, ProjectedThread } from "@convex/lib/validators";
+import type { Note, Thread } from "@vita-os/contracts";
 
 import { describe, expect, it } from "vitest";
 
@@ -13,31 +13,29 @@ import { DAY } from "./dashboard-model";
 const currentDate = new Date(2026, 6, 17, 12).getTime();
 const day = (offset: number) => currentDate + offset * DAY;
 
-function thread(
-  id: string,
-  fields: Partial<ProjectedThread> = {},
-): ProjectedThread {
+function thread(id: string, fields: Partial<Thread> = {}): Thread {
   return {
-    _id: id as ProjectedThread["_id"],
+    _id: id as Thread["_id"],
     title: id,
     slug: id,
-    areaId: "area-1" as ProjectedThread["areaId"],
+    areaId: "area-1" as Thread["areaId"],
     order: 0,
     state: "open",
+    revision: 0,
     createdAt: currentDate,
     ...fields,
-  } as ProjectedThread;
+  } as Thread;
 }
 
-function note(id: string, fields: Partial<ProjectedNote> = {}): ProjectedNote {
+function note(id: string, fields: Partial<Note> = {}): Note {
   return {
-    _id: id as ProjectedNote["_id"],
-    _creationTime: currentDate,
+    _id: id as Note["_id"],
     body: id,
     state: "open",
+    revision: 0,
     createdAt: currentDate,
     ...fields,
-  } as ProjectedNote;
+  } as Note;
 }
 
 describe("buildAttentionBoard", () => {
@@ -150,7 +148,7 @@ describe("buildAttentionBoard", () => {
           // Convex hands back nulls for cleared optional fields.
           followUp: null,
           nextMove: null,
-        } as unknown as ProjectedThread,
+        } as unknown as Thread,
       ],
       [],
       currentDate,

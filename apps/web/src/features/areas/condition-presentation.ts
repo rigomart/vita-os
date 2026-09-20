@@ -1,4 +1,4 @@
-import type { Condition } from "@convex/lib/condition";
+import type { Condition } from "@vita-os/contracts";
 import type { LucideIcon } from "lucide-react";
 
 import { CircleCheck, OctagonAlert, TriangleAlert } from "lucide-react";

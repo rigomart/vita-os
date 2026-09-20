@@ -1,8 +1,6 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
+import type { AreaId, AreaSummary, Thread } from "@vita-os/contracts";
 import type { ComponentProps } from "react";
 
-import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { conditionPillClassName } from "@/features/areas/condition-presentation";
@@ -17,10 +15,10 @@ import { AreaStatusStrip } from "./area-status-strip";
 
 function makeArea(
   index: number,
-  overrides: Partial<ProjectedArea> = {},
-): ProjectedArea {
+  overrides: Partial<AreaSummary> = {},
+): AreaSummary {
   return {
-    _id: `area${index}` as Id<"areas">,
+    _id: `area${index}` as AreaId,
     name: `Area ${index}`,
     slug: `area-${index}`,
     icon: "Compass",
@@ -31,15 +29,16 @@ function makeArea(
   };
 }
 
-let areas: ProjectedArea[] | undefined;
-let threads: ProjectedThread[] | undefined;
+let areas: AreaSummary[] | undefined;
+let threads: Thread[] | undefined;
 let activeSlug: string | undefined;
 const navigate = vi.fn();
 
-// Two subscriptions now: the Areas, and the Threads behind their counts.
-vi.mock("convex-helpers/react/cache/hooks", () => ({
-  useQuery: (query: unknown) =>
-    getFunctionName(query as never) === "threads:list" ? threads : areas,
+// Two reads: the Areas, and the Threads behind their counts.
+vi.mock("@vita-os/application", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@vita-os/application")>()),
+  useAreas: () => ({ data: areas }),
+  useOpenThreads: () => ({ data: threads }),
 }));
 
 // The strip only needs a clickable anchor and the Area route's params; the real
@@ -146,7 +145,7 @@ describe("AreaStatusStrip rendering", () => {
       { _id: "t2", areaId: "area1", state: "open" },
       { _id: "t3", areaId: "area1", state: "resolved" },
       { _id: "t4", areaId: "area2", state: "open" },
-    ] as unknown as ProjectedThread[];
+    ] as unknown as Thread[];
     render(<AreaStatusStrip />);
 
     const links = screen.getAllByRole("link");

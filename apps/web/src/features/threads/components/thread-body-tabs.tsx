@@ -1,14 +1,12 @@
-import type { Id } from "@convex/_generated/dataModel";
 import type { ThreadId } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
+import { useThreadNotes } from "@vita-os/application";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@vita-os/ui/components/tabs";
-import { useQuery } from "convex-helpers/react/cache/hooks";
 
 import { ActivityLogSection } from "./thread-log-section";
 import { ThreadNotesSection } from "./thread-notes-section";
@@ -27,10 +25,9 @@ export function ThreadBodyTabs({
   threadId,
   lastActivityAt,
 }: ThreadBodyTabsProps) {
-  const convexThreadId = threadId as unknown as Id<"threads">;
-  // The cached query hook shares one subscription with ThreadNotesSection, so
-  // reading the count here costs nothing beyond what the panel already pays.
-  const notes = useQuery(api.threadNotes.list, { threadId: convexThreadId });
+  // The same read ThreadNotesSection observes, so the count costs nothing
+  // beyond what the panel already pays.
+  const notes = useThreadNotes(threadId).data;
 
   return (
     <Tabs defaultValue="notes" className="flex min-h-0 flex-1 flex-col gap-3">
@@ -50,7 +47,7 @@ export function ThreadBodyTabs({
       >
         {/* Kept mounted so a half-written Note survives a look at Activity. */}
         <TabsContent value="notes" keepMounted>
-          <ThreadNotesSection threadId={convexThreadId} />
+          <ThreadNotesSection threadId={threadId} />
         </TabsContent>
         <TabsContent value="activity">
           <ActivityLogSection

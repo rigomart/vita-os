@@ -1,5 +1,4 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
+import type { AreaId, AreaSummary, Thread, ThreadId } from "@vita-os/contracts";
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -8,34 +7,35 @@ import { describe, expect, it, vi } from "vitest";
 import { ThreadAreaSection } from "./thread-area-section";
 
 const healthArea = {
-  _id: "area1" as Id<"areas">,
+  _id: "area1" as AreaId,
   name: "Health",
   slug: "health",
   icon: "HeartPulse",
   condition: "healthy",
   order: 0,
   createdAt: 0,
-} satisfies ProjectedArea;
+} satisfies AreaSummary;
 
 const financesArea = {
-  _id: "area2" as Id<"areas">,
+  _id: "area2" as AreaId,
   name: "Finances",
   slug: "finances",
   icon: "WalletCards",
   condition: "healthy",
   order: 1,
   createdAt: 0,
-} satisfies ProjectedArea;
+} satisfies AreaSummary;
 
 const thread = {
-  _id: "thread1" as Id<"threads">,
+  _id: "thread1" as ThreadId,
   title: "Renew passport",
   slug: "renew-passport",
   areaId: healthArea._id,
   state: "open",
+  revision: 0,
   order: 0,
   createdAt: 0,
-} satisfies ProjectedThread;
+} satisfies Thread;
 
 describe("ThreadAreaSection", () => {
   it("lets the user move a thread to another area", async () => {

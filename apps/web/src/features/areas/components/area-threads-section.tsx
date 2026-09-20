@@ -1,48 +1,38 @@
-import type { ProjectedThread } from "@convex/lib/validators";
-
-import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
+import type { Thread } from "@vita-os/contracts";
 
 import {
-  optimisticallyCompleteNextMove,
-  optimisticallyRemoveThread,
-  optimisticallyUpdateThread,
-} from "@/features/threads/optimistic";
+  useCompleteNextMove,
+  useRemoveThread,
+  useUpdateThread,
+} from "@vita-os/application";
+
 import { useAttentionClock } from "@/hooks/use-attention-clock";
 
 import { AreaThreads } from "./area-threads";
 
 interface AreaThreadsSectionProps {
-  threads: ProjectedThread[];
+  threads: Thread[];
   onCreateThread: () => void;
 }
 
+/**
+ * The Area's Open Threads, wired to the commands each row offers.
+ *
+ * Each command carries the Thread the row is showing, so one set of commands
+ * serves every row and the optimistic change always has the Thread's current
+ * values — including the revision that makes a completion safe to repeat.
+ */
 export function AreaThreadsSection({
   threads,
   onCreateThread,
 }: AreaThreadsSectionProps) {
   const currentDate = useAttentionClock();
-  const completeNextMove = useMutation(
-    api.threads.completeNextMoveMutation,
-  ).withOptimisticUpdate((localStore, args) => {
-    const thread = threads.find(({ _id }) => _id === args.id);
-    if (!thread) return;
-    optimisticallyCompleteNextMove(localStore, args, { thread });
-  });
-  const updateThread = useMutation(api.threads.update).withOptimisticUpdate(
-    (localStore, args) => {
-      const thread = threads.find(({ _id }) => _id === args.id);
-      if (!thread) return;
-      optimisticallyUpdateThread(localStore, args, { thread });
-    },
-  );
-  const removeThread = useMutation(api.threads.remove).withOptimisticUpdate(
-    (localStore, args) => {
-      const thread = threads.find(({ _id }) => _id === args.id);
-      if (!thread) return;
-      optimisticallyRemoveThread(localStore, args, { thread });
-    },
-  );
+  const completeNextMove = useCompleteNextMove();
+  const updateThread = useUpdateThread();
+  const removeThread = useRemoveThread();
+
+  const threadById = (threadId: string) =>
+    threads.find(({ _id }) => _id === threadId);
 
   return (
     <AreaThreads
@@ -50,11 +40,20 @@ export function AreaThreadsSection({
       currentDate={currentDate}
       isLoading={false}
       onCreateThread={onCreateThread}
-      onCompleteNextMove={(threadId) => void completeNextMove({ id: threadId })}
-      onRemoveThread={(threadId) => removeThread({ id: threadId })}
-      onSetFollowUp={(threadId, when) =>
-        void updateThread({ id: threadId, followUp: when ?? null })
-      }
+      onCompleteNextMove={(threadId) => {
+        const thread = threadById(threadId);
+        if (thread) void completeNextMove.mutateAsync({ thread });
+      }}
+      onRemoveThread={(threadId) => {
+        const thread = threadById(threadId);
+        if (thread) void removeThread.mutateAsync({ thread });
+      }}
+      onSetFollowUp={(threadId, when) => {
+        const thread = threadById(threadId);
+        if (thread) {
+          void updateThread.mutateAsync({ thread, followUp: when ?? null });
+        }
+      }}
     />
   );
 }

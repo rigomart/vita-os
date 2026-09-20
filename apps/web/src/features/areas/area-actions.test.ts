@@ -1,4 +1,3 @@
-import { getFunctionName } from "convex/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { renderHook } from "@/test/render-with-providers";
@@ -12,13 +11,11 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
 }));
 
-vi.mock("convex/react", () => ({
-  useMutation: (reference: unknown) => {
-    const mutation = vi.fn((args: unknown) =>
-      mocks.mutation(getFunctionName(reference as never), args),
-    );
-    return Object.assign(mutation, { withOptimisticUpdate: () => mutation });
-  },
+vi.mock("@vita-os/application", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@vita-os/application")>()),
+  useUpdateArea: () => ({
+    mutateAsync: (input: unknown) => mocks.mutation("updateArea", input),
+  }),
 }));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -43,7 +40,7 @@ function handlers() {
 }
 
 describe("buildAreaActions", () => {
-  it("offers every Condition, capture, and Open — each naming the Area", () => {
+  it("offers every capture, and Open — each naming the Area", () => {
     const actions = buildAreaActions(area, handlers());
 
     expect(actions.map((action) => action.id)).toEqual([
@@ -101,9 +98,9 @@ describe("useAreaActions", () => {
 
     result.current.setCondition("critical");
 
-    expect(mocks.mutation).toHaveBeenCalledWith("areas:update", {
+    expect(mocks.mutation).toHaveBeenCalledWith("updateArea", {
+      areaId: "area1",
       condition: "critical",
-      id: "area1",
     });
   });
 
@@ -115,9 +112,9 @@ describe("useAreaActions", () => {
 
     result.current.actions.find((a) => a.id === "condition:healthy")!.run();
 
-    expect(mocks.mutation).toHaveBeenCalledWith("areas:update", {
+    expect(mocks.mutation).toHaveBeenCalledWith("updateArea", {
+      areaId: "area1",
       condition: "healthy",
-      id: "area1",
     });
   });
 

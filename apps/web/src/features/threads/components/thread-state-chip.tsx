@@ -1,15 +1,11 @@
-import type { ProjectedThread } from "@convex/lib/validators";
+import type { Thread } from "@vita-os/contracts";
 
 import { CircleCheck, CircleDashed } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 /** The Thread's lifecycle state, stated in the header instead of implied. */
-export function ThreadStateChip({
-  state,
-}: {
-  state: ProjectedThread["state"];
-}) {
+export function ThreadStateChip({ state }: { state: Thread["state"] }) {
   const isResolved = state === "resolved";
 
   return (

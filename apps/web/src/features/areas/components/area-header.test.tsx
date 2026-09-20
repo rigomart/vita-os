@@ -1,6 +1,5 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { AreaIcon } from "@convex/lib/areaIcons";
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaIcon, AreaId } from "@vita-os/contracts";
+import type { AreaSummary } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -10,14 +9,14 @@ import { render, screen, waitFor } from "@/test/render-with-providers";
 import { AreaHeader } from "./area-header";
 
 const area = {
-  _id: "area1" as Id<"areas">,
+  _id: "area1" as AreaId,
   name: "Health",
   slug: "health",
   icon: "Compass",
   condition: "healthy",
   order: 0,
   createdAt: 1,
-} satisfies ProjectedArea;
+} satisfies AreaSummary;
 
 function deferred() {
   let resolve!: () => void;

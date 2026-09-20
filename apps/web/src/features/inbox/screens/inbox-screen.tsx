@@ -1,23 +1,13 @@
-import { api } from "@convex/_generated/api";
+import { useDoneNotes, useOpenNotes } from "@vita-os/application";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
-import { useQuery } from "convex-helpers/react/cache/hooks";
-import { usePaginatedQuery } from "convex/react";
 
 import { InboxNoteList } from "@/features/inbox/components/inbox-note-list";
 
 const DONE_PAGE_SIZE = 10;
 
 export function InboxScreen() {
-  const notes = useQuery(api.notes.list);
-  const {
-    results: doneNotes,
-    status: doneStatus,
-    loadMore: loadMoreDone,
-  } = usePaginatedQuery(
-    api.notes.listDone,
-    {},
-    { initialNumItems: DONE_PAGE_SIZE },
-  );
+  const notes = useOpenNotes().data;
+  const done = useDoneNotes(DONE_PAGE_SIZE);
 
   if (notes === undefined) {
     return <InboxSkeleton />;
@@ -27,12 +17,12 @@ export function InboxScreen() {
     <>
       <InboxNoteList
         notes={notes}
-        doneNotes={doneNotes}
-        isDoneExhausted={doneStatus === "Exhausted"}
-        isDoneInitialLoading={doneStatus === "LoadingFirstPage"}
-        canLoadMoreDone={doneStatus === "CanLoadMore"}
-        isLoadingMoreDone={doneStatus === "LoadingMore"}
-        onLoadMoreDone={() => loadMoreDone(DONE_PAGE_SIZE)}
+        doneNotes={done.notes}
+        isDoneExhausted={!done.hasNextPage && !done.isPending}
+        isDoneInitialLoading={done.isPending}
+        canLoadMoreDone={done.hasNextPage && !done.isFetchingNextPage}
+        isLoadingMoreDone={done.isFetchingNextPage}
+        onLoadMoreDone={() => void done.fetchNextPage()}
       />
     </>
   );

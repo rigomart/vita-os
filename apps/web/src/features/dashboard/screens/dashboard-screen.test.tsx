@@ -1,15 +1,18 @@
 import type { ComponentPropsWithoutRef } from "react";
 
 import { act, render, screen, within } from "@testing-library/react";
-import { getFunctionName } from "convex/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DashboardScreen } from "./dashboard-screen";
 
-const useQuery = vi.fn();
-
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
+  /** What each of the Dashboard's three reads answers. */
+  areas: undefined as unknown[] | undefined,
+  threads: undefined as unknown[] | undefined,
+  notes: undefined as unknown[] | undefined,
+  /** Which reads the Dashboard performed, so the count stays honest. */
+  reads: [] as string[],
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -31,8 +34,20 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
 
-vi.mock("convex-helpers/react/cache/hooks", () => ({
-  useQuery: (...args: unknown[]) => useQuery(...args),
+vi.mock("@vita-os/application", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@vita-os/application")>()),
+  useAreas: () => {
+    mocks.reads.push("areas");
+    return { data: mocks.areas };
+  },
+  useOpenThreads: () => {
+    mocks.reads.push("threads");
+    return { data: mocks.threads };
+  },
+  useOpenNotes: () => {
+    mocks.reads.push("notes");
+    return { data: mocks.notes };
+  },
 }));
 
 vi.mock("@/features/areas/area-form/create-area-dialog", () => ({
@@ -56,25 +71,30 @@ vi.mock("@/features/notes/use-update-note-when", () => ({
   useUpdateNoteWhen: () => vi.fn(),
 }));
 
-/** Every query the Dashboard reads, answered empty. */
+/** Every read the Dashboard performs, answered empty. */
 function answerEmpty() {
-  useQuery.mockImplementation(() => []);
+  mocks.areas = [];
+  mocks.threads = [];
+  mocks.notes = [];
 }
 
 describe("DashboardScreen", () => {
   // Braces matter: `mockReset` returns the mock, and a function returned from
   // `beforeEach` is run as a teardown hook — with no arguments.
   beforeEach(() => {
-    useQuery.mockReset();
+    mocks.areas = undefined;
+    mocks.threads = undefined;
+    mocks.notes = undefined;
+    mocks.reads = [];
     mocks.navigate.mockClear();
   });
 
   afterEach(() => vi.useRealTimers());
 
   it("renders a layout-matched loading state while any source loads", () => {
-    useQuery.mockImplementation((query: unknown) =>
-      getFunctionName(query as never) === "notes:list" ? undefined : [],
-    );
+    mocks.areas = [];
+    mocks.threads = [];
+    mocks.notes = undefined;
     render(<DashboardScreen />);
 
     expect(screen.getByTestId("dashboard-overview-skeleton")).toBeVisible();
@@ -89,17 +109,14 @@ describe("DashboardScreen", () => {
     ).toBeVisible();
   });
 
-  it("subscribes to exactly the three list queries", () => {
+  it("reads exactly the three inventories", () => {
     answerEmpty();
     render(<DashboardScreen />);
 
-    const names = new Set(
-      useQuery.mock.calls.map(([query]) => getFunctionName(query as never)),
-    );
-    expect([...names].sort()).toEqual([
-      "areas:list",
-      "notes:list",
-      "threads:list",
+    expect([...new Set(mocks.reads)].sort()).toEqual([
+      "areas",
+      "notes",
+      "threads",
     ]);
   });
 
@@ -107,36 +124,30 @@ describe("DashboardScreen", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 17, 23, 30));
     // Due tomorrow at 23:30 tonight; due today once midnight passes.
-    useQuery.mockImplementation((query: unknown) => {
-      const name = getFunctionName(query as never);
-      if (name === "areas:list") {
-        return [
-          {
-            _id: "health",
-            name: "Health",
-            slug: "health",
-            icon: "HeartPulse",
-            condition: "healthy",
-            order: 0,
-          },
-        ];
-      }
-      if (name === "threads:list") {
-        return [
-          {
-            _id: "thread1",
-            title: "Dentist",
-            slug: "dentist",
-            areaId: "health",
-            order: 0,
-            state: "open",
-            followUp: new Date(2026, 6, 18, 9).getTime(),
-            createdAt: 0,
-          },
-        ];
-      }
-      return [];
-    });
+    mocks.areas = [
+      {
+        _id: "health",
+        name: "Health",
+        slug: "health",
+        icon: "HeartPulse",
+        condition: "healthy",
+        order: 0,
+      },
+    ];
+    mocks.threads = [
+      {
+        _id: "thread1",
+        title: "Dentist",
+        slug: "dentist",
+        areaId: "health",
+        order: 0,
+        state: "open",
+        revision: 0,
+        followUp: new Date(2026, 6, 18, 9).getTime(),
+        createdAt: 0,
+      },
+    ];
+    mocks.notes = [];
     render(<DashboardScreen />);
 
     const inLane = (lane: string) =>
@@ -144,16 +155,12 @@ describe("DashboardScreen", () => {
 
     expect(inLane("This week")).toBeVisible();
     expect(inLane("Now")).toBeNull();
-    // None of the subscriptions is keyed by the date.
-    expect(useQuery.mock.calls.every(([, args]) => args === undefined)).toBe(
-      true,
-    );
+    const readsBefore = new Set(mocks.reads).size;
 
     act(() => vi.advanceTimersByTime(30 * 60_000));
 
     expect(inLane("Now")).toBeVisible();
-    expect(useQuery.mock.calls.every(([, args]) => args === undefined)).toBe(
-      true,
-    );
+    // The rollover reclassifies what is already read; it reads nothing new.
+    expect(new Set(mocks.reads).size).toBe(readsBefore);
   });
 });

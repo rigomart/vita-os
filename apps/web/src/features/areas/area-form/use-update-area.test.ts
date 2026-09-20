@@ -1,37 +1,27 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaId, AreaSummary } from "@vita-os/contracts";
 
 import { renderHook } from "@testing-library/react";
-import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useUpdateArea } from "./use-update-area";
 
 const mocks = vi.hoisted(() => ({
-  mutations: new Map<string, ReturnType<typeof vi.fn>>(),
+  updateArea: vi.fn(),
   navigate: vi.fn(),
 }));
 
-vi.mock("convex/react", () => ({
-  useMutation: (reference: unknown) => {
-    const name = getFunctionName(reference as never);
-    const mutation =
-      mocks.mutations.get(name) ??
-      vi.fn(() => Promise.resolve(undefined as unknown));
-    mocks.mutations.set(name, mutation);
-    return Object.assign(mutation, {
-      withOptimisticUpdate: () => mutation,
-    });
-  },
+vi.mock("@vita-os/application", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@vita-os/application")>()),
+  useUpdateArea: () => ({ mutateAsync: mocks.updateArea }),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
 
-function makeArea(overrides: Partial<ProjectedArea> = {}): ProjectedArea {
+function makeArea(overrides: Partial<AreaSummary> = {}): AreaSummary {
   return {
-    _id: "area1" as Id<"areas">,
+    _id: "area1" as AreaId,
     name: "Health",
     slug: "health",
     icon: "Compass",
@@ -44,11 +34,11 @@ function makeArea(overrides: Partial<ProjectedArea> = {}): ProjectedArea {
 
 describe("useUpdateArea", () => {
   beforeEach(() => {
-    mocks.mutations.clear();
     mocks.navigate.mockClear();
+    mocks.updateArea.mockReset().mockResolvedValue(makeArea());
   });
 
-  it("forwards the icon from the form value to the update mutation", async () => {
+  it("forwards the icon from the form value to the command", async () => {
     const area = makeArea();
     const { result } = renderHook(() => useUpdateArea());
 
@@ -58,8 +48,8 @@ describe("useUpdateArea", () => {
       icon: "HeartPulse",
     });
 
-    expect(mocks.mutations.get("areas:update")).toHaveBeenCalledWith({
-      id: area._id,
+    expect(mocks.updateArea).toHaveBeenCalledWith({
+      areaId: area._id,
       name: area.name,
       condition: area.condition,
       icon: "HeartPulse",
@@ -67,10 +57,11 @@ describe("useUpdateArea", () => {
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
-  it("navigates to the new slug when the rename changes it", async () => {
+  it("follows the slug the service chose after a rename", async () => {
     const area = makeArea();
-    const update = vi.fn(() => Promise.resolve({ slug: "wellbeing" }));
-    mocks.mutations.set("areas:update", update);
+    mocks.updateArea.mockResolvedValue(
+      makeArea({ name: "Wellbeing", slug: "wellbeing-0011aabb" }),
+    );
     const { result } = renderHook(() => useUpdateArea());
 
     await result.current(area, {
@@ -81,7 +72,7 @@ describe("useUpdateArea", () => {
 
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: "/$areaSlug",
-      params: { areaSlug: "wellbeing" },
+      params: { areaSlug: "wellbeing-0011aabb" },
       replace: true,
     });
   });

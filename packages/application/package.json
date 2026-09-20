@@ -30,6 +30,7 @@
     "vitest": "4.1.7"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./test": "./src/test/index.ts"
   }
 }

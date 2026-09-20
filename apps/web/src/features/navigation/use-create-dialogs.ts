@@ -1,12 +1,10 @@
-import type { Id } from "@convex/_generated/dataModel";
+import type { AreaId } from "@vita-os/contracts";
 
 import { useCallback, useState } from "react";
 
 export function useCreateDialogs() {
   const [showCreateThread, setShowCreateThread] = useState(false);
-  const [createForAreaId, setCreateForAreaId] = useState<
-    Id<"areas"> | undefined
-  >();
+  const [createForAreaId, setCreateForAreaId] = useState<AreaId | undefined>();
   const [showNewNote, setShowNewNote] = useState(false);
   const [showCreateArea, setShowCreateArea] = useState(false);
 
@@ -14,7 +12,7 @@ export function useCreateDialogs() {
 
   const openCreateArea = useCallback(() => setShowCreateArea(true), []);
 
-  const openCreateThread = useCallback((areaId?: Id<"areas">) => {
+  const openCreateThread = useCallback((areaId?: AreaId) => {
     setCreateForAreaId(areaId);
     setShowCreateThread(true);
   }, []);

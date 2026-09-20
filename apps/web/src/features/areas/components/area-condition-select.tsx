@@ -1,6 +1,6 @@
-import type { Condition } from "@convex/lib/condition";
+import type { Condition } from "@vita-os/contracts";
 
-import { CONDITION_OPTIONS, isCondition } from "@convex/lib/condition";
+import { CONDITION_OPTIONS, isCondition } from "@vita-os/core";
 import {
   Select,
   SelectContent,

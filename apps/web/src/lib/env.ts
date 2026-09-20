@@ -7,12 +7,14 @@ function requireEnv(name: string, value: string | undefined): string {
   return value;
 }
 
-export const CONVEX_URL = requireEnv(
-  "VITE_CONVEX_URL",
-  import.meta.env.VITE_CONVEX_URL,
-);
-
-export const CONVEX_SITE_URL = requireEnv(
-  "VITE_CONVEX_SITE_URL",
-  import.meta.env.VITE_CONVEX_SITE_URL,
+/**
+ * Where the Vita OS API lives.
+ *
+ * One origin serves both Better Auth's browser routes and the application
+ * operations, so the browser host needs exactly this one piece of runtime
+ * configuration.
+ */
+export const API_BASE_URL = requireEnv(
+  "VITE_API_BASE_URL",
+  import.meta.env.VITE_API_BASE_URL,
 );

@@ -1,8 +1,6 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaId, AreaSummary } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
-import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render, screen, within } from "@/test/render-with-providers";
@@ -14,41 +12,41 @@ const mocks = vi.hoisted(() => ({
   knownSlugs: ["family-health"],
   /** Whether a non-skipped `areas.list` subscription has resolved yet. */
   listLoaded: true,
-  calls: [] as Array<{ name: string; args: unknown }>,
+  calls: [] as Array<{
+    name: string;
+    args: { enabled?: boolean; slug?: string };
+  }>,
 }));
 
 const area = {
-  _id: "area1" as Id<"areas">,
+  _id: "area1" as AreaId,
   name: "Family Health",
   slug: "family-health",
   icon: "HeartPulse",
   condition: "healthy",
   order: 0,
   createdAt: 0,
-} satisfies ProjectedArea;
+} satisfies AreaSummary;
 
-vi.mock("convex-helpers/react/cache/hooks", () => ({
-  useQuery: (query: unknown, args: unknown) => {
-    const name = getFunctionName(query as never);
-    mocks.calls.push({ name, args });
-    if (args === "skip") return undefined;
-    if (name === "areas:list") return mocks.listLoaded ? [area] : undefined;
-    if (name === "areas:detailBySlug") {
-      const { slug } = args as { slug: string };
-      if (!mocks.knownSlugs.includes(slug)) return undefined;
-      return { area, threads: [] };
-    }
-    return undefined;
+vi.mock("@vita-os/application", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@vita-os/application")>()),
+  useAreas: ({ enabled }: { enabled?: boolean } = {}) => {
+    mocks.calls.push({ name: "useAreas", args: { enabled } });
+    return {
+      data: enabled === false || !mocks.listLoaded ? undefined : [area],
+    };
   },
-}));
-
-vi.mock("convex/react", () => ({
-  useMutation: () => {
-    const mutation = vi.fn().mockResolvedValue(undefined);
-    return Object.assign(mutation, {
-      withOptimisticUpdate: () => mutation,
-    });
+  useAreaDetail: (slug: string) => {
+    mocks.calls.push({ name: "useAreaDetail", args: { slug } });
+    return {
+      data: mocks.knownSlugs.includes(slug) ? { area, threads: [] } : undefined,
+      isPending: !mocks.knownSlugs.includes(slug),
+    };
   },
+  useUpdateArea: () => ({ mutateAsync: vi.fn().mockResolvedValue(area) }),
+  useRemoveArea: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ acknowledged: true }),
+  }),
 }));
 
 function renderScreen(areaSlug = "family-health") {
@@ -62,17 +60,16 @@ describe("AreaDetailScreen", () => {
     mocks.calls = [];
   });
 
-  it("renders the page from one areas.detailBySlug subscription", () => {
+  it("renders the page from one Area detail read", () => {
     renderScreen();
 
     expect(screen.getByText("Family Health")).toBeVisible();
 
-    const listCalls = mocks.calls.filter(({ name }) => name === "areas:list");
-    expect(listCalls.length).toBeGreaterThan(0);
-    expect(listCalls.every(({ args }) => args === "skip")).toBe(true);
-    expect(mocks.calls.some(({ name }) => name === "areas:detailBySlug")).toBe(
-      true,
-    );
+    // The picker's inventory stays unread until the dialog needs it.
+    const listReads = mocks.calls.filter(({ name }) => name === "useAreas");
+    expect(listReads.length).toBeGreaterThan(0);
+    expect(listReads.every(({ args }) => args.enabled === false)).toBe(true);
+    expect(mocks.calls.some(({ name }) => name === "useAreaDetail")).toBe(true);
   });
 
   it("loads the Area picker list only once the create-thread dialog opens", async () => {
@@ -81,8 +78,8 @@ describe("AreaDetailScreen", () => {
 
     await user.click(screen.getByRole("button", { name: /New Thread/ }));
 
-    const listCalls = mocks.calls.filter(({ name }) => name === "areas:list");
-    expect(listCalls.at(-1)?.args).not.toBe("skip");
+    const listReads = mocks.calls.filter(({ name }) => name === "useAreas");
+    expect(listReads.at(-1)?.args.enabled).toBe(true);
   });
 
   it("holds the create-thread dialog until the Area list resolves, then preselects this Area", async () => {

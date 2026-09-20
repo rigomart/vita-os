@@ -1,4 +1,4 @@
-import type { ProjectedNote } from "@convex/lib/validators";
+import type { Note } from "@vita-os/contracts";
 
 import { format, isThisYear } from "date-fns";
 import { Bell, Check } from "lucide-react";
@@ -34,7 +34,7 @@ export function DashboardNote({
   note,
 }: {
   currentDate: number;
-  note: ProjectedNote;
+  note: Note;
 }) {
   const completeNote = useCompleteNote();
   const updateNoteBody = useUpdateNoteBody();

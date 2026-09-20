@@ -1,20 +1,21 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
-import type { ActivityLogEntry, AreaId, ThreadId } from "@vita-os/contracts";
+import type {
+  ActivityLogEntry,
+  ActivityLogEntryId,
+  ApplicationClient,
+  AreaId,
+  AreaSummary,
+  Thread,
+  ThreadId,
+  ThreadNoteId,
+} from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
-import { getFunctionName } from "convex/server";
+import { createFakeApplicationClient } from "@vita-os/application/test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-import type {
-  ConvexApplicationClient,
-  ConvexLiveResource,
-  ConvexQueryState,
-  ConvexThreadDetail,
-} from "@/application/convex/convex-application-client-compatibility";
 
 import { AppErrorBoundary } from "@/components/error-boundary";
 import {
+  createTestQueryClient,
   fireEvent,
   render,
   screen,
@@ -35,19 +36,18 @@ const mocks = vi.hoisted(() => ({
   upNext: undefined as string[] | undefined,
   /** Slugs the composite resolves; null lets every slug resolve. */
   knownSlugs: null as string[] | null,
-  seen: [] as string[],
+  /** Every operation the rail asked for, in order. */
+  calls: [] as string[],
   applicationDetailSlugs: [] as string[],
   applicationActivityThreadIds: [] as string[],
-  activityPagination: "exhausted" as
-    | "can_load_more"
-    | "loading_more"
-    | "exhausted",
+  /** The cursor each Activity Log read carried, so paging is visible. */
+  activityCursors: [] as (string | undefined)[],
+  activityHasMore: false,
   activityEntries: [] as ActivityLogEntry[],
-  activityLoadMore: vi.fn(),
   completeNextMove: vi.fn(),
-  activeDetailSubscriptions: 0,
-  /** One mock per mutation, so a test can assert what the view dispatched. */
-  mutations: new Map<string, ReturnType<typeof vi.fn>>(),
+  replaceUpNext: vi.fn(),
+  updateThread: vi.fn(),
+  removeThread: vi.fn(),
 }));
 
 vi.mock("@/hooks/use-thread-pane-viewport", () => ({
@@ -55,141 +55,125 @@ vi.mock("@/hooks/use-thread-pane-viewport", () => ({
 }));
 
 const area = {
-  _id: "area1" as Id<"areas">,
+  _id: "area1" as AreaId,
   name: "Family Health",
   slug: "family-health",
   icon: "HeartPulse",
   condition: "needs_attention",
   order: 0,
   createdAt: 0,
-} satisfies ProjectedArea;
+} satisfies AreaSummary;
 
 const thread = {
-  _id: "thread1" as Id<"threads">,
+  _id: "thread1" as ThreadId,
   title: "Sister's front teeth",
   slug: "sister-s-front-teeth",
   summary: "Waiting for the specialist's opinion.",
   areaId: area._id,
   state: "open",
+  revision: 0,
   order: 0,
   createdAt: 0,
-} satisfies ProjectedThread;
+} satisfies Thread;
 
-vi.mock("convex-helpers/react/cache/hooks", () => ({
-  useQuery: (query: unknown, args: unknown) => {
-    const name = getFunctionName(query as never);
-    mocks.seen.push(name);
-    if (args === "skip") return undefined;
-    if (name === "areas:list") return [area];
-    if (name === "threads:detailBySlug") {
-      throw new Error("Thread detail must use the application client");
-    }
-    return undefined;
-  },
-}));
+const threadNote = {
+  _id: "thread-note-1" as ThreadNoteId,
+  body: "Specialist's opinion pending",
+  state: "open" as const,
+  createdAt: 0,
+  updatedAt: 0,
+};
 
-function constantResource<T>(snapshot: T): ConvexLiveResource<T> {
-  return {
-    getSnapshot: () => snapshot,
-    subscribe: () => () => undefined,
-  };
+/** A read that never answers, for the tests about what shows while loading. */
+function pending<T>(): Promise<T> {
+  return new Promise<T>(() => undefined);
 }
 
-function detailResource(
-  snapshot: ConvexQueryState<ConvexThreadDetail>,
-): ConvexLiveResource<ConvexQueryState<ConvexThreadDetail>> {
-  return {
-    getSnapshot: () => snapshot,
-    subscribe: () => {
-      mocks.activeDetailSubscriptions += 1;
-      return () => {
-        mocks.activeDetailSubscriptions -= 1;
-      };
-    },
-  };
-}
-
-function createApplicationClient(): ConvexApplicationClient {
-  return {
-    watchThreadDetail: ({ slug }) => {
+/**
+ * The application, as this rail sees it.
+ *
+ * Every operation is recorded, so a test can say what the rail read and wrote
+ * without knowing anything about routes, caching, or a transport.
+ */
+function createApplicationClient(): ApplicationClient {
+  return createFakeApplicationClient({
+    getThreadDetail: async ({ slug }) => {
+      mocks.calls.push("getThreadDetail");
       mocks.applicationDetailSlugs.push(slug);
+
       if (mocks.detailError) {
-        return detailResource({
-          status: "error",
+        return {
+          ok: false,
           error: {
             code: "unavailable",
             message: "The service is temporarily unavailable.",
             retryable: true,
           },
-        });
+        };
       }
       if (mocks.knownSlugs !== null && !mocks.knownSlugs.includes(slug)) {
-        return detailResource({
-          status: "loading",
-        });
+        return pending();
       }
       if (!mocks.threadExists) {
-        return detailResource({
-          status: "not_found",
-        });
+        return {
+          ok: false,
+          error: {
+            code: "not_found",
+            message: "Thread not found.",
+            retryable: false,
+          },
+        };
       }
-      return detailResource({
-        status: "ready",
-        data: {
+
+      return {
+        ok: true,
+        value: {
           thread: {
             ...thread,
-            _id: thread._id as unknown as ThreadId,
-            areaId: thread.areaId as unknown as AreaId,
             state: mocks.threadState,
-            ...(mocks.nextMove && { nextMove: mocks.nextMove }),
-            ...(mocks.upNext && { upNext: mocks.upNext }),
+            ...(mocks.nextMove === undefined
+              ? {}
+              : { nextMove: mocks.nextMove }),
+            ...(mocks.upNext === undefined ? {} : { upNext: mocks.upNext }),
           },
-          area: { ...area, _id: area._id as unknown as AreaId },
+          area,
         },
-      });
-    },
-    watchThreadActivity: ({ threadId }) => {
-      mocks.applicationActivityThreadIds.push(threadId);
-      return {
-        ...constantResource({
-          status: "ready" as const,
-          data: {
-            entries: mocks.activityEntries,
-            pagination: mocks.activityPagination,
-          },
-        }),
-        loadMore: mocks.activityLoadMore,
       };
     },
+    getThreadActivityPage: async ({ threadId, cursor }) => {
+      mocks.calls.push("getThreadActivityPage");
+      mocks.applicationActivityThreadIds.push(threadId);
+      mocks.activityCursors.push(cursor);
+
+      return {
+        ok: true,
+        value: {
+          entries: mocks.activityEntries,
+          ...(mocks.activityHasMore && cursor === undefined
+            ? { nextCursor: "page-2" }
+            : {}),
+        },
+      };
+    },
+    listAreas: async () => {
+      mocks.calls.push("listAreas");
+      return { ok: true, value: [area] };
+    },
+    listOpenThreadNotes: async () => {
+      mocks.calls.push("listOpenThreadNotes");
+      return { ok: true, value: [] };
+    },
+    getDoneThreadNotePage: async () => {
+      mocks.calls.push("getDoneThreadNotePage");
+      return { ok: true, value: { entries: [] } };
+    },
+    createThreadNote: async () => ({ ok: true, value: threadNote }),
+    updateThread: mocks.updateThread,
+    replaceUpNext: mocks.replaceUpNext,
     completeNextMove: mocks.completeNextMove,
-  };
+    removeThread: mocks.removeThread,
+  });
 }
-
-vi.mock("convex/react", () => ({
-  useMutation: (reference: unknown) => {
-    const name = getFunctionName(reference as never);
-    const existing = mocks.mutations.get(name);
-    if (existing) return existing;
-
-    const mutation = Object.assign(vi.fn().mockResolvedValue(undefined), {
-      withOptimisticUpdate: () => mutation,
-    });
-    mocks.mutations.set(name, mutation);
-    return mutation;
-  },
-  usePaginatedQuery: (query: unknown) => {
-    const name = getFunctionName(query as never);
-    if (name === "activityLogs:listByThread") {
-      throw new Error("Activity Log must use the application client");
-    }
-    return {
-      results: [],
-      status: "Exhausted",
-      loadMore: vi.fn(),
-      isLoading: false,
-    };
-  },
-}));
 
 function renderThreadDetail(
   props: { threadSlug?: string; areaSlug?: string } = {},
@@ -198,15 +182,19 @@ function renderThreadDetail(
   // Only default areaSlug when the key is absent, so tests can pass an
   // explicit `areaSlug: undefined` to exercise the search-param source.
   const areaSlug = "areaSlug" in props ? props.areaSlug : "family-health";
-  return render(
-    <ThreadDetailView
-      areaSlug={areaSlug}
-      threadSlug={threadSlug}
-      onClose={mocks.onClose}
-      onThreadLocationChange={mocks.onThreadLocationChange}
-    />,
-    { applicationClient: createApplicationClient() },
-  );
+  const queryClient = createTestQueryClient();
+  return {
+    ...render(
+      <ThreadDetailView
+        areaSlug={areaSlug}
+        threadSlug={threadSlug}
+        onClose={mocks.onClose}
+        onThreadLocationChange={mocks.onThreadLocationChange}
+      />,
+      { applicationClient: createApplicationClient(), queryClient },
+    ),
+    queryClient,
+  };
 }
 
 describe("ThreadDetailView", () => {
@@ -220,18 +208,26 @@ describe("ThreadDetailView", () => {
     mocks.nextMove = undefined;
     mocks.upNext = undefined;
     mocks.knownSlugs = null;
-    mocks.seen = [];
+    mocks.calls = [];
     mocks.applicationDetailSlugs = [];
     mocks.applicationActivityThreadIds = [];
-    mocks.activityPagination = "exhausted";
+    mocks.activityCursors = [];
+    mocks.activityHasMore = false;
     mocks.activityEntries = [];
-    mocks.activityLoadMore.mockReset();
+    mocks.replaceUpNext.mockReset().mockResolvedValue({
+      ok: true,
+      value: thread,
+    });
+    mocks.updateThread
+      .mockReset()
+      .mockResolvedValue({ ok: true, value: thread });
+    mocks.removeThread
+      .mockReset()
+      .mockResolvedValue({ ok: true, value: { acknowledged: true } });
     mocks.completeNextMove.mockReset().mockResolvedValue({
       ok: true,
       value: { status: "completed" },
     });
-    mocks.activeDetailSubscriptions = 0;
-    mocks.mutations.clear();
   });
 
   it("opens Thread detail as a near-full bottom drawer below the pane breakpoint", async () => {
@@ -343,9 +339,9 @@ describe("ThreadDetailView", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("complementary", { name: "Sister's front teeth" }),
-    ).toBe(pane);
+    expect(document.querySelector('[data-slot="thread-detail-pane"]')).toBe(
+      pane,
+    );
     expect(pane).toHaveAttribute("data-state", "open");
   });
 
@@ -357,8 +353,13 @@ describe("ThreadDetailView", () => {
       name: "Sister's front teeth",
     });
 
-    expect(new Set(mocks.seen)).toEqual(
-      new Set(["threadNotes:list", "areas:list"]),
+    expect(new Set(mocks.calls)).toEqual(
+      new Set([
+        "getThreadDetail",
+        "listOpenThreadNotes",
+        "getDoneThreadNotePage",
+        "listAreas",
+      ]),
     );
     expect(mocks.applicationDetailSlugs).toEqual([thread.slug]);
   });
@@ -400,7 +401,7 @@ describe("ThreadDetailView", () => {
 
     const header = screen.getByRole("banner", { name: "Thread header" });
     expect(
-      within(header).getByRole("button", { name: "Family Health" }),
+      await within(header).findByRole("button", { name: "Family Health" }),
     ).toBeVisible();
   });
 
@@ -422,14 +423,19 @@ describe("ThreadDetailView", () => {
     expect(mocks.onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("releases its Thread subscription when the pane unmounts", async () => {
+  it("stops observing the Thread when the pane unmounts", async () => {
     mocks.showDesktopPane = true;
-    const { unmount } = renderThreadDetail();
+    const { unmount, queryClient } = renderThreadDetail();
+    const observers = () =>
+      queryClient
+        .getQueryCache()
+        .find({ queryKey: ["threads", "detail", thread.slug] })
+        ?.getObserversCount() ?? 0;
 
-    await waitFor(() => expect(mocks.activeDetailSubscriptions).toBe(1));
+    await waitFor(() => expect(observers()).toBe(1));
     unmount();
 
-    expect(mocks.activeDetailSubscriptions).toBe(0);
+    expect(observers()).toBe(0);
   });
 
   it("sends application subscription failures to the error boundary", async () => {
@@ -465,6 +471,8 @@ describe("ThreadDetailView", () => {
     });
 
     const header = screen.getByRole("banner", { name: "Thread header" });
+    // The Area picker arrives with the Area inventory, a read of its own.
+    await within(header).findByRole("button", { name: "Family Health" });
     const summary = screen.getByText("Waiting for the specialist's opinion.");
     const attention = screen.getByRole("region", {
       name: "Thread attention",
@@ -534,13 +542,12 @@ describe("ThreadDetailView", () => {
       }),
     );
 
-    const replaceUpNext = mocks.mutations.get("threads:replaceUpNext");
-    expect(replaceUpNext).toHaveBeenNthCalledWith(1, {
-      id: thread._id,
+    expect(mocks.replaceUpNext).toHaveBeenNthCalledWith(1, {
+      threadId: thread._id,
       moves: ["Book the scan", "Collect the results", "Share the report"],
     });
-    expect(replaceUpNext).toHaveBeenNthCalledWith(2, {
-      id: thread._id,
+    expect(mocks.replaceUpNext).toHaveBeenNthCalledWith(2, {
+      threadId: thread._id,
       moves: ["Collect the results"],
     });
   });
@@ -557,20 +564,18 @@ describe("ThreadDetailView", () => {
     await waitFor(() => {
       expect(mocks.completeNextMove).toHaveBeenCalledWith({
         threadId: thread._id,
-        thread: expect.objectContaining({
-          _id: thread._id,
-          nextMove: "Call the specialist",
-        }),
+        expectedNextMove: "Call the specialist",
+        expectedRevision: thread.revision,
       });
     });
   });
 
   it("scrolls Notes and the read-only Activity Log below fixed orientation", async () => {
     mocks.showDesktopPane = true;
-    mocks.activityPagination = "can_load_more";
+    mocks.activityHasMore = true;
     mocks.activityEntries = [
       {
-        _id: "log1",
+        _id: "log1" as ActivityLogEntryId,
         type: "next_action_change",
         content: "Next move set",
         newValue: "Call the specialist",
@@ -611,7 +616,9 @@ describe("ThreadDetailView", () => {
     ).toBeNull();
     expect(mocks.applicationActivityThreadIds).toEqual([thread._id]);
     await userEvent.click(screen.getByRole("button", { name: "Show earlier" }));
-    expect(mocks.activityLoadMore).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(mocks.activityCursors).toEqual([undefined, "page-2"]),
+    );
     // No scroll container wraps the whole pane content.
     expect(header.closest(".overflow-y-auto")).toBeNull();
   });

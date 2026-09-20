@@ -9,6 +9,14 @@ export {
   DEFAULT_AREA_ICON,
   isAreaIcon,
 } from "./area-icon";
+/**
+ * The two enumerations' own types, re-exported beside the values.
+ *
+ * The contract remains their single definition; this saves every caller that
+ * needs both `CONDITIONS` and `Condition` from importing the same vocabulary
+ * from two places.
+ */
+export type { AreaIcon, Condition } from "@vita-os/contracts";
 export {
   compareNotesByAttention,
   groupAreaThreadsByAttention,

@@ -1,4 +1,4 @@
-import type { ProjectedNote } from "@convex/lib/validators";
+import type { Note } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
 import { cn } from "@vita-os/ui/lib/utils";
@@ -31,7 +31,7 @@ function shortDate(timestamp: number) {
  * same kind of object as the one you wrote it in. Nothing precedes the text,
  * because a Note is a thing you wrote, not a line item with a state in front.
  */
-export function NoteCard({ note, now }: { note: ProjectedNote; now: number }) {
+export function NoteCard({ note, now }: { note: Note; now: number }) {
   const {
     handleRemove,
     handleToggleComplete,

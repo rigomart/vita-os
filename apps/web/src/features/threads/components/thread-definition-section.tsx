@@ -1,11 +1,11 @@
-import type { ThreadView } from "@/features/threads/thread-view";
+import type { Thread } from "@vita-os/contracts";
 
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 
 import { ThreadDefinition } from "./thread-definition";
 
 interface ThreadDefinitionSectionProps {
-  thread: ThreadView;
+  thread: Thread;
 }
 
 export function ThreadDefinitionSection({
@@ -15,7 +15,6 @@ export function ThreadDefinitionSection({
 
   const handleSave = (summary: string) => {
     updateThread({
-      id: thread._id,
       summary: summary || null,
     });
   };

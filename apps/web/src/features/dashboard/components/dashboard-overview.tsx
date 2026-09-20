@@ -1,8 +1,4 @@
-import type {
-  ProjectedArea,
-  ProjectedNote,
-  ProjectedThread,
-} from "@convex/lib/validators";
+import type { AreaSummary, Note, Thread } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
 
@@ -10,11 +6,11 @@ import { boardItems, buildAttentionBoard } from "./attention-board-model";
 import { DashboardBoard } from "./dashboard-board";
 
 interface DashboardOverviewProps {
-  areas: ProjectedArea[];
+  areas: AreaSummary[];
   currentDate: number;
-  notes: ProjectedNote[];
+  notes: Note[];
   onCreateArea: () => void;
-  threads: ProjectedThread[];
+  threads: Thread[];
 }
 
 /**

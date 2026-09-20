@@ -1,7 +1,6 @@
 import type { PropsWithChildren } from "react";
 
 import userEvent from "@testing-library/user-event";
-import { getFunctionName } from "convex/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render, screen, waitFor } from "@/test/render-with-providers";
@@ -23,13 +22,11 @@ globalThis.ResizeObserver ??= class {
 };
 Element.prototype.scrollIntoView ??= vi.fn();
 
-vi.mock("convex/react", () => ({
-  useMutation: (reference: unknown) => {
-    const mutation = vi.fn((args: unknown) =>
-      mocks.mutation(getFunctionName(reference as never), args),
-    );
-    return Object.assign(mutation, { withOptimisticUpdate: () => mutation });
-  },
+vi.mock("@vita-os/application", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@vita-os/application")>()),
+  useUpdateArea: () => ({
+    mutateAsync: (input: unknown) => mocks.mutation("updateArea", input),
+  }),
 }));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -152,9 +149,9 @@ describe("AreaQuickPanel", () => {
     await user.click(await screen.findByRole("radio", { name: "Critical" }));
 
     await waitFor(() =>
-      expect(mocks.mutation).toHaveBeenCalledWith("areas:update", {
+      expect(mocks.mutation).toHaveBeenCalledWith("updateArea", {
+        areaId: "area1",
         condition: "critical",
-        id: "area1",
       }),
     );
   });

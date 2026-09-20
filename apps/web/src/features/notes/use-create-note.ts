@@ -1,31 +1,18 @@
-import type { Id } from "@convex/_generated/dataModel";
-
-import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
-
-import { optimisticallyAddToOpenNotes } from "./optimistic";
+import { useCaptureNote } from "@vita-os/application";
 
 export type CreateNoteValue = {
   body: string;
   when?: number;
 };
 
+/**
+ * Capture a Standalone Note.
+ *
+ * The shared application owns the command, its optimistic Inbox change, and the
+ * Open Note count; this is the call shape the capture surfaces already use.
+ */
 export function useCreateNote() {
-  const createNote = useMutation(api.notes.create).withOptimisticUpdate(
-    (localStore, args) => {
-      const now = Date.now();
+  const capture = useCaptureNote();
 
-      optimisticallyAddToOpenNotes(localStore, {
-        _id: crypto.randomUUID() as Id<"tasks">,
-        _creationTime: now,
-        body: args.body,
-        when: args.when,
-        state: "open",
-        createdAt: now,
-        updatedAt: now,
-      });
-    },
-  );
-
-  return (value: CreateNoteValue) => createNote(value);
+  return (value: CreateNoteValue) => capture.mutateAsync(value);
 }

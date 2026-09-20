@@ -1,12 +1,12 @@
-import type { Id } from "@convex/_generated/dataModel";
+import type { AreaId } from "@vita-os/contracts";
 
 export type ThreadFormValue = {
   title: string;
   summary?: string;
-  areaId: Id<"areas">;
+  areaId: AreaId;
 };
 
 export type CreatedThreadResult = {
   slug: string;
-  areaId: Id<"areas">;
+  areaId: AreaId;
 };

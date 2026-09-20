@@ -1,20 +1,10 @@
-import type { Id } from "@convex/_generated/dataModel";
+import type { NoteId } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
-
-import { patchQuery } from "@/features/shared/optimistic";
-
-import { updateNoteBodyInInbox } from "./optimistic";
+import { useUpdateNoteBody as useUpdateNoteBodyCommand } from "@vita-os/application";
 
 export function useUpdateNoteBody() {
-  const updateNoteBody = useMutation(api.notes.updateBody).withOptimisticUpdate(
-    (localStore, args) => {
-      patchQuery(localStore, api.notes.list, {}, (notes) =>
-        updateNoteBodyInInbox(notes, args.id, args.body),
-      );
-    },
-  );
+  const updateBody = useUpdateNoteBodyCommand();
 
-  return (id: Id<"tasks">, body: string) => updateNoteBody({ id, body });
+  return (noteId: NoteId, body: string) =>
+    updateBody.mutateAsync({ noteId, body });
 }

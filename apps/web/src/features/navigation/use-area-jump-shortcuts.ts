@@ -1,4 +1,4 @@
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaSummary } from "@vita-os/contracts";
 
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
@@ -10,7 +10,7 @@ import { useEffect } from "react";
  * where digits are typed shifted.
  */
 export function useAreaJumpShortcuts(
-  areas: readonly ProjectedArea[] | undefined,
+  areas: readonly AreaSummary[] | undefined,
 ) {
   const navigate = useNavigate();
 

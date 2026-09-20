@@ -1,15 +1,13 @@
-import type { ProjectedNote } from "@convex/lib/validators";
+import type { Note } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
+import { useReopenNote } from "@vita-os/application";
 
-import { optimisticallyReopenNote } from "./optimistic";
-
+/**
+ * Reopening takes the whole Note: a Done Note is not in the Open Notes for the
+ * optimistic change to rebuild it from.
+ */
 export function useUncompleteNote() {
-  const uncompleteNote = useMutation(api.notes.markOpen);
+  const reopen = useReopenNote();
 
-  return (note: ProjectedNote) =>
-    uncompleteNote.withOptimisticUpdate((localStore) =>
-      optimisticallyReopenNote(localStore, note),
-    )({ id: note._id });
+  return (note: Note) => reopen.mutateAsync({ note });
 }

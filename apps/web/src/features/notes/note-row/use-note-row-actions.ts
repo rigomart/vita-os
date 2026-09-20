@@ -1,4 +1,4 @@
-import type { ProjectedNote } from "@convex/lib/validators";
+import type { Note } from "@vita-os/contracts";
 
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
@@ -10,7 +10,7 @@ import { useUncompleteNote } from "@/features/notes/use-uncomplete-note";
 import { useUpdateNoteBody } from "@/features/notes/use-update-note-body";
 import { useUpdateNoteWhen } from "@/features/notes/use-update-note-when";
 
-export function useNoteRowActions(note: ProjectedNote) {
+export function useNoteRowActions(note: Note) {
   const feedback = useFeedback();
   const completeNote = useCompleteNote();
   const uncompleteNote = useUncompleteNote();

@@ -1,19 +1,16 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { Condition } from "@convex/lib/condition";
+import type { AreaId, Condition } from "@vita-os/contracts";
 import type { LucideIcon } from "lucide-react";
 
-import { api } from "@convex/_generated/api";
-import { CONDITIONS, conditionLabels } from "@convex/lib/condition";
 import { useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useUpdateArea } from "@vita-os/application";
+import { CONDITIONS, conditionLabels } from "@vita-os/core";
 import { ArrowRight, MessageSquarePlus } from "lucide-react";
 
 import { conditionIcons } from "@/features/areas/condition-presentation";
-import { optimisticallyUpdateArea } from "@/features/areas/optimistic";
 
 /**
  * The Area an action set is built for. Deliberately smaller than
- * `ProjectedArea`: every surface that can name an Area — the Dashboard
+ * `AreaSummary`: every surface that can name an Area — the Dashboard
  * Condition strip, the command palette's drill-in, the Area page itself — already
  * has these four fields, so none of them has to hold a full document to offer
  * the actions.
@@ -106,18 +103,14 @@ export function buildAreaActions(
 
 /**
  * The one place an Area's Condition is written from outside the Area page.
- * Optimistic, so every surface reading `areas.list` — lane tint, status bar,
- * top-bar strip — repaints in the same frame as the click.
+ * Optimistic, so every surface reading the Area inventory — lane tint, status
+ * bar, top-bar strip — repaints in the same frame as the click.
  */
 export function useSetAreaCondition() {
-  const updateArea = useMutation(api.areas.update).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyUpdateArea(localStore, args);
-    },
-  );
+  const updateArea = useUpdateArea();
 
   return (areaId: string, condition: Condition) => {
-    updateArea({ condition, id: areaId as Id<"areas"> });
+    void updateArea.mutateAsync({ areaId: areaId as AreaId, condition });
   };
 }
 

@@ -1,5 +1,4 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedThread } from "@convex/lib/validators";
+import type { AreaId, Thread, ThreadId } from "@vita-os/contracts";
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -7,13 +6,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ThreadLifecycleMenu } from "./thread-lifecycle-menu";
 
-function makeThread(overrides: Partial<ProjectedThread> = {}): ProjectedThread {
+function makeThread(overrides: Partial<Thread> = {}): Thread {
   return {
-    _id: "thread1" as Id<"threads">,
+    _id: "thread1" as ThreadId,
     title: "Renew passport",
     slug: "renew-passport",
-    areaId: "area1" as Id<"areas">,
+    areaId: "area1" as AreaId,
     state: "open",
+    revision: 0,
     order: 0,
     createdAt: 0,
     ...overrides,

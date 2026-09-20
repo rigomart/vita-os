@@ -1,5 +1,4 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedNote } from "@convex/lib/validators";
+import type { Note, NoteId } from "@vita-os/contracts";
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
@@ -44,18 +43,17 @@ function deferred() {
 }
 
 const openNote = {
-  _id: "note1" as Id<"tasks">,
-  _creationTime: 0,
+  _id: "note1" as NoteId,
   body: "Buy milk",
   state: "open",
   createdAt: Date.now(),
-} satisfies ProjectedNote;
+} satisfies Note;
 
 const doneNote = {
   ...openNote,
   state: "done",
   completedAt: Date.now(),
-} satisfies ProjectedNote;
+} satisfies Note;
 
 describe("useNoteRowActions", () => {
   beforeEach(() => {

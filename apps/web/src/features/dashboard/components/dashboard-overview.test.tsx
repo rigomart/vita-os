@@ -1,8 +1,4 @@
-import type {
-  ProjectedArea,
-  ProjectedNote,
-  ProjectedThread,
-} from "@convex/lib/validators";
+import type { AreaSummary, Note, Thread } from "@vita-os/contracts";
 import type { ComponentProps, ComponentPropsWithoutRef } from "react";
 
 import { render, screen, within } from "@testing-library/react";
@@ -55,34 +51,29 @@ vi.mock("@/hooks/use-mobile", () => ({
 const currentDate = new Date(2026, 6, 17, 12).getTime();
 const DAY = 86_400_000;
 
-function thread(
-  title: string,
-  fields: Partial<ProjectedThread> = {},
-): ProjectedThread {
+function thread(title: string, fields: Partial<Thread> = {}): Thread {
   return {
-    _id: title as ProjectedThread["_id"],
+    _id: title as Thread["_id"],
     title,
     slug: title.toLowerCase().replaceAll(" ", "-"),
-    areaId: "health" as ProjectedThread["areaId"],
+    areaId: "health" as Thread["areaId"],
     order: 0,
     state: "open",
+    revision: 0,
     createdAt: currentDate,
     ...fields,
-  } as ProjectedThread;
+  } as Thread;
 }
 
-function note(
-  body: string,
-  fields: Partial<ProjectedNote> = {},
-): ProjectedNote {
+function note(body: string, fields: Partial<Note> = {}): Note {
   return {
-    _id: body as ProjectedNote["_id"],
-    _creationTime: currentDate,
+    _id: body as Note["_id"],
     body,
     state: "open",
+    revision: 0,
     createdAt: currentDate,
     ...fields,
-  } as ProjectedNote;
+  } as Note;
 }
 
 const areas = [
@@ -102,7 +93,7 @@ const areas = [
     condition: "healthy",
     order: 1,
   },
-] as unknown as ProjectedArea[];
+] as unknown as AreaSummary[];
 
 type OverviewProps = ComponentProps<typeof DashboardOverview>;
 

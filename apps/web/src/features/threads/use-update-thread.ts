@@ -1,15 +1,8 @@
-import type { Id } from "@convex/_generated/dataModel";
-import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
+import type { AreaId, AreaSummary, Thread } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
-
-import type { AreaView, ThreadView } from "@/features/threads/thread-view";
-
-import { optimisticallyUpdateThread } from "@/features/threads/optimistic";
+import { useUpdateThread as useUpdateThreadCommand } from "@vita-os/application";
 
 export type UpdateThreadValue = {
-  id: string;
   title?: string;
   summary?: string | null;
   areaId?: string;
@@ -20,34 +13,30 @@ export type UpdateThreadValue = {
 };
 
 /**
- * `options.areas` lets a caller that moves the Thread hand the destination
- * Area document to the optimistic layer, keeping the rail's embedded Area in
- * step; callers that never pass `areaId` can omit it.
+ * Edit the Thread this surface is showing.
+ *
+ * `options.areas` lets a caller that can move the Thread hand over the
+ * destination Area, which keeps the rail's embedded Area in step; callers that
+ * never set `areaId` can omit it.
  */
 export function useUpdateThread(
-  thread: ThreadView,
-  options: { areas?: AreaView[] } = {},
+  thread: Thread,
+  options: { areas?: AreaSummary[] } = {},
 ) {
-  const { areas } = options;
-  const updateThread = useMutation(api.threads.update).withOptimisticUpdate(
-    (localStore, args) => {
-      const destinationArea =
-        args.areaId === undefined
-          ? undefined
-          : areas?.find((area) => area._id === args.areaId);
-      optimisticallyUpdateThread(localStore, args, {
-        thread: thread as unknown as ProjectedThread,
-        destinationArea: destinationArea as unknown as
-          | ProjectedArea
-          | undefined,
-      });
-    },
-  );
+  const updateThread = useUpdateThreadCommand();
 
-  return (value: UpdateThreadValue) =>
-    updateThread({
+  return ({ areaId: requestedAreaId, ...value }: UpdateThreadValue) => {
+    const areaId = requestedAreaId as AreaId | undefined;
+    const destinationArea =
+      areaId === undefined
+        ? undefined
+        : options.areas?.find((area) => area._id === areaId);
+
+    return updateThread.mutateAsync({
       ...value,
-      id: value.id as Id<"threads">,
-      areaId: value.areaId as Id<"areas"> | undefined,
+      thread,
+      ...(areaId === undefined ? {} : { areaId }),
+      ...(destinationArea === undefined ? {} : { destinationArea }),
     });
+  };
 }

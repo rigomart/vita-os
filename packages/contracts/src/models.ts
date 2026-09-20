@@ -65,15 +65,19 @@ export interface Thread {
   lastActivityAt?: number;
   lastActivityContent?: string;
   createdAt: number;
-}
-
-/**
- * A Thread read together with the revision it was read at. Completion callers
- * hand the revision back so a stale request cannot advance the Thread twice.
- */
-export interface VersionedThread extends Thread {
+  /**
+   * How many times the Thread has changed.
+   *
+   * Every read carries it, so any surface that shows a Next Move can also
+   * complete one: the revision travels back with the command, and a request made
+   * against a Thread that has since moved on is refused rather than applied
+   * twice.
+   */
   revision: number;
 }
+
+/** @deprecated Every `Thread` now carries its revision. */
+export type VersionedThread = Thread;
 
 export interface ThreadDetail {
   thread: VersionedThread;

@@ -1,9 +1,8 @@
-import type { ProjectedActivityLog } from "@convex/lib/validators";
+import type { ActivityLogEntry } from "@vita-os/contracts";
 
-type ActivityLogType = ProjectedActivityLog["type"];
+type ActivityLogType = ActivityLogEntry["type"];
 
 const ACTIVITY_LOG_ENTRY_LABELS: Record<ActivityLogType, string> = {
-  note: "Note",
   next_action_change: "Next move",
   state_change: "Lifecycle",
   follow_up_change: "Follow-up",

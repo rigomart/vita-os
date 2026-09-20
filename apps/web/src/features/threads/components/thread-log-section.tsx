@@ -1,6 +1,6 @@
 import type { ThreadId } from "@vita-os/contracts";
 
-import { useThreadActivity } from "@/application/application-client-context";
+import { useThreadActivity } from "@vita-os/application";
 
 import { ActivityLog } from "./thread-log";
 
@@ -15,17 +15,16 @@ export function ActivityLogSection({
   threadId,
   lastActivityAt,
 }: ActivityLogSectionProps) {
-  const { state, loadMore } = useThreadActivity(threadId, PAGE_SIZE);
-  if (state.status === "error") throw new Error(state.error.message);
+  const activity = useThreadActivity(threadId, PAGE_SIZE);
+  if (activity.error !== null) throw new Error(activity.error.message);
 
-  const page = state.status === "ready" ? state.data : undefined;
   return (
     <ActivityLog
-      logs={state.status === "not_found" ? [] : page?.entries}
+      logs={activity.isPending ? undefined : activity.entries}
       lastActivityAt={lastActivityAt}
-      canLoadMore={page?.pagination === "can_load_more"}
-      isLoadingMore={page?.pagination === "loading_more"}
-      onLoadMore={loadMore}
+      canLoadMore={activity.hasNextPage && !activity.isFetchingNextPage}
+      isLoadingMore={activity.isFetchingNextPage}
+      onLoadMore={() => void activity.fetchNextPage()}
     />
   );
 }

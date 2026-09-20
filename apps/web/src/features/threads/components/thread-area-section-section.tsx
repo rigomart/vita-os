@@ -1,24 +1,23 @@
-import { api } from "@convex/_generated/api";
-import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
-import { useQuery } from "convex-helpers/react/cache/hooks";
+import type { AreaSummary, Thread } from "@vita-os/contracts";
 
-import type { AreaView, ThreadView } from "@/features/threads/thread-view";
+import { useAreas } from "@vita-os/application";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 
 import { ThreadAreaSection } from "@/features/threads/components/thread-area-section";
 import { useThreadPaneNav } from "@/features/threads/thread-detail/thread-pane-nav";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
 
 interface ThreadAreaSectionSectionProps {
-  thread: ThreadView;
-  area: AreaView;
+  thread: Thread;
+  area: AreaSummary;
 }
 
 export function ThreadAreaSectionSection({
   thread,
   area,
 }: ThreadAreaSectionSectionProps) {
-  // Picker data; deduped with the palette's subscription.
-  const areas = useQuery(api.areas.list);
+  // Picker data; the same read the palette and the shell already hold.
+  const areas = useAreas().data;
   const { onThreadLocationChange } = useThreadPaneNav();
   const updateThread = useUpdateThread(thread, { areas: areas ?? [] });
 
@@ -26,7 +25,7 @@ export function ThreadAreaSectionSection({
     async (areaId: string) => {
       if (!areas || areaId === thread.areaId) return null;
 
-      await updateThread({ id: thread._id, areaId });
+      await updateThread({ areaId });
       return areas.find((candidate) => candidate._id === areaId) ?? null;
     },
     { successMessage: "Thread moved", errorToast: true },

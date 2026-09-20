@@ -1,19 +1,16 @@
-import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
-
-import { optimisticallyCreateThread } from "@/features/threads/optimistic";
+import { useCreateThread as useCreateThreadCommand } from "@vita-os/application";
 
 import type { CreatedThreadResult, ThreadFormValue } from "./types";
 
+/**
+ * Capture a Thread. The caller navigates to the slug the service chose, not to
+ * the placeholder the optimistic change showed.
+ */
 export function useCreateThread() {
-  const createThread = useMutation(api.threads.create).withOptimisticUpdate(
-    (localStore, args) => {
-      optimisticallyCreateThread(localStore, args);
-    },
-  );
+  const createThread = useCreateThreadCommand();
 
   return async (value: ThreadFormValue): Promise<CreatedThreadResult> => {
-    const { slug } = await createThread(value);
-    return { slug, areaId: value.areaId };
+    const thread = await createThread.mutateAsync(value);
+    return { slug: thread.slug, areaId: value.areaId };
   };
 }

@@ -1,4 +1,4 @@
-import type { ProjectedNote, ProjectedThread } from "@convex/lib/validators";
+import type { Note, Thread } from "@vita-os/contracts";
 
 import { dayDelta } from "./dashboard-model";
 
@@ -30,15 +30,15 @@ export interface AttentionBoard {
 }
 
 export type BoardItem =
-  | { kind: "note"; note: ProjectedNote; when?: number }
-  | { kind: "thread"; thread: ProjectedThread; when?: number };
+  | { kind: "note"; note: Note; when?: number }
+  | { kind: "thread"; thread: Thread; when?: number };
 
 /** The last six days of "soon" — day 7 and beyond reads as Later. */
 const WEEK_HORIZON = 6;
 
 export function buildAttentionBoard(
-  threads: ProjectedThread[],
-  notes: ProjectedNote[],
+  threads: Thread[],
+  notes: Note[],
   currentDate: number,
 ): AttentionBoard {
   const items: BoardItem[] = [
@@ -119,7 +119,7 @@ function bySoonest(a: BoardItem, b: BoardItem) {
   return (a.when ?? 0) - (b.when ?? 0);
 }
 
-function byThreadOrder(a: ProjectedThread, b: ProjectedThread) {
+function byThreadOrder(a: Thread, b: Thread) {
   return a.order - b.order;
 }
 

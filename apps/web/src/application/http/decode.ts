@@ -18,7 +18,6 @@ import type {
   ThreadNote,
   ThreadNoteId,
   ThreadNotePage,
-  VersionedThread,
 } from "@vita-os/contracts";
 
 /**
@@ -166,6 +165,7 @@ export function decodeThread(value: unknown): Thread | undefined {
     lastActivityAt,
     lastActivityContent,
     createdAt,
+    revision,
   } = value;
   if (
     typeof _id !== "string" ||
@@ -180,7 +180,9 @@ export function decodeThread(value: unknown): Thread | undefined {
     !isOptionalSafeInteger(followUp) ||
     !isOptionalSafeInteger(lastActivityAt) ||
     !isOptionalString(lastActivityContent) ||
-    !isSafeInteger(createdAt)
+    !isSafeInteger(createdAt) ||
+    !isSafeInteger(revision) ||
+    revision < 0
   ) {
     return undefined;
   }
@@ -199,25 +201,14 @@ export function decodeThread(value: unknown): Thread | undefined {
     ...(lastActivityAt === undefined ? {} : { lastActivityAt }),
     ...(lastActivityContent === undefined ? {} : { lastActivityContent }),
     createdAt,
+    revision,
   };
-}
-
-export function decodeVersionedThread(
-  value: unknown,
-): VersionedThread | undefined {
-  const thread = decodeThread(value);
-  if (thread === undefined || !isObject(value)) return undefined;
-
-  const { revision } = value;
-  if (!isSafeInteger(revision) || revision < 0) return undefined;
-
-  return { ...thread, revision };
 }
 
 export function decodeThreadDetail(value: unknown): ThreadDetail | undefined {
   if (!isObject(value)) return undefined;
 
-  const thread = decodeVersionedThread(value.thread);
+  const thread = decodeThread(value.thread);
   const area = decodeAreaSummary(value.area);
   if (thread === undefined || area === undefined) return undefined;
 

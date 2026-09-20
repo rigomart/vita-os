@@ -1,9 +1,8 @@
-import type { Id } from "@convex/_generated/dataModel";
+import type { AreaId } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
-import { api } from "@convex/_generated/api";
 import { useMatch, useNavigate, useSearch } from "@tanstack/react-router";
-import { useQuery } from "convex-helpers/react/cache/hooks";
+import { useAreas, useOpenNoteCount } from "@vita-os/application";
 import { useState } from "react";
 
 import { CreateAreaDialog } from "@/features/areas/area-form/create-area-dialog";
@@ -21,19 +20,18 @@ import { AppChrome } from "./app-chrome";
 import { CommandPalette } from "./command-palette";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const noteCount = useQuery(api.notes.count);
+  const noteCount = useOpenNoteCount().data;
   const navigate = useNavigate();
   const createNote = useCreateNote();
   const dialogs = useCreateDialogs();
   const inbox = useInboxSurface();
   const [paletteOpen, setPaletteOpen] = useState(false);
 
-  // The area list is only read by the create-thread dialog here; the palette
-  // subscribes for itself while it is mounted.
-  const createThreadAreas = useQuery(
-    api.areas.list,
-    dialogs.showCreateThread ? {} : "skip",
-  );
+  // The Area inventory is only read by the create-thread dialog here, and only
+  // once it is open; the palette reads it for itself while it is mounted.
+  const createThreadAreas = useAreas({
+    enabled: dialogs.showCreateThread,
+  }).data;
 
   useGlobalNewNoteShortcut(dialogs.openNewNote);
   useCommandPaletteShortcut(() => setPaletteOpen(true));
@@ -141,7 +139,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           // The palette's Area drill-in scopes the new Thread; the plain
           // "New thread" row passes nothing and the picker stays unscoped.
           onNewThread={(areaId) =>
-            dialogs.openCreateThread(areaId as Id<"areas"> | undefined)
+            dialogs.openCreateThread(areaId as AreaId | undefined)
           }
           onNewArea={dialogs.openCreateArea}
           onOpenInbox={inbox.open}

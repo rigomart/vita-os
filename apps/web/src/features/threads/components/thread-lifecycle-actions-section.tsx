@@ -1,6 +1,6 @@
-import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
+import type { Thread } from "@vita-os/contracts";
 
-import type { ThreadView } from "@/features/threads/thread-view";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 
 import { useRemoveThread } from "@/features/threads/use-remove-thread";
 import { useUpdateThread } from "@/features/threads/use-update-thread";
@@ -8,7 +8,7 @@ import { useUpdateThread } from "@/features/threads/use-update-thread";
 import { ThreadLifecycleMenu } from "./thread-lifecycle-menu";
 
 interface ThreadLifecycleActionsProps {
-  thread: ThreadView;
+  thread: Thread;
   onRequestClose: () => void;
 }
 
@@ -22,7 +22,6 @@ export function ThreadLifecycleActionsSection({
   const { run: resolveThread, isPending: isResolving } = useGuardedAsyncAction(
     async (resolutionNote?: string) => {
       await updateThread({
-        id: thread._id,
         state: "resolved",
         resolutionNote,
       });
@@ -32,7 +31,7 @@ export function ThreadLifecycleActionsSection({
 
   const { run: reopenThread, isPending: isReopening } = useGuardedAsyncAction(
     async () => {
-      await updateThread({ id: thread._id, state: "open" });
+      await updateThread({ state: "open" });
     },
     { successMessage: "Thread reopened", errorToast: true },
   );

@@ -1,14 +1,9 @@
-import type { Id } from "@convex/_generated/dataModel";
+import type { NoteId } from "@vita-os/contracts";
 
-import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
-
-import { optimisticallyRemoveFromOpenNotes } from "./optimistic";
+import { useCompleteNote as useCompleteNoteCommand } from "@vita-os/application";
 
 export function useCompleteNote() {
-  const completeNote = useMutation(api.notes.markDone).withOptimisticUpdate(
-    (localStore, args) => optimisticallyRemoveFromOpenNotes(localStore, args),
-  );
+  const complete = useCompleteNoteCommand();
 
-  return (id: Id<"tasks">) => completeNote({ id });
+  return (noteId: NoteId) => complete.mutateAsync({ noteId });
 }

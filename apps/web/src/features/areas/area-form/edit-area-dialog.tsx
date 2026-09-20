@@ -1,10 +1,10 @@
-import type { ProjectedArea } from "@convex/lib/validators";
+import type { AreaSummary } from "@vita-os/contracts";
 
 import { AreaFormDialog } from "./area-form-dialog";
 import { useUpdateArea } from "./use-update-area";
 
 interface EditAreaDialogProps {
-  area: ProjectedArea;
+  area: AreaSummary;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

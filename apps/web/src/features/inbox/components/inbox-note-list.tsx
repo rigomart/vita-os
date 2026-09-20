@@ -1,6 +1,6 @@
-import type { ProjectedNote } from "@convex/lib/validators";
+import type { Note } from "@vita-os/contracts";
 
-import { groupNotesByAttention } from "@convex/lib/attentionOrdering";
+import { groupNotesByAttention } from "@vita-os/core";
 import { Button } from "@vita-os/ui/components/button";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
@@ -9,9 +9,9 @@ import { NoteCard } from "@/features/notes/note-card/note-card";
 import { useAttentionClock } from "@/hooks/use-attention-clock";
 
 interface InboxNoteListProps {
-  notes: ProjectedNote[];
+  notes: Note[];
   /** Done Notes loaded so far from `notes.listDone`. */
-  doneNotes?: ProjectedNote[];
+  doneNotes?: Note[];
   /** Defaults to `true`: non-paginating callers render Completed only when non-empty. */
   isDoneExhausted?: boolean;
   isDoneInitialLoading?: boolean;

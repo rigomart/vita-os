@@ -1,9 +1,9 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
-import { useConvexAuth } from "convex/react";
 
 import { AuthVerifyingLoader } from "@/components/auth/auth-verifying-loader";
 import { RouteErrorFallback } from "@/components/error-boundary";
 import { AppShell } from "@/components/layout/app-shell";
+import { useSessionGate } from "@/lib/session";
 
 export const Route = createFileRoute("/_authenticated")({
   validateSearch: (
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
-  const { isAuthenticated, isLoading } = useConvexAuth();
+  const { isAuthenticated, isLoading } = useSessionGate();
 
   if (isLoading) {
     return <AuthVerifyingLoader />;
