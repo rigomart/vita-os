@@ -8,6 +8,23 @@ import worker from "../src/worker";
 
 type Session = { actorId: string; cookie: string };
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readSignedUpUserId(value: unknown): string {
+  if (!isObject(value) || !isObject(value.user)) {
+    throw new Error("Better Auth returned an invalid sign-up response");
+  }
+
+  const { id } = value.user;
+  if (typeof id !== "string" || id.length === 0) {
+    throw new Error("Better Auth sign-up response omitted the user ID");
+  }
+
+  return id;
+}
+
 async function createSession(): Promise<Session> {
   const response = await SELF.fetch("http://api.test/api/auth/sign-up/email", {
     method: "POST",
@@ -20,10 +37,16 @@ async function createSession(): Promise<Session> {
   });
 
   expect(response.status).toBe(200);
-  const body = (await response.json()) as { user: { id: string } };
+  const actorId = readSignedUpUserId(await response.json());
+  const cookie = response.headers.get("set-cookie");
+  expect(cookie).toEqual(expect.any(String));
+  if (cookie === null || cookie.length === 0) {
+    throw new Error("Better Auth sign-up response omitted the session cookie");
+  }
+
   return {
-    actorId: body.user.id,
-    cookie: response.headers.get("set-cookie") ?? "",
+    actorId,
+    cookie,
   };
 }
 
