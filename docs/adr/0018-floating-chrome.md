@@ -1,12 +1,14 @@
 # Floating chrome
 
+Status: The dock's palette trigger is an icon on mobile and a full field from `sm` up. Create actions stay searchable in the palette, last, because the dock already offers them as one-tap controls.
+
 The app chrome stops being a bar. The top bar and the mobile tab bar are replaced by three **floating clusters** over the page: identity and status at the top-left, the date and the personal controls at the top-right, and a dock at the bottom-centre. Nothing spans the width, so the board reads to the top edge of the viewport at every size.
 
 The clusters carry the same content the bar did, regrouped by what each thing is for rather than by where it fits in a row:
 
 - **Top-left — where you are.** The mark and the **Area** strip. The strip absorbs the **Condition** status the **Dashboard** used to state a second time in its own header: **Condition** is now the hexagon's own colour rather than a dot beside it, and a corner badge carries that **Area**'s open **Thread** count. Healthy **Areas** stay grey, so the only colour in the chrome belongs to the parts of life that are slipping.
 - **Top-right — where you are in time, and what wants you.** Today's date, **Notes** with its count, and the account menu. The date leads the cluster rather than sitting beside the mark: it is orientation, not identity, and it belongs with the things that change under you.
-- **Bottom-centre — what you can do.** The palette keeps its full field, because it is the primary way to go anywhere and an icon would hide the shortcut that says so; **New note**, **New thread** and **New area** follow it as tooltipped icons.
+- **Bottom-centre — what you can do.** From `sm` up the palette keeps its full field, because it is the primary way to go anywhere and the shortcut hint belongs in the control. On mobile the dock is thumb-space: the trigger collapses to an icon matching **New note**, **New thread** and **New area**, and the shortcut lives in the accessible name rather than competing for width. Create actions stay in the palette so typing "new thread" still works, but they sit last — the dock already offers them as one-tap actions, and the empty-query list is for jumping.
 
 One chrome serves every width. The dock is the mobile tab bar and the desktop actions at once, so the tab bar is retired rather than maintained beside it.
 

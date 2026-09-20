@@ -265,7 +265,7 @@ describe("CommandPalette area drill-in", () => {
 
     await user.keyboard("{Backspace}");
 
-    expect(await screen.findByText("New note")).toBeVisible();
+    expect(await screen.findByText("Dashboard")).toBeVisible();
     expect(screen.getByPlaceholderText(PLACEHOLDER)).toHaveValue("");
     expect(
       screen.queryByText(`Set ${health.name} to Healthy`),
@@ -280,7 +280,54 @@ describe("CommandPalette area drill-in", () => {
 
     await user.keyboard("{Escape}");
 
-    expect(await screen.findByText("New note")).toBeVisible();
+    expect(await screen.findByText("Dashboard")).toBeVisible();
     expect(screen.getByPlaceholderText(PLACEHOLDER)).toBeVisible();
+  });
+});
+
+function optionLabels() {
+  return screen.getAllByRole("option").map((item) => {
+    const copy = item.cloneNode(true) as HTMLElement;
+    copy.querySelector("[data-slot='command-shortcut']")?.remove();
+    return copy.textContent?.replace(/\s+/g, " ").trim() ?? "";
+  });
+}
+
+describe("CommandPalette root list", () => {
+  beforeEach(() => {
+    navigate.mockClear();
+    mutationCall.mockClear();
+  });
+
+  it("lists threads first and create actions last", async () => {
+    const user = userEvent.setup();
+    renderShell();
+    await openPalette(user);
+
+    const headings = [...document.querySelectorAll("[cmdk-group-heading]")].map(
+      (el) => el.textContent,
+    );
+    expect(headings).toEqual(["Threads", "Areas", "Go to", "Create"]);
+
+    const labels = optionLabels();
+    expect(labels[0]).toContain(thread.title);
+    expect(labels.at(-3)).toBe("New note");
+    expect(labels.at(-2)).toBe("New thread");
+    expect(labels.at(-1)).toBe("New area");
+  });
+
+  it("still finds create actions when they are searched for", async () => {
+    const user = userEvent.setup();
+    renderShell();
+    await openPalette(user);
+
+    await user.type(screen.getByPlaceholderText(PLACEHOLDER), "create");
+
+    expect(screen.getByRole("option", { name: /New note/ })).toBeVisible();
+    expect(screen.getByRole("option", { name: /New thread/ })).toBeVisible();
+    expect(screen.getByRole("option", { name: /New area/ })).toBeVisible();
+    expect(
+      screen.queryByRole("option", { name: new RegExp(thread.title) }),
+    ).not.toBeInTheDocument();
   });
 });

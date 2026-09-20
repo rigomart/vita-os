@@ -183,30 +183,43 @@ export function CommandPalette({
       ) : (
         <CommandList key="root">
           <CommandEmpty>No results found.</CommandEmpty>
-          <CommandGroup heading="Actions">
-            <CommandItem onSelect={() => run(onNewNote)}>
-              <Plus />
-              New note
-              <CommandShortcut>Q</CommandShortcut>
-            </CommandItem>
-            <CommandItem onSelect={() => run(() => onNewThread())}>
-              <MessageSquare />
-              New thread
-            </CommandItem>
-            <CommandItem onSelect={() => run(onNewArea)}>
-              <FolderPlus />
-              New area
-            </CommandItem>
-          </CommandGroup>
-          <CommandGroup heading="Go to">
-            <CommandItem onSelect={() => run(() => navigate({ to: "/" }))}>
-              <LayoutDashboard />
-              Dashboard
-            </CommandItem>
-            <CommandItem onSelect={() => run(onOpenInbox)}>
-              <Inbox />
-              Notes
-            </CommandItem>
+          {/* Jumping first: Threads are the work, Areas the containers.
+              Create lives last because the dock already offers those
+              one-tap actions; keeping the rows means "new thread" still
+              matches when someone searches rather than taps. */}
+          <CommandGroup heading="Threads">
+            {(threads ?? []).map((thread) => {
+              const area = areaById.get(thread.areaId);
+              const meta = area?.name ?? "";
+              return (
+                <CommandItem
+                  key={thread._id}
+                  value={`thread-${thread._id}`}
+                  keywords={area ? [thread.title, area.name] : [thread.title]}
+                  onSelect={() =>
+                    run(() =>
+                      navigate({
+                        to: ".",
+                        search: (prev) => ({
+                          ...prev,
+                          thread: thread.slug,
+                        }),
+                      }),
+                    )
+                  }
+                >
+                  <MessageSquare />
+                  <span className="min-w-0 flex-1 truncate">
+                    {thread.title}
+                  </span>
+                  {meta && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {meta}
+                    </span>
+                  )}
+                </CommandItem>
+              );
+            })}
           </CommandGroup>
           <CommandGroup heading="Areas">
             {(areas ?? []).map((area) => (
@@ -243,39 +256,39 @@ export function CommandPalette({
               </CommandItem>
             ))}
           </CommandGroup>
-          <CommandGroup heading="Threads">
-            {(threads ?? []).map((thread) => {
-              const area = areaById.get(thread.areaId);
-              const meta = area?.name ?? "";
-              return (
-                <CommandItem
-                  key={thread._id}
-                  value={`thread-${thread._id}`}
-                  keywords={area ? [thread.title, area.name] : [thread.title]}
-                  onSelect={() =>
-                    run(() =>
-                      navigate({
-                        to: ".",
-                        search: (prev) => ({
-                          ...prev,
-                          thread: thread.slug,
-                        }),
-                      }),
-                    )
-                  }
-                >
-                  <MessageSquare />
-                  <span className="min-w-0 flex-1 truncate">
-                    {thread.title}
-                  </span>
-                  {meta && (
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {meta}
-                    </span>
-                  )}
-                </CommandItem>
-              );
-            })}
+          <CommandGroup heading="Go to">
+            <CommandItem onSelect={() => run(() => navigate({ to: "/" }))}>
+              <LayoutDashboard />
+              Dashboard
+            </CommandItem>
+            <CommandItem onSelect={() => run(onOpenInbox)}>
+              <Inbox />
+              Notes
+            </CommandItem>
+          </CommandGroup>
+          <CommandGroup heading="Create">
+            <CommandItem
+              keywords={["create", "add"]}
+              onSelect={() => run(onNewNote)}
+            >
+              <Plus />
+              New note
+              <CommandShortcut>Q</CommandShortcut>
+            </CommandItem>
+            <CommandItem
+              keywords={["create", "add"]}
+              onSelect={() => run(() => onNewThread())}
+            >
+              <MessageSquare />
+              New thread
+            </CommandItem>
+            <CommandItem
+              keywords={["create", "add"]}
+              onSelect={() => run(onNewArea)}
+            >
+              <FolderPlus />
+              New area
+            </CommandItem>
           </CommandGroup>
         </CommandList>
       )}
