@@ -8,6 +8,7 @@
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../../../components/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
+@source "../../../application/**/*.{ts,tsx}";
 
 /* The palette is a cool monochrome: every neutral carries the same faint
    blue-grey hue (265), and the one chromatic brand colour — an indigo — is

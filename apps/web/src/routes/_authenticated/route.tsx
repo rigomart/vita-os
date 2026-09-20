@@ -1,21 +1,24 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
+import {
+  AppShell,
+  readProductSearch,
+  RouteErrorFallback,
+  type ProductSearch,
+} from "@vita-os/application";
 
 import { AuthVerifyingLoader } from "@/components/auth/auth-verifying-loader";
-import { RouteErrorFallback } from "@/components/error-boundary";
-import { AppShell } from "@/components/layout/app-shell";
 import { useSessionGate } from "@/lib/session";
 
+/**
+ * The gate in front of the product.
+ *
+ * Whether somebody is signed in is the host's question; what the search
+ * parameters mean is the shared application's, so this route validates them
+ * through the application's own reader rather than restating them.
+ */
 export const Route = createFileRoute("/_authenticated")({
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): { thread?: string; inbox?: true } => ({
-    thread:
-      typeof search.thread === "string" && search.thread.length > 0
-        ? search.thread
-        : undefined,
-    // `?inbox=true` summons the Inbox over whatever page is showing.
-    inbox: search.inbox === true || search.inbox === "true" ? true : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): ProductSearch =>
+    readProductSearch(search),
   errorComponent: RouteErrorFallback,
   component: AuthenticatedLayout,
 });

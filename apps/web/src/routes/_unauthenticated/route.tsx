@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
+import { AppErrorFallback } from "@vita-os/application";
 
 import { AuthVerifyingLoader } from "@/components/auth/auth-verifying-loader";
-import { AppErrorFallback } from "@/components/error-boundary";
 import { useSessionGate } from "@/lib/session";
 
 export const Route = createFileRoute("/_unauthenticated")({

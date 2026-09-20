@@ -1,0 +1,72 @@
+import type { Thread } from "@vita-os/contracts";
+
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
+
+import { useRemoveThread } from "../use-remove-thread";
+import { useUpdateThread } from "../use-update-thread";
+import { ThreadLifecycleMenu } from "./thread-lifecycle-menu";
+
+interface ThreadLifecycleActionsProps {
+  thread: Thread;
+  onRequestClose: () => void;
+}
+
+export function ThreadLifecycleActionsSection({
+  thread,
+  onRequestClose,
+}: ThreadLifecycleActionsProps) {
+  const updateThread = useUpdateThread(thread);
+  const removeThread = useRemoveThread(thread);
+
+  const { run: resolveThread, isPending: isResolving } = useGuardedAsyncAction(
+    async (resolutionNote?: string) => {
+      await updateThread({
+        state: "resolved",
+        resolutionNote,
+      });
+    },
+    { successMessage: "Thread resolved", errorToast: true },
+  );
+
+  const { run: reopenThread, isPending: isReopening } = useGuardedAsyncAction(
+    async () => {
+      await updateThread({ state: "open" });
+    },
+    { successMessage: "Thread reopened", errorToast: true },
+  );
+
+  const { run: deleteThread, isPending: isDeleting } = useGuardedAsyncAction(
+    async () => {
+      await removeThread();
+    },
+    { successMessage: "Thread deleted", errorToast: true },
+  );
+
+  const handleResolve = (resolutionNote?: string) => {
+    void resolveThread(resolutionNote).then((result) => {
+      if (result.ok) {
+        onRequestClose();
+      }
+    });
+  };
+
+  const handleDelete = () => {
+    void deleteThread().then((result) => {
+      if (result.ok) {
+        onRequestClose();
+      }
+    });
+  };
+
+  return (
+    <ThreadLifecycleMenu
+      thread={thread}
+      onResolve={handleResolve}
+      onReopen={() => void reopenThread()}
+      onDelete={handleDelete}
+      isResolving={isResolving}
+      isReopening={isReopening}
+      isDeleting={isDeleting}
+    />
+  );
+}

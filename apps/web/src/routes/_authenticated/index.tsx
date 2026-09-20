@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-
-import { RouteErrorFallback } from "@/components/error-boundary";
-import { DashboardScreen } from "@/features/dashboard/screens/dashboard-screen";
+import { RouteErrorFallback } from "@vita-os/application";
+import { DashboardScreen } from "@vita-os/application";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({

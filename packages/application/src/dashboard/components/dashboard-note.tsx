@@ -1,0 +1,126 @@
+import type { Note } from "@vita-os/contracts";
+
+import { cn } from "@vita-os/ui/lib/utils";
+import { format, isThisYear } from "date-fns";
+import { Bell, Check } from "lucide-react";
+
+import { WhenPopover } from "../../attention-list";
+import { useCompleteNote } from "../../notes/use-complete-note";
+import { useUpdateNoteBody } from "../../notes/use-update-note-body";
+import { useUpdateNoteWhen } from "../../notes/use-update-note-when";
+import { EditableField } from "../../ui/editable-field";
+import { dayDelta } from "./dashboard-model";
+
+/** Held in place at rest, so the footer never reflows on hover. */
+const revealed =
+  "opacity-0 group-focus-within/note:opacity-100 group-hover/note:opacity-100";
+
+/**
+ * A standalone Note on the board, in the same grammar as `NoteCard` and
+ * `ThreadNoteCard`: a heavy edge doing the containing, the body first with
+ * nothing in front of it, and the controls on the footer beneath it. A Note is
+ * a thing you wrote, not a line item with a state in front — so on a board of
+ * Thread cards it stays visibly a different kind of object, which is what lets
+ * the two share a column without confusion.
+ *
+ * The body is the writing surface: click it to edit in place, the same way a
+ * Note edits in the Notes panel and on a Thread. One radius and one padding
+ * step down from the full card, because here it lives in a column rather than
+ * on the Notes page.
+ */
+export function DashboardNote({
+  currentDate,
+  note,
+}: {
+  currentDate: number;
+  note: Note;
+}) {
+  const completeNote = useCompleteNote();
+  const updateNoteBody = useUpdateNoteBody();
+  const updateNoteWhen = useUpdateNoteWhen();
+
+  const when = note.when ?? undefined;
+  const late = when !== undefined && dayDelta(when, currentDate) < 0;
+  const due = when !== undefined && dayDelta(when, currentDate) === 0;
+
+  return (
+    <article
+      className={cn(
+        "group/note relative flex flex-col rounded-2xl border-2 border-border/70 bg-surface-2 px-3 py-2.5 transition-colors hover:border-border has-focus-visible:border-ring/50",
+        late && "border-condition-attention/45",
+      )}
+    >
+      <EditableField
+        value={note.body}
+        variant="textarea"
+        onSave={(text) => {
+          if (!text) return;
+          void updateNoteBody(note._id, text);
+        }}
+        inputAriaLabel="Edit note body"
+        editOnFocus
+        textareaRows={1}
+        chromeless
+        className="min-h-0 py-0 text-left text-[13px] leading-relaxed whitespace-pre-wrap wrap-anywhere caret-ring"
+      />
+
+      <div className="mt-1.5 flex items-center gap-1">
+        <WhenPopover
+          when={when}
+          onSetWhen={(next) => void updateNoteWhen(note._id, next)}
+          trigger={
+            when === undefined ? (
+              <button
+                type="button"
+                aria-label="Set attention date"
+                title="Set attention date"
+                className={cn(
+                  "relative z-10 ml-auto inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,opacity] hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40",
+                  revealed,
+                )}
+              >
+                <Bell className="size-3.5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                aria-label="Change attention date"
+                className={cn(
+                  "relative z-10 -mx-1 -my-0.5 inline-flex items-center gap-1 rounded-full px-1 py-0.5 text-2xs transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40",
+                  late
+                    ? "text-condition-attention"
+                    : due
+                      ? "text-foreground/80"
+                      : "text-muted-foreground/70",
+                )}
+              >
+                <Bell className="size-3" />
+                {shortDate(when)}
+              </button>
+            )
+          }
+        />
+
+        <button
+          type="button"
+          aria-label="Mark note done"
+          title="Mark note done"
+          onClick={() => void completeNote(note._id)}
+          className={cn(
+            "relative z-10 inline-flex size-6 items-center justify-center rounded-full bg-muted text-muted-foreground transition-[color,background-color,opacity] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40",
+            // The dated trigger sits on the left, so the gap opens here.
+            when !== undefined && "ml-auto",
+            revealed,
+          )}
+        >
+          <Check className="size-3.5" />
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function shortDate(timestamp: number) {
+  const date = new Date(timestamp);
+  return format(date, isThisYear(date) ? "MMM d" : "MMM d, yyyy");
+}

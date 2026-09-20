@@ -1,7 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-
-import { RouteErrorFallback } from "@/components/error-boundary";
-import { AreaDetailScreen } from "@/features/areas/area-detail/area-detail-screen";
+import { RouteErrorFallback } from "@vita-os/application";
+import { AreaDetailScreen } from "@vita-os/application";
 
 export const Route = createFileRoute("/_authenticated/$areaSlug")({
   errorComponent: RouteErrorFallback,

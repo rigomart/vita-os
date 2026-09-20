@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-
-import { RouteErrorFallback } from "@/components/error-boundary";
-import { InboxDeepLinkRedirect } from "@/features/inbox/surface/inbox-deep-link-redirect";
+import { RouteErrorFallback } from "@vita-os/application";
+import { InboxDeepLinkRedirect } from "@vita-os/application";
 
 export const Route = createFileRoute("/_authenticated/notes")({
   errorComponent: RouteErrorFallback,

@@ -1,7 +1,6 @@
 import { createRootRoute, HeadContent, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-
-import { AppErrorFallback } from "@/components/error-boundary";
+import { AppErrorFallback } from "@vita-os/application";
 
 export const Route = createRootRoute({
   head: () => ({

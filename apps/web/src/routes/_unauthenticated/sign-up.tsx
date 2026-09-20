@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AppErrorFallback } from "@vita-os/application";
 
-import { AppErrorFallback } from "@/components/error-boundary";
 import { SignUpScreen } from "@/features/auth/screens/sign-up-screen";
 
 export const Route = createFileRoute("/_unauthenticated/sign-up")({

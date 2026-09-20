@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-
-import { RouteErrorFallback } from "@/components/error-boundary";
+import { RouteErrorFallback } from "@vita-os/application";
 
 // The thread detail pane is rendered globally by AppShell (it reads this
 // route's params via useMatch). The route exists purely so the deep-link URL
