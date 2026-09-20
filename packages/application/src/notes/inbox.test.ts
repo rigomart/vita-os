@@ -28,14 +28,14 @@ describe("Note When emphasis", () => {
 
   it("emphasizes Open Notes with due When", () => {
     expect(
-      isNoteWhenEmphasized(makeNote({ when: may17_2026 }), may18_2026),
+      isNoteWhenEmphasized(makeNote({ attentionDate: may17_2026 }), may18_2026),
     ).toBe(true);
     expect(
-      isNoteWhenEmphasized(makeNote({ when: may19_2026 }), may18_2026),
+      isNoteWhenEmphasized(makeNote({ attentionDate: may19_2026 }), may18_2026),
     ).toBe(false);
     expect(
       isNoteWhenEmphasized(
-        makeNote({ when: may17_2026, state: "done" }),
+        makeNote({ attentionDate: may17_2026, state: "done" }),
         may18_2026,
       ),
     ).toBe(false);

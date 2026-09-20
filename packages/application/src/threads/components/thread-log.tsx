@@ -24,7 +24,7 @@ const ACTIVITY_LOG_ICONS: Record<
   AutomaticActivityLogEntry["type"],
   LucideIcon
 > = {
-  next_action_change: ArrowRight,
+  next_move_change: ArrowRight,
   state_change: CircleCheck,
   follow_up_change: Bell,
   area_move: MapPin,
@@ -277,7 +277,7 @@ function getAutomaticChangeSummary(log: AutomaticActivityLogEntry) {
   if (log.newValue) return `Set to ${log.newValue}`;
 
   if (log.previousValue) {
-    return log.type === "next_action_change" &&
+    return log.type === "next_move_change" &&
       log.content.startsWith("Completed")
       ? `Completed ${log.previousValue}`
       : `Cleared ${log.previousValue}`;

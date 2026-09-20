@@ -40,5 +40,4 @@ export type {
   ThreadNote,
   ThreadNotePage,
   ThreadState,
-  VersionedThread,
 } from "./models";

@@ -90,7 +90,7 @@ function isActivityLogEntryType(
 ): value is ActivityLogEntry["type"] {
   return (
     value === "area_move" ||
-    value === "next_action_change" ||
+    value === "next_move_change" ||
     value === "state_change" ||
     value === "follow_up_change"
   );
@@ -236,11 +236,12 @@ export function decodeThreadList(value: unknown): Thread[] | undefined {
 export function decodeNote(value: unknown): Note | undefined {
   if (!isObject(value)) return undefined;
 
-  const { _id, body, when, state, completedAt, createdAt, updatedAt } = value;
+  const { _id, body, attentionDate, state, completedAt, createdAt, updatedAt } =
+    value;
   if (
     typeof _id !== "string" ||
     typeof body !== "string" ||
-    !isOptionalSafeInteger(when) ||
+    !isOptionalSafeInteger(attentionDate) ||
     !isNoteState(state) ||
     !isOptionalSafeInteger(completedAt) ||
     !isSafeInteger(createdAt) ||
@@ -252,7 +253,7 @@ export function decodeNote(value: unknown): Note | undefined {
   return {
     _id: _id as NoteId,
     body,
-    ...(when === undefined ? {} : { when }),
+    ...(attentionDate === undefined ? {} : { attentionDate }),
     state,
     ...(completedAt === undefined ? {} : { completedAt }),
     createdAt,

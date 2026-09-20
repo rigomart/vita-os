@@ -120,7 +120,7 @@ export interface ApplicationClient {
   countOpenNotes(): Promise<OperationResult<number>>;
   createNote(input: {
     body: string;
-    when?: number;
+    attentionDate?: number;
   }): Promise<OperationResult<Note>>;
   updateNoteBody(input: {
     noteId: NoteId;
@@ -128,7 +128,7 @@ export interface ApplicationClient {
   }): Promise<OperationResult<Note>>;
   updateNoteAttentionDate(input: {
     noteId: NoteId;
-    when: Clearable<number>;
+    attentionDate: Clearable<number>;
   }): Promise<OperationResult<Note>>;
   markNoteDone(input: { noteId: NoteId }): Promise<OperationResult<Note>>;
   markNoteOpen(input: { noteId: NoteId }): Promise<OperationResult<Note>>;

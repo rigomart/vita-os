@@ -10,12 +10,12 @@ import { call, createSession, expectError, succeed } from "./sessions";
 async function capture(
   session: Session,
   body: string,
-  when?: number,
+  attentionDate?: number,
 ): Promise<Note> {
   return succeed<Note>("/v1/notes", {
     method: "POST",
     session,
-    body: { body, ...(when === undefined ? {} : { when }) },
+    body: { body, ...(attentionDate === undefined ? {} : { attentionDate }) },
   });
 }
 
@@ -42,7 +42,7 @@ describe("capturing a Note", () => {
     expect(plain).not.toHaveProperty("when");
     expect(plain).not.toHaveProperty("completedAt");
     expect(plain.updatedAt).toBe(plain.createdAt);
-    expect(dated.when).toBe(may20);
+    expect(dated.attentionDate).toBe(may20);
   });
 
   it("refuses a blank body", async () => {
@@ -141,18 +141,18 @@ describe("editing a Note", () => {
     const dated = await succeed<Note>(`/v1/notes/${note._id}/attention-date`, {
       method: "PATCH",
       session: owner,
-      body: { when: may20 },
+      body: { attentionDate: may20 },
     });
     const cleared = await succeed<Note>(
       `/v1/notes/${note._id}/attention-date`,
       {
         method: "PATCH",
         session: owner,
-        body: { when: null },
+        body: { attentionDate: null },
       },
     );
 
-    expect(dated.when).toBe(may20);
+    expect(dated.attentionDate).toBe(may20);
     expect(cleared).not.toHaveProperty("when");
   });
 
@@ -172,7 +172,7 @@ describe("editing a Note", () => {
       await call(`/v1/notes/${note._id}/attention-date`, {
         method: "PATCH",
         session: owner,
-        body: { when: "tomorrow" },
+        body: { attentionDate: "tomorrow" },
       }),
       { status: 400, code: "validation" },
     );
@@ -335,7 +335,7 @@ describe("discarding a Note", () => {
 
     for (const [path, body] of [
       [`/v1/notes/${theirs._id}/body`, { body: "Mine now" }],
-      [`/v1/notes/${theirs._id}/attention-date`, { when: 1 }],
+      [`/v1/notes/${theirs._id}/attention-date`, { attentionDate: 1 }],
       [`/v1/notes/${theirs._id}/state`, { state: "done" }],
     ] as const) {
       expectError(await call(path, { method: "PATCH", session: owner, body }), {

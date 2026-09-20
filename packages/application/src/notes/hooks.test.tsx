@@ -157,24 +157,27 @@ describe("editing a Note", () => {
 
   it("sets and clears the Attention Date", async () => {
     const client = createFakeApplicationClient({
-      updateNoteAttentionDate: async () => success({ ...note, when: 5_000 }),
+      updateNoteAttentionDate: async () =>
+        success({ ...note, attentionDate: 5_000 }),
     });
     const { wrapper, cache } = createHarness(client, seedInbox([note]));
     const { result } = renderHook(() => useUpdateNoteAttentionDate(), {
       wrapper,
     });
 
-    act(() => result.current.mutate({ noteId: note._id, when: 5_000 }));
+    act(() =>
+      result.current.mutate({ noteId: note._id, attentionDate: 5_000 }),
+    );
     await waitFor(() =>
       expect(
-        cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]?.when,
+        cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]?.attentionDate,
       ).toBe(5_000),
     );
 
-    act(() => result.current.mutate({ noteId: note._id, when: null }));
+    act(() => result.current.mutate({ noteId: note._id, attentionDate: null }));
     await waitFor(() =>
       expect(
-        cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]?.when,
+        cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]?.attentionDate,
       ).toBeUndefined(),
     );
   });

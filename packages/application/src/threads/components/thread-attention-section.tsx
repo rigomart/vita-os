@@ -4,8 +4,8 @@ import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-actio
 import { useFeedback } from "@vita-os/ui/lib/feedback";
 
 import { useAttentionClock } from "../../hooks/use-attention-clock";
+import { useReplaceUpNext } from "../hooks";
 import { useCompleteNextMove } from "../use-complete-next-move";
-import { useReplaceUpNext } from "../use-replace-up-next";
 import { useUpdateThread } from "../use-update-thread";
 import { ThreadAttention } from "./thread-attention";
 
@@ -20,7 +20,7 @@ export function ThreadAttentionSection({
   const feedback = useFeedback();
   const updateThread = useUpdateThread(thread);
   const completeNextMove = useCompleteNextMove(thread);
-  const replaceUpNext = useReplaceUpNext(thread);
+  const replaceUpNext = useReplaceUpNext();
 
   const { run: setNextMove, isPending: isSetPending } = useGuardedAsyncAction(
     async (nextMove: string) => {
@@ -67,7 +67,7 @@ export function ThreadAttentionSection({
       // two quick edits compose instead of racing — dropping the second one
       // is the only way to lose an edit here.
       onReplaceUpNext={(moves) => {
-        void replaceUpNext(moves).catch(() => {
+        void replaceUpNext.mutateAsync({ thread, moves }).catch(() => {
           feedback.error("Could not save that change. Please try again.");
         });
       }}

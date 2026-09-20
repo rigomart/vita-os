@@ -2,8 +2,9 @@
  * How Vita OS decides what deserves attention, and in what order.
  *
  * Pure grouping over values the caller already holds: the Dashboard, the Area
- * page, and the Inbox all read the same rules, so the awareness model cannot
- * drift between them. Nothing here knows about storage, React, or a transport.
+ * page, and the Notes screen all read the same rules, so the awareness model
+ * cannot drift between them. Nothing here knows about storage, React, or a
+ * transport.
  */
 
 export interface ThreadAttentionInput {
@@ -30,7 +31,7 @@ export interface NoteAttentionInput {
   completedAt?: number | null;
   createdAt: number;
   state: "done" | "open";
-  when?: number | null;
+  attentionDate?: number | null;
 }
 
 export interface NoteAttentionGroups<TNote> {
@@ -168,7 +169,10 @@ export function compareNotesByAttention<TNote extends NoteAttentionInput>(
   }
 
   if (aGroup === "pastDue" || aGroup === "comingUp") {
-    return (a.when ?? 0) - (b.when ?? 0) || b.createdAt - a.createdAt;
+    return (
+      (a.attentionDate ?? 0) - (b.attentionDate ?? 0) ||
+      b.createdAt - a.createdAt
+    );
   }
 
   return b.createdAt - a.createdAt;
@@ -189,13 +193,13 @@ function getNoteAttentionGroup(
   timezoneOffsetMinutes?: number,
 ): NoteAttentionGroup {
   if (note.state === "done") return "completed";
-  if (note.when == null) return "noDate";
+  if (note.attentionDate == null) return "noDate";
 
-  const when = getDayKey(note.when, timezoneOffsetMinutes);
+  const attention = getDayKey(note.attentionDate, timezoneOffsetMinutes);
   const today = getDayKey(currentDate, timezoneOffsetMinutes);
 
-  if (when < today) return "pastDue";
-  if (when === today) return "today";
+  if (attention < today) return "pastDue";
+  if (attention === today) return "today";
   return "comingUp";
 }
 

@@ -30,7 +30,8 @@ export {
   type ThreadAttentionGroups,
   type ThreadAttentionInput,
 } from "./attention";
-export { clearedToAbsent, newRecordId } from "./clearable";
+export { clearedToAbsent } from "./clearable";
+export { newRecordId } from "./record-id";
 export * from "./complete-next-move";
 export {
   CONDITION_OPTIONS,

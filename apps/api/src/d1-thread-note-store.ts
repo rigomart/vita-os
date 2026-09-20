@@ -19,8 +19,8 @@ import type {
   ThreadNoteStore,
 } from "./store";
 
-import { doneBoundary } from "./d1-note-store";
-import { doneCursor } from "./page-cursor";
+import { updateOwnedRecord } from "./d1-owned-record";
+import { doneCursor, pageBoundary, toPage } from "./page-cursor";
 import { THREAD_NOTE_COLUMNS, toThreadNote } from "./rows";
 import { found, notFound } from "./store";
 
@@ -64,7 +64,7 @@ export class D1ThreadNoteStore implements ThreadNoteStore {
 
     const cursor =
       input.cursor === undefined ? undefined : doneCursor.decode(input.cursor);
-    const boundary = doneBoundary(cursor);
+    const boundary = pageBoundary("completed_at", cursor);
     const result = await this.database
       .prepare(
         `SELECT ${THREAD_NOTE_COLUMNS}
@@ -76,21 +76,13 @@ export class D1ThreadNoteStore implements ThreadNoteStore {
       .bind(input.actorId, input.threadId, ...boundary.binds, input.limit + 1)
       .all<ThreadNoteRow>();
 
-    const rows = result.results;
-    const entries = rows.slice(0, input.limit).map(toThreadNote);
-    const lastEntry = entries.at(-1);
-
-    return found({
-      entries,
-      ...(rows.length <= input.limit || lastEntry === undefined
-        ? {}
-        : {
-            nextCursor: doneCursor.encode({
-              at: lastEntry.completedAt ?? null,
-              id: lastEntry._id,
-            }),
-          }),
-    });
+    return found(
+      toPage(result.results, input.limit, {
+        toEntry: toThreadNote,
+        cursorFor: (note) => ({ at: note.completedAt ?? null, id: note._id }),
+        codec: doneCursor,
+      }),
+    );
   }
 
   /**
@@ -202,23 +194,20 @@ export class D1ThreadNoteStore implements ThreadNoteStore {
     return thread !== null;
   }
 
-  private async write(
+  private write(
     actorId: string,
     threadNoteId: string,
     assignments: string,
     binds: (string | number | null)[],
   ): Promise<StoreResult<ThreadNote>> {
-    const row = await this.database
-      .prepare(
-        `UPDATE thread_notes
-         SET ${assignments}
-         WHERE user_id = ? AND id = ?
-         RETURNING ${THREAD_NOTE_COLUMNS}`,
-      )
-      .bind(...binds, actorId, threadNoteId)
-      .first<ThreadNoteRow>();
-    if (row === null) return notFound;
-
-    return found(toThreadNote(row));
+    return updateOwnedRecord<ThreadNoteRow, ThreadNote>(this.database, {
+      table: "thread_notes",
+      columns: THREAD_NOTE_COLUMNS,
+      assignments,
+      binds,
+      actorId,
+      id: threadNoteId,
+      toValue: toThreadNote,
+    });
   }
 }

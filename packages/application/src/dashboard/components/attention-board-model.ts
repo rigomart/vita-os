@@ -53,7 +53,7 @@ export function buildAttentionBoard(
       (note): BoardItem => ({
         kind: "note",
         note,
-        when: note.when ?? undefined,
+        when: note.attentionDate ?? undefined,
       }),
     ),
   ];
@@ -79,7 +79,7 @@ export function buildAttentionBoard(
         .sort(byThreadOrder)
         .map((thread) => ({ kind: "thread", thread })),
       notes: notes
-        .filter((note) => note.when == null)
+        .filter((note) => note.attentionDate == null)
         .sort((a, b) => b.createdAt - a.createdAt)
         .map((note) => ({ kind: "note", note })),
     },

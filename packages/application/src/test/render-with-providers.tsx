@@ -18,15 +18,15 @@ import { useMemo, type ReactElement, type ReactNode } from "react";
 import { vi } from "vitest";
 
 import { ApplicationClientProvider } from "../application-client-provider";
-import { createFakeApplicationClient } from "./fake-application-client";
+import { createQuietApplicationClient } from "./fake-application-client";
 
 export type FeedbackMock = Feedback;
 
 type ProviderOptions = {
   /**
-   * The application client the screens read and write through. Left out, every
-   * operation refuses, which is what a screen that should not have asked for
-   * anything deserves.
+   * The application client the screens read and write through. Left out, reads
+   * answer empty and commands refuse, so an incidental read elsewhere on the
+   * screen cannot fail the test the way a real failure would.
    */
   applicationClient?: ApplicationClient;
   /** A cache a test can seed and then inspect. */
@@ -75,7 +75,7 @@ function createWrapper(
     }, []);
 
     const client = useMemo(
-      () => applicationClient ?? createFakeApplicationClient(),
+      () => applicationClient ?? createQuietApplicationClient(),
       [],
     );
     const cache = useMemo(() => queryClient ?? createTestQueryClient(), []);

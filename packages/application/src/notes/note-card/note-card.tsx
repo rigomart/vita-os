@@ -39,7 +39,7 @@ export function NoteCard({ note, now }: { note: Note; now: number }) {
     isWhenPending,
   } = useNoteRowActions(note);
   const done = note.state === "done";
-  const tone = done ? undefined : whenTone(note.when, now);
+  const tone = done ? undefined : whenTone(note.attentionDate, now);
   const stamp =
     done && note.completedAt !== undefined ? note.completedAt : note.createdAt;
 
@@ -73,7 +73,7 @@ export function NoteCard({ note, now }: { note: Note; now: number }) {
       {/* No divider: the dialog separates by whitespace, and so does the card. */}
       <div className="mt-3 flex items-center gap-1">
         <WhenPopover
-          when={note.when}
+          when={note.attentionDate}
           busy={isWhenPending}
           onSetWhen={handleUpdateWhen}
           trigger={
@@ -83,22 +83,22 @@ export function NoteCard({ note, now }: { note: Note; now: number }) {
               disabled={isWhenPending}
               aria-busy={isWhenPending}
               aria-label={
-                note.when === undefined
+                note.attentionDate === undefined
                   ? "Set attention date"
                   : "Change attention date"
               }
               className={cn(
                 "-ml-1 h-7 gap-1.5 rounded-full px-2 text-2xs font-normal",
-                note.when === undefined
+                note.attentionDate === undefined
                   ? "text-muted-foreground/60 opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 aria-expanded:opacity-100"
                   : "text-muted-foreground",
                 tone && whenToneClassName[tone],
               )}
             >
               <Bell className="size-3" />
-              {note.when === undefined
+              {note.attentionDate === undefined
                 ? "Attention date"
-                : shortDate(note.when)}
+                : shortDate(note.attentionDate)}
             </Button>
           }
         />

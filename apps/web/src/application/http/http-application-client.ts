@@ -267,7 +267,7 @@ export function createHttpApplicationClient({
       send(
         "PATCH",
         `${path("notes", input.noteId)}/attention-date`,
-        { when: input.when },
+        { attentionDate: input.attentionDate },
         decodeNote,
       ),
     markNoteDone: (input) =>

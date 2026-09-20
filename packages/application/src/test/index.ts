@@ -7,6 +7,7 @@
  */
 export {
   createFakeApplicationClient,
+  createQuietApplicationClient,
   deferred,
   failure,
   success,

@@ -16,7 +16,7 @@ import {
   deferred,
   success,
 } from "../test/fake-application-client";
-import { anArea, aThread, aVersionedThread } from "../test/fixtures";
+import { anArea, aThread } from "../test/fixtures";
 import { createHarness } from "../test/harness";
 import {
   useCreateThread,
@@ -47,7 +47,7 @@ function seedThreadReads(overrides: { thread?: Thread } = {}) {
   ) => {
     cache.setQueryData(queryKeys.threads.open(), [seeded]);
     cache.setQueryData<ThreadDetail>(queryKeys.threads.detail(seeded.slug), {
-      thread: { ...aVersionedThread(), ...seeded },
+      thread: seeded,
       area: health,
     });
     cache.setQueryData<AreaDetail>(queryKeys.areas.detail(health.slug), {

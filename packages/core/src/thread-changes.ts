@@ -148,7 +148,7 @@ export function buildThreadPatchLogEntries(
 
   if (hasOwn(safePatch, "nextMove")) {
     const entry = buildFieldChangeLogEntry({
-      type: "next_action_change",
+      type: "next_move_change",
       oldValue: thread.nextMove ?? undefined,
       newValue: safePatch.nextMove ?? undefined,
       label: "Next move",

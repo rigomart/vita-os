@@ -3,7 +3,7 @@ import type { ActivityLogEntry } from "@vita-os/contracts";
 type ActivityLogType = ActivityLogEntry["type"];
 
 const ACTIVITY_LOG_ENTRY_LABELS: Record<ActivityLogType, string> = {
-  next_action_change: "Next move",
+  next_move_change: "Next move",
   state_change: "Lifecycle",
   follow_up_change: "Follow-up",
   area_move: "Area",

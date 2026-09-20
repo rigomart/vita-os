@@ -27,7 +27,7 @@ import type { WorkerEnv } from "./env";
 import type { ActivityRow, AreaRow, ThreadRow } from "./rows";
 import type { Actored, StoreClock, StoreResult, ThreadStore } from "./store";
 
-import { activityCursor } from "./page-cursor";
+import { activityCursor, pageBoundary, toPage } from "./page-cursor";
 import {
   ACTIVITY_COLUMNS,
   AREA_COLUMNS,
@@ -111,7 +111,7 @@ export class D1ThreadStore implements ThreadStore {
 
     return found({
       thread: toThread(row),
-      area: toAreaSummary(unprefix(row, "area__") as unknown as AreaRow),
+      area: toAreaSummary(joinedColumns(row, "area__") as unknown as AreaRow),
     });
   }
 
@@ -182,37 +182,31 @@ export class D1ThreadStore implements ThreadStore {
         ...requested,
         ...(title === undefined ? {} : { title }),
       });
+      // A retitled Thread gets a new slug; the old one stops resolving.
+      const rename =
+        title !== undefined && title !== thread.title
+          ? { slug: generateSlug(title) }
+          : {};
 
+      // Naming both ends of a move is what lets the Activity Log say where the
+      // Thread came from. An Area that is not the actor's stops the move here.
+      let areaNames: { from: string; to: string } | undefined;
       if (patch.areaId !== undefined && patch.areaId !== thread.areaId) {
         const destination = await this.readArea(actorId, patch.areaId);
         if (destination === null) return missing("area");
 
         const origin = await this.readArea(actorId, thread.areaId);
-        const rename =
-          title !== undefined && title !== thread.title
-            ? { slug: generateSlug(title) }
-            : {};
-        return found(
-          decideThreadUpdate({
-            thread,
-            patch: { ...patch, ...rename },
-            ...(resolutionNote === undefined ? {} : { resolutionNote }),
-            ...(origin === null
-              ? {}
-              : { areaNames: { from: origin.name, to: destination.name } }),
-          }),
-        );
+        if (origin !== null) {
+          areaNames = { from: origin.name, to: destination.name };
+        }
       }
 
-      const rename =
-        title !== undefined && title !== thread.title
-          ? { slug: generateSlug(title) }
-          : {};
       return found(
         decideThreadUpdate({
           thread,
           patch: { ...patch, ...rename },
           ...(resolutionNote === undefined ? {} : { resolutionNote }),
+          ...(areaNames === undefined ? {} : { areaNames }),
         }),
       );
     });
@@ -330,46 +324,25 @@ export class D1ThreadStore implements ThreadStore {
       input.cursor === undefined
         ? undefined
         : activityCursor.decode(input.cursor);
-    const limit = input.limit;
+    const boundary = pageBoundary("created_at", cursor);
     const result = await this.database
       .prepare(
         `SELECT ${ACTIVITY_COLUMNS}
          FROM activity_log_entries
-         WHERE user_id = ? AND thread_id = ?
-           AND (
-             ? IS NULL
-             OR created_at < ?
-             OR (created_at = ? AND id < ?)
-           )
+         WHERE user_id = ? AND thread_id = ?${boundary.sql}
          ORDER BY created_at DESC, id DESC
          LIMIT ?`,
       )
-      .bind(
-        input.actorId,
-        input.threadId,
-        cursor?.at ?? null,
-        cursor?.at ?? null,
-        cursor?.at ?? null,
-        cursor?.id ?? null,
-        limit + 1,
-      )
+      .bind(input.actorId, input.threadId, ...boundary.binds, input.limit + 1)
       .all<ActivityRow>();
 
-    const rows = result.results;
-    const entries = rows.slice(0, limit).map(toActivityLogEntry);
-    const lastEntry = entries.at(-1);
-
-    return found({
-      entries,
-      ...(rows.length <= limit || lastEntry === undefined
-        ? {}
-        : {
-            nextCursor: activityCursor.encode({
-              at: lastEntry.createdAt,
-              id: lastEntry._id,
-            }),
-          }),
-    });
+    return found(
+      toPage(result.results, input.limit, {
+        toEntry: toActivityLogEntry,
+        cursorFor: (entry) => ({ at: entry.createdAt, id: entry._id }),
+        codec: activityCursor,
+      }),
+    );
   }
 
   private async readThread(
@@ -560,13 +533,19 @@ function prefixColumns(table: string, columns: string, alias = ""): string {
     .join(", ");
 }
 
-function unprefix(
+/**
+ * The joined Area's own columns, taken back out of the joined row.
+ *
+ * A join has to alias one side's columns — both tables have an `id` — so the Area
+ * arrives prefixed and is read back out under its own names.
+ */
+function joinedColumns(
   row: Record<string, unknown>,
   alias: string,
 ): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
+  const columns: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(row)) {
-    if (key.startsWith(alias)) result[key.slice(alias.length)] = value;
+    if (key.startsWith(alias)) columns[key.slice(alias.length)] = value;
   }
-  return result;
+  return columns;
 }

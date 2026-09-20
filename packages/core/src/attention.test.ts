@@ -79,7 +79,7 @@ function note(
     completedAt?: number;
     createdAt?: number;
     state?: "done" | "open";
-    when?: number;
+    attentionDate?: number;
   } = {},
 ) {
   return {
@@ -94,14 +94,14 @@ describe("Note attention ordering", () => {
   it("orders every Inbox group by its attention rule", () => {
     const groups = groupNotesByAttention(
       [
-        note("future-later", { when: today + 3 * 86_400_000 }),
-        note("today-new", { when: today, createdAt: 8 }),
+        note("future-later", { attentionDate: today + 3 * 86_400_000 }),
+        note("today-new", { attentionDate: today, createdAt: 8 }),
         note("done-old", { state: "done", completedAt: 10 }),
         note("undated-old", { createdAt: 2 }),
-        note("past-recent", { when: today - 86_400_000 }),
-        note("future-sooner", { when: today + 86_400_000 }),
-        note("today-old", { when: today, createdAt: 3 }),
-        note("past-old", { when: today - 4 * 86_400_000 }),
+        note("past-recent", { attentionDate: today - 86_400_000 }),
+        note("future-sooner", { attentionDate: today + 86_400_000 }),
+        note("today-old", { attentionDate: today, createdAt: 3 }),
+        note("past-old", { attentionDate: today - 4 * 86_400_000 }),
         note("done-new", { state: "done", completedAt: 20 }),
         note("undated-new", { createdAt: 9 }),
       ],
@@ -133,7 +133,7 @@ describe("Note attention ordering", () => {
   it("counts every Open Note regardless of When", () => {
     const notes = [
       note("undated"),
-      note("scheduled", { when: today + 86_400_000 }),
+      note("scheduled", { attentionDate: today + 86_400_000 }),
       note("done", { state: "done" }),
     ];
 

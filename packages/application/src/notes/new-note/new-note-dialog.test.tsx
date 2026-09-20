@@ -100,7 +100,7 @@ describe("NewNoteDialog", () => {
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith({
       body: "A thought\nIts context",
-      when: undefined,
+      attentionDate: undefined,
     });
   });
 });

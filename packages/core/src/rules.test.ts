@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { clearedToAbsent, newRecordId } from "./clearable";
+import { clearedToAbsent } from "./clearable";
 import { ConflictError, ValidationError } from "./errors";
 import { generateSlug, slugify, validateAreaName } from "./slug";
 import { requireNonBlankText } from "./text";
@@ -103,10 +103,5 @@ describe("clearable values", () => {
 
     expect(patch).toEqual({ summary: undefined, title: "New" });
     expect(Object.keys(patch).sort()).toEqual(["summary", "title"]);
-  });
-
-  it("mints distinct opaque record IDs", () => {
-    expect(newRecordId()).not.toBe(newRecordId());
-    expect(newRecordId()).toHaveLength(36);
   });
 });

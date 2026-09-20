@@ -2,7 +2,7 @@ import type { Thread } from "@vita-os/contracts";
 
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 
-import { useRemoveThread } from "../use-remove-thread";
+import { useRemoveThread } from "../hooks";
 import { useUpdateThread } from "../use-update-thread";
 import { ThreadLifecycleMenu } from "./thread-lifecycle-menu";
 
@@ -16,7 +16,7 @@ export function ThreadLifecycleActionsSection({
   onRequestClose,
 }: ThreadLifecycleActionsProps) {
   const updateThread = useUpdateThread(thread);
-  const removeThread = useRemoveThread(thread);
+  const removeThread = useRemoveThread();
 
   const { run: resolveThread, isPending: isResolving } = useGuardedAsyncAction(
     async (resolutionNote?: string) => {
@@ -37,7 +37,7 @@ export function ThreadLifecycleActionsSection({
 
   const { run: deleteThread, isPending: isDeleting } = useGuardedAsyncAction(
     async () => {
-      await removeThread();
+      await removeThread.mutateAsync({ thread });
     },
     { successMessage: "Thread deleted", errorToast: true },
   );

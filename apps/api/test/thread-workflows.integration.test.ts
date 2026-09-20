@@ -170,12 +170,12 @@ describe("Next Move changes", () => {
         entry.content,
       ]),
     ).toEqual([
-      ["next_action_change", 'Next move set to "Call clinic"'],
+      ["next_move_change", 'Next move set to "Call clinic"'],
       [
-        "next_action_change",
+        "next_move_change",
         'Next move changed from "Call clinic" to "Book appointment"',
       ],
-      ["next_action_change", "Next move cleared"],
+      ["next_move_change", "Next move cleared"],
     ]);
   });
 
@@ -240,6 +240,43 @@ describe("Follow-up changes", () => {
     expect(
       (await activityOf(owner, thread)).map((entry) => entry.content),
     ).toEqual(['Follow-up set to "May 20, 2026"', "Follow-up cleared"]);
+  });
+});
+
+describe("entries written by one change", () => {
+  it("reads back in the order they were written, sharing one timestamp", async () => {
+    const owner = await createSession("thread-tied-entries");
+    const from = await createArea(owner, "Health");
+    const to = await createArea(owner, "Home");
+    const thread = await createThread(owner, from);
+    await succeed(`/v1/threads/${thread._id}`, {
+      method: "PATCH",
+      session: owner,
+      body: { nextMove: "Call clinic" },
+    });
+
+    // One change that earns three entries: the move, the Next Move, the date.
+    await succeed(`/v1/threads/${thread._id}`, {
+      method: "PATCH",
+      session: owner,
+      body: {
+        areaId: to._id,
+        nextMove: "Book appointment",
+        followUp: Date.UTC(2026, 4, 20),
+      },
+    });
+
+    const written = await activityOf(owner, thread);
+    const fromOneChange = written.slice(1);
+    expect(fromOneChange.map((entry) => entry.type)).toEqual([
+      "area_move",
+      "next_move_change",
+      "follow_up_change",
+    ]);
+    // They share the instant, so the order can only come from their IDs.
+    expect(new Set(fromOneChange.map((entry) => entry.createdAt)).size).toBe(1);
+    const ids = fromOneChange.map((entry) => entry._id);
+    expect([...ids].sort()).toEqual(ids);
   });
 });
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { Route as rootRoute } from "@/routes/__root";
+import { Route as authenticatedRoute } from "@/routes/_authenticated/route";
+import { Route as unauthenticatedRoute } from "@/routes/_unauthenticated/route";
+import { Route as signInRoute } from "@/routes/_unauthenticated/sign-in";
+import { Route as signUpRoute } from "@/routes/_unauthenticated/sign-up";
+
 /**
  * Every full-page route declares a boundary.
  *
@@ -10,14 +16,12 @@ import { describe, expect, it } from "vitest";
  */
 describe("full-page routes", () => {
   it.each([
-    ["root", () => import("@/routes/__root")],
-    ["authenticated layout", () => import("@/routes/_authenticated/route")],
-    ["unauthenticated layout", () => import("@/routes/_unauthenticated/route")],
-    ["sign in", () => import("@/routes/_unauthenticated/sign-in")],
-    ["sign up", () => import("@/routes/_unauthenticated/sign-up")],
-  ])("declares an error boundary for the %s route", async (_name, load) => {
-    const { Route } = await load();
-
-    expect(Route.options.errorComponent).toBeDefined();
+    ["root", rootRoute],
+    ["authenticated layout", authenticatedRoute],
+    ["unauthenticated layout", unauthenticatedRoute],
+    ["sign in", signInRoute],
+    ["sign up", signUpRoute],
+  ])("declares an error boundary for the %s route", (_name, route) => {
+    expect(route.options.errorComponent).toBeDefined();
   });
 });

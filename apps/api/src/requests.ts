@@ -6,7 +6,7 @@ import type {
   ThreadState,
 } from "@vita-os/contracts";
 
-import { AREA_ICONS, CONDITIONS } from "@vita-os/core";
+import { isAreaIcon, isCondition } from "@vita-os/core";
 
 /**
  * What the Worker accepts.
@@ -23,14 +23,6 @@ export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isCondition(value: unknown): value is Condition {
-  return CONDITIONS.includes(value as Condition);
-}
-
-function isAreaIcon(value: unknown): value is AreaIcon {
-  return AREA_ICONS.includes(value as AreaIcon);
-}
-
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
@@ -41,6 +33,11 @@ function isClearableString(value: unknown): value is string | null {
 
 function isTimestamp(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value);
+}
+
+/** A revision counts changes, so any nonnegative whole number will do. */
+function isRevision(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
 function isClearableTimestamp(value: unknown): value is number | null {
@@ -221,8 +218,7 @@ export function decodeCompleteNextMove(value: unknown): Decoded<{
     !Object.hasOwn(value, "expectedNextMove") ||
     !Object.hasOwn(value, "expectedRevision") ||
     !isClearableString(value.expectedNextMove) ||
-    !isTimestamp(value.expectedRevision) ||
-    (value.expectedRevision as number) < 0
+    !isRevision(value.expectedRevision)
   ) {
     return undefined;
   }
@@ -235,20 +231,22 @@ export function decodeCompleteNextMove(value: unknown): Decoded<{
 
 export function decodeCreateNote(value: unknown): Decoded<{
   body: string;
-  when?: number;
+  attentionDate?: number;
 }> {
   if (
     !isObject(value) ||
-    !hasOnlyKeys(value, ["body", "when"]) ||
+    !hasOnlyKeys(value, ["body", "attentionDate"]) ||
     typeof value.body !== "string" ||
-    (value.when !== undefined && !isTimestamp(value.when))
+    (value.attentionDate !== undefined && !isTimestamp(value.attentionDate))
   ) {
     return undefined;
   }
 
   return {
     body: value.body,
-    ...(value.when === undefined ? {} : { when: value.when as number }),
+    ...(value.attentionDate === undefined
+      ? {}
+      : { attentionDate: value.attentionDate as number }),
   };
 }
 
@@ -266,17 +264,17 @@ export function decodeBody(value: unknown): Decoded<{ body: string }> {
 
 export function decodeAttentionDate(
   value: unknown,
-): Decoded<{ when: number | null }> {
+): Decoded<{ attentionDate: number | null }> {
   if (
     !isObject(value) ||
-    !hasOnlyKeys(value, ["when"]) ||
-    !Object.hasOwn(value, "when") ||
-    !isClearableTimestamp(value.when)
+    !hasOnlyKeys(value, ["attentionDate"]) ||
+    !Object.hasOwn(value, "attentionDate") ||
+    !isClearableTimestamp(value.attentionDate)
   ) {
     return undefined;
   }
 
-  return { when: value.when as number | null };
+  return { attentionDate: value.attentionDate as number | null };
 }
 
 export function decodeNoteState(value: unknown): Decoded<{ state: NoteState }> {
@@ -308,3 +306,14 @@ export function decodeLimit(
 
   return limit;
 }
+
+/**
+ * How large a page may be, per history.
+ *
+ * A caller that names no size gets the fallback; one that asks for more than the
+ * maximum is refused rather than quietly served less, so an unbounded read cannot
+ * be requested by accident.
+ */
+export const ACTIVITY_PAGE_SIZE = { fallback: 20, maximum: 50 };
+
+export const NOTE_PAGE_SIZE = { fallback: 20, maximum: 50 };

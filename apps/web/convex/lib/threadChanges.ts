@@ -298,6 +298,15 @@ export function buildThreadLifecyclePatch(
 }
 
 /**
+ * What this deployment stores for a Next Move change.
+ *
+ * The shared rule now names the entry `next_move_change`, which is what the
+ * product calls it. Convex's own rows say `next_action_change` and keep saying
+ * it: this deployment's data is not migrated, only read, until cutover.
+ */
+const storedEntryType = "next_action_change" as const;
+
+/**
  * Complete the Next Move, and — when Up Next holds moves — hand the slot
  * straight to the front one. The promotion rides the completion entry rather
  * than adding an entry of its own, so a run down a planned Thread reads as one
@@ -323,7 +332,7 @@ export async function completeNextMove(
       await recordActivity(ctx, {
         userId: input.actorId,
         threadId: thread._id,
-        entry: decision.activity,
+        entry: { ...decision.activity, type: storedEntryType },
         createdAt: Date.now(),
       });
       return { status: "completed" };

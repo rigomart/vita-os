@@ -39,7 +39,7 @@ export function DashboardNote({
   const updateNoteBody = useUpdateNoteBody();
   const updateNoteWhen = useUpdateNoteWhen();
 
-  const when = note.when ?? undefined;
+  const when = note.attentionDate ?? undefined;
   const late = when !== undefined && dayDelta(when, currentDate) < 0;
   const due = when !== undefined && dayDelta(when, currentDate) === 0;
 

@@ -45,10 +45,10 @@ describe("InboxNoteList", () => {
     render(
       <InboxNoteList
         notes={[
-          note("Coming up", { when: new Date(2026, 6, 18).getTime() }),
+          note("Coming up", { attentionDate: new Date(2026, 6, 18).getTime() }),
           note("No date", { createdAt: 4 }),
-          note("Today", { when: new Date(2026, 6, 17).getTime() }),
-          note("Past due", { when: new Date(2026, 6, 16).getTime() }),
+          note("Today", { attentionDate: new Date(2026, 6, 17).getTime() }),
+          note("Past due", { attentionDate: new Date(2026, 6, 16).getTime() }),
         ]}
         doneNotes={[note("Done", { state: "done", completedAt: 8 })]}
       />,
@@ -80,7 +80,9 @@ describe("InboxNoteList", () => {
 
     render(
       <InboxNoteList
-        notes={[note("Today", { when: new Date(2026, 6, 17).getTime() })]}
+        notes={[
+          note("Today", { attentionDate: new Date(2026, 6, 17).getTime() }),
+        ]}
       />,
     );
 
@@ -205,7 +207,9 @@ describe("InboxNoteList", () => {
     const user = userEvent.setup();
     render(
       <InboxNoteList
-        notes={[note("Remember", { when: new Date(2026, 6, 17).getTime() })]}
+        notes={[
+          note("Remember", { attentionDate: new Date(2026, 6, 17).getTime() }),
+        ]}
       />,
     );
     await user.click(

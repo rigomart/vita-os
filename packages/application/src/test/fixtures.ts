@@ -7,7 +7,6 @@ import type {
   ThreadId,
   ThreadNote,
   ThreadNoteId,
-  VersionedThread,
 } from "@vita-os/contracts";
 
 /** Small, named records the hook tests build their situations from. */
@@ -37,12 +36,6 @@ export function aThread(overrides: Partial<Thread> = {}): Thread {
     revision: 0,
     ...overrides,
   };
-}
-
-export function aVersionedThread(
-  overrides: Partial<VersionedThread> = {},
-): VersionedThread {
-  return { ...aThread(), revision: 0, ...overrides };
 }
 
 export function aNote(overrides: Partial<Note> = {}): Note {

@@ -55,7 +55,7 @@ const initialActivity: InfiniteData<ActivityLogPage, string | undefined> = {
       entries: [
         {
           _id: "log-2" as ActivityLogEntryId,
-          type: "next_action_change",
+          type: "next_move_change",
           content: "Captured Call clinic",
           createdAt: 2,
         },
@@ -66,7 +66,7 @@ const initialActivity: InfiniteData<ActivityLogPage, string | undefined> = {
       entries: [
         {
           _id: "log-1" as ActivityLogEntryId,
-          type: "next_action_change",
+          type: "next_move_change",
           content: "Earlier",
           createdAt: 1,
         },
@@ -252,7 +252,7 @@ describe("useCompleteNextMove", () => {
       entries: [
         {
           _id: "stale-log" as ActivityLogEntryId,
-          type: "next_action_change",
+          type: "next_move_change",
           content: "Stale",
           createdAt: 99,
         },
@@ -284,7 +284,7 @@ describe("useCompleteNextMove", () => {
       entries: [
         {
           _id: "log-3" as ActivityLogEntryId,
-          type: "next_action_change",
+          type: "next_move_change",
           content: "Completed Call clinic",
           createdAt: 3,
         },

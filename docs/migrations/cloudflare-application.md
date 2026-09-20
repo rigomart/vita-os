@@ -46,6 +46,18 @@ physical `tasks` table and its `text` column do not survive; the importer will
 translate them at cutover. IDs are opaque text, so Convex-generated IDs stay
 valid and new records get application-generated ones.
 
+Two deliberate differences from Convex are worth naming. Slugs are unique per
+owner, and a create or rename re-mints a colliding one a few times before giving
+up — Convex allowed duplicates and resolved reads to the oldest match, which made
+a slug an ambiguous address. And record IDs are time-ordered text rather than
+random: reads order by timestamp and break ties on the ID, so entries written by
+one change come back in the order they were written, which Convex got from its own
+insertion order.
+
+The Activity Log's Next Move entry is stored as `next_move_change`. Convex stores
+`next_action_change` for the same thing; that deployment keeps its own value, so
+the importer translates it at cutover.
+
 Storage is reached through capabilities named after workflows — there is no
 generic repository. A Thread change decides its patch and its Activity Log
 entries in `packages/core`, then writes them in one D1 batch: the update is
@@ -91,9 +103,24 @@ VITE_API_BASE_URL=http://localhost:8787
   forced-failure rollback, and competing completions.
 - `apps/web/convex` — kept as the behavioral reference until cutover.
 
+## Where the route definitions still live
+
+The shared application owns the product's screens, its navigation contract, and
+the search parameters those screens read and write. The route *definitions* are
+still files in the host, because the host's build generates the route tree from
+them and registers its types.
+
+Moving them into the shared application means giving it a code-based route tree
+that a host mounts — which changes how routing and type registration work — or
+having the host inject navigation, which a desktop host with no URLs would
+prefer. That decision is worth making deliberately rather than as a side effect
+of this migration.
+
 ## Still ahead
 
 - Import production data and validate it ([#351](https://github.com/rigomart/vita-os/issues/351)).
+  The importer translates Convex's `tasks`/`text` storage and its
+  `next_action_change` entry type into the canonical names.
 - Cut over and retire Convex ([#352](https://github.com/rigomart/vita-os/issues/352)),
   which removes `apps/web/convex`, the Convex dependencies, and the Convex
   deployment variables from `README.md`.

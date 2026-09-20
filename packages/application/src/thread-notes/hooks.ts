@@ -1,27 +1,21 @@
-import type {
-  InfiniteData,
-  QueryClient,
-  UseInfiniteQueryResult,
-  UseQueryResult,
-} from "@tanstack/react-query";
+import type { QueryClient, UseQueryResult } from "@tanstack/react-query";
 import type {
   ApplicationError,
   CommandAcknowledgement,
   ThreadId,
   ThreadNote,
   ThreadNoteId,
-  ThreadNotePage,
 } from "@vita-os/contracts";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
 import { newRecordId } from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
+import type { PagedResult } from "../cache/use-paged-application-query";
 
-import { useApplicationClient } from "../application-client-provider";
 import { patchById, patchQuery, removeById } from "../cache/patch";
 import { useApplicationMutation } from "../cache/use-application-mutation";
 import { useOptionalApplicationQuery } from "../cache/use-application-query";
+import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
 import { queryKeys } from "../query-keys";
 
 const DONE_PAGE_SIZE = 20;
@@ -39,10 +33,8 @@ export function useThreadNotes(
   });
 }
 
-export type DoneThreadNotesResult = UseInfiniteQueryResult<
-  InfiniteData<ThreadNotePage>,
-  ApplicationError
-> & {
+export type DoneThreadNotesResult = PagedResult<ThreadNote> & {
+  /** The same entries, named for what they are on this surface. */
   notes: ThreadNote[];
 };
 
@@ -51,33 +43,19 @@ export function useDoneThreadNotes(
   threadId: ThreadId,
   limit = DONE_PAGE_SIZE,
 ): DoneThreadNotesResult {
-  const client = useApplicationClient();
-  const query = useInfiniteQuery<
-    ThreadNotePage,
-    ApplicationError,
-    InfiniteData<ThreadNotePage>,
-    ReturnType<typeof queryKeys.threadNotes.done>,
-    string | undefined
-  >({
+  const page = usePagedApplicationQuery<ThreadNote>({
     queryKey: queryKeys.threadNotes.done(threadId, limit),
-    initialPageParam: undefined,
-    queryFn: async ({ pageParam }) => {
-      const result = await client.getDoneThreadNotePage({
+    run: (client, cursor) =>
+      client.getDoneThreadNotePage({
         threadId,
         limit,
-        ...(pageParam === undefined ? {} : { cursor: pageParam }),
-      });
-      if (!result.ok) throw result.error;
-      return result.value;
-    },
-    getNextPageParam: (page) => page.nextCursor,
+        ...(cursor === undefined ? {} : { cursor }),
+      }),
+    // The panel renders its own failure state beside the Thread.
     throwOnError: false,
   });
 
-  return {
-    ...query,
-    notes: query.data?.pages.flatMap((page) => page.entries) ?? [],
-  };
+  return { ...page, notes: page.entries };
 }
 
 function threadNoteKeys(threadId: ThreadId) {

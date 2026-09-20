@@ -13,15 +13,17 @@ import type { WorkerEnv } from "./env";
 import type { NoteRow } from "./rows";
 import type { Actored, NoteStore, StoreClock, StoreResult } from "./store";
 
-import { doneCursor, type PageCursor } from "./page-cursor";
+import { updateOwnedRecord } from "./d1-owned-record";
+import { doneCursor, pageBoundary, toPage } from "./page-cursor";
 import { NOTE_COLUMNS, toNote } from "./rows";
 import { found, notFound } from "./store";
 
 /**
  * Standalone Notes: captured on their own, attached to no Thread.
  *
- * Open Notes are read whole — the Inbox is what the user has agreed to look at,
- * so they keep it small themselves. Done Notes only grow, so they are paged.
+ * Open Notes are read whole — they are what the person has agreed to look at, so
+ * they keep the collection small themselves. Done Notes only grow, so they are
+ * paged.
  */
 export class D1NoteStore implements NoteStore {
   constructor(
@@ -44,8 +46,8 @@ export class D1NoteStore implements NoteStore {
   }
 
   /**
-   * How many Open Notes there are. Read from the same index the Inbox list reads,
-   * so the navigation badge and the list itself cannot disagree.
+   * How many Open Notes there are. Read from the same index the collection reads,
+   * so the navigation badge and the collection itself cannot disagree.
    */
   async countOpenNotes(input: Actored): Promise<number> {
     const row = await this.database
@@ -63,7 +65,7 @@ export class D1NoteStore implements NoteStore {
   ): Promise<StoreResult<NotePage>> {
     const cursor =
       input.cursor === undefined ? undefined : doneCursor.decode(input.cursor);
-    const boundary = doneBoundary(cursor);
+    const boundary = pageBoundary("completed_at", cursor);
     const result = await this.database
       .prepare(
         `SELECT ${NOTE_COLUMNS}
@@ -75,25 +77,17 @@ export class D1NoteStore implements NoteStore {
       .bind(input.actorId, ...boundary.binds, input.limit + 1)
       .all<NoteRow>();
 
-    const rows = result.results;
-    const entries = rows.slice(0, input.limit).map(toNote);
-    const lastEntry = entries.at(-1);
-
-    return found({
-      entries,
-      ...(rows.length <= input.limit || lastEntry === undefined
-        ? {}
-        : {
-            nextCursor: doneCursor.encode({
-              at: lastEntry.completedAt ?? null,
-              id: lastEntry._id,
-            }),
-          }),
-    });
+    return found(
+      toPage(result.results, input.limit, {
+        toEntry: toNote,
+        cursorFor: (note) => ({ at: note.completedAt ?? null, id: note._id }),
+        codec: doneCursor,
+      }),
+    );
   }
 
   async createNote(
-    input: Actored<{ body: string; when?: number }>,
+    input: Actored<{ body: string; attentionDate?: number }>,
   ): Promise<StoreResult<Note>> {
     const body = requireNonBlankText(input.body, "Note body");
     const now = this.clock.now();
@@ -110,7 +104,7 @@ export class D1NoteStore implements NoteStore {
         this.clock.newId(),
         input.actorId,
         body,
-        input.when ?? null,
+        input.attentionDate ?? null,
         now,
         now,
       )
@@ -130,13 +124,13 @@ export class D1NoteStore implements NoteStore {
   }
 
   async updateNoteAttentionDate(
-    input: Actored<{ noteId: NoteId; when: number | null }>,
+    input: Actored<{ noteId: NoteId; attentionDate: number | null }>,
   ): Promise<StoreResult<Note>> {
     return this.write(
       input.actorId,
       input.noteId,
       "attention_date = ?, updated_at = ?",
-      [input.when, this.clock.now()],
+      [input.attentionDate, this.clock.now()],
     );
   }
 
@@ -176,49 +170,20 @@ export class D1NoteStore implements NoteStore {
     return found(commandAcknowledged);
   }
 
-  private async write(
+  private write(
     actorId: string,
     noteId: string,
     assignments: string,
     binds: (string | number | null)[],
   ): Promise<StoreResult<Note>> {
-    const row = await this.database
-      .prepare(
-        `UPDATE notes
-         SET ${assignments}
-         WHERE user_id = ? AND id = ?
-         RETURNING ${NOTE_COLUMNS}`,
-      )
-      .bind(...binds, actorId, noteId)
-      .first<NoteRow>();
-    if (row === null) return notFound;
-
-    return found(toNote(row));
+    return updateOwnedRecord<NoteRow, Note>(this.database, {
+      table: "notes",
+      columns: NOTE_COLUMNS,
+      assignments,
+      binds,
+      actorId,
+      id: noteId,
+      toValue: toNote,
+    });
   }
-}
-
-/**
- * Where the next page of Done records starts.
- *
- * Completion times sort newest first, and a record imported without one sorts
- * last — SQLite orders NULL below every number, which is where an unknown
- * completion belongs. Once a page has crossed into those records, only their IDs
- * continue the read.
- */
-export function doneBoundary(cursor: PageCursor | undefined): {
-  sql: string;
-  binds: (string | number | null)[];
-} {
-  if (cursor === undefined) return { sql: "", binds: [] };
-
-  if (cursor.at === null) {
-    return { sql: " AND completed_at IS NULL AND id < ?", binds: [cursor.id] };
-  }
-
-  return {
-    sql:
-      " AND (completed_at IS NULL OR completed_at < ?" +
-      " OR (completed_at = ? AND id < ?))",
-    binds: [cursor.at, cursor.at, cursor.id],
-  };
 }

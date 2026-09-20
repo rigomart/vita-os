@@ -76,11 +76,8 @@ export interface Thread {
   revision: number;
 }
 
-/** @deprecated Every `Thread` now carries its revision. */
-export type VersionedThread = Thread;
-
 export interface ThreadDetail {
-  thread: VersionedThread;
+  thread: Thread;
   area: AreaSummary;
 }
 
@@ -96,8 +93,8 @@ export type NoteState = "open" | "done";
 export interface Note {
   _id: NoteId;
   body: string;
-  /** The Attention Date, when the user gave the Note one. */
-  when?: number;
+  /** The Attention Date, when the person gave the Note one. */
+  attentionDate?: number;
   state: NoteState;
   completedAt?: number;
   createdAt: number;
@@ -116,7 +113,7 @@ export interface ThreadNote {
 
 export type ActivityLogEntryType =
   | "area_move"
-  | "next_action_change"
+  | "next_move_change"
   | "state_change"
   | "follow_up_change";
 

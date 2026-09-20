@@ -1,11 +1,6 @@
-import type {
-  InfiniteData,
-  UseInfiniteQueryResult,
-  UseQueryResult,
-} from "@tanstack/react-query";
+import type { UseQueryResult } from "@tanstack/react-query";
 import type {
   ActivityLogEntry,
-  ActivityLogPage,
   ApplicationError,
   AreaSummary,
   CommandAcknowledgement,
@@ -17,17 +12,17 @@ import type {
   UpdateThreadInput,
 } from "@vita-os/contracts";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
 import { newRecordId } from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
+import type { PagedResult } from "../cache/use-paged-application-query";
 
-import { useApplicationClient } from "../application-client-provider";
 import { useApplicationMutation } from "../cache/use-application-mutation";
 import {
   useApplicationQuery,
   useOptionalApplicationQuery,
 } from "../cache/use-application-query";
+import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
 import { queryKeys } from "../query-keys";
 import {
   completeNextMoveLocally,
@@ -68,51 +63,24 @@ export function useThreadDetail(
   });
 }
 
-export type ThreadActivityResult = UseInfiniteQueryResult<
-  InfiniteData<ActivityLogPage>,
-  ApplicationError
-> & {
-  /** Every entry read so far, newest first. */
-  entries: ActivityLogEntry[];
-};
+/** One Thread's Activity Log, newest first, a bounded page at a time. */
+export type ThreadActivityResult = PagedResult<ActivityLogEntry>;
 
-/**
- * One Thread's Activity Log, a bounded page at a time.
- *
- * Pages already read stay read: asking for more adds to what is on screen rather
- * than replacing it.
- */
 export function useThreadActivity(
   threadId: ThreadId,
   limit = ACTIVITY_PAGE_SIZE,
 ): ThreadActivityResult {
-  const client = useApplicationClient();
-  const query = useInfiniteQuery<
-    ActivityLogPage,
-    ApplicationError,
-    InfiniteData<ActivityLogPage>,
-    ReturnType<typeof queryKeys.threads.activityPage>,
-    string | undefined
-  >({
+  return usePagedApplicationQuery<ActivityLogEntry>({
     queryKey: queryKeys.threads.activityPage(threadId, limit),
-    initialPageParam: undefined,
-    queryFn: async ({ pageParam }) => {
-      const result = await client.getThreadActivityPage({
+    run: (client, cursor) =>
+      client.getThreadActivityPage({
         threadId,
         limit,
-        ...(pageParam === undefined ? {} : { cursor: pageParam }),
-      });
-      if (!result.ok) throw result.error;
-      return result.value;
-    },
-    getNextPageParam: (page) => page.nextCursor,
+        ...(cursor === undefined ? {} : { cursor }),
+      }),
+    // The rail renders its own failure state beside the Thread.
     throwOnError: false,
   });
-
-  return {
-    ...query,
-    entries: query.data?.pages.flatMap((page) => page.entries) ?? [],
-  };
 }
 
 export function useCreateThread(): ApplicationMutationResult<
@@ -188,6 +156,11 @@ export function useRemoveThread(): ApplicationMutationResult<
     affected: ({ thread }, cache) =>
       threadChangeKeys(cache, { threadId: thread._id }),
     optimistic: (cache, { thread }) => showThreadRemoval(cache, thread._id),
+    // The Thread takes its Activity Log and its Notes with it.
+    alsoInvalidate: ({ thread }) => [
+      queryKeys.threads.activity(thread._id),
+      queryKeys.threadNotes.all,
+    ],
   });
 }
 

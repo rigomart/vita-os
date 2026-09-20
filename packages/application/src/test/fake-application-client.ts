@@ -80,3 +80,39 @@ export function success<T>(value: T): OperationResult<T> {
 export function failure<T>(error: ApplicationError): OperationResult<T> {
   return { ok: false, error };
 }
+
+/**
+ * A client that answers every read with nothing and refuses every command.
+ *
+ * It is what a screen gets when a test does not speak for the application at
+ * all. Reads answer empty rather than failing, because a failing read now rises
+ * to an error boundary: a test about one surface should not be torn down by an
+ * incidental read somewhere else on the screen. A command still refuses, because
+ * a write nobody configured is a test that has not said what it expects.
+ */
+export function createQuietApplicationClient(
+  overrides: Partial<ApplicationClient> = {},
+): ApplicationClient {
+  const emptyPage = async () => success({ entries: [] });
+
+  return createFakeApplicationClient({
+    listAreas: async () => success([]),
+    getAreaDetail: async () => notFound(),
+    listOpenThreads: async () => success([]),
+    getThreadDetail: async () => notFound(),
+    getThreadActivityPage: emptyPage,
+    listOpenNotes: async () => success([]),
+    getDoneNotePage: emptyPage,
+    countOpenNotes: async () => success(0),
+    listOpenThreadNotes: async () => success([]),
+    getDoneThreadNotePage: emptyPage,
+    ...overrides,
+  });
+}
+
+function notFound<T>(): OperationResult<T> {
+  return {
+    ok: false,
+    error: { code: "not_found", message: "Not found.", retryable: false },
+  };
+}

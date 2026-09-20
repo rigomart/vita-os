@@ -173,7 +173,9 @@ export function toNote(row: NoteRow): Note {
   return {
     _id: row.id as NoteId,
     body: row.body,
-    ...(row.attention_date === null ? {} : { when: row.attention_date }),
+    ...(row.attention_date === null
+      ? {}
+      : { attentionDate: row.attention_date }),
     state: row.state,
     ...(row.completed_at === null ? {} : { completedAt: row.completed_at }),
     createdAt: row.created_at,

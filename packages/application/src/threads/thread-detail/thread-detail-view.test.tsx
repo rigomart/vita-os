@@ -575,7 +575,7 @@ describe("ThreadDetailView", () => {
     mocks.activityEntries = [
       {
         _id: "log1" as ActivityLogEntryId,
-        type: "next_action_change",
+        type: "next_move_change",
         content: "Next move set",
         newValue: "Call the specialist",
         createdAt: Date.now(),

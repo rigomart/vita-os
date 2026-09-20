@@ -110,13 +110,13 @@ export interface NoteStore {
   countOpenNotes(input: Actored): Promise<number>;
   getDoneNotePage(input: Actored<PageRequest>): Promise<StoreResult<NotePage>>;
   createNote(
-    input: Actored<{ body: string; when?: number }>,
+    input: Actored<{ body: string; attentionDate?: number }>,
   ): Promise<StoreResult<Note>>;
   updateNoteBody(
     input: Actored<{ noteId: NoteId; body: string }>,
   ): Promise<StoreResult<Note>>;
   updateNoteAttentionDate(
-    input: Actored<{ noteId: NoteId; when: number | null }>,
+    input: Actored<{ noteId: NoteId; attentionDate: number | null }>,
   ): Promise<StoreResult<Note>>;
   markNoteDone(input: Actored<{ noteId: NoteId }>): Promise<StoreResult<Note>>;
   markNoteOpen(input: Actored<{ noteId: NoteId }>): Promise<StoreResult<Note>>;

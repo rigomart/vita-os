@@ -1,5 +1,3 @@
-import { platformCrypto } from "./platform-crypto";
-
 /**
  * Turns every cleared value in a patch into an absent one, keeping the key.
  *
@@ -16,9 +14,4 @@ export function clearedToAbsent<T extends Record<string, unknown>>(
     if (result[key] === null) result[key] = undefined;
   }
   return result as { [K in keyof T]: Exclude<T[K], null> };
-}
-
-/** A collision-resistant opaque record ID for a newly created record. */
-export function newRecordId(): string {
-  return platformCrypto().randomUUID();
 }

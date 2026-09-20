@@ -8,23 +8,29 @@ function startOfDayMs(timestamp: number): number {
 
 /** An Attention Date that has arrived, by the day rather than by the minute. */
 export function isNoteWhenDue(
-  when: number | undefined,
+  attentionDate: number | undefined,
   referenceDate: number,
 ): boolean {
-  if (when === undefined) {
+  if (attentionDate === undefined) {
     return false;
   }
 
-  return startOfDayMs(when) <= startOfDayMs(referenceDate);
+  return startOfDayMs(attentionDate) <= startOfDayMs(referenceDate);
 }
 
+/**
+ * Whether a Note's Attention Date should draw the eye.
+ *
+ * A Done Note never does, however overdue it was: it has already been dealt
+ * with.
+ */
 export function isNoteWhenEmphasized(
-  note: Pick<Note, "state" | "when">,
+  note: Pick<Note, "state" | "attentionDate">,
   referenceDate: number,
 ): boolean {
   if (note.state === "done") {
     return false;
   }
 
-  return isNoteWhenDue(note.when, referenceDate);
+  return isNoteWhenDue(note.attentionDate, referenceDate);
 }

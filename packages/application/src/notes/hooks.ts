@@ -1,31 +1,26 @@
-import type {
-  InfiniteData,
-  UseInfiniteQueryResult,
-  UseQueryResult,
-} from "@tanstack/react-query";
+import type { UseQueryResult } from "@tanstack/react-query";
 import type {
   ApplicationError,
   CommandAcknowledgement,
   Note,
   NoteId,
-  NotePage,
 } from "@vita-os/contracts";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
 import { newRecordId } from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
+import type { PagedResult } from "../cache/use-paged-application-query";
 
-import { useApplicationClient } from "../application-client-provider";
 import { useApplicationMutation } from "../cache/use-application-mutation";
 import { useApplicationQuery } from "../cache/use-application-query";
+import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
 import { queryKeys } from "../query-keys";
 import {
   noteKeys,
   settleCapturedNote,
   showCapturedNote,
   showNoteEdit,
-  showNoteLeavingInbox,
+  showNoteLeavingOpenNotes,
   showReopenedNote,
 } from "./optimistic";
 
@@ -53,45 +48,28 @@ export function useOpenNoteCount(): UseQueryResult<number, ApplicationError> {
   });
 }
 
-export type DoneNotesResult = UseInfiniteQueryResult<
-  InfiniteData<NotePage>,
-  ApplicationError
-> & {
+export type DoneNotesResult = PagedResult<Note> & {
+  /** The same entries, named for what they are on this surface. */
   notes: Note[];
 };
 
 /** Done Notes, newest completion first, a page at a time. */
 export function useDoneNotes(limit = DONE_PAGE_SIZE): DoneNotesResult {
-  const client = useApplicationClient();
-  const query = useInfiniteQuery<
-    NotePage,
-    ApplicationError,
-    InfiniteData<NotePage>,
-    ReturnType<typeof queryKeys.notes.done>,
-    string | undefined
-  >({
+  const page = usePagedApplicationQuery<Note>({
     queryKey: queryKeys.notes.done(limit),
-    initialPageParam: undefined,
-    queryFn: async ({ pageParam }) => {
-      const result = await client.getDoneNotePage({
+    run: (client, cursor) =>
+      client.getDoneNotePage({
         limit,
-        ...(pageParam === undefined ? {} : { cursor: pageParam }),
-      });
-      if (!result.ok) throw result.error;
-      return result.value;
-    },
-    getNextPageParam: (page) => page.nextCursor,
+        ...(cursor === undefined ? {} : { cursor }),
+      }),
   });
 
-  return {
-    ...query,
-    notes: query.data?.pages.flatMap((page) => page.entries) ?? [],
-  };
+  return { ...page, notes: page.entries };
 }
 
 export interface CaptureNoteVariables {
   body: string;
-  when?: number;
+  attentionDate?: number;
 }
 
 export function useCaptureNote(): ApplicationMutationResult<
@@ -108,7 +86,9 @@ export function useCaptureNote(): ApplicationMutationResult<
       showCapturedNote(cache, {
         _id: pendingId,
         body: input.body,
-        ...(input.when === undefined ? {} : { when: input.when }),
+        ...(input.attentionDate === undefined
+          ? {}
+          : { attentionDate: input.attentionDate }),
         state: "open",
         createdAt: now,
         updatedAt: now,
@@ -136,17 +116,22 @@ export function useUpdateNoteBody(): ApplicationMutationResult<
 
 /** The Attention Date, set or cleared. */
 export function useUpdateNoteAttentionDate(): ApplicationMutationResult<
-  { noteId: NoteId; when: number | null },
+  { noteId: NoteId; attentionDate: number | null },
   Note
 > {
-  return useApplicationMutation<{ noteId: NoteId; when: number | null }, Note>({
+  return useApplicationMutation<
+    { noteId: NoteId; attentionDate: number | null },
+    Note
+  >({
     run: (client, input) => client.updateNoteAttentionDate(input),
     affected: () => noteKeys(),
     optimistic: (cache, input) =>
       showNoteEdit(
         cache,
         input.noteId,
-        input.when === null ? { when: undefined } : { when: input.when },
+        input.attentionDate === null
+          ? { attentionDate: undefined }
+          : { attentionDate: input.attentionDate },
       ),
   });
 }
@@ -158,7 +143,7 @@ export function useCompleteNote(): ApplicationMutationResult<
   return useApplicationMutation<{ noteId: NoteId }, Note>({
     run: (client, input) => client.markNoteDone(input),
     affected: () => noteKeys(),
-    optimistic: (cache, input) => showNoteLeavingInbox(cache, input.noteId),
+    optimistic: (cache, input) => showNoteLeavingOpenNotes(cache, input.noteId),
   });
 }
 
@@ -181,6 +166,6 @@ export function useDiscardNote(): ApplicationMutationResult<
   return useApplicationMutation<{ noteId: NoteId }, CommandAcknowledgement>({
     run: (client, input) => client.removeNote(input),
     affected: () => noteKeys(),
-    optimistic: (cache, input) => showNoteLeavingInbox(cache, input.noteId),
+    optimistic: (cache, input) => showNoteLeavingOpenNotes(cache, input.noteId),
   });
 }

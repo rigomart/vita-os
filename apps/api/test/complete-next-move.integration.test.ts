@@ -202,7 +202,7 @@ describe("completion outcome", () => {
     expect(activity).toHaveLength(1);
     expect(activity[0]).toEqual({
       id: expect.any(String),
-      type: "next_action_change",
+      type: "next_move_change",
       content: 'Completed "Call clinic" — next move cleared',
       previous_value: "Call clinic",
       new_value: null,
@@ -239,7 +239,7 @@ describe("completion outcome", () => {
     expect(activity).toEqual([
       {
         id: expect.any(String),
-        type: "next_action_change",
+        type: "next_move_change",
         content:
           'Completed "Call clinic" — next move set to "Book appointment"',
         previous_value: "Call clinic",
@@ -444,7 +444,7 @@ describe("rollback", () => {
         duplicateActivityLogId,
         owner.actorId,
         threadId,
-        "next_action_change",
+        "next_move_change",
         "Existing entry",
         null,
         "Call clinic",

@@ -43,7 +43,8 @@ export function patchOpenNotes(
 /**
  * Capturing a Note is the one membership change whose effect holds without the
  * list: it adds exactly one Open Note. That matters because the count feeds the
- * navigation badge while the list is only read by the Inbox, so a Note captured
+ * navigation badge while the list is only read by the Notes screen, so a Note
+ * captured
  * from anywhere else would otherwise leave the badge frozen until the round trip
  * lands. Removals get no such fallback — whether the Note was in the Open Notes
  * at all cannot be known without them.
@@ -80,10 +81,13 @@ export function showNoteEdit(
 }
 
 /**
- * Taking a Note out of the open Inbox — completing it and discarding it both do
- * this the same way, because the Open Notes read holds Open Notes only.
+ * Taking a Note out of the Open Notes — completing it and discarding it both do
+ * this the same way, because that read holds Open Notes only.
  */
-export function showNoteLeavingInbox(cache: QueryClient, noteId: NoteId): void {
+export function showNoteLeavingOpenNotes(
+  cache: QueryClient,
+  noteId: NoteId,
+): void {
   patchOpenNotes(cache, (notes) => removeById(notes, noteId));
 }
 

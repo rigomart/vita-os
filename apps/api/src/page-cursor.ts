@@ -127,3 +127,57 @@ export const activityCursor = createPageCursorCodec("createdAt");
 export const doneCursor = createPageCursorCodec("completedAt", {
   nullableTimestamp: true,
 });
+
+/**
+ * Where the next page of a newest-first history starts.
+ *
+ * The ordering timestamp can be absent — a Done record imported without a
+ * completion time — and SQLite sorts NULL below every number, which is where an
+ * unknown completion belongs. Once a page has crossed into those records, only
+ * their IDs continue the read.
+ */
+export function pageBoundary(
+  column: string,
+  cursor: PageCursor | undefined,
+): { sql: string; binds: (string | number | null)[] } {
+  if (cursor === undefined) return { sql: "", binds: [] };
+
+  if (cursor.at === null) {
+    return { sql: ` AND ${column} IS NULL AND id < ?`, binds: [cursor.id] };
+  }
+
+  return {
+    sql:
+      ` AND (${column} IS NULL OR ${column} < ?` +
+      ` OR (${column} = ? AND id < ?))`,
+    binds: [cursor.at, cursor.at, cursor.id],
+  };
+}
+
+/**
+ * One bounded page, and the cursor that continues it.
+ *
+ * A read asks for one row more than the page holds: that extra row is how the
+ * page knows whether anything lies behind it, and it never reaches the caller.
+ * Every history in Vita OS is paged this way, so the rule lives here once rather
+ * than in each store.
+ */
+export function toPage<TRow, TEntry>(
+  rows: TRow[],
+  limit: number,
+  options: {
+    toEntry: (row: TRow) => TEntry;
+    cursorFor: (entry: TEntry) => PageCursor;
+    codec: PageCursorCodec;
+  },
+): { entries: TEntry[]; nextCursor?: string } {
+  const entries = rows.slice(0, limit).map(options.toEntry);
+  const lastEntry = entries.at(-1);
+
+  return {
+    entries,
+    ...(rows.length <= limit || lastEntry === undefined
+      ? {}
+      : { nextCursor: options.codec.encode(options.cursorFor(lastEntry)) }),
+  };
+}

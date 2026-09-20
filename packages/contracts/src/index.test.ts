@@ -96,7 +96,12 @@ const client = {
   updateNoteBody: async () => ({ ok: true, value: note }),
   updateNoteAttentionDate: async (input) => ({
     ok: true,
-    value: { ...note, ...(input.when === null ? {} : { when: input.when }) },
+    value: {
+      ...note,
+      ...(input.attentionDate === null
+        ? {}
+        : { attentionDate: input.attentionDate }),
+    },
   }),
   markNoteDone: async () => ({
     ok: true,
@@ -145,12 +150,12 @@ describe("the application contract", () => {
 
   it("spells clearing an optional value as null", async () => {
     await expect(
-      client.updateNoteAttentionDate({ noteId: note._id, when: null }),
+      client.updateNoteAttentionDate({ noteId: note._id, attentionDate: null }),
     ).resolves.toEqual({ ok: true, value: note });
 
     await expect(
-      client.updateNoteAttentionDate({ noteId: note._id, when: 12 }),
-    ).resolves.toEqual({ ok: true, value: { ...note, when: 12 } });
+      client.updateNoteAttentionDate({ noteId: note._id, attentionDate: 12 }),
+    ).resolves.toEqual({ ok: true, value: { ...note, attentionDate: 12 } });
   });
 
   it("acknowledges commands that hand nothing back", async () => {

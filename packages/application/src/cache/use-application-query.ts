@@ -13,8 +13,13 @@ import { useApplicationClient } from "../application-client-provider";
  * How the application reads.
  *
  * A read fetches when something observes it and refreshes stale data on mount,
- * on focus, and on reconnect. Nothing polls. A failure is the caller's to render
- * or to let rise to an error boundary, the way it always was.
+ * on focus, and on reconnect. Nothing polls.
+ *
+ * A read that keeps failing rises to the nearest error boundary, which is what
+ * the product has always done: a screen that cannot load its data must say so
+ * rather than show a skeleton forever. A screen that renders its own failure
+ * state — the Thread rail does — opts out with `throwOnError: false` and reads
+ * `error` itself.
  */
 export function useApplicationQuery<T>(options: {
   queryKey: QueryKey;
@@ -32,9 +37,7 @@ export function useApplicationQuery<T>(options: {
       return result.value;
     },
     ...(options.enabled === undefined ? {} : { enabled: options.enabled }),
-    ...(options.throwOnError === undefined
-      ? {}
-      : { throwOnError: options.throwOnError }),
+    throwOnError: options.throwOnError ?? true,
   });
 }
 
@@ -62,8 +65,6 @@ export function useOptionalApplicationQuery<T>(options: {
       throw result.error;
     },
     ...(options.enabled === undefined ? {} : { enabled: options.enabled }),
-    ...(options.throwOnError === undefined
-      ? {}
-      : { throwOnError: options.throwOnError }),
+    throwOnError: options.throwOnError ?? true,
   });
 }

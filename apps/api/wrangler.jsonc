@@ -2,7 +2,9 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "vita-os-api",
   "main": "src/worker.ts",
-  "compatibility_date": "2026-09-19",
+  // The pinned wrangler's runtime supports dates up to 2026-09-17; a later one
+  // makes `wrangler dev` refuse to start.
+  "compatibility_date": "2026-09-17",
   "compatibility_flags": ["nodejs_compat"],
   "d1_databases": [
     {

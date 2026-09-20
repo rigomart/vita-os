@@ -20,7 +20,7 @@ describe("decideNextMoveCompletion", () => {
         upNext: undefined,
       },
       activity: {
-        type: "next_action_change",
+        type: "next_move_change",
         content: 'Completed "Call clinic" — next move cleared',
         previousValue: "Call clinic",
         newValue: undefined,
@@ -41,7 +41,7 @@ describe("decideNextMoveCompletion", () => {
         upNext: ["Collect results"],
       },
       activity: {
-        type: "next_action_change",
+        type: "next_move_change",
         content:
           'Completed "Call clinic" — next move set to "Book appointment"',
         previousValue: "Call clinic",
@@ -63,7 +63,7 @@ describe("decideNextMoveCompletion", () => {
         upNext: undefined,
       },
       activity: {
-        type: "next_action_change",
+        type: "next_move_change",
         content:
           'Completed "Call clinic" — next move set to "Book appointment"',
         previousValue: "Call clinic",

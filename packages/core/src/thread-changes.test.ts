@@ -99,7 +99,7 @@ describe("buildThreadPatchLogEntries", () => {
       buildThreadPatchLogEntries(makeThread(), { nextMove: "Call clinic" }),
     ).toEqual([
       {
-        type: "next_action_change",
+        type: "next_move_change",
         content: 'Next move set to "Call clinic"',
         previousValue: undefined,
         newValue: "Call clinic",
@@ -114,7 +114,7 @@ describe("buildThreadPatchLogEntries", () => {
       }),
     ).toEqual([
       {
-        type: "next_action_change",
+        type: "next_move_change",
         content: 'Next move changed from "Call clinic" to "Book checkup"',
         previousValue: "Call clinic",
         newValue: "Book checkup",
@@ -129,7 +129,7 @@ describe("buildThreadPatchLogEntries", () => {
       }),
     ).toEqual([
       {
-        type: "next_action_change",
+        type: "next_move_change",
         content: "Next move cleared",
         previousValue: "Call clinic",
         newValue: undefined,
@@ -306,7 +306,7 @@ describe("decideThreadUpdate", () => {
     });
     expect(decision.logs).toEqual([
       {
-        type: "next_action_change",
+        type: "next_move_change",
         content: "Next move cleared",
         previousValue: "Call clinic",
         newValue: undefined,
@@ -339,7 +339,7 @@ describe("decideThreadUpdate", () => {
     });
     expect(decision.logs).toEqual([
       {
-        type: "next_action_change",
+        type: "next_move_change",
         content: 'Next move changed from "Call clinic" to "Book slot"',
         previousValue: "Call clinic",
         newValue: "Book slot",
@@ -360,7 +360,7 @@ describe("decideThreadUpdate", () => {
 
     expect(decision.logs.map((log) => log.type)).toEqual([
       "area_move",
-      "next_action_change",
+      "next_move_change",
       "follow_up_change",
     ]);
   });

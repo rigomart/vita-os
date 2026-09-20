@@ -147,7 +147,7 @@ describe("DashboardOverview", () => {
         thread("Midweek", { followUp: currentDate + 2 * DAY, order: 1 }),
         thread("Distant", { followUp: currentDate + 30 * DAY, order: 2 }),
       ],
-      notes: [note("Water the plants", { when: currentDate })],
+      notes: [note("Water the plants", { attentionDate: currentDate })],
     });
 
     const now = screen.getByRole("region", { name: "Now" });
