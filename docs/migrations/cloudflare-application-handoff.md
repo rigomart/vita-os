@@ -56,9 +56,11 @@ exactly as they are, the second is the cleaner boundary.
 
 ### 2. Draft PR
 
-A draft PR from this branch into `migration/convex-to-cloudflare` is open (that
-branch has the same tree as `main` — the proof was squash-merged). If it is
-missing, open it with `gh pr create --draft --base migration/convex-to-cloudflare`.
+A draft PR from this branch into `main` is open. Note that
+`migration/convex-to-cloudflare` no longer exists upstream: the proof (#348) was
+squash-merged into `main` as 685a6e0 and the branch was deleted, so `main` is the
+integration point despite what issue #349 says about a dedicated migration
+branch.
 
 ### 3. Not this issue
 
