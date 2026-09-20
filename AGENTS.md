@@ -13,7 +13,7 @@ bun run build        # Type-check (tsc) then build for production
 
 If tests exist for the affected code, also run `bun run test:run`.
 
-When the change is user-visible UI, also verify it in the browser against a running Vite server (see Dev servers and Browser sign-in). Lint and tests are not a substitute for that.
+When the change is user-visible UI, also verify it in the browser (see Dev servers and Browser sign-in). Lint and tests are not a substitute for that.
 
 ## Commands
 
@@ -41,19 +41,16 @@ Add **new** shadcn components from `apps/web/`: `bunx shadcn@latest add <compone
 
 ## Dev servers
 
-**Local sessions** (Cursor IDE or Claude Code on the user's machine): do not start Vite, Convex dev, or Convex generation unless the user explicitly asks. Assume they are already running. Vite generates the route tree; Convex uploads functions and schema. If they are needed and not running, remind the user.
-
-**Cloud / remote agents** (no local Vite): start the web app when you need to verify UI in the browser:
+Start Vite and Convex when you need them — browser verification, a missing route tree, or uploading functions and schema. Reuse whatever is already running.
 
 ```bash
-bunx turbo run dev --filter=@vita-os/web
+bunx turbo run dev --filter=@vita-os/web   # Vite at http://localhost:5173
+bun run convex                             # Convex dev (functions + schema)
 ```
 
-Vite is at http://localhost:5173. Reuse it if something is already listening there.
+Two agents must not push Convex at the same time. There is a single deployment; overlapping `convex dev` or schema pushes overwrite each other.
 
-Do **not** run Convex dev or Convex generation unless the user explicitly asks. The client talks to the existing Convex deployment in `apps/web/.env.local` (`VITE_CONVEX_URL`, `VITE_CONVEX_SITE_URL`). Two agents pushing Convex overwrite each other.
-
-## Browser sign-in (cloud agents)
+## Browser sign-in
 
 Authenticated surfaces (dock, command palette, Dashboard) require a signed-in user. Use the throwaway account from the environment:
 
