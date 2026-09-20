@@ -129,6 +129,7 @@ function completeRequest(input: {
   cookie: string;
   threadId: string;
   expectedNextMove: string | null;
+  expectedRevision: number;
   origin?: string;
 }) {
   return SELF.fetch(
@@ -140,7 +141,10 @@ function completeRequest(input: {
         "content-type": "application/json",
         ...(input.origin === undefined ? {} : { origin: input.origin }),
       },
-      body: JSON.stringify({ expectedNextMove: input.expectedNextMove }),
+      body: JSON.stringify({
+        expectedNextMove: input.expectedNextMove,
+        expectedRevision: input.expectedRevision,
+      }),
     },
   );
 }
@@ -183,6 +187,7 @@ describe("completion outcome", () => {
       cookie: owner.cookie,
       threadId,
       expectedNextMove: "Call clinic",
+      expectedRevision: 0,
     });
 
     expect(response.status).toBe(200);
@@ -218,6 +223,7 @@ describe("completion outcome", () => {
       cookie: owner.cookie,
       threadId,
       expectedNextMove: "Call clinic",
+      expectedRevision: 0,
     });
 
     expect(response.status).toBe(200);
@@ -256,6 +262,7 @@ describe("completion outcome", () => {
       cookie: owner.cookie,
       threadId,
       expectedNextMove: "Call clinic",
+      expectedRevision: 0,
     });
 
     expect(response.status).toBe(200);
@@ -278,6 +285,7 @@ describe("completion outcome", () => {
       cookie: owner.cookie,
       threadId,
       expectedNextMove: null,
+      expectedRevision: 7,
     });
 
     expect(response.status).toBe(200);
@@ -299,11 +307,13 @@ describe("completion outcome", () => {
         ...headers,
         threadId: "missing-completion-thread",
         expectedNextMove: "Call clinic",
+        expectedRevision: 0,
       }),
       completeRequest({
         ...headers,
         threadId,
         expectedNextMove: "Call clinic",
+        expectedRevision: 0,
       }),
     ]);
 
@@ -342,6 +352,7 @@ describe("completion outcome", () => {
       cookie: owner.cookie,
       threadId,
       expectedNextMove: "Old next move",
+      expectedRevision: 0,
     });
 
     expect(response.status).toBe(409);
@@ -350,8 +361,20 @@ describe("completion outcome", () => {
     expect(await readActivity(threadId)).toEqual([]);
   });
 
-  it.each([{}, { expectedNextMove: 1 }, { expectedNextMove: false }])(
-    "requires an explicit string or null expected Next Move",
+  it.each([
+    {},
+    { expectedNextMove: 1, expectedRevision: 0 },
+    { expectedNextMove: false, expectedRevision: 0 },
+    { expectedNextMove: "Call clinic" },
+    { expectedNextMove: "Call clinic", expectedRevision: -1 },
+    { expectedNextMove: "Call clinic", expectedRevision: 1.5 },
+    {
+      expectedNextMove: "Call clinic",
+      expectedRevision: Number.MAX_SAFE_INTEGER + 1,
+    },
+    { expectedNextMove: "Call clinic", expectedRevision: "0" },
+  ])(
+    "requires an explicit string or null expected Next Move and a nonnegative safe revision",
     async (body) => {
       const owner = await createSession("completion-validation-owner");
       const { threadId } = await seedThread({
@@ -377,6 +400,28 @@ describe("completion outcome", () => {
       expect(await readActivity(threadId)).toEqual([]);
     },
   );
+
+  it("returns conflict without writing when the expected revision is stale", async () => {
+    const owner = await createSession("completion-revision-conflict-owner");
+    const { threadId } = await seedThread({
+      owner,
+      nextMove: "Call clinic",
+      revision: 1,
+    });
+    const before = await readThread(threadId);
+
+    const response = await completeRequest({
+      cookie: owner.cookie,
+      threadId,
+      expectedNextMove: "Call clinic",
+      expectedRevision: 0,
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual(conflictError);
+    expect(await readThread(threadId)).toEqual(before);
+    expect(await readActivity(threadId)).toEqual([]);
+  });
 });
 
 describe("rollback", () => {
@@ -425,7 +470,10 @@ describe("rollback", () => {
           cookie: owner.cookie,
           "content-type": "application/json",
         },
-        body: JSON.stringify({ expectedNextMove: "Call clinic" }),
+        body: JSON.stringify({
+          expectedNextMove: "Call clinic",
+          expectedRevision: 3,
+        }),
       },
     );
 
@@ -448,7 +496,7 @@ describe("competing completion requests", () => {
     const { threadId } = await seedThread({
       owner,
       nextMove: "Call clinic",
-      upNext: ["Book appointment", "Collect results"],
+      upNext: ["Call clinic", "Collect results"],
     });
 
     const [first, second] = await Promise.all([
@@ -456,11 +504,13 @@ describe("competing completion requests", () => {
         cookie: owner.cookie,
         threadId,
         expectedNextMove: "Call clinic",
+        expectedRevision: 0,
       }),
       completeRequest({
         cookie: owner.cookie,
         threadId,
         expectedNextMove: "Call clinic",
+        expectedRevision: 0,
       }),
     ]);
     const responses = await Promise.all([first.json(), second.json()]);
@@ -469,7 +519,7 @@ describe("competing completion requests", () => {
     expect(responses).toContainEqual({ status: "completed" });
     expect(responses).toContainEqual(conflictError);
     expect(await readThread(threadId)).toMatchObject({
-      next_move: "Book appointment",
+      next_move: "Call clinic",
       up_next_json: '["Collect results"]',
       revision: 1,
     });

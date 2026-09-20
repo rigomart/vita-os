@@ -93,6 +93,7 @@ describe("completeNextMove", () => {
         actorId: "user-1",
         threadId: "thread-1" as ThreadId,
         expectedNextMove: "Call clinic",
+        expectedRevision: 3,
       },
     );
 
@@ -101,6 +102,7 @@ describe("completeNextMove", () => {
         actorId: "user-1",
         threadId: "thread-1",
         expectedNextMove: "Call clinic",
+        expectedRevision: 3,
       },
       decideNextMoveCompletion,
     );

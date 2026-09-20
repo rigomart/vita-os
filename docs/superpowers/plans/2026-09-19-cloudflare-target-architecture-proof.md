@@ -25,7 +25,7 @@
 
 ## Review Focus
 
-- Two requests carrying the same expected Next Move must advance the Thread once, create one Activity Log Entry, and yield one completed response plus one conflict; Task 4 pins this through real HTTP concurrency.
+- Two requests carrying the same expected Next Move and revision must advance the Thread once, create one Activity Log Entry, and yield one completed response plus one conflict, even when the promoted move has the same text; Task 4 pins this through real HTTP concurrency.
 - A failure after the intended Thread update must roll back Next Move, Up Next, activity metadata, revision, operation token, and Activity Log together; Task 4 forces a real primary-key failure and checks every value.
 - Missing and foreign-owned Threads must return byte-for-byte equivalent public not-found responses; Task 3 tests both detail and Activity Log routes.
 - Tied Activity Log timestamps and malformed cursors must never duplicate, skip, or unbound entries; Task 3 tests the `(createdAt, id)` boundary and every invalid limit/cursor class.
@@ -85,6 +85,7 @@ it("models the Thread proof as asynchronous application operations", async () =>
     client.completeNextMove({
       threadId: "thread-1" as ThreadId,
       expectedNextMove: "Call clinic",
+      expectedRevision: 0,
     }),
   ).resolves.toEqual({ ok: true, value: { status: "completed" } });
 });
@@ -123,6 +124,7 @@ export interface ApplicationClient {
   completeNextMove(input: {
     threadId: ThreadId;
     expectedNextMove: string | null;
+    expectedRevision: number;
   }): Promise<OperationResult<CompleteNextMoveOutput>>;
 }
 ```
@@ -534,9 +536,9 @@ git commit -m "feat(api): read owned Threads and Activity Logs"
 
 **Interfaces:**
 
-- Extends: the focused core store input with optional `expectedNextMove`; the active Convex caller omits it and keeps its transactional behavior.
-- Produces: `D1ThreadStore.completeNextMove({ actorId, threadId, expectedNextMove })`.
-- Produces: POST `/v1/threads/:threadId/complete-next-move` with `{ expectedNextMove: string | null }`.
+- Extends: the focused core store input with optional `expectedNextMove` and `expectedRevision`; the active Convex caller omits both and keeps its transactional behavior.
+- Produces: `D1ThreadStore.completeNextMove({ actorId, threadId, expectedNextMove, expectedRevision })`.
+- Produces: POST `/v1/threads/:threadId/complete-next-move` with `{ expectedNextMove: string | null, expectedRevision: number }`.
 - Preserves: `decideNextMoveCompletion` as the single completion rule.
 
 - [ ] **Step 1: Write the failing expected-intent core boundary test**
@@ -544,7 +546,7 @@ git commit -m "feat(api): read owned Threads and Activity Logs"
 Add a focused forwarding test:
 
 ```ts
-it("passes the caller's expected Next Move to atomic storage", async () => {
+it("passes the caller's expected Next Move and revision to atomic storage", async () => {
   const completeAtomically = vi.fn().mockResolvedValue({ status: "completed" });
 
   await completeNextMove(
@@ -553,6 +555,7 @@ it("passes the caller's expected Next Move to atomic storage", async () => {
       actorId: "user-1",
       threadId: "thread-1" as ThreadId,
       expectedNextMove: "Call clinic",
+      expectedRevision: 0,
     },
   );
 
@@ -561,13 +564,14 @@ it("passes the caller's expected Next Move to atomic storage", async () => {
       actorId: "user-1",
       threadId: "thread-1",
       expectedNextMove: "Call clinic",
+      expectedRevision: 0,
     },
     decideNextMoveCompletion,
   );
 });
 ```
 
-Define `expectedNextMove?: string | null` so the existing Convex call site can omit it without changing production behavior; the D1 entry point requires a concrete string or `null`.
+Define `expectedNextMove?: string | null` and `expectedRevision?: number` so the existing Convex call site can omit both without changing production behavior; the D1 entry point requires a concrete string or `null` and a nonnegative safe-integer revision.
 
 - [ ] **Step 2: Run the core test to verify RED**
 
@@ -577,7 +581,7 @@ Run:
 bun --cwd packages/core run test:run -- src/complete-next-move.test.ts
 ```
 
-Expected: FAIL because the focused operation currently drops `expectedNextMove`.
+Expected: FAIL because the focused operation currently drops the expected Next Move and revision.
 
 - [ ] **Step 3: Extend only the focused store input and verify core GREEN**
 
@@ -604,7 +608,8 @@ Through the authenticated public route, cover:
 - incrementing `revision` once;
 - preserving all values and writing no log when both stored and expected Next Move are absent;
 - returning the same 404 for missing and foreign-owned Threads;
-- returning 409 conflict when stored and expected values differ.
+- returning 409 conflict when the stored Next Move or revision differs from the expected values;
+- rejecting a missing, non-integer, negative, or unsafe expected revision.
 
 - [ ] **Step 5: Run focused completion tests to verify RED**
 
@@ -620,7 +625,7 @@ Expected: FAIL because the route and atomic D1 operation do not exist.
 
 Inject `now`, `newActivityLogId`, and `newOperationToken` into the store; production defaults are `Date.now` and `crypto.randomUUID`.
 
-After the owned read, compare stored and expected Next Move before calling the core decision. Use these prepared statements in one `env.DB.batch()` call:
+After the owned read, compare stored and expected Next Move and revision before calling the core decision. Bind the update revision predicate to the client-supplied expected revision, not the revision freshly read from storage. Use these prepared statements in one `env.DB.batch()` call:
 
 ```sql
 UPDATE threads
@@ -679,7 +684,7 @@ Expected before implementation completion: FAIL with changed Thread state or mis
 
 - [ ] **Step 9: Write and pass the competing-request test**
 
-Send two authenticated `Promise.all` POST requests with the same Thread ID and `expectedNextMove: "Call clinic"`. Assert literal sorted statuses `[200, 409]`, response outcomes `completed` and `conflict`, one revision increment, one promotion to `"Book appointment"`, remaining Up Next unchanged beyond the promoted front, and exactly one new Activity Log Entry.
+Send two authenticated `Promise.all` POST requests with the same Thread ID, `expectedNextMove: "Call clinic"`, and `expectedRevision: 0`; seed Up Next as `["Call clinic", "Collect results"]`. Assert literal sorted statuses `[200, 409]`, response outcomes `completed` and `conflict`, revision `1`, Next Move still `"Call clinic"`, remaining Up Next `["Collect results"]`, and exactly one new Activity Log Entry.
 
 Run:
 
@@ -735,7 +740,7 @@ expect(requests).toContainEqual([
   expect.objectContaining({
     method: "POST",
     credentials: "include",
-    body: JSON.stringify({ expectedNextMove: null }),
+    body: JSON.stringify({ expectedNextMove: null, expectedRevision: 0 }),
   }),
 ]);
 ```
@@ -891,7 +896,7 @@ useCompleteNextMove({
 }): UseMutationResult<
   CompleteNextMoveOutput,
   ApplicationError,
-  { expectedNextMove: string | null }
+  { expectedNextMove: string | null; expectedRevision: number }
 >
 ```
 
@@ -903,7 +908,7 @@ Run before implementation:
 bun --cwd packages/application run test:run -- src/thread/use-complete-next-move.test.tsx
 ```
 
-In `onMutate`, cancel the exact detail key and the Activity Log prefix, snapshot both, and apply `decideNextMoveCompletion` only when cached and supplied expected moves still match. In `onError`, restore every snapshot. In `onSettled`, invalidate detail and Activity Log queries. Never synthesize an Activity Log ID or timestamp.
+In `onMutate`, cancel the exact detail key and the Activity Log prefix, snapshot both, and apply `decideNextMoveCompletion` only when cached Next Move and revision match the supplied expected values. In `onError`, restore every snapshot. In `onSettled`, invalidate detail and Activity Log queries. Never synthesize an Activity Log ID or timestamp.
 
 Rerun:
 
@@ -955,9 +960,9 @@ Expected: zero failures. Specifically confirm the output includes the named forc
 Create ADR 0019 with status `Accepted` and these decisions stated concretely:
 
 - D1 is accepted for the migration proof behind an operation-shaped store.
-- Completion uses an owned read, the shared core decision, and a revision/expected-move compare-and-swap plus conditional log insert in one D1 batch.
+- Completion uses an owned read, the shared core decision, and a client-revision/expected-move compare-and-swap plus conditional log insert in one D1 batch.
 - The rollback test forced a real Activity Log primary-key failure and observed no Thread, Up Next, metadata, revision, token, or log change.
-- The concurrency test sent two competing public HTTP requests and observed one completion, one conflict, one promotion, and one Activity Log Entry.
+- The concurrency test sent two competing public HTTP requests with the same expected revision and observed one completion, one conflict, one promotion, and one Activity Log Entry even when the promoted move repeated the same text.
 - D1 still has no interactive transactions; future multi-record operations require their own operation-specific proof or the Postgres fallback.
 
 If either proof fails, do not create the ADR. Record the exact command, failing assertion, and violated invariant on issue 348, then stop implementation before issue 349.

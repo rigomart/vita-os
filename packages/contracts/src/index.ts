@@ -47,6 +47,7 @@ export interface Thread {
   followUp?: number;
   lastActivityAt?: number;
   lastActivityContent?: string;
+  revision?: number;
   createdAt: number;
 }
 
@@ -107,5 +108,6 @@ export interface ApplicationClient {
   completeNextMove(input: {
     threadId: ThreadId;
     expectedNextMove: string | null;
+    expectedRevision: number;
   }): Promise<OperationResult<CompleteNextMoveOutput>>;
 }

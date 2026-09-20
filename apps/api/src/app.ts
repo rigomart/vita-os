@@ -36,6 +36,27 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isCompleteNextMoveBody(value: unknown): value is {
+  expectedNextMove: string | null;
+  expectedRevision: number;
+} {
+  if (
+    !isObject(value) ||
+    !Object.hasOwn(value, "expectedNextMove") ||
+    !Object.hasOwn(value, "expectedRevision")
+  ) {
+    return false;
+  }
+
+  return (
+    (value.expectedNextMove === null ||
+      typeof value.expectedNextMove === "string") &&
+    typeof value.expectedRevision === "number" &&
+    Number.isSafeInteger(value.expectedRevision) &&
+    value.expectedRevision >= 0
+  );
+}
+
 export function createApp(
   env: WorkerEnv,
   dependencies: AppDependencies = {},
@@ -117,12 +138,7 @@ export function createApp(
     } catch {
       return context.json({ error: invalidNextMoveCompletion }, 400);
     }
-    if (
-      !isObject(body) ||
-      !Object.hasOwn(body, "expectedNextMove") ||
-      (body.expectedNextMove !== null &&
-        typeof body.expectedNextMove !== "string")
-    ) {
+    if (!isCompleteNextMoveBody(body)) {
       return context.json({ error: invalidNextMoveCompletion }, 400);
     }
 
@@ -130,6 +146,7 @@ export function createApp(
       actorId: context.get("actor").actorId,
       threadId: context.req.param("threadId"),
       expectedNextMove: body.expectedNextMove,
+      expectedRevision: body.expectedRevision,
     });
     if (result.status === "not_found") {
       return context.json({ error: threadNotFound }, 404);

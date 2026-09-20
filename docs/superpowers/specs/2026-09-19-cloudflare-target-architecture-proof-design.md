@@ -140,6 +140,7 @@ interface ApplicationClient {
   completeNextMove(input: {
     threadId: ThreadId;
     expectedNextMove: string | null;
+    expectedRevision: number;
   }): Promise<OperationResult<CompleteNextMoveOutput>>;
 }
 ```
@@ -149,9 +150,10 @@ interface ApplicationClient {
 the transport contract.
 
 `CompleteNextMoveOutput` remains either `completed` or `unchanged`. A stale
-expected Next Move is an `ApplicationError` with code `conflict`; it is not
-silently retried. Supplying the intended Next Move prevents a repeated request
-from accidentally completing the move that was just promoted.
+expected Next Move or revision is an `ApplicationError` with code `conflict`; it
+is not silently retried. Supplying the intended Next Move and the revision read
+with it prevents a repeated request from completing a promoted move whose text
+matches the completed move.
 
 The contract retains opaque string IDs, epoch-millisecond timestamps, and the
 existing Thread and Area fields required by the current interface. It imports no
@@ -198,8 +200,10 @@ canonical Vita OS tables needed by the proof:
   manual order, and creation timestamp.
 - `threads`: opaque text ID, owner ID, Area ID, title, slug, Summary, manual
   order, lifecycle state, Next Move, JSON-encoded Up Next, Follow-up, activity
-  metadata, creation timestamp, internal integer revision, and internal last
-  completion token.
+  metadata, creation timestamp, integer revision, and internal last completion
+  token. D1 Thread detail exposes its revision through the optional framework-
+  free `Thread.revision` property so completion callers can perform a compare-
+  and-swap.
 - `activity_log_entries`: opaque text ID, owner ID, Thread ID, entry type,
   content, previous and new values, and creation timestamp.
 
@@ -231,20 +235,23 @@ whether to return `nextCursor`.
 
 ## Atomic Next Move completion
 
-The request body contains `expectedNextMove: string | null`.
+The request body contains `expectedNextMove: string | null` and a nonnegative
+safe-integer `expectedRevision` read from Thread detail.
 
 1. Storage loads the Thread using both `actorId` and `threadId`, including its
    internal revision.
 2. A missing or foreign-owned Thread returns the same not-found result.
-3. If the stored Next Move differs from `expectedNextMove`, the operation returns
-   `conflict` without writing. If both are absent, it returns `unchanged`.
+3. If the stored Next Move or revision differs from the client-supplied expected
+   value, the operation returns `conflict` without writing. If both Next Moves
+   are absent and the revision matches, it returns `unchanged`.
 4. `@vita-os/core` computes the Thread patch and Activity Log Entry from the
    stored Next Move and Up Next values.
 5. The operation creates a collision-resistant Activity Log ID, a unique
    operation token, and one timestamp.
-6. One D1 batch conditionally updates the owned Thread by ID, revision, and
-   expected Next Move. It applies the new Next Move and Up Next, stamps activity
-   metadata, increments the revision, and saves the operation token.
+6. One D1 batch conditionally updates the owned Thread by ID, the client-
+   supplied revision, and expected Next Move. It applies the new Next Move and
+   Up Next, stamps activity metadata, increments the revision, and saves the
+   operation token.
 7. The next batch statement inserts the Activity Log Entry with `INSERT ...
    SELECT` only from the Thread row carrying that operation token.
 8. A result of one updated Thread and one inserted log returns `completed`. Zero
@@ -256,12 +263,13 @@ generation are injected dependencies of the D1 operation so integration tests
 can force a real primary-key collision without adding a test-only production
 method or branch.
 
-Two requests carrying the same expected Next Move have defined semantics. One
-wins the conditional update and returns `completed`; the other observes either
-the changed value before its batch or a zero-row conditional update and returns
-`conflict`. The Thread advances once and exactly one Activity Log Entry is
-created. Mutations are never automatically retried because a later retry could
-target a different promoted move.
+Two requests carrying the same expected Next Move and expected revision have
+defined semantics. One wins the conditional update and returns `completed`; the
+other observes the changed revision before its batch or a zero-row conditional
+update and returns `conflict`. This remains true when the promoted Next Move
+has the same text as the completed move. The Thread advances once and exactly
+one Activity Log Entry is created. Mutations are never automatically retried
+because a later retry could target a different promoted move.
 
 ## Shared React behavior
 
@@ -313,7 +321,8 @@ exercise the exported Worker through HTTP.
 - Sign up and sign in through Better Auth's public routes and use the returned
   cookie for protected calls.
 - Prove unauthenticated requests return 401 before application storage is used.
-- Prove an owner receives complete Thread and Area data.
+- Prove an owner receives complete Thread and Area data, including the D1
+  revision used for completion.
 - Prove missing and foreign-owned Threads return identical public not-found
   responses.
 - Prove bounded Activity Log pages, exhaustion, tied-timestamp ordering, another
@@ -322,8 +331,9 @@ exercise the exported Worker through HTTP.
   activity metadata, and the no-Next-Move no-op.
 - Force a duplicate Activity Log ID so the insert fails, then assert that every
   intended Thread and log change rolled back.
-- Send two completion requests concurrently with the same intended move, then
-  assert one completed result, one conflict, one promotion, and one new log.
+- Send two completion requests concurrently with the same intended move and
+  revision, including a repeated promoted move value, then assert one completed
+  result, one conflict, one promotion, and one new log.
 
 ### HTTP client and shared React
 

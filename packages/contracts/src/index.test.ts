@@ -29,6 +29,7 @@ it("models the Thread proof as asynchronous application operations", async () =>
     client.completeNextMove({
       threadId: "thread-1" as ThreadId,
       expectedNextMove: "Call clinic",
+      expectedRevision: 0,
     }),
   ).resolves.toEqual({ ok: true, value: { status: "completed" } });
 });

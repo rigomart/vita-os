@@ -27,6 +27,7 @@ type DetailRow = {
   last_activity_at: number | null;
   last_activity_content: string | null;
   created_at: number;
+  revision: number;
   area_result_id: string;
   area_name: string;
   area_slug: string;
@@ -110,7 +111,7 @@ export class D1ThreadStore {
         `SELECT
           t.id, t.title, t.slug, t.summary, t.area_id, t.sort_order, t.state,
           t.next_move, t.up_next_json, t.follow_up, t.last_activity_at,
-          t.last_activity_content, t.created_at,
+          t.last_activity_content, t.created_at, t.revision,
           a.id AS area_result_id, a.name AS area_name, a.slug AS area_slug,
           a.standard AS area_standard, a.condition AS area_condition,
           a.icon AS area_icon, a.sort_order AS area_sort_order,
@@ -135,6 +136,7 @@ export class D1ThreadStore {
         order: row.sort_order,
         state: row.state,
         createdAt: row.created_at,
+        revision: row.revision,
         ...(row.summary === null ? {} : { summary: row.summary }),
         ...(row.next_move === null ? {} : { nextMove: row.next_move }),
         ...(upNext === undefined ? {} : { upNext }),
@@ -226,6 +228,7 @@ export class D1ThreadStore {
     actorId: string;
     threadId: string;
     expectedNextMove: string | null;
+    expectedRevision: number;
   }): Promise<D1CompleteNextMoveOutput> {
     const thread = await this.database
       .prepare(
@@ -238,7 +241,10 @@ export class D1ThreadStore {
       .first<CompletionRow>();
     if (thread === null) return { status: "not_found" };
 
-    if (thread.next_move !== input.expectedNextMove) {
+    if (
+      thread.next_move !== input.expectedNextMove ||
+      thread.revision !== input.expectedRevision
+    ) {
       return { status: "conflict" };
     }
 
@@ -278,7 +284,7 @@ export class D1ThreadStore {
           operationToken,
           thread.id,
           input.actorId,
-          thread.revision,
+          input.expectedRevision,
           input.expectedNextMove,
         ),
       this.database

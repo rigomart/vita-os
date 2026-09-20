@@ -363,6 +363,7 @@ describe("Thread detail", () => {
         lastActivityAt: 1_700_000_000_000,
         lastActivityContent: "Captured next move",
         createdAt: 1_600_000_000_000,
+        revision: 0,
       },
       area: {
         _id: "area-owner",
@@ -443,6 +444,7 @@ describe("Thread detail", () => {
         order: 6,
         state: "resolved",
         createdAt: 1_600_000_000_004,
+        revision: 0,
       },
       area: {
         _id: "area-owner",
@@ -473,6 +475,7 @@ describe("Thread detail", () => {
         order: 8,
         state: "open",
         createdAt: 1_600_000_000_006,
+        revision: 0,
       },
       area: {
         _id: "area-owner-null-standard",
