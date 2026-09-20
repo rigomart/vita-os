@@ -5,7 +5,8 @@
  * its cache and invalidation rules, and the optimistic behavior that makes it
  * feel immediate. It knows nothing about how its data travels or how the person
  * using it was authenticated — a host supplies an `ApplicationClient` and a
- * `Viewer`, and mounts these screens wherever its routes live.
+ * `Viewer`, mounts the product's route tree, and adds whatever routes are
+ * its own.
  */
 
 /* Composition */
@@ -21,18 +22,18 @@ export {
   type ViewerAccess,
 } from "./viewer/viewer-context";
 
-/* The authenticated product experience */
-export { AreaDetailScreen } from "./areas/area-detail/area-detail-screen";
-export { DashboardScreen } from "./dashboard/screens/dashboard-screen";
-export { InboxScreen } from "./inbox/screens/inbox-screen";
-export { InboxDeepLinkRedirect } from "./inbox/surface/inbox-deep-link-redirect";
-export { AppShell } from "./layout/app-shell";
+/*
+ * Recovery surfaces, for a host to mount around and inside the product.
+ *
+ * The screens and the app shell are deliberately absent: the route tree reaches
+ * them by dynamic import, and re-exporting one here makes it a static import
+ * again, which silently collapses the route chunks back into the entry bundle.
+ */
 export {
   AppErrorBoundary,
   AppErrorFallback,
   RouteErrorFallback,
 } from "./layout/error-boundary";
-export { ThreadDetailView } from "./threads/thread-detail/thread-detail-view";
 
 /* The product's own routes, for a host to mount, and the contract they read */
 export {

@@ -1,9 +1,12 @@
-import { createRoute, Navigate, Outlet } from "@tanstack/react-router";
+import {
+  createRoute,
+  lazyRouteComponent,
+  Navigate,
+  Outlet,
+} from "@tanstack/react-router";
 import { AppErrorFallback, productRootRoute } from "@vita-os/application";
 
 import { AuthVerifyingLoader } from "@/components/auth/auth-verifying-loader";
-import { SignInScreen } from "@/features/auth/screens/sign-in-screen";
-import { SignUpScreen } from "@/features/auth/screens/sign-up-screen";
 import { useSessionGate } from "@/lib/session";
 
 /**
@@ -56,7 +59,10 @@ export const signInRoute = createRoute({
     ],
   }),
   errorComponent: AppErrorFallback,
-  component: SignInScreen,
+  component: lazyRouteComponent(
+    () => import("@/features/auth/screens/sign-in-screen"),
+    "SignInScreen",
+  ),
 });
 
 export const signUpRoute = createRoute({
@@ -77,7 +83,10 @@ export const signUpRoute = createRoute({
     ],
   }),
   errorComponent: AppErrorFallback,
-  component: SignUpScreen,
+  component: lazyRouteComponent(
+    () => import("@/features/auth/screens/sign-up-screen"),
+    "SignUpScreen",
+  ),
 });
 
 export const unauthenticatedRouteTree = unauthenticatedRoute.addChildren([
