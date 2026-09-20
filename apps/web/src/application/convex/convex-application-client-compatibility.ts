@@ -1,12 +1,17 @@
 import type {
   ActivityLogEntry,
   ApplicationError,
+  AreaSummary,
   CompleteNextMoveOutput,
   OperationResult,
   Thread,
-  ThreadDetail,
   ThreadId,
 } from "@vita-os/contracts";
+
+export interface ConvexThreadDetail {
+  thread: Thread;
+  area: AreaSummary;
+}
 
 export type ConvexQueryState<T> =
   | { status: "loading" }
@@ -31,7 +36,7 @@ export interface ConvexPaginatedLiveResource<T> extends ConvexLiveResource<T> {
 export interface ConvexApplicationClient {
   watchThreadDetail(input: {
     slug: string;
-  }): ConvexLiveResource<ConvexQueryState<ThreadDetail>>;
+  }): ConvexLiveResource<ConvexQueryState<ConvexThreadDetail>>;
   watchThreadActivity(input: {
     threadId: ThreadId;
     initialPageSize: number;

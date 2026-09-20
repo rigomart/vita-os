@@ -47,12 +47,15 @@ export interface Thread {
   followUp?: number;
   lastActivityAt?: number;
   lastActivityContent?: string;
-  revision?: number;
   createdAt: number;
 }
 
+export interface VersionedThread extends Thread {
+  revision: number;
+}
+
 export interface ThreadDetail {
-  thread: Thread;
+  thread: VersionedThread;
   area: AreaSummary;
 }
 

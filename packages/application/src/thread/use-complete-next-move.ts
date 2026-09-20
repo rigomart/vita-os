@@ -22,6 +22,8 @@ interface CompleteNextMoveVariables {
 }
 
 interface CompletionSnapshot {
+  detailKey: QueryKey;
+  activityKey: QueryKey;
   detail: ThreadDetail | undefined;
   activity: Array<[QueryKey, unknown]>;
 }
@@ -89,21 +91,23 @@ export function useCompleteNextMove({
           applyOptimisticCompletion(detail, variables),
         );
       }
-      return { detail, activity };
+      return { detailKey, activityKey, detail, activity };
     },
     onError: (_error, _variables, snapshot) => {
       if (snapshot === undefined) return;
       if (snapshot.detail !== undefined) {
-        queryClient.setQueryData(detailKey, snapshot.detail);
+        queryClient.setQueryData(snapshot.detailKey, snapshot.detail);
       }
       for (const [queryKey, data] of snapshot.activity) {
         queryClient.setQueryData(queryKey, data);
       }
     },
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: detailKey }),
-        queryClient.invalidateQueries({ queryKey: activityKey }),
-      ]),
+    onSettled: (_data, _error, _variables, snapshot) => {
+      if (snapshot === undefined) return;
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: snapshot.detailKey }),
+        queryClient.invalidateQueries({ queryKey: snapshot.activityKey }),
+      ]);
+    },
   });
 }

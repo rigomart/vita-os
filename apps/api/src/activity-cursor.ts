@@ -30,7 +30,9 @@ function fromBase64Url(value: string): string {
   }
 
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  return new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(
+    bytes,
+  );
 }
 
 export function encodeActivityCursor(cursor: ActivityCursor): string {

@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "WebWorker"],
+    "lib": ["ES2022"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "skipLibCheck": true,
@@ -10,6 +10,11 @@
     "allowImportingTsExtensions": true,
     "types": ["@cloudflare/vitest-plugin/types"]
   },
-  "include": ["src", "test", "worker-configuration.d.ts"],
+  "include": [
+    "src",
+    "test",
+    "environment-augmentation.d.ts",
+    "worker-configuration.d.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

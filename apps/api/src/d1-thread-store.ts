@@ -129,10 +129,10 @@ export class D1ThreadStore {
     const upNext = parseUpNext(row.up_next_json);
     return {
       thread: {
-        _id: row.id,
+        _id: row.id as ThreadDetail["thread"]["_id"],
         title: row.title,
         slug: row.slug,
-        areaId: row.area_id,
+        areaId: row.area_id as ThreadDetail["thread"]["areaId"],
         order: row.sort_order,
         state: row.state,
         createdAt: row.created_at,
@@ -149,7 +149,7 @@ export class D1ThreadStore {
           : { lastActivityContent: row.last_activity_content }),
       },
       area: {
-        _id: row.area_result_id,
+        _id: row.area_result_id as ThreadDetail["area"]["_id"],
         name: row.area_name,
         slug: row.area_slug,
         condition: row.area_condition,

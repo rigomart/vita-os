@@ -1,4 +1,4 @@
-import type { AreaId, ThreadDetail, ThreadId } from "@vita-os/contracts";
+import type { AreaId, ThreadId } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import { act, renderHook } from "@testing-library/react";
@@ -8,6 +8,7 @@ import type {
   ConvexApplicationClient,
   ConvexLiveResource,
   ConvexQueryState,
+  ConvexThreadDetail,
 } from "./convex/convex-application-client-compatibility";
 
 import {
@@ -44,11 +45,13 @@ describe("ApplicationClientProvider", () => {
   it("publishes Thread detail and cleans up when the slug changes", () => {
     const resources = new Map<
       string,
-      MutableResource<ConvexQueryState<ThreadDetail>>
+      MutableResource<ConvexQueryState<ConvexThreadDetail>>
     >();
     const client: ConvexApplicationClient = {
       watchThreadDetail: ({ slug }) => {
-        const resource = new MutableResource<ConvexQueryState<ThreadDetail>>({
+        const resource = new MutableResource<
+          ConvexQueryState<ConvexThreadDetail>
+        >({
           status: "loading",
         });
         resources.set(slug, resource);
@@ -89,7 +92,7 @@ describe("ApplicationClientProvider", () => {
         order: 0,
         createdAt: 1,
       },
-    } satisfies ThreadDetail;
+    } satisfies ConvexThreadDetail;
     act(() =>
       resources.get("first")?.publish({ status: "ready", data: detail }),
     );
@@ -104,7 +107,7 @@ describe("ApplicationClientProvider", () => {
   });
 
   it("publishes the same live update to a second mounted consumer", () => {
-    const resource = new MutableResource<ConvexQueryState<ThreadDetail>>({
+    const resource = new MutableResource<ConvexQueryState<ConvexThreadDetail>>({
       status: "loading",
     });
     const client: ConvexApplicationClient = {
@@ -143,7 +146,7 @@ describe("ApplicationClientProvider", () => {
         order: 0,
         createdAt: 1,
       },
-    } satisfies ThreadDetail;
+    } satisfies ConvexThreadDetail;
 
     act(() => resource.publish({ status: "ready", data: detail }));
 

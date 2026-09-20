@@ -111,8 +111,10 @@ describe("createHttpApplicationClient", () => {
   it.each([
     [400, "validation", false],
     [401, "unauthorized", false],
+    [403, "unauthorized", false],
     [404, "not_found", false],
     [409, "conflict", false],
+    [415, "validation", false],
     [502, "unavailable", true],
     [503, "unavailable", true],
     [504, "unavailable", true],
@@ -182,6 +184,32 @@ describe("createHttpApplicationClient", () => {
       },
     });
     await expect(client.getThreadDetail({ slug: "missing" })).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "unexpected",
+        message: "Unexpected response from the service.",
+        retryable: false,
+      },
+    });
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["negative", -1],
+  ])("rejects a %s Thread revision", async (_case, revision) => {
+    const thread = { ...detail.thread } as Record<string, unknown>;
+    if (revision === undefined) delete thread.revision;
+    else thread.revision = revision;
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      fetchImpl: vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(jsonResponse({ ...detail, thread })),
+    });
+
+    await expect(
+      client.getThreadDetail({ slug: "book-checkup" }),
+    ).resolves.toEqual({
       ok: false,
       error: {
         code: "unexpected",

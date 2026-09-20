@@ -6,6 +6,18 @@ export const authenticationRequired: ApplicationError = {
   retryable: false,
 };
 
+export const requestOriginNotAllowed: ApplicationError = {
+  code: "unauthorized",
+  message: "Request origin is not allowed.",
+  retryable: false,
+};
+
+export const jsonRequestRequired: ApplicationError = {
+  code: "validation",
+  message: "JSON request body required.",
+  retryable: false,
+};
+
 export const threadNotFound: ApplicationError = {
   code: "not_found",
   message: "Thread not found.",

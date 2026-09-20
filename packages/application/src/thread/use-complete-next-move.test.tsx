@@ -109,6 +109,84 @@ const completionInput = {
 };
 
 describe("useCompleteNextMove", () => {
+  it("restores and invalidates the mutation's original Thread after navigation", async () => {
+    const secondThreadId = "thread-2" as ThreadId;
+    const secondSlug = "dentist-checkup";
+    const secondDetail: ThreadDetail = {
+      ...initialDetail,
+      thread: {
+        ...initialDetail.thread,
+        _id: secondThreadId,
+        slug: secondSlug,
+        title: "Dentist checkup",
+        nextMove: "Choose dentist",
+      },
+    };
+    const pending = deferred<OperationResult<{ status: "completed" }>>();
+    const client = createFakeApplicationClient({
+      completeNextMove: () => pending.promise,
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    });
+    queryClient.setQueryData(threadQueryKeys.detail(slug), initialDetail);
+    queryClient.setQueryData(threadQueryKeys.detail(secondSlug), secondDetail);
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <ApplicationClientProvider client={client} queryClient={queryClient}>
+        {children}
+      </ApplicationClientProvider>
+    );
+    const { result, rerender } = renderHook(
+      ({ currentThreadId, currentSlug }) =>
+        useCompleteNextMove({
+          threadId: currentThreadId,
+          slug: currentSlug,
+        }),
+      {
+        initialProps: { currentThreadId: threadId, currentSlug: slug },
+        wrapper,
+      },
+    );
+
+    let mutation!: Promise<unknown>;
+    act(() => {
+      mutation = result.current.mutateAsync(completionInput);
+      void mutation.catch(() => undefined);
+    });
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<ThreadDetail>(threadQueryKeys.detail(slug))
+          ?.thread.nextMove,
+      ).toBe("Book appointment"),
+    );
+
+    rerender({
+      currentThreadId: secondThreadId,
+      currentSlug: secondSlug,
+    });
+    const error: ApplicationError = {
+      code: "unavailable",
+      message: "Temporarily unavailable.",
+      retryable: true,
+    };
+    pending.resolve({ ok: false, error });
+    await expect(mutation).rejects.toEqual(error);
+
+    expect(queryClient.getQueryData(threadQueryKeys.detail(slug))).toEqual(
+      initialDetail,
+    );
+    expect(
+      queryClient.getQueryData(threadQueryKeys.detail(secondSlug)),
+    ).toEqual(secondDetail);
+    expect(
+      queryClient.getQueryState(threadQueryKeys.detail(slug))?.isInvalidated,
+    ).toBe(true);
+    expect(
+      queryClient.getQueryState(threadQueryKeys.detail(secondSlug))
+        ?.isInvalidated,
+    ).toBe(false);
+  });
+
   it("optimistically promotes detail without fabricating Activity Log data", async () => {
     const pending =
       deferred<OperationResult<{ status: "completed" | "unchanged" }>>();

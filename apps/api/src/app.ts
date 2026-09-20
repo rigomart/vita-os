@@ -13,7 +13,9 @@ import { D1ThreadStore } from "./d1-thread-store";
 import {
   invalidActivityPagination,
   invalidNextMoveCompletion,
+  jsonRequestRequired,
   nextMoveConflict,
+  requestOriginNotAllowed,
   threadNotFound,
   unexpectedFailure,
 } from "./errors";
@@ -64,8 +66,9 @@ export function createApp(
   const auth = createAuth(env);
   const createStore =
     dependencies.createStore ?? (() => new D1ThreadStore(env.DB));
+  const browserOrigin = new URL(env.BROWSER_ORIGIN).origin;
   const credentialedCors = cors({
-    origin: env.BROWSER_ORIGIN,
+    origin: browserOrigin,
     credentials: true,
   });
   const app = new Hono<AppEnvironment>();
@@ -78,6 +81,30 @@ export function createApp(
   app.all("/api/auth/*", (context) => auth.handler(context.req.raw));
 
   app.use("/v1/*", credentialedCors);
+  app.use("/v1/*", async (context, next) => {
+    const method = context.req.method;
+    if (method === "OPTIONS" || method === "GET" || method === "HEAD") {
+      return next();
+    }
+
+    const origin = context.req.header("origin");
+    if (origin !== undefined && origin !== browserOrigin) {
+      return context.json({ error: requestOriginNotAllowed }, 403);
+    }
+
+    if (method === "POST" || method === "PUT" || method === "PATCH") {
+      const mediaType = context.req
+        .header("content-type")
+        ?.split(";", 1)[0]
+        .trim()
+        .toLowerCase();
+      if (mediaType !== "application/json") {
+        return context.json({ error: jsonRequestRequired }, 415);
+      }
+    }
+
+    await next();
+  });
   app.use("/v1/*", authenticatedActor(auth));
   app.use("/v1/*", async (context, next) => {
     context.set("store", createStore(context.get("actor")));

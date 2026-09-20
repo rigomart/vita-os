@@ -9,13 +9,19 @@ import type {
   CompleteNextMoveOutput,
   Condition,
   OperationResult,
-  Thread,
   ThreadDetail,
   ThreadId,
+  VersionedThread,
 } from "@vita-os/contracts";
 
 type JsonObject = Record<string, unknown>;
-type FetchImplementation = typeof fetch;
+type BrowserRequestInit = RequestInit & {
+  credentials?: "include" | "omit" | "same-origin";
+};
+type FetchImplementation = (
+  input: string | URL | Request,
+  init?: BrowserRequestInit,
+) => Promise<Response>;
 
 export interface HttpApplicationClientOptions {
   apiBaseUrl: string;
@@ -87,7 +93,7 @@ function isAreaIcon(value: unknown): value is AreaIcon {
   }
 }
 
-function isThreadState(value: unknown): value is Thread["state"] {
+function isThreadState(value: unknown): value is VersionedThread["state"] {
   return value === "open" || value === "resolved";
 }
 
@@ -108,7 +114,7 @@ function isStringArray(value: unknown): value is string[] {
   );
 }
 
-function decodeThread(value: unknown): Thread | undefined {
+function decodeThread(value: unknown): VersionedThread | undefined {
   if (!isObject(value)) return undefined;
 
   const {
@@ -140,7 +146,8 @@ function decodeThread(value: unknown): Thread | undefined {
     !isOptionalSafeInteger(followUp) ||
     !isOptionalSafeInteger(lastActivityAt) ||
     !isOptionalString(lastActivityContent) ||
-    !isOptionalSafeInteger(revision) ||
+    !isSafeInteger(revision) ||
+    revision < 0 ||
     !isSafeInteger(createdAt)
   ) {
     return undefined;
@@ -159,7 +166,7 @@ function decodeThread(value: unknown): Thread | undefined {
     ...(followUp === undefined ? {} : { followUp }),
     ...(lastActivityAt === undefined ? {} : { lastActivityAt }),
     ...(lastActivityContent === undefined ? {} : { lastActivityContent }),
-    ...(revision === undefined ? {} : { revision }),
+    revision,
     createdAt,
   };
 }
@@ -276,11 +283,14 @@ function statusErrorCode(status: number): ApplicationError["code"] | undefined {
     case 400:
       return "validation";
     case 401:
+    case 403:
       return "unauthorized";
     case 404:
       return "not_found";
     case 409:
       return "conflict";
+    case 415:
+      return "validation";
     case 502:
     case 503:
     case 504:
@@ -301,7 +311,7 @@ async function readJson(response: Response): Promise<unknown | undefined> {
 async function request<T>(input: {
   fetchImpl: FetchImplementation;
   url: string;
-  init: RequestInit;
+  init: BrowserRequestInit;
   decodeSuccess: (value: unknown) => T | undefined;
 }): Promise<OperationResult<T>> {
   let response: Response;

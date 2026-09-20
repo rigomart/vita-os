@@ -1,11 +1,6 @@
 import type { Id } from "@convex/_generated/dataModel";
 import type { ProjectedArea, ProjectedThread } from "@convex/lib/validators";
-import type {
-  ActivityLogEntry,
-  AreaId,
-  ThreadDetail,
-  ThreadId,
-} from "@vita-os/contracts";
+import type { ActivityLogEntry, AreaId, ThreadId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { getFunctionName } from "convex/server";
@@ -15,6 +10,7 @@ import type {
   ConvexApplicationClient,
   ConvexLiveResource,
   ConvexQueryState,
+  ConvexThreadDetail,
 } from "@/application/convex/convex-application-client-compatibility";
 
 import { AppErrorBoundary } from "@/components/error-boundary";
@@ -100,8 +96,8 @@ function constantResource<T>(snapshot: T): ConvexLiveResource<T> {
 }
 
 function detailResource(
-  snapshot: ConvexQueryState<ThreadDetail>,
-): ConvexLiveResource<ConvexQueryState<ThreadDetail>> {
+  snapshot: ConvexQueryState<ConvexThreadDetail>,
+): ConvexLiveResource<ConvexQueryState<ConvexThreadDetail>> {
   return {
     getSnapshot: () => snapshot,
     subscribe: () => {

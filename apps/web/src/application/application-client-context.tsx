@@ -1,4 +1,4 @@
-import type { ThreadDetail, ThreadId } from "@vita-os/contracts";
+import type { ThreadId } from "@vita-os/contracts";
 
 import {
   createContext,
@@ -13,6 +13,7 @@ import type {
   ConvexApplicationClient,
   ConvexLiveResource,
   ConvexQueryState,
+  ConvexThreadDetail,
 } from "./convex/convex-application-client-compatibility";
 
 const ApplicationClientContext = createContext<ConvexApplicationClient | null>(
@@ -49,7 +50,9 @@ function useLiveResource<T>(resource: ConvexLiveResource<T>): T {
   );
 }
 
-export function useThreadDetail(slug: string): ConvexQueryState<ThreadDetail> {
+export function useThreadDetail(
+  slug: string,
+): ConvexQueryState<ConvexThreadDetail> {
   const client = useApplicationClient();
   const resource = useMemo(
     () => client.watchThreadDetail({ slug }),
