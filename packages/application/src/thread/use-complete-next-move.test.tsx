@@ -79,7 +79,7 @@ function createHarness(client: ApplicationClient) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false, staleTime: Infinity },
-      mutations: { retry: false },
+      mutations: { retry: 2, retryDelay: 0 },
     },
   });
   queryClient.setQueryData(threadQueryKeys.detail(slug), initialDetail);
@@ -139,6 +139,67 @@ describe("useCompleteNextMove", () => {
     pending.resolve(success({ status: "completed" }));
   });
 
+  it("cancels stale in-flight reads before applying the optimistic snapshot", async () => {
+    const staleDetail = deferred<ThreadDetail>();
+    const staleActivity = deferred<ActivityLogPage>();
+    const completion =
+      deferred<OperationResult<{ status: "completed" | "unchanged" }>>();
+    const client = createFakeApplicationClient({
+      completeNextMove: () => completion.promise,
+    });
+    const { result, queryClient } = createHarness(client);
+
+    const detailFetch = queryClient
+      .fetchQuery({
+        queryKey: threadQueryKeys.detail(slug),
+        queryFn: () => staleDetail.promise,
+        staleTime: 0,
+      })
+      .catch(() => undefined);
+    const activityFetch = queryClient
+      .fetchInfiniteQuery({
+        queryKey: threadQueryKeys.activityPage(threadId, 2),
+        queryFn: () => staleActivity.promise,
+        initialPageParam: undefined,
+        getNextPageParam: () => undefined,
+        staleTime: 0,
+      })
+      .catch(() => undefined);
+
+    act(() => result.current.completion.mutate(completionInput));
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<ThreadDetail>(threadQueryKeys.detail(slug))
+          ?.thread.nextMove,
+      ).toBe("Book appointment"),
+    );
+
+    staleDetail.resolve({
+      ...initialDetail,
+      thread: { ...initialDetail.thread, nextMove: "Stale server value" },
+    });
+    staleActivity.resolve({
+      entries: [
+        {
+          _id: "stale-log",
+          type: "next_action_change",
+          content: "Stale",
+          createdAt: 99,
+        },
+      ],
+    });
+    await Promise.all([detailFetch, activityFetch]);
+
+    expect(
+      queryClient.getQueryData<ThreadDetail>(threadQueryKeys.detail(slug))
+        ?.thread.nextMove,
+    ).toBe("Book appointment");
+    expect(
+      queryClient.getQueryData(threadQueryKeys.activityPage(threadId, 2)),
+    ).toEqual(initialActivity);
+    completion.resolve(success({ status: "completed" }));
+  });
+
   it("refetches authoritative detail and Activity Log data after success", async () => {
     const authoritativeDetail: ThreadDetail = {
       ...initialDetail,
@@ -194,15 +255,29 @@ describe("useCompleteNextMove", () => {
     async (error) => {
       const detailRefetch = deferred<OperationResult<ThreadDetail>>();
       const activityRefetch = deferred<OperationResult<ActivityLogPage>>();
+      let queryClientForRefetch!: QueryClient;
+      let detailAtRefetch: unknown;
+      let activityAtRefetch: unknown;
       const completeNextMove = vi.fn(
         async () => ({ ok: false, error }) as const,
       );
       const client = createFakeApplicationClient({
         completeNextMove,
-        getThreadDetail: () => detailRefetch.promise,
-        getThreadActivityPage: () => activityRefetch.promise,
+        getThreadDetail: () => {
+          detailAtRefetch = queryClientForRefetch.getQueryData(
+            threadQueryKeys.detail(slug),
+          );
+          return detailRefetch.promise;
+        },
+        getThreadActivityPage: () => {
+          activityAtRefetch = queryClientForRefetch.getQueryData(
+            threadQueryKeys.activityPage(threadId, 2),
+          );
+          return activityRefetch.promise;
+        },
       });
       const { result, queryClient } = createHarness(client);
+      queryClientForRefetch = queryClient;
 
       let mutation!: Promise<unknown>;
       act(() => {
@@ -220,6 +295,8 @@ describe("useCompleteNextMove", () => {
       expect(
         queryClient.getQueryData(threadQueryKeys.activityPage(threadId, 2)),
       ).toEqual(initialActivity);
+      expect(detailAtRefetch).toEqual(initialDetail);
+      expect(activityAtRefetch).toEqual(initialActivity);
       expect(completeNextMove).toHaveBeenCalledTimes(1);
 
       detailRefetch.resolve(success(initialDetail));

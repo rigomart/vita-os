@@ -73,8 +73,10 @@ describe("useThreadActivity", () => {
     expect(getThreadActivityPage).toHaveBeenNthCalledWith(1, {
       threadId,
       limit: 1,
-      cursor: undefined,
     });
+    expect(getThreadActivityPage.mock.calls[0]?.[0]).not.toHaveProperty(
+      "cursor",
+    );
     expect(result.current.hasNextPage).toBe(true);
 
     await act(async () => {

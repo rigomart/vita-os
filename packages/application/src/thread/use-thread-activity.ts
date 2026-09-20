@@ -39,7 +39,7 @@ export function useThreadActivity(
       const result = await client.getThreadActivityPage({
         threadId,
         limit,
-        cursor: pageParam,
+        ...(pageParam === undefined ? {} : { cursor: pageParam }),
       });
       if (!result.ok) throw result.error;
       return result.value;

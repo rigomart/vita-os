@@ -33,4 +33,25 @@ describe("ApplicationClientProvider", () => {
       "ApplicationClientProvider is missing.",
     );
   });
+
+  it("owns one normally-stale, non-polling QueryClient per provider", () => {
+    const client = createFakeApplicationClient();
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <ApplicationClientProvider client={client}>
+        {children}
+      </ApplicationClientProvider>
+    );
+
+    const first = renderHook(() => useQueryClient(), { wrapper });
+    const firstClient = first.result.current;
+    first.rerender();
+    expect(first.result.current).toBe(firstClient);
+    expect(firstClient.getDefaultOptions()).toEqual({
+      queries: { refetchInterval: false },
+      mutations: { retry: false },
+    });
+
+    const second = renderHook(() => useQueryClient(), { wrapper });
+    expect(second.result.current).not.toBe(firstClient);
+  });
 });
