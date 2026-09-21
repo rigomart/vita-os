@@ -1,9 +1,13 @@
 name: Deploy staging
 
+# Merging to main deploys staging, but so does running this by hand on any
+# branch: a long-running branch needs somewhere to stand its stack up before it
+# is fit to merge, and making the merge the only way in forces that order.
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
