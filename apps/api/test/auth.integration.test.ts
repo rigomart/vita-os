@@ -2,8 +2,26 @@ import { env, SELF } from "cloudflare:test";
 import { describe, expect, it, vi } from "vitest";
 
 import { createApp } from "../src/app";
+import { getSocialProviders } from "../src/auth";
 
 describe("authentication and actor gate", () => {
+  it("keeps migrated social providers available when their credentials are configured", () => {
+    const providers = getSocialProviders({
+      ...env,
+      GITHUB_CLIENT_ID: "github-id",
+      GITHUB_CLIENT_SECRET: "github-secret",
+      GOOGLE_CLIENT_ID: "google-id",
+      GOOGLE_CLIENT_SECRET: "google-secret",
+    });
+    expect(providers).toMatchObject({
+      github: { clientId: "github-id" },
+      google: { clientId: "google-id", prompt: "select_account" },
+    });
+    expect(() =>
+      getSocialProviders({ ...env, GITHUB_CLIENT_ID: "incomplete" }),
+    ).toThrow("GitHub authentication requires both client ID and secret.");
+  });
+
   it("responds to an allowed-origin application preflight request", async () => {
     const response = await createApp(env).request(
       "/v1/threads/private-thread",

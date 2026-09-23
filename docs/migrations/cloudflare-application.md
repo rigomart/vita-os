@@ -124,7 +124,7 @@ which avoids circular dependencies between routes and screens.
 
 ## Still ahead
 
-- Import production data and validate it ([#351](https://github.com/rigomart/vita-os/issues/351)).
+- Import production data and validate it ([#350](https://github.com/rigomart/vita-os/issues/350)).
   The importer translates Convex's `tasks`/`text` storage and its
   `next_action_change` entry type into the canonical names.
 - Cut over and retire Convex ([#352](https://github.com/rigomart/vita-os/issues/352)),

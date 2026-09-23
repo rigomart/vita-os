@@ -9,3 +9,10 @@ BETTER_AUTH_URL=http://localhost:8787
 
 # The only origin allowed to make credentialed requests — the Vite dev server.
 BROWSER_ORIGIN=http://localhost:5173
+
+# Optional: configure both values for each social provider used by migrated
+# accounts. Use `wrangler secret put` in deployed environments.
+# GITHUB_CLIENT_ID=
+# GITHUB_CLIENT_SECRET=
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
