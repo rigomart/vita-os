@@ -1,9 +1,8 @@
 import userEvent from "@testing-library/user-event";
+import { render, screen } from "@vita-os/application/test/render";
 import { describe, expect, it, vi } from "vitest";
 
 import type { SocialProviderOption } from "@/features/auth/auth-card-shell";
-
-import { render, screen } from "@/test/render-with-providers";
 
 import { SignUpForm } from "./sign-up-form";
 

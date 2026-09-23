@@ -27,6 +27,7 @@ dist-ssr
 .turbo
 .wrangler/
 .dev.vars*
+!.dev.vars.example
 .codex
 
 # Claude Code

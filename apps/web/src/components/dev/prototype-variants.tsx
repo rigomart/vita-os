@@ -6,6 +6,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@vita-os/ui/components/popover";
+import { cn } from "@vita-os/ui/lib/utils";
 import {
   ArrowDown,
   ArrowLeft,
@@ -14,8 +15,6 @@ import {
   FlaskConical,
 } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-
-import { cn } from "@/lib/utils";
 
 export interface PrototypeVariant {
   key: string;

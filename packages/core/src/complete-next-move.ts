@@ -10,7 +10,7 @@ export interface NextMoveCompletionState {
 }
 
 export interface NextMoveCompletionActivity {
-  type: Extract<ActivityLogEntryType, "next_action_change">;
+  type: Extract<ActivityLogEntryType, "next_move_change">;
   content: string;
   previousValue: string;
   newValue?: string;
@@ -37,7 +37,7 @@ export function decideNextMoveCompletion(
       upNext: remaining.length > 0 ? remaining : undefined,
     },
     activity: {
-      type: "next_action_change",
+      type: "next_move_change",
       content: promoted
         ? `Completed "${state.nextMove}" — next move set to "${promoted}"`
         : `Completed "${state.nextMove}" — next move cleared`,

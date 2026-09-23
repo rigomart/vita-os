@@ -182,7 +182,7 @@ async function seedActivityFixture(owner: Session, other: Session) {
       id,
       owner.actorId,
       "thread-owner",
-      "next_action_change",
+      "next_move_change",
       `Captured default page entry ${index}`,
       null,
       `Move ${index}`,
@@ -221,7 +221,7 @@ async function seedActivityFixture(owner: Session, other: Session) {
       "log-z",
       owner.actorId,
       "thread-owner",
-      "next_action_change",
+      "next_move_change",
       "Changed the Next Move",
       "Call clinic",
       "Book appointment",
@@ -257,7 +257,7 @@ async function seedActivityFixture(owner: Session, other: Session) {
       "log-oldest",
       owner.actorId,
       "thread-owner",
-      "next_action_change",
+      "next_move_change",
       "Captured a Next Move",
       null,
       "Call clinic",
@@ -532,7 +532,7 @@ describe("Activity Log", () => {
       },
       {
         _id: "log-z",
-        type: "next_action_change",
+        type: "next_move_change",
         content: "Changed the Next Move",
         previousValue: "Call clinic",
         newValue: "Book appointment",
@@ -555,7 +555,7 @@ describe("Activity Log", () => {
       },
       {
         _id: "log-oldest",
-        type: "next_action_change",
+        type: "next_move_change",
         content: "Captured a Next Move",
         newValue: "Call clinic",
         createdAt: 100,
@@ -617,7 +617,7 @@ describe("Activity Log", () => {
       entries: [
         {
           _id: "log-default-15",
-          type: "next_action_change",
+          type: "next_move_change",
           content: "Captured default page entry 15",
           newValue: "Move 15",
           createdAt: 84,

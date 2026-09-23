@@ -93,7 +93,7 @@ async function seedThread(owner: Session): Promise<{
       `http-client-log-${suffix}`,
       owner.actorId,
       id,
-      "next_action_change",
+      "next_move_change",
       "Captured a Next Move",
       null,
       "Call clinic",

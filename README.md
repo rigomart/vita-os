@@ -4,19 +4,45 @@ This template provides a minimal setup to get React working in Vite with HMR and
 
 ## Environment
 
-Client variables live in `apps/web/.env.local`. Copy `apps/web/.env.example` to start; `bunx convex dev` writes `VITE_CONVEX_URL` (and `CONVEX_DEPLOYMENT`) for you, while `VITE_CONVEX_SITE_URL` is set by hand — the same host with a `.site` TLD:
+The replacement runs on its own API Worker; Convex still runs production until
+cutover, so both sets of variables are described here. See
+`docs/migrations/cloudflare-application.md`.
 
-- `VITE_CONVEX_URL` — Convex deployment URL (`…convex.cloud`), used by the Convex React client.
-- `VITE_CONVEX_SITE_URL` — Convex site URL (`…convex.site`), used as the Better Auth client `baseURL`.
+### The API Worker and the browser host
 
-Backend variables live in the Convex deployment, not in any file. Set each with `npx convex env set <NAME> <value>`:
+The browser needs one variable, in `apps/web/.env.local` (copy
+`apps/web/.env.example`):
+
+- `VITE_API_BASE_URL` — where `apps/api` is served. It answers Better Auth's
+  browser routes at `/api/auth/*` and the application operations at `/v1/*`.
+
+The Worker's own secrets live in `apps/api/.dev.vars` locally (copy
+`apps/api/.dev.vars.example`) and in the Worker's secrets when deployed:
+
+- `BETTER_AUTH_SECRET` — signs sessions.
+- `BETTER_AUTH_URL` — the Worker's own public address.
+- `BROWSER_ORIGIN` — the single origin allowed to make credentialed requests.
+
+Run it locally with local D1:
+
+```bash
+bun run --filter=@vita-os/api migrate:local
+bunx turbo run dev --filter=@vita-os/api
+```
+
+### Convex, while it still runs production
+
+The browser no longer reads any Convex variable: `apps/web/convex` is kept as the
+behavioral reference and as the deployment that serves production until cutover.
+Its own variables live in the Convex deployment, not in any file. Set each with
+`npx convex env set <NAME> <value>`:
 
 - `SITE_URL` — the web app's origin; used for Better Auth trusted origins and cross-domain cookies.
 - `CONVEX_SITE_URL` — the Convex site URL (`…convex.site`); Better Auth's server `baseURL`. Convex provides this automatically; you only set it manually if you override it.
 - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` — GitHub OAuth app credentials.
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — Google OAuth client credentials.
 
-Missing variables throw at startup naming the variable, on both the client and the Convex backend.
+Missing variables throw at startup naming the variable, on the client and on both backends.
 
 ## Web deployment
 

@@ -6,5 +6,7 @@ export default defineConfig({
     globals: true,
     include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["./src/test/setup.ts"],
+    // Components import the UI library's stylesheets alongside their markup.
+    css: true,
   },
 });

@@ -1,54 +1,39 @@
-import type { AuthClient } from "@convex-dev/better-auth/react";
-
-import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
-import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { RouterProvider } from "@tanstack/react-router";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import {
+  AppErrorBoundary,
+  initializeTheme,
+  SessionGateProvider,
+  ThemeProvider,
+  useTheme,
+} from "@vita-os/application";
 import { Toaster } from "@vita-os/ui/components/sonner";
 import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
-import { ConvexQueryCacheProvider } from "convex-helpers/react/cache";
-import { ConvexReactClient } from "convex/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { ApplicationClientProvider } from "./application/application-client-context";
-import {
-  createConvexApplicationClient,
-  createConvexGateway,
-} from "./application/convex/convex-application-client";
-import {
-  AppErrorBoundary,
-  RouteErrorFallback,
-} from "./components/error-boundary";
-import {
-  initializeTheme,
-  ThemeProvider,
-  useTheme,
-} from "./features/theme/theme-provider";
-import { authClient } from "./lib/auth-client";
-import { CONVEX_URL } from "./lib/env";
-import { routeTree } from "./routeTree.gen";
+import { createHttpApplicationClient } from "./application/http/http-application-client";
+import { SignedInApplication } from "./application/signed-in-application";
+import { API_BASE_URL } from "./lib/env";
+import { BrowserSessionGate } from "./routing/browser-session-gate";
+import { router } from "./routing/router";
 import "@vita-os/ui/globals.css";
 
 initializeTheme();
 
-const convex = new ConvexReactClient(CONVEX_URL, {
-  expectAuth: true,
+/**
+ * The browser host's composition.
+ *
+ * It owns exactly what the shared application cannot: Better Auth in the
+ * browser, the runtime API address, the HTTP implementation of the application
+ * contract, and the gate in front of the product. Everything above that — the
+ * routes, the product screens, the cache, the optimistic behavior — belongs to
+ * `@vita-os/application`, which a desktop host can mount the same way against a
+ * local client.
+ */
+const applicationClient = createHttpApplicationClient({
+  apiBaseUrl: API_BASE_URL,
 });
-const applicationClient = createConvexApplicationClient(
-  createConvexGateway(convex),
-);
-
-// Every match gets a branded boundary; routes that own the whole viewport
-// override this with the full-page `AppErrorFallback`.
-const router = createRouter({
-  routeTree,
-  defaultErrorComponent: RouteErrorFallback,
-});
-
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
-}
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element not found");
@@ -57,21 +42,17 @@ createRoot(root).render(
   <StrictMode>
     <AppErrorBoundary>
       <ThemeProvider>
-        <ConvexBetterAuthProvider
-          client={convex}
-          // The component's AuthClient union reduces useSession data to `never`
-          // under TypeScript 7, despite this matching its documented plugin setup.
-          authClient={authClient as unknown as AuthClient}
-        >
-          <ApplicationClientProvider client={applicationClient}>
-            <ConvexQueryCacheProvider expiration={300_000}>
-              <FeedbackProvider>
-                <RouterProvider router={router} />
-                <ThemeAwareToaster />
-              </FeedbackProvider>
-            </ConvexQueryCacheProvider>
-          </ApplicationClientProvider>
-        </ConvexBetterAuthProvider>
+        <SignedInApplication client={applicationClient}>
+          <SessionGateProvider gate={BrowserSessionGate}>
+            <FeedbackProvider>
+              <RouterProvider router={router} />
+              <ThemeAwareToaster />
+              {import.meta.env.DEV && (
+                <TanStackRouterDevtools router={router} />
+              )}
+            </FeedbackProvider>
+          </SessionGateProvider>
+        </SignedInApplication>
       </ThemeProvider>
     </AppErrorBoundary>
   </StrictMode>,

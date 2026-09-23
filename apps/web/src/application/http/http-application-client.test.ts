@@ -37,7 +37,7 @@ const activityPage = {
   entries: [
     {
       _id: "log-1",
-      type: "next_action_change",
+      type: "next_move_change",
       content: "Captured a Next Move",
       newValue: "Call clinic",
       createdAt: 1_700_000_000_000,
