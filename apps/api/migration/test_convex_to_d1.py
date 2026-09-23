@@ -138,6 +138,11 @@ class MigrationTest(unittest.TestCase):
         with self.assertRaisesRegex(MigrationError, "inconsistent activity content"):
             project(source)
         source = fixture()
+        source["threads"][0]["lastActivityAt"] = 30
+        source["threads"][0].pop("lastActivityContent")
+        with self.assertRaisesRegex(MigrationError, "inconsistent activity timestamp"):
+            project(source)
+        source = fixture()
         source["user"][0]["twoFactorEnabled"] = True
         with self.assertRaisesRegex(MigrationError, "unmapped fields"):
             project(source)
@@ -161,6 +166,16 @@ class MigrationTest(unittest.TestCase):
         source["threads"][0]["lastActivityAt"] = 30
         source["threads"][0].pop("lastActivityContent")
         target, changes = project(source)
+        connection = target_database(target)
+        self.assertEqual(validate(target, connection, changes)["status"], "pass")
+        connection.close()
+
+    def test_deleted_newest_thread_note_keeps_its_activity_stamp(self):
+        source = fixture()
+        source["threads"][0]["lastActivityAt"] = 45
+        source["threads"][0].pop("lastActivityContent")
+        target, changes = project(source)
+        self.assertEqual(target["threads"][0]["last_activity_at"], 45)
         connection = target_database(target)
         self.assertEqual(validate(target, connection, changes)["status"], "pass")
         connection.close()

@@ -66,6 +66,11 @@ with the snapshot identifier and D1 export identifier in the cutover record.
   public Activity Log automatic-only. If a Thread's last-activity content was
   copied from such a note, the importer clears that content as the Convex
   migration does. The report counts these conversions.
+- Thread activity metadata is copied unchanged. Deleting a Thread Note keeps
+  the stamp it set, in Convex and in D1, so `lastActivityAt` may be newer than
+  every surviving entry. The importer only rejects a stamp older than a
+  surviving Activity Log Entry or Thread Note, or saved content that matches no
+  Activity Log Entry at that stamp.
 - Better Auth `user`, `account`, and `verification` records retain IDs and
   durable fields, including credential hashes and provider relationships.
   An older component `user.userId` may identify the same user's application

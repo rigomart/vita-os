@@ -312,14 +312,14 @@ def project(source: dict[str, list[dict[str, Any]]]) -> tuple[dict[str, list[dic
         content = thread["last_activity_content"]
         require(stamp is not None or (not logs and not notes and content is None),
                 f"threads/{thread['id']}: missing activity metadata")
+        # Deleting a Thread Note leaves the stamp it set in both Convex and D1,
+        # so the stamp may outlive its record. Log entries are never deleted
+        # individually, so saved content must still match one.
         if stamp is not None:
-            require(bool(logs or notes) and stamp == max(
-                [log["created_at"] for log in logs] + [note["created_at"] for note in notes]
-            ),
+            require(all(row["created_at"] <= stamp for row in (*logs, *notes)),
                     f"threads/{thread['id']}: inconsistent activity timestamp")
-            require((content is not None and any(log["created_at"] == stamp and
-                                                 log["content"] == content for log in logs))
-                    or (content is None and any(note["created_at"] == stamp for note in notes)),
+            require(content is None or any(log["created_at"] == stamp and
+                                           log["content"] == content for log in logs),
                     f"threads/{thread['id']}: inconsistent activity content")
     return target, {"legacy_activity_notes": transformed_notes,
                     "discarded_sessions": len(source["session"]),
