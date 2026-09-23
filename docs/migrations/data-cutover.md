@@ -87,6 +87,9 @@ with the snapshot identifier and D1 export identifier in the cutover record.
 
 ## Production sequence to finalize in #351
 
+The isolated rehearsal of this sequence is in
+[cutover-rehearsal.md](cutover-rehearsal.md).
+
 1. Obtain explicit approval for the cutover window and confirm the rollback
    owner, old deployment revision, empty target D1 database, and secrets.
 2. Stop all writes to the Convex-backed application at the deployment boundary.
