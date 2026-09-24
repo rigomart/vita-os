@@ -36,9 +36,7 @@
         {
           "binding": "DB",
           "database_name": "vita-os-staging",
-          // Replace with the ID printed by `wrangler d1 create vita-os-staging`.
-          // The deploy workflow refuses to run while this is all zeros.
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "52374eda-17ed-4e85-ad3e-b9034d71b780",
           "migrations_dir": "migrations",
         },
       ],

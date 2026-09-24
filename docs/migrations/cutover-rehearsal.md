@@ -43,8 +43,11 @@ and Worker secrets.
    bunx wrangler d1 create vita-os-staging
    ```
 
-   Replace the all-zero `database_id` under `env.staging` in
-   `apps/api/wrangler.jsonc` with the printed ID.
+   Answer **no** when Wrangler offers to add the binding for you. It adds a
+   second top-level binding, which can point local development at the remote
+   database. Instead, put the printed ID in `database_id` under `env.staging` in
+   `apps/api/wrangler.jsonc`. The `vita-os-staging` ID
+   `52374eda-17ed-4e85-ad3e-b9034d71b780` is already there.
 
 2. Set the API secret. Better Auth needs at least 32 characters:
 
