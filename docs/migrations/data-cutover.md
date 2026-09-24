@@ -79,8 +79,19 @@ with the snapshot identifier and D1 export identifier in the cutover record.
   and secret pairs; the rehearsal must configure each provider represented by
   migrated accounts and test its sign-in flow. A partial pair fails startup.
   `session` and `rateLimit` are intentionally discarded, requiring sign-in
-  again. Nonempty component tables unsupported by the target Better Auth
-  configuration fail preflight rather than disappear silently.
+  again. `jwks` is discarded too: it holds the key the Convex integration used
+  to sign tokens for Convex, and the Worker has no JWT plugin. Nonempty
+  component tables unsupported by the target Better Auth configuration fail
+  preflight rather than disappear silently. Convex system tables (`_tables`)
+  are skipped.
+- `items`, `projects`, `projectLogs`, and `userSettings` are pre-Threads
+  storage the Convex app no longer reads. Production never carried them
+  forward: every current Thread, Note, and Activity Log Entry is newer than
+  their newest row. They are discarded by decision and counted under
+  `discarded_retired_rows`; the retained final Convex export still holds them.
+  Any other unknown nonempty table fails preflight.
+- Convex exports every number as a float (`1747000000000.0`). Whole values
+  become integers; a fractional timestamp or order fails rather than rounding.
 - Duplicate owner/slugs fail preflight because D1 requires uniqueness. Resolve
   the source data through a separately reviewed plan before cutover; this tool
   never rewrites production records to make them fit.

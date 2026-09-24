@@ -16,10 +16,16 @@ from typing import Any
 
 
 APP_TABLES = ("areas", "threads", "tasks", "threadNotes", "activityLogs")
+# Pre-Threads storage that the Convex app stopped reading and that production
+# never carried forward. It is dropped deliberately and counted in the report;
+# the retained final Convex export still holds it.
+RETIRED_APP_TABLES = ("items", "projects", "projectLogs", "userSettings")
 AUTH_TABLES = ("user", "account", "verification")
-EXCLUDED_AUTH_TABLES = {"session", "rateLimit"}
+# Sessions are not migrated; users sign in again. jwks holds the key the Convex
+# integration used to sign tokens for Convex; the Worker has no JWT plugin.
+EXCLUDED_AUTH_TABLES = {"session", "rateLimit", "jwks"}
 UNSUPPORTED_AUTH_TABLES = {
-    "twoFactor", "oauthApplication", "oauthAccessToken", "oauthConsent", "jwks"
+    "twoFactor", "oauthApplication", "oauthAccessToken", "oauthConsent", "passkey"
 }
 TARGET_TABLES = (
     "user", "account", "verification", "areas", "threads", "notes",
@@ -65,7 +71,11 @@ def optional_text(row: dict[str, Any], field: str, table: str) -> str | None:
 
 
 def integer(row: dict[str, Any], field: str, table: str) -> int:
+    # Convex exports every number as a float (1747000000000.0). Accept whole
+    # values and reject fractions rather than rounding them.
     value = row.get(field)
+    if type(value) is float and value.is_integer():
+        value = int(value)
     require(type(value) is int and abs(value) <= 2**53 - 1, f"{table}: invalid {field}")
     return value
 
@@ -87,8 +97,8 @@ def read_snapshot(path: Path) -> dict[str, list[dict[str, Any]]]:
     result: dict[str, list[dict[str, Any]]] = {}
     with zipfile.ZipFile(path) as archive:
         names = archive.namelist()
-        for table in (*APP_TABLES, *AUTH_TABLES, *EXCLUDED_AUTH_TABLES,
-                      *UNSUPPORTED_AUTH_TABLES):
+        for table in (*APP_TABLES, *RETIRED_APP_TABLES, *AUTH_TABLES,
+                      *EXCLUDED_AUTH_TABLES, *UNSUPPORTED_AUTH_TABLES):
             suffix = (
                 f"_components/betterAuth/{table}/documents.jsonl"
                 if table in (*AUTH_TABLES, *EXCLUDED_AUTH_TABLES, *UNSUPPORTED_AUTH_TABLES)
@@ -115,12 +125,14 @@ def read_snapshot(path: Path) -> dict[str, list[dict[str, Any]]]:
             marker = "_components/betterAuth/"
             if marker in name and name.endswith("/documents.jsonl"):
                 table = name.split(marker, 1)[1].split("/", 1)[0]
-                if table not in known:
+                # Convex system tables such as _tables describe the export itself.
+                if table not in known and not table.startswith("_"):
                     require(not archive.read(name).strip(),
                             f"Unsupported nonempty Better Auth table: {table}")
             elif name.endswith("/documents.jsonl") and "_components/" not in name:
                 table = name.rsplit("/", 2)[-2]
-                if table not in APP_TABLES and not table.startswith("_"):
+                if (table not in (*APP_TABLES, *RETIRED_APP_TABLES)
+                        and not table.startswith("_")):
                     require(not archive.read(name).strip(),
                             f"Unsupported nonempty application table: {table}")
     for table in UNSUPPORTED_AUTH_TABLES:
@@ -137,7 +149,7 @@ def unique(rows: list[dict[str, Any]], table: str) -> dict[str, dict[str, Any]]:
     return result
 
 
-def project(source: dict[str, list[dict[str, Any]]]) -> tuple[dict[str, list[dict[str, Any]]], dict[str, int]]:
+def project(source: dict[str, list[dict[str, Any]]]) -> tuple[dict[str, list[dict[str, Any]]], dict[str, Any]]:
     for table, fields in SOURCE_FIELDS.items():
         for row in source[table]:
             extra = set(row) - fields - {"_id", "_creationTime"}
@@ -275,7 +287,7 @@ def project(source: dict[str, list[dict[str, Any]]]) -> tuple[dict[str, list[dic
                 thread_id=thread_id, body=text(row, "content", "activityLogs"),
                 state="open", completed_at=None,
                 created_at=integer(row, "createdAt", "activityLogs"),
-                updated_at=row["createdAt"],
+                updated_at=integer(row, "createdAt", "activityLogs"),
             ))
             for thread in target["threads"]:
                 if thread["id"] == thread_id and thread["last_activity_at"] == row["createdAt"] and thread["last_activity_content"] == row["content"]:
@@ -323,7 +335,11 @@ def project(source: dict[str, list[dict[str, Any]]]) -> tuple[dict[str, list[dic
                     f"threads/{thread['id']}: inconsistent activity content")
     return target, {"legacy_activity_notes": transformed_notes,
                     "discarded_sessions": len(source["session"]),
-                    "discarded_rate_limits": len(source["rateLimit"])}
+                    "discarded_rate_limits": len(source["rateLimit"]),
+                    "discarded_signing_keys": len(source["jwks"]),
+                    "discarded_retired_rows": {
+                        table: len(source.get(table, [])) for table in RETIRED_APP_TABLES
+                    }}
 
 
 def sql_literal(value: Any) -> str:
@@ -362,7 +378,7 @@ def load_d1_export(path: Path) -> sqlite3.Connection:
 
 
 def validate(target: dict[str, list[dict[str, Any]]], connection: sqlite3.Connection,
-             transformations: dict[str, int]) -> dict[str, Any]:
+             transformations: dict[str, Any]) -> dict[str, Any]:
     counts: dict[str, int] = {}
     for table in TARGET_TABLES:
         try:
