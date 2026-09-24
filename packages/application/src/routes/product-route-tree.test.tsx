@@ -65,7 +65,10 @@ async function mountProduct(path: string, gate: SessionGate = AllowSession) {
   return { router, listAreas, getThreadDetail };
 }
 
-describe("shared product routes", () => {
+// The first mount loads every lazy route module and its stylesheets. That
+// takes ~1.5s alone and exceeded the 5s default while CI tests all packages at
+// once, so these tests get room for the cold start.
+describe("shared product routes", { timeout: 20_000 }, () => {
   it("mounts the Dashboard without browser authentication or a host route generator", async () => {
     await mountProduct("/");
 

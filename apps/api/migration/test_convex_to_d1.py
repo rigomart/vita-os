@@ -42,14 +42,25 @@ def fixture():
     }
 
 
+def as_convex_numbers(value):
+    """Convex exports every number as a float, e.g. 1747000000000.0."""
+    if type(value) is int:
+        return float(value)
+    if isinstance(value, dict):
+        return {key: as_convex_numbers(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [as_convex_numbers(item) for item in value]
+    return value
+
+
 def make_snapshot(path, source):
     auth = {"user", "account", "verification", "session", "rateLimit", "twoFactor",
-            "oauthApplication", "oauthAccessToken", "oauthConsent", "jwks"}
+            "oauthApplication", "oauthAccessToken", "oauthConsent", "jwks", "passkey"}
     with zipfile.ZipFile(path, "w") as archive:
         for table, rows in source.items():
             prefix = "_components/betterAuth/" if table in auth else ""
             archive.writestr(prefix + table + "/documents.jsonl",
-                             "\n".join(json.dumps(row) for row in rows) + "\n")
+                             "\n".join(json.dumps(as_convex_numbers(row)) for row in rows) + "\n")
 
 
 def target_database(target):
@@ -138,6 +149,11 @@ class MigrationTest(unittest.TestCase):
         with self.assertRaisesRegex(MigrationError, "inconsistent activity content"):
             project(source)
         source = fixture()
+        source["threads"][0]["lastActivityAt"] = 30
+        source["threads"][0].pop("lastActivityContent")
+        with self.assertRaisesRegex(MigrationError, "inconsistent activity timestamp"):
+            project(source)
+        source = fixture()
         source["user"][0]["twoFactorEnabled"] = True
         with self.assertRaisesRegex(MigrationError, "unmapped fields"):
             project(source)
@@ -161,6 +177,62 @@ class MigrationTest(unittest.TestCase):
         source["threads"][0]["lastActivityAt"] = 30
         source["threads"][0].pop("lastActivityContent")
         target, changes = project(source)
+        connection = target_database(target)
+        self.assertEqual(validate(target, connection, changes)["status"], "pass")
+        connection.close()
+
+    def test_skips_component_system_tables_and_discards_convex_signing_keys(self):
+        source = fixture()
+        source["jwks"] = [dict(_id="key-a", publicKey="public", privateKey="private",
+                               createdAt=1)]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshot.zip"
+            make_snapshot(path, source)
+            with zipfile.ZipFile(path, "a") as archive:
+                archive.writestr("_tables/documents.jsonl", '{"name":"areas"}\n')
+                archive.writestr("_components/betterAuth/_tables/documents.jsonl",
+                                 '{"name":"user"}\n')
+            target, changes = project(read_snapshot(path))
+        self.assertEqual(changes["discarded_signing_keys"], 1)
+        connection = target_database(target)
+        self.assertEqual(validate(target, connection, changes)["status"], "pass")
+        connection.close()
+
+    def test_discards_retired_tables_and_rejects_other_unknown_tables(self):
+        source = fixture()
+        source["projects"] = [dict(_id="project-a", userId="user-a", name="Old")]
+        source["projectLogs"] = [dict(_id="project-log-a", projectId="project-a"),
+                                 dict(_id="project-log-b", projectId="project-a")]
+        source["items"] = [dict(_id="item-a", userId="user-a", text="Old")]
+        source["userSettings"] = [dict(_id="settings-a", userId="user-a")]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "snapshot.zip"
+            make_snapshot(path, source)
+            target, changes = project(read_snapshot(path))
+            self.assertEqual(changes["discarded_retired_rows"],
+                             {"items": 1, "projects": 1, "projectLogs": 2, "userSettings": 1})
+            connection = target_database(target)
+            self.assertEqual(validate(target, connection, changes)["status"], "pass")
+            connection.close()
+
+            source["reviews"] = [dict(_id="review-a")]
+            path = Path(directory) / "unknown.zip"
+            make_snapshot(path, source)
+            with self.assertRaisesRegex(MigrationError, "Unsupported nonempty application table: reviews"):
+                read_snapshot(path)
+
+    def test_rejects_fractional_numbers_instead_of_rounding(self):
+        source = fixture()
+        source["areas"][0]["order"] = 2.5
+        with self.assertRaisesRegex(MigrationError, "areas: invalid order"):
+            project(source)
+
+    def test_deleted_newest_thread_note_keeps_its_activity_stamp(self):
+        source = fixture()
+        source["threads"][0]["lastActivityAt"] = 45
+        source["threads"][0].pop("lastActivityContent")
+        target, changes = project(source)
+        self.assertEqual(target["threads"][0]["last_activity_at"], 45)
         connection = target_database(target)
         self.assertEqual(validate(target, connection, changes)["status"], "pass")
         connection.close()

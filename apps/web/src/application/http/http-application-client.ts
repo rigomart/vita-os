@@ -111,7 +111,10 @@ async function request<T>(input: {
 }): Promise<OperationResult<T>> {
   let response: Response;
   try {
-    response = await input.fetchImpl(input.url, input.init);
+    // Call fetch detached: invoked as `input.fetchImpl(...)`, the browser's
+    // fetch receives `input` as `this` and throws "Illegal invocation".
+    const fetchImpl = input.fetchImpl;
+    response = await fetchImpl(input.url, input.init);
   } catch {
     // A request that never reached the service is worth retrying; nothing is
     // known about whether it was applied, so callers treat it as unavailable.

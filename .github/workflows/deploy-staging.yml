@@ -3,6 +3,11 @@ name: Deploy staging
 # Merging to main deploys staging, but so does running this by hand on any
 # branch: a long-running branch needs somewhere to stand its stack up before it
 # is fit to merge, and making the merge the only way in forces that order.
+#
+# Staging is the isolated Cloudflare stack: the API Worker and its own D1
+# database at vita-api-staging.rigos.dev, and the web Worker at
+# vita-staging.rigos.dev. Both hostnames share rigos.dev so the session cookie
+# reaches the API. Nothing here touches production resources.
 on:
   push:
     branches:
@@ -23,10 +28,18 @@ jobs:
   deploy:
     needs: verify
     runs-on: ubuntu-latest
+    # An explicit bash shell runs every step with -e and pipefail.
+    defaults:
+      run:
+        shell: bash
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      WORKER_NAME: vita-os-web-staging
+      API_WORKER_NAME: vita-os-api-staging
+      API_DOMAIN: vita-api-staging.rigos.dev
+      WEB_WORKER_NAME: vita-os-web-staging
+      WEB_DOMAIN: vita-staging.rigos.dev
+      D1_DATABASE: vita-os-staging
     steps:
       - uses: actions/checkout@v6
         with:
@@ -39,37 +52,40 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # Falls back to production Convex when no non-production deployment is
-      # configured, which is still enough for unauthenticated checks.
-      - name: Resolve Convex target
-        id: convex
-        env:
-          NONPROD_URL: ${{ vars.VITE_CONVEX_URL_NONPROD }}
-          NONPROD_SITE_URL: ${{ vars.VITE_CONVEX_SITE_URL_NONPROD }}
-          PROD_URL: ${{ vars.VITE_CONVEX_URL }}
-          PROD_SITE_URL: ${{ vars.VITE_CONVEX_SITE_URL }}
-        run: |
-          if [ -n "$NONPROD_URL" ] && [ -n "$NONPROD_SITE_URL" ]; then
-            echo "url=$NONPROD_URL" >> "$GITHUB_OUTPUT"
-            echo "site_url=$NONPROD_SITE_URL" >> "$GITHUB_OUTPUT"
-            echo "Staging build targets the non-production Convex deployment."
-          else
-            echo "url=$PROD_URL" >> "$GITHUB_OUTPUT"
-            echo "site_url=$PROD_SITE_URL" >> "$GITHUB_OUTPUT"
-            echo "::warning::VITE_CONVEX_URL_NONPROD is unset, so staging reads production Convex data. Set the non-production repository variables before using staging for write testing."
-          fi
+      - name: Assert API deploy target
+        working-directory: apps/api
+        run: node scripts/assert-deploy-target.mjs staging "$API_WORKER_NAME" "$API_DOMAIN"
 
-      - name: Build staging
-        env:
-          VITE_CONVEX_URL: ${{ steps.convex.outputs.url }}
-          VITE_CONVEX_SITE_URL: ${{ steps.convex.outputs.site_url }}
+      # build:staging pins VITE_API_BASE_URL to the staging API hostname.
+      - name: Build staging web
         run: bun run --cwd apps/web build:staging
 
-      - name: Assert deploy target
+      - name: Assert web deploy target
         working-directory: apps/web
-        run: node scripts/assert-deploy-target.mjs "$WORKER_NAME"
+        env:
+          EXPECT_CUSTOM_DOMAIN: ${{ env.WEB_DOMAIN }}
+        run: node scripts/assert-deploy-target.mjs "$WEB_WORKER_NAME"
 
-      - name: Deploy staging Worker
+      # Schema first, so the new API never runs against an older database.
+      - name: Apply staging D1 migrations
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/api
+          command: d1 migrations apply ${{ env.D1_DATABASE }} --remote --env staging
+
+      - name: Deploy staging API Worker
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/api
+          command: deploy --env staging
+
+      - name: Deploy staging web Worker
         if: env.CLOUDFLARE_API_TOKEN != ''
         uses: cloudflare/wrangler-action@v3
         with:
@@ -78,17 +94,37 @@ jobs:
           workingDirectory: apps/web
           command: deploy
 
-      - name: Smoke test staging
-        if: env.CLOUDFLARE_API_TOKEN != '' && vars.WORKERS_DEV_SUBDOMAIN != ''
+      # A custom domain created by this deploy has no DNS record for its first
+      # seconds, so each smoke test retries for about two minutes.
+      - name: Smoke test staging API
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        working-directory: apps/api
+        run: |
+          for attempt in 1 2 3 4 5 6 7; do
+            if node scripts/smoke-deployment.mjs "https://$API_DOMAIN" "https://$WEB_DOMAIN" > smoke-staging-api.log 2>&1; then
+              cat smoke-staging-api.log
+              exit 0
+            fi
+            cat smoke-staging-api.log
+            echo "Attempt $attempt failed; retrying in 20s."
+            sleep 20
+          done
+          exit 1
+
+      - name: Smoke test staging web
+        if: env.CLOUDFLARE_API_TOKEN != ''
         working-directory: apps/web
         run: |
-          origin="https://$WORKER_NAME.${{ vars.WORKERS_DEV_SUBDOMAIN }}.workers.dev"
-          echo "Staging origin: $origin"
-          node scripts/smoke-deployment.mjs "$origin" | tee smoke-staging.log
-
-      - name: Report a missing workers.dev subdomain
-        if: env.CLOUDFLARE_API_TOKEN != '' && vars.WORKERS_DEV_SUBDOMAIN == ''
-        run: echo "::warning::WORKERS_DEV_SUBDOMAIN is unset, so the staging deploy was not smoke tested."
+          for attempt in 1 2 3 4 5 6 7; do
+            if node scripts/smoke-deployment.mjs "https://$WEB_DOMAIN" > smoke-staging.log 2>&1; then
+              cat smoke-staging.log
+              exit 0
+            fi
+            cat smoke-staging.log
+            echo "Attempt $attempt failed; retrying in 20s."
+            sleep 20
+          done
+          exit 1
 
       - name: Upload staging evidence
         if: always()
@@ -96,6 +132,7 @@ jobs:
         with:
           name: staging-deploy-evidence
           path: |
+            apps/api/smoke-staging-api.log
             apps/web/smoke-staging.log
             apps/web/dist/wrangler.json
           if-no-files-found: ignore
