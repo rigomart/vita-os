@@ -209,9 +209,11 @@ take the rollback decision before resuming writes.
 
 ## Production-only substitutions (for #352)
 
+[production-cutover.md](production-cutover.md) applies these.
+
 | Rehearsal                                  | Production                                |
 | ------------------------------------------ | ----------------------------------------- |
 | `convex export --deployment <rehearsal>`    | `convex export --prod`                    |
-| `vita-os-staging`, `--env staging`          | a new, empty production D1 and `--env production` (to be added) |
-| `vita-staging.rigos.dev`, `vita-api-staging.rigos.dev` | `vita.rigos.dev` and the production API hostname |
-| `Deploy staging`                            | `Deploy production`, after its build switches from `VITE_CONVEX_*` to `VITE_API_BASE_URL` |
+| `vita-os-staging`, `--env staging`          | a new, empty `vita-os-production` D1 and `--env production` |
+| `vita-staging.rigos.dev`, `vita-api-staging.rigos.dev` | `vita.rigos.dev` and `vita-api.rigos.dev` |
+| `Deploy staging`                            | `Deploy production`, run from `main` after the migration merges |

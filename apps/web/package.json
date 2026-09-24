@@ -15,10 +15,8 @@
     "test:run": "vitest run",
     "preview": "vite preview",
     "build:staging": "tsc -b && CLOUDFLARE_ENV=staging VITE_API_BASE_URL=https://vita-api-staging.rigos.dev vite build",
-    "build:preview": "tsc -b && CLOUDFLARE_ENV=preview vite build",
-    "build:production": "tsc -b && CLOUDFLARE_ENV=production vite build",
+    "build:production": "tsc -b && CLOUDFLARE_ENV=production VITE_API_BASE_URL=https://vita-api.rigos.dev vite build",
     "deploy:staging": "bun run build:staging && EXPECT_CUSTOM_DOMAIN=vita-staging.rigos.dev node scripts/assert-deploy-target.mjs vita-os-web-staging && wrangler deploy",
-    "deploy:preview": "bun run build:preview && node scripts/assert-deploy-target.mjs vita-os-web-preview && wrangler deploy",
     "deploy:production": "bun run build:production && EXPECT_CUSTOM_DOMAIN=vita.rigos.dev node scripts/assert-deploy-target.mjs vita-os-web && wrangler deploy",
     "smoke": "node scripts/smoke-deployment.mjs",
     "convex": "convex dev"
