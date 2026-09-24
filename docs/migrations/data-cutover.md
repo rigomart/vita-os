@@ -96,10 +96,12 @@ with the snapshot identifier and D1 export identifier in the cutover record.
   the source data through a separately reviewed plan before cutover; this tool
   never rewrites production records to make them fit.
 
-## Production sequence to finalize in #351
+## Production sequence
 
 The isolated rehearsal of this sequence is in
-[cutover-rehearsal.md](cutover-rehearsal.md).
+[cutover-rehearsal.md](cutover-rehearsal.md). The exact production commands,
+approval gates, and rollback are in
+[production-cutover.md](production-cutover.md).
 
 1. Obtain explicit approval for the cutover window and confirm the rollback
    owner, old deployment revision, empty target D1 database, and secrets.
