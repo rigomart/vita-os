@@ -28,7 +28,7 @@ jobs:
   deploy:
     needs: verify
     runs-on: ubuntu-latest
-    # An explicit bash shell adds pipefail, so `smoke | tee` fails the step.
+    # An explicit bash shell runs every step with -e and pipefail.
     defaults:
       run:
         shell: bash
@@ -94,15 +94,37 @@ jobs:
           workingDirectory: apps/web
           command: deploy
 
+      # A custom domain created by this deploy has no DNS record for its first
+      # seconds, so each smoke test retries for about two minutes.
       - name: Smoke test staging API
         if: env.CLOUDFLARE_API_TOKEN != ''
         working-directory: apps/api
-        run: node scripts/smoke-deployment.mjs "https://$API_DOMAIN" "https://$WEB_DOMAIN" | tee smoke-staging-api.log
+        run: |
+          for attempt in 1 2 3 4 5 6 7; do
+            if node scripts/smoke-deployment.mjs "https://$API_DOMAIN" "https://$WEB_DOMAIN" > smoke-staging-api.log 2>&1; then
+              cat smoke-staging-api.log
+              exit 0
+            fi
+            cat smoke-staging-api.log
+            echo "Attempt $attempt failed; retrying in 20s."
+            sleep 20
+          done
+          exit 1
 
       - name: Smoke test staging web
         if: env.CLOUDFLARE_API_TOKEN != ''
         working-directory: apps/web
-        run: node scripts/smoke-deployment.mjs "https://$WEB_DOMAIN" | tee smoke-staging.log
+        run: |
+          for attempt in 1 2 3 4 5 6 7; do
+            if node scripts/smoke-deployment.mjs "https://$WEB_DOMAIN" > smoke-staging.log 2>&1; then
+              cat smoke-staging.log
+              exit 0
+            fi
+            cat smoke-staging.log
+            echo "Attempt $attempt failed; retrying in 20s."
+            sleep 20
+          done
+          exit 1
 
       - name: Upload staging evidence
         if: always()
