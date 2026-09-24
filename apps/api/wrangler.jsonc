@@ -44,5 +44,33 @@
         "enabled": true,
       },
     },
+    // The database ID stays a placeholder until the owner creates
+    // vita-os-production for the cutover; the deploy guard refuses it until
+    // then. See docs/migrations/production-cutover.md.
+    "production": {
+      "name": "vita-os-api",
+      "workers_dev": false,
+      "routes": [
+        {
+          "pattern": "vita-api.rigos.dev",
+          "custom_domain": true,
+        },
+      ],
+      "vars": {
+        "BETTER_AUTH_URL": "https://vita-api.rigos.dev",
+        "BROWSER_ORIGIN": "https://vita.rigos.dev",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "vita-os-production",
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "observability": {
+        "enabled": true,
+      },
+    },
   },
 }
