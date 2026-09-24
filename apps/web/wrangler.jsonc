@@ -13,9 +13,17 @@
   // The Vite plugin flattens one environment into dist/wrangler.json at build
   // time, so CLOUDFLARE_ENV selects it and `wrangler deploy --env` is ignored.
   "env": {
+    // Sign-in only works on the hostname the API trusts, so the workers.dev
+    // address is off rather than serving a broken app.
     "staging": {
       "name": "vita-os-web-staging",
-      "workers_dev": true,
+      "workers_dev": false,
+      "routes": [
+        {
+          "pattern": "vita-staging.rigos.dev",
+          "custom_domain": true,
+        },
+      ],
       "assets": {
         "not_found_handling": "single-page-application",
       },
@@ -23,20 +31,10 @@
         "enabled": true,
       },
     },
-    "preview": {
-      "name": "vita-os-web-preview",
-      "workers_dev": true,
-      "assets": {
-        "not_found_handling": "single-page-application",
-      },
-      "observability": {
-        "enabled": true,
-      },
-    },
+    // Same for production: only vita.rigos.dev is trusted by vita-os-api.
     "production": {
       "name": "vita-os-web",
-      "workers_dev": true,
-      "preview_urls": true,
+      "workers_dev": false,
       "routes": [
         {
           "pattern": "vita.rigos.dev",

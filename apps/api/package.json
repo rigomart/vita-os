@@ -8,8 +8,9 @@
     "dev": "wrangler dev",
     "lint": "oxlint --fix --deny-warnings . && oxfmt --write .",
     "lint:check": "oxlint --deny-warnings . && oxfmt --check .",
+    "migrate:local": "wrangler d1 migrations apply vita-os-local --local",
     "test": "vitest",
-    "test:run": "vitest run",
+    "test:run": "vitest run && python3 -m unittest discover -s migration -p 'test_*.py'",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

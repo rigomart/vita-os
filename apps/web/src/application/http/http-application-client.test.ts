@@ -37,7 +37,7 @@ const activityPage = {
   entries: [
     {
       _id: "log-1",
-      type: "next_action_change",
+      type: "next_move_change",
       content: "Captured a Next Move",
       newValue: "Call clinic",
       createdAt: 1_700_000_000_000,
@@ -58,6 +58,22 @@ function applicationError(code: string, message: string, retryable: boolean) {
 }
 
 describe("createHttpApplicationClient", () => {
+  it("calls fetch the way a browser requires, without an object as its receiver", async () => {
+    // Browsers reject fetch called with any `this` other than the window.
+    const fetchImpl = vi.fn(function (this: unknown) {
+      if (this !== undefined && this !== globalThis) {
+        return Promise.reject(new TypeError("Illegal invocation"));
+      }
+      return Promise.resolve(jsonResponse([]));
+    }) as unknown as typeof fetch;
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      fetchImpl,
+    });
+
+    await expect(client.listAreas()).resolves.toEqual({ ok: true, value: [] });
+  });
+
   it("encodes routes, queries, and completion expectations while including cookies", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()

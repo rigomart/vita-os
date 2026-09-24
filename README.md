@@ -4,57 +4,80 @@ This template provides a minimal setup to get React working in Vite with HMR and
 
 ## Environment
 
-Client variables live in `apps/web/.env.local`. Copy `apps/web/.env.example` to start; `bunx convex dev` writes `VITE_CONVEX_URL` (and `CONVEX_DEPLOYMENT`) for you, while `VITE_CONVEX_SITE_URL` is set by hand — the same host with a `.site` TLD:
+The replacement runs on its own API Worker; Convex still runs production until
+cutover, so both sets of variables are described here. See
+`docs/migrations/cloudflare-application.md`.
 
-- `VITE_CONVEX_URL` — Convex deployment URL (`…convex.cloud`), used by the Convex React client.
-- `VITE_CONVEX_SITE_URL` — Convex site URL (`…convex.site`), used as the Better Auth client `baseURL`.
+### The API Worker and the browser host
 
-Backend variables live in the Convex deployment, not in any file. Set each with `npx convex env set <NAME> <value>`:
+The browser needs one variable, in `apps/web/.env.local` (copy
+`apps/web/.env.example`):
+
+- `VITE_API_BASE_URL` — where `apps/api` is served. It answers Better Auth's
+  browser routes at `/api/auth/*` and the application operations at `/v1/*`.
+
+The Worker's own secrets live in `apps/api/.dev.vars` locally (copy
+`apps/api/.dev.vars.example`) and in the Worker's secrets when deployed:
+
+- `BETTER_AUTH_SECRET` — signs sessions.
+- `BETTER_AUTH_URL` — the Worker's own public address.
+- `BROWSER_ORIGIN` — the single origin allowed to make credentialed requests.
+
+Run it locally with local D1:
+
+```bash
+bun run --filter=@vita-os/api migrate:local
+bunx turbo run dev --filter=@vita-os/api
+```
+
+### Convex, while it still runs production
+
+The browser no longer reads any Convex variable: `apps/web/convex` is kept as the
+behavioral reference and as the deployment that serves production until cutover.
+Its own variables live in the Convex deployment, not in any file. Set each with
+`npx convex env set <NAME> <value>`:
 
 - `SITE_URL` — the web app's origin; used for Better Auth trusted origins and cross-domain cookies.
 - `CONVEX_SITE_URL` — the Convex site URL (`…convex.site`); Better Auth's server `baseURL`. Convex provides this automatically; you only set it manually if you override it.
 - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` — GitHub OAuth app credentials.
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — Google OAuth client credentials.
 
-Missing variables throw at startup naming the variable, on both the client and the Convex backend.
+Missing variables throw at startup naming the variable, on the client and on both backends.
 
-## Web deployment
+## Deployment
 
-The Vite application deploys as static assets on Cloudflare Workers through
-GitHub Actions. Unmatched navigation falls back to `index.html`.
+Each environment is a web Worker and an API Worker with its own D1 database, on
+sibling `rigos.dev` hostnames so Better Auth's session cookie reaches the API.
+`apps/web/wrangler.jsonc` and `apps/api/wrangler.jsonc` define them.
 
-`apps/web/wrangler.jsonc` defines three environments. The Vite plugin flattens
-the one named by `CLOUDFLARE_ENV` into `dist/wrangler.json` at build time and
-wrangler deploys that file, so `wrangler deploy --env` has no effect.
+| Environment | Web | API and D1 | Deployed by |
+| --- | --- | --- | --- |
+| `staging` | `vita-os-web-staging` at `vita-staging.rigos.dev` | `vita-os-api-staging` at `vita-api-staging.rigos.dev`, D1 `vita-os-staging` | `deploy-staging.yml`, on every push to `main` or by hand |
+| `production` | `vita-os-web` at `vita.rigos.dev` | `vita-os-api` at `vita-api.rigos.dev`, D1 `vita-os-production` | `deploy-production.yml`, by hand only |
 
-| Environment | Worker | Deployed by |
-| --- | --- | --- |
-| `staging` | `vita-os-web-staging` | `deploy-staging.yml`, on every push to `main` |
-| `preview` | `vita-os-web-preview` | `deploy-production.yml` with `worker-origin` |
-| `production` | `vita-os-web` | `deploy-production.yml` with `public-domain`, serving `vita.rigos.dev` |
+The Vite plugin flattens the web environment named by `CLOUDFLARE_ENV` into
+`dist/wrangler.json` at build time and wrangler deploys that file, so
+`wrangler deploy --env` has no effect on the web Worker. `build:staging` and
+`build:production` pin `VITE_API_BASE_URL` to their API. The API Worker deploys
+with `wrangler deploy --env <name>`.
 
-Only `production` carries the custom domain, and it is `workflow_dispatch` only
-— qualify on `worker-origin` first. Pull requests run `ci.yml`, and every
-pipeline shares the checks in `verify.yml`. Each deploy asserts the built Worker
-name and domain, smoke tests the origin, and uploads the log as a run artifact.
+Each deploy asserts both Workers' names, hostnames, D1 binding, and auth
+origins, applies D1 migrations, deploys the API, smoke tests it, and only then
+deploys and smoke tests the web. Production also records the web version it
+replaces in the run summary. Pull requests run `ci.yml`, and every pipeline
+shares the checks in `verify.yml`. Add required reviewers to the `production`
+GitHub environment to gate production behind an approval.
 
-Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. Variables:
-`VITE_CONVEX_URL`, `VITE_CONVEX_SITE_URL`, `WORKERS_DEV_SUBDOMAIN`, and
-optionally `VITE_CONVEX_URL_NONPROD` / `VITE_CONVEX_SITE_URL_NONPROD` to point
-staging at a non-production Convex deployment — without them staging reads
-production data. Add required reviewers to the `production` GitHub environment
-to gate the domain behind an approval.
+Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. The API Workers'
+secrets are set with `wrangler secret put --env <name>`.
 
-For an emergency manual deploy, run `bun run deploy:staging`,
-`deploy:production`, or `smoke <origin>` from `apps/web`. To roll back,
-`bunx wrangler rollback --name vita-os-web`, which restores the previous Worker
-version without touching DNS.
-
-The `VITE_CONVEX_*` values are build-time, not Worker runtime, variables.
-workers.dev origins are not in Better Auth's `SITE_URL`, so staging and preview
-only support unauthenticated checks. If the production hostname changes, set
-Convex's `SITE_URL` to the exact new origin; OAuth callbacks stay on the Convex
-site.
+To roll back, find a version with `bunx wrangler versions list --name
+vita-os-web` and run `bunx wrangler rollback <version-id> --name vita-os-web`.
+Routes are not part of a version, so the hostname stays attached. The cutover
+from Convex, its rollback, and Convex retirement follow
+[`docs/migrations/production-cutover.md`](docs/migrations/production-cutover.md).
+Until retirement, `verify.yml` still passes the `VITE_CONVEX_*` repository
+variables to the build.
 
 Currently, two official plugins are available:
 

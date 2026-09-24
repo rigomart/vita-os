@@ -12,4 +12,64 @@
       "migrations_dir": "migrations",
     },
   ],
+
+  // Deployed environments. Secrets (BETTER_AUTH_SECRET and optional provider
+  // pairs) are set with `wrangler secret put --env <name>`, never here. The API
+  // and web hostnames share a registrable domain so Better Auth's SameSite=Lax
+  // session cookie reaches credentialed /v1 requests; two *.workers.dev
+  // hostnames would be cross-site.
+  "env": {
+    "staging": {
+      "name": "vita-os-api-staging",
+      "workers_dev": false,
+      "routes": [
+        {
+          "pattern": "vita-api-staging.rigos.dev",
+          "custom_domain": true,
+        },
+      ],
+      "vars": {
+        "BETTER_AUTH_URL": "https://vita-api-staging.rigos.dev",
+        "BROWSER_ORIGIN": "https://vita-staging.rigos.dev",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "vita-os-staging",
+          "database_id": "52374eda-17ed-4e85-ad3e-b9034d71b780",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "observability": {
+        "enabled": true,
+      },
+    },
+    // vita-os-production must be empty when the cutover imports into it. See
+    // docs/migrations/production-cutover.md.
+    "production": {
+      "name": "vita-os-api",
+      "workers_dev": false,
+      "routes": [
+        {
+          "pattern": "vita-api.rigos.dev",
+          "custom_domain": true,
+        },
+      ],
+      "vars": {
+        "BETTER_AUTH_URL": "https://vita-api.rigos.dev",
+        "BROWSER_ORIGIN": "https://vita.rigos.dev",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "vita-os-production",
+          "database_id": "0181d0f0-11f6-43c2-ba83-6961a14079f1",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "observability": {
+        "enabled": true,
+      },
+    },
+  },
 }

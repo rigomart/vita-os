@@ -1,0 +1,26 @@
+import type { Thread } from "@vita-os/contracts";
+
+import { cn } from "@vita-os/ui/lib/utils";
+import { CircleCheck, CircleDashed } from "lucide-react";
+
+/** The Thread's lifecycle state, stated in the header instead of implied. */
+export function ThreadStateChip({ state }: { state: Thread["state"] }) {
+  const isResolved = state === "resolved";
+
+  return (
+    <span
+      data-slot="thread-state-chip"
+      className={cn(
+        "flex shrink-0 items-center gap-1.5 text-xs",
+        isResolved ? "text-condition-healthy" : "text-muted-foreground",
+      )}
+    >
+      {isResolved ? (
+        <CircleCheck aria-hidden className="size-3" />
+      ) : (
+        <CircleDashed aria-hidden className="size-3" />
+      )}
+      {isResolved ? "Resolved" : "Open"}
+    </span>
+  );
+}

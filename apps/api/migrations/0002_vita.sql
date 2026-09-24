@@ -35,7 +35,7 @@ CREATE TABLE activity_log_entries (
   id TEXT PRIMARY KEY NOT NULL,
   user_id TEXT NOT NULL,
   thread_id TEXT NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
-  type TEXT NOT NULL CHECK (type IN ('area_move', 'next_action_change', 'state_change', 'follow_up_change')),
+  type TEXT NOT NULL CHECK (type IN ('area_move', 'next_move_change', 'state_change', 'follow_up_change')),
   content TEXT NOT NULL,
   previous_value TEXT,
   new_value TEXT,

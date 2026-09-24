@@ -2,7 +2,7 @@ import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
 import { createApp } from "../src/app";
-import { D1ThreadStore } from "../src/d1-thread-store";
+import { createD1VitaStore } from "../src/d1-vita-store";
 
 type Session = { actorId: string; cookie: string };
 
@@ -13,7 +13,7 @@ type ThreadRow = {
   last_activity_at: number | null;
   last_activity_content: string | null;
   revision: number;
-  last_completion_token: string | null;
+  last_change_token: string | null;
 };
 
 type ActivityRow = {
@@ -51,7 +51,7 @@ async function seedThread(input: {
   revision?: number;
   lastActivityAt?: number | null;
   lastActivityContent?: string | null;
-  lastCompletionToken?: string | null;
+  lastChangeToken?: string | null;
 }): Promise<{ threadId: string }> {
   const suffix = crypto.randomUUID();
   const areaId = `completion-area-${suffix}`;
@@ -74,7 +74,7 @@ async function seedThread(input: {
       `INSERT INTO threads (
         id, user_id, area_id, title, slug, summary, sort_order, state,
         next_move, up_next_json, follow_up, last_activity_at,
-        last_activity_content, created_at, revision, last_completion_token
+        last_activity_content, created_at, revision, last_change_token
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(
       threadId,
@@ -92,7 +92,7 @@ async function seedThread(input: {
       input.lastActivityContent ?? null,
       1_600_000_000_001,
       input.revision ?? 0,
-      input.lastCompletionToken ?? null,
+      input.lastChangeToken ?? null,
     ),
   ]);
 
@@ -103,7 +103,7 @@ async function readThread(threadId: string): Promise<ThreadRow> {
   const row = await env.DB.prepare(
     `SELECT
         id, next_move, up_next_json, last_activity_at,
-        last_activity_content, revision, last_completion_token
+        last_activity_content, revision, last_change_token
       FROM threads
       WHERE id = ?`,
   )
@@ -198,11 +198,11 @@ describe("completion outcome", () => {
     expect(thread.next_move).toBeNull();
     expect(thread.up_next_json).toBeNull();
     expect(thread.revision).toBe(1);
-    expect(thread.last_completion_token).toEqual(expect.any(String));
+    expect(thread.last_change_token).toEqual(expect.any(String));
     expect(activity).toHaveLength(1);
     expect(activity[0]).toEqual({
       id: expect.any(String),
-      type: "next_action_change",
+      type: "next_move_change",
       content: 'Completed "Call clinic" — next move cleared',
       previous_value: "Call clinic",
       new_value: null,
@@ -239,7 +239,7 @@ describe("completion outcome", () => {
     expect(activity).toEqual([
       {
         id: expect.any(String),
-        type: "next_action_change",
+        type: "next_move_change",
         content:
           'Completed "Call clinic" — next move set to "Book appointment"',
         previous_value: "Call clinic",
@@ -277,7 +277,7 @@ describe("completion outcome", () => {
       revision: 7,
       lastActivityAt: 1_700_000_000_000,
       lastActivityContent: "Existing activity",
-      lastCompletionToken: "previous-completion",
+      lastChangeToken: "previous-completion",
     });
     const before = await readThread(threadId);
 
@@ -434,7 +434,7 @@ describe("rollback", () => {
       revision: 3,
       lastActivityAt: 1_700_000_000_000,
       lastActivityContent: "Captured next move",
-      lastCompletionToken: "previous-completion",
+      lastChangeToken: "previous-completion",
     });
     const duplicateActivityLogId = `duplicate-activity-${crypto.randomUUID()}`;
     await env.DB.prepare(
@@ -444,7 +444,7 @@ describe("rollback", () => {
         duplicateActivityLogId,
         owner.actorId,
         threadId,
-        "next_action_change",
+        "next_move_change",
         "Existing entry",
         null,
         "Call clinic",
@@ -454,11 +454,13 @@ describe("rollback", () => {
     const before = await readThread(threadId);
     const beforeActivity = await readActivity(threadId);
     const app = createApp(env, {
+      // Both the change token and the Activity Log ID come from the same
+      // injected mint, so the insert hits the existing entry's primary key and
+      // the whole batch must roll back.
       createStore: () =>
-        new D1ThreadStore(env.DB, {
+        createD1VitaStore(env.DB, {
           now: () => 1_800_000_000_000,
-          newActivityLogId: () => duplicateActivityLogId,
-          newOperationToken: () => "rollback-operation-token",
+          newId: () => duplicateActivityLogId,
         }),
     });
 
