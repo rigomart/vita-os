@@ -89,10 +89,16 @@ mkdir -m 700 /private/tmp/vita-rehearsal
 ```
 
 1. **Freeze.** Pause the rehearsal Convex deployment from its dashboard
-   (Settings → Pause deployment). Confirm that a write from the Convex-backed
-   app now fails. Record whether `convex export` succeeds while the deployment
-   is paused. If it does not, record the alternative freeze used. This is the
-   maintenance control that #352 will use against production.
+   (Settings → Pause deployment). This is the maintenance control #352 uses
+   against production. The rehearsal showed that a paused deployment refuses
+   every function (`Cannot run functions while this deployment is paused`),
+   so nothing can write, while `convex export` still succeeds. It also refuses
+   reads and Convex sign-in, so the old app is unavailable for the whole
+   freeze. Confirm the pause with any function call:
+
+   ```bash
+   cd apps/web && bunx convex run areas:list '{}'   # must fail with "paused"
+   ```
 
 2. **Export once.**
 
@@ -164,24 +170,35 @@ migrated sign-in method: password, GitHub, and Google.
 
 ## 5. Rollback rehearsal
 
-1. Find the previous staging web version, then roll back to it:
+1. Find the version to return to, then roll back to it:
 
    ```bash
    cd apps/web
    bunx wrangler versions list --name vita-os-web-staging
-   bunx wrangler rollback <previous-version-id> --name vita-os-web-staging
+   bunx wrangler rollback <previous-version-id> --name vita-os-web-staging --message "<reason>" --yes
    ```
 
 2. Unpause the rehearsal Convex deployment. Confirm that the restored app reads
    and writes against Convex, and that Convex still holds the pre-freeze data.
    That data stays authoritative until #352 declares otherwise.
 
-3. Redeploy the replacement with `Deploy staging` and confirm that it serves
-   again.
+3. Roll forward with the same command and the replacement's version ID, or
+   redeploy with `Deploy staging`, and confirm that it serves again.
 
-Record how long each step took. In production, the equivalent is rolling
-`vita-os-web` back to the pre-cutover version that `wrangler versions list`
-shows, then unpausing production Convex.
+In the rehearsal, rolling back took 3s for the command and 10s until the site
+served the previous bundle. Rolling forward took 2s and 4s. The custom domain
+stays attached across rollbacks, because routes are not part of a version.
+
+Staging rolled back only between replacement versions. Its older version was
+`main`'s Convex build, which targets production Convex, and rolling back to it
+would have put a production client on a staging hostname.
+
+**In production** a rollback restores the pre-cutover web version on
+`vita-os-web` and then unpauses production Convex. Record that version's ID
+before deploying the replacement. Rolling back the web Worker does not touch
+the API Worker or D1. They can stay deployed and simply receive no traffic.
+Once writes have resumed on D1, rolling back to Convex loses those writes, so
+take the rollback decision before resuming writes.
 
 ## Evidence to save on #351
 
