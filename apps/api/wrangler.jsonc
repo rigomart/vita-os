@@ -44,9 +44,8 @@
         "enabled": true,
       },
     },
-    // The database ID stays a placeholder until the owner creates
-    // vita-os-production for the cutover; the deploy guard refuses it until
-    // then. See docs/migrations/production-cutover.md.
+    // vita-os-production must be empty when the cutover imports into it. See
+    // docs/migrations/production-cutover.md.
     "production": {
       "name": "vita-os-api",
       "workers_dev": false,
@@ -64,7 +63,7 @@
         {
           "binding": "DB",
           "database_name": "vita-os-production",
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "0181d0f0-11f6-43c2-ba83-6961a14079f1",
           "migrations_dir": "migrations",
         },
       ],
