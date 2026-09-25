@@ -5,8 +5,8 @@ import { platformCrypto } from "./platform-crypto";
  *
  * An ID is opaque — nothing reads it — with one exception that matters: reads
  * order by timestamp and break ties on the ID, so two records written in the same
- * millisecond must come back in the order they were written. Convex got that from
- * its own insertion order; here the ID carries it.
+ * millisecond must come back in the order they were written. Insertion order
+ * used to provide that; here the ID carries it.
  *
  * The shape is a 48-bit millisecond timestamp followed by 80 bits of randomness,
  * both in Crockford base32, which sorts lexicographically in time order. Within

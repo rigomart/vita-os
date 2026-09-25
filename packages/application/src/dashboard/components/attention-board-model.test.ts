@@ -148,7 +148,7 @@ describe("buildAttentionBoard", () => {
       [
         {
           ...thread("cleared"),
-          // Convex hands back nulls for cleared optional fields.
+          // Cleared optional fields arrive as null.
           followUp: null,
           nextMove: null,
         } as unknown as Thread,

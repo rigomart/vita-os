@@ -3,10 +3,13 @@
 Issue [#349](https://github.com/rigomart/vita-os/issues/349) completes the
 replacement the [proof](../superpowers/specs/2026-09-19-cloudflare-target-architecture-proof-design.md)
 validated: every Vita OS workflow now runs through an asynchronous application
-client, a Hono Worker, Better Auth, and D1.
+client, a Hono Worker, Better Auth, and D1. Production is that stack:
+`vita.rigos.dev`, `vita-api.rigos.dev`, and D1 `vita-os-production`.
 
-Convex is still in the repository, and still runs production. Nothing in the
-browser imports it any more.
+Convex was the previous production backend. After cutover it was removed from
+the repository ([#352](https://github.com/rigomart/vita-os/issues/352),
+retirement in [#364](https://github.com/rigomart/vita-os/issues/364)).
+`docs/migrations/` and `apps/api/migration` keep that history.
 
 ## Where things live
 
@@ -16,7 +19,6 @@ packages/core          the domain rules, framework-free
 packages/application   Vita OS as an application: routes, screens, cache, commands
 apps/api               Hono routes, Better Auth, canonical D1 storage
 apps/web               the browser host: auth, configuration, HTTP client, session gate
-apps/web/convex        the behavioral reference, until cutover retires it
 ```
 
 The shared application imports no Convex, Hono, database, Cloudflare, or Better
@@ -43,8 +45,8 @@ place.
 
 `apps/api/migrations` holds the canonical schema: `areas`, `threads`,
 `activity_log_entries`, `notes`, and `thread_notes`, under those names. Convex's
-physical `tasks` table and its `text` column do not survive; the importer will
-translate them at cutover. IDs are opaque text, so Convex-generated IDs stay
+physical `tasks` table and its `text` column did not survive; the importer
+translated them at cutover. IDs are opaque text, so Convex-generated IDs stay
 valid and new records get application-generated ones.
 
 Two deliberate differences from Convex are worth naming. Slugs are unique per
@@ -55,9 +57,9 @@ random: reads order by timestamp and break ties on the ID, so entries written by
 one change come back in the order they were written, which Convex got from its own
 insertion order.
 
-The Activity Log's Next Move entry is stored as `next_move_change`. Convex stores
-`next_action_change` for the same thing; that deployment keeps its own value, so
-the importer translates it at cutover.
+The Activity Log's Next Move entry is stored as `next_move_change`. Convex stored
+`next_action_change` for the same thing; the importer translated that value at
+cutover.
 
 Storage is reached through capabilities named after workflows — there is no
 generic repository. A Thread change decides its patch and its Activity Log
@@ -106,7 +108,6 @@ VITE_API_BASE_URL=http://localhost:8787
 - `apps/api` — the whole cloud surface through the public HTTP client against a
   real local Worker and database, including ownership, bounded pagination,
   forced-failure rollback, and competing completions.
-- `apps/web/convex` — kept as the behavioral reference until cutover.
 
 ## Shared routing
 
@@ -122,11 +123,14 @@ before any authenticated screen or read mounts; Better Auth stays in the browser
 Screen hooks refer to route IDs without importing the route composition module,
 which avoids circular dependencies between routes and screens.
 
-## Still ahead
+## Migration history
 
-- Import production data and validate it ([#350](https://github.com/rigomart/vita-os/issues/350)).
-  The importer translates Convex's `tasks`/`text` storage and its
+These steps are done. The layout above is the current system.
+
+- Production data was imported and validated ([#350](https://github.com/rigomart/vita-os/issues/350)).
+  The importer translated Convex's `tasks`/`text` storage and its
   `next_action_change` entry type into the canonical names.
-- Cut over and retire Convex ([#352](https://github.com/rigomart/vita-os/issues/352)),
-  which removes `apps/web/convex`, the Convex dependencies, and the Convex
-  deployment variables from `README.md`.
+- Cutover ([#352](https://github.com/rigomart/vita-os/issues/352)) made Cloudflare
+  authoritative. Retirement ([#364](https://github.com/rigomart/vita-os/issues/364))
+  removed `apps/web/convex`, the Convex dependencies, and the Convex deployment
+  variables from `README.md`.

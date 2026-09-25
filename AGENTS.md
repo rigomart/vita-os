@@ -52,14 +52,11 @@ routes. It mounts the shared product route tree. `apps/api` is the Hono Worker o
 
 ## Dev servers
 
-Start Vite and Convex when you need them — browser verification, a missing route tree, or uploading functions and schema. Reuse whatever is already running.
+Start Vite when you need it — browser verification or a missing route tree. Reuse whatever is already running.
 
 ```bash
 bunx turbo run dev --filter=@vita-os/web   # Vite at http://localhost:5173
-bun run convex                             # Convex dev (functions + schema)
 ```
-
-Two agents must not push Convex at the same time. There is a single deployment; overlapping `convex dev` or schema pushes overwrite each other.
 
 ## Browser sign-in
 
@@ -74,7 +71,6 @@ Sign in at `/sign-in` with email and password. Do not use GitHub or Google. Do n
 
 In `apps/web/`:
 - `@` maps to `./src` — use `@/lib/...`, `@/routes/...`, etc.
-- `@convex` maps to `./convex` — use `@convex/_generated/...`, etc.
 
 ## Commits
 
@@ -92,10 +88,9 @@ Sessions and subagents can run in isolated git worktrees under `.claude/worktree
 - **Run `bun install` from the worktree root before dev/build/test.** Each worktree gets its own real `node_modules`; bun's global cache keeps repeat installs fast.
 - Do **not** symlink `node_modules` between worktrees or back to the main checkout. The root `node_modules` contains bun's workspace links (e.g. `@vita-os/ui -> packages/ui`), so a symlinked install silently resolves `@vita-os/*` imports to the main checkout's package source instead of the worktree's.
 
-Two rules when splitting work across worktrees:
+When splitting work across worktrees:
 
-- **Serialize Convex changes.** There is a single Convex deployment. Never run two agents that both touch `apps/web/convex/schema.ts` or push functions — they overwrite each other's deployment. Parallelize UI and client-side logic only.
-- **Serialize schema changes to the cloud database too.** `apps/api/migrations` is applied in order against one local D1 database; two agents adding migrations at once produce a conflicting history.
+- **Serialize schema changes to the cloud database.** `apps/api/migrations` is applied in order against one local D1 database; two agents adding migrations at once produce a conflicting history.
 
 ## Agent skills
 

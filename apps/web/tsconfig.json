@@ -7,7 +7,6 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"],
-      "@convex/*": ["./convex/*"],
       "@vita-os/ui/*": ["../../packages/ui/src/*"]
     }
   }
