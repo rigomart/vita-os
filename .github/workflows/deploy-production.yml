@@ -2,7 +2,7 @@ name: Deploy production
 
 # Production is never deployed by merging; someone runs this on purpose. The
 # cutover order in docs/migrations/production-cutover.md decides when: the
-# first run switches vita.rigos.dev from Convex to Cloudflare.
+# first run switches vita.rigos.dev onto this stack.
 #
 # Production is the API Worker and its D1 database at vita-api.rigos.dev, and
 # the web Worker at vita.rigos.dev. Both hostnames share rigos.dev so the
@@ -78,7 +78,7 @@ jobs:
         run: node scripts/assert-deploy-target.mjs "$WEB_WORKER_NAME"
 
       # The version serving vita.rigos.dev before this run is the rollback
-      # target. On the cutover run it is the Convex build.
+      # target. On the cutover run it is the build being replaced.
       - name: Record the web version being replaced
         working-directory: apps/web
         run: |

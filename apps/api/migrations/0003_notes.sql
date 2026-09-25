@@ -1,6 +1,6 @@
 -- Standalone Notes and Thread Notes, under canonical names.
 --
--- Standalone Notes were stored in Convex under the physical name `tasks` with
+-- Standalone Notes were stored under the physical name `tasks` with
 -- the body in a column called `text`; neither name survives here. The migration
 -- importer translates that compatibility storage into these tables.
 

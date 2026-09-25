@@ -267,7 +267,7 @@ export interface ThreadUpdateDecision {
  *
  * `areaNames` names both ends of an Area move. Without it — a caller that could
  * not read both Areas — the move still happens and only its log entry is
- * omitted, which is what the Convex implementation did.
+ * omitted, which is what the previous implementation did.
  */
 export function decideThreadUpdate(input: {
   thread: ThreadChangeState;

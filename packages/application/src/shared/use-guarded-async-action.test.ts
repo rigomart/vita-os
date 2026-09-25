@@ -89,14 +89,14 @@ describe("useGuardedAsyncAction", () => {
     expect(feedback.error).toHaveBeenCalledWith("Save failed");
   });
 
-  it("unwraps concise Convex domain errors", async () => {
+  it("unwraps a concise thrown error", async () => {
     const action = vi.fn(() =>
       Promise.reject(
         new Error(
           [
-            "[CONVEX M(threads:update)] Server Error",
+            "Server Error",
             "Uncaught Error: Thread not found",
-            "    at handler (convex/threads.ts:109:13)",
+            "    at handler (threads.ts:109:13)",
           ].join("\n"),
         ),
       ),
@@ -120,15 +120,15 @@ describe("useGuardedAsyncAction", () => {
     expect(feedback.error).toHaveBeenCalledWith("Thread not found");
   });
 
-  it("hides raw Convex schema errors from toasts", async () => {
+  it("hides raw schema errors from toasts", async () => {
     const action = vi.fn(() =>
       Promise.reject(
         new Error(
           [
-            "[CONVEX M(threads:update)] Server Error",
+            "Server Error",
             'Uncaught Error: Failed to insert or update a document in table "threads" because it does not match the schema: Object contains extra field `id` that is not in the validator.',
             "Validator: v.object({title, followUp})",
-            "    at async applyThreadPatch (convex/lib/threadChanges.ts:173:2)",
+            "    at async applyThreadPatch (lib/threadChanges.ts:173:2)",
           ].join("\n"),
         ),
       ),

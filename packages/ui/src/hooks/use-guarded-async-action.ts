@@ -18,7 +18,6 @@ export type GuardedAsyncResult<TResult> =
 const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
 
 const RAW_ERROR_PATTERNS = [
-  /\[CONVEX [^\]]+\]/,
   /Server Error/i,
   /Failed to insert or update a document/i,
   /does not match the schema/i,
@@ -33,7 +32,7 @@ function getErrorText(error: unknown): string | null {
   return null;
 }
 
-function getConvexUserMessage(message: string): string | null {
+function getThrownUserMessage(message: string): string | null {
   const match = message.match(/Uncaught Error:\s*([^\n]+)/);
   return match?.[1]?.trim() || null;
 }
@@ -46,9 +45,9 @@ function defaultErrorMessage(error: unknown): string {
   const message = getErrorText(error);
   if (!message) return GENERIC_ERROR_MESSAGE;
 
-  const convexUserMessage = getConvexUserMessage(message);
-  if (convexUserMessage && !isRawInternalMessage(convexUserMessage)) {
-    return convexUserMessage;
+  const thrownUserMessage = getThrownUserMessage(message);
+  if (thrownUserMessage && !isRawInternalMessage(thrownUserMessage)) {
+    return thrownUserMessage;
   }
 
   if (isRawInternalMessage(message)) return GENERIC_ERROR_MESSAGE;

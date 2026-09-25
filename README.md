@@ -4,8 +4,7 @@ This template provides a minimal setup to get React working in Vite with HMR and
 
 ## Environment
 
-The replacement runs on its own API Worker; Convex still runs production until
-cutover, so both sets of variables are described here. See
+The API Worker and the browser host are described here. See
 `docs/migrations/cloudflare-application.md`.
 
 ### The API Worker and the browser host
@@ -30,19 +29,7 @@ bun run --filter=@vita-os/api migrate:local
 bunx turbo run dev --filter=@vita-os/api
 ```
 
-### Convex, while it still runs production
-
-The browser no longer reads any Convex variable: `apps/web/convex` is kept as the
-behavioral reference and as the deployment that serves production until cutover.
-Its own variables live in the Convex deployment, not in any file. Set each with
-`npx convex env set <NAME> <value>`:
-
-- `SITE_URL` — the web app's origin; used for Better Auth trusted origins and cross-domain cookies.
-- `CONVEX_SITE_URL` — the Convex site URL (`…convex.site`); Better Auth's server `baseURL`. Convex provides this automatically; you only set it manually if you override it.
-- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` — GitHub OAuth app credentials.
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — Google OAuth client credentials.
-
-Missing variables throw at startup naming the variable, on the client and on both backends.
+Missing variables throw at startup naming the variable, on the client and on the API.
 
 ## Deployment
 
@@ -73,11 +60,9 @@ secrets are set with `wrangler secret put --env <name>`.
 
 To roll back, find a version with `bunx wrangler versions list --name
 vita-os-web` and run `bunx wrangler rollback <version-id> --name vita-os-web`.
-Routes are not part of a version, so the hostname stays attached. The cutover
-from Convex, its rollback, and Convex retirement follow
+Routes are not part of a version, so the hostname stays attached. The cutover,
+its rollback, and retirement follow
 [`docs/migrations/production-cutover.md`](docs/migrations/production-cutover.md).
-Until retirement, `verify.yml` still passes the `VITE_CONVEX_*` repository
-variables to the build.
 
 Currently, two official plugins are available:
 

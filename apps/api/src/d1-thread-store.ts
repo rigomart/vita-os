@@ -44,7 +44,7 @@ import { conflicted, found, missing, notFound } from "./store";
  * How many times a Thread change re-reads and re-decides after losing a
  * revision race.
  *
- * Convex ran each mutation as a serialized transaction, so an ordinary edit
+ * Each mutation used to run as a serialized transaction, so an ordinary edit
  * never failed because somebody else wrote first. A compare-and-swap here would
  * turn that into a user-visible conflict, so a lost race is retried from the
  * fresh Thread instead. Only a caller that supplied its own expected revision —

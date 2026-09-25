@@ -57,7 +57,7 @@ export interface AreaActionHandlers {
 }
 
 /**
- * The Area action set, as data. Pure — no Convex, no router — so a consumer
+ * The Area action set, as data. Pure — no storage client, no router — so a consumer
  * that already owns its own mutation or navigation wiring (a palette, a test)
  * can build the same actions the Quick Panel shows.
  *

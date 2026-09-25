@@ -18,9 +18,5 @@ export default defineConfig({
     ],
   },
   sortPackageJson: false,
-  ignorePatterns: [
-    "**/*.md",
-    "apps/api/worker-configuration.d.ts",
-    "apps/web/convex/_generated/**",
-  ],
+  ignorePatterns: ["**/*.md", "apps/api/worker-configuration.d.ts"],
 });

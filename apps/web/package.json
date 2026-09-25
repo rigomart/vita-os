@@ -10,7 +10,7 @@
     "lint:check": "oxlint --deny-warnings . && oxfmt --check .",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
-    "typecheck": "tsc -b && tsc -p convex/tsconfig.json --noEmit",
+    "typecheck": "tsc -b",
     "test": "vitest",
     "test:run": "vitest run",
     "preview": "vite preview",
@@ -18,11 +18,9 @@
     "build:production": "tsc -b && CLOUDFLARE_ENV=production VITE_API_BASE_URL=https://vita-api.rigos.dev vite build",
     "deploy:staging": "bun run build:staging && EXPECT_CUSTOM_DOMAIN=vita-staging.rigos.dev node scripts/assert-deploy-target.mjs vita-os-web-staging && wrangler deploy",
     "deploy:production": "bun run build:production && EXPECT_CUSTOM_DOMAIN=vita.rigos.dev node scripts/assert-deploy-target.mjs vita-os-web && wrangler deploy",
-    "smoke": "node scripts/smoke-deployment.mjs",
-    "convex": "convex dev"
+    "smoke": "node scripts/smoke-deployment.mjs"
   },
   "dependencies": {
-    "@convex-dev/better-auth": "^0.12.5",
     "@tanstack/react-query": "5.90.19",
     "@vita-os/application": "workspace:*",
     "@vita-os/contracts": "workspace:*",
@@ -31,8 +29,6 @@
     "better-auth": "1.6.25",
     "clsx": "catalog:",
     "cmdk": "^1.1.1",
-    "convex": "^1.42.3",
-    "convex-helpers": "^0.1.120",
     "date-fns": "catalog:",
     "lucide-react": "catalog:",
     "react": "catalog:",
@@ -41,7 +37,6 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.56.0",
-    "@edge-runtime/vm": "5.0.0",
     "@rolldown/plugin-babel": "0.2.3",
     "@tailwindcss/vite": "4.3.0",
     "@tanstack/react-router": "1.170.18",
@@ -54,7 +49,6 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "6.0.2",
     "babel-plugin-react-compiler": "^1.0.0",
-    "convex-test": "0.0.54",
     "jsdom": "29.1.1",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
