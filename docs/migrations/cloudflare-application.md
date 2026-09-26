@@ -21,6 +21,20 @@ apps/api               Hono routes, Better Auth, canonical D1 storage
 apps/web               the browser host: auth, configuration, HTTP client, session gate
 ```
 
+Inside `apps/api/src`, code is organized by feature
+([ADR 0020](../adr/0020-api-layering-operations-and-one-round-trip-storage.md)):
+
+```text
+worker.ts              builds the app once per isolate
+app.ts                 middleware and mounting
+platform/http          CORS, origin and JSON guards, the one error handler, request decoding
+platform/auth          Better Auth, and the middleware that builds the request scope
+platform/d1            page cursors, the SET builder, unique-violation detection
+platform/request-scope { db, clock, actorId }, built once per request after authentication
+features/<feature>     areas, threads, activity-log, notes, thread-notes:
+                       routes, operations, storage, rows, errors, request decoders
+```
+
 The shared application imports no Convex, Hono, database, Cloudflare, or Better
 Auth type. The web host is what remains once the product is taken out of it:
 Better Auth in the browser, `VITE_API_BASE_URL`, the HTTP implementation of the
@@ -61,14 +75,27 @@ The Activity Log's Next Move entry is stored as `next_move_change`. Convex store
 `next_action_change` for the same thing; the importer translated that value at
 cutover.
 
-Storage is reached through capabilities named after workflows — there is no
-generic repository. A Thread change decides its patch and its Activity Log
-entries in `packages/core`, then writes them in one D1 batch: the update is
-conditional on the revision the decision was made against and stamps a change
-token, and each entry is inserted only from the row carrying that token. A lost
-race therefore writes neither the patch nor an orphan entry. An ordinary edit
-re-reads and re-decides rather than failing; only a caller that supplied its own
-expectation is told about the conflict.
+Each feature's `storage.ts` is created from the request scope, so callers never
+pass the owner, and every statement is still scoped by `user_id`. A storage
+function makes exactly one D1 round trip, one statement or one batch, and returns
+values or `null`; it never decides an error. Anything that needs more than one
+round trip is an operation in the feature's `operations.ts`, and its later writes
+are conditional on what it read. There is no repository interface: there is one
+engine, and D1's lack of interactive transactions means a correct one would be
+operation-shaped anyway.
+
+A Thread change decides its patch and its Activity Log entries in
+`packages/core`, then writes them in one D1 batch: the update is conditional on
+the revision the decision was made against and stamps a change token, and each
+entry is inserted only from the row carrying that token. A lost race therefore
+writes neither the patch nor an orphan entry. An ordinary edit re-reads and
+re-decides rather than failing; only a caller that supplied its own expectation
+is told about the conflict.
+
+Operations return the contract's `OperationResult`. Every failure — a failed
+result, a refused domain rule, an unreadable request or cursor, anything
+unexpected — becomes a response in one error handler, with the status taken
+from the error's code.
 
 ## Reads and writes in the browser
 

@@ -1,37 +1,40 @@
-import type { ThreadId } from "@vita-os/contracts";
+import type { OperationResult, ThreadId } from "@vita-os/contracts";
 
 import { env } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { StoreResult } from "../src/store";
+import type { RequestScope } from "../src/platform/request-scope";
 
-import { D1AreaStore } from "../src/d1-area-store";
-import { D1ThreadStore } from "../src/d1-thread-store";
+import { getThreadActivityPage } from "../src/features/activity-log/operations";
+import { areaNotFound } from "../src/features/areas/errors";
+import * as areas from "../src/features/areas/operations";
+import * as threads from "../src/features/threads/operations";
 const clock = { now: () => Date.now(), newId: () => crypto.randomUUID() };
-function value<T>(result: StoreResult<T>): T {
-  if (result.status !== "ok") throw new Error(result.status);
+function value<T>(result: OperationResult<T>): T {
+  if (!result.ok) throw new Error(result.error.code);
   return result.value;
 }
 async function setup() {
-  const actorId = crypto.randomUUID();
-  const areas = new D1AreaStore(env.DB, clock);
-  const threads = new D1ThreadStore(env.DB, clock);
+  const scope: RequestScope = {
+    db: env.DB,
+    clock,
+    actorId: crypto.randomUUID(),
+  };
   const area = value(
-    await areas.createArea({
-      actorId,
+    await areas.createArea(scope, {
       name: "Home",
       condition: "healthy",
       icon: "Home",
     }),
   );
-  return { actorId, areas, threads, area };
+  return { scope, area };
 }
 afterEach(() => vi.restoreAllMocks());
 describe("slug collision recovery", () => {
   it.each(["area", "thread"] as const)(
     "retries a colliding %s slug on create and rename",
     async (kind) => {
-      const { actorId, areas, threads, area } = await setup();
+      const { scope, area } = await setup();
       const random = vi
         .spyOn(crypto, "getRandomValues")
         .mockImplementation((array) => {
@@ -43,16 +46,14 @@ describe("slug collision recovery", () => {
       ): Promise<{ _id: string; slug: string }> =>
         kind === "area"
           ? value(
-              await areas.createArea({
-                actorId,
+              await areas.createArea(scope, {
                 name,
                 condition: "healthy",
                 icon: "Home",
               }),
             )
           : value(
-              await threads.createThread({
-                actorId,
+              await threads.createThread(scope, {
                 title: name,
                 areaId: area._id,
               }),
@@ -79,13 +80,11 @@ describe("slug collision recovery", () => {
       });
       const renamed =
         kind === "area"
-          ? await areas.updateArea({
-              actorId,
-              areaId: other._id,
+          ? await areas.updateArea(scope, {
+              areaId: other._id as typeof area._id,
               name: "Repeated",
             })
-          : await threads.updateThread({
-              actorId,
+          : await threads.updateThread(scope, {
               threadId: other._id as ThreadId,
               title: "Repeated",
             });
@@ -126,55 +125,59 @@ function beforeDelete(action: () => Promise<unknown>) {
 
 describe("Area contention", () => {
   it("refuses deletion when a Thread arrives after the Area was checked", async () => {
-    const { actorId, areas, threads, area } = await setup();
+    const { scope, area } = await setup();
     beforeDelete(() =>
-      threads.createThread({ actorId, areaId: area._id, title: "Arrived" }),
+      threads.createThread(scope, { areaId: area._id, title: "Arrived" }),
     );
     await expect(
-      areas.removeArea({ actorId, areaId: area._id }),
-    ).rejects.toThrow("Cannot delete an area that has threads");
+      areas.removeArea(scope, { areaId: area._id }),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: {
+        code: "conflict",
+        message: expect.stringContaining(
+          "Cannot delete an area that has threads",
+        ),
+      },
+    });
     expect(
-      value(await areas.getAreaDetail({ actorId, slug: area.slug })).threads,
+      value(await areas.getAreaDetail(scope, { slug: area.slug })).threads,
     ).toHaveLength(1);
   });
 
   it("reports a missing destination when an Area disappears during a Thread move", async () => {
-    const { actorId, areas, threads, area } = await setup();
+    const { scope, area } = await setup();
     const destination = value(
-      await areas.createArea({
-        actorId,
+      await areas.createArea(scope, {
         name: "Destination",
         condition: "healthy",
         icon: "Home",
       }),
     );
     const thread = value(
-      await threads.createThread({
-        actorId,
+      await threads.createThread(scope, {
         areaId: area._id,
         title: "Moving",
       }),
     );
     const batch = env.DB.batch.bind(env.DB);
     vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
-      await areas.removeArea({ actorId, areaId: destination._id });
+      await areas.removeArea(scope, { areaId: destination._id });
       return batch(statements);
     });
     await expect(
-      threads.updateThread({
-        actorId,
+      threads.updateThread(scope, {
         threadId: thread._id,
         areaId: destination._id,
       }),
-    ).resolves.toEqual({ status: "not_found", subject: "area" });
+    ).resolves.toEqual({ ok: false, error: areaNotFound });
     expect(
-      value(await threads.getThreadDetail({ actorId, slug: thread.slug }))
-        .thread.areaId,
+      value(await threads.getThreadDetail(scope, { slug: thread.slug })).thread
+        .areaId,
     ).toBe(area._id);
     expect(
       value(
-        await threads.getThreadActivityPage({
-          actorId,
+        await getThreadActivityPage(scope, {
           threadId: thread._id,
           limit: 20,
         }),

@@ -2,7 +2,7 @@ import { env, SELF } from "cloudflare:test";
 import { describe, expect, it, vi } from "vitest";
 
 import { createApp } from "../src/app";
-import { getSocialProviders } from "../src/auth";
+import { getSocialProviders } from "../src/platform/auth/auth";
 
 describe("authentication and actor gate", () => {
   it("keeps migrated social providers available when their credentials are configured", () => {
@@ -23,7 +23,7 @@ describe("authentication and actor gate", () => {
   });
 
   it("responds to an allowed-origin application preflight request", async () => {
-    const response = await createApp(env).request(
+    const response = await createApp().request(
       "/v1/threads/private-thread",
       {
         method: "OPTIONS",
@@ -32,6 +32,7 @@ describe("authentication and actor gate", () => {
           "access-control-request-method": "GET",
         },
       },
+      env,
     );
 
     expect(response.status).toBe(204);
@@ -68,8 +69,10 @@ describe("authentication and actor gate", () => {
 
   it("rejects an unauthenticated application request before creating storage", async () => {
     const createStore = vi.fn();
-    const response = await createApp(env, { createStore }).request(
+    const response = await createApp({ createScope: createStore }).request(
       "/v1/threads/private-thread",
+      undefined,
+      env,
     );
 
     expect(response.status).toBe(401);
@@ -84,11 +87,12 @@ describe("authentication and actor gate", () => {
   });
 
   it("includes credentialed CORS headers on an allowed-origin application rejection", async () => {
-    const response = await createApp(env).request(
+    const response = await createApp().request(
       "/v1/threads/private-thread",
       {
         headers: { origin: env.BROWSER_ORIGIN },
       },
+      env,
     );
 
     expect(response.status).toBe(401);
@@ -101,7 +105,7 @@ describe("authentication and actor gate", () => {
   });
 
   it("does not grant CORS access to a disallowed application origin", async () => {
-    const response = await createApp(env).request(
+    const response = await createApp().request(
       "/v1/threads/private-thread",
       {
         method: "OPTIONS",
@@ -110,6 +114,7 @@ describe("authentication and actor gate", () => {
           "access-control-request-method": "GET",
         },
       },
+      env,
     );
 
     expect(response.status).toBe(204);
@@ -127,7 +132,7 @@ describe("authentication and actor gate", () => {
       }),
     });
     const createStore = vi.fn();
-    const response = await createApp(env, { createStore }).request(
+    const response = await createApp({ createScope: createStore }).request(
       "/v1/threads/private-thread/complete-next-move",
       {
         method: "POST",
@@ -138,6 +143,7 @@ describe("authentication and actor gate", () => {
         },
         body: JSON.stringify({ expectedNextMove: null, expectedRevision: 0 }),
       },
+      env,
     );
 
     expect(response.status).toBe(403);
@@ -153,7 +159,7 @@ describe("authentication and actor gate", () => {
 
   it("requires JSON for an allowed-origin mutation before storage", async () => {
     const createStore = vi.fn();
-    const response = await createApp(env, { createStore }).request(
+    const response = await createApp({ createScope: createStore }).request(
       "/v1/threads/private-thread/complete-next-move",
       {
         method: "POST",
@@ -163,6 +169,7 @@ describe("authentication and actor gate", () => {
         },
         body: JSON.stringify({ expectedNextMove: null, expectedRevision: 0 }),
       },
+      env,
     );
 
     expect(response.status).toBe(415);
@@ -198,9 +205,10 @@ describe("authentication and actor gate", () => {
         return Reflect.get(database, property);
       },
     });
-    const response = await createApp({ ...env, DB: failingDatabase }).request(
+    const response = await createApp().request(
       "/v1/threads/private-thread",
       { headers: { cookie: signUp.headers.get("set-cookie") ?? "" } },
+      { ...env, DB: failingDatabase },
     );
 
     expect(response.status).toBe(500);
@@ -223,13 +231,15 @@ describe("authentication and actor gate", () => {
         password: "correct horse battery staple",
       }),
     });
-    const response = await createApp(env, {
-      createStore() {
+    const response = await createApp({
+      createScope() {
         throw new Error("storage connection details must remain private");
       },
-    }).request("/v1/threads/private-thread", {
-      headers: { cookie: signUp.headers.get("set-cookie") ?? "" },
-    });
+    }).request(
+      "/v1/threads/private-thread",
+      { headers: { cookie: signUp.headers.get("set-cookie") ?? "" } },
+      env,
+    );
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toEqual({

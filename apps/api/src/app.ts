@@ -1,108 +1,53 @@
-import { ConflictError, ValidationError } from "@vita-os/core";
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 
-import type { Actor } from "./authenticated-actor";
-import type { WorkerEnv } from "./env";
-import type { AppEnvironment } from "./routes/shared";
-import type { VitaStore } from "./store";
+import type { AppEnvironment } from "./platform/http/context";
+import type { CreateScope } from "./platform/request-scope";
 
-import { createAuth } from "./auth";
-import { authenticatedActor } from "./authenticated-actor";
-import { createD1VitaStore } from "./d1-vita-store";
-import {
-  invalidPagination,
-  invalidRequest,
-  jsonRequestRequired,
-  refusedByState,
-  requestOriginNotAllowed,
-  unexpectedFailure,
-} from "./errors";
-import { InvalidPageCursorError } from "./page-cursor";
-import { areaRoutes } from "./routes/areas";
-import { noteRoutes } from "./routes/notes";
-import { threadNoteRoutes } from "./routes/thread-notes";
-import { threadRoutes } from "./routes/threads";
-
-export type CreateStore = (actor: Actor) => VitaStore;
+import { activityLogRoutes } from "./features/activity-log/routes";
+import { areaRoutes } from "./features/areas/routes";
+import { noteRoutes } from "./features/notes/routes";
+import { threadNoteRoutes } from "./features/thread-notes/routes";
+import { threadRoutes } from "./features/threads/routes";
+import { createAuth } from "./platform/auth/auth";
+import { authenticatedScope } from "./platform/auth/authenticated-scope";
+import { handleError } from "./platform/http/errors";
+import { credentialedCors, mutationGuard } from "./platform/http/guards";
+import { createRequestScope } from "./platform/request-scope";
 
 export interface AppDependencies {
-  createStore?: CreateStore;
+  /** Replaces how an authenticated request's scope is built. For tests. */
+  createScope?: CreateScope;
 }
 
 /**
  * The Worker, composed.
  *
  * This file owns only what every route shares: who may call, who is calling,
- * what storage they are given, and how a refused rule becomes a response. The
- * routes themselves live one module per kind of record.
+ * the scope they are given, and the one way a failure becomes a response. It
+ * holds no bindings of its own — each request reads them from `context.env` —
+ * so the app is built once and serves every request.
  */
-export function createApp(
-  env: WorkerEnv,
-  dependencies: AppDependencies = {},
-): Hono<AppEnvironment> {
-  const createStore =
-    dependencies.createStore ?? (() => createD1VitaStore(env.DB));
-  const browserOrigin = new URL(env.BROWSER_ORIGIN).origin;
-  const credentialedCors = cors({ origin: browserOrigin, credentials: true });
+export function createApp({
+  createScope = createRequestScope,
+}: AppDependencies = {}): Hono<AppEnvironment> {
   const app = new Hono<AppEnvironment>();
-
-  // A rule that refuses says why in its own words; anything else says nothing.
-  app.onError((error, context) => {
-    if (error instanceof ValidationError) {
-      return context.json({ error: invalidRequest(error.message) }, 400);
-    }
-    if (error instanceof ConflictError) {
-      return context.json({ error: refusedByState(error.message) }, 409);
-    }
-    if (error instanceof InvalidPageCursorError) {
-      return context.json({ error: invalidPagination }, 400);
-    }
-
-    return context.json({ error: unexpectedFailure }, 500);
-  });
+  app.onError(handleError);
 
   app.use("/api/auth/*", credentialedCors);
-  app.all("/api/auth/*", (context) => createAuth(env).handler(context.req.raw));
+  app.all("/api/auth/*", (context) =>
+    createAuth(context.env).handler(context.req.raw),
+  );
 
-  app.use("/v1/*", credentialedCors);
-  app.use("/v1/*", async (context, next) => {
-    const method = context.req.method;
-    if (method === "OPTIONS" || method === "GET" || method === "HEAD") {
-      return next();
-    }
-
-    const origin = context.req.header("origin");
-    if (origin !== undefined && origin !== browserOrigin) {
-      return context.json({ error: requestOriginNotAllowed }, 403);
-    }
-
-    if (method === "POST" || method === "PUT" || method === "PATCH") {
-      const mediaType = context.req
-        .header("content-type")
-        ?.split(";", 1)[0]
-        .trim()
-        .toLowerCase();
-      if (mediaType !== "application/json") {
-        return context.json({ error: jsonRequestRequired }, 415);
-      }
-    }
-
-    await next();
-  });
-  // Better Auth starts asynchronous initialization when constructed. Keep that
-  // work in the request that uses it; preflight/rejected requests need no auth.
   app.use(
     "/v1/*",
-    authenticatedActor(() => createAuth(env)),
+    credentialedCors,
+    mutationGuard,
+    authenticatedScope(createScope),
   );
-  app.use("/v1/*", async (context, next) => {
-    context.set("store", createStore(context.get("actor")));
-    await next();
-  });
 
   areaRoutes(app);
   threadRoutes(app);
+  activityLogRoutes(app);
   threadNoteRoutes(app);
   noteRoutes(app);
 
