@@ -2,7 +2,6 @@ import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
 import { createApp } from "../src/app";
-import { createD1VitaStore } from "../src/d1-vita-store";
 
 type Session = { actorId: string; cookie: string };
 
@@ -453,15 +452,17 @@ describe("rollback", () => {
       .run();
     const before = await readThread(threadId);
     const beforeActivity = await readActivity(threadId);
-    const app = createApp(env, {
+    const app = createApp({
       // Both the change token and the Activity Log ID come from the same
       // injected mint, so the insert hits the existing entry's primary key and
       // the whole batch must roll back.
-      createStore: () =>
-        createD1VitaStore(env.DB, {
+      createScope: (authenticated) => ({
+        ...authenticated,
+        clock: {
           now: () => 1_800_000_000_000,
           newId: () => duplicateActivityLogId,
-        }),
+        },
+      }),
     });
 
     const response = await app.request(
@@ -477,6 +478,7 @@ describe("rollback", () => {
           expectedRevision: 3,
         }),
       },
+      env,
     );
 
     expect(response.status).toBe(500);

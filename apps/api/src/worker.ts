@@ -1,9 +1,6 @@
 import { createApp } from "./app";
 
-const worker = {
-  fetch(request: Request, env: Env) {
-    return createApp(env).fetch(request, env);
-  },
-};
+/** Built once per isolate; each request brings its own bindings. */
+const app = createApp();
 
-export default worker;
+export default app;

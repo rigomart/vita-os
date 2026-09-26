@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 
-import type { WorkerEnv } from "./env";
+import type { WorkerEnv } from "../env";
 
 export function createAuth(env: WorkerEnv) {
   return betterAuth({

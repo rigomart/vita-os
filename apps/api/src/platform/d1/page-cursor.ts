@@ -1,3 +1,5 @@
+import type { ApplicationError } from "@vita-os/contracts";
+
 /**
  * Opaque, versioned page cursors.
  *
@@ -15,7 +17,25 @@ export type PageCursor = {
   id: string;
 };
 
-export class InvalidPageCursorError extends Error {}
+export const invalidPagination: ApplicationError = {
+  code: "validation",
+  message: "Invalid pagination.",
+  retryable: false,
+};
+
+/**
+ * A cursor this Worker did not mint. It carries the refusal its history
+ * answers with, so the error handler needs no knowledge of which read it was.
+ */
+export class InvalidPageCursorError extends Error {
+  constructor(
+    message: string,
+    readonly refusal: ApplicationError = invalidPagination,
+  ) {
+    super(message);
+    this.name = "InvalidPageCursorError";
+  }
+}
 
 function toBase64Url(value: string): string {
   const bytes = new TextEncoder().encode(value);
@@ -59,13 +79,15 @@ export interface PageCursorCodec {
  * for one ordering — an Activity Log read, say — is not silently accepted by a
  * read ordered on something else. `nullableTimestamp` allows the one ordering
  * whose timestamp can be absent: Done records imported without a completion
- * time, which sort last.
+ * time, which sort last. `refusal` is what an unreadable cursor answers with.
  */
 export function createPageCursorCodec(
   timestampKey: string,
-  options: { nullableTimestamp?: boolean } = {},
+  options: { nullableTimestamp?: boolean; refusal?: ApplicationError } = {},
 ): PageCursorCodec {
   const nullableTimestamp = options.nullableTimestamp ?? false;
+  const invalid = (message: string) =>
+    new InvalidPageCursorError(message, options.refusal);
 
   function encode(cursor: PageCursor): string {
     return toBase64Url(
@@ -78,8 +100,8 @@ export function createPageCursorCodec(
     try {
       parsed = JSON.parse(fromBase64Url(value));
     } catch (error) {
-      if (error instanceof InvalidPageCursorError) throw error;
-      throw new InvalidPageCursorError("Cursor is not JSON");
+      if (error instanceof InvalidPageCursorError) throw invalid(error.message);
+      throw invalid("Cursor is not JSON");
     }
 
     if (
@@ -91,7 +113,7 @@ export function createPageCursorCodec(
       !Object.hasOwn(parsed, timestampKey) ||
       !Object.hasOwn(parsed, "id")
     ) {
-      throw new InvalidPageCursorError("Cursor has an invalid shape");
+      throw invalid("Cursor has an invalid shape");
     }
 
     const record = parsed as Record<string, unknown>;
@@ -106,12 +128,12 @@ export function createPageCursorCodec(
       typeof id !== "string" ||
       id.length === 0
     ) {
-      throw new InvalidPageCursorError("Cursor has invalid values");
+      throw invalid("Cursor has invalid values");
     }
 
     const cursor: PageCursor = { at: at as number | null, id };
     if (value !== encode(cursor)) {
-      throw new InvalidPageCursorError("Cursor is not canonical");
+      throw invalid("Cursor is not canonical");
     }
 
     return cursor;
@@ -120,10 +142,7 @@ export function createPageCursorCodec(
   return { encode, decode };
 }
 
-/** The Activity Log reads by entry creation time. */
-export const activityCursor = createPageCursorCodec("createdAt");
-
-/** Done Notes read by completion time, which imported records may lack. */
+/** Done Notes of either kind read by completion time, which imported records may lack. */
 export const doneCursor = createPageCursorCodec("completedAt", {
   nullableTimestamp: true,
 });
@@ -160,7 +179,7 @@ export function pageBoundary(
  * A read asks for one row more than the page holds: that extra row is how the
  * page knows whether anything lies behind it, and it never reaches the caller.
  * Every history in Vita OS is paged this way, so the rule lives here once rather
- * than in each store.
+ * than in each feature's storage.
  */
 export function toPage<TRow, TEntry>(
   rows: TRow[],
