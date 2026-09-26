@@ -1,5 +1,7 @@
 # Dashboard time columns with an unscheduled margin
 
+Status: Amended by ADR 0021 — the row of Area Conditions becomes an Area filter row (All · each Area · No area), and a card's Area is a neutral icon-and-name tag instead of a Condition-coloured glyph.
+
 The **Dashboard** lays every **Open Thread** and every open **Standalone Note** on one axis of time: three full-height columns — **Now** (late or due today), **This week** (the next six days), **Later** — beside a margin holding everything unscheduled, in three labelled runs: **Ready to move**, **Open**, **Notes**. A single row above carries the date, the **Area Conditions** as status, and four counts. Each column scrolls itself.
 
 This supersedes ADR 0014's flat global run. That decision rejected temporal bands on the grounds that time would own the first reading and undated Threads would become a remainder bucket; both risks were tested directly in prototype (issue #314) and neither survived contact. Time owning the *layout* does not make it the loudest signal when Now is the widest, warmest column and the counts sit above it. Undated Threads are not a remainder because the margin is not a leftovers bin: its first run is **Ready to move**, the things a person can do today, given its own heading rather than being sorted to the bottom of a list.

@@ -1,6 +1,6 @@
 # Attention-first Dashboard
 
-Status: Superseded by ADR 0017 — the flat global run is replaced by time columns with an unscheduled margin. The thesis it defends (no planning canvas; the Dashboard is for orientation, not maintenance) still holds; its flat-run form, read-only Follow-ups, Notes synopsis, and quiet-age annotation do not.
+Status: Superseded by ADR 0017 — the flat global run is replaced by time columns with an unscheduled margin. The thesis it defends (no planning canvas; the Dashboard is for orientation, not maintenance) still holds; its flat-run form, read-only Follow-ups, Notes synopsis, and quiet-age annotation do not. Amended by ADR 0021 — Area Conditions are no longer shown anywhere.
 
 The **Dashboard** replaces the **Plan** timeline with one flat, global run of every **Open Thread** in canonical attention order: overdue **Follow-ups**, upcoming **Follow-ups**, **Threads** with a **Next Move**, then plain **Open Threads**. A **Follow-up** appears as a compact row annotation rather than a coordinate, and the **Inbox** reports in through a small read-only synopsis of dated **Open Tasks** plus the total open count. The **Area Condition** strip remains above the run and becomes the **Area Quick Panel** trigger. The same surface is used at every screen size.
 

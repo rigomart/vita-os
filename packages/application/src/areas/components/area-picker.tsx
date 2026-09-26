@@ -9,7 +9,7 @@ import {
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
 import { Check, Plus, Tag, X } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   Command,
@@ -46,6 +46,9 @@ export function AreaPicker({
   const createArea = useCreateArea();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  // Opening the list puts the caret in its search, so typing and the arrow
+  // keys work straight away, however the chip was opened.
+  const searchRef = useRef<HTMLInputElement>(null);
   const selected = areas.find((area) => area._id === value);
 
   // Filtered here rather than by cmdk, so surrounding spaces and case never
@@ -125,9 +128,14 @@ export function AreaPicker({
         )}
         <span className="truncate">{selected ? selected.name : "Area"}</span>
       </PopoverTrigger>
-      <PopoverContent className="w-60 p-0" align="start">
+      <PopoverContent
+        className="w-60 p-0"
+        align="start"
+        initialFocus={searchRef}
+      >
         <Command shouldFilter={false}>
           <CommandInput
+            ref={searchRef}
             placeholder="Find or create an area…"
             value={query}
             onValueChange={setQuery}

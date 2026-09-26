@@ -1,6 +1,6 @@
 # Area and Thread detail layout
 
-Status: Amended by ADR 0007 — the pane is now hosted globally by `AppShell` and opens in place over any page, not only the Area.
+Status: Amended by ADR 0007 — the pane is now hosted globally by `AppShell` and opens in place over any page, not only the Area. Amended by ADR 0021 — there is no Area page; the Area is a chip in the Thread detail header, and Thread links are `/threads/$threadSlug`.
 
 On wide desktop viewports, opening a **Thread** from an **Area** should preserve the Area as context without covering it with a modal surface. Thread detail will use a full-height right rail that pushes the Area content into the remaining workspace. Below 1280px, Thread detail will continue to use the near-full-height bottom Drawer.
 

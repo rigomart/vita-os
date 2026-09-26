@@ -19,12 +19,10 @@ export {
 export type { AreaIcon } from "@vita-os/contracts";
 export {
   compareNotesByAttention,
-  groupAreaThreadsByAttention,
   groupNotesByAttention,
   groupThreadsByAttention,
   isOpenNote,
   startOfLocalDay,
-  type AreaThreadAttentionGroups,
   type NoteAttentionGroups,
   type NoteAttentionInput,
   type ThreadAttentionGroups,

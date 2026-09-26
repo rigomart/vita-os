@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  groupAreaThreadsByAttention,
   groupNotesByAttention,
   groupThreadsByAttention,
   isOpenNote,
@@ -52,24 +51,6 @@ describe("Thread attention ordering", () => {
       "open-sooner",
       "open-later",
     ]);
-  });
-
-  it("keeps an Area inventory split between due-now and future Follow-ups", () => {
-    const groups = groupAreaThreadsByAttention(
-      [
-        thread("future", { followUp: today + 86_400_000 }),
-        thread("today", { followUp: today }),
-        thread("overdue", { followUp: today - 86_400_000 }),
-        thread("next", { nextMove: "Call" }),
-        thread("open"),
-      ],
-      today,
-    );
-
-    expect(groups.dueNow.map((item) => item.id)).toEqual(["overdue", "today"]);
-    expect(groups.upcoming.map((item) => item.id)).toEqual(["future"]);
-    expect(groups.withNextMoves.map((item) => item.id)).toEqual(["next"]);
-    expect(groups.open.map((item) => item.id)).toEqual(["open"]);
   });
 });
 

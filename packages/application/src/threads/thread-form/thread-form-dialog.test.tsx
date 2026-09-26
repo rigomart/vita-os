@@ -104,6 +104,15 @@ describe("ThreadFormDialog", () => {
     expect(onSubmit).toHaveBeenCalledWith({ title: "Renew passport" });
   });
 
+  it("puts the caret in the picker's search when it opens", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    const search = await openPicker(user);
+
+    await waitFor(() => expect(search).toHaveFocus());
+  });
+
   it("labels the Thread with an Area picked from the list", async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderDialog();

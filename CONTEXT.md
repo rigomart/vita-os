@@ -1,31 +1,19 @@
 # Vita OS
 
-Personal life-awareness app. Holds the inventory of life domains, open threads, and standalone notes so the user's brain does not have to.
+Personal life-awareness app. Holds open threads and standalone notes, lightly grouped by the part of life they concern, so the user's brain does not have to.
 
 ## Language
 
 **Area**:
-A stable life domain with no end date, such as Family Health, Career, Finances, or Home.
-_Avoid_: Category, tag, label.
-
-**Starter Area**:
-A minimal suggested **Area** offered to help a user begin their life inventory.
-_Avoid_: Template, default category, fixed category.
-
-**Condition**:
-The user's manual judgment on an **Area**: `healthy | needs_attention | critical`.
-_Avoid_: Health status, score, rating, traffic light.
-
-**Standard**:
-The user's written description of what a healthy state looks like for an **Area**: the reference against which **Condition** is judged.
-_Avoid_: Goal, target, KPI, checklist, definition of done.
+An optional label naming the part of life a **Thread** concerns, such as Family Health, Career, Finances, or Home. An Area is a name and an **Area Icon**; it has no state and no page of its own (ADR 0021).
+_Avoid_: Category, tag, folder, life domain inventory.
 
 **Area Icon**:
 A user-chosen visual marker that helps identify an **Area**.
-_Avoid_: Status icon, condition icon.
+_Avoid_: Status icon.
 
 **Thread**:
-An ongoing effort, concern, decision, or situation that belongs to exactly one **Area** and may need attention over time.
+An ongoing effort, concern, decision, or situation that may need attention over time. A Thread may carry one **Area**.
 _Avoid_: Project, goal, initiative, epic.
 
 **Open Thread**:
@@ -89,20 +77,20 @@ The global collection of standalone **Notes**, with **Open Notes** in attention 
 _Avoid_: Inbox, backlog.
 
 **Dashboard**:
-The main awareness surface: a row of **Life Area** **Conditions** and counts over three time columns — **Now**, **This week**, **Later** — beside a margin of everything unscheduled, holding every **Open Thread** and open **Standalone Note**.
+The main awareness surface: three time columns — **Now**, **This week**, **Later** — beside a margin of everything unscheduled, holding every **Open Thread** and open **Standalone Note**, under a row that filters the board by **Area**.
 _Avoid_: Task list, project board, backlog.
 
 ## Relationships
 
-- An **Area** has zero or more **Threads**; a **Thread** belongs to exactly one **Area**.
-- The app may suggest minimal **Starter Areas**, but users can edit, delete, and reorder **Areas**.
+- A **Thread** has zero or one **Area**; an **Area** labels zero or more **Threads**. Creating a Thread needs only a title.
+- Users can rename, re-icon, reorder, and delete **Areas**. Deleting an Area removes its label from every Thread that carries it, open or resolved, and leaves the Threads otherwise unchanged.
 - An **Area** has one **Area Icon**.
-- An **Area** **Condition** affects the Area's visual prominence, but it does not change a **Thread**'s derived attention state.
+- An **Area** never changes a **Thread**'s derived attention state.
 - A **Thread** has zero or one **Summary**, zero or one **Next Move**, zero or more upcoming moves in its **Up Next** list, zero or one **Follow-up**, zero or more **Thread Notes**, and one **Activity Log**.
 - While **Up Next** is non-empty, the **Thread** always has a **Next Move** — the **Next Move** is the front of the line.
 - **Up Next** moves are plain ordered text with no dates and no done states. A step that needs a date is a **Follow-up** or its own **Thread**.
 - A **Thread** is either **Open** or **Resolved**.
-- A **Thread** may move from one **Area** to another.
+- A **Thread**'s **Area** may be added, changed, or removed. A **Resolved Thread** keeps its Area.
 - An **Activity Log** has zero or more automatically recorded **Activity Log Entries**.
 - A **Standalone Note** belongs to no **Area** and no **Thread**.
 - A **Thread Note** belongs to exactly one **Thread** and never appears in the global **Notes** collection.
@@ -123,25 +111,21 @@ _Avoid_: Task list, project board, backlog.
 - **Threads with Next Moves** have a **Next Move** and no **Follow-up**. Plain **Open Threads** have neither field.
 - Dated items are ordered soonest-first within a column; the user's **Thread** order breaks ties and orders the undated runs, and undated **Notes** read newest-first.
 - Every **Open Thread** and open **Standalone Note** appears in exactly one column or run. Nothing is capped or hidden; each column scrolls itself.
-- The **Area** inventory groups the same attention order into visible, collapsible **attention lanes** — **Due now**, **Upcoming**, **Next moves**, **Open** — introduced by a census line that states each lane's count and hosts the **New Thread** action (ADR 0009). Every lane starts expanded; collapsing is session-local, a collapsed lane keeps its count, and empty lanes are omitted.
-- **Due now** (the Area lane) covers **Threads** whose **Follow-up** is today or earlier. In the lane vocabulary, **Upcoming** narrows to a **Follow-up** strictly after today.
 - An **Open Thread** with no **Next Move** and no **Follow-up** is valid; it is not automatically overdue, stale, or broken.
-- **Up Next** never affects attention: the **Dashboard** and attention lanes derive from **Next Move** and **Follow-up** only. Only the **Next Move** surfaces outside its **Thread**; **Up Next** is visible only in **Thread** detail.
+- **Up Next** never affects attention: the **Dashboard** derives from **Next Move** and **Follow-up** only. Only the **Next Move** surfaces outside its **Thread**; **Up Next** is visible only in **Thread** detail.
 - Opening or reviewing a **Thread** does not clear its **Follow-up**; the user must clear, reschedule, or resolve it explicitly.
 
 ## Dashboard Structure
 
 - The Dashboard has one attention-first view and no tabs or secondary schedule. It fills the viewport: the columns are full height and scroll independently, so a busy column never pushes the others down and a quiet one never leaves a hole.
-- One row above the board carries today's date, the **Life Areas**, and four counts — **Now**, **This week**, **Ready to move**, **Open**.
-- **Life Areas** appear in that row as status, not as filters: each is its icon in its **Condition** colour, its name, and how much of the board belongs to it, worst Condition first with the user's Area order preserved inside each group. Healthy Areas are drawn grey so the only colour in the row belongs to the Areas that are asking.
-- Activating an Area opens the **Area** Quick Panel — the Area's Condition, its Standard as read-only text when one exists, a new Thread scoped to that Area, and a link to the Area page (ADR 0013). The persistent top-bar Area strip remains pure navigation.
-- A **Thread** card leads with its **Next Move**, with the **Thread** title quiet underneath; where no **Next Move** is captured the title leads and there is no second line. The **Area** appears only as a Condition-coloured glyph. Dates are compact tokens rather than phrases.
-- The Dashboard **can act on attention in place**: a card's rail — shown on hover or keyboard focus — completes the **Next Move** or sets, changes, and clears the **Follow-up**; a **Standalone Note** offers done and its **Attention Date**. Moving a **Thread** between **Areas**, editing its text, and resolving it still happen in **Thread** detail.
+- One row above the board filters it by **Area**: `All · each Area with its Open Thread count · No area`, in the user's Area order. Areas with nothing open stay in the row, muted. Choosing an Area shows only its **Open Threads** across every column and run, and any filter hides **Standalone Notes**; **No area** shows only unlabeled Threads. The filter lives in the URL (`?area=<slug>` or `?area=none`), survives the in-place Thread pane and Notes surface, and falls back to All for an unknown Area. `1..9` select the matching Area and `0` returns to All; on a phone the row folds into one dropdown (ADR 0021).
+- A **Thread** card leads with its **Next Move**, with the **Thread** title quiet underneath; where no **Next Move** is captured the title leads and there is no second line. A labeled Thread shows its **Area** as a small neutral tag, icon and name; an unlabeled Thread shows none. Colour on the board belongs to time. Dates are compact tokens rather than phrases.
+- The Dashboard **can act on attention in place**: a card's rail — shown on hover or keyboard focus — completes the **Next Move** or sets, changes, and clears the **Follow-up**; a **Standalone Note** offers done and its **Attention Date**. Changing a **Thread**'s **Area**, editing its text, and resolving it still happen in **Thread** detail, where the Area is a chip in the header.
 - Opening a card summons **Thread** detail in place; opening a **Note** summons **Notes** in place.
 - When nothing is open at all the board is replaced by a single line saying nothing is asking.
-- Opening a **Thread** from any surface — **Dashboard**, **Notes**, the palette, or an **Area** inventory — shows its detail pane in place over the current page rather than navigating to the **Area** page; closing the pane returns the user to where they were. The in-place behavior is recorded in ADR 0007.
+- Opening a **Thread** from any surface — **Dashboard**, **Notes**, or the palette — shows its detail pane in place over the current page; closing the pane returns the user to where they were. A Thread's own address is `/threads/$threadSlug`, which opens the pane over the Dashboard. The in-place behavior is recorded in ADR 0007.
 - Opening the **Notes** from any surface — the top bar, the palette, a Dashboard Note, or the mobile tab — summons it in place over the current page rather than navigating; closing returns the user exactly where they were. `/notes` opens Notes over the Dashboard; `/inbox` remains a compatibility deep link. The in-place behavior and chosen form are recorded in ADR 0012.
-- Acting on an **Area** from the **Dashboard** — setting its Condition, reading its Standard, capturing a Thread scoped to it — happens in the summoned Area Quick Panel, and the command palette offers the same actions per Area. The top-bar strip stays pure navigation, and Condition changes are still recorded nowhere. The panel, its action set, and its limits are recorded in ADR 0013.
+- **Areas** are managed in one **Manage areas** dialog, opened from the palette or the user menu: rename, re-icon, reorder, delete, and add. The delete confirmation states how many open Threads will lose the label. A new Thread starts in the Area the Dashboard is filtered to, and the label can be cleared before saving.
 
 ## Note Handling
 
@@ -161,13 +145,12 @@ _Avoid_: Task list, project board, backlog.
 - Completing a **Next Move** clears it and adds an **Activity Log** entry.
 - Completing or clearing a **Next Move** while **Up Next** is non-empty promotes the front move into the **Next Move** slot; the promotion rides the existing entry rather than adding its own.
 - Adding, editing, reordering, or removing **Up Next** moves does not add **Activity Log** entries.
-- Moving a **Thread** between **Areas** adds an **Activity Log** entry.
+- Adding, changing, or removing a **Thread**'s **Area** adds an **Activity Log** entry. Deleting an **Area** adds none: the label disappearing is not a change the user made to each Thread.
 - Resolving a **Thread** adds an **Activity Log** entry.
 - Resolving a **Thread** may include an optional resolution note; when present, it becomes an **Activity Log** entry.
 - Resolving a **Thread** clears its current **Next Move**, **Follow-up**, and **Up Next**; when **Up Next** moves are discarded this way, the resolution entry names them.
 - Reopening a **Resolved Thread** makes it an **Open Thread** and adds an **Activity Log** entry.
 - Reopening a **Thread** does not restore old **Follow-ups** or discarded **Up Next** moves automatically.
-- Changing an **Area** **Condition** does not add entries to **Thread** **Activity Logs**.
 
 ## Example Dialogue
 
@@ -186,6 +169,6 @@ _Avoid_: Task list, project board, backlog.
 - "Task" and "Inbox" were the old capture vocabulary. Resolved by issue 313: **Note** and **Notes** are canonical; standalone Notes need no classification or processing.
 - "Action queue" was the old term for ordered tentative next steps. Resolved: **Next Move** stays singular and is the only move surfaced outside the **Thread**; **Up Next** holds a known sequence behind it with queue semantics — no done states, no dates — so a **Thread** stays directional without becoming a checklist (ADR 0010).
 - "Project log" was the old term for the timeline on a **Thread**. Resolved: **Activity Log** is the automatic changelog; body-only manual continuity belongs in **Thread Notes**.
-- "Health status" was the old term for the manual judgment on an **Area**. Resolved: **Condition** is canonical.
+- "Health status", later **Condition**, was the manual judgment on an **Area**, with a **Standard** to judge it against. Resolved by issue 371: both are removed. An Area is an optional label; a part of life that needs a periodic look gets a **Thread** with a **Follow-up** (ADR 0021).
 - "Definition of Done" belongs to project-management language and is not a **Thread** concept. Resolved: use **Summary** or the **Activity Log** when context is needed.
 - "Stale Thread" is not part of the MVP domain language. Resolved: use the plain **Open Thread** group until there is a stronger rule.

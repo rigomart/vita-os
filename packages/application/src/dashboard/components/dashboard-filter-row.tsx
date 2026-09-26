@@ -48,7 +48,7 @@ export function DashboardFilterRow({
               className={cn(
                 "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
                 option.selected
-                  ? "bg-foreground text-background"
+                  ? "bg-foreground text-surface-1"
                   : "hover:bg-muted",
                 !option.selected && option.muted
                   ? "text-muted-foreground/50"
@@ -78,7 +78,7 @@ function FilterDropdown({ options }: { options: DashboardFilterOption[] }) {
           <button
             type="button"
             aria-label={`Filter by area: ${selected.label}`}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            className="inline-flex h-8 items-center gap-1.5 self-start rounded-full border px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           />
         }
       >
@@ -102,6 +102,7 @@ function FilterDropdown({ options }: { options: DashboardFilterOption[] }) {
             <DropdownMenuRadioItem
               key={option.key}
               value={option.key}
+              closeOnClick
               className={cn(option.muted && "text-muted-foreground")}
             >
               <OptionIcon option={option} />

@@ -1,5 +1,7 @@
 # Condition color ramp
 
+Status: Superseded by ADR 0021 — Condition is removed. The tokens remain; the attention token still colours lateness on the board.
+
 The three condition tokens (`--condition-healthy`, `--condition-attention`, `--condition-critical`) had drifted apart: each carried its own lightness and chroma, healthy was so desaturated (chroma 0.052) it read as gray at swatch size, attention failed WCAG AA as text on light surfaces (3.3:1), and no token had a paired foreground — so solid critical fills hardcoded `text-white` (2.99:1 in dark mode) and the delete-confirm button referenced a `--destructive-foreground` that did not exist. The original hues were also too close to tell apart at a glance: critical (hue 20) and attention (hue 46) were 26° apart at low chroma, so both read as warm brown. We normalized the triad into one ramp with wider hue spacing and higher chroma — red 25, amber 58, green 145 — and added `-foreground` pairs for all three conditions plus `--destructive`, mapping to `--brand-cream` in light mode and `--brand-ink` in dark mode. Attention stops at hue 58 because `--brand-gold-strong` sits at hue 69; pushing further would make warnings read as brand accent.
 
 Chroma sits at the sRGB gamut edge for each hue so the colors read saturated
