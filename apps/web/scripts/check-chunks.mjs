@@ -18,7 +18,7 @@ const assetsDir = join(distDir, "assets");
 // anything at all the check fails too, so renamed copy cannot silently pass.
 const AUTHENTICATED_MARKERS = [
   "Vita OS home",
-  "Jump to an area, thread, or action",
+  "Jump to a thread, area, or action",
   "What's on your mind?",
 ];
 
