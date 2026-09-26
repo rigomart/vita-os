@@ -2,14 +2,12 @@ import type { AreaSummary, Thread } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import { Link } from "@tanstack/react-router";
-import { conditionLabels } from "@vita-os/core";
 import { cn } from "@vita-os/ui/lib/utils";
 import { CalendarClock, Check } from "lucide-react";
 
 import type { ProductSearch } from "../../navigation/search-params";
 
 import { AreaIcon } from "../../areas/components/area-icon";
-import { conditionTextClassName } from "../../areas/condition-presentation";
 import { WhenPopover } from "../../attention-list";
 import {
   dateToken,
@@ -68,7 +66,7 @@ export function ThreadAttentionCard({
       </Link>
 
       <div className="mt-1 flex items-center gap-1.5 text-[12px] leading-snug text-muted-foreground/75">
-        <AreaGlyph area={area} />
+        <AreaTag area={area} />
         <span className="truncate">{thread.title}</span>
 
         <span className="ml-auto flex shrink-0 items-center gap-1 pl-1">
@@ -170,17 +168,20 @@ function ControlButton({
   );
 }
 
-function AreaGlyph({ area }: { area?: AreaSummary }) {
+/**
+ * The Thread's Area as a quiet label: icon and name, in the card's own muted
+ * ink. Colour on the board belongs to time, so the tag never carries any.
+ * An unlabeled Thread shows nothing — a missing label is not a problem.
+ */
+function AreaTag({ area }: { area?: AreaSummary }) {
   if (!area) return null;
   return (
     <span
-      title={`${area.name} — ${conditionLabels[area.condition]}`}
-      className={cn(
-        "inline-flex shrink-0",
-        conditionTextClassName[area.condition],
-      )}
+      title={area.name}
+      className="inline-flex max-w-[45%] shrink-0 items-center gap-1 rounded-full bg-muted/70 px-1.5 py-px text-[11px] text-muted-foreground"
     >
-      <AreaIcon icon={area.icon} className="size-3.5" />
+      <AreaIcon icon={area.icon} className="size-3 shrink-0" />
+      <span className="truncate">{area.name}</span>
     </span>
   );
 }

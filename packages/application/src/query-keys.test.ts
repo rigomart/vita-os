@@ -8,14 +8,7 @@ const threadId = "thread-1" as ThreadId;
 
 describe("query keys", () => {
   it("nests each read under the family a command can invalidate", () => {
-    expect(queryKeys.areas.detail("health")).toEqual([
-      "areas",
-      "detail",
-      "health",
-    ]);
-    expect(queryKeys.areas.detail("health").slice(0, 2)).toEqual(
-      queryKeys.areas.details(),
-    );
+    expect(queryKeys.areas.list().slice(0, 1)).toEqual(queryKeys.areas.all);
     expect(queryKeys.threads.detail("book-checkup").slice(0, 2)).toEqual(
       queryKeys.threads.details(),
     );

@@ -27,7 +27,9 @@ function numberOf(migration: { name: string }): number {
 }
 
 function migrationsBefore(number: number) {
-  return env.TEST_MIGRATIONS.filter((migration) => numberOf(migration) < number);
+  return env.TEST_MIGRATIONS.filter(
+    (migration) => numberOf(migration) < number,
+  );
 }
 
 function migrationsThrough(number: number) {

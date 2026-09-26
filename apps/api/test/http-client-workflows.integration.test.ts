@@ -130,7 +130,9 @@ describe("Areas through the HTTP client", () => {
       ok: true,
       value: { acknowledged: true },
     });
-    await expect(client.getThreadDetail({ slug: thread.slug })).resolves.toEqual({
+    await expect(
+      client.getThreadDetail({ slug: thread.slug }),
+    ).resolves.toEqual({
       ok: true,
       value: { thread: (({ areaId: _areaId, ...rest }) => rest)(thread) },
     });

@@ -12,10 +12,11 @@ import { readProductSearch } from "../navigation/search-params";
 /**
  * Vita OS' routes, as the application's own.
  *
- * The product's addresses are part of the product: `/` is the Dashboard,
- * `/$areaSlug` an Area, `/$areaSlug/$threadSlug` a Thread deep link, and
+ * The product's addresses are part of the product: `/` is the Dashboard
+ * (`?area=` filters it), `/threads/$threadSlug` a Thread deep link, and
  * `?thread=`/`?inbox=` summon a Thread or the Notes panel over whatever is
- * showing. A host mounts this tree, adds whatever routes are its own — signing
+ * showing. The old Area addresses, `/$areaSlug` and `/$areaSlug/$threadSlug`,
+ * redirect. A host mounts this tree, adds whatever routes are its own — signing
  * in is the host's, not the product's — and hands the result to `createRouter`.
  *
  * Every component below is loaded lazily, which is what keeps the authenticated
@@ -56,6 +57,11 @@ export const authenticatedRoute = createRoute({
   ),
 });
 
+const dashboardScreen = lazyRouteComponent(
+  () => import("../dashboard/screens/dashboard-screen"),
+  "DashboardScreen",
+);
+
 const dashboardRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/",
@@ -63,40 +69,40 @@ const dashboardRoute = createRoute({
     meta: [{ title: "Dashboard | Vita OS" }],
   }),
   errorComponent: RouteErrorFallback,
-  component: lazyRouteComponent(
-    () => import("../dashboard/screens/dashboard-screen"),
-    "DashboardScreen",
-  ),
+  component: dashboardScreen,
 });
 
 /**
- * The Thread pane itself is rendered globally by `AppShell`, which reads this
- * route's params; the child routes exist purely so `/$areaSlug/$threadSlug`
- * keeps matching.
+ * A Thread's own address. The pane itself is rendered globally by `AppShell`,
+ * which reads this route's params; the Dashboard sits underneath it, so closing
+ * the pane leaves the person somewhere useful. The static `threads` segment
+ * takes precedence over any Area slug.
  */
-export const areaRoute = createRoute({
+export const threadDeepLinkRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/threads/$threadSlug",
+  errorComponent: RouteErrorFallback,
+  component: dashboardScreen,
+});
+
+const legacyAreaRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/$areaSlug",
   errorComponent: RouteErrorFallback,
-  component: lazyRouteComponent(() => import("./area-layout"), "AreaLayout"),
+  component: lazyRouteComponent(
+    () => import("./legacy-area-redirects"),
+    "LegacyAreaRedirect",
+  ),
 });
 
-function renderNothing() {
-  return null;
-}
-
-const areaIndexRoute = createRoute({
-  getParentRoute: () => areaRoute,
-  path: "/",
+const legacyAreaThreadRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/$areaSlug/$threadSlug",
   errorComponent: RouteErrorFallback,
-  component: renderNothing,
-});
-
-export const threadDeepLinkRoute = createRoute({
-  getParentRoute: () => areaRoute,
-  path: "/$threadSlug",
-  errorComponent: RouteErrorFallback,
-  component: renderNothing,
+  component: lazyRouteComponent(
+    () => import("./legacy-area-redirects"),
+    "LegacyAreaThreadRedirect",
+  ),
 });
 
 const inboxDeepLink = lazyRouteComponent(
@@ -125,7 +131,9 @@ const notesRoute = createRoute({
 
 export const authenticatedRouteTree = authenticatedRoute.addChildren([
   dashboardRoute,
-  areaRoute.addChildren([areaIndexRoute, threadDeepLinkRoute]),
+  threadDeepLinkRoute,
   inboxRoute,
   notesRoute,
+  legacyAreaRoute,
+  legacyAreaThreadRoute,
 ]);

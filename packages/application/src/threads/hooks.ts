@@ -50,7 +50,7 @@ export function useOpenThreads(
 
 /**
  * Everything the Thread rail renders: the Thread, the revision it was read at,
- * and the Area it is filed under. `null` means the Thread is not there.
+ * and its Area when it has one. `null` means the Thread is not there.
  */
 export function useThreadDetail(
   slug: string,
@@ -90,8 +90,7 @@ export function useCreateThread(): ApplicationMutationResult<
 > {
   return useApplicationMutation<CreateThreadInput, Thread, ThreadId>({
     run: (client, input) => client.createThread(input),
-    affected: (input, cache) =>
-      threadChangeKeys(cache, { areaIds: [input.areaId] }),
+    affected: (_input, cache) => threadChangeKeys(cache, {}),
     optimistic: (cache, input, previousLocal) => {
       const pendingId = previousLocal ?? (newRecordId() as ThreadId);
       showPendingThread(cache, input, { id: pendingId, now: Date.now() });
@@ -110,8 +109,8 @@ export function useCreateThread(): ApplicationMutationResult<
  * Every command carries the Thread as the caller sees it, rather than being bound
  * to one at render: the optimistic change needs the Thread's current values, and a
  * surface that lists many Threads has one command for all of them. A change that
- * moves the Thread carries the destination Area too, so the rail's embedded Area
- * keeps up without reading it back.
+ * labels the Thread carries the destination Area too, so the rail's embedded
+ * Area keeps up without reading it back.
  */
 export interface UpdateThreadVariables extends Omit<
   UpdateThreadInput,
@@ -128,11 +127,8 @@ export function useUpdateThread(): ApplicationMutationResult<
   return useApplicationMutation<UpdateThreadVariables, Thread>({
     run: (client, { thread, destinationArea: _destination, ...change }) =>
       client.updateThread({ threadId: thread._id, ...change }),
-    affected: ({ thread, areaId }, cache) =>
-      threadChangeKeys(cache, {
-        threadId: thread._id,
-        areaIds: [thread.areaId, areaId],
-      }),
+    affected: ({ thread }, cache) =>
+      threadChangeKeys(cache, { threadId: thread._id }),
     optimistic: (cache, { thread, destinationArea, ...change }) =>
       showThreadChange(
         cache,

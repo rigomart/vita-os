@@ -11,6 +11,6 @@ export function useCreateThread() {
 
   return async (value: ThreadFormValue): Promise<CreatedThreadResult> => {
     const thread = await createThread.mutateAsync(value);
-    return { slug: thread.slug, areaId: value.areaId };
+    return { slug: thread.slug };
   };
 }

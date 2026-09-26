@@ -16,7 +16,6 @@ export function anArea(overrides: Partial<AreaSummary> = {}): AreaSummary {
     _id: "area-1" as AreaId,
     name: "Health",
     slug: "health-0011aabb",
-    condition: "healthy",
     icon: "HeartPulse",
     order: 0,
     createdAt: 1_000,

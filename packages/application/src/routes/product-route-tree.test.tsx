@@ -76,7 +76,7 @@ describe("shared product routes", { timeout: 20_000 }, () => {
       await screen.findByRole("heading", { name: "Dashboard" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Create Life Area" }),
+      await screen.findByText("Nothing is asking for you."),
     ).toBeInTheDocument();
   });
 
@@ -92,28 +92,51 @@ describe("shared product routes", { timeout: 20_000 }, () => {
     expect(listAreas).not.toHaveBeenCalled();
   });
 
-  it("renders missing Areas through the Area screen", async () => {
-    await mountProduct("/missing-area");
+  it("redirects an old Area page to the Dashboard filtered by that Area", async () => {
+    const { router } = await mountProduct("/kitchen");
 
-    expect(await screen.findByText("Area not found.")).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    expect(router.state.location.search).toEqual({ area: "kitchen" });
+    expect(
+      await screen.findByRole("heading", { name: "Dashboard" }),
+    ).toBeInTheDocument();
   });
 
-  it("opens a Thread deep link and leaves the child route when the pane closes", async () => {
+  it("redirects an old Thread link to the Thread's own address", async () => {
     const { router, getThreadDetail } = await mountProduct("/kitchen/faucet");
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/threads/faucet"),
+    );
+    expect(await screen.findByText("Thread not found.")).toBeInTheDocument();
+    expect(getThreadDetail).toHaveBeenCalledWith({ slug: "faucet" });
+  });
+
+  it("opens a Thread deep link over the Dashboard and returns to it on close", async () => {
+    const { router, getThreadDetail } = await mountProduct("/threads/faucet");
 
     expect(await screen.findByText("Thread not found.")).toBeInTheDocument();
     expect(getThreadDetail).toHaveBeenCalledWith({ slug: "faucet" });
+    expect(
+      screen.getByRole("heading", { name: "Dashboard" }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
 
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/kitchen"),
-    );
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
     expect(screen.queryByText("Thread not found.")).not.toBeInTheDocument();
+  });
+
+  it("gives the static threads segment precedence over an Area slug", async () => {
+    const { router } = await mountProduct("/threads/faucet");
+
+    await screen.findByText("Thread not found.");
+    expect(router.state.location.pathname).toBe("/threads/faucet");
+    expect(router.state.location.search).toEqual({});
   });
 
   it("lets a search Thread override a deep link and clears both sources on close", async () => {
     const { router, getThreadDetail } = await mountProduct(
-      "/kitchen/faucet?thread=roof",
+      "/threads/faucet?thread=roof",
     );
 
     expect(await screen.findByText("Thread not found.")).toBeInTheDocument();
@@ -121,11 +144,22 @@ describe("shared product routes", { timeout: 20_000 }, () => {
     expect(getThreadDetail).not.toHaveBeenCalledWith({ slug: "faucet" });
     fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
 
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/kitchen"),
-    );
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
     expect(router.state.location.search).not.toHaveProperty("thread");
     expect(screen.queryByText("Thread not found.")).not.toBeInTheDocument();
+  });
+
+  it("keeps the Dashboard filter when a Thread opened in place closes", async () => {
+    const { router } = await mountProduct("/?area=kitchen&thread=roof");
+
+    expect(await screen.findByText("Thread not found.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
+
+    await waitFor(() =>
+      expect(router.state.location.search).not.toHaveProperty("thread"),
+    );
+    expect(router.state.location.pathname).toBe("/");
+    expect(router.state.location.search).toEqual({ area: "kitchen" });
   });
 
   it.each(["/inbox", "/notes"])(

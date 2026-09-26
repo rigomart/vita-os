@@ -1,5 +1,4 @@
 import type {
-  AreaDetail,
   AreaId,
   ApplicationError,
   Thread,
@@ -50,10 +49,6 @@ function seedThreadReads(overrides: { thread?: Thread } = {}) {
       thread: seeded,
       area: health,
     });
-    cache.setQueryData<AreaDetail>(queryKeys.areas.detail(health.slug), {
-      area: health,
-      threads: [seeded],
-    });
   };
 }
 
@@ -71,7 +66,7 @@ describe("useOpenThreads", () => {
 });
 
 describe("useCreateThread", () => {
-  it("shows the pending Thread in the open list and on its Area page", async () => {
+  it("shows the pending Thread in the open list", async () => {
     const stored = aThread({
       _id: "thread-stored" as ThreadId,
       title: "Refill prescription",
@@ -96,10 +91,6 @@ describe("useCreateThread", () => {
       expect(
         cache.getQueryData<Thread[]>(queryKeys.threads.open()),
       ).toHaveLength(2);
-      expect(
-        cache.getQueryData<AreaDetail>(queryKeys.areas.detail(health.slug))
-          ?.threads,
-      ).toHaveLength(2);
     });
 
     pending.resolve(success(stored));
@@ -108,6 +99,32 @@ describe("useCreateThread", () => {
         cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[1],
       ).toEqual(stored),
     );
+  });
+});
+
+describe("useCreateThread without an Area", () => {
+  it("shows a pending Thread that carries no Area", async () => {
+    const pending = deferred<ReturnType<typeof success<Thread>>>();
+    const client = createFakeApplicationClient({
+      createThread: () => pending.promise,
+    });
+    const { wrapper, cache } = createHarness(client, seedThreadReads());
+    const { result } = renderHook(() => useCreateThread(), { wrapper });
+
+    act(() => {
+      result.current.mutate({ title: "Renew passport" });
+    });
+
+    await waitFor(() =>
+      expect(
+        cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[1],
+      ).toMatchObject({ title: "Renew passport" }),
+    );
+    expect(
+      cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[1],
+    ).not.toHaveProperty("areaId");
+
+    pending.resolve(success(aThread({ title: "Renew passport" })));
   });
 });
 
@@ -181,24 +198,17 @@ describe("useUpdateThread", () => {
       expect(rail?.thread.nextMove).toBeUndefined();
       expect(rail?.thread.upNext).toBeUndefined();
       expect(rail?.thread.followUp).toBeUndefined();
+      // A Resolved Thread keeps its Area.
+      expect(rail?.thread.areaId).toBe(health._id);
+      expect(rail?.area).toEqual(health);
     });
-    expect(
-      cache.getQueryData<AreaDetail>(queryKeys.areas.detail(health.slug))
-        ?.threads,
-    ).toEqual([]);
   });
 
-  it("moves the Thread between Area pages and swaps the rail's Area", async () => {
+  it("moves the Thread to another Area and swaps the rail's Area", async () => {
     const client = createFakeApplicationClient({
       updateThread: async () => success({ ...thread, areaId: home._id }),
     });
-    const { wrapper, cache } = createHarness(client, (seeded) => {
-      seedThreadReads()(seeded);
-      seeded.setQueryData<AreaDetail>(queryKeys.areas.detail(home.slug), {
-        area: home,
-        threads: [],
-      });
-    });
+    const { wrapper, cache } = createHarness(client, seedThreadReads());
     const { result } = renderHook(() => useUpdateThread(), { wrapper });
 
     act(() => {
@@ -209,20 +219,65 @@ describe("useUpdateThread", () => {
       });
     });
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(
-        cache.getQueryData<AreaDetail>(queryKeys.areas.detail(health.slug))
-          ?.threads,
-      ).toEqual([]);
-      expect(
-        cache.getQueryData<AreaDetail>(queryKeys.areas.detail(home.slug))
-          ?.threads,
-      ).toHaveLength(1);
-    });
+        cache.getQueryData<ThreadDetail>(queryKeys.threads.detail(thread.slug)),
+      ).toMatchObject({ thread: { areaId: home._id }, area: home }),
+    );
     expect(
-      cache.getQueryData<ThreadDetail>(queryKeys.threads.detail(thread.slug))
-        ?.area,
-    ).toEqual(home);
+      cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0]?.areaId,
+    ).toBe(home._id);
+  });
+
+  it("removes the Thread's Area everywhere it is shown", async () => {
+    const { areaId: _removed, ...unlabeled } = thread;
+    const client = createFakeApplicationClient({
+      updateThread: async () => success(unlabeled),
+    });
+    const { wrapper, cache } = createHarness(client, seedThreadReads());
+    const { result } = renderHook(() => useUpdateThread(), { wrapper });
+
+    act(() => {
+      result.current.mutate({ thread, areaId: null });
+    });
+
+    await waitFor(() =>
+      expect(
+        cache.getQueryData<ThreadDetail>(queryKeys.threads.detail(thread.slug)),
+      ).toEqual({ thread: unlabeled }),
+    );
+    expect(
+      cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0],
+    ).not.toHaveProperty("areaId");
+  });
+
+  it("labels an unlabeled Thread and gives the rail its Area", async () => {
+    const { areaId: _removed, ...unlabeled } = thread;
+    const client = createFakeApplicationClient({
+      updateThread: async () => success({ ...unlabeled, areaId: home._id }),
+    });
+    const { wrapper, cache } = createHarness(client, (seeded) => {
+      seeded.setQueryData(queryKeys.threads.open(), [unlabeled]);
+      seeded.setQueryData<ThreadDetail>(queryKeys.threads.detail(thread.slug), {
+        thread: unlabeled,
+      });
+    });
+    const { result } = renderHook(() => useUpdateThread(), { wrapper });
+
+    act(() => {
+      result.current.mutate({
+        thread: unlabeled,
+        areaId: home._id,
+        destinationArea: home,
+      });
+    });
+
+    await waitFor(() =>
+      expect(
+        cache.getQueryData<ThreadDetail>(queryKeys.threads.detail(thread.slug))
+          ?.area,
+      ).toEqual(home),
+    );
   });
 
   it("puts every read back when the change fails", async () => {
@@ -234,7 +289,6 @@ describe("useUpdateThread", () => {
     const before = {
       open: cache.getQueryData(queryKeys.threads.open()),
       rail: cache.getQueryData(queryKeys.threads.detail(thread.slug)),
-      area: cache.getQueryData(queryKeys.areas.detail(health.slug)),
     };
     const { result } = renderHook(() => useUpdateThread(), { wrapper });
 
@@ -247,9 +301,6 @@ describe("useUpdateThread", () => {
     await waitFor(() => expect(result.current.error).toEqual(unavailable));
     expect(cache.getQueryData(queryKeys.threads.detail(thread.slug))).toEqual(
       before.rail,
-    );
-    expect(cache.getQueryData(queryKeys.areas.detail(health.slug))).toEqual(
-      before.area,
     );
     expect(cache.getQueryData(queryKeys.threads.open())).toEqual(before.open);
   });
@@ -277,8 +328,8 @@ describe("useReplaceUpNext", () => {
       ).toEqual(["Book appointment", "Collect results"]),
     );
     expect(
-      cache.getQueryData<AreaDetail>(queryKeys.areas.detail(health.slug))
-        ?.threads[0]?.upNext,
+      cache.getQueryData<ThreadDetail>(queryKeys.threads.detail(thread.slug))
+        ?.thread.upNext,
     ).toEqual(["Book appointment", "Collect results"]);
 
     pending.resolve(success(thread));
@@ -329,9 +380,5 @@ describe("useRemoveThread", () => {
     expect(
       cache.getQueryData(queryKeys.threads.detail(thread.slug)),
     ).toBeNull();
-    expect(
-      cache.getQueryData<AreaDetail>(queryKeys.areas.detail(health.slug))
-        ?.threads,
-    ).toEqual([]);
   });
 });

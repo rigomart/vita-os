@@ -1,5 +1,6 @@
 import type {
   ApplicationError,
+  AreaId,
   OperationResult,
   ThreadDetail,
 } from "@vita-os/contracts";
@@ -23,7 +24,7 @@ const detail: ThreadDetail = {
     _id: "thread-1" as ThreadDetail["thread"]["_id"],
     title: "Book checkup",
     slug: "book-checkup",
-    areaId: "area-1" as ThreadDetail["thread"]["areaId"],
+    areaId: "area-1" as AreaId,
     order: 1,
     state: "open",
     nextMove: "Call clinic",
@@ -31,10 +32,9 @@ const detail: ThreadDetail = {
     createdAt: 1,
   },
   area: {
-    _id: "area-1" as ThreadDetail["area"]["_id"],
+    _id: "area-1" as AreaId,
     name: "Health",
     slug: "health",
-    condition: "healthy",
     icon: "HeartPulse",
     order: 1,
     createdAt: 1,

@@ -1,4 +1,4 @@
-import type { AreaId, AreaSummary } from "@vita-os/contracts";
+import type { AreaId } from "@vita-os/contracts";
 
 import type { CreatedThreadResult } from "./types";
 
@@ -8,7 +8,6 @@ import { useCreateThread } from "./use-create-thread";
 interface CreateThreadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  areas: AreaSummary[];
   defaultAreaId?: AreaId;
   onCreated?: (thread: CreatedThreadResult) => void;
 }
@@ -16,7 +15,6 @@ interface CreateThreadDialogProps {
 export function CreateThreadDialog({
   open,
   onOpenChange,
-  areas,
   defaultAreaId,
   onCreated,
 }: CreateThreadDialogProps) {
@@ -27,7 +25,6 @@ export function CreateThreadDialog({
       mode="create"
       open={open}
       onOpenChange={onOpenChange}
-      areas={areas}
       defaultAreaId={defaultAreaId}
       onSubmit={async (value) => {
         const thread = await createThread(value);

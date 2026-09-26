@@ -1,7 +1,5 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type {
-  AreaDetail,
-  AreaId,
   AreaSummary,
   CreateThreadInput,
   Thread,
@@ -18,11 +16,9 @@ import {
   takeFrontUpNextMove,
 } from "@vita-os/core";
 
-import { patchAreaDetail } from "../areas/optimistic";
 import {
   insertOrdered,
   nextOrder,
-  patchById,
   patchQueries,
   patchQuery,
   removeById,
@@ -76,7 +72,7 @@ export function buildPendingThread(
     title: input.title,
     slug: generateSlug(input.title),
     ...(input.summary === undefined ? {} : { summary: input.summary }),
-    areaId: input.areaId,
+    ...(input.areaId === undefined ? {} : { areaId: input.areaId }),
     order: minted.order,
     state: "open",
     createdAt: minted.now,
@@ -105,44 +101,23 @@ function patchThreadDetail(
 }
 
 /**
- * Exactly the reads one Thread change can touch.
- *
- * Named from what the cache actually holds rather than from the whole key family,
- * so a command against one Thread neither snapshots nor invalidates another
- * Thread's rail or an unrelated Area's page.
+ * Exactly the reads one Thread change can touch: the open list and any rail
+ * holding this Thread. Another Thread's rail is neither snapshotted nor
+ * invalidated.
  */
 export function threadChangeKeys(
   cache: QueryClient,
-  target: { threadId?: ThreadId; areaIds?: Array<AreaId | undefined> },
+  target: { threadId?: ThreadId },
 ): QueryKey[] {
   const keys: QueryKey[] = [queryKeys.threads.open()];
-  const areaIds = new Set(
-    (target.areaIds ?? []).filter(
-      (areaId): areaId is AreaId => areaId !== undefined,
-    ),
-  );
+  if (target.threadId === undefined) return keys;
 
   for (const [queryKey, detail] of cache.getQueriesData<ThreadDetail | null>({
     queryKey: queryKeys.threads.details(),
   })) {
-    if (
-      target.threadId !== undefined &&
-      detail !== null &&
-      detail?.thread._id === target.threadId
-    ) {
+    if (detail !== null && detail?.thread._id === target.threadId) {
       keys.push(queryKey);
     }
-  }
-
-  for (const [queryKey, detail] of cache.getQueriesData<AreaDetail | null>({
-    queryKey: queryKeys.areas.details(),
-  })) {
-    if (detail === null || detail === undefined) continue;
-
-    const holdsThread =
-      target.threadId !== undefined &&
-      detail.threads.some((thread) => thread._id === target.threadId);
-    if (holdsThread || areaIds.has(detail.area._id)) keys.push(queryKey);
   }
 
   return keys;
@@ -157,17 +132,6 @@ export function showPendingThread(
     ...threads,
     buildPendingThread(input, { ...minted, order: nextOrder(threads) }),
   ]);
-  patchAreaDetail(cache, input.areaId, (detail) => ({
-    ...detail,
-    threads: [
-      ...detail.threads,
-      // Each read computes its own position: they hold different subsets.
-      buildPendingThread(input, {
-        ...minted,
-        order: nextOrder(detail.threads),
-      }),
-    ],
-  }));
 }
 
 export function settlePendingThread(
@@ -179,20 +143,15 @@ export function settlePendingThread(
     threads.map((existing) => (existing._id === pendingId ? thread : existing));
 
   patchQuery<Thread[]>(cache, queryKeys.threads.open(), swap);
-  patchAreaDetail(cache, thread.areaId, (detail) => ({
-    ...detail,
-    threads: swap(detail.threads),
-  }));
 }
 
 /**
  * One Thread change, across every read that can be holding it.
  *
  * `thread` is the Thread as the caller sees it: the basis for inserts into reads
- * that do not hold it yet, and the only source of the Area it is leaving. It is
- * never discovered from the cache, because a destination read can be cached while
- * the Thread's own list is not. `destinationArea` is the Area a move targets;
- * without it the rail's embedded Area is left for the service to reconcile.
+ * that do not hold it yet. `destinationArea` is the Area a label change
+ * targets; without it the rail's embedded Area is left for the service to
+ * reconcile. Removing the label (`areaId: null`) needs no destination.
  */
 export function showThreadChange(
   cache: QueryClient,
@@ -215,14 +174,12 @@ export function showThreadChange(
           })
         : {};
   const threadPatch: Partial<Thread> = { ...patch, ...attentionPatch };
-  const next = { ...context.thread, ...threadPatch };
+  const next = withoutAbsent({ ...context.thread, ...threadPatch });
   const resolved = threadPatch.state === "resolved";
   const reopened = threadPatch.state === "open";
-  const destination =
-    threadPatch.areaId !== undefined &&
-    threadPatch.areaId !== context.thread.areaId
-      ? threadPatch.areaId
-      : undefined;
+  const relabeled =
+    Object.hasOwn(threadPatch, "areaId") &&
+    threadPatch.areaId !== context.thread.areaId;
 
   // A reopened Thread is absent from the open-only reads, so patching by ID would
   // silently do nothing: it is inserted where the list's ordering puts it. An
@@ -232,7 +189,11 @@ export function showThreadChange(
     key: (thread: Thread) => number,
   ): Thread[] => {
     if (threads.some((thread) => thread._id === threadId)) {
-      return patchById(threads, threadId, threadPatch);
+      return threads.map((thread) =>
+        thread._id === threadId
+          ? withoutAbsent({ ...thread, ...threadPatch })
+          : thread,
+      );
     }
     return reopened ? insertOrdered(threads, next, key) : threads;
   };
@@ -243,35 +204,28 @@ export function showThreadChange(
       : patchOpenList(threads, (thread) => thread.order),
   );
 
-  patchThreadDetail(cache, threadId, (detail) => ({
-    ...detail,
-    thread: { ...detail.thread, ...threadPatch },
-    area:
-      destination !== undefined && context.destinationArea !== undefined
-        ? context.destinationArea
-        : detail.area,
-  }));
-
-  patchAreaDetail(cache, context.thread.areaId, (detail) => ({
-    ...detail,
-    threads:
-      destination !== undefined || resolved
-        ? removeById(detail.threads, threadId)
-        : // The Area inventory reads in creation order, not manual order.
-          patchOpenList(detail.threads, (thread) => thread.createdAt),
-  }));
-
-  if (destination !== undefined && !resolved) {
-    patchAreaDetail(cache, destination, (detail) => ({
-      ...detail,
-      threads: [...detail.threads, next],
-    }));
-  }
+  patchThreadDetail(cache, threadId, (detail) => {
+    const thread = withoutAbsent({ ...detail.thread, ...threadPatch });
+    if (!relabeled) return { ...detail, thread };
+    if (threadPatch.areaId === undefined) return { thread };
+    const area = context.destinationArea ?? detail.area;
+    return area === undefined ? { thread } : { thread, area };
+  });
 }
 
 /**
- * Deleting a Thread takes it out of every read holding it: the open list, any
- * rail showing it, and the inventory of whichever Area it was filed under.
+ * A patch spells a cleared field as a key holding `undefined`; a read never
+ * holds one. Dropping them keeps a cleared Area, say, reading as absent.
+ */
+function withoutAbsent<T extends object>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, field]) => field !== undefined),
+  ) as T;
+}
+
+/**
+ * Deleting a Thread takes it out of every read holding it: the open list and
+ * any rail showing it.
  */
 export function showThreadRemoval(
   cache: QueryClient,
@@ -281,17 +235,11 @@ export function showThreadRemoval(
     removeById(threads, threadId),
   );
   patchThreadDetail(cache, threadId, () => null);
-  patchQueries<AreaDetail | null>(cache, queryKeys.areas.details(), (detail) =>
-    detail === null
-      ? detail
-      : { ...detail, threads: removeById(detail.threads, threadId) },
-  );
 }
 
 /**
- * Both attention changes land in the same three reads, differing only in what
- * they do to the Thread they find: the open list, every cached rail holding it,
- * and every Area page listing it.
+ * Both attention changes land in the same reads, differing only in what they
+ * do to the Thread they find: the open list and every cached rail holding it.
  */
 export function showThreadAttention(
   cache: QueryClient,
@@ -311,10 +259,5 @@ export function showThreadAttention(
       detail !== null && detail.thread._id === threadId
         ? { ...detail, thread: patch(detail.thread) }
         : detail,
-  );
-  patchQueries<AreaDetail | null>(cache, queryKeys.areas.details(), (detail) =>
-    detail === null
-      ? detail
-      : { ...detail, threads: patchList(detail.threads) },
   );
 }

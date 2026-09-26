@@ -6,10 +6,9 @@ import { ThreadHeader } from "./thread-header";
 
 interface ThreadHeaderProps {
   thread: Thread;
-  areaSlug: string;
 }
 
-export function ThreadHeaderSection({ thread, areaSlug }: ThreadHeaderProps) {
+export function ThreadHeaderSection({ thread }: ThreadHeaderProps) {
   const { onThreadLocationChange } = useThreadPaneNav();
   const updateThread = useUpdateThread(thread);
 
@@ -17,7 +16,7 @@ export function ThreadHeaderSection({ thread, areaSlug }: ThreadHeaderProps) {
     if (!title) return;
     const result = await updateThread({ title });
     if (result?.slug && result.slug !== thread.slug) {
-      onThreadLocationChange({ areaSlug, threadSlug: result.slug });
+      onThreadLocationChange({ threadSlug: result.slug });
     }
   };
 

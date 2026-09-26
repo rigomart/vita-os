@@ -32,6 +32,7 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
   useNavigate: () => mocks.navigate,
+  useRouterState: () => undefined,
 }));
 
 vi.mock("../../areas/hooks", async (importOriginal) => ({
@@ -108,13 +109,14 @@ describe("DashboardScreen", () => {
     expect(screen.getByTestId("dashboard-overview-skeleton")).toBeVisible();
   });
 
-  it("renders the first-run Area creation state", () => {
+  it("asks for no Area before it can be used", () => {
     answerEmpty();
     render(<DashboardScreen />);
 
+    expect(screen.getByText("Nothing is asking for you.")).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Create Life Area" }),
-    ).toBeVisible();
+      screen.queryByRole("button", { name: /Area/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("reads exactly the three inventories", () => {
@@ -138,7 +140,6 @@ describe("DashboardScreen", () => {
         name: "Health",
         slug: "health",
         icon: "HeartPulse",
-        condition: "healthy",
         order: 0,
       },
     ];

@@ -7,11 +7,23 @@ import { describe, expect, it, vi } from "vitest";
 
 import { DashboardOverview } from "./dashboard-overview";
 
+// A link's search is a function of the current one; starting from none, its
+// result is where the link goes.
+function hrefOf(to: string, search: unknown) {
+  if (typeof search !== "function") return to;
+  const next = (search as (previous: object) => Record<string, unknown>)({});
+  const query = Object.entries(next)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join("&");
+  return query === "" ? to : `${to}?${query}`;
+}
+
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     to,
     params: _params,
-    search: _search,
+    search,
     children,
     ...props
   }: ComponentPropsWithoutRef<"a"> & {
@@ -19,10 +31,11 @@ vi.mock("@tanstack/react-router", () => ({
     search?: unknown;
     to: string;
   }) => (
-    <a href={to} {...props}>
+    <a href={hrefOf(to, search)} {...props}>
       {children}
     </a>
   ),
+  useNavigate: () => vi.fn(),
 }));
 
 // The cards' writes belong to the hooks; this suite is about what lands where.
@@ -82,7 +95,6 @@ const areas = [
     name: "Health",
     slug: "health",
     icon: "HeartPulse",
-    condition: "critical",
     order: 0,
   },
   {
@@ -90,7 +102,6 @@ const areas = [
     name: "Home",
     slug: "home",
     icon: "Home",
-    condition: "healthy",
     order: 1,
   },
 ] as unknown as AreaSummary[];
@@ -103,7 +114,6 @@ function renderOverview(overrides: Partial<OverviewProps> = {}) {
     threads: [],
     notes: [],
     currentDate,
-    onCreateArea: vi.fn(),
     ...overrides,
   };
   return { ...render(<DashboardOverview {...props} />), props };
@@ -116,13 +126,121 @@ function columnText(name: string) {
 }
 
 describe("DashboardOverview", () => {
-  it("offers the first Area when there are none", async () => {
-    const { props } = renderOverview({ areas: [] });
+  it("needs no Area to show the board, and offers no filter without one", () => {
+    renderOverview({
+      areas: [],
+      threads: [thread("Unlabeled", { areaId: undefined })],
+    });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Create Life Area" }),
+    expect(screen.getByText("Unlabeled")).toBeVisible();
+    expect(
+      screen.queryByRole("navigation", { name: "Filter by area" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers All, each Area with its count, and No area, each as a link", () => {
+    renderOverview({
+      threads: [
+        thread("Checkup"),
+        thread("Dentist", { order: 1 }),
+        thread("Passport", { areaId: undefined, order: 2 }),
+      ],
+    });
+
+    const row = screen.getByRole("navigation", { name: "Filter by area" });
+    expect(
+      within(row)
+        .getAllByRole("link")
+        .map((link) => [link.textContent, link.getAttribute("href")]),
+    ).toEqual([
+      ["All3", "/"],
+      ["Health2", "/?area=health"],
+      ["Home0", "/?area=home"],
+      ["No area1", "/?area=none"],
+    ]);
+    expect(within(row).getByRole("link", { name: /All/ })).toHaveAttribute(
+      "aria-current",
+      "true",
     );
-    expect(props.onCreateArea).toHaveBeenCalled();
+  });
+
+  it("narrows the board to one Area and leaves Standalone Notes out", () => {
+    renderOverview({
+      areaFilter: "home",
+      threads: [
+        thread("Checkup", { followUp: currentDate }),
+        thread("Fix the gate", {
+          areaId: "home" as Thread["areaId"],
+          followUp: currentDate,
+          order: 1,
+        }),
+      ],
+      notes: [note("Water the plants", { attentionDate: currentDate })],
+    });
+
+    expect(columnText("Now")).toEqual([
+      expect.stringContaining("Fix the gate"),
+    ]);
+    expect(
+      screen.queryByDisplayValue("Water the plants"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Home/ })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+  });
+
+  it("shows only unlabeled Threads under No area", () => {
+    renderOverview({
+      areaFilter: "none",
+      threads: [
+        thread("Checkup", { followUp: currentDate }),
+        thread("Passport", {
+          areaId: undefined,
+          followUp: currentDate,
+          order: 1,
+        }),
+      ],
+    });
+
+    expect(columnText("Now")).toEqual([expect.stringContaining("Passport")]);
+  });
+
+  it("falls back to the whole board for an Area that is not there", () => {
+    renderOverview({
+      areaFilter: "deleted-area",
+      threads: [thread("Checkup", { followUp: currentDate })],
+      notes: [note("Water the plants", { attentionDate: currentDate })],
+    });
+
+    expect(screen.getByText("Checkup")).toBeVisible();
+    expect(screen.getByDisplayValue("Water the plants")).toBeVisible();
+  });
+
+  it("says when a filtered Area has nothing open", () => {
+    renderOverview({ areaFilter: "home", threads: [thread("Checkup")] });
+
+    expect(screen.getByText("Nothing open in Home.")).toBeVisible();
+  });
+
+  it("tags a labeled Thread's card with its Area and leaves an unlabeled one bare", () => {
+    renderOverview({
+      threads: [
+        thread("Checkup", { followUp: currentDate }),
+        thread("Passport", {
+          areaId: undefined,
+          followUp: currentDate,
+          order: 1,
+        }),
+      ],
+    });
+
+    const [labeled, unlabeled] = within(
+      screen.getByRole("region", { name: "Now" }),
+    ).getAllByRole("listitem");
+    expect(within(labeled!).getByTitle("Health")).toHaveTextContent("Health");
+    expect(within(unlabeled!).queryByTitle("Health")).not.toBeInTheDocument();
+    expect(within(unlabeled!).queryByTitle("Home")).not.toBeInTheDocument();
   });
 
   it("states each lane's count on the lane", () => {

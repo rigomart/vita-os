@@ -95,14 +95,13 @@ describe("inserting where the service would", () => {
 describe("a pending record", () => {
   it("looks like the Area the service will store, with a placeholder slug", () => {
     const pending = buildPendingArea(
-      { name: "Family Health", condition: "healthy", icon: "HeartPulse" },
+      { name: "Family Health", icon: "HeartPulse" },
       { id: "pending" as AreaId, now: 1_000, order: 2 },
     );
 
     expect(pending).toMatchObject({
       _id: "pending",
       name: "Family Health",
-      condition: "healthy",
       icon: "HeartPulse",
       order: 2,
       createdAt: 1_000,

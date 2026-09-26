@@ -1,8 +1,8 @@
 import type {
-  AreaDetail,
   AreaId,
   ApplicationError,
   AreaSummary,
+  Thread,
   ThreadDetail,
 } from "@vita-os/contracts";
 
@@ -18,10 +18,10 @@ import {
 import { anArea, aThread } from "../test/fixtures";
 import { createHarness } from "../test/harness";
 import {
-  useAreaDetail,
   useAreas,
   useCreateArea,
   useRemoveArea,
+  useReorderAreas,
   useUpdateArea,
 } from "./hooks";
 
@@ -52,41 +52,6 @@ describe("useAreas", () => {
   });
 });
 
-describe("useAreaDetail", () => {
-  it("reads an Area with its Open Threads", async () => {
-    const detail: AreaDetail = { area: health, threads: [aThread()] };
-    const client = createFakeApplicationClient({
-      getAreaDetail: async () => success(detail),
-    });
-    const { wrapper } = createHarness(client);
-
-    const { result } = renderHook(() => useAreaDetail(health.slug), {
-      wrapper,
-    });
-
-    await waitFor(() => expect(result.current.data).toEqual(detail));
-  });
-
-  it("reads an Area that is not there as absent", async () => {
-    const client = createFakeApplicationClient({
-      getAreaDetail: async () => ({
-        ok: false,
-        error: {
-          code: "not_found",
-          message: "Area not found.",
-          retryable: false,
-        },
-      }),
-    });
-    const { wrapper } = createHarness(client);
-
-    const { result } = renderHook(() => useAreaDetail("missing"), { wrapper });
-
-    await waitFor(() => expect(result.current.isPending).toBe(false));
-    expect(result.current.data).toBeNull();
-  });
-});
-
 describe("useCreateArea", () => {
   it("shows the pending Area, then replaces it with the stored one", async () => {
     const stored: AreaSummary = {
@@ -107,7 +72,6 @@ describe("useCreateArea", () => {
     act(() => {
       result.current.mutate({
         name: "Fitness",
-        condition: "healthy",
         icon: "Dumbbell",
       });
     });
@@ -130,6 +94,23 @@ describe("useCreateArea", () => {
     );
   });
 
+  it("drops the placeholder when the service answers with an Area already listed", async () => {
+    const client = createFakeApplicationClient({
+      createArea: async () => success(health),
+      listAreas: async () => success([health]),
+    });
+    const { wrapper, cache } = createHarness(client, (seeded) => {
+      seeded.setQueryData(queryKeys.areas.list(), [health]);
+    });
+    const { result } = renderHook(() => useCreateArea(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ name: "health", icon: "Compass" });
+    });
+
+    expect(cache.getQueryData(queryKeys.areas.list())).toEqual([health]);
+  });
+
   it("puts the inventory back when the create fails", async () => {
     const client = createFakeApplicationClient({
       createArea: async () => ({ ok: false, error: unavailable }),
@@ -144,7 +125,6 @@ describe("useCreateArea", () => {
       await result.current
         .mutateAsync({
           name: "Fitness",
-          condition: "healthy",
           icon: "Dumbbell",
         })
         .catch(() => undefined);
@@ -156,43 +136,27 @@ describe("useCreateArea", () => {
 });
 
 describe("useUpdateArea", () => {
-  it("changes the Area in the inventory and on its own page at once", async () => {
+  it("renames the Area in the list at once", async () => {
     const pending = deferred<ReturnType<typeof success<AreaSummary>>>();
     const client = createFakeApplicationClient({
       updateArea: () => pending.promise,
     });
     const { wrapper, cache } = createHarness(client, (seeded) => {
       seeded.setQueryData(queryKeys.areas.list(), [health, home]);
-      seeded.setQueryData(queryKeys.areas.detail(health.slug), {
-        area: health,
-        threads: [],
-      });
-      seeded.setQueryData(queryKeys.areas.detail(home.slug), {
-        area: home,
-        threads: [],
-      });
     });
     const { result } = renderHook(() => useUpdateArea(), { wrapper });
 
     act(() => {
-      result.current.mutate({ areaId: health._id, condition: "critical" });
+      result.current.mutate({ areaId: health._id, name: "Wellbeing" });
     });
 
-    await waitFor(() => {
-      expect(
-        cache.getQueryData<AreaSummary[]>(queryKeys.areas.list())?.[0],
-      ).toMatchObject({ condition: "critical" });
-      expect(
-        cache.getQueryData<AreaDetail>(queryKeys.areas.detail(health.slug))
-          ?.area.condition,
-      ).toBe("critical");
-    });
-    // Another Area's page is not touched.
-    expect(
-      cache.getQueryData<AreaDetail>(queryKeys.areas.detail(home.slug))?.area,
-    ).toEqual(home);
+    await waitFor(() =>
+      expect(cache.getQueryData<AreaSummary[]>(queryKeys.areas.list())).toEqual(
+        [{ ...health, name: "Wellbeing" }, home],
+      ),
+    );
 
-    pending.resolve(success({ ...health, condition: "critical" }));
+    pending.resolve(success({ ...health, name: "Wellbeing" }));
   });
 
   it("updates embedded Areas in Thread panes and rolls them back on failure", async () => {
@@ -215,7 +179,7 @@ describe("useUpdateArea", () => {
     const { result } = renderHook(() => useUpdateArea(), { wrapper });
     act(() => result.current.mutate({ areaId: health._id, name: "Wellbeing" }));
     await waitFor(() =>
-      expect(cache.getQueryData<ThreadDetail>(key)?.area.name).toBe(
+      expect(cache.getQueryData<ThreadDetail>(key)?.area?.name).toBe(
         "Wellbeing",
       ),
     );
@@ -226,61 +190,83 @@ describe("useUpdateArea", () => {
     expect(cache.getQueryState(key)?.isInvalidated).toBe(true);
     expect(cache.getQueryState(unrelatedKey)?.isInvalidated).toBe(false);
   });
+});
 
-  it("clears the Standard when the change carries null", async () => {
-    const withStandard = anArea({ standard: "Appointments are current" });
+describe("useReorderAreas", () => {
+  it("shows the new order at once, renumbering every Area", async () => {
+    const pending = deferred<ReturnType<typeof success<AreaSummary[]>>>();
     const client = createFakeApplicationClient({
-      updateArea: async () => success({ ...withStandard, standard: undefined }),
+      reorderAreas: () => pending.promise,
     });
     const { wrapper, cache } = createHarness(client, (seeded) => {
-      seeded.setQueryData(queryKeys.areas.list(), [withStandard]);
+      seeded.setQueryData(queryKeys.areas.list(), [health, home]);
     });
-    const { result } = renderHook(() => useUpdateArea(), { wrapper });
+    const { result } = renderHook(() => useReorderAreas(), { wrapper });
 
     act(() => {
-      result.current.mutate({ areaId: withStandard._id, standard: null });
+      result.current.mutate({ areaIds: [home._id, health._id] });
     });
 
     await waitFor(() =>
       expect(
-        cache.getQueryData<AreaSummary[]>(queryKeys.areas.list())?.[0]
-          ?.standard,
-      ).toBeUndefined(),
+        cache
+          .getQueryData<AreaSummary[]>(queryKeys.areas.list())
+          ?.map((area) => [area._id, area.order]),
+      ).toEqual([
+        [home._id, 0],
+        [health._id, 1],
+      ]),
+    );
+
+    pending.resolve(
+      success([
+        { ...home, order: 0 },
+        { ...health, order: 1 },
+      ]),
     );
   });
 });
 
 describe("useRemoveArea", () => {
-  it("takes the Area out of the inventory and empties its page", async () => {
+  it("takes the Area out of the list and its label off every cached Thread", async () => {
+    const labeled = aThread();
+    const elsewhere = aThread({
+      _id: "thread-2" as Thread["_id"],
+      slug: "fix-gate-0011aabb",
+      areaId: home._id,
+    });
     const client = createFakeApplicationClient({
       removeArea: async () => success({ acknowledged: true as const }),
+      listAreas: async () => success([home]),
+      listOpenThreads: async () =>
+        success([(({ areaId: _a, ...rest }) => rest)(labeled), elsewhere]),
     });
+    const detailKey = queryKeys.threads.detail(labeled.slug);
     const { wrapper, cache } = createHarness(client, (seeded) => {
       seeded.setQueryData(queryKeys.areas.list(), [health, home]);
-      seeded.setQueryData(queryKeys.areas.detail(health.slug), {
-        area: health,
-        threads: [],
-      });
+      seeded.setQueryData(queryKeys.threads.open(), [labeled, elsewhere]);
+      seeded.setQueryData(detailKey, { thread: labeled, area: health });
     });
     const { result } = renderHook(() => useRemoveArea(), { wrapper });
 
-    await act(async () => {
-      await result.current.mutateAsync({ areaId: health._id });
+    act(() => {
+      result.current.mutate({ areaId: health._id });
     });
 
-    expect(cache.getQueryData(queryKeys.areas.list())).toEqual([home]);
-    expect(cache.getQueryData(queryKeys.areas.detail(health.slug))).toBeNull();
+    await waitFor(() =>
+      expect(cache.getQueryData(queryKeys.areas.list())).toEqual([home]),
+    );
+    const threads = cache.getQueryData<Thread[]>(queryKeys.threads.open());
+    expect(threads?.[0]).not.toHaveProperty("areaId");
+    expect(threads?.[1]?.areaId).toBe(home._id);
+    expect(cache.getQueryData<ThreadDetail>(detailKey)).toEqual({
+      thread: (({ areaId: _a, ...rest }) => rest)(labeled),
+    });
   });
 
   it("puts the Area back when the deletion is refused", async () => {
-    const conflict: ApplicationError = {
-      code: "conflict",
-      message:
-        "Cannot delete an area that has threads. Move or delete the threads first.",
-      retryable: false,
-    };
     const client = createFakeApplicationClient({
-      removeArea: async () => ({ ok: false, error: conflict }),
+      removeArea: async () => ({ ok: false, error: unavailable }),
       listAreas: async () => success([health, home]),
     });
     const { wrapper, cache } = createHarness(client, (seeded) => {
@@ -294,7 +280,7 @@ describe("useRemoveArea", () => {
         .catch(() => undefined);
     });
 
-    await waitFor(() => expect(result.current.error).toEqual(conflict));
+    await waitFor(() => expect(result.current.error).toEqual(unavailable));
     expect(cache.getQueryData(queryKeys.areas.list())).toEqual([health, home]);
   });
 });

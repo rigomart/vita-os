@@ -1,4 +1,4 @@
-import type { AreaId, AreaSummary } from "@vita-os/contracts";
+import type { AreaId } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
 import { Input } from "@vita-os/ui/components/input";
@@ -22,7 +22,6 @@ interface ThreadFormDialogProps {
   mode: "create" | "edit";
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  areas: AreaSummary[];
   defaultAreaId?: AreaId;
   initialValue?: Partial<ThreadFormValue>;
   onSubmit: (value: ThreadFormValue) => Promise<void> | void;
@@ -40,13 +39,12 @@ export function ThreadFormDialog({
   mode,
   open,
   onOpenChange,
-  areas,
   defaultAreaId,
   initialValue,
   onSubmit,
 }: ThreadFormDialogProps) {
   const [title, setTitle] = useState(initialValue?.title ?? "");
-  const [areaId, setAreaId] = useState<string | undefined>(
+  const [areaId, setAreaId] = useState<AreaId | undefined>(
     initialValue?.areaId ?? defaultAreaId,
   );
 
@@ -74,11 +72,11 @@ export function ThreadFormDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedTitle = title.trim();
-    if (!trimmedTitle || !areaId || isPending) return;
+    if (!trimmedTitle || isPending) return;
 
     const result = await submitThread({
       title: trimmedTitle,
-      areaId: areaId as AreaId,
+      ...(areaId === undefined ? {} : { areaId }),
     });
     if (!result.ok) return;
 
@@ -98,7 +96,7 @@ export function ThreadFormDialog({
           <ResponsiveDialogDescription>
             {mode === "edit"
               ? "Update this thread's details."
-              : "Threads are ongoing situations that belong to an area."}
+              : "Threads are ongoing situations. A title is all they need."}
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -113,12 +111,11 @@ export function ThreadFormDialog({
               disabled={isPending}
             />
           </div>
-          <div className="space-y-2">
-            <Label>Area</Label>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Area</span>
             <AreaPicker
-              areas={areas}
-              selectedAreaId={areaId}
-              onSelect={setAreaId}
+              value={areaId}
+              onChange={setAreaId}
               disabled={isPending}
             />
           </div>
@@ -138,7 +135,7 @@ export function ThreadFormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={!title.trim() || !areaId || isPending}
+              disabled={!title.trim() || isPending}
               aria-busy={isPending}
             >
               {mode === "edit" ? "Save changes" : "Create thread"}

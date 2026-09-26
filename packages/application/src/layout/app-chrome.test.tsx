@@ -31,7 +31,7 @@ function renderChrome(
       onToggleInbox={vi.fn()}
       onNewNote={vi.fn()}
       onNewThread={vi.fn()}
-      onNewArea={vi.fn()}
+      onManageAreas={vi.fn()}
       onOpenPalette={onOpenPalette}
       railOpen={false}
       {...overrides}

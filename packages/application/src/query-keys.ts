@@ -12,8 +12,6 @@ export const queryKeys = {
   areas: {
     all: ["areas"] as const,
     list: () => ["areas", "list"] as const,
-    detail: (slug: string) => ["areas", "detail", slug] as const,
-    details: () => ["areas", "detail"] as const,
   },
   threads: {
     all: ["threads"] as const,

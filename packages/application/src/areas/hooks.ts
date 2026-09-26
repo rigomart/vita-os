@@ -1,6 +1,5 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import type {
-  AreaDetail,
   AreaId,
   ApplicationError,
   AreaSummary,
@@ -14,15 +13,13 @@ import { newRecordId } from "@vita-os/core";
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
 
 import { useApplicationMutation } from "../cache/use-application-mutation";
-import {
-  useApplicationQuery,
-  useOptionalApplicationQuery,
-} from "../cache/use-application-query";
+import { useApplicationQuery } from "../cache/use-application-query";
 import { queryKeys } from "../query-keys";
 import {
   areaChangeKeys,
   settlePendingArea,
   showAreaChange,
+  showAreaOrder,
   showAreaRemoval,
   showPendingArea,
 } from "./optimistic";
@@ -44,20 +41,7 @@ export function useAreas(
 }
 
 /**
- * The Area page in one read. `null` means the Area is not there — or is not this
- * person's, which reads the same.
- */
-export function useAreaDetail(
-  slug: string,
-): UseQueryResult<AreaDetail | null, ApplicationError> {
-  return useOptionalApplicationQuery({
-    queryKey: queryKeys.areas.detail(slug),
-    run: (client) => client.getAreaDetail({ slug }),
-  });
-}
-
-/**
- * Creating an Area shows it in the inventory straight away, at the position the
+ * Creating an Area shows it in the list straight away, at the position the
  * service will give it, and swaps in the real record — with the real ID and slug
  * — as soon as the service answers.
  */
@@ -92,9 +76,21 @@ export function useUpdateArea(): ApplicationMutationResult<
   });
 }
 
+/** Put every Area in the given order. */
+export function useReorderAreas(): ApplicationMutationResult<
+  { areaIds: AreaId[] },
+  AreaSummary[]
+> {
+  return useApplicationMutation<{ areaIds: AreaId[] }, AreaSummary[]>({
+    run: (client, input) => client.reorderAreas(input),
+    affected: (_input, cache) => areaChangeKeys(cache),
+    optimistic: (cache, input) => showAreaOrder(cache, input.areaIds),
+  });
+}
+
 /**
- * Deleting an Area. The Threads it holds are read separately, so their reads are
- * invalidated too rather than patched from here.
+ * Deleting an Area. Its Threads lose the label and stay open; resolved Threads
+ * and Activity Logs are read separately, so every Thread read is refreshed.
  */
 export function useRemoveArea(): ApplicationMutationResult<
   { areaId: AreaId },
@@ -102,7 +98,10 @@ export function useRemoveArea(): ApplicationMutationResult<
 > {
   return useApplicationMutation<{ areaId: AreaId }, CommandAcknowledgement>({
     run: (client, input) => client.removeArea(input),
-    affected: (input, cache) => areaChangeKeys(cache, input.areaId),
+    affected: (input, cache) => [
+      ...areaChangeKeys(cache, input.areaId),
+      queryKeys.threads.open(),
+    ],
     optimistic: (cache, input) => showAreaRemoval(cache, input.areaId),
     alsoInvalidate: () => [queryKeys.threads.all],
   });
