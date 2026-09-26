@@ -7,12 +7,11 @@ export const areaNotFound: ApplicationError = {
 };
 
 /**
- * Threads of any state block deleting their Area: an Area is where Threads
- * live, and removing it would strand them.
+ * A reorder names the owner's whole Area list. A list that has since gained or
+ * lost an Area would silently misplace it, so it is refused instead.
  */
-export const areaHasThreads: ApplicationError = {
+export const areaOrderMismatch: ApplicationError = {
   code: "conflict",
-  message:
-    "Cannot delete an area that has threads. Move or delete the threads first.",
+  message: "The Area order must name every Area exactly once.",
   retryable: false,
 };

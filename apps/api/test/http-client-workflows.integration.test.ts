@@ -38,52 +38,72 @@ async function value<T>(
 }
 
 describe("Areas through the HTTP client", () => {
-  it("creates, reads, renames, and deletes an Area", async () => {
+  it("creates an Area from the picker, labels a Thread, removes the label, and deletes the Area", async () => {
     const client = clientFor(await createSession("client-areas"));
+    const thread = await value(client.createThread({ title: "Book checkup" }));
+    expect(thread).not.toHaveProperty("areaId");
 
     const area = await value(
-      client.createArea({
-        name: "Family Health",
-        standard: "Appointments are current",
-        condition: "needs_attention",
-        icon: "HeartPulse",
-      }),
+      client.createArea({ name: "Family Health", icon: "HeartPulse" }),
     );
     expect(area).toMatchObject({
       name: "Family Health",
-      standard: "Appointments are current",
-      condition: "needs_attention",
       icon: "HeartPulse",
       order: 0,
     });
+    await expect(
+      client.createArea({ name: "family health", icon: "Compass" }),
+    ).resolves.toEqual({ ok: true, value: area });
 
-    await expect(client.listAreas()).resolves.toEqual({
-      ok: true,
-      value: [area],
-    });
-    await expect(client.getAreaDetail({ slug: area.slug })).resolves.toEqual({
-      ok: true,
-      value: { area, threads: [] },
-    });
+    const labeled = await value(
+      client.updateThread({ threadId: thread._id, areaId: area._id }),
+    );
+    expect(labeled.areaId).toBe(area._id);
+    await expect(
+      client.getThreadDetail({ slug: thread.slug }),
+    ).resolves.toMatchObject({ ok: true, value: { area } });
+
+    const unlabeled = await value(
+      client.updateThread({ threadId: thread._id, areaId: null }),
+    );
+    expect(unlabeled).not.toHaveProperty("areaId");
+    const activity = await value(
+      client.getThreadActivityPage({ threadId: thread._id, limit: 10 }),
+    );
+    expect(activity.entries.map((entry) => entry.content)).toEqual([
+      'Removed from "Family Health"',
+      'Added to "Family Health"',
+    ]);
 
     const renamed = await value(
-      client.updateArea({ areaId: area._id, name: "Health", standard: null }),
+      client.updateArea({ areaId: area._id, name: "Health", icon: "Dumbbell" }),
     );
-    expect(renamed.name).toBe("Health");
-    expect(renamed).not.toHaveProperty("standard");
+    expect(renamed).toMatchObject({ name: "Health", icon: "Dumbbell" });
+    const second = await value(
+      client.createArea({ name: "Home", icon: "Home" }),
+    );
+    await expect(
+      client.reorderAreas({ areaIds: [second._id, area._id] }),
+    ).resolves.toMatchObject({
+      ok: true,
+      value: [{ _id: second._id }, { _id: area._id }],
+    });
 
     await expect(client.removeArea({ areaId: area._id })).resolves.toEqual({
       ok: true,
       value: { acknowledged: true },
     });
-    await expect(client.listAreas()).resolves.toEqual({ ok: true, value: [] });
+    await expect(client.listAreas()).resolves.toEqual({
+      ok: true,
+      value: [{ ...second, order: 0 }],
+    });
   });
 
   it("reports a refused Area name as a validation failure", async () => {
     const client = clientFor(await createSession("client-area-validation"));
 
     await expect(
-      client.createArea({ name: "  ", condition: "healthy", icon: "Compass" }),
+      client.createArea({ name: "  ", icon: "Compass" }),
     ).resolves.toEqual({
       ok: false,
       error: {
@@ -94,27 +114,25 @@ describe("Areas through the HTTP client", () => {
     });
   });
 
-  it("reports a blocked Area deletion as a conflict", async () => {
-    const client = clientFor(await createSession("client-area-conflict"));
+  it("deletes an Area that still labels a Thread, leaving the Thread unlabeled", async () => {
+    const client = clientFor(await createSession("client-area-delete-labeled"));
     const area = await value(
       client.createArea({
         name: "Health",
-        condition: "healthy",
         icon: "Compass",
       }),
     );
-    await value(
+    const thread = await value(
       client.createThread({ title: "Book checkup", areaId: area._id }),
     );
 
     await expect(client.removeArea({ areaId: area._id })).resolves.toEqual({
-      ok: false,
-      error: {
-        code: "conflict",
-        message:
-          "Cannot delete an area that has threads. Move or delete the threads first.",
-        retryable: false,
-      },
+      ok: true,
+      value: { acknowledged: true },
+    });
+    await expect(client.getThreadDetail({ slug: thread.slug })).resolves.toEqual({
+      ok: true,
+      value: { thread: (({ areaId: _areaId, ...rest }) => rest)(thread) },
     });
   });
 });
@@ -125,7 +143,6 @@ describe("Threads through the HTTP client", () => {
     const area = await value(
       client.createArea({
         name: "Health",
-        condition: "healthy",
         icon: "Compass",
       }),
     );
@@ -196,7 +213,6 @@ describe("Threads through the HTTP client", () => {
     const area = await value(
       client.createArea({
         name: "Health",
-        condition: "healthy",
         icon: "Compass",
       }),
     );
@@ -282,7 +298,6 @@ describe("Thread Notes through the HTTP client", () => {
     const area = await value(
       client.createArea({
         name: "Health",
-        condition: "healthy",
         icon: "Compass",
       }),
     );
@@ -332,7 +347,6 @@ describe("Thread Notes through the HTTP client", () => {
     const theirArea = await value(
       otherClient.createArea({
         name: "Private",
-        condition: "healthy",
         icon: "Compass",
       }),
     );
@@ -350,7 +364,20 @@ describe("Thread Notes through the HTTP client", () => {
       },
     };
     await expect(
-      ownerClient.getAreaDetail({ slug: theirArea.slug }),
+      ownerClient.updateArea({ areaId: theirArea._id, name: "Mine now" }),
+    ).resolves.toMatchObject(notFound);
+    await expect(
+      ownerClient.removeArea({ areaId: theirArea._id }),
+    ).resolves.toMatchObject(notFound);
+    await expect(
+      ownerClient.updateThread({ threadId: theirThread._id, areaId: null }),
+    ).resolves.toMatchObject(notFound);
+    const mine = await value(ownerClient.createThread({ title: "Mine" }));
+    await expect(
+      ownerClient.updateThread({ threadId: mine._id, areaId: theirArea._id }),
+    ).resolves.toMatchObject(notFound);
+    await expect(
+      ownerClient.createThread({ title: "Mine too", areaId: theirArea._id }),
     ).resolves.toMatchObject(notFound);
     await expect(
       ownerClient.getThreadDetail({ slug: theirThread.slug }),

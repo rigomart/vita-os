@@ -33,43 +33,26 @@ async function seedDetailFixture() {
   const other = await createSession("detail-other");
   await env.DB.batch([
     env.DB.prepare(
-      "INSERT INTO areas (id, user_id, name, slug, standard, condition, icon, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO areas (id, user_id, name, slug, icon, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
     ).bind(
       "area-owner",
       owner.actorId,
       "Family Health",
       "family-health",
-      "Appointments are current",
-      "needs_attention",
       "HeartPulse",
       2,
       1_500_000_000_000,
     ),
     env.DB.prepare(
-      "INSERT INTO areas (id, user_id, name, slug, standard, condition, icon, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO areas (id, user_id, name, slug, icon, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
     ).bind(
       "area-other",
       other.actorId,
       "Other area",
       "other-area",
-      null,
-      "healthy",
       "Compass",
       1,
       1_500_000_000_001,
-    ),
-    env.DB.prepare(
-      "INSERT INTO areas (id, user_id, name, slug, standard, condition, icon, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    ).bind(
-      "area-owner-null-standard",
-      owner.actorId,
-      "Unwritten Standard",
-      "unwritten-standard",
-      null,
-      "healthy",
-      "Compass",
-      3,
-      1_500_000_000_002,
     ),
     env.DB.prepare(
       "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, next_move, up_next_json, follow_up, last_activity_at, last_activity_content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -159,11 +142,11 @@ async function seedDetailFixture() {
     env.DB.prepare(
       "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).bind(
-      "thread-owner-null-standard",
+      "thread-owner-unlabeled",
       owner.actorId,
-      "area-owner-null-standard",
-      "Thread under unwritten Standard",
-      "null-standard-thread",
+      null,
+      "Unlabeled Thread",
+      "unlabeled-thread",
       null,
       8,
       "open",
@@ -369,8 +352,6 @@ describe("Thread detail", () => {
         _id: "area-owner",
         name: "Family Health",
         slug: "family-health",
-        standard: "Appointments are current",
-        condition: "needs_attention",
         icon: "HeartPulse",
         order: 2,
         createdAt: 1_500_000_000_000,
@@ -450,8 +431,6 @@ describe("Thread detail", () => {
         _id: "area-owner",
         name: "Family Health",
         slug: "family-health",
-        standard: "Appointments are current",
-        condition: "needs_attention",
         icon: "HeartPulse",
         order: 2,
         createdAt: 1_500_000_000_000,
@@ -459,32 +438,22 @@ describe("Thread detail", () => {
     });
   });
 
-  it("omits a SQL NULL Area Standard from the public contract", async () => {
+  it("reads a Thread without an Area, with neither an Area id nor an Area", async () => {
     const response = await SELF.fetch(
-      "http://api.test/v1/threads/null-standard-thread",
+      "http://api.test/v1/threads/unlabeled-thread",
       { headers: { cookie: fixture.owner.cookie } },
     );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       thread: {
-        _id: "thread-owner-null-standard",
-        title: "Thread under unwritten Standard",
-        slug: "null-standard-thread",
-        areaId: "area-owner-null-standard",
+        _id: "thread-owner-unlabeled",
+        title: "Unlabeled Thread",
+        slug: "unlabeled-thread",
         order: 8,
         state: "open",
         createdAt: 1_600_000_000_006,
         revision: 0,
-      },
-      area: {
-        _id: "area-owner-null-standard",
-        name: "Unwritten Standard",
-        slug: "unwritten-standard",
-        condition: "healthy",
-        icon: "Compass",
-        order: 3,
-        createdAt: 1_500_000_000_002,
       },
     });
   });

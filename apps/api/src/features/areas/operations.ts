@@ -1,5 +1,4 @@
 import type {
-  AreaDetail,
   AreaId,
   AreaSummary,
   CommandAcknowledgement,
@@ -9,13 +8,13 @@ import type {
 } from "@vita-os/contracts";
 
 import { commandAcknowledged } from "@vita-os/contracts";
-import { generateSlug, validateAreaName } from "@vita-os/core";
+import { generateSlug, slugify, validateAreaName } from "@vita-os/core";
 
 import type { RequestScope } from "../../platform/request-scope";
 import type { AreaChanges } from "./storage";
 
 import { changeConflict, failed, succeeded } from "../../platform/operation";
-import { areaHasThreads, areaNotFound } from "./errors";
+import { areaNotFound, areaOrderMismatch } from "./errors";
 import { areaStorage, isAreaSlugTaken } from "./storage";
 
 /**
@@ -34,14 +33,11 @@ export async function listAreas(
   return succeeded(await areaStorage(scope).list());
 }
 
-export async function getAreaDetail(
-  scope: RequestScope,
-  input: { slug: string },
-): Promise<OperationResult<AreaDetail>> {
-  const detail = await areaStorage(scope).findDetail(input.slug);
-  return detail === null ? failed(areaNotFound) : succeeded(detail);
-}
-
+/**
+ * Create an Area, or return the owner's existing Area whose name reads as the
+ * same slug. That is what lets a picker create on type: typing "health" when
+ * "Health" exists picks it instead of adding a duplicate.
+ */
 export async function createArea(
   scope: RequestScope,
   input: CreateAreaInput,
@@ -49,11 +45,17 @@ export async function createArea(
   const areas = areaStorage(scope);
   const name = validateAreaName(input.name);
 
+  const base = slugify(name);
+  const existing = (await areas.list()).find(
+    (area) => slugify(area.name) === base,
+  );
+  if (existing !== undefined) return succeeded(existing);
+
   for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
     try {
       const area = await areas.insert({
-        ...input,
         name,
+        icon: input.icon,
         slug: generateSlug(name),
       });
       if (area === null) return failed(changeConflict);
@@ -68,9 +70,8 @@ export async function createArea(
 }
 
 /**
- * Rename, restandardize, recondition, or re-icon an Area. A rename mints a new
- * slug, so the caller reads the slug back rather than assuming its own route
- * still resolves.
+ * Rename or re-icon an Area. A rename mints a new slug, so the caller reads
+ * the slug back rather than assuming an old link still names it.
  *
  * Whether a change is a rename depends on the name as read, so the write is
  * conditional on that name and a concurrent rename is decided again.
@@ -94,12 +95,6 @@ export async function updateArea(
       ...(name !== undefined && name !== existing.name
         ? { slug: generateSlug(name) }
         : {}),
-      ...(requested.standard === undefined
-        ? {}
-        : { standard: requested.standard }),
-      ...(requested.condition === undefined
-        ? {}
-        : { condition: requested.condition }),
       ...(requested.icon === undefined ? {} : { icon: requested.icon }),
     };
     if (Object.keys(changes).length === 0) return succeeded(existing);
@@ -115,20 +110,35 @@ export async function updateArea(
   return failed(changeConflict);
 }
 
+/** Put the owner's Areas in the given order. The list must name each once. */
+export async function reorderAreas(
+  scope: RequestScope,
+  input: { areaIds: AreaId[] },
+): Promise<OperationResult<AreaSummary[]>> {
+  const areas = areaStorage(scope);
+  const owned = new Set((await areas.list()).map((area) => area._id));
+  const requested = new Set(input.areaIds);
+  if (
+    requested.size !== input.areaIds.length ||
+    requested.size !== owned.size ||
+    input.areaIds.some((areaId) => !owned.has(areaId))
+  ) {
+    return failed(areaOrderMismatch);
+  }
+
+  await areas.reorder(input.areaIds);
+  return succeeded(await areas.list());
+}
+
 /**
- * Delete an empty Area. The delete itself refuses both a missing Area and one
- * that still holds Threads, so a second read tells the two apart.
+ * Delete an Area. It never waits on its Threads: they lose the label and stay
+ * as they are.
  */
 export async function removeArea(
   scope: RequestScope,
   input: { areaId: AreaId },
 ): Promise<OperationResult<CommandAcknowledgement>> {
-  const areas = areaStorage(scope);
-  if (await areas.removeIfEmpty(input.areaId)) {
-    return succeeded(commandAcknowledged);
-  }
-
-  return (await areas.exists(input.areaId))
-    ? failed(areaHasThreads)
+  return (await areaStorage(scope).removeClearingLabels(input.areaId))
+    ? succeeded(commandAcknowledged)
     : failed(areaNotFound);
 }

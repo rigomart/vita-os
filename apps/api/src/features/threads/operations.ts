@@ -62,8 +62,8 @@ export async function getThreadDetail(
 }
 
 /**
- * A Thread can only be created inside an Area the owner holds, so the failure
- * names the Area when the destination is not theirs.
+ * A Thread needs only a title. When it is labeled at creation, the Area must be
+ * one the owner holds, so the failure names the Area when it is not theirs.
  */
 export async function createThread(
   scope: RequestScope,
@@ -115,16 +115,19 @@ export async function updateThread(
         ? { slug: generateSlug(title) }
         : {};
 
-    // Naming both ends of a move is what lets the Activity Log say where the
-    // Thread came from. An Area that is not the owner's stops the move here.
-    let areaNames: { from: string; to: string } | undefined;
-    if (patch.areaId !== undefined && patch.areaId !== thread.areaId) {
-      const destination = await areas.find(patch.areaId);
-      if (destination === null) return failed(areaNotFound);
-
-      const origin = await areas.find(thread.areaId);
-      if (origin !== null) {
-        areaNames = { from: origin.name, to: destination.name };
+    // Naming the ends of a label change is what lets the Activity Log say
+    // where the Thread came from and went. An Area that is not the owner's
+    // stops the change here.
+    const areaNames: { from?: string; to?: string } = {};
+    if (Object.hasOwn(patch, "areaId") && patch.areaId !== thread.areaId) {
+      if (patch.areaId !== undefined) {
+        const destination = await areas.find(patch.areaId);
+        if (destination === null) return failed(areaNotFound);
+        areaNames.to = destination.name;
+      }
+      if (thread.areaId !== undefined) {
+        const origin = await areas.find(thread.areaId);
+        if (origin !== null) areaNames.from = origin.name;
       }
     }
 
@@ -133,7 +136,7 @@ export async function updateThread(
         thread,
         patch: { ...patch, ...rename },
         ...(resolutionNote === undefined ? {} : { resolutionNote }),
-        ...(areaNames === undefined ? {} : { areaNames }),
+        areaNames,
       }),
     );
   });

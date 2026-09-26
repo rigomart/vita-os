@@ -14,7 +14,6 @@ const area = {
   _id: "area-1" as AreaId,
   name: "Health",
   slug: "health-0011aabb",
-  condition: "healthy" as const,
   icon: "HeartPulse" as const,
   order: 0,
   createdAt: 1,
@@ -53,7 +52,6 @@ const threadNote = {
  */
 const client = {
   listAreas: async () => ({ ok: true, value: [area] }),
-  getAreaDetail: async () => ({ ok: true, value: { area, threads: [thread] } }),
   createArea: async () => ({ ok: true, value: area }),
   updateArea: async (input) => ({
     ok: true,
@@ -62,6 +60,7 @@ const client = {
       ...(input.name === undefined ? {} : { name: input.name }),
     },
   }),
+  reorderAreas: async () => ({ ok: true, value: [area] }),
   removeArea: async () => ({ ok: true, value: commandAcknowledged }),
 
   listOpenThreads: async () => ({ ok: true, value: [thread] }),

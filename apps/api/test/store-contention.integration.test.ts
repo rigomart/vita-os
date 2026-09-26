@@ -23,7 +23,6 @@ async function setup() {
   const area = value(
     await areas.createArea(scope, {
       name: "Home",
-      condition: "healthy",
       icon: "Home",
     }),
   );
@@ -48,7 +47,6 @@ describe("slug collision recovery", () => {
           ? value(
               await areas.createArea(scope, {
                 name,
-                condition: "healthy",
                 icon: "Home",
               }),
             )
@@ -68,7 +66,12 @@ describe("slug collision recovery", () => {
         return array;
       });
       const second = await create("Repeated");
-      expect(second.slug).not.toBe(first.slug);
+      if (kind === "area") {
+        // A same-named Area is the existing one, never a colliding new one.
+        expect(second._id).toBe(first._id);
+      } else {
+        expect(second.slug).not.toBe(first.slug);
+      }
       const other = await create("Different");
       random.mockImplementation((array) => {
         (array as Uint8Array).fill(2);
@@ -93,64 +96,12 @@ describe("slug collision recovery", () => {
   );
 });
 
-// Run a competing write at the database boundary, while retaining real D1
-// statements and transactions on both sides of the race.
-function beforeDelete(action: () => Promise<unknown>) {
-  const prepare = env.DB.prepare.bind(env.DB);
-  let pending = true;
-  function wrap(statement: D1PreparedStatement): D1PreparedStatement {
-    return new Proxy(statement, {
-      get(target, key) {
-        if (key === "bind")
-          return (...args: unknown[]) => wrap(target.bind(...args));
-        if (key === "first")
-          return async (...args: Parameters<D1PreparedStatement["first"]>) => {
-            if (pending) {
-              pending = false;
-              await action();
-            }
-            return target.first(...args);
-          };
-        const member = Reflect.get(target, key);
-        return typeof member === "function" ? member.bind(target) : member;
-      },
-    });
-  }
-  vi.spyOn(env.DB, "prepare").mockImplementation((sql) =>
-    sql.trim().startsWith("DELETE FROM areas")
-      ? wrap(prepare(sql))
-      : prepare(sql),
-  );
-}
-
 describe("Area contention", () => {
-  it("refuses deletion when a Thread arrives after the Area was checked", async () => {
-    const { scope, area } = await setup();
-    beforeDelete(() =>
-      threads.createThread(scope, { areaId: area._id, title: "Arrived" }),
-    );
-    await expect(
-      areas.removeArea(scope, { areaId: area._id }),
-    ).resolves.toMatchObject({
-      ok: false,
-      error: {
-        code: "conflict",
-        message: expect.stringContaining(
-          "Cannot delete an area that has threads",
-        ),
-      },
-    });
-    expect(
-      value(await areas.getAreaDetail(scope, { slug: area.slug })).threads,
-    ).toHaveLength(1);
-  });
-
   it("reports a missing destination when an Area disappears during a Thread move", async () => {
     const { scope, area } = await setup();
     const destination = value(
       await areas.createArea(scope, {
         name: "Destination",
-        condition: "healthy",
         icon: "Home",
       }),
     );

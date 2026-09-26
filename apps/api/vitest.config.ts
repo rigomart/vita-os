@@ -10,6 +10,9 @@ export default defineConfig({
     cloudflareTest(async () => ({
       wrangler: { configPath: "./wrangler.jsonc" },
       miniflare: {
+        // A database of its own for migration tests, which apply migrations
+        // step by step rather than all at once.
+        d1Databases: ["MIGRATION_DB"],
         bindings: {
           BETTER_AUTH_SECRET: "test-secret-must-be-at-least-32-characters",
           BETTER_AUTH_URL: "http://api.test",

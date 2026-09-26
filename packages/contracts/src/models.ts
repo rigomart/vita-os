@@ -14,8 +14,6 @@ import type {
  * value and an unset one stay distinguishable, exactly as they were.
  */
 
-export type Condition = "healthy" | "needs_attention" | "critical";
-
 export type AreaIcon =
   | "Compass"
   | "HeartPulse"
@@ -37,8 +35,6 @@ export interface AreaSummary {
   _id: AreaId;
   name: string;
   slug: string;
-  standard?: string;
-  condition: Condition;
   icon: AreaIcon;
   order: number;
   createdAt: number;
@@ -51,7 +47,8 @@ export interface Thread {
   title: string;
   slug: string;
   summary?: string;
-  areaId: AreaId;
+  /** The Thread's Area label. Absent means the Thread has no Area. */
+  areaId?: AreaId;
   order: number;
   state: ThreadState;
   nextMove?: string;
@@ -78,13 +75,8 @@ export interface Thread {
 
 export interface ThreadDetail {
   thread: Thread;
-  area: AreaSummary;
-}
-
-/** Everything the Area page renders: the Area and its Open Threads. */
-export interface AreaDetail {
-  area: AreaSummary;
-  threads: Thread[];
+  /** The Thread's Area, absent when the Thread has none. */
+  area?: AreaSummary;
 }
 
 export type NoteState = "open" | "done";

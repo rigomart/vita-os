@@ -21,6 +21,7 @@ declare global {
       GOOGLE_CLIENT_ID?: string;
       GOOGLE_CLIENT_SECRET?: string;
       TEST_MIGRATIONS: D1Migration[];
+      MIGRATION_DB: D1Database;
     }
   }
 }

@@ -11,7 +11,7 @@ export interface ThreadChangeState {
   title: string;
   slug: string;
   summary?: string;
-  areaId: AreaId;
+  areaId?: AreaId;
   state: ThreadState;
   nextMove?: string;
   upNext?: string[];
@@ -136,14 +136,17 @@ export function buildThreadPatchLogEntries(
   const safePatch = sanitizeThreadPatch(patch);
   const logs: AutoActivityLogEntry[] = [];
 
-  if (
-    hasOwn(safePatch, "areaId") &&
-    safePatch.areaId !== undefined &&
-    safePatch.areaId !== thread.areaId &&
-    options?.fromAreaName &&
-    options?.toAreaName
-  ) {
-    logs.push(buildAreaMoveLogEntry(options.fromAreaName, options.toAreaName));
+  if (hasOwn(safePatch, "areaId") && safePatch.areaId !== thread.areaId) {
+    const fromNamed = thread.areaId === undefined || !!options?.fromAreaName;
+    const toNamed = safePatch.areaId === undefined || !!options?.toAreaName;
+    const entry =
+      fromNamed && toNamed
+        ? buildAreaMoveLogEntry(
+            thread.areaId === undefined ? undefined : options?.fromAreaName,
+            safePatch.areaId === undefined ? undefined : options?.toAreaName,
+          )
+        : null;
+    if (entry) logs.push(entry);
   }
 
   if (hasOwn(safePatch, "nextMove")) {
@@ -265,15 +268,16 @@ export interface ThreadUpdateDecision {
  * the change earns. Storage applies the patch and the entries together or not
  * at all.
  *
- * `areaNames` names both ends of an Area move. Without it — a caller that could
- * not read both Areas — the move still happens and only its log entry is
- * omitted, which is what the previous implementation did.
+ * `areaNames` names the ends of an Area change that hold an Area: `from` when
+ * the Thread had one, `to` when the patch sets one. A labeled end left unnamed
+ * — a caller that could not read that Area — still changes the label and only
+ * omits its log entry.
  */
 export function decideThreadUpdate(input: {
   thread: ThreadChangeState;
   patch: ThreadPatch;
   resolutionNote?: string;
-  areaNames?: { from: string; to: string };
+  areaNames?: { from?: string; to?: string };
 }): ThreadUpdateDecision {
   const requestedPatch = sanitizeThreadPatch(input.patch);
   const lifecycleChange =
@@ -296,8 +300,12 @@ export function decideThreadUpdate(input: {
       ...(input.areaNames === undefined
         ? {}
         : {
-            fromAreaName: input.areaNames.from,
-            toAreaName: input.areaNames.to,
+            ...(input.areaNames.from === undefined
+              ? {}
+              : { fromAreaName: input.areaNames.from }),
+            ...(input.areaNames.to === undefined
+              ? {}
+              : { toAreaName: input.areaNames.to }),
           }),
       ...(lifecycleChange === null
         ? {}

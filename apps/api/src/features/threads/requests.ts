@@ -26,7 +26,7 @@ export function decodeCreateThread(value: unknown): Decoded<CreateThreadInput> {
     !isObject(value) ||
     !hasOnlyKeys(value, ["title", "summary", "areaId"]) ||
     typeof value.title !== "string" ||
-    !isNonEmptyString(value.areaId) ||
+    (value.areaId !== undefined && !isNonEmptyString(value.areaId)) ||
     (value.summary !== undefined && typeof value.summary !== "string")
   ) {
     return undefined;
@@ -35,7 +35,7 @@ export function decodeCreateThread(value: unknown): Decoded<CreateThreadInput> {
   return {
     title: value.title,
     ...(value.summary === undefined ? {} : { summary: value.summary }),
-    areaId: value.areaId as AreaId,
+    ...(value.areaId === undefined ? {} : { areaId: value.areaId as AreaId }),
   };
 }
 
@@ -57,7 +57,9 @@ export function decodeUpdateThread(
     !hasOnlyKeys(value, UPDATE_THREAD_KEYS) ||
     (value.title !== undefined && typeof value.title !== "string") ||
     (Object.hasOwn(value, "summary") && !isClearableString(value.summary)) ||
-    (value.areaId !== undefined && !isNonEmptyString(value.areaId)) ||
+    (Object.hasOwn(value, "areaId") &&
+      value.areaId !== null &&
+      !isNonEmptyString(value.areaId)) ||
     (Object.hasOwn(value, "nextMove") && !isClearableString(value.nextMove)) ||
     (Object.hasOwn(value, "followUp") &&
       !isClearableTimestamp(value.followUp)) ||
@@ -73,7 +75,9 @@ export function decodeUpdateThread(
     ...(Object.hasOwn(value, "summary")
       ? { summary: value.summary as string | null }
       : {}),
-    ...(value.areaId === undefined ? {} : { areaId: value.areaId as AreaId }),
+    ...(Object.hasOwn(value, "areaId")
+      ? { areaId: value.areaId as AreaId | null }
+      : {}),
     ...(Object.hasOwn(value, "nextMove")
       ? { nextMove: value.nextMove as string | null }
       : {}),

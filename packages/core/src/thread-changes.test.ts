@@ -221,6 +221,42 @@ describe("buildThreadPatchLogEntries", () => {
     ]);
     expect(buildThreadPatchLogEntries(makeThread(), patch)).toEqual([]);
   });
+
+  it("records labeling an unlabeled Thread", () => {
+    expect(
+      buildThreadPatchLogEntries(
+        makeThread({ areaId: undefined }),
+        { areaId: "area2" as AreaId },
+        { toAreaName: "Home" },
+      ),
+    ).toEqual([
+      { type: "area_move", content: 'Added to "Home"', newValue: "Home" },
+    ]);
+  });
+
+  it("records removing a Thread's Area", () => {
+    expect(
+      buildThreadPatchLogEntries(
+        makeThread(),
+        { areaId: undefined },
+        { fromAreaName: "Health" },
+      ),
+    ).toEqual([
+      {
+        type: "area_move",
+        content: 'Removed from "Health"',
+        previousValue: "Health",
+      },
+    ]);
+  });
+
+  it("records nothing when an unlabeled Thread stays unlabeled", () => {
+    expect(
+      buildThreadPatchLogEntries(makeThread({ areaId: undefined }), {
+        areaId: undefined,
+      }),
+    ).toEqual([]);
+  });
 });
 
 describe("buildThreadLifecyclePatch", () => {

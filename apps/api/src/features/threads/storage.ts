@@ -61,9 +61,9 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
     },
 
     /**
-     * The Thread and the Area it is filed under, in one ownership-constrained
-     * join. Both records are matched against the owner, so an inconsistent
-     * cross-owner relationship cannot leak an Area.
+     * The Thread and its Area label, in one ownership-constrained join. Both
+     * records are matched against the owner, so an inconsistent cross-owner
+     * relationship cannot leak an Area; an unlabeled Thread reads without one.
      */
     async findDetail(slug: string): Promise<ThreadDetail | null> {
       const row = await db
@@ -71,17 +71,19 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
           `SELECT ${prefixColumns("t", THREAD_COLUMNS)},
                   ${prefixColumns("a", AREA_COLUMNS, "area__")}
            FROM threads t
-           JOIN areas a ON a.id = t.area_id AND a.user_id = ?
+           LEFT JOIN areas a ON a.id = t.area_id AND a.user_id = ?
            WHERE t.user_id = ? AND t.slug = ?
+             AND (t.area_id IS NULL OR a.id IS NOT NULL)
            LIMIT 1`,
         )
         .bind(actorId, actorId, slug)
         .first<ThreadRow & Record<string, unknown>>();
       if (row === null) return null;
 
+      const area = joinedColumns(row, "area__") as unknown as AreaRow;
       return {
         thread: toThread(row),
-        area: toAreaSummary(joinedColumns(row, "area__") as unknown as AreaRow),
+        ...(area.id === null ? {} : { area: toAreaSummary(area) }),
       };
     },
 
@@ -110,15 +112,15 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
 
     /**
      * The Area check, the order allocation, and the insert are one statement:
-     * a Thread cannot land in somebody else's Area, and two Threads created at
-     * once cannot claim the same position. `null` means the Area is missing or
-     * belongs to somebody else; throws when the slug is taken.
+     * a Thread cannot be labeled with somebody else's Area, and two Threads
+     * created at once cannot claim the same position. `null` means the Area is
+     * missing or belongs to somebody else; throws when the slug is taken.
      */
     async insert(thread: {
       title: string;
       slug: string;
       summary?: string;
-      areaId: string;
+      areaId?: string;
     }): Promise<Thread | null> {
       const row = await db
         .prepare(
@@ -130,19 +132,21 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
                   (SELECT COALESCE(MAX(sort_order) + 1, 0)
                    FROM threads WHERE user_id = ?),
                   'open', ?, 0
-           WHERE EXISTS (SELECT 1 FROM areas WHERE id = ? AND user_id = ?)
+           WHERE ? IS NULL
+              OR EXISTS (SELECT 1 FROM areas WHERE id = ? AND user_id = ?)
            RETURNING ${THREAD_COLUMNS}`,
         )
         .bind(
           clock.newId(),
           actorId,
-          thread.areaId,
+          thread.areaId ?? null,
           thread.title,
           thread.slug,
           thread.summary ?? null,
           actorId,
           clock.now(),
-          thread.areaId,
+          thread.areaId ?? null,
+          thread.areaId ?? null,
           actorId,
         )
         .first<ThreadRow>();
@@ -192,7 +196,8 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
         input.expectedNextMove === undefined ? "" : " AND next_move IS ?";
       // A destination may disappear after the decision read it. Guard it in
       // the write so the normal re-read reports the missing Area without a
-      // foreign-key failure or any Activity Log entries.
+      // foreign-key failure or any Activity Log entries. Removing the label
+      // has no destination to guard.
       const areaCondition =
         patch.areaId === undefined
           ? ""
