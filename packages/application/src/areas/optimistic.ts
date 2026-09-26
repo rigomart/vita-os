@@ -1,14 +1,14 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type {
-  AreaDetail,
   AreaId,
   AreaSummary,
   CreateAreaInput,
-  UpdateAreaInput,
+  Thread,
   ThreadDetail,
+  UpdateAreaInput,
 } from "@vita-os/contracts";
 
-import { clearedToAbsent, generateSlug } from "@vita-os/core";
+import { generateSlug } from "@vita-os/core";
 
 import {
   nextOrder,
@@ -23,8 +23,7 @@ import { queryKeys } from "../query-keys";
  * The pending Area, shaped like the one the service will send back.
  *
  * Its slug is minted with the service's own pattern but a different random
- * suffix, so it will not match the real slug: a link built from it resolves only
- * after the create has come back with the slug the service chose.
+ * suffix, so it will not match the real slug.
  */
 export function buildPendingArea(
   input: CreateAreaInput,
@@ -34,8 +33,6 @@ export function buildPendingArea(
     _id: minted.id,
     name: input.name,
     slug: generateSlug(input.name),
-    ...(input.standard === undefined ? {} : { standard: input.standard }),
-    condition: input.condition,
     icon: input.icon,
     order: minted.order,
     createdAt: minted.now,
@@ -43,23 +40,8 @@ export function buildPendingArea(
 }
 
 /**
- * Patch every cached Area detail holding this Area. The reads are keyed by slug
- * while a command names its target by ID, so the match runs on what the read
- * holds rather than on the command's own arguments.
- */
-export function patchAreaDetail(
-  cache: QueryClient,
-  areaId: AreaId,
-  patch: (detail: AreaDetail) => AreaDetail | null,
-): void {
-  patchQueries<AreaDetail | null>(cache, queryKeys.areas.details(), (detail) =>
-    detail !== null && detail.area._id === areaId ? patch(detail) : detail,
-  );
-}
-
-/**
- * Exactly the reads one Area change can touch: the inventory, plus any Area page
- * that is holding this Area. Another Area's page is left alone.
+ * Exactly the reads one Area change can touch: the list, plus any Thread rail
+ * showing this Area as its label.
  */
 export function areaChangeKeys(
   cache: QueryClient,
@@ -68,16 +50,10 @@ export function areaChangeKeys(
   const keys: QueryKey[] = [queryKeys.areas.list()];
   if (areaId === undefined) return keys;
 
-  for (const [queryKey, detail] of cache.getQueriesData<AreaDetail | null>({
-    queryKey: queryKeys.areas.details(),
-  })) {
-    if (detail !== null && detail?.area._id === areaId) keys.push(queryKey);
-  }
-
   for (const [queryKey, detail] of cache.getQueriesData<ThreadDetail | null>({
     queryKey: queryKeys.threads.details(),
   })) {
-    if (detail?.area._id === areaId) keys.push(queryKey);
+    if (detail?.area?._id === areaId) keys.push(queryKey);
   }
 
   return keys;
@@ -94,45 +70,81 @@ export function showPendingArea(
   ]);
 }
 
-/** Replace the pending Area with the one the service actually stored. */
+/**
+ * Replace the pending Area with the one the service answered with. A create
+ * whose name matched an Area already listed answers with that Area, so the
+ * placeholder is dropped rather than turned into a second copy of it.
+ */
 export function settlePendingArea(
   cache: QueryClient,
   pendingId: AreaId,
   area: AreaSummary,
 ): void {
-  patchQuery<AreaSummary[]>(cache, queryKeys.areas.list(), (areas) =>
-    areas.some((existing) => existing._id === pendingId)
-      ? areas.map((existing) => (existing._id === pendingId ? area : existing))
-      : areas,
-  );
+  patchQuery<AreaSummary[]>(cache, queryKeys.areas.list(), (areas) => {
+    if (areas.some((existing) => existing._id === area._id)) {
+      return removeById(areas, pendingId);
+    }
+    return areas.map((existing) =>
+      existing._id === pendingId ? area : existing,
+    );
+  });
 }
 
 export function showAreaChange(
   cache: QueryClient,
   { areaId, ...change }: UpdateAreaInput,
 ): void {
-  const patch = clearedToAbsent(change);
-
   patchQuery<AreaSummary[]>(cache, queryKeys.areas.list(), (areas) =>
-    patchById(areas, areaId, patch),
+    patchById(areas, areaId, change),
   );
   patchQueries<ThreadDetail | null>(
     cache,
     queryKeys.threads.details(),
     (detail) =>
-      detail?.area._id === areaId
-        ? { ...detail, area: { ...detail.area, ...patch } }
+      detail?.area?._id === areaId
+        ? { ...detail, area: { ...detail.area, ...change } }
         : detail,
   );
-  patchAreaDetail(cache, areaId, (detail) => ({
-    ...detail,
-    area: { ...detail.area, ...patch },
-  }));
 }
 
+/** Put the listed Areas in the given order, renumbering each position. */
+export function showAreaOrder(
+  cache: QueryClient,
+  areaIds: readonly AreaId[],
+): void {
+  patchQuery<AreaSummary[]>(cache, queryKeys.areas.list(), (areas) => {
+    const byId = new Map(areas.map((area) => [area._id, area]));
+    const ordered = areaIds.flatMap((areaId, order) => {
+      const area = byId.get(areaId);
+      return area === undefined ? [] : [{ ...area, order }];
+    });
+    return ordered.length === areas.length ? ordered : areas;
+  });
+}
+
+/**
+ * Deleting an Area takes it out of the list and its label off every cached
+ * Thread that carries it. The Threads themselves stay where they are.
+ */
 export function showAreaRemoval(cache: QueryClient, areaId: AreaId): void {
+  const unlabel = (thread: Thread): Thread => {
+    if (thread.areaId !== areaId) return thread;
+    const { areaId: _removed, ...rest } = thread;
+    return rest;
+  };
+
   patchQuery<AreaSummary[]>(cache, queryKeys.areas.list(), (areas) =>
     removeById(areas, areaId),
   );
-  patchAreaDetail(cache, areaId, () => null);
+  patchQuery<Thread[]>(cache, queryKeys.threads.open(), (threads) =>
+    threads.map(unlabel),
+  );
+  patchQueries<ThreadDetail | null>(
+    cache,
+    queryKeys.threads.details(),
+    (detail) =>
+      detail?.area?._id === areaId
+        ? { thread: unlabel(detail.thread) }
+        : detail,
+  );
 }

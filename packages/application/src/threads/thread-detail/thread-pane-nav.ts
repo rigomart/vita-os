@@ -1,16 +1,15 @@
 import { createContext, useContext } from "react";
 
 export interface ThreadLocation {
-  areaSlug: string;
   threadSlug: string;
 }
 
 export interface ThreadPaneNav {
   /**
-   * Called when the open thread's location changes from within the pane
-   * (title rename changes the thread slug, moving the thread changes the
-   * area). The pane host decides how to reflect it: update the `?thread`
-   * search param in place, or replace the /$areaSlug/$threadSlug URL.
+   * Called when the open thread's location changes from within the pane (a
+   * title rename changes the thread slug). The pane host decides how to
+   * reflect it: update the `?thread` search param in place, or replace the
+   * /threads/$threadSlug URL.
    */
   onThreadLocationChange: (location: ThreadLocation) => void;
 }

@@ -5,7 +5,8 @@ import { useUpdateThread as useUpdateThreadCommand } from "./hooks";
 export type UpdateThreadValue = {
   title?: string;
   summary?: string | null;
-  areaId?: string;
+  /** `null` removes the Thread's Area. */
+  areaId?: string | null;
   nextMove?: string | null;
   followUp?: number | null;
   state?: "open" | "resolved";
@@ -15,7 +16,7 @@ export type UpdateThreadValue = {
 /**
  * Edit the Thread this surface is showing.
  *
- * `options.areas` lets a caller that can move the Thread hand over the
+ * `options.areas` lets a caller that can relabel the Thread hand over the
  * destination Area, which keeps the rail's embedded Area in step; callers that
  * never set `areaId` can omit it.
  */
@@ -26,9 +27,9 @@ export function useUpdateThread(
   const updateThread = useUpdateThreadCommand();
 
   return ({ areaId: requestedAreaId, ...value }: UpdateThreadValue) => {
-    const areaId = requestedAreaId as AreaId | undefined;
+    const areaId = requestedAreaId as AreaId | null | undefined;
     const destinationArea =
-      areaId === undefined
+      areaId === undefined || areaId === null
         ? undefined
         : options.areas?.find((area) => area._id === areaId);
 

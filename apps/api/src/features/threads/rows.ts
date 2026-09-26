@@ -19,7 +19,7 @@ export interface ThreadRow {
   title: string;
   slug: string;
   summary: string | null;
-  area_id: string;
+  area_id: string | null;
   sort_order: number;
   state: Thread["state"];
   next_move: string | null;
@@ -73,7 +73,7 @@ export function toThread(row: ThreadRow): Thread {
     title: row.title,
     slug: row.slug,
     ...(row.summary === null ? {} : { summary: row.summary }),
-    areaId: row.area_id as AreaId,
+    ...(row.area_id === null ? {} : { areaId: row.area_id as AreaId }),
     order: row.sort_order,
     state: row.state,
     ...(row.next_move === null ? {} : { nextMove: row.next_move }),

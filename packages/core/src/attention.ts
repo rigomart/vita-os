@@ -20,13 +20,6 @@ export interface ThreadAttentionGroups<TThread> {
   withNextMoves: TThread[];
 }
 
-export interface AreaThreadAttentionGroups<TThread> {
-  dueNow: TThread[];
-  open: TThread[];
-  upcoming: TThread[];
-  withNextMoves: TThread[];
-}
-
 export interface NoteAttentionInput {
   completedAt?: number | null;
   createdAt: number;
@@ -87,38 +80,6 @@ export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(
   groups.open.sort(compareThreadOrder);
 
   return groups;
-}
-
-export function groupAreaThreadsByAttention<
-  TThread extends ThreadAttentionInput,
->(
-  threads: TThread[],
-  currentDate: number,
-  timezoneOffsetMinutes?: number,
-): AreaThreadAttentionGroups<TThread> {
-  const today = getDayKey(currentDate, timezoneOffsetMinutes);
-  const dashboardGroups = groupThreadsByAttention(
-    threads,
-    currentDate,
-    timezoneOffsetMinutes,
-  );
-  const dueToday: TThread[] = [];
-  const upcoming: TThread[] = [];
-
-  for (const thread of dashboardGroups.upcoming) {
-    if (getDayKey(thread.followUp ?? 0, timezoneOffsetMinutes) === today) {
-      dueToday.push(thread);
-    } else {
-      upcoming.push(thread);
-    }
-  }
-
-  return {
-    dueNow: [...dashboardGroups.overdue, ...dueToday],
-    upcoming,
-    withNextMoves: dashboardGroups.withNextMoves,
-    open: dashboardGroups.open,
-  };
 }
 
 export function groupNotesByAttention<TNote extends NoteAttentionInput>(

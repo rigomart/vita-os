@@ -1,5 +1,7 @@
 # Area attention lanes
 
+Status: Superseded by ADR 0021 — the Area page and its attention lanes are removed.
+
 The **Area** thread inventory moves from one flat attention-ordered list to visible, collapsible **attention lanes** — **Due now**, **Upcoming**, **Next moves**, **Open** — introduced by a quiet census line ("3 due now · 2 upcoming · …") that carries the **New Thread** action. This supersedes the "no visible group headings" consequence of ADR 0005 **for the Area surface only**; the Inbox and Dashboard keep their flat lists, and the shared `attention-list` row (date rail, 40px line, hover actions) is unchanged inside the lanes.
 
 The decision came out of a design prototype: five structurally different Area views (editorial ledger, grouped lanes, two-pane register, focus hero + queue, card mosaic) compared in place on the real route, then three refinements of the lane direction (minimal chrome, maximal due-now escalation, collapsible workbench). The full variant set is preserved on the `worktree-areas-view-prototype` branch as the primary source.

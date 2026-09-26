@@ -2,10 +2,8 @@ import type { CommandAcknowledgement, OperationResult } from "./errors";
 import type { AreaId, NoteId, ThreadId, ThreadNoteId } from "./ids";
 import type {
   ActivityLogPage,
-  AreaDetail,
   AreaIcon,
   AreaSummary,
-  Condition,
   Note,
   NotePage,
   Thread,
@@ -22,32 +20,33 @@ import type {
  */
 export type Clearable<T> = T | null;
 
+/**
+ * Creating an Area whose name matches one the owner already has returns that
+ * Area instead of a duplicate, so a picker can create on type safely.
+ */
 export interface CreateAreaInput {
   name: string;
-  standard?: string;
-  condition: Condition;
   icon: AreaIcon;
 }
 
 export interface UpdateAreaInput {
   areaId: AreaId;
   name?: string;
-  standard?: Clearable<string>;
-  condition?: Condition;
   icon?: AreaIcon;
 }
 
 export interface CreateThreadInput {
   title: string;
   summary?: string;
-  areaId: AreaId;
+  areaId?: AreaId;
 }
 
 export interface UpdateThreadInput {
   threadId: ThreadId;
   title?: string;
   summary?: Clearable<string>;
-  areaId?: AreaId;
+  /** Sets, changes, or (with `null`) removes the Thread's Area. */
+  areaId?: Clearable<AreaId>;
   nextMove?: Clearable<string>;
   followUp?: Clearable<number>;
   state?: ThreadState;
@@ -84,9 +83,13 @@ export interface PageRequest {
 export interface ApplicationClient {
   /* Areas */
   listAreas(): Promise<OperationResult<AreaSummary[]>>;
-  getAreaDetail(input: { slug: string }): Promise<OperationResult<AreaDetail>>;
   createArea(input: CreateAreaInput): Promise<OperationResult<AreaSummary>>;
   updateArea(input: UpdateAreaInput): Promise<OperationResult<AreaSummary>>;
+  /** Puts every Area in the given order; the list names each Area once. */
+  reorderAreas(input: {
+    areaIds: AreaId[];
+  }): Promise<OperationResult<AreaSummary[]>>;
+  /** Deletes the Area and removes it from every Thread that carries it. */
   removeArea(input: {
     areaId: AreaId;
   }): Promise<OperationResult<CommandAcknowledgement>>;

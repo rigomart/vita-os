@@ -57,14 +57,12 @@ async function seedThread(input: {
   const threadId = `completion-thread-${suffix}`;
   await env.DB.batch([
     env.DB.prepare(
-      "INSERT INTO areas (id, user_id, name, slug, standard, condition, icon, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO areas (id, user_id, name, slug, icon, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
     ).bind(
       areaId,
       input.owner.actorId,
       "Family Health",
       `family-health-${suffix}`,
-      null,
-      "healthy",
       "Compass",
       1,
       1_600_000_000_000,

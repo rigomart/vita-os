@@ -2,13 +2,11 @@ import type {
   ActivityLogEntry,
   ActivityLogEntryId,
   ActivityLogPage,
-  AreaDetail,
   AreaIcon,
   AreaId,
   AreaSummary,
   CommandAcknowledgement,
   CompleteNextMoveOutput,
-  Condition,
   Note,
   NoteId,
   NotePage,
@@ -26,7 +24,7 @@ import type {
  * A response is untrusted JSON until a decoder here has recognized it, and an
  * unrecognized shape is an `unexpected` failure rather than a value the product
  * renders. Absent optional properties stay absent: the decoders never invent a
- * null, so the distinction between "no Standard written" and "Standard is empty"
+ * null, so the distinction between "no Summary written" and "Summary is empty"
  * survives the trip.
  */
 
@@ -46,12 +44,6 @@ function isOptionalString(value: unknown): value is string | undefined {
 
 function isOptionalSafeInteger(value: unknown): value is number | undefined {
   return value === undefined || isSafeInteger(value);
-}
-
-function isCondition(value: unknown): value is Condition {
-  return (
-    value === "healthy" || value === "needs_attention" || value === "critical"
-  );
 }
 
 function isAreaIcon(value: unknown): value is AreaIcon {
@@ -121,14 +113,11 @@ function decodeList<T>(
 export function decodeAreaSummary(value: unknown): AreaSummary | undefined {
   if (!isObject(value)) return undefined;
 
-  const { _id, name, slug, standard, condition, icon, order, createdAt } =
-    value;
+  const { _id, name, slug, icon, order, createdAt } = value;
   if (
     typeof _id !== "string" ||
     typeof name !== "string" ||
     typeof slug !== "string" ||
-    !isOptionalString(standard) ||
-    !isCondition(condition) ||
     !isAreaIcon(icon) ||
     !isSafeInteger(order) ||
     !isSafeInteger(createdAt)
@@ -140,8 +129,6 @@ export function decodeAreaSummary(value: unknown): AreaSummary | undefined {
     _id: _id as AreaId,
     name,
     slug,
-    ...(standard === undefined ? {} : { standard }),
-    condition,
     icon,
     order,
     createdAt,
@@ -172,7 +159,7 @@ export function decodeThread(value: unknown): Thread | undefined {
     typeof title !== "string" ||
     typeof slug !== "string" ||
     !isOptionalString(summary) ||
-    typeof areaId !== "string" ||
+    !isOptionalString(areaId) ||
     !isSafeInteger(order) ||
     !isThreadState(state) ||
     !isOptionalString(nextMove) ||
@@ -192,7 +179,7 @@ export function decodeThread(value: unknown): Thread | undefined {
     title,
     slug,
     ...(summary === undefined ? {} : { summary }),
-    areaId: areaId as AreaId,
+    ...(areaId === undefined ? {} : { areaId: areaId as AreaId }),
     order,
     state,
     ...(nextMove === undefined ? {} : { nextMove }),
@@ -209,20 +196,13 @@ export function decodeThreadDetail(value: unknown): ThreadDetail | undefined {
   if (!isObject(value)) return undefined;
 
   const thread = decodeThread(value.thread);
+  if (thread === undefined) return undefined;
+  if (value.area === undefined) return { thread };
+
   const area = decodeAreaSummary(value.area);
-  if (thread === undefined || area === undefined) return undefined;
+  if (area === undefined) return undefined;
 
   return { thread, area };
-}
-
-export function decodeAreaDetail(value: unknown): AreaDetail | undefined {
-  if (!isObject(value)) return undefined;
-
-  const area = decodeAreaSummary(value.area);
-  const threads = decodeList(value.threads, decodeThread);
-  if (area === undefined || threads === undefined) return undefined;
-
-  return { area, threads };
 }
 
 export function decodeAreaList(value: unknown): AreaSummary[] | undefined {

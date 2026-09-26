@@ -1,4 +1,9 @@
-import type { AreaDetail, AreaSummary, Thread } from "@vita-os/contracts";
+import type {
+  ActivityLogPage,
+  AreaSummary,
+  Thread,
+  ThreadDetail,
+} from "@vita-os/contracts";
 
 import { describe, expect, it } from "vitest";
 
@@ -8,54 +13,64 @@ import { call, createSession, expectError, succeed } from "./sessions";
 
 async function createArea(
   session: Session,
-  overrides: Partial<{
-    name: string;
-    standard: string;
-    condition: AreaSummary["condition"];
-    icon: AreaSummary["icon"];
-  }> = {},
+  overrides: Partial<{ name: string; icon: AreaSummary["icon"] }> = {},
 ): Promise<AreaSummary> {
   return succeed<AreaSummary>("/v1/areas", {
     method: "POST",
     session,
     body: {
       name: overrides.name ?? `Health ${crypto.randomUUID()}`,
-      ...(overrides.standard === undefined
-        ? {}
-        : { standard: overrides.standard }),
-      condition: overrides.condition ?? "healthy",
       icon: overrides.icon ?? "HeartPulse",
     },
   });
 }
 
-describe("Area inventory", () => {
+async function createThread(
+  session: Session,
+  body: { title: string; areaId?: string },
+): Promise<Thread> {
+  return succeed<Thread>("/v1/threads", { method: "POST", session, body });
+}
+
+describe("Area labels", () => {
   it("creates an Area with a generated slug and the next manual position", async () => {
     const owner = await createSession("areas-create");
 
     const first = await createArea(owner, { name: "Family Health" });
-    const second = await createArea(owner, {
-      name: "Home",
-      standard: "Nothing is broken",
-      condition: "needs_attention",
-      icon: "Home",
-    });
+    const second = await createArea(owner, { name: "Home", icon: "Home" });
 
     expect(first).toMatchObject({
       name: "Family Health",
-      condition: "healthy",
       icon: "HeartPulse",
       order: 0,
     });
     expect(first.slug).toMatch(/^family-health-[0-9a-f]{8}$/);
-    expect(first).not.toHaveProperty("standard");
-    expect(second).toMatchObject({
-      name: "Home",
-      standard: "Nothing is broken",
-      condition: "needs_attention",
-      icon: "Home",
-      order: 1,
+    expect(second).toMatchObject({ name: "Home", icon: "Home", order: 1 });
+  });
+
+  it("returns the existing Area when a new name reads as the same slug", async () => {
+    const owner = await createSession("areas-create-existing");
+    const health = await createArea(owner, { name: "Family Health" });
+
+    const again = await createArea(owner, {
+      name: "  family   health ",
+      icon: "Compass",
     });
+
+    expect(again).toEqual(health);
+    await expect(
+      succeed<AreaSummary[]>("/v1/areas", { session: owner }),
+    ).resolves.toHaveLength(1);
+  });
+
+  it("never matches another owner's Area of the same name", async () => {
+    const owner = await createSession("areas-create-existing-owner");
+    const other = await createSession("areas-create-existing-other");
+    const theirs = await createArea(other, { name: "Health" });
+
+    const mine = await createArea(owner, { name: "Health" });
+
+    expect(mine._id).not.toBe(theirs._id);
   });
 
   it("lists only the actor's Areas, in manual order", async () => {
@@ -77,7 +92,7 @@ describe("Area inventory", () => {
       await call("/v1/areas", {
         method: "POST",
         session: owner,
-        body: { name: "   ", condition: "healthy", icon: "Compass" },
+        body: { name: "   ", icon: "Compass" },
       }),
       { status: 400, code: "validation", message: "Area name cannot be empty" },
     );
@@ -85,7 +100,7 @@ describe("Area inventory", () => {
       await call("/v1/areas", {
         method: "POST",
         session: owner,
-        body: { name: "Threads", condition: "healthy", icon: "Compass" },
+        body: { name: "Threads", icon: "Compass" },
       }),
       {
         status: 400,
@@ -95,25 +110,50 @@ describe("Area inventory", () => {
     );
   });
 
-  it("refuses an unknown Condition or Area Icon", async () => {
+  it("no longer accepts a Condition or a Standard, and never returns one", async () => {
+    const owner = await createSession("areas-no-condition");
+    const area = await createArea(owner);
+
+    for (const body of [
+      { name: "Health", icon: "Compass", condition: "healthy" },
+      { name: "Health", icon: "Compass", standard: "Checkups are current" },
+    ]) {
+      expectError(
+        await call("/v1/areas", { method: "POST", session: owner, body }),
+        { status: 400, code: "validation" },
+      );
+    }
+    expectError(
+      await call(`/v1/areas/${area._id}`, {
+        method: "PATCH",
+        session: owner,
+        body: { condition: "critical" },
+      }),
+      { status: 400, code: "validation" },
+    );
+    expect(area).not.toHaveProperty("condition");
+    expect(area).not.toHaveProperty("standard");
+  });
+
+  it("refuses an unknown Area Icon", async () => {
     const owner = await createSession("areas-enum");
 
     expectError(
       await call("/v1/areas", {
         method: "POST",
         session: owner,
-        body: { name: "Health", condition: "excellent", icon: "Compass" },
+        body: { name: "Health", icon: "Rocket" },
       }),
       { status: 400, code: "validation" },
     );
-    expectError(
-      await call("/v1/areas", {
-        method: "POST",
-        session: owner,
-        body: { name: "Health", condition: "healthy", icon: "Rocket" },
-      }),
-      { status: 400, code: "validation" },
-    );
+  });
+
+  it("has no Area page read", async () => {
+    const owner = await createSession("areas-no-detail");
+    const area = await createArea(owner);
+
+    const answer = await call(`/v1/areas/${area.slug}`, { session: owner });
+    expect(answer.status).toBe(404);
   });
 
   it("requires authentication for every Area operation", async () => {
@@ -122,8 +162,8 @@ describe("Area inventory", () => {
 
     for (const [path, method] of [
       ["/v1/areas", "GET"],
-      [`/v1/areas/${area.slug}`, "GET"],
       ["/v1/areas", "POST"],
+      ["/v1/areas/order", "PUT"],
       [`/v1/areas/${area._id}`, "PATCH"],
       [`/v1/areas/${area._id}`, "DELETE"],
     ] as const) {
@@ -135,59 +175,6 @@ describe("Area inventory", () => {
         },
       );
     }
-  });
-});
-
-describe("Area detail", () => {
-  it("reads an Area with its Open Threads in creation order", async () => {
-    const owner = await createSession("area-detail-owner");
-    const area = await createArea(owner, { name: "Family Health" });
-    const first = await succeed<Thread>("/v1/threads", {
-      method: "POST",
-      session: owner,
-      body: { title: "Book checkup", areaId: area._id },
-    });
-    const second = await succeed<Thread>("/v1/threads", {
-      method: "POST",
-      session: owner,
-      body: { title: "Refill prescription", areaId: area._id },
-    });
-    const resolved = await succeed<Thread>("/v1/threads", {
-      method: "POST",
-      session: owner,
-      body: { title: "Old errand", areaId: area._id },
-    });
-    await succeed(`/v1/threads/${resolved._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { state: "resolved" },
-    });
-
-    const detail = await succeed<AreaDetail>(`/v1/areas/${area.slug}`, {
-      session: owner,
-    });
-
-    expect(detail.area._id).toBe(area._id);
-    expect(detail.threads.map((thread) => thread._id)).toEqual([
-      first._id,
-      second._id,
-    ]);
-  });
-
-  it("answers the same way for a missing Area and another owner's Area", async () => {
-    const owner = await createSession("area-detail-privacy-owner");
-    const other = await createSession("area-detail-privacy-other");
-    const theirs = await createArea(other, { name: "Private" });
-
-    const missing = await call("/v1/areas/absent-area", { session: owner });
-    const foreign = await call(`/v1/areas/${theirs.slug}`, { session: owner });
-
-    expect(foreign).toEqual(missing);
-    expectError(missing, {
-      status: 404,
-      code: "not_found",
-      message: "Area not found.",
-    });
   });
 });
 
@@ -205,41 +192,19 @@ describe("Area changes", () => {
     expect(renamed.name).toBe("Family Health");
     expect(renamed.slug).toMatch(/^family-health-[0-9a-f]{8}$/);
     expect(renamed.slug).not.toBe(area.slug);
-    await expect(
-      succeed<AreaDetail>(`/v1/areas/${renamed.slug}`, { session: owner }),
-    ).resolves.toMatchObject({ area: { _id: area._id } });
   });
 
-  it("keeps the slug when a change does not rename the Area", async () => {
-    const owner = await createSession("area-restandardize");
+  it("re-icons an Area and keeps its slug", async () => {
+    const owner = await createSession("area-reicon");
     const area = await createArea(owner, { name: "Health" });
 
     const changed = await succeed<AreaSummary>(`/v1/areas/${area._id}`, {
       method: "PATCH",
       session: owner,
-      body: { condition: "critical", standard: "Appointments are current" },
+      body: { icon: "Dumbbell" },
     });
 
-    expect(changed).toMatchObject({
-      slug: area.slug,
-      condition: "critical",
-      standard: "Appointments are current",
-    });
-  });
-
-  it("clears the Standard when the change carries null", async () => {
-    const owner = await createSession("area-clear-standard");
-    const area = await createArea(owner, {
-      standard: "Appointments are current",
-    });
-
-    const cleared = await succeed<AreaSummary>(`/v1/areas/${area._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { standard: null },
-    });
-
-    expect(cleared).not.toHaveProperty("standard");
+    expect(changed).toMatchObject({ slug: area.slug, icon: "Dumbbell" });
   });
 
   it("refuses to change another owner's Area", async () => {
@@ -251,19 +216,70 @@ describe("Area changes", () => {
       await call(`/v1/areas/${theirs._id}`, {
         method: "PATCH",
         session: owner,
-        body: { condition: "critical" },
+        body: { name: "Mine now" },
       }),
       { status: 404, code: "not_found", message: "Area not found." },
     );
     const untouched = await succeed<AreaSummary[]>("/v1/areas", {
       session: other,
     });
-    expect(untouched[0]).toMatchObject({ condition: theirs.condition });
+    expect(untouched[0]).toMatchObject({ name: theirs.name });
+  });
+});
+
+describe("Area order", () => {
+  it("puts the owner's Areas in the given order", async () => {
+    const owner = await createSession("area-reorder");
+    const first = await createArea(owner, { name: "First" });
+    const second = await createArea(owner, { name: "Second" });
+    const third = await createArea(owner, { name: "Third" });
+
+    const reordered = await succeed<AreaSummary[]>("/v1/areas/order", {
+      method: "PUT",
+      session: owner,
+      body: { areaIds: [third._id, first._id, second._id] },
+    });
+
+    expect(reordered.map((area) => [area.name, area.order])).toEqual([
+      ["Third", 0],
+      ["First", 1],
+      ["Second", 2],
+    ]);
+    await expect(
+      succeed<AreaSummary[]>("/v1/areas", { session: owner }),
+    ).resolves.toEqual(reordered);
+  });
+
+  it("refuses an order that leaves out, repeats, or borrows an Area", async () => {
+    const owner = await createSession("area-reorder-mismatch-owner");
+    const other = await createSession("area-reorder-mismatch-other");
+    const first = await createArea(owner, { name: "First" });
+    const second = await createArea(owner, { name: "Second" });
+    const theirs = await createArea(other, { name: "Theirs" });
+
+    for (const areaIds of [
+      [first._id],
+      [first._id, first._id],
+      [first._id, theirs._id],
+    ]) {
+      expectError(
+        await call("/v1/areas/order", {
+          method: "PUT",
+          session: owner,
+          body: { areaIds },
+        }),
+        { status: 409, code: "conflict" },
+      );
+    }
+    const untouched = await succeed<AreaSummary[]>("/v1/areas", {
+      session: owner,
+    });
+    expect(untouched.map((area) => area._id)).toEqual([first._id, second._id]);
   });
 });
 
 describe("Area deletion", () => {
-  it("deletes an Area that holds no Threads", async () => {
+  it("deletes an Area that labels no Threads", async () => {
     const owner = await createSession("area-delete");
     const area = await createArea(owner);
 
@@ -275,48 +291,74 @@ describe("Area deletion", () => {
     ).resolves.toEqual([]);
   });
 
-  it("refuses to delete an Area that still holds a Thread, of any state", async () => {
-    const owner = await createSession("area-delete-blocked");
-    const area = await createArea(owner);
-    const thread = await succeed<Thread>("/v1/threads", {
-      method: "POST",
-      session: owner,
-      body: { title: "Book checkup", areaId: area._id },
+  it("removes the label from open and resolved Threads and leaves them otherwise untouched", async () => {
+    const owner = await createSession("area-delete-labels");
+    const area = await createArea(owner, { name: "Health" });
+    const kept = await createArea(owner, { name: "Home" });
+    const open = await createThread(owner, {
+      title: "Book checkup",
+      areaId: area._id,
     });
-
-    expectError(
-      await call(`/v1/areas/${area._id}`, { method: "DELETE", session: owner }),
-      {
-        status: 409,
-        code: "conflict",
-        message:
-          "Cannot delete an area that has threads. Move or delete the threads first.",
-      },
-    );
-
-    await succeed(`/v1/threads/${thread._id}`, {
+    const resolved = await createThread(owner, {
+      title: "Old errand",
+      areaId: area._id,
+    });
+    const elsewhere = await createThread(owner, {
+      title: "Fix the gate",
+      areaId: kept._id,
+    });
+    await succeed(`/v1/threads/${resolved._id}`, {
       method: "PATCH",
       session: owner,
       body: { state: "resolved" },
     });
-    expectError(
-      await call(`/v1/areas/${area._id}`, { method: "DELETE", session: owner }),
-      { status: 409, code: "conflict" },
+    const logBefore = await succeed<ActivityLogPage>(
+      `/v1/threads/${resolved._id}/activity`,
+      { session: owner },
     );
 
-    await succeed(`/v1/threads/${thread._id}`, {
-      method: "DELETE",
-      session: owner,
-    });
     await expect(
       succeed(`/v1/areas/${area._id}`, { method: "DELETE", session: owner }),
     ).resolves.toEqual({ acknowledged: true });
+
+    const openAfter = await succeed<ThreadDetail>(`/v1/threads/${open.slug}`, {
+      session: owner,
+    });
+    expect(openAfter).toEqual({
+      thread: (({ areaId: _areaId, ...rest }) => rest)(open),
+    });
+    const resolvedAfter = await succeed<ThreadDetail>(
+      `/v1/threads/${resolved.slug}`,
+      { session: owner },
+    );
+    expect(resolvedAfter.thread).toMatchObject({ state: "resolved" });
+    expect(resolvedAfter.thread).not.toHaveProperty("areaId");
+    expect(resolvedAfter).not.toHaveProperty("area");
+    await expect(
+      succeed<ActivityLogPage>(`/v1/threads/${resolved._id}/activity`, {
+        session: owner,
+      }),
+    ).resolves.toEqual(logBefore);
+    await expect(
+      succeed<ActivityLogPage>(`/v1/threads/${open._id}/activity`, {
+        session: owner,
+      }),
+    ).resolves.toEqual({ entries: [] });
+    await expect(
+      succeed<ThreadDetail>(`/v1/threads/${elsewhere.slug}`, {
+        session: owner,
+      }),
+    ).resolves.toMatchObject({ thread: { areaId: kept._id } });
   });
 
   it("answers not found when deleting another owner's Area", async () => {
     const owner = await createSession("area-delete-privacy-owner");
     const other = await createSession("area-delete-privacy-other");
     const theirs = await createArea(other);
+    const theirThread = await createThread(other, {
+      title: "Private",
+      areaId: theirs._id,
+    });
 
     expectError(
       await call(`/v1/areas/${theirs._id}`, {
@@ -328,5 +370,10 @@ describe("Area deletion", () => {
     await expect(
       succeed<AreaSummary[]>("/v1/areas", { session: other }),
     ).resolves.toHaveLength(1);
+    await expect(
+      succeed<ThreadDetail>(`/v1/threads/${theirThread.slug}`, {
+        session: other,
+      }),
+    ).resolves.toMatchObject({ thread: { areaId: theirs._id } });
   });
 });

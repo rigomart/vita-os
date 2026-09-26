@@ -20,6 +20,7 @@ describe("UserMenu", () => {
         user={{ name: "Jane Doe", email: "jane@example.com" }}
         theme="system"
         onThemeChange={onThemeChange}
+        onManageAreas={vi.fn()}
         onSignOut={onSignOut}
       />,
     );
@@ -52,6 +53,7 @@ describe("UserMenu", () => {
         user={{ email: "jane@example.com" }}
         theme="system"
         onThemeChange={vi.fn()}
+        onManageAreas={vi.fn()}
         onSignOut={vi.fn()}
       />,
     );

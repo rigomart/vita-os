@@ -67,7 +67,11 @@ export function DashboardBoard({
       <DashboardNote currentDate={currentDate} note={item.note} />
     ) : (
       <ConnectedThreadAttentionCard
-        area={areaById.get(item.thread.areaId)}
+        area={
+          item.thread.areaId === undefined
+            ? undefined
+            : areaById.get(item.thread.areaId)
+        }
         currentDate={currentDate}
         thread={item.thread}
       />

@@ -30,6 +30,8 @@ const mocks = vi.hoisted(() => ({
   onThreadLocationChange: vi.fn(),
   threadState: "open" as "open" | "resolved",
   threadExists: true,
+  /** Read the Thread back without an Area. */
+  unlabeled: false,
   detailError: false,
   nextMove: undefined as string | undefined,
   upNext: undefined as string[] | undefined,
@@ -58,7 +60,6 @@ const area = {
   name: "Family Health",
   slug: "family-health",
   icon: "HeartPulse",
-  condition: "needs_attention",
   order: 0,
   createdAt: 0,
 } satisfies AreaSummary;
@@ -124,19 +125,16 @@ function createApplicationClient(): ApplicationClient {
         };
       }
 
+      const { areaId: _areaId, ...unlabeled } = thread;
+      const read = {
+        ...(mocks.unlabeled ? unlabeled : thread),
+        state: mocks.threadState,
+        ...(mocks.nextMove === undefined ? {} : { nextMove: mocks.nextMove }),
+        ...(mocks.upNext === undefined ? {} : { upNext: mocks.upNext }),
+      };
       return {
         ok: true,
-        value: {
-          thread: {
-            ...thread,
-            state: mocks.threadState,
-            ...(mocks.nextMove === undefined
-              ? {}
-              : { nextMove: mocks.nextMove }),
-            ...(mocks.upNext === undefined ? {} : { upNext: mocks.upNext }),
-          },
-          area,
-        },
+        value: mocks.unlabeled ? { thread: read } : { thread: read, area },
       };
     },
     getThreadActivityPage: async ({ threadId, cursor }) => {
@@ -174,18 +172,12 @@ function createApplicationClient(): ApplicationClient {
   });
 }
 
-function renderThreadDetail(
-  props: { threadSlug?: string; areaSlug?: string } = {},
-) {
+function renderThreadDetail(props: { threadSlug?: string } = {}) {
   const threadSlug = props.threadSlug ?? "sister-s-front-teeth";
-  // Only default areaSlug when the key is absent, so tests can pass an
-  // explicit `areaSlug: undefined` to exercise the search-param source.
-  const areaSlug = "areaSlug" in props ? props.areaSlug : "family-health";
   const queryClient = createTestQueryClient();
   return {
     ...render(
       <ThreadDetailView
-        areaSlug={areaSlug}
         threadSlug={threadSlug}
         onClose={mocks.onClose}
         onThreadLocationChange={mocks.onThreadLocationChange}
@@ -203,6 +195,7 @@ describe("ThreadDetailView", () => {
     mocks.onThreadLocationChange.mockReset();
     mocks.threadState = "open";
     mocks.threadExists = true;
+    mocks.unlabeled = false;
     mocks.detailError = false;
     mocks.nextMove = undefined;
     mocks.upNext = undefined;
@@ -262,7 +255,6 @@ describe("ThreadDetailView", () => {
 
     rerender(
       <ThreadDetailView
-        areaSlug="family-health"
         threadSlug="moms-legs"
         onClose={mocks.onClose}
         onThreadLocationChange={mocks.onThreadLocationChange}
@@ -331,7 +323,6 @@ describe("ThreadDetailView", () => {
 
     rerender(
       <ThreadDetailView
-        areaSlug="family-health"
         threadSlug="moms-legs"
         onClose={mocks.onClose}
         onThreadLocationChange={mocks.onThreadLocationChange}
@@ -374,7 +365,6 @@ describe("ThreadDetailView", () => {
 
     rerender(
       <ThreadDetailView
-        areaSlug="family-health"
         threadSlug="moms-legs"
         onClose={mocks.onClose}
         onThreadLocationChange={mocks.onThreadLocationChange}
@@ -390,31 +380,63 @@ describe("ThreadDetailView", () => {
     ).toBeNull();
   });
 
-  it("renders the Thread without an areaSlug by deriving the area from the thread", async () => {
+  it("shows the Thread's Area as a chip in the header", async () => {
     mocks.showDesktopPane = true;
-    renderThreadDetail({ areaSlug: undefined });
+    renderThreadDetail();
 
-    await screen.findByRole("complementary", {
-      name: "Sister's front teeth",
-    });
-
-    const header = screen.getByRole("banner", { name: "Thread header" });
+    const header = await screen.findByRole("banner", { name: "Thread header" });
     expect(
-      await within(header).findByRole("button", { name: "Family Health" }),
+      await within(header).findByRole("button", {
+        name: "Area: Family Health",
+      }),
     ).toBeVisible();
   });
 
-  it("shows not-found when the deep link's Area does not hold the thread", async () => {
+  it("shows an unlabeled Thread with an Add area chip, and labels it from there", async () => {
     mocks.showDesktopPane = true;
-    renderThreadDetail({ areaSlug: "another-area" });
+    mocks.unlabeled = true;
+    renderThreadDetail();
 
-    expect(await screen.findByText("Thread not found.")).toBeVisible();
+    const header = await screen.findByRole("banner", { name: "Thread header" });
+    await userEvent.click(
+      within(header).getByRole("button", { name: "Add area" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Family Health" }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.updateThread).toHaveBeenCalledWith(
+        expect.objectContaining({ threadId: thread._id, areaId: area._id }),
+      ),
+    );
   });
 
-  it("shows a closable not-found state for an unknown thread slug without an area", async () => {
+  it("removes the Thread's Area from the same chip", async () => {
+    mocks.showDesktopPane = true;
+    renderThreadDetail();
+
+    const header = await screen.findByRole("banner", { name: "Thread header" });
+    await userEvent.click(
+      await within(header).findByRole("button", {
+        name: "Area: Family Health",
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Remove area" }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.updateThread).toHaveBeenCalledWith(
+        expect.objectContaining({ threadId: thread._id, areaId: null }),
+      ),
+    );
+  });
+
+  it("shows a closable not-found state for an unknown thread slug", async () => {
     mocks.showDesktopPane = true;
     mocks.threadExists = false;
-    renderThreadDetail({ areaSlug: undefined, threadSlug: "nope" });
+    renderThreadDetail({ threadSlug: "nope" });
 
     expect(await screen.findByText("Thread not found.")).toBeVisible();
 
@@ -446,7 +468,6 @@ describe("ThreadDetailView", () => {
     render(
       <AppErrorBoundary>
         <ThreadDetailView
-          areaSlug="family-health"
           threadSlug={thread.slug}
           onClose={mocks.onClose}
           onThreadLocationChange={mocks.onThreadLocationChange}
@@ -470,8 +491,8 @@ describe("ThreadDetailView", () => {
     });
 
     const header = screen.getByRole("banner", { name: "Thread header" });
-    // The Area picker arrives with the Area inventory, a read of its own.
-    await within(header).findByRole("button", { name: "Family Health" });
+    // The Area chip names its Area once the Area list, a read of its own, arrives.
+    await within(header).findByRole("button", { name: "Area: Family Health" });
     const summary = screen.getByText("Waiting for the specialist's opinion.");
     const attention = screen.getByRole("region", {
       name: "Thread attention",
@@ -480,7 +501,7 @@ describe("ThreadDetailView", () => {
     const activity = screen.getByRole("tab", { name: "Activity" });
 
     expect(
-      within(header).getByRole("button", { name: "Family Health" }),
+      within(header).getByRole("button", { name: "Area: Family Health" }),
     ).toBeVisible();
     expect(
       within(header).getByRole("button", { name: "Sister's front teeth" }),

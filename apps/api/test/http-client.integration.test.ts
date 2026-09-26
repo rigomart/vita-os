@@ -60,14 +60,12 @@ async function seedThread(owner: Session): Promise<{
   const slug = `http-client-thread-${suffix}`;
   await env.DB.batch([
     env.DB.prepare(
-      "INSERT INTO areas (id, user_id, name, slug, standard, condition, icon, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO areas (id, user_id, name, slug, icon, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
     ).bind(
       areaId,
       owner.actorId,
       "Family Health",
       `family-health-${suffix}`,
-      null,
-      "healthy",
       "Compass",
       1,
       1_600_000_000_000,

@@ -7,7 +7,6 @@ import type {
 import {
   decodeAcknowledgement,
   decodeActivityLogPage,
-  decodeAreaDetail,
   decodeAreaList,
   decodeAreaSummary,
   decodeCompletion,
@@ -202,11 +201,12 @@ export function createHttpApplicationClient({
   return {
     /* Areas */
     listAreas: () => read(literalPath("areas"), decodeAreaList),
-    getAreaDetail: (input) => read(path("areas", input.slug), decodeAreaDetail),
     createArea: (input) =>
       send("POST", literalPath("areas"), input, decodeAreaSummary),
     updateArea: ({ areaId, ...change }) =>
       send("PATCH", path("areas", areaId), change, decodeAreaSummary),
+    reorderAreas: (input) =>
+      send("PUT", literalPath("areas/order"), input, decodeAreaList),
     removeArea: (input) =>
       send(
         "DELETE",

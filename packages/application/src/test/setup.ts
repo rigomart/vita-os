@@ -21,6 +21,14 @@ window.matchMedia =
     dispatchEvent: vi.fn(),
   }));
 
+// cmdk, behind the palette and the Area picker, observes and scrolls its list.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+Element.prototype.scrollIntoView ??= vi.fn();
+
 Element.prototype.setPointerCapture ??= vi.fn();
 Element.prototype.releasePointerCapture ??= vi.fn();
 Element.prototype.hasPointerCapture ??= vi.fn(() => false);

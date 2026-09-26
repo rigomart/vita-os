@@ -63,11 +63,18 @@ def make_snapshot(path, source):
                              "\n".join(json.dumps(as_convex_numbers(row)) for row in rows) + "\n")
 
 
+# The import targets the schema as it stood at the Convex cutover. Migrations
+# written after it (0004 onward) run over the imported data like any other.
+CUTOVER_SCHEMA_MIGRATIONS = 3
+
+
 def target_database(target):
     connection = sqlite3.connect(":memory:")
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys=ON")
     for migration in sorted((ROOT / "migrations").glob("*.sql")):
+        if int(migration.name.split("_", 1)[0]) > CUTOVER_SCHEMA_MIGRATIONS:
+            continue
         connection.executescript(migration.read_text())
     connection.executescript(render_sql(target))
     return connection

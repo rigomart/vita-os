@@ -55,10 +55,10 @@ export {
 
 /* Reads and commands, for a host that composes screens of its own */
 export {
-  useAreaDetail,
   useAreas,
   useCreateArea,
   useRemoveArea,
+  useReorderAreas,
   useUpdateArea,
 } from "./areas/hooks";
 export type { ApplicationMutationResult } from "./cache/use-application-mutation";

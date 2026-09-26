@@ -25,7 +25,6 @@ const area = {
   name: "Family Health",
   slug: "family-health",
   icon: "HeartPulse",
-  condition: "needs_attention",
   order: 0,
   createdAt: 0,
 } satisfies AreaSummary;
@@ -49,15 +48,10 @@ const newNote = {
   updatedAt: 0,
 };
 
-// cmdk observes and scrolls its list container; jsdom provides neither.
-globalThis.ResizeObserver ??= class {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-};
-Element.prototype.scrollIntoView ??= vi.fn();
-
-const mocks = vi.hoisted(() => ({ search: {} as Record<string, unknown> }));
+const mocks = vi.hoisted(() => ({
+  search: {} as Record<string, unknown>,
+  navigate: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual =
@@ -66,7 +60,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     ...actual,
     useSearch: () => mocks.search,
     useMatch: () => undefined,
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mocks.navigate,
   };
 });
 
@@ -207,9 +201,43 @@ describe("AppShell", () => {
 
     expect(screen.getByText("page body")).toBeVisible();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(read("listAreas")).toBe(false);
+    // The Areas back the filter shortcuts, so the shell reads them itself.
+    expect(read("listAreas")).toBe(true);
     expect(read("listOpenThreads")).toBe(false);
     expect(read("countOpenNotes")).toBe(true);
+  });
+
+  it("filters the Dashboard to the Nth Area on a bare digit, and back to All on 0", async () => {
+    const user = userEvent.setup();
+    mocks.navigate.mockClear();
+    renderShell();
+    await waitFor(() => expect(read("listAreas")).toBe(true));
+
+    await waitFor(async () => {
+      mocks.navigate.mockClear();
+      await user.keyboard("1");
+      expect(mocks.navigate).toHaveBeenCalled();
+    });
+    const toArea = mocks.navigate.mock.calls[0]?.[0] as {
+      to: string;
+      search: (previous: object) => object;
+    };
+    expect(toArea.to).toBe("/");
+    expect(toArea.search({ thread: "x" })).toEqual({
+      thread: "x",
+      area: area.slug,
+    });
+
+    mocks.navigate.mockClear();
+    await user.keyboard("0");
+    const toAll = mocks.navigate.mock.calls[0]?.[0] as {
+      search: (previous: object) => object;
+    };
+    expect(toAll.search({ area: area.slug })).toEqual({ area: undefined });
+
+    mocks.navigate.mockClear();
+    await user.keyboard("2");
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
   it("opens the new note dialog from the chrome", async () => {
@@ -279,7 +307,7 @@ describe("AppShell", () => {
     await user.keyboard("{Meta>}k{/Meta}");
 
     expect(
-      await screen.findByPlaceholderText("Jump to an area, thread, or action…"),
+      await screen.findByPlaceholderText("Jump to a thread, area, or action…"),
     ).toBeVisible();
     expect(read("listAreas")).toBe(true);
     expect(read("listOpenThreads")).toBe(true);
@@ -293,7 +321,7 @@ describe("AppShell", () => {
     fireEvent.keyDown(document, { code: "KeyK", key: "K", ctrlKey: true });
 
     expect(
-      await screen.findByPlaceholderText("Jump to an area, thread, or action…"),
+      await screen.findByPlaceholderText("Jump to a thread, area, or action…"),
     ).toBeVisible();
   });
 
@@ -308,7 +336,7 @@ describe("AppShell", () => {
     });
 
     expect(
-      screen.queryByPlaceholderText("Jump to an area, thread, or action…"),
+      screen.queryByPlaceholderText("Jump to a thread, area, or action…"),
     ).not.toBeInTheDocument();
   });
 
@@ -319,13 +347,13 @@ describe("AppShell", () => {
     const trigger = screen.getByRole("button", { name: "chrome palette" });
     await user.click(trigger);
     await user.click(
-      await screen.findByPlaceholderText("Jump to an area, thread, or action…"),
+      await screen.findByPlaceholderText("Jump to a thread, area, or action…"),
     );
 
     await user.keyboard("{Escape}");
     await waitFor(() =>
       expect(
-        screen.queryByPlaceholderText("Jump to an area, thread, or action…"),
+        screen.queryByPlaceholderText("Jump to a thread, area, or action…"),
       ).not.toBeInTheDocument(),
     );
     // Dismissing without running an action must still hand focus back.
@@ -338,17 +366,15 @@ describe("AppShell", () => {
     expect(read("listOpenThreads")).toBe(false);
   });
 
-  it("opens the create thread dialog from the palette and subscribes to areas only then", async () => {
+  it("opens the create thread dialog from the palette", async () => {
     const user = userEvent.setup();
     renderShell();
-
-    expect(read("listAreas")).toBe(false);
 
     await user.click(screen.getByRole("button", { name: "chrome palette" }));
     await user.click(await screen.findByText("New thread"));
 
     expect(await screen.findByLabelText("Title")).toBeVisible();
-    expect(read("listAreas")).toBe(true);
+    expect(screen.getByRole("button", { name: "Add area" })).toBeVisible();
   });
 
   it("focuses the new note input when New note is chosen from the palette", async () => {
@@ -373,13 +399,18 @@ describe("AppShell", () => {
     await waitFor(() => expect(titleInput).toHaveFocus());
   });
 
-  it("opens the create area dialog from the palette", async () => {
+  it("opens Manage areas from the palette", async () => {
     const user = userEvent.setup();
     renderShell();
 
     await user.click(screen.getByRole("button", { name: "chrome palette" }));
-    await user.click(await screen.findByText("New area"));
+    await user.click(await screen.findByText("Manage areas"));
 
-    expect(await screen.findByLabelText("Name")).toBeVisible();
+    expect(
+      await screen.findByRole("heading", { name: "Manage areas" }),
+    ).toBeVisible();
+    expect(
+      await screen.findByRole("textbox", { name: `Name of ${area.name}` }),
+    ).toHaveValue(area.name);
   });
 });

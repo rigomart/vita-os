@@ -19,7 +19,6 @@ async function createArea(session: Session, name = "Family Health") {
     session,
     body: {
       name: `${name} ${crypto.randomUUID()}`,
-      condition: "healthy",
       icon: "Compass",
     },
   });
@@ -302,11 +301,104 @@ describe("Area reassignment", () => {
       previousValue: from.name,
       newValue: to.name,
     });
-    await expect(
-      succeed<{ threads: Thread[] }>(`/v1/areas/${to.slug}`, {
-        session: owner,
-      }),
-    ).resolves.toMatchObject({ threads: [{ _id: thread._id }] });
+    await expect(detailOf(owner, thread)).resolves.toMatchObject({
+      thread: { areaId: to._id },
+      area: { _id: to._id },
+    });
+  });
+
+  it("captures a Thread with only a title, and no Area", async () => {
+    const owner = await createSession("thread-unlabeled-create");
+
+    const thread = await succeed<Thread>("/v1/threads", {
+      method: "POST",
+      session: owner,
+      body: { title: "Renew passport" },
+    });
+
+    expect(thread).not.toHaveProperty("areaId");
+    const detail = await detailOf(owner, thread);
+    expect(detail).not.toHaveProperty("area");
+    expect(await activityOf(owner, thread)).toEqual([]);
+  });
+
+  it("labels an unlabeled Thread and names the Area in the Activity Log", async () => {
+    const owner = await createSession("thread-area-add");
+    const area = await createArea(owner, "Home");
+    const thread = await succeed<Thread>("/v1/threads", {
+      method: "POST",
+      session: owner,
+      body: { title: "Fix the gate" },
+    });
+
+    const labeled = await succeed<Thread>(`/v1/threads/${thread._id}`, {
+      method: "PATCH",
+      session: owner,
+      body: { areaId: area._id },
+    });
+
+    expect(labeled.areaId).toBe(area._id);
+    expect(await activityOf(owner, thread)).toMatchObject([
+      {
+        type: "area_move",
+        content: `Added to "${area.name}"`,
+        newValue: area.name,
+      },
+    ]);
+  });
+
+  it("removes a Thread's Area when the change carries null", async () => {
+    const owner = await createSession("thread-area-remove");
+    const area = await createArea(owner, "Health");
+    const thread = await createThread(owner, area);
+
+    const unlabeled = await succeed<Thread>(`/v1/threads/${thread._id}`, {
+      method: "PATCH",
+      session: owner,
+      body: { areaId: null },
+    });
+
+    expect(unlabeled).not.toHaveProperty("areaId");
+    expect(await detailOf(owner, thread)).not.toHaveProperty("area");
+    expect(await activityOf(owner, thread)).toMatchObject([
+      {
+        type: "area_move",
+        content: `Removed from "${area.name}"`,
+        previousValue: area.name,
+      },
+    ]);
+  });
+
+  it("logs nothing when an unlabeled Thread is asked to stay unlabeled", async () => {
+    const owner = await createSession("thread-area-remove-noop");
+    const thread = await succeed<Thread>("/v1/threads", {
+      method: "POST",
+      session: owner,
+      body: { title: "Renew passport" },
+    });
+
+    const unchanged = await succeed<Thread>(`/v1/threads/${thread._id}`, {
+      method: "PATCH",
+      session: owner,
+      body: { areaId: null },
+    });
+
+    expect(unchanged).not.toHaveProperty("areaId");
+    expect(await activityOf(owner, thread)).toEqual([]);
+  });
+
+  it("keeps a Resolved Thread's Area", async () => {
+    const owner = await createSession("thread-area-resolved");
+    const area = await createArea(owner, "Health");
+    const thread = await createThread(owner, area);
+
+    const resolved = await succeed<Thread>(`/v1/threads/${thread._id}`, {
+      method: "PATCH",
+      session: owner,
+      body: { state: "resolved" },
+    });
+
+    expect(resolved).toMatchObject({ state: "resolved", areaId: area._id });
   });
 
   it("refuses a move into another owner's Area and changes nothing", async () => {

@@ -1,24 +1,15 @@
-import type {
-  AreaDetail,
-  AreaIcon,
-  AreaSummary,
-  Condition,
-} from "@vita-os/contracts";
+import type { AreaIcon, AreaSummary } from "@vita-os/contracts";
 
 import type { RequestScope } from "../../platform/request-scope";
-import type { ThreadRow } from "../threads/rows";
 import type { AreaRow } from "./rows";
 
 import { isUniqueViolation, setClause } from "../../platform/d1/statements";
-import { THREAD_COLUMNS, toThread } from "../threads/rows";
 import { AREA_COLUMNS, toAreaSummary } from "./rows";
 
 /** What an Area change writes. An absent field is left alone. */
 export interface AreaChanges {
   name?: string;
   slug?: string;
-  standard?: string | null;
-  condition?: Condition;
   icon?: AreaIcon;
 }
 
@@ -64,56 +55,18 @@ export function areaStorage({ db, clock, actorId }: RequestScope) {
     },
 
     /**
-     * The Area page in one batch: the Area, plus its Open Threads in the
-     * creation order the Area inventory has always used.
-     */
-    async findDetail(slug: string): Promise<AreaDetail | null> {
-      const [area, threads] = await db.batch([
-        db
-          .prepare(
-            `SELECT ${AREA_COLUMNS}
-             FROM areas
-             WHERE user_id = ? AND slug = ?
-             LIMIT 1`,
-          )
-          .bind(actorId, slug),
-        db
-          .prepare(
-            `SELECT ${THREAD_COLUMNS}
-             FROM threads
-             WHERE user_id = ? AND state = 'open'
-               AND area_id = (SELECT id FROM areas WHERE user_id = ? AND slug = ?)
-             ORDER BY created_at ASC, id ASC`,
-          )
-          .bind(actorId, actorId, slug),
-      ]);
-      const areaRow = area.results.at(0) as AreaRow | undefined;
-      if (areaRow === undefined) return null;
-
-      return {
-        area: toAreaSummary(areaRow),
-        threads: (threads.results as ThreadRow[]).map(toThread),
-      };
-    },
-
-    /**
      * The manual order is chosen inside the insert, so two Areas created at
      * once cannot claim the same position. Throws when the slug is taken.
      */
     async insert(area: {
       name: string;
       slug: string;
-      standard?: string;
-      condition: Condition;
       icon: AreaIcon;
     }): Promise<AreaSummary | null> {
       const row = await db
         .prepare(
-          `INSERT INTO areas (
-             id, user_id, name, slug, standard, condition, icon, sort_order,
-             created_at
-           )
-           SELECT ?, ?, ?, ?, ?, ?, ?, COALESCE(MAX(sort_order) + 1, 0), ?
+          `INSERT INTO areas (id, user_id, name, slug, icon, sort_order, created_at)
+           SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sort_order) + 1, 0), ?
            FROM areas
            WHERE user_id = ?
            RETURNING ${AREA_COLUMNS}`,
@@ -123,8 +76,6 @@ export function areaStorage({ db, clock, actorId }: RequestScope) {
           actorId,
           area.name,
           area.slug,
-          area.standard ?? null,
-          area.condition,
           area.icon,
           clock.now(),
           actorId,
@@ -146,8 +97,6 @@ export function areaStorage({ db, clock, actorId }: RequestScope) {
       const set = setClause({
         name: changes.name,
         slug: changes.slug,
-        standard: changes.standard,
-        condition: changes.condition,
         icon: changes.icon,
       });
       const row = await db
@@ -163,28 +112,44 @@ export function areaStorage({ db, clock, actorId }: RequestScope) {
       return row === null ? null : toAreaSummary(row);
     },
 
-    /** Delete the Area only while no Thread of any state is filed under it. */
-    async removeIfEmpty(areaId: string): Promise<boolean> {
-      const removed = await db
-        .prepare(
-          `DELETE FROM areas
-           WHERE user_id = ? AND id = ?
-             AND NOT EXISTS (SELECT 1 FROM threads WHERE area_id = areas.id)
-           RETURNING id`,
-        )
-        .bind(actorId, areaId)
-        .first<{ id: string }>();
+    /**
+     * Write the owner's Area order, one position per Area in list order. The
+     * caller has checked that the list names every Area exactly once.
+     */
+    async reorder(areaIds: readonly string[]): Promise<void> {
+      if (areaIds.length === 0) return;
 
-      return removed !== null;
+      await db.batch(
+        areaIds.map((areaId, position) =>
+          db
+            .prepare(
+              "UPDATE areas SET sort_order = ? WHERE user_id = ? AND id = ?",
+            )
+            .bind(position, actorId, areaId),
+        ),
+      );
     },
 
-    async exists(areaId: string): Promise<boolean> {
-      const area = await db
-        .prepare("SELECT id FROM areas WHERE user_id = ? AND id = ? LIMIT 1")
-        .bind(actorId, areaId)
-        .first<{ id: string }>();
+    /**
+     * Delete the Area and take its label off every Thread that carries it, open
+     * or resolved, in one batch. The Threads are otherwise untouched: the label
+     * disappearing is not a change the user made to each of them, so no
+     * revision moves and no Activity Log entry is written. `false` means there
+     * was no such Area.
+     */
+    async removeClearingLabels(areaId: string): Promise<boolean> {
+      const [, removal] = await db.batch([
+        db
+          .prepare(
+            "UPDATE threads SET area_id = NULL WHERE user_id = ? AND area_id = ?",
+          )
+          .bind(actorId, areaId),
+        db
+          .prepare("DELETE FROM areas WHERE user_id = ? AND id = ?")
+          .bind(actorId, areaId),
+      ]);
 
-      return area !== null;
+      return removal.meta.changes > 0;
     },
   };
 }

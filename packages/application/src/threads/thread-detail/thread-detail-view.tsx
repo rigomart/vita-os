@@ -1,4 +1,4 @@
-import type { AreaSummary, Thread } from "@vita-os/contracts";
+import type { Thread } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
 import {
@@ -16,10 +16,9 @@ import { useMemo } from "react";
 
 import type { ThreadLocation } from "./thread-pane-nav";
 
-import { AreaConditionDot } from "../../areas/components/area-condition-dot";
 import { useDocumentTitle } from "../../hooks/use-document-title";
 import { useThreadPaneViewport } from "../../hooks/use-thread-pane-viewport";
-import { ThreadAreaSectionSection } from "../components/thread-area-section-section";
+import { ThreadAreaChip } from "../components/thread-area-chip";
 import { ThreadAttentionSection } from "../components/thread-attention-section";
 import { ThreadBodyTabs } from "../components/thread-body-tabs";
 import { ThreadDefinitionSection } from "../components/thread-definition-section";
@@ -35,26 +34,16 @@ import { useDeferredRouteClose } from "./use-deferred-route-close";
 
 interface ThreadDetailViewProps {
   threadSlug: string;
-  /**
-   * Present when the pane was opened via the /$areaSlug/$threadSlug deep
-   * link; the thread is then validated to belong to this area. Absent when
-   * opened via the `?thread` search param — the area is derived from the
-   * thread itself.
-   */
-  areaSlug?: string;
   onClose: () => void;
   onThreadLocationChange: (location: ThreadLocation) => void;
 }
 
 export function ThreadDetailView({
   threadSlug,
-  areaSlug,
   onClose,
   onThreadLocationChange,
 }: ThreadDetailViewProps) {
   const showDesktopPane = useThreadPaneViewport();
-  // One read serves both URL forms: `?thread=` takes the Area straight off it,
-  // and the canonical deep link validates against it.
   const detailState = useThreadDetail(threadSlug);
   const detail = detailState.data ?? null;
 
@@ -71,18 +60,14 @@ export function ThreadDetailView({
 
   const title = detail?.thread.title ?? "Thread detail";
   const isLoading = detailState.isPending;
-  const area = detail?.area ?? null;
-  const hasMatchingThread =
-    detail != null &&
-    area !== null &&
-    (areaSlug === undefined || area.slug === areaSlug);
+  const hasMatchingThread = detail != null;
   const content = isLoading ? (
     <ThreadDetailSkeleton />
   ) : !hasMatchingThread ? (
-    <ThreadNotFound areaSlug={areaSlug} onClose={onClose} />
+    <ThreadNotFound onClose={onClose} />
   ) : (
     <ThreadPaneNavContext.Provider value={paneNav}>
-      <ThreadDetailContent thread={detail.thread} area={area} />
+      <ThreadDetailContent thread={detail.thread} />
     </ThreadPaneNavContext.Provider>
   );
 
@@ -247,16 +232,14 @@ function ThreadControls({
 
 interface ThreadDetailContentProps {
   thread: Thread;
-  area: AreaSummary;
 }
 
 /**
  * Identity and attention are stated at the top and stay put; beneath them the
  * body is a pair of tabs, so only one of the two ever occupies the pane.
  */
-function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
+function ThreadDetailContent({ thread }: ThreadDetailContentProps) {
   const isResolved = thread.state === "resolved";
-  const areaSlug = area.slug;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
@@ -267,12 +250,11 @@ function ThreadDetailContent({ thread, area }: ThreadDetailContentProps) {
       >
         {/* `pr-24` clears the pane's absolutely-placed control cluster. */}
         <div className="flex items-center gap-2 pr-24">
-          <AreaConditionDot condition={area.condition} />
-          <ThreadAreaSectionSection thread={thread} area={area} />
+          <ThreadAreaChip thread={thread} />
           <ThreadStateChip state={thread.state} />
         </div>
         <div className="flex flex-col gap-0.5">
-          <ThreadHeaderSection thread={thread} areaSlug={areaSlug} />
+          <ThreadHeaderSection thread={thread} />
           <ThreadDefinitionSection thread={thread} />
         </div>
       </header>

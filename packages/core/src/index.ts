@@ -10,21 +10,19 @@ export {
   isAreaIcon,
 } from "./area-icon";
 /**
- * The two enumerations' own types, re-exported beside the values.
+ * The enumeration's own type, re-exported beside its values.
  *
- * The contract remains their single definition; this saves every caller that
- * needs both `CONDITIONS` and `Condition` from importing the same vocabulary
+ * The contract remains its single definition; this saves every caller that
+ * needs both `AREA_ICONS` and `AreaIcon` from importing the same vocabulary
  * from two places.
  */
-export type { AreaIcon, Condition } from "@vita-os/contracts";
+export type { AreaIcon } from "@vita-os/contracts";
 export {
   compareNotesByAttention,
-  groupAreaThreadsByAttention,
   groupNotesByAttention,
   groupThreadsByAttention,
   isOpenNote,
   startOfLocalDay,
-  type AreaThreadAttentionGroups,
   type NoteAttentionGroups,
   type NoteAttentionInput,
   type ThreadAttentionGroups,
@@ -33,13 +31,6 @@ export {
 export { clearedToAbsent } from "./clearable";
 export { newRecordId } from "./record-id";
 export * from "./complete-next-move";
-export {
-  CONDITION_OPTIONS,
-  CONDITIONS,
-  conditionLabels,
-  DEFAULT_CONDITION,
-  isCondition,
-} from "./condition";
 export { ConflictError, ValidationError } from "./errors";
 export {
   generateSlug,

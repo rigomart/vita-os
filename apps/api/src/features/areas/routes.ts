@@ -6,24 +6,21 @@ import { readJsonBody, reply, scope } from "../../platform/http/context";
 import { invalidRequest, refuse } from "../../platform/http/errors";
 import {
   createArea,
-  getAreaDetail,
   listAreas,
   removeArea,
+  reorderAreas,
   updateArea,
 } from "./operations";
-import { decodeCreateArea, decodeUpdateArea } from "./requests";
+import {
+  decodeAreaOrder,
+  decodeCreateArea,
+  decodeUpdateArea,
+} from "./requests";
 
-/** Areas: the life inventory itself. */
+/** Areas: the optional labels a Thread may carry. */
 export const areaRoutes: Routes = (app) => {
   app.get("/v1/areas", async (context) =>
     reply(context, await listAreas(scope(context))),
-  );
-
-  app.get("/v1/areas/:slug", async (context) =>
-    reply(
-      context,
-      await getAreaDetail(scope(context), { slug: context.req.param("slug") }),
-    ),
   );
 
   app.post("/v1/areas", async (context) => {
@@ -31,6 +28,13 @@ export const areaRoutes: Routes = (app) => {
       decodeCreateArea(await readJsonBody(context)) ??
       refuse(invalidRequest("Invalid Area."));
     return reply(context, await createArea(scope(context), input), 201);
+  });
+
+  app.put("/v1/areas/order", async (context) => {
+    const input =
+      decodeAreaOrder(await readJsonBody(context)) ??
+      refuse(invalidRequest("Invalid Area order."));
+    return reply(context, await reorderAreas(scope(context), input));
   });
 
   app.patch("/v1/areas/:areaId", async (context) => {

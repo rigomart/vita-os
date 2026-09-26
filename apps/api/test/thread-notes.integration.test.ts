@@ -18,7 +18,6 @@ async function seedThread(session: Session): Promise<Thread> {
     session,
     body: {
       name: `Family Health ${crypto.randomUUID()}`,
-      condition: "healthy",
       icon: "Compass",
     },
   });

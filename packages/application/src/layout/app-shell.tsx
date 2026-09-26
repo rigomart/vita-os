@@ -1,4 +1,3 @@
-import type { AreaId } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import { useMatch, useNavigate, useSearch } from "@tanstack/react-router";
@@ -6,10 +5,12 @@ import { useState } from "react";
 
 import type { ProductSearch } from "../navigation/search-params";
 
-import { CreateAreaDialog } from "../areas/area-form/create-area-dialog";
 import { useAreas } from "../areas/hooks";
+import { ManageAreasDialog } from "../areas/manage-areas/manage-areas-dialog";
+import { readDashboardFilter } from "../dashboard/components/dashboard-filter-model";
 import { InboxSurface } from "../inbox/surface/inbox-surface";
 import { useInboxSurface } from "../inbox/surface/use-inbox-surface";
+import { useAreaFilterShortcuts } from "../navigation/use-area-filter-shortcuts";
 import { useCommandPaletteShortcut } from "../navigation/use-command-palette-shortcut";
 import { useCreateDialogs } from "../navigation/use-create-dialogs";
 import { useGlobalNewNoteShortcut } from "../navigation/use-global-new-note-shortcut";
@@ -28,30 +29,29 @@ export function AppShell({ children }: { children: ReactNode }) {
   const dialogs = useCreateDialogs();
   const inbox = useInboxSurface();
   const [paletteOpen, setPaletteOpen] = useState(false);
-
-  // The Area inventory is only read by the create-thread dialog here, and only
-  // once it is open; the palette reads it for itself while it is mounted.
-  const createThreadAreas = useAreas({
-    enabled: dialogs.showCreateThread,
-  }).data;
+  const areas = useAreas().data;
 
   useGlobalNewNoteShortcut(dialogs.openNewNote);
   useCommandPaletteShortcut(() => setPaletteOpen(true));
+  useAreaFilterShortcuts(areas);
 
   // The thread pane opens from two sources: the global `?thread=<slug>`
-  // search param (any page, in place) or the /$areaSlug/$threadSlug deep
-  // link. When both are present, the search param wins.
-  const { thread: searchThreadSlug }: ProductSearch = useSearch({
-    from: "/_authenticated",
-  });
+  // search param (any page, in place) or the /threads/$threadSlug deep link.
+  // When both are present, the search param wins.
+  const { thread: searchThreadSlug, area: areaFilter }: ProductSearch =
+    useSearch({ from: "/_authenticated" });
   const threadRouteMatch = useMatch({
-    from: "/_authenticated/$areaSlug/$threadSlug",
+    from: "/_authenticated/threads/$threadSlug",
     shouldThrow: false,
   });
-  const routeAreaSlug = threadRouteMatch?.params.areaSlug;
   const isSearchSource = searchThreadSlug !== undefined;
   const openThreadSlug =
     searchThreadSlug ?? threadRouteMatch?.params.threadSlug;
+
+  // A Thread captured while the Dashboard is filtered to an Area starts in
+  // that Area; the dialog's chip can clear it before saving.
+  const filter = readDashboardFilter(areaFilter, areas ?? []);
+  const filteredAreaId = filter.kind === "area" ? filter.area._id : undefined;
 
   const openThreadInPlace = (slug: string) => {
     navigate({
@@ -67,33 +67,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   // the pane was showing a search-param thread on top of it — stripping only
   // the param would let the route match reopen the pane with the stale thread.
   const closeThreadPane = () => {
-    if (routeAreaSlug !== undefined) {
-      navigate({
-        to: "/$areaSlug",
-        params: { areaSlug: routeAreaSlug },
-        search: (prev: ProductSearch): ProductSearch => ({
-          ...prev,
-          thread: undefined,
-        }),
-        replace: true,
-      });
-    } else {
-      navigate({
-        to: ".",
-        search: (prev: ProductSearch): ProductSearch => ({
-          ...prev,
-          thread: undefined,
-        }),
-        replace: true,
-      });
-    }
+    navigate({
+      to: threadRouteMatch === undefined ? "." : "/",
+      search: (prev: ProductSearch): ProductSearch => ({
+        ...prev,
+        thread: undefined,
+      }),
+      replace: true,
+    });
   };
 
   const handleThreadLocationChange = ({
-    areaSlug,
     threadSlug,
   }: {
-    areaSlug: string;
     threadSlug: string;
   }) => {
     if (isSearchSource) {
@@ -107,8 +93,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       });
     } else {
       navigate({
-        to: "/$areaSlug/$threadSlug",
-        params: { areaSlug, threadSlug },
+        to: "/threads/$threadSlug",
+        params: { threadSlug },
         replace: true,
       });
     }
@@ -124,8 +110,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           inboxOpen={inbox.isOpen}
           onToggleInbox={inbox.toggle}
           onNewNote={dialogs.openNewNote}
-          onNewThread={() => dialogs.openCreateThread()}
-          onNewArea={dialogs.openCreateArea}
+          onNewThread={() => dialogs.openCreateThread(filteredAreaId)}
+          onManageAreas={dialogs.openManageAreas}
           onOpenPalette={() => setPaletteOpen(true)}
           railOpen={openThreadSlug !== undefined}
         />
@@ -139,7 +125,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       {openThreadSlug !== undefined && (
         <ThreadDetailView
           threadSlug={openThreadSlug}
-          areaSlug={isSearchSource ? undefined : routeAreaSlug}
           onClose={closeThreadPane}
           onThreadLocationChange={handleThreadLocationChange}
         />
@@ -152,22 +137,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           open
           onOpenChange={setPaletteOpen}
           onNewNote={dialogs.openNewNote}
-          // The palette's Area drill-in scopes the new Thread; the plain
-          // "New thread" row passes nothing and the picker stays unscoped.
-          onNewThread={(areaId) =>
-            dialogs.openCreateThread(areaId as AreaId | undefined)
-          }
-          onNewArea={dialogs.openCreateArea}
+          onNewThread={() => dialogs.openCreateThread(filteredAreaId)}
+          onManageAreas={dialogs.openManageAreas}
           onOpenInbox={inbox.open}
         />
       )}
 
-      {/* Also held until the gated list resolves — never an empty picker. */}
-      {dialogs.showCreateThread && createThreadAreas !== undefined && (
+      {dialogs.showCreateThread && (
         <CreateThreadDialog
           open
           onOpenChange={dialogs.setShowCreateThread}
-          areas={createThreadAreas}
           defaultAreaId={dialogs.createForAreaId}
           onCreated={({ slug }) => {
             openThreadInPlace(slug);
@@ -184,8 +163,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           }}
         />
       )}
-      {dialogs.showCreateArea && (
-        <CreateAreaDialog open onOpenChange={dialogs.setShowCreateArea} />
+      {dialogs.showManageAreas && (
+        <ManageAreasDialog open onOpenChange={dialogs.setShowManageAreas} />
       )}
     </div>
   );

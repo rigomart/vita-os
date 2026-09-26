@@ -1,6 +1,6 @@
 # Area, Thread, and Task awareness model
 
-Status: Amended by ADR 0010 — the Next Move stays singular and remains the only surfaced move, but a Thread may now hold known upcoming moves in an **Up Next** queue behind it.
+Status: Amended by ADR 0010 — the Next Move stays singular and remains the only surfaced move, but a Thread may now hold known upcoming moves in an **Up Next** queue behind it. Amended by ADR 0021 — an Area is now an optional label on a Thread; Condition is removed.
 
 Vita OS is shifting from a project/task-management model to a personal life-awareness model. We will use **Area**, **Thread**, and **Task** as the core product language because many important life situations need continuity, follow-up, and judgment rather than a defined project plan or task checklist.
 

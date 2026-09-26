@@ -6,11 +6,11 @@ export function useCreateDialogs() {
   const [showCreateThread, setShowCreateThread] = useState(false);
   const [createForAreaId, setCreateForAreaId] = useState<AreaId | undefined>();
   const [showNewNote, setShowNewNote] = useState(false);
-  const [showCreateArea, setShowCreateArea] = useState(false);
+  const [showManageAreas, setShowManageAreas] = useState(false);
 
   const openNewNote = useCallback(() => setShowNewNote(true), []);
 
-  const openCreateArea = useCallback(() => setShowCreateArea(true), []);
+  const openManageAreas = useCallback(() => setShowManageAreas(true), []);
 
   const openCreateThread = useCallback((areaId?: AreaId) => {
     setCreateForAreaId(areaId);
@@ -24,9 +24,9 @@ export function useCreateDialogs() {
     showNewNote,
     setShowNewNote,
     openNewNote,
-    showCreateArea,
-    setShowCreateArea,
-    openCreateArea,
+    showManageAreas,
+    setShowManageAreas,
+    openManageAreas,
     openCreateThread,
   };
 }

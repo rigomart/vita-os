@@ -25,8 +25,6 @@ const detail = {
     _id: "area-1",
     name: "Family Health",
     slug: "family-health",
-    standard: "Appointments are current",
-    condition: "needs_attention",
     icon: "HeartPulse",
     order: 1,
     createdAt: 1_500_000_000_000,

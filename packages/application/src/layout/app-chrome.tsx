@@ -10,14 +10,13 @@ import {
 } from "@vita-os/ui/components/tooltip";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
-import { FolderPlus, Inbox, MessageSquare, Plus, Search } from "lucide-react";
+import { Inbox, MessageSquare, Plus, Search } from "lucide-react";
 
 import { useAttentionClock } from "../hooks/use-attention-clock";
 import { inboxSurfaceTriggerProps } from "../inbox/surface/inbox-surface-trigger";
 import { isApplePlatform } from "../lib/platform";
 import { useTheme } from "../theme/theme-provider";
 import { useViewer } from "../viewer/viewer-context";
-import { AreaStatusStrip } from "./area-status-strip";
 import { InboxNoteCountBadge } from "./inbox-note-count-badge";
 import { UserMenu } from "./user-menu";
 
@@ -27,7 +26,7 @@ interface AppChromeProps {
   onToggleInbox: () => void;
   onNewNote: () => void;
   onNewThread: () => void;
-  onNewArea: () => void;
+  onManageAreas: () => void;
   onOpenPalette: () => void;
   /** True while the thread rail is open, so the chrome can clear it. */
   railOpen: boolean;
@@ -35,8 +34,8 @@ interface AppChromeProps {
 
 /**
  * The app chrome (ADR 0018): three floating clusters instead of a bar — the
- * mark and Area status top-left, the date and personal controls top-right,
- * the dock bottom-centre.
+ * mark top-left, the date and personal controls top-right, the dock
+ * bottom-centre.
  *
  * The clusters are `fixed`, so they would sit under the thread rail (z-30).
  * The right-hand cluster and the dock offset by `--rail` instead, which is
@@ -47,7 +46,7 @@ const RAIL_WIDTH = "clamp(28rem,34vw,34rem)";
 export function AppChrome({
   inboxOpen,
   noteCount,
-  onNewArea,
+  onManageAreas,
   onNewNote,
   onNewThread,
   onOpenPalette,
@@ -92,9 +91,6 @@ export function AppChrome({
               </span>
             </span>
           </Link>
-
-          <span aria-hidden className="h-5 w-px shrink-0 bg-border" />
-          <AreaStatusStrip />
         </header>
 
         <div
@@ -141,6 +137,7 @@ export function AppChrome({
             user={viewer}
             theme={theme}
             onThemeChange={setTheme}
+            onManageAreas={onManageAreas}
             onSignOut={signOut}
           />
         </div>
@@ -185,7 +182,6 @@ export function AppChrome({
             label="New thread"
             onClick={onNewThread}
           />
-          <DockAction icon={FolderPlus} label="New area" onClick={onNewArea} />
         </nav>
       </div>
     </TooltipProvider>
