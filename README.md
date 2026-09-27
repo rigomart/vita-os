@@ -4,8 +4,6 @@ A personal life-awareness app. It holds open threads and standalone notes, light
 
 The app is a React web client talking to a Hono API on Cloudflare Workers, with Better Auth for sign-in and D1 for storage.
 
-AI agents: read `AGENTS.md` instead of this file.
-
 ## Repo layout
 
 A bun workspace driven by turbo.
