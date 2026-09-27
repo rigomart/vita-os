@@ -2,7 +2,7 @@
 
 A user with an email and password account signs in from `/sign-in` and lands on the Dashboard. A signed-out visit to any product route redirects to `/sign-in`, and a signed-in visit to `/sign-in` redirects to `/`.
 
-Status: proven on 5e31655 (`bun run verify signin`).
+Status: proven on 1d2885d by an independent cold run (`bun run verify signin`).
 
 ## Sub-features
 

@@ -2,7 +2,7 @@
 
 A signed-in user captures a standalone note from the dock, the `Q` shortcut, or the command palette. After the server confirms, a `Note added` toast shows, the note appears under `No date` → `Notes` on the Dashboard, and it survives a reload.
 
-Status: proven on 5e31655 (dock entry point, body only).
+Status: proven on 1d2885d by an independent cold run (dock entry point, body only).
 
 ## Sub-features
 
@@ -27,10 +27,11 @@ Preconditions:
 
 - **Open dialog.** Run `bun run verify browser -- find role button click --name "New note" --exact`. A dialog with heading `New note`, textbox `Note body`, button `Attention date`, and a disabled `Add` button appears.
 - **Enter body.** Run `bun run verify browser -- find label "Note body" fill "verify note 1727461234"`. `Add` becomes enabled.
-- **Save.** Run `bun run verify browser -- find role button click --name "Add" --exact`, then `bun run verify browser -- wait --text "Note added"`. The toast appears and the dialog closes.
+- **Before shot.** With the body filled and before clicking `Add`, run `bun run verify shot note-before`. The snapshot shows `dialog "New note"` with the text in the field.
+- **Save.** Run `bun run verify browser -- find role button click --name "Add" --exact`, then `bun run verify browser -- wait --text "Note added"`, then `bun run verify shot note-toast`. The wait prints `Note added`, the PNG shows the toast, and the dialog closes. The toast may be missing from `note-toast.aria.txt`. The wait output is the proof.
 - **Persist in UI.** Run `bun run verify browser -- reload`, then `bun run verify browser -- wait --fn "[...document.querySelectorAll('[aria-label=\"Edit note body\"]')].some(el => el.value === 'verify note 1727461234')"`. It prints `true`.
 - **Persist in D1.** Run `bun run verify d1 "SELECT body, state FROM notes"`. A row has the note's body and `state` `open`.
-- **Proof.** Run `bun run verify shot note-before` before saving and `bun run verify shot note-after` after the reload. The after snapshot lists `textbox "Edit note body"` with the note text inside an `article` that also has `Set attention date` and `Mark note done`.
+- **Proof.** Run `bun run verify shot note-after` after the reload. The after snapshot lists `textbox "Edit note body"` with the note text inside an `article` that also has `Set attention date` and `Mark note done`.
 
 ## Gotchas
 

@@ -6,14 +6,14 @@ This directory is the maintained source for verifying Vita OS's user-facing beha
 
 - `bun run verify up` reported `"ok": true` for your instance, and `bun run verify doctor` reports every check `true`.
 - `bun run verify signin` reported `signedInAs` equal to the instance's throwaway email, unless the feature file says to start signed out.
-- The instance's D1 starts empty apart from that user. A fresh `up --purge` cycle restores this.
+- The instance's D1 starts empty apart from that user. Run `bun run verify down --purge`, then `bun run verify up`, to restore it.
 - Never drive an instance this verification run did not start.
 
 ## Driving conventions
 
 - Run browser actions as `bun run verify browser -- <agent-browser args>`.
 - Prefer ARIA roles and accessible names (`find role button click --name "Add" --exact`, `find label "Note body" fill ...`) over CSS selectors or refs from an old snapshot.
-- Use unique text for anything you create (append a timestamp) so a check cannot match leftovers.
+- Use unique text for anything you create (append a timestamp) so a check cannot match leftovers. Generate the timestamp in a separate command (`date +%s`) and paste the literal text into later commands. Inline `$(...)` inside a `bun run verify` command can be refused by command guards.
 - Wait on the specific end state (`wait --text`, `wait --fn`, `wait '<selector>'`). Never use `wait --load networkidle` or bare sleeps as proof.
 
 ## Proof and skip reporting
