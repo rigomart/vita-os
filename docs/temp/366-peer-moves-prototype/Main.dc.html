@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A — Lead line</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..700&amp;family=Raleway:wght@500..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.vt{--surface-1:oklch(0.974 0.002 265);--surface-2:oklch(1 0 0);--surface-3:oklch(0.951 0.004 265);--fg:oklch(0.22 0.012 265);--mfg:oklch(0.53 0.012 265);--border:oklch(0.902 0.005 265);--accent:oklch(0.72 0.14 268);--accent-strong:oklch(0.55 0.16 268);--accent-text:oklch(0.5 0.16 268);--healthy:oklch(0.5 0.13 162);--attention:oklch(0.56 0.13 70);--critical:oklch(0.53 0.19 26);--destructive:oklch(0.53 0.19 26);font-family:'Manrope',sans-serif;color:var(--fg);background:var(--surface-1)}
+.vt.dark{--surface-1:oklch(0.168 0.005 265);--surface-2:oklch(0.207 0.007 265);--surface-3:oklch(0.262 0.009 265);--fg:oklch(0.952 0.003 265);--mfg:oklch(0.71 0.011 265);--border:oklch(0.93 0.008 265 / 13%);--accent:oklch(0.75 0.14 268);--accent-strong:oklch(0.66 0.15 268);--accent-text:oklch(0.74 0.13 268);--healthy:oklch(0.74 0.14 162);--attention:oklch(0.8 0.13 78);--critical:oklch(0.7 0.17 26);--destructive:oklch(0.68 0.17 26)}
+.vt *{box-sizing:border-box}
+.vt button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer}
+.vt input{font:inherit;color:inherit}
+.vt ul{list-style:none;margin:0;padding:0}
+.vt p,.vt h1,.vt h2,.vt h3{margin:0}
+svg.i{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+svg.s12{width:12px;height:12px}
+svg.s16{width:16px;height:16px}
+.ag{display:inline-flex;flex-shrink:0}
+.ag.healthy{color:var(--healthy)}.ag.attention{color:var(--attention)}.ag.critical{color:var(--critical)}
+.top{height:48px;display:flex;align-items:center;gap:10px;padding:0 24px;border-bottom:1px solid var(--border);font-size:13px}
+.brand{font-family:'Raleway',sans-serif;font-weight:700;letter-spacing:.01em}
+.crumb{color:var(--mfg)}
+.lh{display:flex;align-items:baseline;gap:8px;border-bottom:2px solid color-mix(in oklch,var(--border) 70%,transparent);padding-bottom:6px;margin-bottom:6px}
+.lh .lt{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in oklch,var(--fg) 70%,transparent)}
+.lh .lc{font-size:16px;line-height:1;font-weight:600;font-variant-numeric:tabular-nums;color:color-mix(in oklch,var(--mfg) 70%,transparent)}
+.lh.urgent{border-color:color-mix(in oklch,var(--attention) 60%,transparent)}
+.lh.urgent .lt{color:var(--attention)}
+.lh.urgent .lc.hot{color:var(--attention)}
+.lh.muted{border-color:transparent}
+.lh.muted .lt{color:var(--mfg)}
+.rt{display:flex;align-items:baseline;gap:6px;padding-bottom:4px;font-size:11px;font-weight:500;color:color-mix(in oklch,var(--mfg) 70%,transparent)}
+.rt span{color:color-mix(in oklch,var(--mfg) 45%,transparent);font-variant-numeric:tabular-nums}
+.col.aside{border-left:1px solid color-mix(in oklch,var(--border) 50%,transparent);padding-left:20px;margin-left:-4px}
+.nothing{padding:8px 4px;font-size:12px;color:color-mix(in oklch,var(--mfg) 50%,transparent)}
+.card{position:relative;border-radius:8px;padding:8px 10px;transition:background-color .15s}
+.card:hover{background:color-mix(in oklch,var(--surface-3) 60%,transparent)}
+.card.late{background:color-mix(in oklch,var(--attention) 6%,transparent)}
+.card.sel{background:var(--surface-3);box-shadow:inset 0 0 0 1px var(--border)}
+.hit{position:absolute;inset:0;border-radius:8px;z-index:1}
+.hit:focus-visible{outline:2px solid color-mix(in oklch,var(--accent-strong) 45%,transparent)}
+.cbody{position:relative;pointer-events:none}
+.ctl{pointer-events:auto;position:relative;z-index:2}
+.lead{font-size:14px;line-height:1.375;font-weight:500;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lead.title{font-weight:500;color:color-mix(in oklch,var(--fg) 88%,transparent)}
+.lead.none{font-weight:400;color:color-mix(in oklch,var(--mfg) 45%,transparent)}
+.ftag{width:11px;height:11px;margin-right:5px;vertical-align:-1px;color:var(--accent-strong);stroke-width:2.5}
+.meta{margin-top:4px;display:flex;align-items:center;gap:6px;font-size:12px;line-height:1.375;color:color-mix(in oklch,var(--mfg) 80%,transparent)}
+.trunc{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quiet{flex-shrink:0;font-variant-numeric:tabular-nums;color:color-mix(in oklch,var(--mfg) 60%,transparent)}
+.count{display:inline-flex;align-items:center;gap:4px;flex-shrink:0}
+.right{margin-left:auto;display:flex;align-items:center;gap:4px;padding-left:4px;flex-shrink:0}
+.reveal{opacity:0;transition:opacity .15s}
+.card:hover .reveal,.card:focus-within .reveal{opacity:1}
+.cbtn{width:24px;height:24px;margin:-4px 0;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;color:var(--mfg);transition:background-color .15s,color .15s,transform .1s}
+.cbtn:hover{background:var(--surface-3);color:var(--fg)}
+.cbtn:active{transform:scale(.9)}
+.cbtn.done{background:var(--surface-3)}
+.cbtn.done:hover{background:color-mix(in oklch,var(--healthy) 15%,transparent);color:var(--healthy)}
+.fu{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 4px;margin:-2px 0;font-variant-numeric:tabular-nums}
+.fu:hover{background:var(--surface-3)}
+.fu.late{color:var(--attention)}.fu.today{color:var(--fg)}.fu.soon{color:color-mix(in oklch,var(--fg) 60%,transparent)}
+.pane{width:460px;flex-shrink:0;background:var(--surface-2);border-left:1px solid var(--border);padding:22px 24px;display:flex;flex-direction:column;gap:18px;position:relative}
+.phead{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mfg)}
+.chip{font-size:11px;font-weight:500;padding:1px 8px;border-radius:999px;background:var(--surface-3);color:var(--mfg)}
+.close{position:absolute;top:16px;right:16px;width:30px;height:30px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3);color:var(--mfg)}
+.ptitle{font-family:'Raleway',sans-serif;font-size:21px;font-weight:650;letter-spacing:-.005em;line-height:1.25;margin-top:10px}
+.pdef{font-size:13px;line-height:1.5;color:var(--mfg);margin-top:4px}
+.mhead{display:flex;align-items:center;gap:8px;height:28px}
+.mlbl{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in oklch,var(--mfg) 85%,transparent)}
+.mcnt{font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;color:color-mix(in oklch,var(--mfg) 60%,transparent)}
+.rule{flex:1;height:1px;background:color-mix(in oklch,var(--border) 60%,transparent)}
+.fus{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 6px;border-radius:6px;font-size:12px;color:var(--mfg)}
+.fus:hover{background:var(--surface-3)}
+.fus .late{color:var(--attention)}.fus .today{color:var(--accent-text)}.fus .soon{color:var(--mfg)}
+.mv{display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 6px 4px 8px;border-radius:8px;border:1px solid transparent;border-left-width:2px;font-size:14px;line-height:1.4;color:color-mix(in oklch,var(--fg) 88%,transparent);transition:background-color .15s,border-color .15s}
+.mv:hover{background:color-mix(in oklch,var(--surface-3) 50%,transparent)}
+.mv.focused{border-color:var(--border);border-left-color:var(--accent);background:color-mix(in oklch,var(--surface-3) 55%,transparent);color:var(--fg);font-weight:500}
+.mtext{flex:1;min-width:0}
+.ring{width:22px;height:22px;flex-shrink:0;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;border:1px solid color-mix(in oklch,var(--healthy) 40%,transparent);color:transparent;transition:color .15s,background-color .15s}
+.ring:hover,.ring:focus-visible{color:var(--healthy);background:color-mix(in oklch,var(--healthy) 10%,transparent)}
+.acts{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.ab{width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:color-mix(in oklch,var(--mfg) 60%,transparent);transition:opacity .15s,color .15s,background-color .15s}
+.ab:hover{background:var(--surface-3);color:var(--fg)}
+.ab.rm:hover{color:var(--destructive)}
+.mv .ab{opacity:0}
+.mv:hover .ab,.mv:focus-within .ab{opacity:1}
+.mv .ab.fb.on{opacity:1;color:var(--accent-strong)}
+.addrow{display:flex;align-items:center;gap:8px;min-height:36px;padding:0 8px 0 11px;color:color-mix(in oklch,var(--mfg) 55%,transparent)}
+.addin{flex:1;min-width:0;height:30px;border:1px solid transparent;border-radius:6px;background:transparent;padding:0 2px;font-size:14px;outline:none}
+.addin::placeholder{color:color-mix(in oklch,var(--mfg) 65%,transparent)}
+.addin:focus{border-color:color-mix(in oklch,var(--border) 70%,transparent);background:color-mix(in oklch,var(--surface-3) 35%,transparent);padding:0 6px}
+.hint{font-size:12px;line-height:1.45;color:color-mix(in oklch,var(--mfg) 80%,transparent);padding:2px 11px 0}
+.tabs{display:flex;gap:18px;border-bottom:1px solid var(--border);font-size:13px}
+.tab{padding:6px 0 8px;color:var(--mfg)}
+.tab.on{color:var(--fg);font-weight:600;box-shadow:inset 0 -2px 0 var(--fg)}
+.entry{display:flex;gap:10px;padding:7px 0;font-size:12.5px;line-height:1.4}
+.entry .dot{width:7px;height:7px;border-radius:999px;margin-top:5px;flex-shrink:0;background:color-mix(in oklch,var(--mfg) 35%,transparent)}
+.entry.fresh .dot{background:var(--healthy)}
+.entry.fresh{animation:rise .35s ease-out}
+.elabel{font-weight:600}
+.etext{color:var(--mfg)}
+.ewhen{margin-left:auto;flex-shrink:0;color:color-mix(in oklch,var(--mfg) 60%,transparent);font-variant-numeric:tabular-nums}
+@keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div class="{{rootCls}}" style="width: 1280px; height: 820px; display: flex; flex-direction: column; overflow: hidden">
+  <header class="top">
+    <svg class="i s16" viewBox="0 0 24 24" style="color: var(--accent-strong)"><path d="M12 2 21 7v10l-9 5-9-5V7z"></path></svg>
+    <span class="brand">Vita OS</span>
+    <span class="crumb">/ Dashboard</span>
+    <span style="margin-left: auto; color: var(--mfg)">Saturday, Sep 26</span>
+  </header>
+  <div style="flex: 1; min-height: 0; display: flex">
+    <main style="flex: 1; min-width: 0; padding: 22px 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-content: start">
+      <sc-for list="{{cols}}" as="col" hint-placeholder-count="3">
+        <section class="{{col.colCls}}" aria-label="{{col.title}}">
+          <h2 class="{{col.headCls}}"><span class="lt">{{col.title}}</span><span class="{{col.countCls}}">{{col.count}}</span></h2>
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <sc-for list="{{col.runs}}" as="run" hint-placeholder-count="1">
+              <div>
+                <sc-if value="{{run.hasTitle}}" hint-placeholder-val="{{false}}">
+                  <h3 class="rt">{{run.title}} <span>{{run.n}}</span></h3>
+                </sc-if>
+                <sc-if value="{{run.empty}}" hint-placeholder-val="{{false}}">
+                  <p class="nothing">Nothing here.</p>
+                </sc-if>
+                <ul style="display: flex; flex-direction: column; gap: 4px">
+                  <sc-for list="{{run.items}}" as="c" hint-placeholder-count="2">
+                    <li class="{{c.cls}}">
+                      <button class="hit" onClick="{{c.open}}" aria-label="{{c.ariaOpen}}"></button>
+                      <div class="cbody">
+                        <sc-if value="{{c.hasLead}}" hint-placeholder-val="{{true}}">
+                          <p class="lead"><sc-if value="{{c.leadFocused}}" hint-placeholder-val="{{false}}"><svg class="i ftag" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3.5"></circle></svg></sc-if>{{c.leadText}}</p>
+                        </sc-if>
+                        <sc-if value="{{c.many}}" hint-placeholder-val="{{false}}">
+                          <p class="lead title">{{c.title}}</p>
+                        </sc-if>
+                        <sc-if value="{{c.empty}}" hint-placeholder-val="{{false}}">
+                          <p class="lead none">—</p>
+                        </sc-if>
+                        <div class="meta">
+                          <span class="{{c.areaCls}}" title="{{c.areaName}}">
+                            <sc-if value="{{c.iHeart}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></sc-if>
+                            <sc-if value="{{c.iFile}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></sc-if>
+                            <sc-if value="{{c.iHome}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></sc-if>
+                            <sc-if value="{{c.iWallet}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg></sc-if>
+                            <sc-if value="{{c.iUsers}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></sc-if>
+                          </span>
+                          <sc-if value="{{c.titleInMeta}}" hint-placeholder-val="{{true}}"><span class="trunc">{{c.title}}</span></sc-if>
+                          <sc-if value="{{c.hasOthers}}" hint-placeholder-val="{{false}}"><span class="quiet" title="{{c.othersText}}">+{{c.others}}</span></sc-if>
+                          <sc-if value="{{c.many}}" hint-placeholder-val="{{false}}">
+                            <span class="count"><svg class="i s12" viewBox="0 0 24 24"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg>{{c.moveCountLabel}}</span>
+                          </sc-if>
+                          <span class="right">
+                            <sc-if value="{{c.hasFollow}}" hint-placeholder-val="{{false}}">
+                              <button class="{{c.followCls}} ctl" aria-label="Change Follow-up"><svg class="i s12" viewBox="0 0 24 24"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"></path><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h5"></path><path d="M17.5 17.5 16 16.3V14"></path><circle cx="16" cy="16" r="6"></circle></svg>{{c.followLabel}}</button>
+                            </sc-if>
+                            <sc-if value="{{c.noFollow}}" hint-placeholder-val="{{true}}">
+                              <button class="cbtn reveal ctl" aria-label="Set Follow-up" title="Set Follow-up"><svg class="i" viewBox="0 0 24 24"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"></path><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h5"></path><path d="M17.5 17.5 16 16.3V14"></path><circle cx="16" cy="16" r="6"></circle></svg></button>
+                            </sc-if>
+                            <sc-if value="{{c.hasLead}}" hint-placeholder-val="{{true}}">
+                              <button class="cbtn done reveal ctl" onClick="{{c.complete}}" aria-label="{{c.completeLabel}}" title="{{c.completeLabel}}"><svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg></button>
+                            </sc-if>
+                          </span>
+                        </div>
+                      </div>
+                    </li>
+                  </sc-for>
+                </ul>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </sc-for>
+    </main>
+
+    <aside class="pane" aria-label="Thread detail">
+      <button class="close" aria-label="Close thread"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+      <div>
+        <div class="phead">
+          <span class="{{p.areaCls}}">
+            <sc-if value="{{p.iHeart}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg></sc-if>
+            <sc-if value="{{p.iFile}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></sc-if>
+            <sc-if value="{{p.iHome}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></sc-if>
+            <sc-if value="{{p.iWallet}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg></sc-if>
+            <sc-if value="{{p.iUsers}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></sc-if>
+          </span>
+          <span>{{p.areaName}}</span>
+          <span class="chip">Open</span>
+        </div>
+        <h2 class="ptitle">{{p.title}}</h2>
+        <p class="pdef">{{p.definition}}</p>
+      </div>
+
+      <section aria-label="Moves">
+        <div class="mhead">
+          <span class="mlbl">Moves</span>
+          <sc-if value="{{p.hasMoves}}" hint-placeholder-val="{{true}}"><span class="mcnt">{{p.count}}</span></sc-if>
+          <span class="rule"></span>
+          <button class="fus" aria-label="Follow-up">
+            <svg class="i s12" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+            <span class="{{p.followCls}}">{{p.followText}}</span>
+          </button>
+        </div>
+        <ul aria-label="Moves" style="display: flex; flex-direction: column; gap: 2px; margin-top: 4px">
+          <sc-for list="{{p.moves}}" as="m" hint-placeholder-count="3">
+            <li class="{{m.rowCls}}">
+              <button class="ring" onClick="{{m.complete}}" aria-label="Complete move" title="Complete"><svg class="i s12" viewBox="0 0 24 24" style="stroke-width: 2.5"><path d="M20 6 9 17l-5-5"></path></svg></button>
+              <span class="mtext">{{m.text}}</span>
+              <span class="acts">
+                <button class="{{m.focusCls}}" onClick="{{m.toggle}}" aria-pressed="{{m.focused}}" aria-label="{{m.focusLabel}}" title="{{m.focusLabel}}"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3.5"></circle></svg></button>
+                <button class="ab rm" onClick="{{m.remove}}" aria-label="Remove move" title="Remove"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+              </span>
+            </li>
+          </sc-for>
+        </ul>
+        <div class="addrow">
+          <svg class="i s12" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+          <input class="addin" type="text" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onAddKey}}" onBlur="{{onAdd}}" placeholder="Add a move…" aria-label="Add a move">
+        </div>
+        <sc-if value="{{p.hasHint}}" hint-placeholder-val="{{false}}"><p class="hint">{{p.hint}}</p></sc-if>
+      </section>
+
+      <section aria-label="Thread body" style="display: flex; flex-direction: column; min-height: 0">
+        <div class="tabs"><span class="tab">Notes</span><span class="tab on">Activity</span></div>
+        <ul style="margin-top: 6px">
+          <sc-for list="{{p.log}}" as="e" hint-placeholder-count="2">
+            <li class="{{e.cls}}">
+              <span class="dot"></span>
+              <span style="min-width: 0"><span class="elabel">{{e.label}}</span><sc-if value="{{e.hasText}}" hint-placeholder-val="{{true}}"><span class="etext"> · {{e.text}}</span></sc-if></span>
+              <span class="ewhen">{{e.when}}</span>
+            </li>
+          </sc-for>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":820}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { threads: this.seed(), sel: "t2", draft: "", seq: 1 };
+  }
+
+  seed() {
+    const mv = (id, text) => ({ id, text });
+    return [
+      { id: "t1", area: "health", title: "Knee rehab", definition: "Back to easy runs without pain by November.", follow: -2, focusId: "m1",
+        moves: [mv("m1", "Call the physio to move Thursday’s session"), mv("m2", "Order resistance bands"), mv("m3", "Log pain after each run for a week")],
+        log: [{ label: "Next Move completed", text: "Book the first physio assessment", when: "Sep 14" }, { label: "Thread opened", text: "", when: "Sep 9" }] },
+      { id: "t2", area: "admin", title: "Passport renewal", definition: "Renew before the Lisbon trip in November.", follow: 0, focusId: null,
+        moves: [mv("m4", "Book a photo appointment"), mv("m5", "Find the old passport"), mv("m6", "Fill in the renewal form online")],
+        log: [{ label: "Follow-up set", text: "Sep 26", when: "Sep 19" }, { label: "Thread opened", text: "", when: "Sep 19" }] },
+      { id: "t3", area: "home", title: "Deposit from the old flat", definition: "Get the €1,200 deposit back.", follow: 4, focusId: null,
+        moves: [mv("m7", "Email the move-out photos to the landlord")],
+        log: [{ label: "Thread opened", text: "", when: "Sep 12" }] },
+      { id: "t4", area: "money", title: "Car insurance renewal", definition: "Compare quotes before the policy rolls over.", follow: 5, focusId: null,
+        moves: [], log: [{ label: "Thread opened", text: "", when: "Sep 2" }] },
+      { id: "t5", area: "money", title: "Q3 VAT return", definition: "File the quarterly return on time.", follow: null, focusId: "m8",
+        moves: [mv("m8", "Export Q3 invoices"), mv("m9", "Ask the accountant about the home-office deduction")],
+        log: [{ label: "Thread opened", text: "", when: "Sep 1" }] },
+      { id: "t6", area: "people", title: "Sofia’s birthday", definition: "A small dinner, nothing big.", follow: null, focusId: null,
+        moves: [mv("m10", "Pick a restaurant"), mv("m11", "Ask Leo about the gift"), mv("m12", "Take the Saturday afternoon off"), mv("m13", "Make the guest list")],
+        log: [{ label: "Thread opened", text: "", when: "Sep 21" }] },
+      { id: "t7", area: "home", title: "Garden irrigation", definition: "Stop the tomatoes drying out when we travel.", follow: null, focusId: null,
+        moves: [], log: [{ label: "Thread opened", text: "", when: "Aug 30" }] }
+    ];
+  }
+
+  edit(tid, fn) {
+    this.setState((s) => ({ threads: s.threads.map((t) => (t.id === tid ? fn(t) : t)) }));
+  }
+
+  // Completing any Move removes it and logs it; completing the focused one leaves the Thread unfocused.
+  complete(tid, mid) {
+    this.edit(tid, (t) => {
+      const m = t.moves.find((x) => x.id === mid);
+      if (!m) return t;
+      return { ...t, moves: t.moves.filter((x) => x.id !== mid), focusId: t.focusId === mid ? null : t.focusId,
+        log: [{ label: "Move completed", text: m.text, when: "Just now", fresh: true }].concat(t.log) };
+    });
+  }
+
+  toggleFocus(tid, mid) {
+    this.edit(tid, (t) => ({ ...t, focusId: t.focusId === mid ? null : mid }));
+  }
+
+  remove(tid, mid) {
+    this.edit(tid, (t) => ({ ...t, moves: t.moves.filter((x) => x.id !== mid), focusId: t.focusId === mid ? null : t.focusId }));
+  }
+
+  add(tid) {
+    const text = this.state.draft.trim();
+    if (!text) return;
+    const id = "n" + this.state.seq;
+    this.setState((s) => ({ draft: "", seq: s.seq + 1, threads: s.threads.map((t) => (t.id === tid ? { ...t, moves: t.moves.concat([{ id, text }]) } : t)) }));
+  }
+
+  area(key) {
+    const areas = {
+      health: { name: "Health", icon: "heart", tone: "attention" },
+      admin: { name: "Admin", icon: "file", tone: "healthy" },
+      home: { name: "Home", icon: "home", tone: "healthy" },
+      money: { name: "Money", icon: "wallet", tone: "critical" },
+      people: { name: "People", icon: "users", tone: "healthy" }
+    };
+    const a = areas[key];
+    return { areaName: a.name, areaCls: "ag " + a.tone, iHeart: a.icon === "heart", iFile: a.icon === "file", iHome: a.icon === "home", iWallet: a.icon === "wallet", iUsers: a.icon === "users" };
+  }
+
+  followTone(d) {
+    return d < 0 ? "late" : d === 0 ? "today" : "soon";
+  }
+
+  followToken(d) {
+    const days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
+    if (d < 0) return "−" + -d + "d";
+    if (d === 0) return "Today";
+    return days[d % 7];
+  }
+
+  followDate(d) {
+    const day = 26 + d;
+    return day > 30 ? "Oct " + (day - 30) : "Sep " + day;
+  }
+
+  // The card's lead-line rules from the spec.
+  card(t) {
+    const focused = t.moves.find((m) => m.id === t.focusId) || null;
+    const lead = focused || (t.moves.length === 1 ? t.moves[0] : null);
+    const others = lead ? t.moves.length - 1 : 0;
+    const many = !lead && t.moves.length > 1;
+    const hasFollow = t.follow !== null;
+    const late = hasFollow && t.follow < 0;
+    return {
+      ...this.area(t.area),
+      id: t.id,
+      title: t.title,
+      ariaOpen: "Open " + t.title,
+      hasLead: !!lead,
+      leadText: lead ? lead.text : "",
+      leadFocused: !!focused,
+      titleInMeta: !many,
+      others,
+      hasOthers: others > 0,
+      othersText: others === 1 ? "1 more move" : others + " more moves",
+      many,
+      moveCount: t.moves.length,
+      moveCountLabel: t.moves.length + " moves",
+      empty: t.moves.length === 0,
+      hasFollow,
+      noFollow: !hasFollow,
+      followLabel: hasFollow ? this.followToken(t.follow) : "",
+      followCls: "fu " + (hasFollow ? this.followTone(t.follow) : ""),
+      cls: "card" + (late ? " late" : "") + (t.id === this.state.sel ? " sel" : ""),
+      completeLabel: lead ? "Complete “" + lead.text + "”" : "",
+      pips: t.moves.slice(0, 6).map((m) => ({ cls: "pip" + (m.id === t.focusId ? " on" : "") })),
+      pipMore: t.moves.length > 6,
+      stackCls: "stackwrap s" + Math.min(many ? t.moves.length - 1 : others, 2),
+      open: () => this.setState({ sel: t.id, draft: "" }),
+      complete: () => { if (lead) this.complete(t.id, lead.id); }
+    };
+  }
+
+  pane(t) {
+    const focused = t.moves.find((m) => m.id === t.focusId) || null;
+    const n = t.moves.length;
+    let hint = "";
+    if (n === 0) hint = "No Moves. The Thread stays open until you resolve it.";
+    else if (!focused && n === 1) hint = "Not focused, but the only Move still leads the card.";
+    else if (!focused) hint = "Nothing focused, so the card leads with the Thread title and “" + n + " moves”.";
+    const hasFollow = t.follow !== null;
+    return {
+      ...this.area(t.area),
+      title: t.title,
+      definition: t.definition,
+      count: n,
+      hasMoves: n > 0,
+      hint,
+      hasHint: hint !== "",
+      noneFocused: !focused,
+      showNone: n > 0,
+      noneCls: "mv none" + (focused ? "" : " focused"),
+      clearFocus: () => this.edit(t.id, (x) => ({ ...x, focusId: null })),
+      followText: hasFollow ? this.followDate(t.follow) : "Add a follow-up…",
+      followCls: hasFollow ? this.followTone(t.follow) : "soon",
+      card: this.card(t),
+      moves: t.moves.map((m) => {
+        const on = m.id === t.focusId;
+        return {
+          id: m.id,
+          text: m.text,
+          focused: on,
+          rowCls: "mv" + (on ? " focused" : ""),
+          focusCls: "ab fb" + (on ? " on" : ""),
+          radioCls: "radio" + (on ? " on" : ""),
+          tileCls: "tile" + (on ? " focused" : ""),
+          focusLabel: on ? "Unfocus this move" : "Focus this move",
+          toggle: () => this.toggleFocus(t.id, m.id),
+          complete: () => this.complete(t.id, m.id),
+          remove: () => this.remove(t.id, m.id)
+        };
+      }),
+      log: t.log.map((e) => ({ ...e, hasText: !!e.text, cls: "entry" + (e.fresh ? " fresh" : "") }))
+    };
+  }
+
+  renderVals() {
+    const ts = this.state.threads;
+    const sel = ts.find((t) => t.id === this.state.sel) || ts[0];
+    const toCard = (t) => this.card(t);
+    const now = ts.filter((t) => t.follow !== null && t.follow <= 0).map(toCard);
+    const week = ts.filter((t) => t.follow !== null && t.follow > 0).map(toCard);
+    const ready = ts.filter((t) => t.follow === null && t.moves.length > 0).map(toCard);
+    const open = ts.filter((t) => t.follow === null && t.moves.length === 0).map(toCard);
+    const single = (items) => [{ hasTitle: false, title: "", n: 0, items, empty: items.length === 0 }];
+    const runs = [
+      { hasTitle: true, title: "Ready to move", n: ready.length, items: ready, empty: false },
+      { hasTitle: true, title: "Open", n: open.length, items: open, empty: false }
+    ].filter((r) => r.items.length > 0);
+    return {
+      rootCls: "vt" + (this.props.dark ? " dark" : ""),
+      cols: [
+        { title: "Now", colCls: "col", headCls: "lh urgent", count: now.length, countCls: "lc" + (now.length ? " hot" : ""), runs: single(now) },
+        { title: "This week", colCls: "col", headCls: "lh", count: week.length, countCls: "lc", runs: single(week) },
+        { title: "No date", colCls: "col aside", headCls: "lh muted", count: ready.length + open.length, countCls: "lc", runs }
+      ],
+      p: this.pane(sel),
+      draft: this.state.draft,
+      onDraft: (e) => this.setState({ draft: e.target.value }),
+      onAdd: () => this.add(sel.id),
+      onAddKey: (e) => {
+        if (e.key === "Enter") { e.preventDefault(); this.add(sel.id); }
+        if (e.key === "Escape") this.setState({ draft: "" });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
