@@ -1,27 +1,33 @@
-import type { ThreadId } from "@vita-os/contracts";
+import type { MoveId, ThreadId } from "@vita-os/contracts";
 
 import type { Routes } from "../../platform/http/context";
 
 import { readJsonBody, reply, scope } from "../../platform/http/context";
 import { invalidRequest, refuse } from "../../platform/http/errors";
-import { invalidNextMoveCompletion } from "./errors";
 import {
-  completeNextMove,
+  addMove,
+  completeMove,
   createThread,
+  editMove,
+  focusMove,
   getThreadDetail,
   listOpenThreads,
+  removeMove,
   removeThread,
-  replaceUpNext,
   updateThread,
 } from "./operations";
 import {
-  decodeCompleteNextMove,
+  decodeAddMove,
   decodeCreateThread,
+  decodeEditMove,
+  decodeFocusMove,
+  decodeMoveRevision,
   decodeUpdateThread,
-  decodeUpNext,
 } from "./requests";
 
-/** Threads, their Up Next line, and their Next Move. */
+const invalidMoveCommand = () => refuse(invalidRequest("Invalid Move change."));
+
+/** Threads and their Moves. */
 export const threadRoutes: Routes = (app) => {
   app.get("/v1/threads", async (context) =>
     reply(context, await listOpenThreads(scope(context))),
@@ -65,26 +71,63 @@ export const threadRoutes: Routes = (app) => {
     ),
   );
 
-  app.put("/v1/threads/:threadId/up-next", async (context) => {
+  app.post("/v1/threads/:threadId/moves", async (context) => {
     const input =
-      decodeUpNext(await readJsonBody(context)) ??
-      refuse(invalidRequest("Invalid Up Next."));
+      decodeAddMove(await readJsonBody(context)) ?? invalidMoveCommand();
     return reply(
       context,
-      await replaceUpNext(scope(context), {
+      await addMove(scope(context), {
         threadId: context.req.param("threadId") as ThreadId,
-        moves: input.moves,
+        ...input,
       }),
     );
   });
 
-  app.post("/v1/threads/:threadId/complete-next-move", async (context) => {
+  app.patch("/v1/threads/:threadId/moves/:moveId", async (context) => {
     const input =
-      decodeCompleteNextMove(await readJsonBody(context)) ??
-      refuse(invalidNextMoveCompletion);
+      decodeEditMove(await readJsonBody(context)) ?? invalidMoveCommand();
     return reply(
       context,
-      await completeNextMove(scope(context), {
+      await editMove(scope(context), {
+        threadId: context.req.param("threadId") as ThreadId,
+        moveId: context.req.param("moveId") as MoveId,
+        ...input,
+      }),
+    );
+  });
+
+  app.delete("/v1/threads/:threadId/moves/:moveId", async (context) => {
+    const input =
+      decodeMoveRevision(await readJsonBody(context)) ?? invalidMoveCommand();
+    return reply(
+      context,
+      await removeMove(scope(context), {
+        threadId: context.req.param("threadId") as ThreadId,
+        moveId: context.req.param("moveId") as MoveId,
+        ...input,
+      }),
+    );
+  });
+
+  app.post("/v1/threads/:threadId/moves/:moveId/complete", async (context) => {
+    const input =
+      decodeMoveRevision(await readJsonBody(context)) ?? invalidMoveCommand();
+    return reply(
+      context,
+      await completeMove(scope(context), {
+        threadId: context.req.param("threadId") as ThreadId,
+        moveId: context.req.param("moveId") as MoveId,
+        ...input,
+      }),
+    );
+  });
+
+  app.put("/v1/threads/:threadId/focus", async (context) => {
+    const input =
+      decodeFocusMove(await readJsonBody(context)) ?? invalidMoveCommand();
+    return reply(
+      context,
+      await focusMove(scope(context), {
         threadId: context.req.param("threadId") as ThreadId,
         ...input,
       }),

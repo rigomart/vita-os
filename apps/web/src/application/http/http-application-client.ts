@@ -9,7 +9,6 @@ import {
   decodeActivityLogPage,
   decodeAreaList,
   decodeAreaSummary,
-  decodeCompletion,
   decodeCount,
   decodeNote,
   decodeNoteList,
@@ -230,20 +229,33 @@ export function createHttpApplicationClient({
         undefined,
         decodeAcknowledgement,
       ),
-    replaceUpNext: (input) =>
+
+    /* Moves */
+    addMove: ({ threadId, ...move }) =>
+      send("POST", path("threads", threadId, "moves"), move, decodeThread),
+    editMove: ({ threadId, moveId, ...change }) =>
       send(
-        "PUT",
-        `${path("threads", input.threadId)}/up-next`,
-        { moves: input.moves },
+        "PATCH",
+        path("threads", threadId, "moves", moveId),
+        change,
         decodeThread,
       ),
-    completeNextMove: ({ threadId, ...expectation }) =>
+    removeMove: ({ threadId, moveId, expectedRevision }) =>
+      send(
+        "DELETE",
+        path("threads", threadId, "moves", moveId),
+        { expectedRevision },
+        decodeThread,
+      ),
+    completeMove: ({ threadId, moveId, expectedRevision }) =>
       send(
         "POST",
-        `${path("threads", threadId)}/complete-next-move`,
-        expectation,
-        decodeCompletion,
+        path("threads", threadId, "moves", moveId, "complete"),
+        { expectedRevision },
+        decodeThread,
       ),
+    focusMove: ({ threadId, ...focus }) =>
+      send("PUT", path("threads", threadId, "focus"), focus, decodeThread),
 
     /* Activity Log */
     getThreadActivityPage: ({ threadId, ...page }) =>

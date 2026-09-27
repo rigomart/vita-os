@@ -1,4 +1,4 @@
-import type { ApplicationClient } from "@vita-os/contracts";
+import type { ApplicationClient, MoveId } from "@vita-os/contracts";
 
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -158,38 +158,59 @@ describe("Threads through the HTTP client", () => {
     );
     expect(thread).toMatchObject({ state: "open", order: 0 });
 
-    const withMove = await value(
-      client.updateThread({ threadId: thread._id, nextMove: "Call clinic" }),
-    );
-    expect(withMove.nextMove).toBe("Call clinic");
-
-    const lined = await value(
-      client.replaceUpNext({
+    const callClinic = "move-call-clinic" as MoveId;
+    const bookSlot = "move-book-slot" as MoveId;
+    const one = await value(
+      client.addMove({
         threadId: thread._id,
-        moves: ["Book appointment", "Collect results"],
+        moveId: callClinic,
+        text: "Call clinic",
+        expectedRevision: thread.revision,
       }),
     );
-    expect(lined.upNext).toEqual(["Book appointment", "Collect results"]);
-
-    const detail = await value(client.getThreadDetail({ slug: thread.slug }));
-    await expect(
-      client.completeNextMove({
+    const two = await value(
+      client.addMove({
         threadId: thread._id,
-        expectedNextMove: "Call clinic",
-        expectedRevision: detail.thread.revision,
+        moveId: bookSlot,
+        text: "Book appointment",
+        expectedRevision: one.revision,
       }),
-    ).resolves.toEqual({ ok: true, value: { status: "completed" } });
+    );
+    const focused = await value(
+      client.focusMove({
+        threadId: thread._id,
+        moveId: callClinic,
+        expectedRevision: two.revision,
+      }),
+    );
+    expect(focused.focusedMoveId).toBe(callClinic);
 
-    const promoted = await value(client.getThreadDetail({ slug: thread.slug }));
-    expect(promoted.thread.nextMove).toBe("Book appointment");
-    expect(promoted.thread.upNext).toEqual(["Collect results"]);
+    const completed = await value(
+      client.completeMove({
+        threadId: thread._id,
+        moveId: callClinic,
+        expectedRevision: focused.revision,
+      }),
+    );
+    expect(completed.moves).toEqual([
+      { _id: bookSlot, text: "Book appointment" },
+    ]);
+    expect(completed).not.toHaveProperty("focusedMoveId");
+
+    const removed = await value(
+      client.removeMove({
+        threadId: thread._id,
+        moveId: bookSlot,
+        expectedRevision: completed.revision,
+      }),
+    );
+    expect(removed).not.toHaveProperty("moves");
 
     const activity = await value(
       client.getThreadActivityPage({ threadId: thread._id, limit: 20 }),
     );
     expect(activity.entries.map((entry) => entry.content)).toEqual([
-      'Completed "Call clinic" — next move set to "Book appointment"',
-      'Next move set to "Call clinic"',
+      'Completed "Call clinic"',
     ]);
 
     const resolved = await value(
@@ -210,8 +231,8 @@ describe("Threads through the HTTP client", () => {
     ).resolves.toEqual({ ok: true, value: { acknowledged: true } });
   });
 
-  it("reports an Up Next write on a resolved Thread as a conflict", async () => {
-    const client = clientFor(await createSession("client-up-next-conflict"));
+  it("reports a Move command against a stale Thread as a conflict", async () => {
+    const client = clientFor(await createSession("client-move-conflict"));
     const area = await value(
       client.createArea({
         name: "Health",
@@ -222,16 +243,21 @@ describe("Threads through the HTTP client", () => {
       client.createThread({ title: "Book checkup", areaId: area._id }),
     );
     await value(
-      client.updateThread({ threadId: thread._id, state: "resolved" }),
+      client.updateThread({ threadId: thread._id, title: "Book a checkup" }),
     );
 
     await expect(
-      client.replaceUpNext({ threadId: thread._id, moves: ["Too late"] }),
+      client.addMove({
+        threadId: thread._id,
+        moveId: "move-too-late" as MoveId,
+        text: "Too late",
+        expectedRevision: thread.revision,
+      }),
     ).resolves.toEqual({
       ok: false,
       error: {
         code: "conflict",
-        message: "Cannot line up moves on a resolved thread",
+        message: "The Thread's Moves have changed.",
         retryable: false,
       },
     });

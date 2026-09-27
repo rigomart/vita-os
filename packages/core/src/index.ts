@@ -30,8 +30,20 @@ export {
 } from "./attention";
 export { clearedToAbsent } from "./clearable";
 export { newRecordId } from "./record-id";
-export * from "./complete-next-move";
 export { ConflictError, ValidationError } from "./errors";
+export {
+  decideAddMove,
+  decideCompleteMove,
+  decideEditMove,
+  decideFocusMove,
+  decideRemoveMove,
+  hasMoves,
+  leadMove,
+  requireMoveId,
+  requireMoveText,
+  requireOpenForMoves,
+  type MoveState,
+} from "./moves";
 export {
   generateSlug,
   RESERVED_AREA_SLUGS,
@@ -43,15 +55,8 @@ export {
   buildThreadLifecyclePatch,
   buildThreadPatchLogEntries,
   decideThreadUpdate,
-  fillNextMoveFromUpNext,
   sanitizeThreadPatch,
   type ThreadChangeState,
   type ThreadPatch,
   type ThreadUpdateDecision,
 } from "./thread-changes";
-export {
-  requireOpenForUpNext,
-  requireUpNextMoves,
-  storedUpNext,
-  takeFrontUpNextMove,
-} from "./up-next";

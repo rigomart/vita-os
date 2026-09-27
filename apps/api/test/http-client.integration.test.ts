@@ -1,4 +1,4 @@
-import type { ThreadId } from "@vita-os/contracts";
+import type { MoveId, ThreadId } from "@vita-os/contracts";
 
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -71,7 +71,7 @@ async function seedThread(owner: Session): Promise<{
       1_600_000_000_000,
     ),
     env.DB.prepare(
-      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, next_move, created_at, revision) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, moves_json, focused_move_id, created_at, revision) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).bind(
       id,
       owner.actorId,
@@ -81,7 +81,8 @@ async function seedThread(owner: Session): Promise<{
       "Choose a clinic",
       1,
       "open",
-      "Call clinic",
+      '[{"id":"move-1","text":"Call clinic"}]',
+      "move-1",
       1_600_000_000_001,
       0,
     ),
@@ -126,7 +127,8 @@ describe("HTTP ApplicationClient against the Worker", () => {
       value: {
         thread: expect.objectContaining({
           _id: thread.id,
-          nextMove: "Call clinic",
+          moves: [{ _id: "move-1", text: "Call clinic" }],
+          focusedMoveId: "move-1",
           revision: 0,
         }),
         area: expect.objectContaining({ name: "Family Health" }),
@@ -145,13 +147,14 @@ describe("HTTP ApplicationClient against the Worker", () => {
         ],
       },
     });
-    await expect(
-      client.completeNextMove({
-        threadId: thread.id,
-        expectedNextMove: "Call clinic",
-        expectedRevision: 0,
-      }),
-    ).resolves.toEqual({ ok: true, value: { status: "completed" } });
+    const completed = await client.completeMove({
+      threadId: thread.id,
+      moveId: "move-1" as MoveId,
+      expectedRevision: 0,
+    });
+    expect(completed.ok).toBe(true);
+    expect(completed.ok && completed.value).not.toHaveProperty("moves");
+    expect(completed.ok && completed.value).not.toHaveProperty("focusedMoveId");
     await expect(
       client.getThreadActivityPage({ threadId: thread.id, limit: 1 }),
     ).resolves.toEqual({
@@ -159,7 +162,8 @@ describe("HTTP ApplicationClient against the Worker", () => {
       value: {
         entries: [
           expect.objectContaining({
-            content: 'Completed "Call clinic" — next move cleared',
+            type: "move_completed",
+            content: 'Completed "Call clinic"',
           }),
         ],
         nextCursor: expect.any(String),
@@ -176,16 +180,16 @@ describe("HTTP ApplicationClient against the Worker", () => {
       },
     });
     await expect(
-      client.completeNextMove({
+      client.completeMove({
         threadId: thread.id,
-        expectedNextMove: "Call clinic",
+        moveId: "move-1" as MoveId,
         expectedRevision: 0,
       }),
     ).resolves.toEqual({
       ok: false,
       error: {
         code: "conflict",
-        message: "Next Move has changed.",
+        message: "The Thread's Moves have changed.",
         retryable: false,
       },
     });

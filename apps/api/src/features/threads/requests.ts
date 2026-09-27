@@ -1,7 +1,7 @@
 import type {
   AreaId,
-  CompleteNextMoveInput,
   CreateThreadInput,
+  MoveId,
   ThreadState,
   UpdateThreadInput,
 } from "@vita-os/contracts";
@@ -43,7 +43,6 @@ const UPDATE_THREAD_KEYS = [
   "title",
   "summary",
   "areaId",
-  "nextMove",
   "followUp",
   "state",
   "resolutionNote",
@@ -60,7 +59,6 @@ export function decodeUpdateThread(
     (Object.hasOwn(value, "areaId") &&
       value.areaId !== null &&
       !isNonEmptyString(value.areaId)) ||
-    (Object.hasOwn(value, "nextMove") && !isClearableString(value.nextMove)) ||
     (Object.hasOwn(value, "followUp") &&
       !isClearableTimestamp(value.followUp)) ||
     (value.state !== undefined && !isThreadState(value.state)) ||
@@ -78,9 +76,6 @@ export function decodeUpdateThread(
     ...(Object.hasOwn(value, "areaId")
       ? { areaId: value.areaId as AreaId | null }
       : {}),
-    ...(Object.hasOwn(value, "nextMove")
-      ? { nextMove: value.nextMove as string | null }
-      : {}),
     ...(Object.hasOwn(value, "followUp")
       ? { followUp: value.followUp as number | null }
       : {}),
@@ -91,34 +86,79 @@ export function decodeUpdateThread(
   };
 }
 
-export function decodeUpNext(value: unknown): Decoded<{ moves: string[] }> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, ["moves"]) ||
-    !Array.isArray(value.moves) ||
-    !value.moves.every((move) => typeof move === "string")
-  ) {
-    return undefined;
-  }
-
-  return { moves: value.moves as string[] };
+/** Every Move command carries the revision its caller read the Thread at. */
+function hasRevision(
+  value: Record<string, unknown>,
+): value is Record<string, unknown> & { expectedRevision: number } {
+  return isRevision(value.expectedRevision);
 }
 
-export function decodeCompleteNextMove(
+export function decodeAddMove(
   value: unknown,
-): Decoded<Omit<CompleteNextMoveInput, "threadId">> {
+): Decoded<{ moveId: MoveId; text: string; expectedRevision: number }> {
   if (
     !isObject(value) ||
-    !Object.hasOwn(value, "expectedNextMove") ||
-    !Object.hasOwn(value, "expectedRevision") ||
-    !isClearableString(value.expectedNextMove) ||
-    !isRevision(value.expectedRevision)
+    !hasOnlyKeys(value, ["moveId", "text", "expectedRevision"]) ||
+    !isNonEmptyString(value.moveId) ||
+    typeof value.text !== "string" ||
+    !hasRevision(value)
   ) {
     return undefined;
   }
 
   return {
-    expectedNextMove: value.expectedNextMove as string | null,
-    expectedRevision: value.expectedRevision as number,
+    moveId: value.moveId as MoveId,
+    text: value.text,
+    expectedRevision: value.expectedRevision,
+  };
+}
+
+export function decodeEditMove(
+  value: unknown,
+): Decoded<{ text: string; expectedRevision: number }> {
+  if (
+    !isObject(value) ||
+    !hasOnlyKeys(value, ["text", "expectedRevision"]) ||
+    typeof value.text !== "string" ||
+    !hasRevision(value)
+  ) {
+    return undefined;
+  }
+
+  return { text: value.text, expectedRevision: value.expectedRevision };
+}
+
+/** Removing and completing name the Move in the path; the body holds only the revision. */
+export function decodeMoveRevision(
+  value: unknown,
+): Decoded<{ expectedRevision: number }> {
+  if (
+    !isObject(value) ||
+    !hasOnlyKeys(value, ["expectedRevision"]) ||
+    !hasRevision(value)
+  ) {
+    return undefined;
+  }
+
+  return { expectedRevision: value.expectedRevision };
+}
+
+/** `moveId: null` unfocuses, and must be spelled out: absent is not a choice. */
+export function decodeFocusMove(
+  value: unknown,
+): Decoded<{ moveId: MoveId | null; expectedRevision: number }> {
+  if (
+    !isObject(value) ||
+    !hasOnlyKeys(value, ["moveId", "expectedRevision"]) ||
+    !Object.hasOwn(value, "moveId") ||
+    (value.moveId !== null && !isNonEmptyString(value.moveId)) ||
+    !hasRevision(value)
+  ) {
+    return undefined;
+  }
+
+  return {
+    moveId: value.moveId as MoveId | null,
+    expectedRevision: value.expectedRevision,
   };
 }

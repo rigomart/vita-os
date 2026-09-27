@@ -1,11 +1,14 @@
 export type {
+  AddMoveInput,
   ApplicationClient,
   Clearable,
-  CompleteNextMoveInput,
-  CompleteNextMoveOutput,
+  CompleteMoveInput,
   CreateAreaInput,
   CreateThreadInput,
+  EditMoveInput,
+  FocusMoveInput,
   PageRequest,
+  RemoveMoveInput,
   UpdateAreaInput,
   UpdateThreadInput,
 } from "./application-client";
@@ -19,6 +22,7 @@ export {
 export type {
   ActivityLogEntryId,
   AreaId,
+  MoveId,
   NoteId,
   ThreadId,
   ThreadNoteId,
@@ -29,6 +33,7 @@ export type {
   ActivityLogPage,
   AreaIcon,
   AreaSummary,
+  Move,
   Note,
   NotePage,
   NoteState,

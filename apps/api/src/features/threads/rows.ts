@@ -1,4 +1,10 @@
-import type { AreaId, Thread, ThreadId } from "@vita-os/contracts";
+import type {
+  AreaId,
+  Move,
+  MoveId,
+  Thread,
+  ThreadId,
+} from "@vita-os/contracts";
 
 /**
  * Where a stored Thread becomes a Vita OS value.
@@ -10,8 +16,8 @@ import type { AreaId, Thread, ThreadId } from "@vita-os/contracts";
  */
 
 export const THREAD_COLUMNS =
-  "id, title, slug, summary, area_id, sort_order, state, next_move, " +
-  "up_next_json, follow_up, last_activity_at, last_activity_content, " +
+  "id, title, slug, summary, area_id, sort_order, state, moves_json, " +
+  "focused_move_id, follow_up, last_activity_at, last_activity_content, " +
   "created_at, revision";
 
 export interface ThreadRow {
@@ -22,8 +28,8 @@ export interface ThreadRow {
   area_id: string | null;
   sort_order: number;
   state: Thread["state"];
-  next_move: string | null;
-  up_next_json: string | null;
+  moves_json: string | null;
+  focused_move_id: string | null;
   follow_up: number | null;
   last_activity_at: number | null;
   last_activity_content: string | null;
@@ -32,41 +38,56 @@ export interface ThreadRow {
 }
 
 /**
- * Up Next as the Thread stores it: SQL NULL, or a non-empty JSON array of
- * strings. An empty array is never stored, so reading one back means the row
- * was written by something that does not honor the invariant.
+ * Moves as the Thread stores them: SQL NULL, or a non-empty JSON array of
+ * `{id, text}` in capture order. An empty array is never stored, so reading one
+ * back means the row was written by something that does not honor the rule.
  */
-export function parseUpNext(value: string | null): string[] | undefined {
+export function parseMoves(value: string | null): Move[] | undefined {
   if (value === null) return undefined;
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(value);
   } catch {
-    throw new Error("Stored Up Next must be valid JSON");
+    throw new Error("Stored Moves must be valid JSON");
   }
 
   if (
     !Array.isArray(parsed) ||
     parsed.length === 0 ||
-    !parsed.every((item) => typeof item === "string")
+    !parsed.every(
+      (item) =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof item.id === "string" &&
+        typeof item.text === "string",
+    )
   ) {
-    throw new Error("Stored Up Next must be a non-empty string array");
+    throw new Error("Stored Moves must be a non-empty array of Moves");
   }
 
-  return parsed;
+  return parsed.map((item: { id: string; text: string }) => ({
+    _id: item.id as MoveId,
+    text: item.text,
+  }));
 }
 
-export function serializeUpNext(
-  moves: readonly string[] | undefined,
+export function serializeMoves(
+  moves: readonly Move[] | undefined,
 ): string | null {
   return moves === undefined || moves.length === 0
     ? null
-    : JSON.stringify([...moves]);
+    : JSON.stringify(moves.map((move) => ({ id: move._id, text: move.text })));
 }
 
 export function toThread(row: ThreadRow): Thread {
-  const upNext = parseUpNext(row.up_next_json);
+  const moves = parseMoves(row.moves_json);
+  if (
+    row.focused_move_id !== null &&
+    !moves?.some((move) => move._id === row.focused_move_id)
+  ) {
+    throw new Error("A stored Focused Move must be one of the Thread's Moves");
+  }
 
   return {
     _id: row.id as ThreadId,
@@ -76,8 +97,10 @@ export function toThread(row: ThreadRow): Thread {
     ...(row.area_id === null ? {} : { areaId: row.area_id as AreaId }),
     order: row.sort_order,
     state: row.state,
-    ...(row.next_move === null ? {} : { nextMove: row.next_move }),
-    ...(upNext === undefined ? {} : { upNext }),
+    ...(moves === undefined ? {} : { moves }),
+    ...(row.focused_move_id === null
+      ? {}
+      : { focusedMoveId: row.focused_move_id as MoveId }),
     ...(row.follow_up === null ? {} : { followUp: row.follow_up }),
     ...(row.last_activity_at === null
       ? {}

@@ -1,6 +1,7 @@
 import type {
   ApplicationError,
   AreaId,
+  MoveId,
   OperationResult,
   ThreadDetail,
 } from "@vita-os/contracts";
@@ -27,7 +28,7 @@ const detail: ThreadDetail = {
     areaId: "area-1" as AreaId,
     order: 1,
     state: "open",
-    nextMove: "Call clinic",
+    moves: [{ _id: "move-1" as MoveId, text: "Call clinic" }],
     revision: 0,
     createdAt: 1,
   },

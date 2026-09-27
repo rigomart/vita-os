@@ -1,5 +1,5 @@
 import type { CommandAcknowledgement, OperationResult } from "./errors";
-import type { AreaId, NoteId, ThreadId, ThreadNoteId } from "./ids";
+import type { AreaId, MoveId, NoteId, ThreadId, ThreadNoteId } from "./ids";
 import type {
   ActivityLogPage,
   AreaIcon,
@@ -47,24 +47,46 @@ export interface UpdateThreadInput {
   summary?: Clearable<string>;
   /** Sets, changes, or (with `null`) removes the Thread's Area. */
   areaId?: Clearable<AreaId>;
-  nextMove?: Clearable<string>;
   followUp?: Clearable<number>;
   state?: ThreadState;
   /** Carried into the Activity Log entry a resolution writes. */
   resolutionNote?: string;
 }
 
-export interface CompleteNextMoveInput {
+/**
+ * Every Move command names one Move by its ID and carries the revision the
+ * caller read the Thread at. A stale revision, or a Move that is no longer
+ * there, is refused as a conflict and writes nothing — so a command can never
+ * land on a different Move than the one the person saw.
+ */
+interface MoveCommand {
   threadId: ThreadId;
-  /** The Next Move the caller means to complete, as it was read. */
-  expectedNextMove: Clearable<string>;
-  /** The revision the Next Move was read at. */
   expectedRevision: number;
 }
 
-export type CompleteNextMoveOutput =
-  | { status: "completed" }
-  | { status: "unchanged" };
+export interface AddMoveInput extends MoveCommand {
+  /** Minted by the caller, so an optimistic Move keeps its name. */
+  moveId: MoveId;
+  text: string;
+}
+
+export interface EditMoveInput extends MoveCommand {
+  moveId: MoveId;
+  text: string;
+}
+
+export interface RemoveMoveInput extends MoveCommand {
+  moveId: MoveId;
+}
+
+export interface CompleteMoveInput extends MoveCommand {
+  moveId: MoveId;
+}
+
+export interface FocusMoveInput extends MoveCommand {
+  /** The Move to focus, replacing any earlier focus; `null` unfocuses. */
+  moveId: Clearable<MoveId>;
+}
 
 export interface PageRequest {
   limit: number;
@@ -104,13 +126,15 @@ export interface ApplicationClient {
   removeThread(input: {
     threadId: ThreadId;
   }): Promise<OperationResult<CommandAcknowledgement>>;
-  replaceUpNext(input: {
-    threadId: ThreadId;
-    moves: string[];
-  }): Promise<OperationResult<Thread>>;
-  completeNextMove(
-    input: CompleteNextMoveInput,
-  ): Promise<OperationResult<CompleteNextMoveOutput>>;
+
+  /* Moves — each answers with the Thread as it now stands. */
+  addMove(input: AddMoveInput): Promise<OperationResult<Thread>>;
+  editMove(input: EditMoveInput): Promise<OperationResult<Thread>>;
+  /** Drops the Move without a trace in the Activity Log. */
+  removeMove(input: RemoveMoveInput): Promise<OperationResult<Thread>>;
+  /** Removes the Move and records it as done in the Activity Log. */
+  completeMove(input: CompleteMoveInput): Promise<OperationResult<Thread>>;
+  focusMove(input: FocusMoveInput): Promise<OperationResult<Thread>>;
 
   /* Activity Log */
   getThreadActivityPage(

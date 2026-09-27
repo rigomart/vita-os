@@ -51,6 +51,23 @@ async function activityOf(session: Session, thread: Thread) {
   return [...page.entries].reverse();
 }
 
+/** Add each Move in turn, the way a person captures them, and return the Thread. */
+async function addMoves(session: Session, thread: Thread, texts: string[]) {
+  let current = thread;
+  for (const text of texts) {
+    current = await succeed<Thread>(`/v1/threads/${thread._id}/moves`, {
+      method: "POST",
+      session,
+      body: {
+        moveId: crypto.randomUUID(),
+        text,
+        expectedRevision: current.revision,
+      },
+    });
+  }
+  return current;
+}
+
 async function detailOf(session: Session, thread: Thread) {
   return succeed<ThreadDetail>(`/v1/threads/${thread.slug}`, { session });
 }
@@ -73,7 +90,8 @@ describe("Thread creation", () => {
       order: 0,
     });
     expect(first.slug).toMatch(/^book-checkup-[0-9a-f]{8}$/);
-    expect(first).not.toHaveProperty("nextMove");
+    expect(first).not.toHaveProperty("moves");
+    expect(first).not.toHaveProperty("focusedMoveId");
     expect(second).toMatchObject({
       order: 1,
       summary: "Pharmacy closes early",
@@ -140,44 +158,7 @@ describe("Thread creation", () => {
   });
 });
 
-describe("Next Move changes", () => {
-  it("records setting, changing, and clearing the Next Move", async () => {
-    const owner = await createSession("thread-next-move");
-    const area = await createArea(owner);
-    const thread = await createThread(owner, area);
-
-    await succeed(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { nextMove: "Call clinic" },
-    });
-    await succeed(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { nextMove: "Book appointment" },
-    });
-    const cleared = await succeed<Thread>(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { nextMove: null },
-    });
-
-    expect(cleared).not.toHaveProperty("nextMove");
-    expect(
-      (await activityOf(owner, thread)).map((entry) => [
-        entry.type,
-        entry.content,
-      ]),
-    ).toEqual([
-      ["next_move_change", 'Next move set to "Call clinic"'],
-      [
-        "next_move_change",
-        'Next move changed from "Call clinic" to "Book appointment"',
-      ],
-      ["next_move_change", "Next move cleared"],
-    ]);
-  });
-
+describe("Thread changes", () => {
   it("stamps the Thread's denormalized last activity with the newest entry", async () => {
     const owner = await createSession("thread-last-activity");
     const area = await createArea(owner);
@@ -186,33 +167,29 @@ describe("Next Move changes", () => {
     await succeed(`/v1/threads/${thread._id}`, {
       method: "PATCH",
       session: owner,
-      body: { nextMove: "Call clinic" },
+      body: { followUp: Date.UTC(2026, 4, 20) },
     });
     const detail = await detailOf(owner, thread);
 
     expect(detail.thread.lastActivityContent).toBe(
-      'Next move set to "Call clinic"',
+      'Follow-up set to "May 20, 2026"',
     );
     expect(detail.thread.lastActivityAt).toEqual(expect.any(Number));
   });
 
-  it("writes nothing when the Next Move does not actually change", async () => {
-    const owner = await createSession("thread-next-move-idempotent");
-    const area = await createArea(owner);
-    const thread = await createThread(owner, area);
-    await succeed(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { nextMove: "Call clinic" },
-    });
+  it("no longer takes a Next Move: Moves have commands of their own", async () => {
+    const owner = await createSession("thread-no-next-move");
+    const thread = await createThread(owner, await createArea(owner));
 
-    await succeed(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { nextMove: "Call clinic" },
-    });
-
-    expect(await activityOf(owner, thread)).toHaveLength(1);
+    expectError(
+      await call(`/v1/threads/${thread._id}`, {
+        method: "PATCH",
+        session: owner,
+        body: { nextMove: "Call clinic" },
+      }),
+      { status: 400, code: "validation" },
+    );
+    expect(await activityOf(owner, thread)).toEqual([]);
   });
 });
 
@@ -248,28 +225,17 @@ describe("entries written by one change", () => {
     const from = await createArea(owner, "Health");
     const to = await createArea(owner, "Home");
     const thread = await createThread(owner, from);
+
+    // One change that earns two entries: the Area move and the date.
     await succeed(`/v1/threads/${thread._id}`, {
       method: "PATCH",
       session: owner,
-      body: { nextMove: "Call clinic" },
+      body: { areaId: to._id, followUp: Date.UTC(2026, 4, 20) },
     });
 
-    // One change that earns three entries: the move, the Next Move, the date.
-    await succeed(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: {
-        areaId: to._id,
-        nextMove: "Book appointment",
-        followUp: Date.UTC(2026, 4, 20),
-      },
-    });
-
-    const written = await activityOf(owner, thread);
-    const fromOneChange = written.slice(1);
+    const fromOneChange = await activityOf(owner, thread);
     expect(fromOneChange.map((entry) => entry.type)).toEqual([
       "area_move",
-      "next_move_change",
       "follow_up_change",
     ]);
     // They share the instant, so the order can only come from their IDs.
@@ -421,128 +387,27 @@ describe("Area reassignment", () => {
   });
 });
 
-describe("Up Next", () => {
-  it("rewrites the line silently while the Next Move slot is full", async () => {
-    const owner = await createSession("up-next-silent");
-    const area = await createArea(owner);
-    const thread = await createThread(owner, area);
-    await succeed(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { nextMove: "Call clinic" },
-    });
-
-    const lined = await succeed<Thread>(`/v1/threads/${thread._id}/up-next`, {
-      method: "PUT",
-      session: owner,
-      body: { moves: ["Book appointment", "Collect results"] },
-    });
-
-    expect(lined.upNext).toEqual(["Book appointment", "Collect results"]);
-    expect(lined.nextMove).toBe("Call clinic");
-    expect(await activityOf(owner, thread)).toHaveLength(1);
-  });
-
-  it("promotes the front move when the Next Move slot is empty, and logs it", async () => {
-    const owner = await createSession("up-next-promote");
-    const area = await createArea(owner);
-    const thread = await createThread(owner, area);
-
-    const lined = await succeed<Thread>(`/v1/threads/${thread._id}/up-next`, {
-      method: "PUT",
-      session: owner,
-      body: { moves: ["Book appointment", "Collect results"] },
-    });
-
-    expect(lined.nextMove).toBe("Book appointment");
-    expect(lined.upNext).toEqual(["Collect results"]);
-    expect(
-      (await activityOf(owner, thread)).map((entry) => entry.content),
-    ).toEqual(['Next move set to "Book appointment"']);
-  });
-
-  it("forgets an emptied line rather than storing an empty one", async () => {
-    const owner = await createSession("up-next-empty");
-    const area = await createArea(owner);
-    const thread = await createThread(owner, area);
-    await succeed(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { nextMove: "Call clinic" },
-    });
-    await succeed(`/v1/threads/${thread._id}/up-next`, {
-      method: "PUT",
-      session: owner,
-      body: { moves: ["Book appointment"] },
-    });
-
-    const emptied = await succeed<Thread>(`/v1/threads/${thread._id}/up-next`, {
-      method: "PUT",
-      session: owner,
-      body: { moves: [] },
-    });
-
-    expect(emptied).not.toHaveProperty("upNext");
-    const stored = await env.DB.prepare(
-      "SELECT up_next_json FROM threads WHERE id = ?",
-    )
-      .bind(thread._id)
-      .first<{ up_next_json: string | null }>();
-    expect(stored?.up_next_json).toBeNull();
-  });
-
-  it("refuses a blank move and refuses to line up moves on a resolved Thread", async () => {
-    const owner = await createSession("up-next-refusals");
-    const area = await createArea(owner);
-    const thread = await createThread(owner, area);
-
-    expectError(
-      await call(`/v1/threads/${thread._id}/up-next`, {
-        method: "PUT",
-        session: owner,
-        body: { moves: ["Book appointment", "   "] },
-      }),
-      {
-        status: 400,
-        code: "validation",
-        message: "Upcoming move cannot be empty",
-      },
-    );
-
-    await succeed(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { state: "resolved" },
-    });
-    expectError(
-      await call(`/v1/threads/${thread._id}/up-next`, {
-        method: "PUT",
-        session: owner,
-        body: { moves: ["Book appointment"] },
-      }),
-      {
-        status: 409,
-        code: "conflict",
-        message: "Cannot line up moves on a resolved thread",
-      },
-    );
-  });
-});
-
 describe("Thread lifecycle", () => {
-  it("resolving clears the attention state and names the discarded moves", async () => {
+  it("resolving discards the Moves and focus, and names the discarded Moves", async () => {
     const owner = await createSession("thread-resolve");
     const area = await createArea(owner);
     const thread = await createThread(owner, area);
-    await succeed(`/v1/threads/${thread._id}`, {
+    const scheduled = await succeed<Thread>(`/v1/threads/${thread._id}`, {
       method: "PATCH",
       session: owner,
-      body: { nextMove: "Call clinic", followUp: Date.UTC(2026, 4, 20) },
+      body: { followUp: Date.UTC(2026, 4, 20) },
     });
-    await succeed(`/v1/threads/${thread._id}/up-next`, {
+    const withMoves = await addMoves(owner, scheduled, [
+      "Call clinic",
+      "Book appointment",
+    ]);
+    await succeed(`/v1/threads/${thread._id}/focus`, {
       method: "PUT",
       session: owner,
-      body: { moves: ["Book appointment", "Collect results"] },
+      body: {
+        moveId: withMoves.moves?.[1]?._id,
+        expectedRevision: withMoves.revision,
+      },
     });
 
     const resolved = await succeed<Thread>(`/v1/threads/${thread._id}`, {
@@ -552,13 +417,13 @@ describe("Thread lifecycle", () => {
     });
 
     expect(resolved.state).toBe("resolved");
-    expect(resolved).not.toHaveProperty("nextMove");
-    expect(resolved).not.toHaveProperty("upNext");
+    expect(resolved).not.toHaveProperty("moves");
+    expect(resolved).not.toHaveProperty("focusedMoveId");
     expect(resolved).not.toHaveProperty("followUp");
     expect(
       (await activityOf(owner, thread)).map((entry) => entry.content),
     ).toContain(
-      'Resolved thread: Clinic confirmed — discarded upcoming moves: "Book appointment", "Collect results"',
+      'Resolved thread: Clinic confirmed — discarded moves: "Call clinic", "Book appointment"',
     );
   });
 
@@ -566,11 +431,7 @@ describe("Thread lifecycle", () => {
     const owner = await createSession("thread-reopen");
     const area = await createArea(owner);
     const thread = await createThread(owner, area);
-    await succeed(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { nextMove: "Call clinic" },
-    });
+    await addMoves(owner, thread, ["Call clinic"]);
     await succeed(`/v1/threads/${thread._id}`, {
       method: "PATCH",
       session: owner,
@@ -584,7 +445,8 @@ describe("Thread lifecycle", () => {
     });
 
     expect(reopened.state).toBe("open");
-    expect(reopened).not.toHaveProperty("nextMove");
+    expect(reopened).not.toHaveProperty("moves");
+    expect(reopened).not.toHaveProperty("focusedMoveId");
     expect(
       (await activityOf(owner, thread)).map((entry) => entry.content),
     ).toContain("Reopened thread");
@@ -599,7 +461,7 @@ describe("Thread deletion", () => {
     await succeed(`/v1/threads/${thread._id}`, {
       method: "PATCH",
       session: owner,
-      body: { nextMove: "Call clinic" },
+      body: { followUp: Date.UTC(2026, 4, 20) },
     });
     await succeed<ThreadNote>(`/v1/threads/${thread._id}/notes`, {
       method: "POST",
@@ -656,14 +518,38 @@ describe("Thread change privacy", () => {
     const owner = await createSession("thread-write-privacy-owner");
     const other = await createSession("thread-write-privacy-other");
     const theirs = await createThread(other, await createArea(other));
+    await succeed(`/v1/threads/${theirs._id}/moves`, {
+      method: "POST",
+      session: other,
+      body: { moveId: "theirs", text: "Theirs", expectedRevision: 0 },
+    });
 
     for (const [path, method, body] of [
-      [`/v1/threads/${theirs._id}`, "PATCH", { nextMove: "Mine now" }],
-      [`/v1/threads/${theirs._id}/up-next`, "PUT", { moves: ["Mine"] }],
+      [`/v1/threads/${theirs._id}`, "PATCH", { title: "Mine now" }],
       [
-        `/v1/threads/${theirs._id}/complete-next-move`,
+        `/v1/threads/${theirs._id}/moves`,
         "POST",
-        { expectedNextMove: null, expectedRevision: 0 },
+        { moveId: "mine", text: "Mine", expectedRevision: 0 },
+      ],
+      [
+        `/v1/threads/${theirs._id}/moves/theirs`,
+        "PATCH",
+        { text: "Mine", expectedRevision: 1 },
+      ],
+      [
+        `/v1/threads/${theirs._id}/moves/theirs/complete`,
+        "POST",
+        { expectedRevision: 1 },
+      ],
+      [
+        `/v1/threads/${theirs._id}/moves/theirs`,
+        "DELETE",
+        { expectedRevision: 1 },
+      ],
+      [
+        `/v1/threads/${theirs._id}/focus`,
+        "PUT",
+        { moveId: "theirs", expectedRevision: 1 },
       ],
       [`/v1/threads/${theirs._id}`, "DELETE", undefined],
     ] as const) {
@@ -676,6 +562,12 @@ describe("Thread change privacy", () => {
 
     expect(
       (await succeed<Thread[]>("/v1/threads", { session: other }))[0],
-    ).toMatchObject({ _id: theirs._id, state: "open" });
+    ).toMatchObject({
+      _id: theirs._id,
+      title: "Book checkup",
+      state: "open",
+      moves: [{ _id: "theirs", text: "Theirs" }],
+      revision: 1,
+    });
   });
 });

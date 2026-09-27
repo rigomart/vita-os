@@ -44,16 +44,15 @@ a `Viewer` of its own, and its own session gate.
 
 ## The application boundary
 
-`ApplicationClient` names thirty operations, one per workflow, and says nothing
+`ApplicationClient` names thirty-two operations, one per workflow, and says nothing
 about transport. Reads return values; commands return the record they wrote, so
 the application can reconcile with the service's own answer rather than trusting
 its optimistic guess.
 
-Every `Thread` carries the `revision` it was read at. That is what makes
-completing a Next Move safe to repeat from any surface: the expectation travels
-with the command, and a click made against a Thread that has since moved on comes
-back as a conflict instead of completing the move that was promoted into its
-place.
+Every `Thread` carries the `revision` it was read at. That is what makes every
+Move command safe to repeat from any surface: commands name a Move by ID and
+carry the revision, and a click made against a Thread that has since moved on
+comes back as a conflict instead of acting on a different Move (ADR 0022).
 
 ## Storage
 
@@ -71,9 +70,10 @@ random: reads order by timestamp and break ties on the ID, so entries written by
 one change come back in the order they were written, which Convex got from its own
 insertion order.
 
-The Activity Log's Next Move entry is stored as `next_move_change`. Convex stored
-`next_action_change` for the same thing; the importer translated that value at
-cutover.
+The Activity Log's old Next Move entry is stored as `next_move_change`. Convex
+stored `next_action_change` for the same thing; the importer translated that value
+at cutover. Entries of that type are still read but no longer written: completing
+a Move writes `move_completed`.
 
 Each feature's `storage.ts` is created from the request scope, so callers never
 pass the owner, and every statement is still scoped by `user_id`. A storage

@@ -14,7 +14,7 @@ import {
   sqlExpression,
 } from "../../platform/d1/statements";
 import { AREA_COLUMNS, toAreaSummary } from "../areas/rows";
-import { serializeUpNext, THREAD_COLUMNS, toThread } from "./rows";
+import { serializeMoves, THREAD_COLUMNS, toThread } from "./rows";
 
 /** What one Thread change writes: its patch and the Activity Log it earned. */
 export type ThreadChange = {
@@ -27,14 +27,14 @@ export function isThreadSlugTaken(error: unknown): boolean {
   return isUniqueViolation(error, "threads.user_id, threads.slug");
 }
 
-/** Where each patchable field is stored, apart from Up Next's JSON. */
+/** Where each patchable field is stored, apart from the Moves' JSON. */
 const PATCH_COLUMNS = {
   title: "title",
   slug: "slug",
   summary: "summary",
   areaId: "area_id",
   state: "state",
-  nextMove: "next_move",
+  focusedMoveId: "focused_move_id",
   followUp: "follow_up",
 } as const satisfies Partial<Record<keyof ThreadPatch, string>>;
 
@@ -159,15 +159,13 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
      * last-activity stamp, and every Activity Log entry the change earned.
      *
      * The update is conditional on the revision the change was decided against
-     * — and on the Next Move, when the caller named one — and stamps a fresh
-     * change token. Each entry is inserted only from the Thread row carrying
+     * and stamps a fresh change token. Each entry is inserted only from the Thread row carrying
      * that token, so a lost race writes neither the patch nor a single orphan
      * entry. `null` means the race was lost; throws when a new slug is taken.
      */
     async writeChange(input: {
       threadId: string;
       expectedRevision: number;
-      expectedNextMove?: string | null;
       change: ThreadChange;
     }): Promise<Thread | null> {
       const { patch, logs } = input.change;
@@ -181,8 +179,8 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
           columns[column] = patch[field as keyof typeof PATCH_COLUMNS] ?? null;
         }
       }
-      if (Object.hasOwn(patch, "upNext")) {
-        columns.up_next_json = serializeUpNext(patch.upNext);
+      if (Object.hasOwn(patch, "moves")) {
+        columns.moves_json = serializeMoves(patch.moves);
       }
       if (lastLog !== undefined) {
         columns.last_activity_at = changedAt;
@@ -192,8 +190,6 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
       columns.last_change_token = changeToken;
       const set = setClause(columns);
 
-      const nextMoveCondition =
-        input.expectedNextMove === undefined ? "" : " AND next_move IS ?";
       // A destination may disappear after the decision read it. Guard it in
       // the write so the normal re-read reports the missing Area without a
       // foreign-key failure or any Activity Log entries. Removing the label
@@ -207,7 +203,7 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
           .prepare(
             `UPDATE threads
              SET ${set.sql}
-             WHERE user_id = ? AND id = ? AND revision = ?${nextMoveCondition}${areaCondition}
+             WHERE user_id = ? AND id = ? AND revision = ?${areaCondition}
              RETURNING ${THREAD_COLUMNS}`,
           )
           .bind(
@@ -215,9 +211,6 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
             actorId,
             input.threadId,
             input.expectedRevision,
-            ...(input.expectedNextMove === undefined
-              ? []
-              : [input.expectedNextMove]),
             ...(patch.areaId === undefined ? [] : [patch.areaId, actorId]),
           ),
         ...logs.map((log) =>

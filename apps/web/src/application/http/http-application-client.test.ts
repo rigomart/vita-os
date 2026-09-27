@@ -1,4 +1,4 @@
-import type { ThreadId } from "@vita-os/contracts";
+import type { MoveId, ThreadId } from "@vita-os/contracts";
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -13,8 +13,11 @@ const detail = {
     areaId: "area-1",
     order: 2,
     state: "open",
-    nextMove: "Call clinic",
-    upNext: ["Book appointment"],
+    moves: [
+      { _id: "move/1", text: "Call clinic" },
+      { _id: "move-2", text: "Book appointment" },
+    ],
+    focusedMoveId: "move/1",
     followUp: 1_800_000_000_000,
     lastActivityAt: 1_700_000_000_000,
     lastActivityContent: "Captured next move",
@@ -72,12 +75,13 @@ describe("createHttpApplicationClient", () => {
     await expect(client.listAreas()).resolves.toEqual({ ok: true, value: [] });
   });
 
-  it("encodes routes, queries, and completion expectations while including cookies", async () => {
+  it("encodes routes, queries, and Move commands while including cookies", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(detail))
       .mockResolvedValueOnce(jsonResponse(activityPage))
-      .mockResolvedValueOnce(jsonResponse({ status: "completed" }));
+      .mockResolvedValueOnce(jsonResponse(detail.thread))
+      .mockResolvedValueOnce(jsonResponse(detail.thread));
     const client = createHttpApplicationClient({
       apiBaseUrl: "https://api.test/",
       fetchImpl,
@@ -94,12 +98,19 @@ describe("createHttpApplicationClient", () => {
       }),
     ).resolves.toEqual({ ok: true, value: activityPage });
     await expect(
-      client.completeNextMove({
+      client.completeMove({
         threadId: "thread/with/slashes" as ThreadId,
-        expectedNextMove: null,
+        moveId: "move/1" as MoveId,
         expectedRevision: 0,
       }),
-    ).resolves.toEqual({ ok: true, value: { status: "completed" } });
+    ).resolves.toEqual({ ok: true, value: detail.thread });
+    await expect(
+      client.focusMove({
+        threadId: "thread/with/slashes" as ThreadId,
+        moveId: null,
+        expectedRevision: 0,
+      }),
+    ).resolves.toEqual({ ok: true, value: detail.thread });
 
     expect(fetchImpl).toHaveBeenNthCalledWith(
       1,
@@ -113,11 +124,20 @@ describe("createHttpApplicationClient", () => {
     );
     expect(fetchImpl).toHaveBeenNthCalledWith(
       3,
-      "https://api.test/v1/threads/thread%2Fwith%2Fslashes/complete-next-move",
+      "https://api.test/v1/threads/thread%2Fwith%2Fslashes/moves/move%2F1/complete",
       expect.objectContaining({
         method: "POST",
         credentials: "include",
-        body: JSON.stringify({ expectedNextMove: null, expectedRevision: 0 }),
+        body: JSON.stringify({ expectedRevision: 0 }),
+      }),
+    );
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      4,
+      "https://api.test/v1/threads/thread%2Fwith%2Fslashes/focus",
+      expect.objectContaining({
+        method: "PUT",
+        credentials: "include",
+        body: JSON.stringify({ moveId: null, expectedRevision: 0 }),
       }),
     );
   });

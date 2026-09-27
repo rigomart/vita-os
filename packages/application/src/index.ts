@@ -87,14 +87,14 @@ export {
   type DoneThreadNotesResult,
 } from "./thread-notes/hooks";
 export {
-  useCompleteNextMove,
   useCreateThread,
+  useMoveCommand,
   useOpenThreads,
   useRemoveThread,
-  useReplaceUpNext,
   useThreadActivity,
   useThreadDetail,
   useUpdateThread,
   type ThreadActivityResult,
   type UpdateThreadVariables,
 } from "./threads/hooks";
+export { useCompleteMove, useMoves } from "./threads/use-moves";

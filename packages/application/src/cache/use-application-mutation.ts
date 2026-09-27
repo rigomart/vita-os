@@ -62,6 +62,12 @@ export interface ApplicationMutationOptions<TVariables, TValue, TLocal = void> {
   ) => void;
   /** Reads to invalidate once the command settles, beyond the affected ones. */
   alsoInvalidate?: (variables: TVariables, cache: QueryClient) => QueryKey[];
+  /**
+   * Commands sharing a scope reach the service one at a time, in the order they
+   * were issued, while each still shows its change at once. A command that
+   * reads what the previous one wrote — the revision it must carry — needs it.
+   */
+  scope?: string;
 }
 
 interface MutationBatch {
@@ -103,6 +109,7 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
 
   return useMutation<TValue, ApplicationError, TVariables, Snapshot<TLocal>>({
     retry: false,
+    ...(options.scope === undefined ? {} : { scope: { id: options.scope } }),
     mutationFn: async (variables) => {
       const result = await options.run(client, variables);
       if (!result.ok) throw result.error;

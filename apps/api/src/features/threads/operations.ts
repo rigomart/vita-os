@@ -1,26 +1,32 @@
 import type {
+  AddMoveInput,
   CommandAcknowledgement,
-  CompleteNextMoveInput,
-  CompleteNextMoveOutput,
+  CompleteMoveInput,
   CreateThreadInput,
+  EditMoveInput,
+  FocusMoveInput,
   OperationResult,
+  RemoveMoveInput,
   Thread,
   ThreadDetail,
   ThreadId,
   UpdateThreadInput,
 } from "@vita-os/contracts";
-import type { ThreadPatch } from "@vita-os/core";
+import type { ThreadPatch, ThreadUpdateDecision } from "@vita-os/core";
 
 import { commandAcknowledged } from "@vita-os/contracts";
 import {
   clearedToAbsent,
-  decideNextMoveCompletion,
+  decideAddMove,
+  decideCompleteMove,
+  decideEditMove,
+  decideFocusMove,
+  decideRemoveMove,
   decideThreadUpdate,
   generateSlug,
+  requireMoveId,
+  requireMoveText,
   requireNonBlankText,
-  requireOpenForUpNext,
-  requireUpNextMoves,
-  storedUpNext,
 } from "@vita-os/core";
 
 import type { RequestScope } from "../../platform/request-scope";
@@ -29,7 +35,7 @@ import type { ThreadChange } from "./storage";
 import { changeConflict, failed, succeeded } from "../../platform/operation";
 import { areaNotFound } from "../areas/errors";
 import { areaStorage } from "../areas/storage";
-import { nextMoveConflict, threadNotFound } from "./errors";
+import { moveConflict, threadNotFound } from "./errors";
 import { isThreadSlugTaken, threadStorage } from "./storage";
 
 /**
@@ -38,9 +44,9 @@ import { isThreadSlugTaken, threadStorage } from "./storage";
  *
  * An ordinary edit should not fail because somebody else wrote first, so a lost
  * race is retried from the fresh Thread instead of surfacing a conflict. Only a
- * caller that supplied its own expectation — Next Move completion — is told
- * about the conflict, because for that caller a retry could complete a
- * different move.
+ * caller that supplied its own expectation — every Move command — is told
+ * about the conflict, because for that caller a retry could act on a different
+ * Move.
  */
 const CHANGE_ATTEMPTS = 3;
 
@@ -91,7 +97,7 @@ export async function createThread(
 }
 
 /**
- * One Thread edit: title, Summary, Area, Next Move, Follow-up, or lifecycle.
+ * One Thread edit: title, Summary, Area, Follow-up, or lifecycle.
  * The Activity Log the change earns is written with it or not at all.
  */
 export async function updateThread(
@@ -142,68 +148,58 @@ export async function updateThread(
   });
 }
 
-/**
- * Rewrite the Up Next line — adding, editing, reordering and removing all
- * arrive as the new list, in order.
- *
- * Editing Up Next is silent: no Activity Log entry is written. The one
- * exception is the invariant — a list handed to a Thread with an empty Next
- * Move slot promotes its front move, and a Next Move always logs.
- */
-export async function replaceUpNext(
+/** A new Move joins the end of the Thread's Moves, unfocused. */
+export async function addMove(
   scope: RequestScope,
-  input: { threadId: ThreadId; moves: string[] },
+  input: AddMoveInput,
 ): Promise<OperationResult<Thread>> {
-  const moves = requireUpNextMoves(input.moves);
+  const move = {
+    _id: requireMoveId(input.moveId),
+    text: requireMoveText(input.text),
+  };
+  return changeMoves(scope, input, (thread) => decideAddMove(thread, move));
+}
 
-  return changeThread(scope, input.threadId, async (thread) => {
-    requireOpenForUpNext(thread);
+export async function editMove(
+  scope: RequestScope,
+  input: EditMoveInput,
+): Promise<OperationResult<Thread>> {
+  const text = requireMoveText(input.text);
+  return changeMoves(scope, input, (thread) =>
+    decideEditMove(thread, input.moveId, text),
+  );
+}
 
-    return succeeded(
-      decideThreadUpdate({ thread, patch: { upNext: storedUpNext(moves) } }),
-    );
-  });
+export async function removeMove(
+  scope: RequestScope,
+  input: RemoveMoveInput,
+): Promise<OperationResult<Thread>> {
+  return changeMoves(scope, input, (thread) =>
+    decideRemoveMove(thread, input.moveId),
+  );
 }
 
 /**
- * Complete the Next Move, and — when Up Next holds moves — hand the slot
- * straight to the front one.
- *
- * The caller supplies the Next Move it read and the revision it read it at, so
- * a repeated request cannot complete a promoted move whose text happens to
- * match the one already completed. The write is conditional on both.
+ * Complete one Move, focused or not. Its Activity Log entry is written with the
+ * change or not at all, and two competing completions of the same Move record
+ * one: the loser finds the revision moved on.
  */
-export async function completeNextMove(
+export async function completeMove(
   scope: RequestScope,
-  input: CompleteNextMoveInput,
-): Promise<OperationResult<CompleteNextMoveOutput>> {
-  const threads = threadStorage(scope);
-  const thread = await threads.find(input.threadId);
-  if (thread === null) return failed(threadNotFound);
+  input: CompleteMoveInput,
+): Promise<OperationResult<Thread>> {
+  return changeMoves(scope, input, (thread) =>
+    decideCompleteMove(thread, input.moveId),
+  );
+}
 
-  if (
-    (thread.nextMove ?? null) !== input.expectedNextMove ||
-    thread.revision !== input.expectedRevision
-  ) {
-    return failed(nextMoveConflict);
-  }
-
-  const decision = decideNextMoveCompletion({
-    ...(thread.nextMove === undefined ? {} : { nextMove: thread.nextMove }),
-    ...(thread.upNext === undefined ? {} : { upNext: thread.upNext }),
-  });
-  if (decision.status === "unchanged")
-    return succeeded({ status: "unchanged" });
-
-  const written = await threads.writeChange({
-    threadId: input.threadId,
-    expectedRevision: input.expectedRevision,
-    expectedNextMove: input.expectedNextMove,
-    change: { patch: decision.patch, logs: [decision.activity] },
-  });
-  if (written === null) return failed(nextMoveConflict);
-
-  return succeeded({ status: "completed" });
+export async function focusMove(
+  scope: RequestScope,
+  input: FocusMoveInput,
+): Promise<OperationResult<Thread>> {
+  return changeMoves(scope, input, (thread) =>
+    decideFocusMove(thread, input.moveId),
+  );
 }
 
 export async function removeThread(
@@ -213,6 +209,41 @@ export async function removeThread(
   return (await threadStorage(scope).remove(input.threadId))
     ? succeeded(commandAcknowledged)
     : failed(threadNotFound);
+}
+
+/**
+ * One Move command, decided against the Thread the caller read.
+ *
+ * The caller's revision must be the Thread's, and the Move it names must still
+ * be there; otherwise the command is a conflict and nothing is written. The
+ * write is conditional on the same revision, so a command that loses a race
+ * after the check is refused too — never retried, since a retry could land on
+ * a different Move.
+ */
+async function changeMoves(
+  scope: RequestScope,
+  command: { threadId: ThreadId; expectedRevision: number },
+  decide: (thread: Thread) => ThreadUpdateDecision | null,
+): Promise<OperationResult<Thread>> {
+  const threads = threadStorage(scope);
+  const thread = await threads.find(command.threadId);
+  if (thread === null) return failed(threadNotFound);
+  if (thread.revision !== command.expectedRevision) {
+    return failed(moveConflict);
+  }
+
+  const decision = decide(thread);
+  if (decision === null) return failed(moveConflict);
+  if (Object.keys(decision.patch).length === 0 && decision.logs.length === 0) {
+    return succeeded(thread);
+  }
+
+  const written = await threads.writeChange({
+    threadId: command.threadId,
+    expectedRevision: command.expectedRevision,
+    change: decision,
+  });
+  return written === null ? failed(moveConflict) : succeeded(written);
 }
 
 /**

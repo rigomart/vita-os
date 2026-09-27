@@ -2,18 +2,23 @@ import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type {
   AreaSummary,
   CreateThreadInput,
+  Move,
+  MoveId,
   Thread,
   ThreadDetail,
   ThreadId,
   UpdateThreadInput,
 } from "@vita-os/contracts";
+import type { ThreadUpdateDecision } from "@vita-os/core";
 
 import {
   clearedToAbsent,
-  decideNextMoveCompletion,
+  decideAddMove,
+  decideCompleteMove,
+  decideEditMove,
+  decideFocusMove,
+  decideRemoveMove,
   generateSlug,
-  storedUpNext,
-  takeFrontUpNextMove,
 } from "@vita-os/core";
 
 import {
@@ -25,37 +30,64 @@ import {
 } from "../cache/patch";
 import { queryKeys } from "../query-keys";
 
-/** Whatever a read holds of a Thread's attention state. */
-type AttentionFields = { nextMove?: string; upNext?: string[] };
+/** Whatever a read holds of a Thread's Moves. */
+type MoveFields = {
+  state: Thread["state"];
+  moves?: Move[];
+  focusedMoveId?: MoveId;
+};
 
 /**
- * The Up Next invariant, mirrored from the service: while the line holds moves,
- * the Next Move slot is full. Every local change that could empty the slot runs
- * through here, so the promotion the service is about to make is already on
- * screen.
+ * One Move command, shown the way the service is about to decide it: the same
+ * rule runs here, so completing the Focused Move leaves the Thread unfocused on
+ * screen too, and nothing is promoted. A command the rule would refuse changes
+ * nothing locally; the service's refusal then rolls back the rest.
  */
-function fillNextMoveFromUpNext<T extends AttentionFields>(thread: T): T {
-  if (thread.nextMove) return thread;
-
-  const promotion = takeFrontUpNextMove(thread.upNext);
-  return promotion ? { ...thread, ...promotion } : thread;
+function applyMoveDecision<T extends MoveFields>(
+  thread: T,
+  decide: (thread: T) => ThreadUpdateDecision | null,
+): T {
+  let decision: ThreadUpdateDecision | null;
+  try {
+    decision = decide(thread);
+  } catch {
+    return thread;
+  }
+  if (decision === null) return thread;
+  return withoutAbsent({ ...thread, ...decision.patch } as T);
 }
 
-export function completeNextMoveLocally<T extends AttentionFields>(
-  thread: T,
-): T {
-  const decision = decideNextMoveCompletion(thread);
-  return decision.status === "unchanged"
-    ? thread
-    : { ...thread, ...decision.patch };
-}
+export type MoveChange =
+  | { kind: "add"; move: Move }
+  | { kind: "edit"; moveId: MoveId; text: string }
+  | { kind: "remove"; moveId: MoveId }
+  | { kind: "complete"; moveId: MoveId }
+  | { kind: "focus"; moveId: MoveId | null };
 
-/** The whole line, rewritten — the shape every Up Next edit sends. */
-export function replaceUpNextLocally<T extends AttentionFields>(
+export function changeMovesLocally<T extends MoveFields>(
   thread: T,
-  moves: readonly string[],
+  change: MoveChange,
 ): T {
-  return fillNextMoveFromUpNext({ ...thread, upNext: storedUpNext(moves) });
+  switch (change.kind) {
+    case "add":
+      return applyMoveDecision(thread, (t) => decideAddMove(t, change.move));
+    case "edit":
+      return applyMoveDecision(thread, (t) =>
+        decideEditMove(t, change.moveId, change.text),
+      );
+    case "remove":
+      return applyMoveDecision(thread, (t) =>
+        decideRemoveMove(t, change.moveId),
+      );
+    case "complete":
+      return applyMoveDecision(thread, (t) =>
+        decideCompleteMove(t, change.moveId),
+      );
+    case "focus":
+      return applyMoveDecision(thread, (t) =>
+        decideFocusMove(t, change.moveId),
+      );
+  }
 }
 
 /**
@@ -160,19 +192,13 @@ export function showThreadChange(
 ): void {
   const { threadId, resolutionNote: _resolutionNote, ...requested } = input;
   const patch = clearedToAbsent(requested);
-  // Resolving takes the whole attention state with it. Any other change that
-  // empties the slot promotes the front of Up Next into it instead, and the
-  // promotion has to travel in the patch: reads are patched field by field, not
-  // replaced with the Thread the caller handed us.
-  const attentionPatch: AttentionFields & { followUp?: number } =
+  // Resolving takes the whole attention state with it: the Moves, the focus,
+  // and the Follow-up. It has to travel in the patch, because reads are patched
+  // field by field, not replaced with the Thread the caller handed us.
+  const attentionPatch: Partial<Thread> =
     patch.state === "resolved"
-      ? { nextMove: undefined, upNext: undefined, followUp: undefined }
-      : Object.hasOwn(patch, "nextMove")
-        ? fillNextMoveFromUpNext({
-            nextMove: patch.nextMove,
-            upNext: context.thread.upNext,
-          })
-        : {};
+      ? { moves: undefined, focusedMoveId: undefined, followUp: undefined }
+      : {};
   const threadPatch: Partial<Thread> = { ...patch, ...attentionPatch };
   const next = withoutAbsent({ ...context.thread, ...threadPatch });
   const resolved = threadPatch.state === "resolved";
@@ -238,26 +264,70 @@ export function showThreadRemoval(
 }
 
 /**
- * Both attention changes land in the same reads, differing only in what they
- * do to the Thread they find: the open list and every cached rail holding it.
+ * A Thread's Moves change in the same reads whatever the command: the open list
+ * and every cached rail holding the Thread.
  */
-export function showThreadAttention(
+function patchThreadEverywhere(
   cache: QueryClient,
   threadId: ThreadId,
-  patch: <T extends AttentionFields>(thread: T) => T,
+  patch: (thread: Thread) => Thread,
 ): void {
-  const patchList = <T extends AttentionFields & { _id: string }>(
-    threads: T[],
-  ) =>
-    threads.map((thread) => (thread._id === threadId ? patch(thread) : thread));
-
-  patchQuery<Thread[]>(cache, queryKeys.threads.open(), patchList);
-  patchQueries<ThreadDetail | null>(
-    cache,
-    queryKeys.threads.details(),
-    (detail) =>
-      detail !== null && detail.thread._id === threadId
-        ? { ...detail, thread: patch(detail.thread) }
-        : detail,
+  patchQuery<Thread[]>(cache, queryKeys.threads.open(), (threads) =>
+    threads.map((thread) => (thread._id === threadId ? patch(thread) : thread)),
   );
+  patchThreadDetail(cache, threadId, (detail) => ({
+    ...detail,
+    thread: patch(detail.thread),
+  }));
+}
+
+export function showMoveChange(
+  cache: QueryClient,
+  threadId: ThreadId,
+  change: MoveChange,
+): void {
+  patchThreadEverywhere(cache, threadId, (thread) =>
+    changeMovesLocally(thread, change),
+  );
+}
+
+/**
+ * The service's answer to a Move command. Only what that command can change is
+ * taken from it — the Moves, the focus, the revision, and the last activity a
+ * completion stamps — so an unrelated change still in flight keeps showing.
+ * The revision is what the next queued command carries.
+ */
+export function settleMoveChange(cache: QueryClient, settled: Thread): void {
+  patchThreadEverywhere(cache, settled._id, (thread) =>
+    withoutAbsent({
+      ...thread,
+      moves: settled.moves,
+      focusedMoveId: settled.focusedMoveId,
+      revision: settled.revision,
+      lastActivityAt: settled.lastActivityAt,
+      lastActivityContent: settled.lastActivityContent,
+    }),
+  );
+}
+
+/**
+ * The newest revision any read holds for the Thread. Reads refresh on their
+ * own schedules, so the freshest of them — or the caller's own copy — is the
+ * one a command must carry.
+ */
+export function cachedRevision(cache: QueryClient, thread: Thread): number {
+  let revision = thread.revision;
+  const open = cache
+    .getQueryData<Thread[]>(queryKeys.threads.open())
+    ?.find((candidate) => candidate._id === thread._id);
+  if (open) revision = Math.max(revision, open.revision);
+
+  for (const [, detail] of cache.getQueriesData<ThreadDetail | null>({
+    queryKey: queryKeys.threads.details(),
+  })) {
+    if (detail?.thread._id === thread._id) {
+      revision = Math.max(revision, detail.thread.revision);
+    }
+  }
+  return revision;
 }

@@ -133,7 +133,7 @@ describe("authentication and actor gate", () => {
     });
     const createStore = vi.fn();
     const response = await createApp({ createScope: createStore }).request(
-      "/v1/threads/private-thread/complete-next-move",
+      "/v1/threads/private-thread/moves/move-1/complete",
       {
         method: "POST",
         headers: {
@@ -141,7 +141,7 @@ describe("authentication and actor gate", () => {
           "content-type": "text/plain",
           cookie: signUp.headers.get("set-cookie") ?? "",
         },
-        body: JSON.stringify({ expectedNextMove: null, expectedRevision: 0 }),
+        body: JSON.stringify({ expectedRevision: 0 }),
       },
       env,
     );
@@ -160,14 +160,14 @@ describe("authentication and actor gate", () => {
   it("requires JSON for an allowed-origin mutation before storage", async () => {
     const createStore = vi.fn();
     const response = await createApp({ createScope: createStore }).request(
-      "/v1/threads/private-thread/complete-next-move",
+      "/v1/threads/private-thread/moves/move-1/complete",
       {
         method: "POST",
         headers: {
           origin: env.BROWSER_ORIGIN,
           "content-type": "text/plain",
         },
-        body: JSON.stringify({ expectedNextMove: null, expectedRevision: 0 }),
+        body: JSON.stringify({ expectedRevision: 0 }),
       },
       env,
     );

@@ -1,5 +1,7 @@
 import type { Note, Thread } from "@vita-os/contracts";
 
+import { hasMoves } from "@vita-os/core";
+
 import { dayDelta } from "./dashboard-model";
 
 /**
@@ -7,8 +9,9 @@ import { dayDelta } from "./dashboard-model";
  * that has no place on it.
  *
  * Three columns carry the dates (Now · This week · Later), and a single
- * unscheduled group carries what is not on the calendar at all: Threads with a
- * Next Move ready to be made, Threads simply open, and standalone Notes.
+ * unscheduled group carries what is not on the calendar at all: Threads with
+ * Moves ready to be made, Threads simply open, and standalone Notes. Focus never
+ * moves a Thread between groups: timing belongs to Follow-ups alone.
  * Follow-ups and Note attention dates are the same kind of signal here, so a
  * Note due tomorrow sits beside a Thread due tomorrow.
  *
@@ -19,11 +22,11 @@ export interface AttentionBoard {
   later: BoardItem[];
   now: BoardItem[];
   unscheduled: {
-    /** Threads with a Next Move but no date: what you could do today. */
+    /** Threads with at least one Move but no date: what you could do today. */
     moves: BoardItem[];
     /** Standalone Notes with no attention date. */
     notes: BoardItem[];
-    /** Threads with neither a date nor a captured move. */
+    /** Threads with neither a date nor a Move. */
     open: BoardItem[];
   };
   week: BoardItem[];
@@ -69,13 +72,11 @@ export function buildAttentionBoard(
     later: dated.filter((item) => inDays(item) > WEEK_HORIZON).sort(bySoonest),
     unscheduled: {
       moves: threads
-        .filter((thread) => thread.followUp == null && hasText(thread.nextMove))
+        .filter((thread) => thread.followUp == null && hasMoves(thread))
         .sort(byThreadOrder)
         .map((thread) => ({ kind: "thread", thread })),
       open: threads
-        .filter(
-          (thread) => thread.followUp == null && !hasText(thread.nextMove),
-        )
+        .filter((thread) => thread.followUp == null && !hasMoves(thread))
         .sort(byThreadOrder)
         .map((thread) => ({ kind: "thread", thread })),
       notes: notes
@@ -121,8 +122,4 @@ function bySoonest(a: BoardItem, b: BoardItem) {
 
 function byThreadOrder(a: Thread, b: Thread) {
   return a.order - b.order;
-}
-
-function hasText(value: string | null | undefined) {
-  return value != null && value.trim().length > 0;
 }

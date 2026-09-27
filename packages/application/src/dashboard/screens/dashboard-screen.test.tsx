@@ -64,8 +64,8 @@ vi.mock("../../areas/area-form/create-area-dialog", () => ({
 }));
 
 // The board renders real cards here; their writes have their own tests.
-vi.mock("../../threads/use-complete-next-move", () => ({
-  useCompleteNextMove: () => vi.fn(),
+vi.mock("../../threads/use-moves", () => ({
+  useCompleteMove: () => vi.fn(),
 }));
 vi.mock("../../threads/use-update-thread", () => ({
   useUpdateThread: () => vi.fn(),
