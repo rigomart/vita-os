@@ -29,7 +29,7 @@ For the Dashboard, three presentations were compared: a compact card that expand
 - **The application queues a Thread's Move commands.** They share one mutation scope: each shows its change at once, but they reach the service one at a time, and each carries the revision the previous one brought back. Local changes run the same core rules the service runs.
 - **Storage.** The Thread row holds `moves_json` — a JSON array of `{id, text}` in capture order, NULL when empty — and a nullable `focused_move_id`. The Activity Log's type constraint is widened by rebuilding the table.
 - **The card has two fixed rows that never trade places** (a refinement made while prototyping, over the spec's "lead with the Focused Move"): the Thread title always heads the card, and the second row is the move slot — the Focused Move, else the only Move, else "N moves · none focused". Pips give a quiet count of the Moves, the focused one filled. A Thread with no Moves is its title alone. The rail completes only the Move the slot shows; focusing and removing happen in Thread detail.
-- **Thread detail** lists every Move in capture order. Focus is a radio beside each Move; the Focused Move is tinted in place and carries a "Focused ×" chip that clears focus in one click.
+- **Thread detail** lists every Move in capture order. Focus is a radio beside each Move: pressing it focuses that Move, and pressing the filled one unfocuses it. The Focused Move is tinted in place; it carries no label of its own.
 
 ## Consequences
 

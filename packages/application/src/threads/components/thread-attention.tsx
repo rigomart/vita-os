@@ -42,9 +42,9 @@ interface ThreadAttentionProps {
  * Follow-up riding the list's rule.
  *
  * The list keeps capture order and never reorders itself. Focus is a radio
- * down the left edge; the Focused Move is tinted where it sits and carries a
- * chip that clears the focus in one click. Leaving every Move unfocused is a
- * fine answer — nothing here asks for a priority.
+ * down the left edge: pressing it focuses that Move, and pressing the filled
+ * one unfocuses it. The Focused Move is tinted where it sits. Leaving every
+ * Move unfocused is a fine answer — nothing here asks for a priority.
  *
  * `xl` is the Thread pane's breakpoint (THREAD_PANE_BREAKPOINT): from there up
  * the pane is a rail with room for hover affordances; below it the Thread is a
@@ -109,7 +109,6 @@ export function ThreadAttention({
               onToggleFocus={() =>
                 onFocusMove(move._id === focusedMoveId ? null : move._id)
               }
-              onClearFocus={() => onFocusMove(null)}
             />
           ))}
         </ul>
@@ -131,7 +130,6 @@ function MoveRow({
   onRemove,
   onComplete,
   onToggleFocus,
-  onClearFocus,
 }: {
   move: Move;
   focused: boolean;
@@ -139,7 +137,6 @@ function MoveRow({
   onRemove: () => void;
   onComplete: () => void;
   onToggleFocus: () => void;
-  onClearFocus: () => void;
 }) {
   return (
     <li
@@ -185,19 +182,6 @@ function MoveRow({
           displayClassName="border-transparent hover:bg-transparent"
         />
       </span>
-
-      {focused && (
-        <button
-          type="button"
-          onClick={onClearFocus}
-          aria-label="Clear focus"
-          title="Clear focus"
-          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-brand-accent/20 pr-1.5 pl-2.5 text-[11px] font-semibold text-brand-accent-text transition-colors hover:bg-brand-accent/30 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 motion-reduce:transition-none xl:h-5.5"
-        >
-          Focused
-          <X aria-hidden className="size-3" strokeWidth={2.5} />
-        </button>
-      )}
 
       {/* Always reachable on touch; on the wide rail the row stays clean until
           it is hovered or focused. */}

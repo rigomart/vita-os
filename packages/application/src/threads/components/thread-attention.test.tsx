@@ -91,24 +91,9 @@ describe("ThreadAttention", () => {
     expect(onFocusMove).toHaveBeenLastCalledWith(null);
   });
 
-  it("clears the focus in one click from the Focused Move's chip", async () => {
-    const user = userEvent.setup();
-    const { onFocusMove } = renderAttention({
-      moves: [callClinic, bookScan],
-      focusedMoveId: bookScan._id,
-    });
-
-    expect(screen.getAllByRole("button", { name: "Clear focus" })).toHaveLength(
-      1,
-    );
-    await user.click(screen.getByRole("button", { name: "Clear focus" }));
-    expect(onFocusMove).toHaveBeenCalledWith(null);
-  });
-
-  it("shows no chip and no highlight when nothing is focused", () => {
+  it("highlights nothing when nothing is focused", () => {
     renderAttention({ moves: [callClinic, bookScan] });
 
-    expect(screen.queryByRole("button", { name: "Clear focus" })).toBeNull();
     expect(
       moveRows().filter((row) => row.hasAttribute("data-focused")),
     ).toEqual([]);
