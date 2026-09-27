@@ -25,7 +25,7 @@ This directory is the maintained source for verifying Vita OS's user-facing beha
 
 ## Feature entry contract
 
-Each feature file has an H1 title, a one-paragraph description of the user-visible behavior, a `Status` line (`proven on <sha>` or `mapped from source, not yet driven`), then exactly four H2 sections in order: `Sub-features`, `How to get to it (user POV)`, `Driving it with agent-browser`, `Gotchas`.
+Each feature file has an H1 title, a one-paragraph description of the user-visible behavior, a `Status` line (`proven on <short sha>` or `mapped from source, not yet driven`; a partial proof names what was driven, e.g. `proven on <sha> (dock entry point). The command palette entry point is not yet driven.`), then exactly four H2 sections in order: `Sub-features`, `How to get to it (user POV)`, `Driving it with agent-browser`, `Gotchas`.
 
 ## Features
 

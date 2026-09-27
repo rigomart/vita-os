@@ -7,7 +7,7 @@ description: Drive the real Vita OS web app locally, the way a user does, and ca
 
 Everything goes through one CLI, `bun run verify <command>`, run from the repo root. Every command prints one JSON object: `{"ok":true,...}` or `{"ok":false,"error":...,"hint":...}`. Follow the `hint` on failure. `bun run verify --help` lists every command.
 
-The examples below drive the default instance, `main`. When more than one agent may run in this checkout, add `--instance <name>` after the command on every call (`bun run verify up --instance a`) or prefix each command with `VITA_INSTANCE=a`.
+The examples below drive the default instance, `main`. When more than one agent may run in this checkout, add `--instance <name>` after the command on every call (`bun run verify up --instance a`), before the `--` for `browser` (`bun run verify browser --instance a -- snapshot -i`), or prefix each command with `VITA_INSTANCE=a`.
 
 Read [`features/README.md`](features/README.md) before driving. It maps each user-facing feature to its entry points, exact driving commands, and the end state that proves it.
 
