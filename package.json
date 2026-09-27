@@ -29,7 +29,8 @@
     "format:check": "oxfmt --check .",
     "test": "turbo run test",
     "test:run": "turbo run test:run",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "verify": "bun .claude/skills/verify-vita-os/scripts/vita.ts"
   },
   "workspaces": [
     "apps/*",
