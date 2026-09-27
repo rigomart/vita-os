@@ -2,7 +2,7 @@
 
 A signed-in user creates a thread with a title and an optional area. After the server confirms, a `Thread created` toast shows and the thread opens in place at `?thread=<slug>`, with a pane for its summary, next move, Up Next list, notes, and activity log.
 
-Status: proven on 895bd5e (dock entry point: `thread-open`, `thread-create`, `thread-area`, `thread-persist`). The command palette entry point is not yet driven.
+Status: proven on 895bd5e (dock entry point: `thread-open`, `thread-create`, `thread-area`, `thread-persist`), before #373 replaced Next Move and Up Next with Moves. Re-drive before trusting the pane description and Dashboard gotcha below. The command palette entry point is not yet driven.
 
 ## Sub-features
 

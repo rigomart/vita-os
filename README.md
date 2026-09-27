@@ -1,6 +1,6 @@
 # Vita OS
 
-A personal life-awareness app. It holds open threads and standalone notes, lightly grouped by the part of life they concern, so you don't have to keep them in your head. `CONTEXT.md` defines the product vocabulary (Area, Thread, Next Move, and so on).
+A personal life-awareness app. It holds open threads and standalone notes, lightly grouped by the part of life they concern, so you don't have to keep them in your head. `CONTEXT.md` defines the product vocabulary (Area, Thread, Move, and so on).
 
 The app is a React web client talking to a Hono API on Cloudflare Workers, with Better Auth for sign-in and D1 for storage.
 
