@@ -6,7 +6,8 @@ import type {
   AreaId,
   AreaSummary,
   CommandAcknowledgement,
-  CompleteNextMoveOutput,
+  Move,
+  MoveId,
   Note,
   NoteId,
   NotePage,
@@ -83,15 +84,21 @@ function isActivityLogEntryType(
   return (
     value === "area_move" ||
     value === "next_move_change" ||
+    value === "move_completed" ||
     value === "state_change" ||
     value === "follow_up_change"
   );
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) && value.every((item) => typeof item === "string")
-  );
+function decodeMove(value: unknown): Move | undefined {
+  if (
+    !isObject(value) ||
+    typeof value._id !== "string" ||
+    typeof value.text !== "string"
+  ) {
+    return undefined;
+  }
+  return { _id: value._id as MoveId, text: value.text };
 }
 
 /** Every entry decodes, or the whole list is unrecognized. */
@@ -146,14 +153,16 @@ export function decodeThread(value: unknown): Thread | undefined {
     areaId,
     order,
     state,
-    nextMove,
-    upNext,
+    moves: rawMoves,
+    focusedMoveId,
     followUp,
     lastActivityAt,
     lastActivityContent,
     createdAt,
     revision,
   } = value;
+  const moves =
+    rawMoves === undefined ? undefined : decodeList(rawMoves, decodeMove);
   if (
     typeof _id !== "string" ||
     typeof title !== "string" ||
@@ -162,8 +171,8 @@ export function decodeThread(value: unknown): Thread | undefined {
     !isOptionalString(areaId) ||
     !isSafeInteger(order) ||
     !isThreadState(state) ||
-    !isOptionalString(nextMove) ||
-    (upNext !== undefined && !isStringArray(upNext)) ||
+    (rawMoves !== undefined && moves === undefined) ||
+    !isOptionalString(focusedMoveId) ||
     !isOptionalSafeInteger(followUp) ||
     !isOptionalSafeInteger(lastActivityAt) ||
     !isOptionalString(lastActivityContent) ||
@@ -182,8 +191,10 @@ export function decodeThread(value: unknown): Thread | undefined {
     ...(areaId === undefined ? {} : { areaId: areaId as AreaId }),
     order,
     state,
-    ...(nextMove === undefined ? {} : { nextMove }),
-    ...(upNext === undefined ? {} : { upNext }),
+    ...(moves === undefined ? {} : { moves }),
+    ...(focusedMoveId === undefined
+      ? {}
+      : { focusedMoveId: focusedMoveId as MoveId }),
     ...(followUp === undefined ? {} : { followUp }),
     ...(lastActivityAt === undefined ? {} : { lastActivityAt }),
     ...(lastActivityContent === undefined ? {} : { lastActivityContent }),
@@ -333,15 +344,6 @@ export function decodeThreadNotePage(
   value: unknown,
 ): ThreadNotePage | undefined {
   return decodePage(value, decodeThreadNote);
-}
-
-export function decodeCompletion(
-  value: unknown,
-): CompleteNextMoveOutput | undefined {
-  if (!isObject(value)) return undefined;
-  if (value.status === "completed") return { status: "completed" };
-  if (value.status === "unchanged") return { status: "unchanged" };
-  return undefined;
 }
 
 export function decodeAcknowledgement(

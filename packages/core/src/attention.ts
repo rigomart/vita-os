@@ -9,15 +9,19 @@
 
 export interface ThreadAttentionInput {
   followUp?: number | null;
-  nextMove?: string | null;
+  moves?: readonly unknown[];
   order: number;
 }
 
+/**
+ * A Thread with at least one Move and no Follow-up is ready to move. Focus and
+ * the number of Moves never decide a group: timing belongs to Follow-ups.
+ */
 export interface ThreadAttentionGroups<TThread> {
   open: TThread[];
   overdue: TThread[];
   upcoming: TThread[];
-  withNextMoves: TThread[];
+  withMoves: TThread[];
 }
 
 export interface NoteAttentionInput {
@@ -55,7 +59,7 @@ export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(
   const today = getDayKey(currentDate, timezoneOffsetMinutes);
   const groups: ThreadAttentionGroups<TThread> = {
     overdue: [],
-    withNextMoves: [],
+    withMoves: [],
     upcoming: [],
     open: [],
   };
@@ -67,8 +71,8 @@ export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(
       } else {
         groups.upcoming.push(thread);
       }
-    } else if (hasText(thread.nextMove)) {
-      groups.withNextMoves.push(thread);
+    } else if ((thread.moves?.length ?? 0) > 0) {
+      groups.withMoves.push(thread);
     } else {
       groups.open.push(thread);
     }
@@ -76,7 +80,7 @@ export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(
 
   groups.overdue.sort(compareFollowUps);
   groups.upcoming.sort(compareFollowUps);
-  groups.withNextMoves.sort(compareThreadOrder);
+  groups.withMoves.sort(compareThreadOrder);
   groups.open.sort(compareThreadOrder);
 
   return groups;
@@ -184,8 +188,4 @@ function compareThreadOrder<TThread extends ThreadAttentionInput>(
   b: TThread,
 ) {
   return a.order - b.order;
-}
-
-function hasText(value: string | null | undefined) {
-  return value != null && value.trim().length > 0;
 }

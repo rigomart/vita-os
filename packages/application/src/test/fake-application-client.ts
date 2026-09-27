@@ -35,8 +35,11 @@ export function createFakeApplicationClient(
     createThread: unconfigured,
     updateThread: unconfigured,
     removeThread: unconfigured,
-    replaceUpNext: unconfigured,
-    completeNextMove: unconfigured,
+    addMove: unconfigured,
+    editMove: unconfigured,
+    removeMove: unconfigured,
+    completeMove: unconfigured,
+    focusMove: unconfigured,
 
     getThreadActivityPage: unconfigured,
 

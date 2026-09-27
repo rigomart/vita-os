@@ -1,3 +1,5 @@
+import type { Move, MoveId } from "@vita-os/contracts";
+
 import userEvent from "@testing-library/user-event";
 import { addDays, subDays } from "date-fns";
 import { describe, expect, it, vi } from "vitest";
@@ -7,22 +9,26 @@ import { ThreadAttention } from "./thread-attention";
 
 const now = new Date("2026-08-13T12:00:00").getTime();
 
+const callClinic: Move = { _id: "move-1" as MoveId, text: "Call the clinic" };
+const bookScan: Move = { _id: "move-2" as MoveId, text: "Book the scan" };
+const collect: Move = { _id: "move-3" as MoveId, text: "Collect the results" };
+
 function renderAttention(
   props: Partial<Parameters<typeof ThreadAttention>[0]> = {},
 ) {
   const handlers = {
-    onSetNextMove: vi.fn(),
-    onClearNextMove: vi.fn(),
-    onCompleteNextMove: vi.fn(),
-    onReplaceUpNext: vi.fn(),
+    onAddMove: vi.fn(),
+    onEditMove: vi.fn(),
+    onRemoveMove: vi.fn(),
+    onCompleteMove: vi.fn(),
+    onFocusMove: vi.fn(),
     onSetFollowUp: vi.fn(),
     onClearFollowUp: vi.fn(),
   };
 
   const { unmount } = render(
     <ThreadAttention
-      nextMove={undefined}
-      upNext={[]}
+      moves={[]}
       followUp={undefined}
       now={now}
       {...handlers}
@@ -33,230 +39,150 @@ function renderAttention(
   return { ...handlers, unmount };
 }
 
-/** The waiting moves, in the order the cascade hangs them. */
-function upNextRows() {
-  return within(screen.getByRole("list", { name: "Up Next" })).getAllByRole(
+function moveRows() {
+  return within(screen.getByRole("list", { name: "Moves" })).getAllByRole(
     "listitem",
   );
 }
 
-/** The line is folded at rest; every test that reads a row unfolds it first. */
-async function openUpNext(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: /Up Next/ }));
-}
-
 describe("ThreadAttention", () => {
-  it("states the live attention without any interaction", () => {
+  it("lists every Move in capture order, highlighting the Focused Move where it sits", () => {
     renderAttention({
-      nextMove: "Call the clinic",
-      upNext: ["Book the scan", "Collect the results"],
+      moves: [callClinic, bookScan, collect],
+      focusedMoveId: bookScan._id,
       followUp: now,
     });
 
-    const attention = screen.getByRole("region", { name: "Thread attention" });
-    expect(within(attention).getByText("Call the clinic")).toBeVisible();
-    expect(within(attention).getByText("Aug 13")).toBeVisible();
+    const rows = moveRows();
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Call the clinic"),
+      expect.stringContaining("Book the scan"),
+      expect.stringContaining("Collect the results"),
+    ]);
+    expect(rows[1]).toHaveAttribute("data-focused", "true");
+    expect(rows[0]).not.toHaveAttribute("data-focused");
     expect(
-      within(attention).getByRole("button", { name: "Follow up Aug 13" }),
-    ).toBeVisible();
+      within(rows[1]!).getByRole("button", { name: "Unfocus this move" }),
+    ).toHaveAttribute("aria-pressed", "true");
     expect(
-      within(attention).getByRole("button", { name: "Complete next move" }),
+      within(rows[0]!).getByRole("button", { name: "Focus this move" }),
+    ).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText("3")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Follow up Aug 13" }),
     ).toBeVisible();
-
-    expect(screen.queryByRole("list", { name: "Up Next" })).toBeNull();
-    expect(within(attention).getByText("2")).toBeVisible();
-    expect(within(attention).getByText("Book the scan")).toBeVisible();
   });
 
-  it("unfolds the whole line on request", async () => {
+  it("toggles focus from the radio: focusing another replaces it, focusing the focused one unfocuses", async () => {
     const user = userEvent.setup();
-    renderAttention({
-      nextMove: "Call the clinic",
-      upNext: ["Book the scan", "Collect the results"],
+    const { onFocusMove } = renderAttention({
+      moves: [callClinic, bookScan],
+      focusedMoveId: callClinic._id,
     });
 
-    await openUpNext(user);
+    await user.click(
+      within(moveRows()[1]!).getByRole("button", { name: "Focus this move" }),
+    );
+    expect(onFocusMove).toHaveBeenLastCalledWith(bookScan._id);
 
-    const rows = upNextRows();
-    expect(
-      within(rows[0]!).getByRole("button", { name: "Book the scan" }),
-    ).toBeVisible();
-    expect(
-      within(rows[1]!).getByRole("button", { name: "Collect the results" }),
-    ).toBeVisible();
+    await user.click(
+      within(moveRows()[0]!).getByRole("button", { name: "Unfocus this move" }),
+    );
+    expect(onFocusMove).toHaveBeenLastCalledWith(null);
   });
 
-  it("counts the line only while moves are waiting", () => {
-    const { unmount } = renderAttention({ nextMove: "Call the clinic" });
-
-    expect(screen.getByText("Up Next")).toBeVisible();
-    expect(screen.queryByRole("list", { name: "Up Next" })).toBeNull();
-    expect(screen.queryByText("0")).toBeNull();
-    unmount();
-
-    renderAttention({ upNext: ["Book the scan", "Collect the results"] });
-    expect(screen.getByText("2")).toBeVisible();
-  });
-
-  it("takes a new next move on Enter and on blur", async () => {
+  it("clears the focus in one click from the Focused Move's chip", async () => {
     const user = userEvent.setup();
-    const { onSetNextMove } = renderAttention();
+    const { onFocusMove } = renderAttention({
+      moves: [callClinic, bookScan],
+      focusedMoveId: bookScan._id,
+    });
 
-    const field = screen.getByRole("textbox", { name: "Next move" });
-    await user.type(field, "Call the clinic{Enter}");
-    expect(onSetNextMove).toHaveBeenCalledWith("Call the clinic");
-
-    await user.type(field, "  Book the scan  ");
-    await user.tab();
-    expect(onSetNextMove).toHaveBeenLastCalledWith("Book the scan");
-    expect(onSetNextMove).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByRole("button", { name: "Clear focus" })).toHaveLength(
+      1,
+    );
+    await user.click(screen.getByRole("button", { name: "Clear focus" }));
+    expect(onFocusMove).toHaveBeenCalledWith(null);
   });
 
-  it("edits an existing next move in place", async () => {
+  it("shows no chip and no highlight when nothing is focused", () => {
+    renderAttention({ moves: [callClinic, bookScan] });
+
+    expect(screen.queryByRole("button", { name: "Clear focus" })).toBeNull();
+    expect(
+      moveRows().filter((row) => row.hasAttribute("data-focused")),
+    ).toEqual([]);
+    expect(
+      screen.getByText(
+        "Focus one when you know it, or leave them all unfocused.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("completes and removes any Move, focused or not", async () => {
     const user = userEvent.setup();
-    const { onSetNextMove } = renderAttention({ nextMove: "Call the clinic" });
+    const { onCompleteMove, onRemoveMove } = renderAttention({
+      moves: [callClinic, bookScan],
+      focusedMoveId: callClinic._id,
+    });
+
+    await user.click(
+      within(moveRows()[1]!).getByRole("button", { name: "Complete move" }),
+    );
+    expect(onCompleteMove).toHaveBeenCalledWith(bookScan._id);
+
+    await user.click(
+      within(moveRows()[0]!).getByRole("button", { name: "Remove move" }),
+    );
+    expect(onRemoveMove).toHaveBeenCalledWith(callClinic._id);
+  });
+
+  it("edits a Move in place", async () => {
+    const user = userEvent.setup();
+    const { onEditMove } = renderAttention({ moves: [callClinic] });
 
     await user.click(screen.getByText("Call the clinic"));
     const editor = screen.getByDisplayValue("Call the clinic");
     await user.clear(editor);
     await user.type(editor, "Book appointment{Enter}");
 
-    expect(onSetNextMove).toHaveBeenCalledWith("Book appointment");
+    expect(onEditMove).toHaveBeenCalledWith(callClinic._id, "Book appointment");
   });
 
-  it("completes and clears the next move", async () => {
+  it("captures a Move on Enter and on blur, never asking about focus", async () => {
     const user = userEvent.setup();
-    const { onCompleteNextMove, onClearNextMove } = renderAttention({
-      nextMove: "Call the clinic",
-    });
+    const { onAddMove, onFocusMove } = renderAttention();
 
-    await user.click(
-      screen.getByRole("button", { name: "Complete next move" }),
-    );
-    expect(onCompleteNextMove).toHaveBeenCalled();
+    expect(screen.queryByRole("list", { name: "Moves" })).toBeNull();
+    const field = screen.getByRole("textbox", { name: "Add a move" });
+    await user.type(field, "Call the clinic{Enter}");
+    expect(onAddMove).toHaveBeenCalledWith("Call the clinic");
 
-    await user.click(screen.getByRole("button", { name: "Clear next move" }));
-    expect(onClearNextMove).toHaveBeenCalled();
-  });
-
-  it("disables only the actions that are in flight", () => {
-    renderAttention({
-      nextMove: "Call the clinic",
-      followUp: now,
-      pending: { clear: true },
-    });
-
-    expect(
-      screen.getByRole("button", { name: "Clear next move" }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: "Complete next move" }),
-    ).not.toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: "Follow up Aug 13" }),
-    ).not.toBeDisabled();
-  });
-
-  it("appends a move to the back of the line", async () => {
-    const user = userEvent.setup();
-    const { onReplaceUpNext } = renderAttention({
-      nextMove: "Call the clinic",
-      upNext: ["Book the scan"],
-    });
-
-    await openUpNext(user);
-    const field = screen.getByRole("textbox", { name: "Add an upcoming move" });
-    await user.type(field, "  Collect the results  {Enter}");
-    expect(onReplaceUpNext).toHaveBeenCalledWith([
-      "Book the scan",
-      "Collect the results",
-    ]);
-
-    // Escape abandons the draft, so the blur that follows commits nothing.
-    await user.type(field, "Never mind{Escape}");
+    await user.type(field, "  Book the scan  ");
     await user.tab();
-    expect(onReplaceUpNext).toHaveBeenCalledTimes(1);
+    expect(onAddMove).toHaveBeenLastCalledWith("Book the scan");
+    expect(onAddMove).toHaveBeenCalledTimes(2);
+    expect(onFocusMove).not.toHaveBeenCalled();
+
+    await user.type(field, "   {Enter}");
+    expect(onAddMove).toHaveBeenCalledTimes(2);
   });
 
-  it("edits, reorders and removes upcoming moves as the whole line", async () => {
-    const user = userEvent.setup();
-    const { onReplaceUpNext } = renderAttention({
-      nextMove: "Call the clinic",
-      upNext: ["Book the scan", "Collect the results"],
-    });
+  it("keeps the row controls reachable on touch", () => {
+    renderAttention({ moves: [callClinic] });
 
-    await openUpNext(user);
-    await user.click(
-      within(upNextRows()[1]!).getByRole("button", { name: "Move earlier" }),
-    );
-    expect(onReplaceUpNext).toHaveBeenLastCalledWith([
-      "Collect the results",
-      "Book the scan",
-    ]);
-
-    await user.click(
-      within(upNextRows()[0]!).getByRole("button", { name: "Move later" }),
-    );
-    expect(onReplaceUpNext).toHaveBeenLastCalledWith([
-      "Collect the results",
-      "Book the scan",
-    ]);
-
-    await user.click(
-      within(upNextRows()[0]!).getByRole("button", {
-        name: "Remove upcoming move",
-      }),
-    );
-    expect(onReplaceUpNext).toHaveBeenLastCalledWith(["Collect the results"]);
-
-    await user.click(
-      within(upNextRows()[0]!).getByRole("button", { name: "Book the scan" }),
-    );
-    const editor = screen.getByDisplayValue("Book the scan");
-    await user.clear(editor);
-    await user.type(editor, "Book the MRI{Enter}");
-    expect(onReplaceUpNext).toHaveBeenLastCalledWith([
-      "Book the MRI",
-      "Collect the results",
-    ]);
-  });
-
-  it("pins the ends of the line", async () => {
-    const user = userEvent.setup();
-    renderAttention({
-      nextMove: "Call the clinic",
-      upNext: ["Book the scan", "Collect the results"],
-    });
-
-    await openUpNext(user);
-    const rows = upNextRows();
-    expect(
-      within(rows[0]!).getByRole("button", { name: "Move earlier" }),
-    ).toBeDisabled();
-    expect(
-      within(rows[1]!).getByRole("button", { name: "Move later" }),
-    ).toBeDisabled();
-  });
-
-  it("keeps the row controls reachable on touch", async () => {
-    const user = userEvent.setup();
-    renderAttention({
-      nextMove: "Call the clinic",
-      upNext: ["Book the scan"],
-    });
-
-    await openUpNext(user);
-
-    // `xl` is THREAD_PANE_BREAKPOINT: the rail hides them until the row is
+    // `xl` is THREAD_PANE_BREAKPOINT: the rail hides removal until the row is
     // hovered or focused, the drawer never does.
     expect(
-      within(upNextRows()[0]!).getByRole("button", {
-        name: "Remove upcoming move",
-      }).parentElement,
+      within(moveRows()[0]!).getByRole("button", { name: "Remove move" }),
     ).toHaveClass("xl:opacity-0");
     expect(
-      screen.getByRole("textbox", { name: "Add an upcoming move" }),
-    ).toHaveClass("h-9", "xl:h-7");
+      within(moveRows()[0]!).getByRole("button", { name: "Complete move" }),
+    ).toHaveClass("size-8", "xl:size-6");
+    expect(screen.getByRole("textbox", { name: "Add a move" })).toHaveClass(
+      "h-9",
+      "xl:h-7",
+    );
   });
 
   it("picks a follow-up date from the calendar and clears it", async () => {

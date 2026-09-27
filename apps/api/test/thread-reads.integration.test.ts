@@ -55,7 +55,7 @@ async function seedDetailFixture() {
       1_500_000_000_001,
     ),
     env.DB.prepare(
-      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, next_move, up_next_json, follow_up, last_activity_at, last_activity_content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, moves_json, focused_move_id, follow_up, last_activity_at, last_activity_content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).bind(
       "thread-owner",
       owner.actorId,
@@ -65,8 +65,8 @@ async function seedDetailFixture() {
       "Choose a clinic",
       3,
       "open",
-      "Call clinic",
-      '["Book appointment","Collect results"]',
+      '[{"id":"move-1","text":"Call clinic"},{"id":"move-2","text":"Book appointment"}]',
+      "move-2",
       1_800_000_000_000,
       1_700_000_000_000,
       "Captured next move",
@@ -86,13 +86,13 @@ async function seedDetailFixture() {
       1_600_000_000_001,
     ),
     env.DB.prepare(
-      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, up_next_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, moves_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).bind(
-      "thread-empty-up-next",
+      "thread-empty-moves",
       owner.actorId,
       "area-owner",
-      "Empty Up Next",
-      "empty-up-next",
+      "Empty Moves",
+      "empty-moves",
       null,
       4,
       "open",
@@ -100,18 +100,33 @@ async function seedDetailFixture() {
       1_600_000_000_002,
     ),
     env.DB.prepare(
-      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, up_next_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, moves_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).bind(
-      "thread-invalid-up-next",
+      "thread-invalid-moves",
       owner.actorId,
       "area-owner",
-      "Invalid Up Next",
-      "invalid-up-next",
+      "Invalid Moves",
+      "invalid-moves",
       null,
       5,
       "open",
-      '["Book appointment",1]',
+      '["Book appointment"]',
       1_600_000_000_003,
+    ),
+    env.DB.prepare(
+      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, moves_json, focused_move_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    ).bind(
+      "thread-stray-focus",
+      owner.actorId,
+      "area-owner",
+      "Stray focus",
+      "stray-focus",
+      null,
+      7,
+      "open",
+      '[{"id":"move-1","text":"Call clinic"}]',
+      "move-9",
+      1_600_000_000_007,
     ),
     env.DB.prepare(
       "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -340,8 +355,11 @@ describe("Thread detail", () => {
         areaId: "area-owner",
         order: 3,
         state: "open",
-        nextMove: "Call clinic",
-        upNext: ["Book appointment", "Collect results"],
+        moves: [
+          { _id: "move-1", text: "Call clinic" },
+          { _id: "move-2", text: "Book appointment" },
+        ],
+        focusedMoveId: "move-2",
         followUp: 1_800_000_000_000,
         lastActivityAt: 1_700_000_000_000,
         lastActivityContent: "Captured next move",
@@ -458,8 +476,8 @@ describe("Thread detail", () => {
     });
   });
 
-  it.each(["empty-up-next", "invalid-up-next"])(
-    "rejects a stored invalid Up Next value for %s without exposing it",
+  it.each(["empty-moves", "invalid-moves", "stray-focus"])(
+    "rejects stored invalid Moves for %s without exposing them",
     async (slug) => {
       const response = await SELF.fetch(`http://api.test/v1/threads/${slug}`, {
         headers: { cookie: fixture.owner.cookie },

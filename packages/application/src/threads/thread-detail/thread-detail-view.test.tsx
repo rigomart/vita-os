@@ -33,8 +33,9 @@ const mocks = vi.hoisted(() => ({
   /** Read the Thread back without an Area. */
   unlabeled: false,
   detailError: false,
-  nextMove: undefined as string | undefined,
-  upNext: undefined as string[] | undefined,
+  moves: undefined as { _id: string; text: string }[] | undefined,
+  /** The revision the service is at: every Move command moves it on. */
+  revision: 0,
   /** Slugs the composite resolves; null lets every slug resolve. */
   knownSlugs: null as string[] | null,
   /** Every operation the rail asked for, in order. */
@@ -45,8 +46,10 @@ const mocks = vi.hoisted(() => ({
   activityCursors: [] as (string | undefined)[],
   activityHasMore: false,
   activityEntries: [] as ActivityLogEntry[],
-  completeNextMove: vi.fn(),
-  replaceUpNext: vi.fn(),
+  addMove: vi.fn(),
+  removeMove: vi.fn(),
+  completeMove: vi.fn(),
+  focusMove: vi.fn(),
   updateThread: vi.fn(),
   removeThread: vi.fn(),
 }));
@@ -129,8 +132,10 @@ function createApplicationClient(): ApplicationClient {
       const read = {
         ...(mocks.unlabeled ? unlabeled : thread),
         state: mocks.threadState,
-        ...(mocks.nextMove === undefined ? {} : { nextMove: mocks.nextMove }),
-        ...(mocks.upNext === undefined ? {} : { upNext: mocks.upNext }),
+        ...(mocks.moves === undefined
+          ? {}
+          : { moves: mocks.moves as Thread["moves"] }),
+        revision: mocks.revision,
       };
       return {
         ok: true,
@@ -166,8 +171,10 @@ function createApplicationClient(): ApplicationClient {
     },
     createThreadNote: async () => ({ ok: true, value: threadNote }),
     updateThread: mocks.updateThread,
-    replaceUpNext: mocks.replaceUpNext,
-    completeNextMove: mocks.completeNextMove,
+    addMove: mocks.addMove,
+    removeMove: mocks.removeMove,
+    completeMove: mocks.completeMove,
+    focusMove: mocks.focusMove,
     removeThread: mocks.removeThread,
   });
 }
@@ -197,8 +204,8 @@ describe("ThreadDetailView", () => {
     mocks.threadExists = true;
     mocks.unlabeled = false;
     mocks.detailError = false;
-    mocks.nextMove = undefined;
-    mocks.upNext = undefined;
+    mocks.moves = undefined;
+    mocks.revision = thread.revision;
     mocks.knownSlugs = null;
     mocks.calls = [];
     mocks.applicationDetailSlugs = [];
@@ -206,20 +213,26 @@ describe("ThreadDetailView", () => {
     mocks.activityCursors = [];
     mocks.activityHasMore = false;
     mocks.activityEntries = [];
-    mocks.replaceUpNext.mockReset().mockResolvedValue({
-      ok: true,
-      value: thread,
-    });
+    // Each Move command answers with the Thread one revision on.
+    for (const command of [
+      mocks.addMove,
+      mocks.removeMove,
+      mocks.completeMove,
+      mocks.focusMove,
+    ]) {
+      command
+        .mockReset()
+        .mockImplementation(async (input: { expectedRevision: number }) => {
+          mocks.revision = input.expectedRevision + 1;
+          return { ok: true, value: { ...thread, revision: mocks.revision } };
+        });
+    }
     mocks.updateThread
       .mockReset()
       .mockResolvedValue({ ok: true, value: thread });
     mocks.removeThread
       .mockReset()
       .mockResolvedValue({ ok: true, value: { acknowledged: true } });
-    mocks.completeNextMove.mockReset().mockResolvedValue({
-      ok: true,
-      value: { status: "completed" },
-    });
   });
 
   it("opens Thread detail as a near-full bottom drawer below the pane breakpoint", async () => {
@@ -512,7 +525,7 @@ describe("ThreadDetailView", () => {
       }),
     ).toBeVisible();
     expect(
-      within(attention).getByRole("textbox", { name: "Next move" }),
+      within(attention).getByRole("textbox", { name: "Add a move" }),
     ).toBeVisible();
     expect(
       within(attention).getByRole("button", { name: "Add a follow-up…" }),
@@ -532,18 +545,20 @@ describe("ThreadDetailView", () => {
     ).toBeTruthy();
   });
 
-  it("hangs the Thread's Up Next line under the next move, and edits it whole", async () => {
+  it("lists the Thread's Moves, and adds and removes them through the application client", async () => {
     mocks.showDesktopPane = true;
-    mocks.upNext = ["Book the scan", "Collect the results"];
+    mocks.moves = [
+      { _id: "move-scan", text: "Book the scan" },
+      { _id: "move-results", text: "Collect the results" },
+    ];
     renderThreadDetail();
 
     await screen.findByRole("complementary", {
       name: "Sister's front teeth",
     });
 
-    await userEvent.click(screen.getByRole("button", { name: /Up Next/ }));
     const moves = within(
-      screen.getByRole("list", { name: "Up Next" }),
+      screen.getByRole("list", { name: "Moves" }),
     ).getAllByRole("listitem");
     expect(
       within(moves[0]!).getByRole("button", { name: "Book the scan" }),
@@ -553,39 +568,57 @@ describe("ThreadDetailView", () => {
     ).toBeVisible();
 
     await userEvent.type(
-      screen.getByRole("textbox", { name: "Add an upcoming move" }),
+      screen.getByRole("textbox", { name: "Add a move" }),
       "Share the report{Enter}",
     );
     await userEvent.click(
-      within(moves[0]!).getByRole("button", {
-        name: "Remove upcoming move",
-      }),
-    );
-
-    expect(mocks.replaceUpNext).toHaveBeenNthCalledWith(1, {
-      threadId: thread._id,
-      moves: ["Book the scan", "Collect the results", "Share the report"],
-    });
-    expect(mocks.replaceUpNext).toHaveBeenNthCalledWith(2, {
-      threadId: thread._id,
-      moves: ["Collect the results"],
-    });
-  });
-
-  it("completes the Next Move through the application client", async () => {
-    mocks.showDesktopPane = true;
-    mocks.nextMove = "Call the specialist";
-    renderThreadDetail();
-
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Complete next move" }),
+      within(moves[0]!).getByRole("button", { name: "Remove move" }),
     );
 
     await waitFor(() => {
-      expect(mocks.completeNextMove).toHaveBeenCalledWith({
+      expect(mocks.addMove).toHaveBeenCalledWith({
         threadId: thread._id,
-        expectedNextMove: "Call the specialist",
+        moveId: expect.any(String),
+        text: "Share the report",
         expectedRevision: thread.revision,
+      });
+      // Queued behind the add, it carries the revision the add brought back.
+      expect(mocks.removeMove).toHaveBeenCalledWith({
+        threadId: thread._id,
+        moveId: "move-scan",
+        expectedRevision: thread.revision + 1,
+      });
+    });
+  });
+
+  it("focuses and completes Moves through the application client", async () => {
+    mocks.showDesktopPane = true;
+    mocks.moves = [
+      { _id: "move-specialist", text: "Call the specialist" },
+      { _id: "move-scan", text: "Book the scan" },
+    ];
+    renderThreadDetail();
+
+    const moves = within(
+      await screen.findByRole("list", { name: "Moves" }),
+    ).getAllByRole("listitem");
+    await userEvent.click(
+      within(moves[1]!).getByRole("button", { name: "Focus this move" }),
+    );
+    await userEvent.click(
+      within(moves[0]!).getByRole("button", { name: "Complete move" }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.focusMove).toHaveBeenCalledWith({
+        threadId: thread._id,
+        moveId: "move-scan",
+        expectedRevision: thread.revision,
+      });
+      expect(mocks.completeMove).toHaveBeenCalledWith({
+        threadId: thread._id,
+        moveId: "move-specialist",
+        expectedRevision: thread.revision + 1,
       });
     });
   });
@@ -656,7 +689,7 @@ describe("ThreadDetailView", () => {
     expect(
       screen.queryByRole("region", { name: "Thread attention" }),
     ).toBeNull();
-    expect(screen.queryByRole("textbox", { name: "Next move" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Add a move" })).toBeNull();
     expect(
       screen.getByText(/No next move or follow-up while resolved/),
     ).toBeVisible();

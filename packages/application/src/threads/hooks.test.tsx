@@ -1,6 +1,7 @@
 import type {
   AreaId,
   ApplicationError,
+  MoveId,
   Thread,
   ThreadDetail,
   ThreadId,
@@ -21,7 +22,6 @@ import {
   useCreateThread,
   useOpenThreads,
   useRemoveThread,
-  useReplaceUpNext,
   useUpdateThread,
 } from "./hooks";
 
@@ -32,7 +32,10 @@ const home = anArea({
   slug: "home-0011aabb",
   order: 1,
 });
-const thread = aThread({ nextMove: "Call clinic" });
+const thread = aThread({
+  moves: [{ _id: "move-1" as MoveId, text: "Call clinic" }],
+  focusedMoveId: "move-1" as MoveId,
+});
 const unavailable: ApplicationError = {
   code: "unavailable",
   message: "Temporarily unavailable.",
@@ -129,50 +132,13 @@ describe("useCreateThread without an Area", () => {
 });
 
 describe("useUpdateThread", () => {
-  it("promotes the front of Up Next when a change would empty the slot", async () => {
-    const lined = aThread({
-      nextMove: "Call clinic",
-      upNext: ["Book appointment", "Collect results"],
-    });
-    const pending = deferred<ReturnType<typeof success<Thread>>>();
-    const client = createFakeApplicationClient({
-      updateThread: () => pending.promise,
-    });
-    const { wrapper, cache } = createHarness(
-      client,
-      seedThreadReads({ thread: lined }),
-    );
-    const { result } = renderHook(() => useUpdateThread(), {
-      wrapper,
-    });
-
-    act(() => {
-      result.current.mutate({ thread: lined, nextMove: null });
-    });
-
-    await waitFor(() => {
-      const open = cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0];
-      expect(open?.nextMove).toBe("Book appointment");
-      expect(open?.upNext).toEqual(["Collect results"]);
-    });
-    expect(
-      cache.getQueryData<ThreadDetail>(queryKeys.threads.detail(lined.slug))
-        ?.thread.nextMove,
-    ).toBe("Book appointment");
-
-    pending.resolve(
-      success({
-        ...lined,
-        nextMove: "Book appointment",
-        upNext: ["Collect results"],
-      }),
-    );
-  });
-
   it("resolving drops the Thread from the open list and clears its attention", async () => {
     const attentive = aThread({
-      nextMove: "Call clinic",
-      upNext: ["Book appointment"],
+      moves: [
+        { _id: "move-1" as MoveId, text: "Call clinic" },
+        { _id: "move-2" as MoveId, text: "Book appointment" },
+      ],
+      focusedMoveId: "move-1" as MoveId,
       followUp: 5_000,
     });
     const client = createFakeApplicationClient({
@@ -195,8 +161,8 @@ describe("useUpdateThread", () => {
         queryKeys.threads.detail(attentive.slug),
       );
       expect(rail?.thread.state).toBe("resolved");
-      expect(rail?.thread.nextMove).toBeUndefined();
-      expect(rail?.thread.upNext).toBeUndefined();
+      expect(rail?.thread.moves).toBeUndefined();
+      expect(rail?.thread.focusedMoveId).toBeUndefined();
       expect(rail?.thread.followUp).toBeUndefined();
       // A Resolved Thread keeps its Area.
       expect(rail?.thread.areaId).toBe(health._id);
@@ -294,7 +260,7 @@ describe("useUpdateThread", () => {
 
     await act(async () => {
       await result.current
-        .mutateAsync({ thread, nextMove: "Something else" })
+        .mutateAsync({ thread, title: "Something else" })
         .catch(() => undefined);
     });
 
@@ -303,64 +269,6 @@ describe("useUpdateThread", () => {
       before.rail,
     );
     expect(cache.getQueryData(queryKeys.threads.open())).toEqual(before.open);
-  });
-});
-
-describe("useReplaceUpNext", () => {
-  it("rewrites the line everywhere the Thread is shown", async () => {
-    const pending = deferred<ReturnType<typeof success<Thread>>>();
-    const client = createFakeApplicationClient({
-      replaceUpNext: () => pending.promise,
-    });
-    const { wrapper, cache } = createHarness(client, seedThreadReads());
-    const { result } = renderHook(() => useReplaceUpNext(), { wrapper });
-
-    act(() => {
-      result.current.mutate({
-        thread,
-        moves: ["  Book appointment  ", "   ", "Collect results"],
-      });
-    });
-
-    await waitFor(() =>
-      expect(
-        cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0]?.upNext,
-      ).toEqual(["Book appointment", "Collect results"]),
-    );
-    expect(
-      cache.getQueryData<ThreadDetail>(queryKeys.threads.detail(thread.slug))
-        ?.thread.upNext,
-    ).toEqual(["Book appointment", "Collect results"]);
-
-    pending.resolve(success(thread));
-  });
-
-  it("promotes the front move when the Thread has no Next Move", async () => {
-    const empty = aThread();
-    const pending = deferred<ReturnType<typeof success<Thread>>>();
-    const client = createFakeApplicationClient({
-      replaceUpNext: () => pending.promise,
-    });
-    const { wrapper, cache } = createHarness(
-      client,
-      seedThreadReads({ thread: empty }),
-    );
-    const { result } = renderHook(() => useReplaceUpNext(), { wrapper });
-
-    act(() => {
-      result.current.mutate({
-        thread: empty,
-        moves: ["Book appointment", "Collect results"],
-      });
-    });
-
-    await waitFor(() => {
-      const open = cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0];
-      expect(open?.nextMove).toBe("Book appointment");
-      expect(open?.upNext).toEqual(["Collect results"]);
-    });
-
-    pending.resolve(success(empty));
   });
 });
 

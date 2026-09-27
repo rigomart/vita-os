@@ -1,4 +1,4 @@
-import type { AreaId } from "@vita-os/contracts";
+import type { AreaId, MoveId } from "@vita-os/contracts";
 
 import { describe, expect, it } from "vitest";
 
@@ -8,7 +8,6 @@ import {
   buildThreadLifecyclePatch,
   buildThreadPatchLogEntries,
   decideThreadUpdate,
-  fillNextMoveFromUpNext,
   sanitizeThreadPatch,
 } from "./thread-changes";
 
@@ -25,122 +24,35 @@ function makeThread(
 }
 
 const may20 = new Date("2026-05-20").getTime();
+
+const callClinic = { _id: "move-1" as MoveId, text: "Call clinic" };
+const bookSlot = { _id: "move-2" as MoveId, text: "Book slot" };
 const jun1 = new Date("2026-06-01").getTime();
 
 describe("sanitizeThreadPatch", () => {
   it("keeps only patchable fields, presence and all", () => {
     const patch = sanitizeThreadPatch({
       title: "New",
-      nextMove: undefined,
+      focusedMoveId: undefined,
       id: "client-thread-id",
       key: "dashboard-row-key",
     } as never);
 
-    expect(Object.keys(patch).sort()).toEqual(["nextMove", "title"]);
-    expect(patch).toEqual({ title: "New", nextMove: undefined });
+    expect(Object.keys(patch).sort()).toEqual(["focusedMoveId", "title"]);
+    expect(patch).toEqual({ title: "New", focusedMoveId: undefined });
   });
 
   it("leaves a field absent when the caller never named it", () => {
-    expect(sanitizeThreadPatch({ title: "New" })).not.toHaveProperty(
-      "nextMove",
-    );
-  });
-});
-
-describe("fillNextMoveFromUpNext", () => {
-  it("promotes the front move when a write would empty the slot", () => {
-    const thread = makeThread({
-      nextMove: "Call clinic",
-      upNext: ["Book slot", "Pay bill"],
-    });
-
-    expect(fillNextMoveFromUpNext(thread, { nextMove: undefined })).toEqual({
-      nextMove: "Book slot",
-      upNext: ["Pay bill"],
-    });
-  });
-
-  it("leaves the last promotion with no Up Next at all", () => {
-    const thread = makeThread({
-      nextMove: "Call clinic",
-      upNext: ["Book slot"],
-    });
-
-    expect(fillNextMoveFromUpNext(thread, { nextMove: undefined })).toEqual({
-      nextMove: "Book slot",
-      upNext: undefined,
-    });
-  });
-
-  it("leaves a filled slot alone", () => {
-    const thread = makeThread({
-      nextMove: "Call clinic",
-      upNext: ["Book slot"],
-    });
-
-    expect(fillNextMoveFromUpNext(thread, { title: "New" })).toEqual({
-      title: "New",
-    });
-  });
-
-  it("promotes from the moves the same write is storing", () => {
-    const thread = makeThread();
-
-    expect(fillNextMoveFromUpNext(thread, { upNext: ["Book slot"] })).toEqual({
-      nextMove: "Book slot",
-      upNext: undefined,
-    });
+    expect(sanitizeThreadPatch({ title: "New" })).not.toHaveProperty("moves");
   });
 });
 
 describe("buildThreadPatchLogEntries", () => {
-  it("logs setting a Next Move from empty", () => {
+  it("writes nothing for Moves changing, which are logged by their own rules", () => {
     expect(
-      buildThreadPatchLogEntries(makeThread(), { nextMove: "Call clinic" }),
-    ).toEqual([
-      {
-        type: "next_move_change",
-        content: 'Next move set to "Call clinic"',
-        previousValue: undefined,
-        newValue: "Call clinic",
-      },
-    ]);
-  });
-
-  it("logs changing an existing Next Move", () => {
-    expect(
-      buildThreadPatchLogEntries(makeThread({ nextMove: "Call clinic" }), {
-        nextMove: "Book checkup",
-      }),
-    ).toEqual([
-      {
-        type: "next_move_change",
-        content: 'Next move changed from "Call clinic" to "Book checkup"',
-        previousValue: "Call clinic",
-        newValue: "Book checkup",
-      },
-    ]);
-  });
-
-  it("logs clearing a Next Move", () => {
-    expect(
-      buildThreadPatchLogEntries(makeThread({ nextMove: "Call clinic" }), {
-        nextMove: undefined,
-      }),
-    ).toEqual([
-      {
-        type: "next_move_change",
-        content: "Next move cleared",
-        previousValue: "Call clinic",
-        newValue: undefined,
-      },
-    ]);
-  });
-
-  it("stays silent when the Next Move does not change", () => {
-    expect(
-      buildThreadPatchLogEntries(makeThread({ nextMove: "Call clinic" }), {
-        nextMove: "Call clinic",
+      buildThreadPatchLogEntries(makeThread(), {
+        moves: [callClinic],
+        focusedMoveId: callClinic._id,
       }),
     ).toEqual([]);
   });
@@ -263,7 +175,11 @@ describe("buildThreadLifecyclePatch", () => {
   it("resolving clears the attention state and records the note", () => {
     expect(
       buildThreadLifecyclePatch(
-        makeThread({ nextMove: "Call clinic", followUp: may20 }),
+        makeThread({
+          moves: [callClinic],
+          focusedMoveId: callClinic._id,
+          followUp: may20,
+        }),
         {
           state: "resolved",
           resolutionNote: "Clinic confirmed no further action",
@@ -272,31 +188,37 @@ describe("buildThreadLifecyclePatch", () => {
     ).toEqual({
       patch: {
         state: "resolved",
-        nextMove: undefined,
-        upNext: undefined,
+        moves: undefined,
+        focusedMoveId: undefined,
         followUp: undefined,
       },
       log: {
         type: "state_change",
-        content: "Resolved thread: Clinic confirmed no further action",
+        content:
+          'Resolved thread: Clinic confirmed no further action — discarded moves: "Call clinic"',
         previousValue: "open",
         newValue: "resolved",
       },
     });
   });
 
-  it("names the upcoming moves a resolution discards", () => {
+  it("names every Move a resolution discards, in capture order", () => {
     const change = buildThreadLifecyclePatch(
-      makeThread({
-        nextMove: "Call clinic",
-        upNext: ["Book slot", "Pay bill"],
-      }),
+      makeThread({ moves: [callClinic, bookSlot] }),
       { state: "resolved" },
     );
 
     expect(change?.log.content).toBe(
-      'Resolved thread — discarded upcoming moves: "Book slot", "Pay bill"',
+      'Resolved thread — discarded moves: "Call clinic", "Book slot"',
     );
+  });
+
+  it("says nothing about Moves when the Thread held none", () => {
+    const change = buildThreadLifecyclePatch(makeThread(), {
+      state: "resolved",
+    });
+
+    expect(change?.log.content).toBe("Resolved thread");
   });
 
   it("reopening restores nothing", () => {
@@ -326,8 +248,8 @@ describe("decideThreadUpdate", () => {
   it("resolves, clears the attention state, and logs every field it cleared", () => {
     const decision = decideThreadUpdate({
       thread: makeThread({
-        nextMove: "Call clinic",
-        upNext: ["Book slot"],
+        moves: [callClinic, bookSlot],
+        focusedMoveId: callClinic._id,
         followUp: may20,
       }),
       patch: { state: "resolved" },
@@ -336,21 +258,15 @@ describe("decideThreadUpdate", () => {
 
     expect(decision.patch).toEqual({
       state: "resolved",
-      nextMove: undefined,
-      upNext: undefined,
+      moves: undefined,
+      focusedMoveId: undefined,
       followUp: undefined,
     });
     expect(decision.logs).toEqual([
       {
-        type: "next_move_change",
-        content: "Next move cleared",
-        previousValue: "Call clinic",
-        newValue: undefined,
-      },
-      {
         type: "state_change",
         content:
-          'Resolved thread: Done for good — discarded upcoming moves: "Book slot"',
+          'Resolved thread: Done for good — discarded moves: "Call clinic", "Book slot"',
         previousValue: "open",
         newValue: "resolved",
       },
@@ -363,40 +279,15 @@ describe("decideThreadUpdate", () => {
     ]);
   });
 
-  it("promotes Up Next when a clear would empty the slot, and logs the promotion", () => {
+  it("logs an Area move and a Follow-up change in order", () => {
     const decision = decideThreadUpdate({
-      thread: makeThread({ nextMove: "Call clinic", upNext: ["Book slot"] }),
-      patch: { nextMove: undefined },
-    });
-
-    expect(decision.patch).toEqual({
-      nextMove: "Book slot",
-      upNext: undefined,
-    });
-    expect(decision.logs).toEqual([
-      {
-        type: "next_move_change",
-        content: 'Next move changed from "Call clinic" to "Book slot"',
-        previousValue: "Call clinic",
-        newValue: "Book slot",
-      },
-    ]);
-  });
-
-  it("logs an Area move, a Next Move change, and a Follow-up change in order", () => {
-    const decision = decideThreadUpdate({
-      thread: makeThread({ nextMove: "Call clinic" }),
-      patch: {
-        areaId: "area2" as AreaId,
-        nextMove: "Book checkup",
-        followUp: may20,
-      },
+      thread: makeThread(),
+      patch: { areaId: "area2" as AreaId, followUp: may20 },
       areaNames: { from: "Health", to: "Home" },
     });
 
     expect(decision.logs.map((log) => log.type)).toEqual([
       "area_move",
-      "next_move_change",
       "follow_up_change",
     ]);
   });

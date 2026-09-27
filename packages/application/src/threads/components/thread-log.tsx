@@ -5,7 +5,14 @@ import { Button } from "@vita-os/ui/components/button";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
-import { ArrowRight, Bell, CircleCheck, Loader2, MapPin } from "lucide-react";
+import {
+  ArrowRight,
+  Bell,
+  CircleCheck,
+  Loader2,
+  MapPin,
+  SquareCheck,
+} from "lucide-react";
 
 import { getActivityLogEntryLabel } from "../activity-log-entry";
 
@@ -25,6 +32,7 @@ const ACTIVITY_LOG_ICONS: Record<
   LucideIcon
 > = {
   next_move_change: ArrowRight,
+  move_completed: SquareCheck,
   state_change: CircleCheck,
   follow_up_change: Bell,
   area_move: MapPin,
@@ -277,8 +285,10 @@ function getAutomaticChangeSummary(log: AutomaticActivityLogEntry) {
   if (log.newValue) return `Set to ${log.newValue}`;
 
   if (log.previousValue) {
-    return log.type === "next_move_change" &&
-      log.content.startsWith("Completed")
+    const completed =
+      log.type === "move_completed" ||
+      (log.type === "next_move_change" && log.content.startsWith("Completed"));
+    return completed
       ? `Completed ${log.previousValue}`
       : `Cleared ${log.previousValue}`;
   }

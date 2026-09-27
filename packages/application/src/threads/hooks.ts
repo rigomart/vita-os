@@ -1,17 +1,19 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import type {
   ActivityLogEntry,
+  ApplicationClient,
   ApplicationError,
   AreaSummary,
   CommandAcknowledgement,
-  CompleteNextMoveOutput,
   CreateThreadInput,
+  OperationResult,
   Thread,
   ThreadDetail,
   ThreadId,
   UpdateThreadInput,
 } from "@vita-os/contracts";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { newRecordId } from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
@@ -25,11 +27,12 @@ import {
 import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
 import { queryKeys } from "../query-keys";
 import {
-  completeNextMoveLocally,
-  replaceUpNextLocally,
+  cachedRevision,
+  type MoveChange,
+  settleMoveChange,
   settlePendingThread,
+  showMoveChange,
   showPendingThread,
-  showThreadAttention,
   showThreadChange,
   showThreadRemoval,
   threadChangeKeys,
@@ -161,79 +164,38 @@ export function useRemoveThread(): ApplicationMutationResult<
 }
 
 /**
- * The one editing seam for Up Next: adding, editing, reordering and removing all
- * send the whole ordered line, so a rewrite never depends on what the last one
- * did. Blank moves are refused by the service — callers trim first.
+ * One kind of Move command, for one Thread.
+ *
+ * Every Move command carries the revision the Thread was read at, and the
+ * service refuses a stale one. So the commands for one Thread share a scope:
+ * each shows its change at once, but they reach the service one at a time, and
+ * each carries the revision the one before it brought back. A refusal — a
+ * Move another device already completed, say — rolls back only its own change
+ * and refetches, rather than being retried against something different.
  */
-export function useReplaceUpNext(): ApplicationMutationResult<
-  { thread: Thread; moves: string[] },
-  Thread
-> {
-  return useApplicationMutation<{ thread: Thread; moves: string[] }, Thread>({
+export function useMoveCommand<TInput>(
+  thread: Thread,
+  command: {
+    run: (
+      client: ApplicationClient,
+      input: TInput,
+      expectedRevision: number,
+    ) => Promise<OperationResult<Thread>>;
+    change: (input: TInput) => MoveChange;
+  },
+): ApplicationMutationResult<TInput, Thread> {
+  const cache = useQueryClient();
+
+  return useApplicationMutation<TInput, Thread>({
+    scope: `thread-moves:${thread._id}`,
     run: (client, input) =>
-      client.replaceUpNext({
-        threadId: input.thread._id,
-        moves: sanitizeMoves(input.moves),
-      }),
-    affected: ({ thread }, cache) =>
+      command.run(client, input, cachedRevision(cache, thread)),
+    affected: (_input, cache) =>
       threadChangeKeys(cache, { threadId: thread._id }),
     optimistic: (cache, input) =>
-      showThreadAttention(cache, input.thread._id, (thread) =>
-        replaceUpNextLocally(thread, sanitizeMoves(input.moves)),
-      ),
-    alsoInvalidate: ({ thread }) => [queryKeys.threads.activity(thread._id)],
+      showMoveChange(cache, thread._id, command.change(input)),
+    reconcile: (cache, settled) => settleMoveChange(cache, settled),
+    // Completion writes an Activity Log entry, which is read separately.
+    alsoInvalidate: () => [queryKeys.threads.activity(thread._id)],
   });
-}
-
-/** Nothing blank reaches the service, and nothing blank survives a rewrite. */
-function sanitizeMoves(moves: readonly string[]): string[] {
-  return moves.map((move) => move.trim()).filter((move) => move.length > 0);
-}
-
-/**
- * Complete the Next Move, promoting the front of Up Next when there is one.
- *
- * The Thread the caller is looking at carries both the move being completed and
- * the revision it was read at, and both travel with the command. A repeated click
- * therefore cannot complete a promoted move whose text matches the one already
- * completed, and a stale click comes back as a conflict — treated as stale data,
- * so the reads are restored and refetched rather than handed to the person to
- * resolve.
- */
-export function useCompleteNextMove(): ApplicationMutationResult<
-  { thread: Thread },
-  CompleteNextMoveOutput
-> {
-  return useApplicationMutation<{ thread: Thread }, CompleteNextMoveOutput>({
-    run: (client, { thread }) =>
-      client.completeNextMove({
-        threadId: thread._id,
-        expectedNextMove: thread.nextMove ?? null,
-        expectedRevision: thread.revision,
-      }),
-    affected: ({ thread }, cache) => [
-      ...threadChangeKeys(cache, { threadId: thread._id }),
-      queryKeys.threads.activity(thread._id),
-    ],
-    optimistic: (cache, { thread }) =>
-      showThreadAttention(cache, thread._id, (cached) =>
-        completeWhereUnchanged(cached, thread),
-      ),
-  });
-}
-
-/**
- * The completion, applied only where the Thread still looks the way the caller
- * read it. The Activity Log stays the service's to write: inventing an entry here
- * would mean inventing an ID and a time.
- */
-function completeWhereUnchanged<
-  T extends { nextMove?: string; upNext?: string[]; revision?: number },
->(cached: T, expected: Thread): T {
-  if ((cached.nextMove ?? null) !== (expected.nextMove ?? null)) return cached;
-  if (cached.revision !== undefined && cached.revision !== expected.revision) {
-    return cached;
-  }
-
-  return completeNextMoveLocally(cached);
 }

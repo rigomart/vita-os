@@ -6,18 +6,14 @@ export const threadNotFound: ApplicationError = {
   retryable: false,
 };
 
-export const invalidNextMoveCompletion: ApplicationError = {
-  code: "validation",
-  message: "Invalid Next Move completion.",
-  retryable: false,
-};
-
 /**
- * A stale expectation is the caller's own, so it is named for what it is
- * rather than as a generic change conflict, and it is not worth retrying.
+ * A Move command made against a Thread that has moved on, or naming a Move it
+ * no longer holds. The stale expectation is the caller's own, so it is named
+ * for what it is rather than as a generic change conflict, and it is not worth
+ * retrying: a retry could act on a different Move.
  */
-export const nextMoveConflict: ApplicationError = {
+export const moveConflict: ApplicationError = {
   code: "conflict",
-  message: "Next Move has changed.",
+  message: "The Thread's Moves have changed.",
   retryable: false,
 };

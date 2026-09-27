@@ -1,9 +1,12 @@
 import type { ActivityLogEntryType } from "@vita-os/contracts";
 
-/** Every entry type the product writes to the read-only Activity Log. */
+/**
+ * Every entry type the product writes to the read-only Activity Log. Entries of
+ * the retired `next_move_change` type are still read, but never written.
+ */
 export const AUTO_ACTIVITY_LOG_ENTRY_TYPES = [
   "area_move",
-  "next_move_change",
+  "move_completed",
   "state_change",
   "follow_up_change",
 ] as const satisfies readonly ActivityLogEntryType[];

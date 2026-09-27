@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type {
   ApplicationClient,
   AreaId,
+  MoveId,
   NoteId,
   ThreadId,
   ThreadNoteId,
@@ -26,7 +27,8 @@ const thread = {
   areaId: area._id,
   order: 0,
   state: "open" as const,
-  nextMove: "Call clinic",
+  moves: [{ _id: "move-1" as MoveId, text: "Call clinic" }],
+  focusedMoveId: "move-1" as MoveId,
   createdAt: 2,
   revision: 3,
 };
@@ -68,16 +70,25 @@ const client = {
   createThread: async () => ({ ok: true, value: thread }),
   updateThread: async () => ({ ok: true, value: thread }),
   removeThread: async () => ({ ok: true, value: commandAcknowledged }),
-  replaceUpNext: async (input) => ({
+  addMove: async (input) => ({
     ok: true,
-    value: { ...thread, upNext: input.moves },
+    value: {
+      ...thread,
+      moves: [...thread.moves, { _id: input.moveId, text: input.text }],
+    },
   }),
-  completeNextMove: async (input) => ({
+  editMove: async () => ({ ok: true, value: thread }),
+  removeMove: async () => ({ ok: true, value: thread }),
+  completeMove: async () => ({
+    ok: true,
+    value: { ...thread, moves: [], focusedMoveId: undefined },
+  }),
+  focusMove: async (input) => ({
     ok: true,
     value:
-      input.expectedNextMove === null
-        ? { status: "unchanged" as const }
-        : { status: "completed" as const },
+      input.moveId === null
+        ? { ...thread, focusedMoveId: undefined }
+        : { ...thread, focusedMoveId: input.moveId },
   }),
 
   getThreadActivityPage: async () => ({
@@ -132,18 +143,29 @@ const contract: ApplicationClient = client;
 describe("the application contract", () => {
   it("names each workflow as one asynchronous operation", async () => {
     await expect(
-      client.completeNextMove({
+      client.addMove({
         threadId: thread._id,
-        expectedNextMove: "Call clinic",
+        moveId: "move-2" as MoveId,
+        text: "Book slot",
         expectedRevision: 3,
       }),
-    ).resolves.toEqual({ ok: true, value: { status: "completed" } });
-
-    await expect(
-      client.replaceUpNext({ threadId: thread._id, moves: ["Book slot"] }),
     ).resolves.toEqual({
       ok: true,
-      value: { ...thread, upNext: ["Book slot"] },
+      value: {
+        ...thread,
+        moves: [...thread.moves, { _id: "move-2", text: "Book slot" }],
+      },
+    });
+
+    await expect(
+      contract.focusMove({
+        threadId: thread._id,
+        moveId: null,
+        expectedRevision: 3,
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      value: { ...thread, focusedMoveId: undefined },
     });
   });
 

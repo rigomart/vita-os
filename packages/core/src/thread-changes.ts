@@ -1,10 +1,9 @@
-import type { AreaId, ThreadState } from "@vita-os/contracts";
+import type { AreaId, Move, MoveId, ThreadState } from "@vita-os/contracts";
 
 import {
   type AutoActivityLogEntry,
   buildAreaMoveLogEntry,
 } from "./activity-log";
-import { takeFrontUpNextMove } from "./up-next";
 
 /** The stored Thread values every change rule reads. */
 export interface ThreadChangeState {
@@ -13,8 +12,8 @@ export interface ThreadChangeState {
   summary?: string;
   areaId?: AreaId;
   state: ThreadState;
-  nextMove?: string;
-  upNext?: string[];
+  moves?: Move[];
+  focusedMoveId?: MoveId;
   followUp?: number;
 }
 
@@ -32,8 +31,8 @@ const PATCHABLE_FIELDS = [
   "slug",
   "summary",
   "areaId",
-  "nextMove",
-  "upNext",
+  "moves",
+  "focusedMoveId",
   "followUp",
   "state",
 ] as const satisfies readonly (keyof ThreadChangeState)[];
@@ -56,26 +55,6 @@ export function sanitizeThreadPatch(patch: ThreadPatch): ThreadPatch {
     }
   }
   return safe;
-}
-
-/**
- * The Up Next invariant, folded into a patch before it is written: while the
- * line holds moves, the Next Move slot is full. A write that would empty the
- * slot — completing it, clearing it, or an edit that leaves it empty — takes
- * the front move instead, and the ordinary Next Move entry carries it.
- */
-export function fillNextMoveFromUpNext(
-  thread: Pick<ThreadChangeState, "nextMove" | "upNext">,
-  patch: ThreadPatch,
-): ThreadPatch {
-  const nextMove = hasOwn(patch, "nextMove") ? patch.nextMove : thread.nextMove;
-  if (nextMove) return patch;
-
-  const upNext = hasOwn(patch, "upNext") ? patch.upNext : thread.upNext;
-  const promotion = takeFrontUpNextMove(upNext);
-  if (!promotion) return patch;
-
-  return { ...patch, nextMove: promotion.nextMove, upNext: promotion.upNext };
 }
 
 function formatFollowUpDate(timestamp: number): string {
@@ -149,16 +128,6 @@ export function buildThreadPatchLogEntries(
     if (entry) logs.push(entry);
   }
 
-  if (hasOwn(safePatch, "nextMove")) {
-    const entry = buildFieldChangeLogEntry({
-      type: "next_move_change",
-      oldValue: thread.nextMove ?? undefined,
-      newValue: safePatch.nextMove ?? undefined,
-      label: "Next move",
-    });
-    if (entry) logs.push(entry);
-  }
-
   if (
     hasOwn(safePatch, "state") &&
     safePatch.state !== undefined &&
@@ -199,19 +168,19 @@ export function buildThreadPatchLogEntries(
 }
 
 /**
- * Resolving takes the Thread's Up Next line with it, so the entry that records
- * the resolution names the moves being dropped — otherwise they would vanish
- * with nothing in the Activity Log to show for them.
+ * Resolving takes the Thread's Moves with it, so the entry that records the
+ * resolution names the Moves being dropped, in capture order — otherwise they
+ * would vanish with nothing in the Activity Log to show for them.
  */
 function buildResolutionContent(
   note: string | undefined,
-  discardedUpNext: readonly string[],
+  discardedMoves: readonly Move[],
 ): string {
   const resolution = note ? `Resolved thread: ${note}` : "Resolved thread";
-  if (discardedUpNext.length === 0) return resolution;
+  if (discardedMoves.length === 0) return resolution;
 
-  const moves = discardedUpNext.map((move) => `"${move}"`).join(", ");
-  return `${resolution} — discarded upcoming moves: ${moves}`;
+  const moves = discardedMoves.map((move) => `"${move.text}"`).join(", ");
+  return `${resolution} — discarded moves: ${moves}`;
 }
 
 /**
@@ -231,13 +200,13 @@ export function buildThreadLifecyclePatch(
     return {
       patch: {
         state: "resolved",
-        nextMove: undefined,
-        upNext: undefined,
+        moves: undefined,
+        focusedMoveId: undefined,
         followUp: undefined,
       },
       log: {
         type: "state_change",
-        content: buildResolutionContent(note, thread.upNext ?? []),
+        content: buildResolutionContent(note, thread.moves ?? []),
         previousValue: thread.state,
         newValue: "resolved",
       },
@@ -264,8 +233,7 @@ export interface ThreadUpdateDecision {
 
 /**
  * The whole decision one Thread update makes, with no storage in sight: the
- * lifecycle rule, the Up Next promotion invariant, and every Activity Log entry
- * the change earns. Storage applies the patch and the entries together or not
+ * lifecycle rule and every Activity Log entry the change earns. Storage applies the patch and the entries together or not
  * at all.
  *
  * `areaNames` names the ends of an Area change that hold an Area: `from` when
@@ -292,11 +260,9 @@ export function decideThreadUpdate(input: {
   const patch = lifecycleChange
     ? sanitizeThreadPatch({ ...requestedPatch, ...lifecycleChange.patch })
     : requestedPatch;
-  const writePatch = fillNextMoveFromUpNext(input.thread, patch);
-
   return {
-    patch: writePatch,
-    logs: buildThreadPatchLogEntries(input.thread, writePatch, {
+    patch,
+    logs: buildThreadPatchLogEntries(input.thread, patch, {
       ...(input.areaNames === undefined
         ? {}
         : {

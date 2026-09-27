@@ -1,13 +1,9 @@
-import type { AreaId, NoteId, ThreadId } from "@vita-os/contracts";
+import type { AreaId, MoveId, NoteId, ThreadId } from "@vita-os/contracts";
 
 import { describe, expect, it } from "vitest";
 
 import { buildPendingArea } from "../areas/optimistic";
-import {
-  buildPendingThread,
-  completeNextMoveLocally,
-  replaceUpNextLocally,
-} from "../threads/optimistic";
+import { buildPendingThread, changeMovesLocally } from "../threads/optimistic";
 import {
   insertNewestFirst,
   insertOrdered,
@@ -128,44 +124,48 @@ describe("a pending record", () => {
   });
 });
 
-describe("the attention rules applied locally", () => {
-  it("completing promotes the front of Up Next", () => {
+describe("the Move rules applied locally", () => {
+  const callClinic = { _id: "move-1" as MoveId, text: "Call clinic" };
+  const bookSlot = { _id: "move-2" as MoveId, text: "Book slot" };
+  const open = {
+    state: "open" as const,
+    moves: [callClinic, bookSlot],
+    focusedMoveId: callClinic._id,
+  };
+
+  it("completing the Focused Move leaves the Thread unfocused, promoting nothing", () => {
     expect(
-      completeNextMoveLocally({
-        nextMove: "Call clinic",
-        upNext: ["Book appointment", "Collect results"],
-      }),
-    ).toEqual({ nextMove: "Book appointment", upNext: ["Collect results"] });
+      changeMovesLocally(open, { kind: "complete", moveId: callClinic._id }),
+    ).toEqual({ state: "open", moves: [bookSlot] });
   });
 
-  it("completing the last move leaves the slot empty", () => {
-    expect(completeNextMoveLocally({ nextMove: "Call clinic" })).toEqual({
-      nextMove: undefined,
-      upNext: undefined,
-    });
-  });
-
-  it("completing nothing changes nothing", () => {
-    const thread = { upNext: ["Book appointment"] };
-
-    expect(completeNextMoveLocally(thread)).toBe(thread);
-  });
-
-  it("rewriting Up Next fills an empty slot from the front of the line", () => {
-    expect(replaceUpNextLocally({}, ["Book appointment", "Pay bill"])).toEqual({
-      nextMove: "Book appointment",
-      upNext: ["Pay bill"],
-    });
-  });
-
-  it("rewriting Up Next leaves a filled slot alone, and forgets an empty line", () => {
+  it("completing the last Move leaves no Moves at all", () => {
     expect(
-      replaceUpNextLocally({ nextMove: "Call clinic" }, ["Pay bill"]),
-    ).toEqual({ nextMove: "Call clinic", upNext: ["Pay bill"] });
-    expect(replaceUpNextLocally({ nextMove: "Call clinic" }, [])).toEqual({
-      nextMove: "Call clinic",
-      upNext: undefined,
+      changeMovesLocally(
+        { state: "open" as const, moves: [bookSlot] },
+        { kind: "complete", moveId: bookSlot._id },
+      ),
+    ).toEqual({ state: "open" });
+  });
+
+  it("adding joins the end of the list, unfocused", () => {
+    const payBill = { _id: "move-3" as MoveId, text: "Pay bill" };
+
+    expect(changeMovesLocally(open, { kind: "add", move: payBill })).toEqual({
+      ...open,
+      moves: [callClinic, bookSlot, payBill],
     });
+  });
+
+  it("a command the service would refuse changes nothing on screen", () => {
+    const resolved = { state: "resolved" as const };
+
+    expect(changeMovesLocally(resolved, { kind: "focus", moveId: null })).toBe(
+      resolved,
+    );
+    expect(
+      changeMovesLocally(open, { kind: "complete", moveId: "gone" as MoveId }),
+    ).toBe(open);
   });
 });
 

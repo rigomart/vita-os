@@ -2,20 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { clearedToAbsent } from "./clearable";
 import { ConflictError, ValidationError } from "./errors";
+import { requireMoveId, requireMoveText, requireOpenForMoves } from "./moves";
 import { generateSlug, slugify, validateAreaName } from "./slug";
 import { requireNonBlankText } from "./text";
-import {
-  requireOpenForUpNext,
-  requireUpNextMoves,
-  storedUpNext,
-  takeFrontUpNextMove,
-} from "./up-next";
 
 describe("text", () => {
   it("trims accepted text", () => {
-    expect(requireNonBlankText("  Call clinic  ", "Next move")).toBe(
-      "Call clinic",
-    );
+    expect(requireNonBlankText("  Call clinic  ", "Move")).toBe("Call clinic");
   });
 
   it("refuses blank text by the caller's label", () => {
@@ -60,39 +53,24 @@ describe("validateAreaName", () => {
   });
 });
 
-describe("Up Next", () => {
-  it("stores a line of moves and forgets an empty one", () => {
-    expect(storedUpNext(["Book slot"])).toEqual(["Book slot"]);
-    expect(storedUpNext([])).toBeUndefined();
-  });
-
-  it("trims every move and refuses a blank one", () => {
-    expect(requireUpNextMoves([" Book slot ", "Pay bill"])).toEqual([
-      "Book slot",
-      "Pay bill",
-    ]);
-    expect(() => requireUpNextMoves(["Book slot", "  "])).toThrow(
-      new ValidationError("Upcoming move cannot be empty"),
+describe("Move input", () => {
+  it("trims a Move and refuses a blank one", () => {
+    expect(requireMoveText(" Book slot ")).toBe("Book slot");
+    expect(() => requireMoveText("  ")).toThrow(
+      new ValidationError("Move cannot be empty"),
     );
   });
 
-  it("takes the front move off the line", () => {
-    expect(takeFrontUpNextMove(["Book slot", "Pay bill"])).toEqual({
-      nextMove: "Book slot",
-      upNext: ["Pay bill"],
-    });
-    expect(takeFrontUpNextMove(["Book slot"])).toEqual({
-      nextMove: "Book slot",
-      upNext: undefined,
-    });
-    expect(takeFrontUpNextMove(undefined)).toBeNull();
-    expect(takeFrontUpNextMove([])).toBeNull();
+  it("refuses a Move ID that no row could hold", () => {
+    expect(requireMoveId("move-1")).toBe("move-1");
+    expect(() => requireMoveId("")).toThrow(ValidationError);
+    expect(() => requireMoveId("x".repeat(65))).toThrow(ValidationError);
   });
 
-  it("refuses to line up moves on a resolved Thread", () => {
-    expect(() => requireOpenForUpNext({ state: "open" })).not.toThrow();
-    expect(() => requireOpenForUpNext({ state: "resolved" })).toThrow(
-      new ConflictError("Cannot line up moves on a resolved thread"),
+  it("refuses to change the Moves of a resolved Thread", () => {
+    expect(() => requireOpenForMoves({ state: "open" })).not.toThrow();
+    expect(() => requireOpenForMoves({ state: "resolved" })).toThrow(
+      new ConflictError("Cannot change the moves of a resolved thread"),
     );
   });
 });

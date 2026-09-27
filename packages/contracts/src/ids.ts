@@ -13,6 +13,7 @@ declare const areaIdBrand: unique symbol;
 declare const noteIdBrand: unique symbol;
 declare const threadNoteIdBrand: unique symbol;
 declare const activityLogEntryIdBrand: unique symbol;
+declare const moveIdBrand: unique symbol;
 
 export type ThreadId = string & { readonly [threadIdBrand]: "ThreadId" };
 export type AreaId = string & { readonly [areaIdBrand]: "AreaId" };
@@ -23,3 +24,9 @@ export type ThreadNoteId = string & {
 export type ActivityLogEntryId = string & {
   readonly [activityLogEntryIdBrand]: "ActivityLogEntryId";
 };
+/**
+ * A Move is named within its Thread, not across the database. The caller that
+ * adds a Move mints its ID, so a Move shown optimistically keeps the name every
+ * later command uses for it.
+ */
+export type MoveId = string & { readonly [moveIdBrand]: "MoveId" };

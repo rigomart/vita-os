@@ -12,7 +12,7 @@ function thread(
   id: string,
   fields: {
     followUp?: number;
-    nextMove?: string;
+    moves?: string[];
     order?: number;
   } = {},
 ) {
@@ -25,12 +25,13 @@ describe("Thread attention ordering", () => {
       [
         thread("open-later", { order: 2 }),
         thread("upcoming-later", { followUp: today + 2 * 86_400_000 }),
-        thread("next-later", { nextMove: "Call", order: 3 }),
+        thread("next-later", { moves: ["Call"], order: 3 }),
         thread("overdue-recent", { followUp: today - 86_400_000 }),
         thread("upcoming-sooner", { followUp: today + 86_400_000 }),
         thread("overdue-old", { followUp: today - 3 * 86_400_000 }),
-        thread("next-sooner", { nextMove: "Email", order: 1 }),
+        thread("next-sooner", { moves: ["Email", "Book"], order: 1 }),
         thread("open-sooner", { order: 0 }),
+        thread("emptied", { moves: [], order: 4 }),
       ],
       today,
     );
@@ -39,7 +40,7 @@ describe("Thread attention ordering", () => {
       "overdue-old",
       "overdue-recent",
     ]);
-    expect(groups.withNextMoves.map((item) => item.id)).toEqual([
+    expect(groups.withMoves.map((item) => item.id)).toEqual([
       "next-sooner",
       "next-later",
     ]);
@@ -50,6 +51,7 @@ describe("Thread attention ordering", () => {
     expect(groups.open.map((item) => item.id)).toEqual([
       "open-sooner",
       "open-later",
+      "emptied",
     ]);
   });
 });

@@ -1,5 +1,7 @@
 # Up Next: known upcoming moves behind the singular Next Move
 
+Status: Superseded by ADR 0022 — the queue ranked moves by capture order; a Thread now holds unordered peer Moves with an optional Focused Move, and nothing is promoted.
+
 Some **Threads** are efforts whose steps are all known in advance (renew passport: photos → appointment → submit → wait → collect), but a Thread could hold only one **Next Move**, so the remaining steps lived in the user's head or a second app (#280). We are adding **Up Next** — an ordered list of plain-text upcoming moves a Thread holds behind its Next Move — with queue semantics: the Next Move is the front of the line, and completing or clearing it promotes the next move.
 
 This amends ADR 0003's "**Next Move** is singular and replaces Action queue." The Next Move remains singular and remains the only move surfaced outside the Thread — the Dashboard, attention lanes, and Plan still derive from Next Move and Follow-up alone — so the protected property (a Thread surfaces one thing at a time) is preserved; what changes is that a Thread may now hold the rest of a known sequence. The original Action queue (#127) was removed (#150) because it saw little use in a then-unpolished app and was not worth its upkeep at the time — a pragmatic cut, not a proven failure of the concept. The need it served ("holds … so the user's brain does not have to") is real and in scope.

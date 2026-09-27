@@ -1,6 +1,7 @@
 import type {
   ActivityLogEntryId,
   AreaId,
+  MoveId,
   NoteId,
   ThreadId,
   ThreadNoteId,
@@ -51,13 +52,17 @@ export interface Thread {
   areaId?: AreaId;
   order: number;
   state: ThreadState;
-  nextMove?: string;
   /**
-   * The Up Next line behind the Next Move: plain ordered text. Absent means
-   * nothing is lined up — an empty list is never stored, so a Thread without
-   * Up Next reads as it always did. While this is present, `nextMove` is set.
+   * The Thread's Moves: peers, in the order they were captured. The order is
+   * for finding things, never a priority. Absent means the Thread holds none —
+   * an empty list is never stored.
    */
-  upNext?: string[];
+  moves?: Move[];
+  /**
+   * The one Move the person singled out, when they did. It is always one of
+   * `moves`. Focus is emphasis only: it never changes when the Thread surfaces.
+   */
+  focusedMoveId?: MoveId;
   followUp?: number;
   lastActivityAt?: number;
   lastActivityContent?: string;
@@ -65,12 +70,17 @@ export interface Thread {
   /**
    * How many times the Thread has changed.
    *
-   * Every read carries it, so any surface that shows a Next Move can also
-   * complete one: the revision travels back with the command, and a request made
-   * against a Thread that has since moved on is refused rather than applied
-   * twice.
+   * Every read carries it, so any surface that shows a Move can also act on
+   * one: the revision travels back with the command, and a request made against
+   * a Thread that has since moved on is refused rather than applied twice.
    */
   revision: number;
+}
+
+/** One useful action a Thread holds: plain text, no date, no done state. */
+export interface Move {
+  _id: MoveId;
+  text: string;
 }
 
 export interface ThreadDetail {
@@ -103,9 +113,14 @@ export interface ThreadNote {
   updatedAt: number;
 }
 
+/**
+ * `next_move_change` is no longer written. Entries recorded before Moves
+ * replaced the Next Move keep it, and read as they always did.
+ */
 export type ActivityLogEntryType =
   | "area_move"
   | "next_move_change"
+  | "move_completed"
   | "state_change"
   | "follow_up_change";
 

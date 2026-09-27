@@ -47,7 +47,7 @@ export function AttentionRow({
         <RowTitle row={row} />
         {row.detail && (
           <span className="flex min-w-0 flex-1 items-baseline gap-1 text-xs text-muted-foreground/80">
-            {row.detailKind === "next-move" && (
+            {row.detailKind === "move" && (
               <ArrowRight className="size-3 shrink-0 translate-y-0.5" />
             )}
             <span className="truncate">{row.detail}</span>
