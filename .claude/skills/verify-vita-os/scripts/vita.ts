@@ -487,6 +487,8 @@ async function doctor(instance: string) {
 
 async function signin(instance: string) {
   const state = requireState(instance);
+  // Pin a desktop viewport above the 1280px thread-pane breakpoint so runs don't depend on the browser default.
+  agentBrowser(state, ["set", "viewport", "1440", "900"]);
   agentBrowser(state, ["open", `${state.webUrl}/sign-in`]);
   agentBrowser(state, [
     "wait",

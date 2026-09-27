@@ -13,7 +13,7 @@ bun run build        # Type-check (tsc) then build for production
 
 If tests exist for the affected code, also run `bun run test:run`.
 
-When the change is user-visible UI, also verify it in the browser (see Dev servers and Browser sign-in). Lint and tests are not a substitute for that.
+When the change is user-visible, also verify it in the real app with the `verify-vita-os` skill: read `.claude/skills/verify-vita-os/SKILL.md` and run it as `bun run verify <command>`. Lint and tests are not a substitute for that.
 
 ## Commands
 
@@ -52,7 +52,7 @@ routes. It mounts the shared product route tree. `apps/api` is the Hono Worker o
 
 ## Dev servers
 
-Start Vite when you need it — browser verification or a missing route tree. Reuse whatever is already running.
+Start Vite when you need a dev server for your own work, such as a missing route tree. Reuse whatever is already running. For browser verification, don't use this server: `bun run verify up` starts its own isolated stack (API, local D1, web).
 
 ```bash
 bunx turbo run dev --filter=@vita-os/web   # Vite at http://localhost:5173
@@ -60,12 +60,9 @@ bunx turbo run dev --filter=@vita-os/web   # Vite at http://localhost:5173
 
 ## Browser sign-in
 
-Authenticated surfaces (dock, command palette, Dashboard) require a signed-in user. Use the throwaway account from the environment:
+Authenticated surfaces (dock, command palette, Dashboard) require a signed-in user. `bun run verify up` creates a throwaway account in its own local D1, and `bun run verify signin` signs it in through `/sign-in`. Do not use GitHub or Google. Do not use the owner's personal account.
 
-- `VITA_TEST_EMAIL`
-- `VITA_TEST_PASSWORD`
-
-Sign in at `/sign-in` with email and password. Do not use GitHub or Google. Do not use the owner's personal account. If those variables are unset, skip live browser checks of authenticated UI and say so.
+The `VITA_TEST_EMAIL` / `VITA_TEST_PASSWORD` account in `apps/web/.env.local` is only for manual checks against a shared dev server.
 
 ## Path Aliases
 

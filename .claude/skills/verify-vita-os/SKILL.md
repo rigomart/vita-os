@@ -69,6 +69,7 @@ Files land in `.verify/evidence/<instance>/<run>/` (printed by `up` and `env`). 
 
 - Drive the real user path. Never call internal setters, test-only endpoints, or write to D1 to fake a state.
 - Capture the action and the resulting state, not only the final screen: `shot` before and after.
+- Drive every path your change touched. The thread pane is a side pane at 1280px wide and up, and a drawer below that, built from different components. `signin` pins a 1440×900 viewport. A change to thread pane, layout, or navigation code gets a second run in the drawer: `bun run verify browser -- set viewport 1024 768`, drive it, then `set viewport 1440 900`. The snapshot tells you which one you are in: the side pane is `complementary "<title>"`, the drawer is `dialog "<title>"`. Below 768px the dashboard columns and Notes panel change too. Name any path you changed but did not drive in your report.
 - Toasts are transient and may not appear in the `.aria.txt` snapshot. The proof of a toast is the `wait --text "<toast>"` output. For an image, run `shot` immediately after that wait.
 - Vita updates optimistically. A new note or thread appears before the server confirms it. Prove a mutation with the server confirmation toast plus a reload and a read-only second view: the UI after reload and `verify d1`.
 - A check you could not run is `INCONCLUSIVE`, never a pass.
@@ -78,7 +79,7 @@ Files land in `.verify/evidence/<instance>/<run>/` (printed by `up` and `env`). 
 ```bash
 bun run verify down --dry-run   # show what would stop
 bun run verify down             # stop this instance's processes, close its browser session
-bun run verify down --purge     # also delete its local D1
+bun run verify down --purge     # also delete its local D1 (the default when your task is done)
 ```
 
 `down` kills only the process groups this instance started and closes only its own browser session. Evidence under `.verify/evidence/` and launch logs under `.verify/instances/<name>/logs/` are never deleted by the CLI, even with `--purge`.
