@@ -1,5 +1,7 @@
 # Vita OS — Updated Product Direction
 
+> Last update: 2025/12/01
+
 ## Core Idea
 
 **Vita OS is a personal life-awareness dashboard for managing important life domains and slow-moving open loops.**
