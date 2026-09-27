@@ -83,6 +83,15 @@ bun run verify down --purge     # also delete its local D1
 
 `down` kills only the process groups this instance started and closes only its own browser session. Evidence under `.verify/evidence/` and launch logs under `.verify/instances/<name>/logs/` are never deleted by the CLI, even with `--purge`.
 
+## Keeping the map current
+
+The feature map is only as good as its last update, and you are the one who updates it. After driving the app, before you report:
+
+- **The feature has no file in `features/`.** Explore its entry points with `browser -- snapshot -i`, find the table it writes in `apps/api/migrations`, and prove it once by the standards in [`features/README.md`](features/README.md). Then write `features/<feature>.md` in the entry contract (H1, one paragraph, `Status: proven on <short sha>`, the four H2s), using the exact commands that just worked, and add a line to the index in `features/README.md`. Commit it with the change that introduced or altered the feature.
+- **A documented step no longer matches the app.** Decide which side is wrong. If the app regressed, report the regression and leave the file alone. If the feature changed on purpose, fix the file in the same change and say so in your report.
+- **The file says `mapped from source, not yet driven`.** Correct every handle against a fresh snapshot while you drive it, then set `Status: proven on <short sha>`.
+- **Never mark a step proven that you did not run.** A sub-feature you skipped stays listed, and your report says it was skipped.
+
 ## Helpers
 
 - `scripts/vita.ts` is the CLI behind `bun run verify`. `bun run verify --help` documents it. Logs for a failed launch are in `.verify/instances/<name>/logs/` (`migrate.log`, `api.log`, `web.log`).
