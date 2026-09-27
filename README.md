@@ -1,141 +1,84 @@
-# React + TypeScript + Vite
+# Vita OS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A personal life-awareness app. It holds open threads and standalone notes, lightly grouped by the part of life they concern, so you don't have to keep them in your head. `CONTEXT.md` defines the product vocabulary (Area, Thread, Next Move, and so on).
 
-## Environment
+The app is a React web client talking to a Hono API on Cloudflare Workers, with Better Auth for sign-in and D1 for storage.
 
-The API Worker and the browser host are described here. See
-`docs/migrations/cloudflare-application.md`.
+AI agents: read `AGENTS.md` instead of this file.
 
-### The API Worker and the browser host
+## Repo layout
 
-The browser needs one variable, in `apps/web/.env.local` (copy
-`apps/web/.env.example`):
+A bun workspace driven by turbo.
 
-- `VITE_API_BASE_URL` — where `apps/api` is served. It answers Better Auth's
-  browser routes at `/api/auth/*` and the application operations at `/v1/*`.
+| Path | What it is |
+| --- | --- |
+| `apps/web` | Browser host (Vite + React). Sign-in, config, HTTP client. Mounts the product from `packages/application`. |
+| `apps/api` | API Worker (Hono, Better Auth, D1). Schema lives in `apps/api/migrations`. |
+| `apps/design` | Design system preview for `packages/ui`, on port 5174. |
+| `packages/application` | The product itself: routes, screens, data fetching and caching. |
+| `packages/contracts` | Shared models, inputs, outputs, errors, and the `ApplicationClient` interface. |
+| `packages/core` | Domain rules, with no framework code. |
+| `packages/ui` | Shared UI components and styles (shadcn based). |
 
-The Worker's own secrets live in `apps/api/.dev.vars` locally (copy
-`apps/api/.dev.vars.example`) and in the Worker's secrets when deployed:
+`docs/adr` records design decisions. `docs/migrations/cloudflare-application.md` explains the architecture in depth.
 
-- `BETTER_AUTH_SECRET` — signs sessions.
-- `BETTER_AUTH_URL` — the Worker's own public address.
-- `BROWSER_ORIGIN` — the single origin allowed to make credentialed requests.
+## Run it locally
 
-Run it locally with local D1:
+You need bun 1.3.14, Node (the deploy and smoke scripts use it), and python3 (the API test suite runs a few Python tests).
 
 ```bash
+bun install
+cp apps/api/.dev.vars.example apps/api/.dev.vars
+cp apps/web/.env.example apps/web/.env.local
 bun run --filter=@vita-os/api migrate:local
-bunx turbo run dev --filter=@vita-os/api
+bun run dev
 ```
 
-Missing variables throw at startup naming the variable, on the client and on the API.
+The example files already hold working local values:
 
-## Deployment
+- `apps/api/.dev.vars`: `BETTER_AUTH_SECRET` (any string of 32+ characters), `BETTER_AUTH_URL=http://localhost:8787`, `BROWSER_ORIGIN=http://localhost:5173`.
+- `apps/web/.env.local`: `VITE_API_BASE_URL=http://localhost:8787`.
 
-Each environment is a web Worker and an API Worker with its own D1 database, on
-sibling `rigos.dev` hostnames so Better Auth's session cookie reaches the API.
-`apps/web/wrangler.jsonc` and `apps/api/wrangler.jsonc` define them.
+`bun run dev` starts the API on http://localhost:8787, the web app on http://localhost:5173, and the design preview on http://localhost:5174. Open the web app and sign up. A missing variable fails at startup with its name.
 
-| Environment | Web | API and D1 | Deployed by |
-| --- | --- | --- | --- |
-| `staging` | `vita-os-web-staging` at `vita-staging.rigos.dev` | `vita-os-api-staging` at `vita-api-staging.rigos.dev`, D1 `vita-os-staging` | `deploy-staging.yml`, on every push to `main` or by hand |
-| `production` | `vita-os-web` at `vita.rigos.dev` | `vita-os-api` at `vita-api.rigos.dev`, D1 `vita-os-production` | `deploy-production.yml`, by hand only |
+Run `migrate:local` again whenever a new file lands in `apps/api/migrations`.
 
-The Vite plugin flattens the web environment named by `CLOUDFLARE_ENV` into
-`dist/wrangler.json` at build time and wrangler deploys that file, so
-`wrangler deploy --env` has no effect on the web Worker. `build:staging` and
-`build:production` pin `VITE_API_BASE_URL` to their API. The API Worker deploys
-with `wrangler deploy --env <name>`.
+## Checks
 
-Each deploy asserts both Workers' names, hostnames, D1 binding, and auth
-origins, applies D1 migrations, deploys the API, smoke tests it, and only then
-deploys and smoke tests the web. Production also records the web version it
-replaces in the run summary. Pull requests run `ci.yml`, and every pipeline
-shares the checks in `verify.yml`. Add required reviewers to the `production`
-GitHub environment to gate production behind an approval.
-
-Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. The API Workers'
-secrets are set with `wrangler secret put --env <name>`.
-
-To roll back, find a version with `bunx wrangler versions list --name
-vita-os-web` and run `bunx wrangler rollback <version-id> --name vita-os-web`.
-Routes are not part of a version, so the hostname stays attached. The cutover,
-its rollback, and retirement follow
-[`docs/migrations/production-cutover.md`](docs/migrations/production-cutover.md).
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-
-## Browser support
-
-Production builds support Safari 16.4+, Chrome and Edge 111+, and Firefox 114+.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+bun run lint        # oxlint fixes, then oxfmt formatting
+bun run typecheck
+bun run build
+bun run test:run    # all tests once (bun run test for watch mode)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+CI (`.github/workflows/verify.yml`) runs `lint:check`, `typecheck`, `build`, a check that the sign-in page doesn't load the signed-in app, and `test:run` on every pull request and before every deploy.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Check a change in the real app
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+`bun run verify up` starts an isolated local stack (its own ports and D1) and signs up a throwaway user. It needs no `.dev.vars` or `.env.local`. `bun run verify --help` lists the other commands, and `.claude/skills/verify-vita-os/SKILL.md` documents them.
+
+## Deploy
+
+Each environment is a web Worker and an API Worker with its own D1 database. The two hostnames share `rigos.dev` so the session cookie reaches the API. Both are defined in `apps/web/wrangler.jsonc` and `apps/api/wrangler.jsonc`.
+
+| Environment | Web | API | D1 | Deployed by |
+| --- | --- | --- | --- | --- |
+| staging | vita-staging.rigos.dev | vita-api-staging.rigos.dev | `vita-os-staging` | `deploy-staging.yml`, on every push to `main` or by hand |
+| production | vita.rigos.dev | vita-api.rigos.dev | `vita-os-production` | `deploy-production.yml`, by hand only |
+
+Each workflow runs the CI checks, applies D1 migrations, deploys and smoke tests the API, then deploys and smoke tests the web app. It needs the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets. Deploy through the workflows rather than by hand.
+
+`apps/web` also has `deploy:staging` and `deploy:production` scripts (`bun run --cwd apps/web deploy:staging`). They build with the right `VITE_API_BASE_URL`, check the target Worker name and domain, and deploy the web Worker only. They do not migrate D1 or deploy the API.
+
+API secrets are set per environment from `apps/api`:
+
+```bash
+bunx wrangler secret put BETTER_AUTH_SECRET --env staging
+```
+
+To roll back the web app, the production run summary records the version it replaced:
+
+```bash
+bunx wrangler rollback <version-id> --name vita-os-web
 ```

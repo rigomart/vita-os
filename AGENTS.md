@@ -1,104 +1,39 @@
 # AGENTS.md
 
-This file provides guidance to AI Agents when working with code in this repository.
+Vita OS is a personal life-awareness app: open Threads and standalone Notes, optionally labeled by Area, on one Dashboard. Bun + Turbo monorepo. Run every command from the repo root with `bun` (never npm, yarn, or pnpm).
 
-## Verification (MUST RUN)
+## Done means
 
-After implementing any feature or making any meaningful code change, **always** run these checks from the **repo root** before considering the work done:
+1. `bun run lint` (auto-fixes lint, format, import order) and `bun run build` (type-check + build) pass.
+2. `bun run test:run` passes when the touched code has tests.
+3. A user-visible change is proven in the real app with the `verify-vita-os` skill (`.claude/skills/verify-vita-os/SKILL.md`, run as `bun run verify <command>`). Lint and tests don't substitute for it.
 
-```bash
-bun run lint         # Lint + format + organize imports with auto-fix
-bun run build        # Type-check (tsc) then build for production
-```
+## Where things live
 
-If tests exist for the affected code, also run `bun run test:run`.
+- `packages/application` is the product: routes, every authenticated screen, the reads and commands behind them, the TanStack Query cache, optimistic updates. Its modules import each other by relative path, never by the package name.
+- `apps/web` is only the host: Better Auth in the browser, the HTTP application client, session gating, auth routes. `@` maps to `apps/web/src`.
+- `apps/api` is the Hono Worker over Cloudflare D1. Migrations are in `apps/api/migrations`. Background: `docs/migrations/cloudflare-application.md`.
+- `packages/contracts` (shared types and the application contract), `packages/core` (domain rules, no framework code), `packages/ui` (shadcn components). `apps/design` previews `packages/ui`.
+- Domain language is in `CONTEXT.md`, decisions in `docs/adr/`. Use the glossary's terms. Say so when a change contradicts an ADR.
 
-When the change is user-visible, also verify it in the real app with the `verify-vita-os` skill: read `.claude/skills/verify-vita-os/SKILL.md` and run it as `bun run verify <command>`. Lint and tests are not a substitute for that.
+## Rules
 
-## Commands
+- Add shadcn components from `apps/web/` with `bunx shadcn@latest add <component>`. Never `--overwrite`: components in `packages/ui/src/components/` carry local changes.
+- Scope a command to one package with `bunx turbo run <task> --filter=@vita-os/<name>`.
+- Don't use the shared dev server (`bun run dev`, Vite on :5173) or the owner's account for verification. `bun run verify` starts an isolated stack with a throwaway user.
+- Never deploy by hand. Deploys go through `.github/workflows/deploy-*.yml`, which migrate D1 and deploy the API before the web app. The `deploy:*` scripts in `apps/web` ship the web Worker alone.
+- Conventional commits with a scope: `<type>(<scope>): <description>`.
+- Issues live in GitHub. Use the `gh` CLI.
 
-All commands use **bun** (not npm/yarn/pnpm). Run from the **repo root**:
+## Worktrees
 
-```bash
-bun run dev          # Start all dev servers via turbo
-bun run build        # Type-check + build all apps via turbo
-bun run lint         # Lint with Oxlint fixes, then format + organize imports with Oxfmt
-bun run lint:check   # Check linting, formatting, and import ordering without writing files
-bun run format       # Format + organize imports with Oxfmt
-bun run format:check # Check formatting and import ordering without writing files
-bun run test         # Run tests in watch mode via turbo
-bun run test:run     # Run tests once via turbo
-```
+- Parallel sessions work in git worktrees under `.claude/worktrees/`. `.worktreeinclude` copies `apps/web/.env.local` into new ones.
+- Run `bun install` in each new worktree. Never symlink `node_modules` between worktrees: bun's workspace links would resolve `@vita-os/*` to another checkout's source.
+- Only one agent at a time adds a migration. Migrations apply in order, so parallel ones produce a conflicting history.
 
-To run commands for a **specific app**, use `--filter`:
+## Skills
 
-```bash
-bunx turbo run build --filter=@vita-os/web
-bunx turbo run dev --filter=@vita-os/web
-```
+Project skills live in `.claude/skills/<name>/`. Each is symlinked into `.agents/skills/` for agents that read that directory. Add new skills the same way.
 
-Add **new** shadcn components from `apps/web/`: `bunx shadcn@latest add <component>`. **Do NOT use `--overwrite`** — existing components in `packages/ui/src/components/` may have custom modifications.
-
-## Where the product lives
-
-Vita OS itself is `packages/application`: product routes, every authenticated screen, the reads
-and commands behind them, the TanStack Query cache, and the optimistic behavior.
-Its modules import each other by relative path — never by the package's own name.
-
-`apps/web` is only a host: Better Auth in the browser, `VITE_API_BASE_URL`, the
-HTTP implementation of the application contract, session gating, and authentication
-routes. It mounts the shared product route tree. `apps/api` is the Hono Worker over D1. See
-`docs/migrations/cloudflare-application.md`.
-
-## Dev servers
-
-Start Vite when you need a dev server for your own work, such as a missing route tree. Reuse whatever is already running. For browser verification, don't use this server: `bun run verify up` starts its own isolated stack (API, local D1, web).
-
-```bash
-bunx turbo run dev --filter=@vita-os/web   # Vite at http://localhost:5173
-```
-
-## Browser sign-in
-
-Authenticated surfaces (dock, command palette, Dashboard) require a signed-in user. `bun run verify up` creates a throwaway account in its own local D1, and `bun run verify signin` signs it in through `/sign-in`. Do not use GitHub or Google. Do not use the owner's personal account.
-
-The `VITA_TEST_EMAIL` / `VITA_TEST_PASSWORD` account in `apps/web/.env.local` is only for manual checks against a shared dev server.
-
-## Path Aliases
-
-In `apps/web/`:
-- `@` maps to `./src` — use `@/lib/...`, `@/routes/...`, etc.
-
-## Commits
-
-Use conventional commits for all commits with the type and scope.
-
-```bash
-git commit -m "<type>(<scope>): <description>"
-```
-
-## Parallel work in worktrees
-
-Sessions and subagents can run in isolated git worktrees under `.claude/worktrees/`.
-
-- `.worktreeinclude` copies `apps/web/.env.local` into every new worktree.
-- **Run `bun install` from the worktree root before dev/build/test.** Each worktree gets its own real `node_modules`; bun's global cache keeps repeat installs fast.
-- Do **not** symlink `node_modules` between worktrees or back to the main checkout. The root `node_modules` contains bun's workspace links (e.g. `@vita-os/ui -> packages/ui`), so a symlinked install silently resolves `@vita-os/*` imports to the main checkout's package source instead of the worktree's.
-
-When splitting work across worktrees:
-
-- **Serialize schema changes to the cloud database.** `apps/api/migrations` is applied in order against one local D1 database; two agents adding migrations at once produce a conflicting history.
-
-## Agent skills
-
-### Issue tracker
-
-GitHub Issues for this repository (`gh` CLI). See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Default five-role vocabulary; GitHub label strings match the role names in `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context: root `CONTEXT.md` and `docs/adr/`. See `docs/agents/domain.md`.
+- `verify-vita-os` drives the real app locally and captures proof.
+- `ship-changes` packages work into a branch, commits, and a PR using this repo's conventions.
