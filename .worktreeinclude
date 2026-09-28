@@ -1,3 +1,4 @@
 # Gitignored files copied into every worktree Claude Code creates.
 # Uses .gitignore syntax; only files that match AND are gitignored are copied.
 apps/web/.env.local
+apps/api/.dev.vars
