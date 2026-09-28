@@ -348,7 +348,7 @@ describe("DashboardOverview", () => {
 describe("a Thread card", () => {
   function card(title: string) {
     const link = screen.getByRole("link", { name: title });
-    const root = link.closest(".group");
+    const root = link.closest("li");
     if (!(root instanceof HTMLElement)) throw new Error("No card");
     return root;
   }
