@@ -1,6 +1,6 @@
 # Moves
 
-A signed-in user adds Moves to an open thread, focuses at most one, and completes them. Moves are peers listed in capture order. Focusing one tints its row in place. Completing a Move removes it and writes a `Move done` entry to the thread's activity log. Completing the Focused Move leaves the thread unfocused. A thread with Moves sits under `NO DATE` → `Ready to move` on the Dashboard, and its card can complete a Move too.
+A signed-in user adds Moves to an open thread, focuses at most one, and completes them. Moves are peers listed in capture order. Focusing one tints its row in place. Completing a Move removes it and writes a `Move done` entry to the thread's activity log. Completing the Focused Move leaves the thread unfocused. A thread with Moves sits under `No date` → `Ready to move` on the Dashboard, and its card can complete a Move too.
 
 Status: proven on 640e3ba (thread pane at 1440px and drawer at 1024px: `move-add`, `move-focus`, `move-complete`, `move-persist`; Dashboard card: `move-complete-card`). Editing and removing a Move, and unfocusing, are not yet driven.
 
@@ -17,7 +17,7 @@ Status: proven on 640e3ba (thread pane at 1440px and drawer at 1024px: `move-add
 ## How to get to it (user POV)
 
 - Open a thread (create one per [Create a thread](./create-thread.md), or click its title on the Dashboard). The `Thread attention` region under the header holds the Moves.
-- On the Dashboard, a thread under `NO DATE` → `Ready to move` shows `Complete “<move>”` on its card.
+- On the Dashboard, a thread under `No date` → `Ready to move` shows `Complete “<move>”` on its card.
 
 ## Driving it with agent-browser
 
@@ -40,7 +40,7 @@ bun run verify browser -- click 'xpath=//ul[@aria-label="Moves"]/li[.//button[no
 - **Persist complete.** Run `bun run verify browser -- reload`, then `bun run verify browser -- wait 'ul[aria-label="Moves"]'` before touching the pane. Run `bun run verify browser -- eval "[...document.querySelectorAll('ul[aria-label=\"Moves\"] > li')].map(li => li.textContent + (li.dataset.focused ? ' [focused]' : ''))"`. It lists only Move A, unfocused. Run `bun run verify d1 "SELECT t.moves_json, t.focused_move_id, l.type, l.content FROM threads t LEFT JOIN activity_log_entries l ON l.thread_id = t.id WHERE t.title = '<thread title>'"`. `moves_json` holds only Move A, `focused_move_id` is null, and the log row is `move_completed` with content `Completed "Verify move B 1727461234"`.
 - **Proof.** `bun run verify shot moves-after` after the reload.
 - **Drawer.** Run `bun run verify browser -- set viewport 1024 768`, `reload`, and `wait 'ul[aria-label="Moves"]'`. The pane is now `dialog "<title>"`. Add, focus, and complete with the same commands. Completing an unfocused Move leaves the focus where it was. Run `set viewport 1440 900` afterwards.
-- **Dashboard card (`move-complete-card`).** Run `bun run verify open /`, then `bun run verify browser -- wait --text "Ready to move"`. The thread's card lists `link "<title>"`, `Set Follow-up`, and `Complete “<move>”` (curly quotes). Run `bun run verify browser -- find role button click --name "Complete “Verify move C 1727461234”" --exact`, reload, and read D1 as above. With its last Move completed the thread moves back to `NO DATE` → `Open`.
+- **Dashboard card (`move-complete-card`).** Run `bun run verify open /`, then `bun run verify browser -- wait --text "Ready to move"`. The thread's card lists `link "<title>"`, `Set Follow-up`, and `Complete “<move>”` (curly quotes). Run `bun run verify browser -- find role button click --name "Complete “Verify move C 1727461234”" --exact`, reload, and read D1 as above. With its last Move completed the thread moves back to `No date` → `Open`.
 
 ## Gotchas
 

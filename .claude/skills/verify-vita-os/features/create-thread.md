@@ -38,4 +38,4 @@ Preconditions:
 - Choosing `Create “…”` in the area picker writes the `areas` row right away, before `Create thread` is clicked. Cancelling the dialog afterwards leaves the area behind.
 - The area picker's combobox has no accessible name. Reach it with `find role combobox`, which works because the dialog has only one.
 - Pressing `Escape` with the area picker open closes the picker, not the dialog.
-- On the Dashboard the new thread's row under `NO DATE` → `Open` is `link "<title>"` and `Set Follow-up`. `wait --text "<title>"` after a reload can match that row before the pane renders, so the pane proof is `complementary "<title>"` in the after snapshot.
+- On the Dashboard the new thread's row under `No date` → `Open` is `link "<title>"` and `Set Follow-up`. `wait --text "<title>"` after a reload can match that row before the pane renders, so the pane proof is `complementary "<title>"` in the after snapshot.

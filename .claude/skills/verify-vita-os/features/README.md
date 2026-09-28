@@ -33,4 +33,5 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 - [Capture a note](./capture-note.md) covers the dock button, the Q shortcut, and the command palette, plus persistence.
 - [Create a thread](./create-thread.md) covers the New thread dialog and the thread pane it opens.
 - [Moves](./moves.md) covers adding, focusing, and completing a Move in the thread pane, the drawer, and the Dashboard card.
+- [Dashboard board](./dashboard-board.md) covers the dated lanes, the No date tray, the shared Thread and Note card, and the stacked layouts.
 - [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter by area row.
