@@ -4,36 +4,36 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { leadMove } from "@vita-os/core";
 import { cn } from "@vita-os/ui/lib/utils";
-import { CalendarClock, Check, ListTodo } from "lucide-react";
+import { ListTodo } from "lucide-react";
 
 import type { ProductSearch } from "../../navigation/search-params";
 
 import { AreaIcon } from "../../areas/components/area-icon";
-import { WhenPopover } from "../../attention-list";
 import {
-  dateToken,
-  dateToneClassName,
-  dayDelta,
-} from "../../dashboard/components/dashboard-model";
+  BoardCard,
+  BoardCompleteButton,
+  BoardDate,
+  BoardTag,
+  isLate,
+  revealed,
+} from "../../dashboard/components/board-card";
 import { useCompleteMove } from "../use-moves";
 import { useUpdateThread } from "../use-update-thread";
-
-const revealed =
-  "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100";
 
 /** Past this many Moves the pips stop growing and a count takes over. */
 const MAX_PIPS = 6;
 
 /**
- * One Thread on the board, in two fixed rows that never trade places.
+ * One Thread on the board, in the three rows every `BoardCard` keeps.
  *
  * The first is always the Thread's title, so a card reads the same whether or
  * not a Move is focused. The second is the move slot: the Focused Move, else
  * the only Move, else — with several Moves and none focused — just how many
  * there are, because the card must not invent a headline the person never
- * chose. A Thread with no Moves is its title alone.
+ * chose. A Thread with no Moves has no second row. The footer holds the
+ * Follow-up and Area, so neither crowds the words above it.
  *
- * The rail completes only the Move the slot shows. Focusing, removing, and
+ * The footer completes only the Move the slot shows. Focusing, removing, and
  * choosing among Moves happen in Thread detail, where every Move is in view.
  */
 export function ThreadAttentionCard({
@@ -42,6 +42,7 @@ export function ThreadAttentionCard({
   currentDate,
   onCompleteMove,
   onSetFollowUp,
+  onTray,
   thread,
 }: {
   actions?: ReactNode;
@@ -49,68 +50,69 @@ export function ThreadAttentionCard({
   currentDate: number;
   onCompleteMove: (moveId: MoveId) => void;
   onSetFollowUp: (when: number | undefined) => void;
+  onTray?: boolean;
   thread: Thread;
 }) {
   const moves = thread.moves ?? [];
   const lead = leadMove(thread);
   const focused = lead !== undefined && lead._id === thread.focusedMoveId;
   const followUp = thread.followUp ?? undefined;
-  const late = followUp !== undefined && dayDelta(followUp, currentDate) < 0;
+  const followUpDate = (
+    <BoardDate
+      currentDate={currentDate}
+      labels={{ change: "Change Follow-up", set: "Set Follow-up" }}
+      onSetWhen={onSetFollowUp}
+      when={followUp}
+    />
+  );
 
   return (
-    <div
-      className={cn(
-        "group relative rounded-lg px-2.5 py-2 transition-colors hover:bg-muted/60",
-        late && "bg-condition-attention/[0.06]",
-      )}
-    >
-      <div className="flex items-center gap-1.5">
-        <Link
-          to="."
-          search={(previous: ProductSearch): ProductSearch => ({
-            ...previous,
-            thread: thread.slug,
-          })}
-          className="min-w-0 flex-1 truncate text-sm leading-snug font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-ring/40"
-        >
-          {thread.title}
-        </Link>
-
-        <span className="flex shrink-0 items-center gap-1 pl-1 text-[12px] leading-snug text-muted-foreground/75">
-          <AreaTag area={area} />
-          <WhenPopover
-            when={followUp}
-            onSetWhen={onSetFollowUp}
-            trigger={
-              followUp === undefined ? (
-                <ControlButton className={revealed} label="Set Follow-up">
-                  <CalendarClock className="size-3.5" />
-                </ControlButton>
-              ) : (
-                <button
-                  type="button"
-                  aria-label="Change Follow-up"
-                  className={cn(
-                    "relative z-10 -my-0.5 inline-flex items-center gap-1 rounded-full px-1 py-0.5 tabular-nums transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40",
-                    dateToneClassName(followUp, currentDate),
-                  )}
-                >
-                  <CalendarClock aria-hidden className="size-3" />
-                  {dateToken(followUp, currentDate)}
-                </button>
-              )
-            }
-          />
-          {actions && (
-            <span className={cn("relative z-10 flex", revealed)}>
-              {actions}
-            </span>
+    <BoardCard
+      late={isLate(followUp, currentDate)}
+      onTray={onTray}
+      footer={
+        <>
+          {followUp !== undefined && followUpDate}
+          {area && (
+            <BoardTag
+              icon={<AreaIcon icon={area.icon} className="size-3 shrink-0" />}
+              label={area.name}
+            />
           )}
-        </span>
-      </div>
+
+          <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-1">
+            {moves.length > 1 && (
+              <MovePips moves={moves} focusedMoveId={thread.focusedMoveId} />
+            )}
+            {followUp === undefined && followUpDate}
+            {lead !== undefined && (
+              <BoardCompleteButton
+                label={`Complete “${lead.text}”`}
+                onClick={() => onCompleteMove(lead._id)}
+              />
+            )}
+            {actions && (
+              <span className={cn("relative z-10 flex", revealed)}>
+                {actions}
+              </span>
+            )}
+          </span>
+        </>
+      }
+    >
+      <Link
+        to="."
+        search={(previous: ProductSearch): ProductSearch => ({
+          ...previous,
+          thread: thread.slug,
+        })}
+        className="line-clamp-2 min-w-0 text-sm leading-snug font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-ring/40"
+      >
+        {thread.title}
+      </Link>
 
       {moves.length > 0 && (
-        <div className="mt-1 flex items-start gap-1.5 text-[13px] leading-snug">
+        <div className="flex items-start gap-1.5 text-[13px] leading-snug">
           <span
             aria-hidden
             className="flex h-[1.1rem] w-3 shrink-0 items-center justify-center"
@@ -127,44 +129,28 @@ export function ThreadAttentionCard({
               {moves.length} moves · none focused
             </span>
           ) : (
-            <span className="line-clamp-2 min-w-0 flex-1 text-foreground/75">
+            <span className="line-clamp-3 min-w-0 flex-1 text-foreground/75">
               <span className="sr-only">
                 {focused ? "Focused Move: " : "Move: "}
               </span>
               {lead.text}
             </span>
           )}
-
-          <span className="flex h-[1.1rem] shrink-0 items-center gap-1.5 pl-1">
-            {moves.length > 1 && (
-              <MovePips moves={moves} focusedMoveId={thread.focusedMoveId} />
-            )}
-            {lead !== undefined && (
-              <ControlButton
-                label={`Complete “${lead.text}”`}
-                onClick={() => onCompleteMove(lead._id)}
-                className={cn(
-                  revealed,
-                  "bg-muted hover:bg-condition-healthy/15 hover:text-condition-healthy",
-                )}
-              >
-                <Check className="size-3.5" />
-              </ControlButton>
-            )}
-          </span>
         </div>
       )}
-    </div>
+    </BoardCard>
   );
 }
 
 export function ConnectedThreadAttentionCard({
   area,
   currentDate,
+  onTray,
   thread,
 }: {
   area?: AreaSummary;
   currentDate: number;
+  onTray?: boolean;
   thread: Thread;
 }) {
   const completeMove = useCompleteMove(thread);
@@ -174,6 +160,7 @@ export function ConnectedThreadAttentionCard({
     <ThreadAttentionCard
       area={area}
       currentDate={currentDate}
+      onTray={onTray}
       thread={thread}
       onCompleteMove={(moveId) => void completeMove(moveId)}
       onSetFollowUp={(when) => void updateThread({ followUp: when ?? null })}
@@ -233,51 +220,6 @@ function MovePips({
           +{overflow}
         </span>
       )}
-    </span>
-  );
-}
-
-function ControlButton({
-  children,
-  className,
-  label,
-  onClick,
-}: {
-  children: ReactNode;
-  className?: string;
-  label: string;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className={cn(
-        "relative z-10 -my-1 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform,opacity] hover:bg-muted hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40",
-        className,
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-/**
- * The Thread's Area as a quiet label: icon and name, in the card's own muted
- * ink. Colour on the board belongs to time, so the tag never carries any.
- * An unlabeled Thread shows nothing — a missing label is not a problem.
- */
-function AreaTag({ area }: { area?: AreaSummary }) {
-  if (!area) return null;
-  return (
-    <span
-      title={area.name}
-      className="inline-flex max-w-28 shrink-0 items-center gap-1 rounded-full bg-muted/70 px-1.5 py-px text-[11px] text-muted-foreground"
-    >
-      <AreaIcon icon={area.icon} className="size-3 shrink-0" />
-      <span className="truncate">{area.name}</span>
     </span>
   );
 }

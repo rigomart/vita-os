@@ -20,7 +20,7 @@ import { DashboardNote } from "./dashboard-note";
 /**
  * The lanes sit side by side only at `xl`, where the board owns the viewport's
  * height and each lane scrolls. Below it they stack and the page scrolls, and
- * on a phone Later and the No date margin start folded.
+ * on a phone Later and the No date tray start folded.
  */
 export function DashboardBoard({
   areas,
@@ -62,9 +62,13 @@ export function DashboardBoard({
     { key: "notes", title: "Notes", items: board.unscheduled.notes },
   ].filter((run) => run.items.length > 0);
 
-  const renderItem = (item: BoardItem) =>
+  const renderItem = (item: BoardItem, onTray = false) =>
     item.kind === "note" ? (
-      <DashboardNote currentDate={currentDate} note={item.note} />
+      <DashboardNote
+        currentDate={currentDate}
+        note={item.note}
+        onTray={onTray}
+      />
     ) : (
       <ConnectedThreadAttentionCard
         area={
@@ -73,63 +77,66 @@ export function DashboardBoard({
             : areaById.get(item.thread.areaId)
         }
         currentDate={currentDate}
+        onTray={onTray}
         thread={item.thread}
       />
     );
 
   return (
-    <div className="flex flex-col gap-6 xl:min-h-0 xl:flex-1 xl:flex-row xl:gap-8">
-      <div className="grid gap-6 md:grid-cols-2 xl:min-h-0 xl:flex-1 xl:grid-cols-3 xl:gap-8">
-        {columns.map((column) => (
-          <BoardLane
-            key={column.key}
-            collapsible={isMobile && column.key === "later"}
-            count={column.items.length}
-            hint={column.hint}
-            title={column.title}
-            tone={column.urgent ? "urgent" : "default"}
-          >
-            <ul className="-mx-1 flex flex-col gap-1 px-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-              {column.items.map((item) => (
-                <li key={itemId(item)}>{renderItem(item)}</li>
-              ))}
-              {column.items.length === 0 && (
-                <li className="px-1 py-2 text-xs text-muted-foreground/50">
-                  Nothing here.
-                </li>
-              )}
-            </ul>
-          </BoardLane>
-        ))}
-      </div>
+    // No date is a peer of the dated lanes and a little wider, because its
+    // cards carry as much as theirs do.
+    <div className="grid gap-6 md:grid-cols-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.25fr)] xl:gap-6">
+      {columns.map((column) => (
+        <BoardLane
+          key={column.key}
+          collapsible={isMobile && column.key === "later"}
+          count={column.items.length}
+          hint={column.hint}
+          title={column.title}
+          tone={column.urgent ? "urgent" : "default"}
+        >
+          <ul className="-mx-1 flex flex-col gap-1.5 px-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+            {column.items.map((item) => (
+              <li key={itemId(item)}>{renderItem(item)}</li>
+            ))}
+            {column.items.length === 0 && (
+              <li className="rounded-xl border border-dashed border-border/60 px-3 py-3 text-xs text-muted-foreground/60">
+                Nothing here.
+              </li>
+            )}
+          </ul>
+        </BoardLane>
+      ))}
 
+      {/* A tray, not a fourth stretch of the calendar: recessed, unruled. */}
       <BoardLane
-        className="border-t border-border/50 pt-5 xl:w-64 xl:shrink-0 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5"
+        className="rounded-3xl bg-muted/50 p-3 pb-1 xl:p-4 xl:pb-2"
         collapsible={isMobile}
         count={unscheduledCount(board)}
         element="aside"
+        hint="Not on the calendar"
         title="No date"
-        tone="muted"
+        tone="tray"
       >
-        <div className="-mx-1 flex flex-col gap-3 px-1 pb-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+        <div className="-mx-1 flex flex-col gap-4 px-1 pb-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
           {runs.map((run) => (
             <section key={run.key}>
-              <h3 className="flex items-baseline gap-1.5 pb-1 text-[11px] leading-snug font-medium text-muted-foreground/70">
+              <h3 className="flex items-baseline gap-1.5 px-3 pb-1.5 text-xs font-medium text-foreground/70">
                 {run.title}
-                <span className="tabular-nums text-muted-foreground/45">
+                <span className="tabular-nums text-muted-foreground/60">
                   {run.items.length}
                 </span>
               </h3>
-              <ul className="flex flex-col gap-1">
+              <ul className="flex flex-col gap-1.5">
                 {run.items.map((item) => (
-                  <li key={itemId(item)}>{renderItem(item)}</li>
+                  <li key={itemId(item)}>{renderItem(item, true)}</li>
                 ))}
               </ul>
             </section>
           ))}
 
           {runs.length === 0 && (
-            <p className="py-2 text-xs text-muted-foreground/50">
+            <p className="px-3 py-2 text-xs text-muted-foreground/60">
               Nothing unscheduled.
             </p>
           )}
@@ -141,14 +148,17 @@ export function DashboardBoard({
 
 const tones = {
   urgent: {
-    border: "border-condition-attention/60",
+    border: "border-condition-attention/50",
     title: "text-condition-attention",
   },
-  default: { border: "border-border/70", title: "text-foreground/70" },
-  muted: { border: "border-transparent", title: "text-muted-foreground" },
+  default: { border: "border-border/70", title: "text-foreground/80" },
+  tray: { border: "border-transparent", title: "text-foreground/80" },
 };
 
-/** One lane: a ruled heading with its count, and its cards under it. */
+/**
+ * One lane: a ruled heading — title, count, and what the lane holds — and its
+ * cards under it.
+ */
 function BoardLane({
   children,
   className,
@@ -174,30 +184,28 @@ function BoardLane({
 
   const label = (
     <>
-      <span
-        className={cn(
-          "text-[11px] font-semibold tracking-widest uppercase",
-          titleClass,
-        )}
-      >
-        {title}
-      </span>
+      <span className={cn("text-sm font-medium", titleClass)}>{title}</span>
       {/* Colour only when urgent and non-empty: the one number worth alarming. */}
       <span
-        title={hint}
         className={cn(
-          "text-base leading-none font-semibold tabular-nums",
+          "text-sm tabular-nums",
           tone === "urgent" && count > 0
-            ? "text-condition-attention"
+            ? "font-medium text-condition-attention"
             : "text-muted-foreground/70",
         )}
       >
         {count}
       </span>
+      {hint && (
+        <span className="ml-auto truncate pl-2 text-[11px] text-muted-foreground/60">
+          {hint}
+        </span>
+      )}
     </>
   );
 
-  const headingClassName = cn("mb-1.5 flex items-baseline border-b-2", border);
+  // Inset like a card's text, so a lane's title lines up with its cards.
+  const headingClassName = cn("mb-2 flex items-baseline border-b px-3", border);
 
   if (!collapsible) {
     return (
@@ -218,10 +226,11 @@ function BoardLane({
         <h2 className={headingClassName}>
           <CollapsibleTrigger className="group flex w-full items-baseline gap-2 pb-1.5 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/30">
             {label}
+            {!hint && <span className="ml-auto" />}
             <ChevronRight
               aria-hidden
               className={cn(
-                "ml-auto size-4 shrink-0 self-center text-muted-foreground/60 transition-transform group-hover:text-foreground motion-reduce:transition-none",
+                "size-4 shrink-0 self-center text-muted-foreground/60 transition-transform group-hover:text-foreground motion-reduce:transition-none",
                 open && "rotate-90",
               )}
             />

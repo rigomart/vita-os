@@ -81,4 +81,20 @@ describe("DashboardNote", () => {
     expect(mocks.completeNote).toHaveBeenCalledExactlyOnceWith("note1");
     expect(mocks.updateNoteBody).not.toHaveBeenCalled();
   });
+
+  it("dates itself with the board's token and tags itself as a Note", () => {
+    render(
+      <DashboardNote
+        currentDate={currentDate}
+        note={note("Water the plants", {
+          attentionDate: currentDate - 2 * 24 * 60 * 60 * 1000,
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Change attention date" }),
+    ).toHaveTextContent("−2d");
+    expect(screen.getByText("Note")).toBeVisible();
+  });
 });
