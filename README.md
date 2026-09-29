@@ -25,21 +25,22 @@ A bun workspace driven by turbo.
 You need bun 1.3.14, Node (the deploy and smoke scripts use it), and python3 (the API test suite runs a few Python tests).
 
 ```bash
-bun install
-cp apps/api/.dev.vars.example apps/api/.dev.vars
-cp apps/web/.env.example apps/web/.env.local
-bun run --filter=@vita-os/api migrate:local
+bun run setup
 bun run dev
 ```
 
-The example files already hold working local values:
+`bun run setup` installs dependencies, writes the env files, migrates the local D1, and seeds a dev user with sample Areas, Threads, and Notes. It is safe to re-run: each step skips what is already done. `bun run setup --reset` wipes the local D1 and reseeds it, and `--no-seed` skips the sample data.
+
+The env files start from the example files, which hold working local values. In a worktree they are copied from the main checkout instead. Either way, any key the example has and the file lacks is added:
 
 - `apps/api/.dev.vars`: `BETTER_AUTH_SECRET` (any string of 32+ characters), `BETTER_AUTH_URL=http://localhost:8787`, `BROWSER_ORIGIN=http://localhost:5173`.
 - `apps/web/.env.local`: `VITE_API_BASE_URL=http://localhost:8787`.
 
-`bun run dev` starts the API on http://localhost:8787, the web app on http://localhost:5173, and the design preview on http://localhost:5174. Open the web app and sign up. A missing variable fails at startup with its name.
+`bun run dev` starts the API on http://localhost:8787, the web app on http://localhost:5173, and the design preview on http://localhost:5174. Sign in as `dev@vita.test` with the password `vita-dev-password`. A missing variable fails at startup with its name.
 
-Run `migrate:local` again whenever a new file lands in `apps/api/migrations`.
+Run `bun run setup` again whenever a new file lands in `apps/api/migrations`.
+
+The first `bun run setup` also sets `core.hooksPath` to `.githooks`, so `.githooks/post-checkout` runs the same setup in every new git worktree. Set `VITA_SKIP_SETUP=1` to skip it for one `git worktree add`.
 
 ## Checks
 
