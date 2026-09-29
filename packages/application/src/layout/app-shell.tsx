@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { useMatch, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
@@ -21,6 +21,9 @@ import { ThreadDetailView } from "../threads/thread-detail/thread-detail-view";
 import { CreateThreadDialog } from "../threads/thread-form/create-thread-dialog";
 import { AppChrome } from "./app-chrome";
 import { CommandPalette } from "./command-palette";
+
+// Matches the thread pane's width in ThreadDetailPane.
+const RAIL_WIDTH = "clamp(28rem,34vw,34rem)";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const noteCount = useOpenNoteCount().data;
@@ -101,9 +104,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-svh">
-      {/* The content column sits beside the thread rail's width spacer; the
-          chrome is fixed and clears the rail by its own offset instead. */}
+    // The thread rail covers the page rather than pushing it (ADR 0023). The
+    // page keeps its full width; only the controls anchored to the right edge
+    // — the chrome and the Notes panel — clear the rail, by `--rail`.
+    <div
+      className="flex min-h-svh"
+      style={
+        {
+          "--rail": openThreadSlug === undefined ? "0px" : RAIL_WIDTH,
+        } as CSSProperties
+      }
+    >
       <div className="flex min-h-svh min-w-0 flex-1 flex-col">
         <AppChrome
           noteCount={noteCount}
@@ -113,9 +124,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           onNewThread={() => dialogs.openCreateThread(filteredAreaId)}
           onManageAreas={dialogs.openManageAreas}
           onOpenPalette={() => setPaletteOpen(true)}
-          railOpen={openThreadSlug !== undefined}
         />
-        {/* Inside the column, not beside it — see InboxPopoverPanel. */}
         <InboxSurface />
         {/* The chrome floats, so this padding is what clears it. */}
         <main className="w-full min-w-0 flex-1 px-4 pt-20 pb-24">

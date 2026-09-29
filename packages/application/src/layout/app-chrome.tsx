@@ -1,5 +1,3 @@
-import type { CSSProperties } from "react";
-
 import { Link } from "@tanstack/react-router";
 import { Kbd } from "@vita-os/ui/components/kbd";
 import {
@@ -28,8 +26,6 @@ interface AppChromeProps {
   onNewThread: () => void;
   onManageAreas: () => void;
   onOpenPalette: () => void;
-  /** True while the thread rail is open, so the chrome can clear it. */
-  railOpen: boolean;
 }
 
 /**
@@ -38,10 +34,9 @@ interface AppChromeProps {
  * bottom-centre.
  *
  * The clusters are `fixed`, so they would sit under the thread rail (z-30).
- * The right-hand cluster and the dock offset by `--rail` instead, which is
- * 0px whenever the rail is closed.
+ * The right-hand cluster and the dock offset by `--rail` instead, which
+ * `AppShell` sets and which is 0px whenever the rail is closed.
  */
-const RAIL_WIDTH = "clamp(28rem,34vw,34rem)";
 
 export function AppChrome({
   inboxOpen,
@@ -51,7 +46,6 @@ export function AppChrome({
   onNewThread,
   onOpenPalette,
   onToggleInbox,
-  railOpen,
 }: AppChromeProps) {
   const { viewer, signOut } = useViewer();
   const { theme, setTheme } = useTheme();
@@ -64,7 +58,7 @@ export function AppChrome({
 
   return (
     <TooltipProvider delay={200}>
-      <div style={{ "--rail": railOpen ? RAIL_WIDTH : "0px" } as CSSProperties}>
+      <>
         <header
           className={cn(
             "fixed top-3 left-3 z-20 flex h-11 min-w-0 items-center gap-2 rounded-full px-2.5",
@@ -183,7 +177,7 @@ export function AppChrome({
             onClick={onNewThread}
           />
         </nav>
-      </div>
+      </>
     </TooltipProvider>
   );
 }

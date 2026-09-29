@@ -20,9 +20,8 @@ interface InboxPopoverPanelProps {
  * in without being trapped, and Escape, the close button or a click outside
  * dismiss it.
  *
- * Rendered inside the chrome column rather than pinned to the viewport, so the
- * thread rail — which squeezes that column — carries the panel left along with
- * the trigger instead of being painted over.
+ * The thread rail covers the page, so the panel clears it by `--rail` (set by
+ * `AppShell`), the same offset that carries its trigger left.
  */
 export function InboxPopoverPanel({
   open,
@@ -51,7 +50,7 @@ export function InboxPopoverPanel({
         tabIndex={-1}
         data-slot="inbox-surface-panel"
         data-state={open ? "open" : "closed"}
-        className="pointer-events-none absolute top-0 right-4 flex max-h-[min(44rem,78dvh)] w-[26rem] origin-top-right scale-95 flex-col overflow-hidden rounded-xl border bg-popover text-sm text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 ease-out outline-none data-[state=open]:pointer-events-auto data-[state=open]:translate-y-0 data-[state=open]:scale-100 data-[state=open]:opacity-100 data-[state=closed]:-translate-y-1 motion-reduce:transition-none"
+        className="pointer-events-none absolute top-0 right-[calc(var(--rail)+1rem)] flex max-h-[min(44rem,78dvh)] w-[26rem] origin-top-right scale-95 flex-col overflow-hidden rounded-xl border bg-popover text-sm text-popover-foreground opacity-0 shadow-xl transition-[opacity,transform] duration-150 ease-out outline-none data-[state=open]:pointer-events-auto data-[state=open]:translate-y-0 data-[state=open]:scale-100 data-[state=open]:opacity-100 data-[state=closed]:-translate-y-1 motion-reduce:transition-none"
         onTransitionEnd={(event) => {
           if (
             event.target === event.currentTarget &&

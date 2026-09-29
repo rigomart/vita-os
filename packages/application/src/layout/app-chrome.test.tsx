@@ -33,7 +33,6 @@ function renderChrome(
       onNewThread={vi.fn()}
       onManageAreas={vi.fn()}
       onOpenPalette={onOpenPalette}
-      railOpen={false}
       {...overrides}
     />,
   );

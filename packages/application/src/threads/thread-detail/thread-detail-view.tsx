@@ -160,38 +160,34 @@ function ThreadDetailPane({
   const { open, requestClose, completeOpenChange } =
     useDeferredRouteClose(onClosed);
 
+  // Covers the page rather than pushing it (ADR 0023): the page keeps its
+  // width, so the board never reflows while the pane slides.
   return (
-    <>
-      <div
-        data-slot="thread-detail-pane-space"
-        data-state={open ? "open" : "closed"}
-        className="relative w-0 min-w-0 shrink-0 transition-[width] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] data-[state=open]:w-[clamp(28rem,34vw,34rem)] motion-reduce:transition-none"
-        onTransitionEnd={(event) => {
-          if (
-            event.target === event.currentTarget &&
-            event.propertyName === "width" &&
-            !open
-          ) {
-            completeOpenChange(false);
-          }
-        }}
+    <aside
+      aria-label={title}
+      data-slot="thread-detail-pane"
+      data-state={open ? "open" : "closed"}
+      className="fixed inset-y-0 right-0 z-30 flex h-dvh w-[clamp(28rem,34vw,34rem)] translate-x-full flex-col border-l bg-popover text-sm text-popover-foreground shadow-xl transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] data-[state=open]:translate-x-0 motion-reduce:transition-none"
+      onTransitionEnd={(event) => {
+        // Tailwind v4 slides with the `translate` property, not `transform`.
+        if (
+          event.target === event.currentTarget &&
+          event.propertyName === "translate" &&
+          !open
+        ) {
+          completeOpenChange(false);
+        }
+      }}
+    >
+      <ThreadControls
+        thread={thread}
+        showActions={showActions}
+        onRequestClose={requestClose}
       />
-      <aside
-        aria-label={title}
-        data-slot="thread-detail-pane"
-        data-state={open ? "open" : "closed"}
-        className="fixed inset-y-0 right-0 z-30 flex h-dvh w-[clamp(28rem,34vw,34rem)] translate-x-full flex-col border-l bg-popover text-sm text-popover-foreground shadow-xl transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] data-[state=open]:translate-x-0 motion-reduce:transition-none"
-      >
-        <ThreadControls
-          thread={thread}
-          showActions={showActions}
-          onRequestClose={requestClose}
-        />
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-8">
-          {children}
-        </div>
-      </aside>
-    </>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-8">
+        {children}
+      </div>
+    </aside>
   );
 }
 
