@@ -1,0 +1,20 @@
+#!/bin/sh
+# Sets up every new worktree (scripts/dev-setup.ts): dependencies, env files,
+# a migrated local D1, and sample data. Enabled by `bun run setup`, which sets
+# core.hooksPath to .githooks.
+#
+# Git runs post-checkout on every checkout. A new worktree is the one that
+# starts from the null commit, so anything else returns at once.
+case "$1" in
+*[!0]*) exit 0 ;;
+esac
+[ -n "$VITA_SKIP_SETUP" ] && exit 0
+
+if ! command -v bun >/dev/null 2>&1; then
+  echo "vita setup: bun not found; run bun run setup in this worktree later"
+  exit 0
+fi
+
+# A failed setup must not fail the checkout.
+bun scripts/dev-setup.ts || echo "vita setup: failed; run bun run setup in this worktree to retry"
+exit 0
