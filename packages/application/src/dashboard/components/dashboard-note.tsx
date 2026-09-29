@@ -1,7 +1,5 @@
 import type { Note } from "@vita-os/contracts";
 
-import { NotebookPen } from "lucide-react";
-
 import { useCompleteNote } from "../../notes/use-complete-note";
 import { useUpdateNoteBody } from "../../notes/use-update-note-body";
 import { useUpdateNoteWhen } from "../../notes/use-update-note-when";
@@ -10,7 +8,6 @@ import {
   BoardCard,
   BoardCompleteButton,
   BoardDate,
-  BoardTag,
   isLate,
 } from "./board-card";
 
@@ -18,8 +15,9 @@ import {
  * A standalone Note on the board, in the same `BoardCard` as a Thread. The
  * frame the Note wears on the Notes page belongs to writing surfaces; here it
  * sits among Threads being triaged, so it takes their shape and tells itself
- * apart by what it says instead — the body in regular weight where a Thread
- * has a bold title, and a Note tag where a Thread has its Area.
+ * apart by what it says instead: the body in regular weight where a Thread
+ * has a bold title, and a margin rule rather than a tag, since on this board a
+ * pill always means an Area.
  *
  * The body is still the writing surface: click it to edit in place, the same
  * way a Note edits in the Notes panel and on a Thread.
@@ -51,13 +49,10 @@ export function DashboardNote({
     <BoardCard
       late={isLate(when, currentDate)}
       onTray={onTray}
+      ruled
       footer={
         <>
           {when !== undefined && attentionDate}
-          <BoardTag
-            icon={<NotebookPen aria-hidden className="size-3 shrink-0" />}
-            label="Note"
-          />
 
           <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-1">
             {when === undefined && attentionDate}

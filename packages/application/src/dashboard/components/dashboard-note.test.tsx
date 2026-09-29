@@ -82,7 +82,7 @@ describe("DashboardNote", () => {
     expect(mocks.updateNoteBody).not.toHaveBeenCalled();
   });
 
-  it("dates itself with the board's token and tags itself as a Note", () => {
+  it("dates itself with the board's token and wears no Area-style tag", () => {
     render(
       <DashboardNote
         currentDate={currentDate}
@@ -95,6 +95,6 @@ describe("DashboardNote", () => {
     expect(
       screen.getByRole("button", { name: "Change attention date" }),
     ).toHaveTextContent("−2d");
-    expect(screen.getByText("Note")).toBeVisible();
+    expect(screen.queryByText("Note")).not.toBeInTheDocument();
   });
 });
