@@ -387,7 +387,7 @@ describe("AppShell", () => {
     await user.click(screen.getByRole("button", { name: "chrome palette" }));
     await user.click(await screen.findByText("New thread"));
 
-    expect(await screen.findByLabelText("Title")).toBeVisible();
+    expect(await screen.findByLabelText("Thread title")).toBeVisible();
     expect(screen.getByRole("button", { name: "Add area" })).toBeVisible();
   });
 
@@ -409,7 +409,7 @@ describe("AppShell", () => {
     await user.click(screen.getByRole("button", { name: "chrome palette" }));
     await user.click(await screen.findByText("New thread"));
 
-    const titleInput = await screen.findByLabelText("Title");
+    const titleInput = await screen.findByLabelText("Thread title");
     await waitFor(() => expect(titleInput).toHaveFocus());
   });
 

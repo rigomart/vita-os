@@ -1,6 +1,6 @@
 # Dashboard board
 
-A signed-in user with open Threads or Notes sees the Dashboard board: three dated lanes (`Now`, `This week`, `Later`) and a wider, recessed `No date` tray that groups undated items under `Ready to move`, `Open`, and `Notes`. Threads and Notes share one card: a title, then the Focused Move or the note body at full width, then a footer with the date token and an Area or `Note` tag on the left and the set-date and complete controls on the right, shown on hover or focus. A late item gets a tint and a negative day token such as `-3d`. With nothing open, the board is replaced by `Nothing is asking for you.`
+A signed-in user with open Threads or Notes sees the Dashboard board: three dated lanes (`Now`, `This week`, `Later`) and a wider, recessed `No date` tray that groups undated items under `Ready to move`, `Open`, and `Notes`. Threads and Notes share one card: a title, then the Focused Move or the note body at full width, then a footer with the date token and, on a Thread, its Area tag on the left and the set-date and complete controls on the right, shown on hover or focus. A Note has no tag; a short margin rule at its left edge marks it. A late item gets a tint and a negative day token such as `-3d`. With nothing open, the board is replaced by `Nothing is asking for you.`
 
 Status: proven on ba85712 (lanes, tray groups, card rows and footer, late tint, empty lane placeholder, hover controls, `board-card-actions` at 1440×900; `board-stack` at 1024×768 and 390×844 with the tray folded and unfolded).
 
@@ -27,7 +27,7 @@ Preconditions:
   - A Thread with an Area, a long Focused Move, and a past follow-up lands in `Now` with the tint and `-3d`.
   - A Thread with a follow-up two to six days out lands in `This week`.
   - A Thread with a Move and no date lands in `No date` → `Ready to move`. One with no Moves lands in `Open`.
-  - A Note with an `Attention date` lands in its dated lane with a `Note` tag. A Note without one lands in `No date` → `Notes`.
+  - A Note with an `Attention date` lands in its dated lane with a margin rule and no tag. A Note without one lands in `No date` → `Notes`.
 
 - **Lanes and tray.** Run `bun run verify open /`, `bun run verify browser -- wait --text "Ready to move"`, then `bun run verify shot board-desktop`. The snapshot has headings `Now <n> Late or due today`, `This week <n> The next six days`, `Later <n> Dated beyond this week`, `No date <n> Not on the calendar` (level 2), and the tray groups `Ready to move <n>`, `Open <n>`, `Notes <n>` (level 3).
 - **Hover controls.** Run `bun run verify browser -- hover 'xpath=//a[normalize-space()="<title>"]'`, then `bun run verify shot board-hover`. The PNG shows the set-date and complete controls at the right of that card's footer.

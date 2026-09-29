@@ -14,6 +14,7 @@ import {
   BoardCompleteButton,
   BoardDate,
   BoardTag,
+  concealed,
   isLate,
   revealed,
 } from "../../dashboard/components/board-card";
@@ -80,22 +81,33 @@ export function ThreadAttentionCard({
             />
           )}
 
-          <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-1">
-            {moves.length > 1 && (
-              <MovePips moves={moves} focusedMoveId={thread.focusedMoveId} />
-            )}
-            {followUp === undefined && followUpDate}
-            {lead !== undefined && (
-              <BoardCompleteButton
-                label={`Complete “${lead.text}”`}
-                onClick={() => onCompleteMove(lead._id)}
+          {/* The pips and the controls share one slot, both flush right: the
+              pips hold it at rest and hand it to the controls on hover, so
+              neither floats in the space the other keeps. Pips only follow a
+              Move the card shows; with none focused, the move slot already
+              says how many there are. */}
+          <span className="ml-auto grid shrink-0 justify-items-end pl-1 *:col-start-1 *:row-start-1">
+            {moves.length > 1 && focused && (
+              <MovePips
+                className={cn("self-center", concealed)}
+                moves={moves}
+                focusedMoveId={lead._id}
               />
             )}
-            {actions && (
-              <span className={cn("relative z-10 flex", revealed)}>
-                {actions}
-              </span>
-            )}
+            <span className="flex items-center gap-1.5">
+              {followUp === undefined && followUpDate}
+              {lead !== undefined && (
+                <BoardCompleteButton
+                  label={`Complete “${lead.text}”`}
+                  onClick={() => onCompleteMove(lead._id)}
+                />
+              )}
+              {actions && (
+                <span className={cn("relative z-10 flex", revealed)}>
+                  {actions}
+                </span>
+              )}
+            </span>
           </span>
         </>
       }
@@ -184,17 +196,19 @@ function MoveMarker({ focused }: { focused: boolean }) {
 
 /**
  * A quiet count of the Thread's Moves: one pip each, the focused one filled.
- * It says there is more to the Thread without listing any of it.
+ * It says there is more to the Thread than the Focused Move the card shows,
+ * without listing any of it.
  */
 function MovePips({
+  className,
   focusedMoveId,
   moves,
 }: {
-  focusedMoveId?: MoveId;
+  className?: string;
+  focusedMoveId: MoveId;
   moves: readonly Move[];
 }) {
-  const focused = moves.some((move) => move._id === focusedMoveId);
-  const label = `${moves.length} moves, ${focused ? "one focused" : "none focused"}`;
+  const label = `${moves.length} moves, one focused`;
   const overflow = moves.length - MAX_PIPS;
 
   return (
@@ -202,7 +216,7 @@ function MovePips({
       role="img"
       aria-label={label}
       title={label}
-      className="inline-flex items-center gap-[3px]"
+      className={cn("inline-flex items-center gap-[3px]", className)}
     >
       {moves.slice(0, MAX_PIPS).map((move) => (
         <span

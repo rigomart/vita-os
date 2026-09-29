@@ -23,7 +23,7 @@ function shortDate(timestamp: number) {
  * A Note as a card, in the same grammar as the new Note dialog: one open
  * writing surface, a heavy edge doing all the containing, and controls floating
  * on the surface rather than framing it. The card is a step down from the
- * dialog — a 2px edge to its 4px, one radius smaller — so a Note reads as the
+ * dialog — a fainter edge, one radius smaller — so a Note reads as the
  * same kind of object as the one you wrote it in. Nothing precedes the text,
  * because a Note is a thing you wrote, not a line item with a state in front.
  */

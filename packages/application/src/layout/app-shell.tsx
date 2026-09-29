@@ -17,8 +17,9 @@ import { useGlobalNewNoteShortcut } from "../navigation/use-global-new-note-shor
 import { useOpenNoteCount } from "../notes/hooks";
 import { NewNoteDialog } from "../notes/new-note/new-note-dialog";
 import { useCreateNote } from "../notes/use-create-note";
+import { NewThreadDialog } from "../threads/new-thread/new-thread-dialog";
 import { ThreadDetailView } from "../threads/thread-detail/thread-detail-view";
-import { CreateThreadDialog } from "../threads/thread-form/create-thread-dialog";
+import { useCreateThread } from "../threads/use-create-thread";
 import { AppChrome } from "./app-chrome";
 import { CommandPalette } from "./command-palette";
 
@@ -29,6 +30,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const noteCount = useOpenNoteCount().data;
   const navigate = useNavigate();
   const createNote = useCreateNote();
+  const createThread = useCreateThread();
   const dialogs = useCreateDialogs();
   const inbox = useInboxSurface();
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -153,11 +155,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       {dialogs.showCreateThread && (
-        <CreateThreadDialog
+        <NewThreadDialog
           open
           onOpenChange={dialogs.setShowCreateThread}
           defaultAreaId={dialogs.createForAreaId}
-          onCreated={({ slug }) => {
+          onSubmit={async (value) => {
+            const { slug } = await createThread(value);
+            dialogs.setShowCreateThread(false);
             openThreadInPlace(slug);
           }}
         />

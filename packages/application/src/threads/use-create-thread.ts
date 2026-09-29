@@ -1,6 +1,11 @@
-import type { CreatedThreadResult, ThreadFormValue } from "./types";
+import type { AreaId } from "@vita-os/contracts";
 
-import { useCreateThread as useCreateThreadCommand } from "../hooks";
+import { useCreateThread as useCreateThreadCommand } from "./hooks";
+
+export type CreateThreadValue = {
+  title: string;
+  areaId?: AreaId;
+};
 
 /**
  * Capture a Thread. The caller navigates to the slug the service chose, not to
@@ -9,7 +14,7 @@ import { useCreateThread as useCreateThreadCommand } from "../hooks";
 export function useCreateThread() {
   const createThread = useCreateThreadCommand();
 
-  return async (value: ThreadFormValue): Promise<CreatedThreadResult> => {
+  return async (value: CreateThreadValue): Promise<{ slug: string }> => {
     const thread = await createThread.mutateAsync(value);
     return { slug: thread.slug };
   };

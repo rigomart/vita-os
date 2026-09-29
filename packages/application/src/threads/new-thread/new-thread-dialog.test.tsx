@@ -9,7 +9,7 @@ import {
   success,
 } from "../../test/fake-application-client";
 import { render, screen, waitFor } from "../../test/render-with-providers";
-import { ThreadFormDialog } from "./thread-form-dialog";
+import { NewThreadDialog } from "./new-thread-dialog";
 
 const health = {
   _id: "area1" as AreaId,
@@ -37,7 +37,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-type DialogProps = ComponentProps<typeof ThreadFormDialog>;
+type DialogProps = ComponentProps<typeof NewThreadDialog>;
 
 function renderDialog(
   overrides: Partial<DialogProps> = {},
@@ -47,14 +47,13 @@ function renderDialog(
 ) {
   const onSubmit = vi.fn<DialogProps["onSubmit"]>(async () => undefined);
   const props: DialogProps = {
-    mode: "create",
     open: true,
     onOpenChange: vi.fn(),
     onSubmit,
     ...overrides,
   };
   return {
-    ...render(<ThreadFormDialog {...props} />, { applicationClient: client }),
+    ...render(<NewThreadDialog {...props} />, { applicationClient: client }),
     onSubmit: props.onSubmit,
   };
 }
@@ -64,24 +63,22 @@ async function openPicker(user: ReturnType<typeof userEvent.setup>) {
   return screen.findByPlaceholderText("Find or create an area…");
 }
 
-describe("ThreadFormDialog", () => {
-  it("uses Thread language on create", () => {
+describe("NewThreadDialog", () => {
+  it("names itself and its action in Thread language", () => {
     renderDialog();
 
     expect(
       screen.getByRole("heading", { name: "New thread" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Create thread" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
   });
 
   it("creates a Thread with only a title", async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderDialog();
 
-    await user.type(screen.getByLabelText("Title"), "Renew passport");
-    await user.click(screen.getByRole("button", { name: "Create thread" }));
+    await user.type(screen.getByLabelText("Thread title"), "Renew passport");
+    await user.click(screen.getByRole("button", { name: "Create" }));
 
     expect(onSubmit).toHaveBeenCalledWith({ title: "Renew passport" });
   });
@@ -98,8 +95,8 @@ describe("ThreadFormDialog", () => {
     await user.click(
       await screen.findByRole("option", { name: "Remove area" }),
     );
-    await user.type(screen.getByLabelText("Title"), "Renew passport");
-    await user.click(screen.getByRole("button", { name: "Create thread" }));
+    await user.type(screen.getByLabelText("Thread title"), "Renew passport");
+    await user.click(screen.getByRole("button", { name: "Create" }));
 
     expect(onSubmit).toHaveBeenCalledWith({ title: "Renew passport" });
   });
@@ -119,8 +116,8 @@ describe("ThreadFormDialog", () => {
 
     await openPicker(user);
     await user.click(await screen.findByRole("option", { name: "Home" }));
-    await user.type(screen.getByLabelText("Title"), "Fix the gate");
-    await user.click(screen.getByRole("button", { name: "Create thread" }));
+    await user.type(screen.getByLabelText("Thread title"), "Fix the gate");
+    await user.click(screen.getByRole("button", { name: "Create" }));
 
     expect(onSubmit).toHaveBeenCalledWith({
       title: "Fix the gate",
@@ -152,8 +149,8 @@ describe("ThreadFormDialog", () => {
         screen.getByRole("button", { name: "Area: Career" }),
       ).toBeInTheDocument(),
     );
-    await user.type(screen.getByLabelText("Title"), "Update résumé");
-    await user.click(screen.getByRole("button", { name: "Create thread" }));
+    await user.type(screen.getByLabelText("Thread title"), "Update résumé");
+    await user.click(screen.getByRole("button", { name: "Create" }));
 
     expect(createArea).toHaveBeenCalledWith(
       expect.objectContaining({ name: "Career" }),
@@ -196,11 +193,11 @@ describe("ThreadFormDialog", () => {
     // AppShell mounts the create dialog only while it is open, so a reopen is
     // a remount rather than a prop flip.
     const { unmount } = renderDialog({ defaultAreaId: health._id });
-    await user.type(screen.getByLabelText("Title"), "Draft title");
+    await user.type(screen.getByLabelText("Thread title"), "Draft title");
     unmount();
     renderDialog({ defaultAreaId: health._id });
 
-    expect(screen.getByLabelText("Title")).toHaveValue("");
+    expect(screen.getByLabelText("Thread title")).toHaveValue("");
     expect(
       await screen.findByRole("button", { name: "Area: Health" }),
     ).toBeInTheDocument();
@@ -213,8 +210,8 @@ describe("ThreadFormDialog", () => {
       onSubmit: vi.fn(() => pendingCreate.promise),
     });
 
-    await user.type(screen.getByLabelText("Title"), "Renew passport");
-    const createButton = screen.getByRole("button", { name: "Create thread" });
+    await user.type(screen.getByLabelText("Thread title"), "Renew passport");
+    const createButton = screen.getByRole("button", { name: "Create" });
     await user.click(createButton);
     await user.click(createButton);
 
@@ -235,20 +232,19 @@ describe("ThreadFormDialog", () => {
       onSubmit: vi.fn(() => pendingCreate.promise),
     });
 
-    await user.type(screen.getByLabelText("Title"), "Renew passport");
+    await user.type(screen.getByLabelText("Thread title"), "Renew passport");
     await user.keyboard("{Enter}");
     await user.keyboard("{Enter}");
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByRole("button", { name: "Create thread" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
 
     pendingCreate.resolve();
     await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "Create thread" }),
-      ).toHaveAttribute("aria-busy", "false"),
+      expect(screen.getByRole("button", { name: "Create" })).toHaveAttribute(
+        "aria-busy",
+        "false",
+      ),
     );
   });
 
@@ -258,8 +254,8 @@ describe("ThreadFormDialog", () => {
       onSubmit: vi.fn(() => Promise.reject(new Error("Database unavailable"))),
     });
 
-    await user.type(screen.getByLabelText("Title"), "Renew passport");
-    await user.click(screen.getByRole("button", { name: "Create thread" }));
+    await user.type(screen.getByLabelText("Thread title"), "Renew passport");
+    await user.click(screen.getByRole("button", { name: "Create" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Thread was not saved. Database unavailable",
@@ -271,50 +267,11 @@ describe("ThreadFormDialog", () => {
     const user = userEvent.setup();
     const { feedback } = renderDialog();
 
-    await user.type(screen.getByLabelText("Title"), "Renew passport");
-    await user.click(screen.getByRole("button", { name: "Create thread" }));
+    await user.type(screen.getByLabelText("Thread title"), "Renew passport");
+    await user.click(screen.getByRole("button", { name: "Create" }));
 
     await waitFor(() =>
       expect(feedback.success).toHaveBeenCalledWith("Thread created"),
     );
-  });
-
-  it("prevents duplicate thread edits while saving without a success toast", async () => {
-    const user = userEvent.setup();
-    const pendingSave = deferred();
-    const { onSubmit, feedback } = renderDialog({
-      mode: "edit",
-      initialValue: { title: "Renew passport", areaId: health._id },
-      onSubmit: vi.fn(() => pendingSave.promise),
-    });
-
-    const saveButton = screen.getByRole("button", { name: "Save changes" });
-    await user.click(saveButton);
-    await user.click(saveButton);
-
-    expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(saveButton).toBeDisabled();
-    expect(feedback.success).not.toHaveBeenCalled();
-
-    pendingSave.resolve();
-    await waitFor(() =>
-      expect(saveButton).toHaveAttribute("aria-busy", "false"),
-    );
-  });
-
-  it("shows a clear inline error when thread editing fails", async () => {
-    const user = userEvent.setup();
-    const { feedback } = renderDialog({
-      mode: "edit",
-      initialValue: { title: "Renew passport", areaId: health._id },
-      onSubmit: vi.fn(() => Promise.reject(new Error("Thread not found"))),
-    });
-
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Thread was not saved. Thread not found",
-    );
-    expect(feedback.error).not.toHaveBeenCalled();
   });
 });

@@ -10,6 +10,10 @@ import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
 export const revealed =
   "opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100";
 
+/** The other half of `revealed`: shown at rest, handing its place to controls. */
+export const concealed =
+  "transition-opacity group-focus-within/card:opacity-0 group-hover/card:opacity-0";
+
 /**
  * The one shape every item on the board takes, Thread or Note: a quiet row
  * with no frame, filled only on hover, in three rows that never trade places.
@@ -19,17 +23,22 @@ export const revealed =
  *
  * On the No date tray the row lifts to the page's surface instead of sinking
  * into the tray's fill.
+ *
+ * A `ruled` card carries a short margin rule inside its left padding: the mark
+ * of a thing someone wrote, where a pill would read as one more Area.
  */
 export function BoardCard({
   children,
   footer,
   late = false,
   onTray = false,
+  ruled = false,
 }: {
   children: ReactNode;
   footer: ReactNode;
   late?: boolean;
   onTray?: boolean;
+  ruled?: boolean;
 }) {
   return (
     <div
@@ -39,6 +48,8 @@ export function BoardCard({
           ? "hover:bg-surface-2 has-focus-visible:bg-surface-2"
           : "hover:bg-muted/60 has-focus-visible:bg-muted/60",
         late && "bg-condition-attention/[0.06]",
+        ruled &&
+          "before:absolute before:inset-y-3 before:left-1 before:w-0.5 before:rounded-full before:bg-muted-foreground/45",
       )}
     >
       {children}
@@ -49,7 +60,7 @@ export function BoardCard({
   );
 }
 
-/** What kind of thing or which Area, as a small muted pill in the footer. */
+/** Which Area, as a small muted pill in the footer. */
 export function BoardTag({ icon, label }: { icon: ReactNode; label: string }) {
   return (
     <span

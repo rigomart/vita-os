@@ -414,9 +414,8 @@ describe("a Thread card", () => {
 
     const birthday = within(card("Birthday"));
     expect(birthday.getByText("3 moves · none focused")).toBeVisible();
-    expect(
-      birthday.getByRole("img", { name: "3 moves, none focused" }),
-    ).toBeVisible();
+    // The move slot already gives the count; pips would only repeat it.
+    expect(birthday.queryByRole("img")).toBeNull();
     expect(birthday.queryByRole("button", { name: /^Complete/ })).toBeNull();
   });
 
