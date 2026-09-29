@@ -68,8 +68,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 });
 
 // Stubbed so the Area the capture starts in is directly assertable.
-vi.mock("../threads/thread-form/create-thread-dialog", () => ({
-  CreateThreadDialog: ({ defaultAreaId }: { defaultAreaId?: string }) => (
+vi.mock("../threads/new-thread/new-thread-dialog", () => ({
+  NewThreadDialog: ({ defaultAreaId }: { defaultAreaId?: string }) => (
     <div>create thread dialog for {defaultAreaId ?? "no area"}</div>
   ),
 }));
