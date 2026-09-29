@@ -1,5 +1,7 @@
 # Global in-place thread rail
 
+Status: Amended by ADR 0023 — the desktop rail covers the page instead of pushing it; the URL model and in-place behavior are unchanged.
+
 ADR 0006 made the palette the sole jumping surface and the **Dashboard** the sole browsing surface, but jumping or browsing to a **Thread** still navigated to `/$areaSlug/$threadSlug`, yanking the user onto the **Area** page and losing their place. The Thread detail pane (desktop right rail / bottom Drawer per ADR 0004) was already self-contained — it fetches by slug and is positioned fixed — so it becomes a global in-place overlay hosted by `AppShell`: a `thread` search param on the authenticated layout opens the pane over whatever page the user is on, and every opener (command palette, Dashboard attention rows, recent activity, Plan chips, Area inventory rows, create-thread flows) sets the param instead of navigating.
 
 ## Considered Options

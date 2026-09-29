@@ -160,21 +160,35 @@ describe("AppShell", () => {
     mocks.search = {};
   });
 
-  it("keeps the Notes panel in the column the thread rail pushes", async () => {
-    mocks.search = { inbox: true };
+  it("lets the page keep its width and offsets only --rail while a thread is open", async () => {
+    mocks.search = { thread: thread.slug };
     renderShell();
 
-    const positioner = await waitFor(() => {
-      const node = document.querySelector(
-        '[data-slot="inbox-surface-positioner"]',
-      );
-      expect(node).not.toBeNull();
-      return node as HTMLElement;
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-slot="thread-detail-pane"]'),
+      ).not.toBeNull();
     });
 
-    expect(positioner.parentElement).toContainElement(
-      screen.getByRole("button", { name: "chrome new note" }),
+    const shell = screen
+      .getByText("page body")
+      .closest("[style]") as HTMLElement;
+    expect(shell.style.getPropertyValue("--rail")).toBe(
+      "clamp(28rem,34vw,34rem)",
     );
+    // The rail is fixed and nothing in the flow reserves its width.
+    expect(
+      document.querySelector('[data-slot="thread-detail-pane-space"]'),
+    ).toBeNull();
+  });
+
+  it("zeroes --rail while no thread is open", () => {
+    renderShell();
+
+    const shell = screen
+      .getByText("page body")
+      .closest("[style]") as HTMLElement;
+    expect(shell.style.getPropertyValue("--rail")).toBe("0px");
   });
 
   it("keeps Notes out of the thread rail when both are open", async () => {
@@ -190,7 +204,7 @@ describe("AppShell", () => {
     });
     const rail = document.querySelector('[data-slot="thread-detail-pane"]');
 
-    // Sibling, not ancestor: the rail's width comes out of the column.
+    // Sibling, not ancestor: the panel clears the rail by --rail instead.
     expect(rail).not.toBeNull();
     expect(rail).not.toContainElement(positioner);
     expect(positioner.parentElement).not.toContainElement(rail as HTMLElement);

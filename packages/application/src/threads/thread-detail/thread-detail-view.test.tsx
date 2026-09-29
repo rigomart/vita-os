@@ -291,9 +291,6 @@ describe("ThreadDetailView", () => {
 
     await waitFor(() => expect(pane).toHaveAttribute("data-state", "open"));
     expect(pane).toHaveClass("fixed", "inset-y-0", "h-dvh");
-    expect(
-      document.querySelector('[data-slot="thread-detail-pane-space"]'),
-    ).toHaveClass("data-[state=open]:w-[clamp(28rem,34vw,34rem)]");
     expect(document.querySelector('[data-slot="sheet-overlay"]')).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
 
@@ -306,22 +303,18 @@ describe("ThreadDetailView", () => {
     ).toBeVisible();
   });
 
-  it("closes the desktop Thread pane after the pane width transition", async () => {
+  it("closes the desktop Thread pane after the pane slides out", async () => {
     mocks.showDesktopPane = true;
     renderThreadDetail();
 
-    await screen.findByRole("complementary", {
+    const pane = await screen.findByRole("complementary", {
       name: "Sister's front teeth",
     });
     fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
 
     expect(mocks.onClose).not.toHaveBeenCalled();
-
-    const paneSpace = document.querySelector(
-      '[data-slot="thread-detail-pane-space"]',
-    );
-    expect(paneSpace).toHaveAttribute("data-state", "closed");
-    fireEvent.transitionEnd(paneSpace as Element, { propertyName: "width" });
+    expect(pane).toHaveAttribute("data-state", "closed");
+    fireEvent.transitionEnd(pane, { propertyName: "translate" });
 
     expect(mocks.onClose).toHaveBeenCalledTimes(1);
   });
