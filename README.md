@@ -31,6 +31,8 @@ bun run dev
 
 `bun run setup` installs dependencies, writes the env files, migrates the local D1, and seeds a dev user with sample Areas, Threads, and Notes. It is safe to re-run: each step skips what is already done. `bun run setup --reset` wipes the local D1 and reseeds it, and `--no-seed` skips the sample data.
 
+The sample Threads “Dentist follow-up” and “Quarterly review prep” include Markdown Notes, with completed history in the dentist Thread. On an existing dev account, setup adds these examples only to uniquely matched sample Threads that have no open or completed Notes. It preserves existing content and does not recreate renamed or removed sample Threads.
+
 The env files start from the example files, which hold working local values. In a worktree they are copied from the main checkout instead. Either way, any key the example has and the file lacks is added:
 
 - `apps/api/.dev.vars`: `BETTER_AUTH_SECRET` (any string of 32+ characters), `BETTER_AUTH_URL=http://localhost:8787`, `BROWSER_ORIGIN=http://localhost:5173`.

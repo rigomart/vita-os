@@ -25,6 +25,7 @@ import { dirname, join, relative, resolve } from "node:path";
 // By path: the repo root does not depend on @vita-os/core, so the package
 // name does not resolve from here.
 import { newRecordId } from "../packages/core/src/record-id";
+import { seedThreadNotes } from "./seed-thread-notes";
 
 const ROOT = resolve(import.meta.dir, "..");
 const API_DIR = join(ROOT, "apps/api");
@@ -181,7 +182,7 @@ async function seed(): Promise<void> {
   try {
     await waitForApi(apiUrl, logs);
 
-    const signUp = await fetch(`${apiUrl}/api/auth/sign-up/email`, {
+    let auth = await fetch(`${apiUrl}/api/auth/sign-up/email`, {
       method: "POST",
       headers: { "content-type": "application/json", origin: SEED_ORIGIN },
       body: JSON.stringify({
@@ -190,16 +191,21 @@ async function seed(): Promise<void> {
         password: DEV_PASSWORD,
       }),
     });
-    if (signUp.status === 422 && /exist/i.test(await signUp.clone().text())) {
-      log(`already seeded (${DEV_EMAIL} exists); use --reset to start over`);
-      return;
+    const existingUser =
+      auth.status === 422 && /exist/i.test(await auth.clone().text());
+    if (existingUser) {
+      auth = await fetch(`${apiUrl}/api/auth/sign-in/email`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: SEED_ORIGIN },
+        body: JSON.stringify({ email: DEV_EMAIL, password: DEV_PASSWORD }),
+      });
     }
-    if (!signUp.ok) {
+    if (!auth.ok) {
       throw new Error(
-        `sign-up failed: ${signUp.status} ${await signUp.text()}`,
+        `${existingUser ? "sign-in" : "sign-up"} failed: ${auth.status} ${await auth.text()}`,
       );
     }
-    const cookie = signUp.headers
+    const cookie = auth.headers
       .getSetCookie()
       .map((header) => header.split(";")[0])
       .join("; ");
@@ -207,7 +213,7 @@ async function seed(): Promise<void> {
     async function call<T>(
       method: string,
       path: string,
-      body: unknown,
+      body?: unknown,
     ): Promise<T> {
       const res = await fetch(`${apiUrl}${path}`, {
         method,
@@ -222,6 +228,14 @@ async function seed(): Promise<void> {
         throw new Error(`${method} ${path}: ${res.status} ${await res.text()}`);
       }
       return (await res.json()) as T;
+    }
+
+    if (existingUser) {
+      const added = await seedThreadNotes(call);
+      log(
+        `existing dev account preserved; added ${added} sample Thread Notes to empty sample Threads`,
+      );
+      return;
     }
 
     const areaIds = new Map<string, string>();
@@ -275,8 +289,9 @@ async function seed(): Promise<void> {
       });
     }
 
+    const threadNotes = await seedThreadNotes(call);
     log(
-      `seeded ${SEED.areas.length} Areas, ${SEED.threads.length} Threads and ${SEED.notes.length} Notes`,
+      `seeded ${SEED.areas.length} Areas, ${SEED.threads.length} Threads, ${SEED.notes.length} standalone Notes and ${threadNotes} Thread Notes`,
     );
   } finally {
     // wrangler starts workerd as a child; stop the whole group.
