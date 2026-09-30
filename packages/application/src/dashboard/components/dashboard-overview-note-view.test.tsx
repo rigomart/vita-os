@@ -67,7 +67,6 @@ describe("the last Dashboard Note", () => {
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: "Done",
-        exact: true,
       }),
     );
 
@@ -88,7 +87,6 @@ describe("the last Dashboard Note", () => {
       expect(
         within(screen.getByRole("dialog")).getByRole("button", {
           name: "Done",
-          exact: true,
         }),
       ).toBeVisible(),
     );
@@ -118,7 +116,6 @@ describe("the last Dashboard Note", () => {
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: "Done",
-        exact: true,
       }),
     );
     await waitFor(() =>
@@ -141,7 +138,6 @@ describe("the last Dashboard Note", () => {
     expect(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: "Done",
-        exact: true,
       }),
     ).toBeEnabled();
     expect(screen.queryByText("Nothing is asking for you.")).toBeNull();

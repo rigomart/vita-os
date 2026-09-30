@@ -266,7 +266,7 @@ describe("InboxNoteList", () => {
       rerender(<InboxNoteList notes={[]} />);
       return Promise.resolve({ ...saved, state: "done", completedAt: today });
     });
-    await user.click(screen.getByRole("button", { name: "Done", exact: true }));
+    await user.click(screen.getByRole("button", { name: "Done" }));
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Reopen" })).toBeVisible(),
     );

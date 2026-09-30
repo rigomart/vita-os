@@ -35,7 +35,11 @@ describe("DashboardBoard Note view", () => {
           currentDate={currentDate}
         />,
       );
-      return success({ ...saved, state: "done", completedAt: currentDate });
+      return success<Note>({
+        ...saved,
+        state: "done",
+        completedAt: currentDate,
+      });
     });
     const applicationClient = createQuietApplicationClient({ markNoteDone });
     const { rerender } = render(
@@ -53,7 +57,6 @@ describe("DashboardBoard Note view", () => {
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: "Done",
-        exact: true,
       }),
     );
     await waitFor(() =>
