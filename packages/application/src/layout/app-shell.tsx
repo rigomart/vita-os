@@ -15,7 +15,7 @@ import { useCommandPaletteShortcut } from "../navigation/use-command-palette-sho
 import { useCreateDialogs } from "../navigation/use-create-dialogs";
 import { useGlobalNewNoteShortcut } from "../navigation/use-global-new-note-shortcut";
 import { useOpenNoteCount } from "../notes/hooks";
-import { NewNoteDialog } from "../notes/new-note/new-note-dialog";
+import { NoteDialog } from "../notes/note-view/note-dialog";
 import { useCreateNote } from "../notes/use-create-note";
 import { NewThreadDialog } from "../threads/new-thread/new-thread-dialog";
 import { ThreadDetailView } from "../threads/thread-detail/thread-detail-view";
@@ -167,7 +167,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       )}
       {dialogs.showNewNote && (
-        <NewNoteDialog
+        <NoteDialog
           open
           onOpenChange={dialogs.setShowNewNote}
           onSubmit={async (value) => {

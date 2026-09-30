@@ -1,9 +1,9 @@
 import type { Note, NoteId } from "@vita-os/contracts";
 
-import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { act, render, screen, waitFor } from "../../test/render-with-providers";
 import { InboxNoteList } from "./inbox-note-list";
 
 const actions = vi.hoisted(() => ({
@@ -15,6 +15,10 @@ const actions = vi.hoisted(() => ({
   isSavingText: false,
   handleUpdateWhen: vi.fn(),
   isWhenPending: false,
+  saveBody: vi.fn(),
+  toggleDone: vi.fn(),
+  deleteNote: vi.fn(),
+  setWhen: vi.fn(),
 }));
 vi.mock("../../notes/note-row/use-note-row-actions", () => ({
   useNoteRowActions: () => actions,
@@ -54,10 +58,10 @@ describe("InboxNoteList", () => {
       />,
     );
 
-    const pastDue = screen.getByDisplayValue("Past due");
-    const todayNote = screen.getByDisplayValue("Today");
-    const comingUp = screen.getByDisplayValue("Coming up");
-    const noDate = screen.getByDisplayValue("No date");
+    const pastDue = screen.getByText("Past due");
+    const todayNote = screen.getByText("Today");
+    const comingUp = screen.getByText("Coming up");
+    const noDate = screen.getByText("No date");
     const completed = screen.getByRole("button", { name: /completed/i });
 
     expect(pastDue.compareDocumentPosition(todayNote)).toBe(
@@ -112,11 +116,11 @@ describe("InboxNoteList", () => {
     );
 
     expect(screen.getByText("No active Notes")).toBeVisible();
-    expect(screen.queryByDisplayValue("Finished Note")).toBeNull();
+    expect(screen.queryByText("Finished Note")).toBeNull();
 
     await user.click(screen.getByRole("button", { name: /completed/i }));
 
-    expect(screen.getByDisplayValue("Finished Note")).toBeVisible();
+    expect(screen.getByText("Finished Note")).toBeVisible();
   });
 
   it("hides the Completed section once the empty Done page is confirmed", () => {
@@ -170,10 +174,14 @@ describe("InboxNoteList", () => {
       if (state === "done")
         await user.click(screen.getByRole("button", { name: /completed/i }));
       expect(screen.queryByRole("button", { name: /process/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Delete note" })).toBeNull();
+      await user.click(
+        screen.getByRole("button", { name: /Open note: Saved thought/ }),
+      );
       await user.click(screen.getByRole("button", { name: "Delete note" }));
-      expect(actions.handleRemove).not.toHaveBeenCalled();
+      expect(actions.deleteNote).not.toHaveBeenCalled();
       await user.click(screen.getByRole("button", { name: "Delete" }));
-      expect(actions.handleRemove).toHaveBeenCalledOnce();
+      expect(actions.deleteNote).toHaveBeenCalledOnce();
     },
   );
 
@@ -200,6 +208,7 @@ describe("InboxNoteList", () => {
       await user.click(toggle);
 
       expect(actions.handleToggleComplete).toHaveBeenCalledOnce();
+      expect(screen.queryByRole("dialog")).toBeNull();
     },
   );
 
@@ -225,41 +234,43 @@ describe("InboxNoteList", () => {
     await user.click(screen.getByRole("button", { name: "Clear" }));
     expect(actions.handleUpdateWhen).toHaveBeenLastCalledWith(undefined);
   });
-  it("keeps the native Note editor mounted and saves an edit at the selected position", async () => {
+  it("opens a rendered preview with inert links and no inline editor", async () => {
     const user = userEvent.setup();
     render(
       <InboxNoteList
-        notes={[note("A long paragraph\nwith context to edit.")]}
+        notes={[note("# Consultation\n[Clinic](https://example.com)")]}
       />,
     );
-    const editor = screen.getByRole<HTMLTextAreaElement>("textbox", {
-      name: "Edit note body",
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("link")).toBeNull();
+    const preview = screen.getByRole("button", {
+      name: /Open note: Consultation/,
     });
-    await user.click(editor);
-    editor.setSelectionRange(22, 29);
-    await user.keyboard("details");
-    expect(editor).toHaveValue("A long paragraph\nwith details to edit.");
-    await user.tab();
-    expect(actions.handleUpdateText).toHaveBeenCalledExactlyOnceWith(
-      "A long paragraph\nwith details to edit.",
-    );
-    expect(screen.getByRole("textbox", { name: "Edit note body" })).toBe(
-      editor,
+    expect(preview).toHaveTextContent("Consultation Clinic");
+    await user.click(preview);
+    expect(screen.getByRole("dialog")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Clinic" })).toHaveAttribute(
+      "href",
+      "https://example.com",
     );
   });
 
-  it("cancels a Note edit with Escape and restores an empty draft on blur", async () => {
+  it("keeps the Note view mounted when completion removes the card", async () => {
     const user = userEvent.setup();
-    render(<InboxNoteList notes={[note("Keep this thought")]} />);
-    const editor = screen.getByRole("textbox", { name: "Edit note body" });
-    await user.clear(editor);
-    await user.keyboard("Changed thought{Escape}");
-    expect(editor).toHaveValue("Keep this thought");
-    await user.tab();
-    expect(actions.handleUpdateText).not.toHaveBeenCalled();
-    await user.clear(editor);
-    await user.tab();
-    expect(editor).toHaveValue("Keep this thought");
-    expect(actions.handleUpdateText).not.toHaveBeenCalled();
+    const saved = note("Remember");
+    const { rerender } = render(<InboxNoteList notes={[saved]} />);
+    await user.click(
+      screen.getByRole("button", { name: "Open note: Remember" }),
+    );
+    actions.toggleDone.mockImplementationOnce(() => {
+      rerender(<InboxNoteList notes={[]} />);
+      return Promise.resolve({ ...saved, state: "done", completedAt: today });
+    });
+    await user.click(screen.getByRole("button", { name: "Done", exact: true }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Reopen" })).toBeVisible(),
+    );
+    expect(screen.getByRole("dialog")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeVisible();
   });
 });

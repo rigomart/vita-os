@@ -3,10 +3,12 @@ import type { Note } from "@vita-os/contracts";
 import { groupNotesByAttention } from "@vita-os/core";
 import { Button } from "@vita-os/ui/components/button";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { useState } from "react";
 
 import { AttentionCollapsed } from "../../attention-list";
 import { useAttentionClock } from "../../hooks/use-attention-clock";
 import { NoteCard } from "../../notes/note-card/note-card";
+import { StandaloneNoteDialog } from "../../notes/note-view/standalone-note-dialog";
 
 interface InboxNoteListProps {
   notes: Note[];
@@ -30,6 +32,7 @@ export function InboxNoteList({
   onLoadMoreDone,
 }: InboxNoteListProps) {
   const now = useAttentionClock();
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const groups = groupNotesByAttention(notes, now);
   const openCount =
     groups.pastDue.length +
@@ -53,7 +56,12 @@ export function InboxNoteList({
         ) : (
           <div className="flex flex-col gap-2.5">
             {openNotes.map((note) => (
-              <NoteCard key={note._id} note={note} now={now} />
+              <NoteCard
+                key={note._id}
+                note={note}
+                now={now}
+                onOpenNote={setSelectedNote}
+              />
             ))}
           </div>
         )}
@@ -62,7 +70,12 @@ export function InboxNoteList({
           <AttentionCollapsed title="Completed" count={doneNotes.length}>
             <div className="flex flex-col gap-2.5 pt-1">
               {doneNotes.map((note) => (
-                <NoteCard key={note._id} note={note} now={now} />
+                <NoteCard
+                  key={note._id}
+                  note={note}
+                  now={now}
+                  onOpenNote={setSelectedNote}
+                />
               ))}
             </div>
             {(canLoadMoreDone || isLoadingMoreDone) && (
@@ -93,6 +106,15 @@ export function InboxNoteList({
           </AttentionCollapsed>
         )}
       </div>
+      {selectedNote && (
+        <StandaloneNoteDialog
+          key={selectedNote._id}
+          note={selectedNote}
+          onOpenChange={(open) => {
+            if (!open) setSelectedNote(null);
+          }}
+        />
+      )}
     </div>
   );
 }

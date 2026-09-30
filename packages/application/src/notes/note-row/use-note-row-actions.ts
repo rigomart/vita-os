@@ -63,6 +63,13 @@ export function useNoteRowActions(note: Note) {
   );
 
   return {
+    // The Note view owns pending guards and feedback. Keep its promises intact
+    // so a failed mutation preserves the draft and is reported once.
+    saveBody: (body: string) => updateNoteBody(note._id, body),
+    toggleDone: () =>
+      note.state === "done" ? uncompleteNote(note) : completeNote(note._id),
+    deleteNote: () => removeNote(note._id),
+    setWhen: (when: number | undefined) => updateNoteWhen(note._id, when),
     handleToggleComplete,
     isTogglePending,
     handleRemove: () => {

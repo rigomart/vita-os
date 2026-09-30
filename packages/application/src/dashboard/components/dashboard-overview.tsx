@@ -48,26 +48,33 @@ export function DashboardOverview({
 
       {areas.length > 0 && <DashboardFilterRow options={filtered.options} />}
 
-      {items.length === 0 ? (
-        <section className="flex min-h-48 flex-col items-center justify-center rounded-xl bg-surface-2 px-6 text-center xl:flex-1">
-          {narrowed ? (
-            <p className="text-sm font-medium">
-              {filtered.filter.kind === "area"
-                ? `Nothing open in ${filtered.filter.area.name}.`
-                : "Every open Thread has an Area."}
-            </p>
-          ) : (
-            <>
-              <p className="text-sm font-medium">Nothing is asking for you.</p>
-              <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                Every Thread is resolved and every Note is done.
-              </p>
-            </>
-          )}
-        </section>
-      ) : (
-        <DashboardBoard areas={areas} board={board} currentDate={currentDate} />
-      )}
+      <DashboardBoard
+        areas={areas}
+        board={board}
+        currentDate={currentDate}
+        emptyState={
+          items.length === 0 ? (
+            <section className="flex min-h-48 flex-col items-center justify-center rounded-xl bg-surface-2 px-6 text-center xl:flex-1">
+              {narrowed ? (
+                <p className="text-sm font-medium">
+                  {filtered.filter.kind === "area"
+                    ? `Nothing open in ${filtered.filter.area.name}.`
+                    : "Every open Thread has an Area."}
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm font-medium">
+                    Nothing is asking for you.
+                  </p>
+                  <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                    Every Thread is resolved and every Note is done.
+                  </p>
+                </>
+              )}
+            </section>
+          ) : undefined
+        }
+      />
     </div>
   );
 }

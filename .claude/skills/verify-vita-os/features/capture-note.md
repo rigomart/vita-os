@@ -29,13 +29,13 @@ Preconditions:
 - **Enter body.** Run `bun run verify browser -- find label "Note body" fill "verify note 1727461234"`. `Add` becomes enabled.
 - **Before shot.** With the body filled and before clicking `Add`, run `bun run verify shot note-before`. The snapshot shows `dialog "New note"` with the text in the field.
 - **Save.** Run `bun run verify browser -- find role button click --name "Add" --exact`, then `bun run verify browser -- wait --text "Note added"`, then `bun run verify shot note-toast`. The wait prints `Note added`, the PNG shows the toast, and the dialog closes. The toast may be missing from `note-toast.aria.txt`. The wait output is the proof.
-- **Persist in UI.** Run `bun run verify browser -- reload`, then `bun run verify browser -- wait --fn "[...document.querySelectorAll('[aria-label=\"Edit note body\"]')].some(el => el.value === 'verify note 1727461234')"`. It prints `true`.
+- **Persist in UI.** Run `bun run verify browser -- reload`, then `bun run verify browser -- wait --text "verify note 1727461234"`. It prints the saved Note text.
 - **Persist in D1.** Run `bun run verify d1 "SELECT body, state FROM notes"`. A row has the note's body and `state` `open`.
-- **Proof.** Run `bun run verify shot note-after` after the reload. The after snapshot lists `textbox "Edit note body"` with the note text inside an `article` that also has `Set attention date` and `Mark note done`.
+- **Proof.** Run `bun run verify shot note-after` after the reload. The after snapshot lists `button "Open note: verify note 1727461234"` inside an `article` that also has `Set attention date` and `Mark note done`.
 
 ## Gotchas
 
 - The note shows up with a pending client id before the server answers. Only the `Note added` toast plus a reload or `verify d1` proves it saved.
-- Saved note bodies are textbox values, so `wait --text` does not find them after a reload. Use the `wait --fn` check above.
+- Saved bodies are read-only previews. Click their `Open note: …` button to read or edit in the [Note view](./note-view.md).
 - `Q` types a `q` when a text field has focus. Press `Escape` or click empty space first.
 - `Meta+Enter` inside `Note body` also submits.

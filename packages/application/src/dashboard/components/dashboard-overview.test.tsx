@@ -186,7 +186,7 @@ describe("DashboardOverview", () => {
       expect.stringContaining("Fix the gate"),
     ]);
     expect(
-      screen.queryByDisplayValue("Water the plants"),
+      screen.queryByRole("button", { name: "Open note: Water the plants" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Home/ })).toHaveAttribute(
       "aria-current",
@@ -218,7 +218,9 @@ describe("DashboardOverview", () => {
     });
 
     expect(screen.getByText("Checkup")).toBeVisible();
-    expect(screen.getByDisplayValue("Water the plants")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Open note: Water the plants" }),
+    ).toBeVisible();
   });
 
   it("says when a filtered Area has nothing open", () => {
@@ -274,7 +276,9 @@ describe("DashboardOverview", () => {
 
     const now = screen.getByRole("region", { name: "Now" });
     expect(within(now).getByText("Overdue")).toBeVisible();
-    expect(within(now).getByDisplayValue("Water the plants")).toBeVisible();
+    expect(
+      within(now).getByRole("button", { name: "Open note: Water the plants" }),
+    ).toBeVisible();
     expect(columnText("This week")).toEqual([
       expect.stringContaining("Midweek"),
     ]);
@@ -304,7 +308,9 @@ describe("DashboardOverview", () => {
     expect(within(margin).getByText("Call the clinic")).toBeVisible();
     expect(within(margin).getByText("Actionable")).toBeVisible();
     expect(within(margin).getByText("Idle")).toBeVisible();
-    expect(within(margin).getByDisplayValue("Loose thought")).toBeVisible();
+    expect(
+      within(margin).getByRole("button", { name: "Open note: Loose thought" }),
+    ).toBeVisible();
   });
 
   it("folds Later and the No date margin on a phone", async () => {

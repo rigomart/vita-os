@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, use } from "react";
+import { createContext, type ReactNode, use, useRef } from "react";
 
 import { useIsMobile } from "../hooks/use-mobile";
 import { cn } from "../lib/utils";
@@ -24,26 +24,46 @@ import {
 } from "./drawer";
 
 const MobileContext = createContext(false);
+const DrawerDismissalContext = createContext({
+  guarded: false,
+  requestClose: () => {},
+});
 
 function ResponsiveDialog({
   open,
   onOpenChange,
   children,
+  guardDrawerClose = false,
 }: {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   children: ReactNode;
+  /** Route dismissal attempts to the owner before Vaul moves the drawer. */
+  guardDrawerClose?: boolean;
 }) {
   const isMobile = useIsMobile();
   const insideDrawer = useInsideDrawer();
-  const content = <MobileContext value={isMobile}>{children}</MobileContext>;
+  const content = (
+    <DrawerDismissalContext
+      value={{
+        guarded: guardDrawerClose,
+        requestClose: () => onOpenChange?.(false),
+      }}
+    >
+      <MobileContext value={isMobile}>{children}</MobileContext>
+    </DrawerDismissalContext>
+  );
 
   if (isMobile) {
     // Opened from inside a drawer — the Inbox surface on a phone — this has to
     // be a nested root, or the two drawers fight over the body scroll lock.
     const DrawerRoot = insideDrawer ? DrawerNested : Drawer;
     return (
-      <DrawerRoot open={open} onOpenChange={onOpenChange}>
+      <DrawerRoot
+        open={open}
+        onOpenChange={onOpenChange}
+        dismissible={!guardDrawerClose}
+      >
         {content}
       </DrawerRoot>
     );
@@ -61,13 +81,93 @@ function ResponsiveDialogContent({
   surface,
   className,
   children,
-}: React.ComponentProps<typeof DialogContent>) {
+  onEscapeKeyDown,
+}: React.ComponentProps<typeof DialogContent> & {
+  onEscapeKeyDown?: (event: KeyboardEvent) => void;
+}) {
   const isMobile = use(MobileContext);
+  const { guarded, requestClose } = use(DrawerDismissalContext);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const insideConfirmation = (target: EventTarget | null) =>
+    target instanceof Element &&
+    target.closest(
+      '[data-slot="alert-dialog-content"], [data-slot="alert-dialog-overlay"]',
+    );
 
   if (isMobile) {
     // `surface` is a desktop concern: a drawer is anchored to the screen edge.
     return (
-      <DrawerContent className={cn(className)}>
+      <DrawerContent
+        className={cn(className)}
+        onEscapeKeyDown={(event) => {
+          // These modal libraries track focus separately, so Escape can still
+          // target the drawer while its confirmation is open in another portal.
+          // Prevent Radix dismissal and let Base UI cancel the confirmation.
+          if (
+            insideConfirmation(event.target) ||
+            document.querySelector(
+              '[data-slot="alert-dialog-content"][data-open]',
+            )
+          ) {
+            event.preventDefault();
+            return;
+          }
+          onEscapeKeyDown?.(event);
+          if (guarded && !event.defaultPrevented) {
+            event.preventDefault();
+            requestClose();
+          }
+        }}
+        onPointerDownOutside={(event) => {
+          if (insideConfirmation(event.target)) {
+            event.preventDefault();
+            return;
+          }
+          if (guarded) {
+            event.preventDefault();
+            requestClose();
+          }
+        }}
+        onInteractOutside={(event) => {
+          // Base UI confirmations use their own portal outside Radix's drawer.
+          // Interacting with that confirmation must not dismiss its owner.
+          if (insideConfirmation(event.target)) event.preventDefault();
+        }}
+        onPointerDownCapture={(event) => {
+          // Vaul animates a completed swipe before asking the controlled owner
+          // to close. A guarded header gesture asks first and leaves it in place.
+          swipeStart.current = null;
+          if (
+            !guarded ||
+            event.button !== 0 ||
+            !(event.target instanceof Element)
+          )
+            return;
+          if (
+            !event.target.closest(
+              '[data-slot="drawer-header"], [data-slot="drawer-handle"]',
+            ) ||
+            event.target.closest(
+              'button, a, input, textarea, select, [role="button"]',
+            )
+          )
+            return;
+          swipeStart.current = { x: event.clientX, y: event.clientY };
+          if (event.pointerId !== undefined)
+            event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerUpCapture={(event) => {
+          const start = swipeStart.current;
+          swipeStart.current = null;
+          if (!guarded || !start) return;
+          const deltaY = event.clientY - start.y;
+          if (deltaY > 60 && deltaY > Math.abs(event.clientX - start.x))
+            requestClose();
+        }}
+        onPointerCancel={() => {
+          swipeStart.current = null;
+        }}
+      >
         <div className="flex flex-col gap-4 overflow-y-auto p-4 pt-0">
           {children}
         </div>
@@ -80,6 +180,9 @@ function ResponsiveDialogContent({
       showCloseButton={showCloseButton}
       surface={surface}
       className={className}
+      onKeyDownCapture={(event) => {
+        if (event.key === "Escape") onEscapeKeyDown?.(event.nativeEvent);
+      }}
     >
       {children}
     </DialogContent>

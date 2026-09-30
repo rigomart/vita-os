@@ -63,6 +63,17 @@ describe("useNoteRowActions", () => {
     mocks.updateNoteWhen.mockReset();
   });
 
+  it("returns failed dialog saves to the caller without a second error toast", async () => {
+    mocks.updateNoteBody.mockRejectedValue(new Error("Could not save note"));
+    const { result, feedback } = renderHook(() => useNoteRowActions(openNote));
+    await act(async () => {
+      await expect(result.current.saveBody("Changed")).rejects.toThrow(
+        "Could not save note",
+      );
+    });
+    expect(feedback.error).not.toHaveBeenCalled();
+  });
+
   it("ignores duplicate complete toggles while pending", async () => {
     const pendingComplete = deferred();
     mocks.completeNote.mockImplementation(() => pendingComplete.promise);
