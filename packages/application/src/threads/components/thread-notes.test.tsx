@@ -75,7 +75,7 @@ describe("ThreadNotes", () => {
     expect(
       within(dialog).getByRole("link", { name: "Portal" }),
     ).toHaveAttribute("href", "https://example.com");
-    await user.click(within(dialog).getByRole("button", { name: "Edit" }));
+    await user.click(within(dialog).getByRole("tab", { name: "Write" }));
     await user.clear(screen.getByRole("textbox", { name: "Note body" }));
     await user.type(
       screen.getByRole("textbox", { name: "Note body" }),
@@ -88,10 +88,15 @@ describe("ThreadNotes", () => {
     );
     expect(within(dialog).getByText("Clinic called back")).toBeVisible();
     await user.click(
-      within(dialog).getByRole("button", { name: "Delete note" }),
+      within(dialog).getByRole("button", { name: "More actions" }),
     );
-    await user.click(screen.getByRole("button", { name: "Delete" }));
-    expect(callbacks.onRemove).toHaveBeenCalledOnce();
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Delete note" }),
+    );
+    expect(callbacks.onRemove).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ _id: saved._id }),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
   it("completes a card without opening the view", async () => {
     const user = userEvent.setup();
@@ -110,7 +115,7 @@ describe("ThreadNotes", () => {
     await user.click(
       screen.getByRole("button", { name: /Open note: Consultation/ }),
     );
-    await user.click(screen.getByRole("button", { name: "Done" }));
+    await user.click(screen.getByRole("button", { name: "Mark done" }));
     rerender(
       <ThreadNotes
         notes={[]}

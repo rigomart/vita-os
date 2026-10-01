@@ -18,6 +18,7 @@ import {
   patchQuery,
   removeById,
 } from "../cache/patch";
+import { afterUndoWindow } from "../cache/undo-window";
 import { useApplicationMutation } from "../cache/use-application-mutation";
 import { useOptionalApplicationQuery } from "../cache/use-application-query";
 import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
@@ -207,15 +208,25 @@ export function useReopenThreadNote(): ApplicationMutationResult<
 }
 
 export function useDiscardThreadNote(): ApplicationMutationResult<
-  { threadId: ThreadId; threadNoteId: ThreadNoteId },
+  {
+    threadId: ThreadId;
+    threadNoteId: ThreadNoteId;
+    undoWindow?: () => Promise<boolean>;
+  },
   CommandAcknowledgement
 > {
   return useApplicationMutation<
-    { threadId: ThreadId; threadNoteId: ThreadNoteId },
+    {
+      threadId: ThreadId;
+      threadNoteId: ThreadNoteId;
+      undoWindow?: () => Promise<boolean>;
+    },
     CommandAcknowledgement
   >({
-    run: (client, input) =>
-      client.removeThreadNote({ threadNoteId: input.threadNoteId }),
+    run: async (client, input) => {
+      await afterUndoWindow(input.undoWindow);
+      return client.removeThreadNote({ threadNoteId: input.threadNoteId });
+    },
     affected: (input) => threadNoteKeys(input.threadId),
     optimistic: (cache, input) => {
       const patch = (notes: ThreadNote[]) =>

@@ -25,7 +25,9 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-describe("NoteDialog", () => {
+const discardQuestion = "Discard unsaved changes?";
+
+describe("NoteDialog compose", () => {
   it("prevents duplicate note creates while saving", async () => {
     const user = userEvent.setup();
     const pendingCreate = deferred();
@@ -95,22 +97,56 @@ describe("NoteDialog", () => {
       expect(feedback.success).toHaveBeenCalledWith("Note added"),
     );
   });
-  it("captures a multiline body with no title or classification", async () => {
+
+  it("starts in Write and captures a multiline body with no title or classification", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
     render(<NoteDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
     expect(screen.queryByRole("combobox")).toBeNull();
-    expect(screen.queryByRole("tab")).toBeNull();
-    await user.type(
-      screen.getByRole("textbox", { name: "Note body" }),
-      "A thought{Enter}Its context",
+    expect(screen.getByRole("tab", { name: "Write" })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
+    const textarea = screen.getByRole("textbox", { name: "Note body" });
+    expect(textarea).toHaveFocus();
+    await user.type(textarea, "A thought{Enter}Its context");
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith({
       body: "A thought\nIts context",
       when: undefined,
     });
+  });
+
+  it("previews a draft in Read and keeps it when switching back", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+    render(<NoteDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+    await user.type(
+      screen.getByRole("textbox", { name: "Note body" }),
+      "## Clinic{Enter}- [[ ] Book bloods",
+    );
+    await user.click(screen.getByRole("tab", { name: "Read" }));
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Clinic" })).toBeVisible();
+    const task = screen.getByRole("checkbox", { name: "Book bloods" });
+    expect(task).not.toBeChecked();
+    await user.click(task);
+    expect(onSubmit).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("tab", { name: "Write" }));
+    expect(screen.getByRole("textbox", { name: "Note body" })).toHaveValue(
+      "## Clinic\n- [x] Book bloods",
+    );
+    expect(screen.getByRole("textbox", { name: "Note body" })).toHaveFocus();
+  });
+
+  it("says there is nothing to read in an empty draft", async () => {
+    const user = userEvent.setup();
+    render(<NoteDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
+    await user.click(screen.getByRole("tab", { name: "Read" }));
+    expect(
+      screen.getByText("Nothing to read yet. Switch to Write to start."),
+    ).toBeVisible();
   });
 });
 
@@ -120,8 +156,8 @@ const savedNote = {
   createdAt: new Date("2026-09-30T12:00:00").getTime(),
 };
 
-describe("NoteDialog read and edit", () => {
-  it("opens saved notes as a document with Thread context and dates", () => {
+describe("NoteDialog saved note", () => {
+  it("opens in Read with Thread context and dates", () => {
     render(
       <NoteDialog
         open
@@ -137,11 +173,32 @@ describe("NoteDialog read and edit", () => {
     expect(screen.getByRole("dialog")).toHaveAccessibleDescription(
       "Read and manage this note.",
     );
+    expect(screen.getByRole("tab", { name: "Read" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.queryByRole("button", { name: "Attention date" })).toBeNull();
   });
 
-  it("saves an edited body with Ctrl+Enter and displays it while the parent catches up", async () => {
+  it("marks a Done note in the header", () => {
+    render(
+      <NoteDialog
+        open
+        onOpenChange={vi.fn()}
+        note={{
+          ...savedNote,
+          state: "done",
+          completedAt: new Date("2026-10-01T12:00:00").getTime(),
+        }}
+        onToggleDone={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Done Oct 1")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Reopen" })).toBeVisible();
+  });
+
+  it("saves an edited body with Ctrl+Enter, returns to Read and displays it while the parent catches up", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn(async () => undefined);
     const { feedback, rerender } = render(
@@ -152,7 +209,7 @@ describe("NoteDialog read and edit", () => {
         onSave={onSave}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("tab", { name: "Write" }));
     const textarea = screen.getByRole("textbox", { name: "Note body" });
     await user.clear(textarea);
     await user.type(textarea, "Updated consultation");
@@ -160,6 +217,7 @@ describe("NoteDialog read and edit", () => {
     await waitFor(() => expect(screen.queryByRole("textbox")).toBeNull());
     expect(onSave).toHaveBeenCalledExactlyOnceWith("Updated consultation");
     expect(screen.getByText("Updated consultation")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Write" })).toHaveFocus();
     expect(feedback.success).toHaveBeenCalledWith("Note saved");
     rerender(
       <NoteDialog
@@ -172,58 +230,35 @@ describe("NoteDialog read and edit", () => {
     expect(screen.getByText("Updated consultation")).toBeInTheDocument();
   });
 
-  it("returns to read mode on Escape from an unchanged edit", async () => {
+  it("keeps unsaved edits in Read and saves them from there", async () => {
     const user = userEvent.setup();
-    const onOpenChange = vi.fn();
+    const onSave = vi.fn(async () => undefined);
     render(
       <NoteDialog
         open
-        onOpenChange={onOpenChange}
+        onOpenChange={vi.fn()}
         note={savedNote}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    await user.keyboard("{Escape}");
-    expect(screen.queryByRole("textbox")).toBeNull();
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(onOpenChange).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Edit" })).toHaveFocus();
-    await user.keyboard("{Escape}");
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    await user.click(screen.getByRole("tab", { name: "Write" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Note body" }),
+      " changed",
+    );
+    await user.click(screen.getByRole("tab", { name: /Read/ }));
+    expect(screen.getByText("Consultation notes changed")).toBeVisible();
+    expect(screen.getByText("Unsaved changes")).toBeVisible();
+    expect(
+      screen.getByRole("tab", { name: /^Write.*unsaved changes$/ }),
+    ).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledExactlyOnceWith(
+      "Consultation notes changed",
+    );
+    await waitFor(() => expect(screen.getByText("Added Sep 30")).toBeVisible());
   });
-
-  it.each(["Cancel", "Escape"])(
-    "confirms dirty edit %s and returns to read mode on discard",
-    async (action) => {
-      const user = userEvent.setup();
-      const onOpenChange = vi.fn();
-      render(
-        <NoteDialog
-          open
-          onOpenChange={onOpenChange}
-          note={savedNote}
-          onSave={vi.fn()}
-        />,
-      );
-      await user.click(screen.getByRole("button", { name: "Edit" }));
-      await user.type(
-        screen.getByRole("textbox", { name: "Note body" }),
-        " changed",
-      );
-      if (action === "Cancel")
-        await user.click(screen.getByRole("button", { name: "Cancel" }));
-      else await user.keyboard("{Escape}");
-      expect(screen.getByRole("alertdialog")).toHaveAccessibleName(
-        "Discard changes?",
-      );
-      await user.click(screen.getByRole("button", { name: "Discard" }));
-      expect(screen.queryByRole("textbox")).toBeNull();
-      expect(screen.getByText("Consultation notes")).toBeInTheDocument();
-      expect(onOpenChange).not.toHaveBeenCalled();
-      expect(screen.getByRole("button", { name: "Edit" })).toHaveFocus();
-    },
-  );
 
   it("keeps a failed edit and prevents duplicate saves", async () => {
     const user = userEvent.setup();
@@ -237,7 +272,7 @@ describe("NoteDialog read and edit", () => {
         onSave={onSave}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("tab", { name: "Write" }));
     const textarea = screen.getByRole("textbox", { name: "Note body" });
     await user.type(textarea, " changed");
     const save = screen.getByRole("button", { name: "Save" });
@@ -253,12 +288,68 @@ describe("NoteDialog read and edit", () => {
     expect(feedback.success).not.toHaveBeenCalled();
   });
 
-  it("requires confirmation to delete and guards the asynchronous action", async () => {
+  it("prevents saving an empty edited body", async () => {
     const user = userEvent.setup();
-    const pending = deferred();
-    const onDelete = vi.fn(() => pending.promise);
-    const onOpenChange = vi.fn();
+    const onSave = vi.fn();
+    render(
+      <NoteDialog
+        open
+        onOpenChange={vi.fn()}
+        note={savedNote}
+        onSave={onSave}
+      />,
+    );
+    await user.click(screen.getByRole("tab", { name: "Write" }));
+    const textarea = screen.getByRole("textbox", { name: "Note body" });
+    await user.clear(textarea);
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("saves a ticked task straight from Read without a toast", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn(async () => undefined);
     const { feedback } = render(
+      <NoteDialog
+        open
+        onOpenChange={vi.fn()}
+        note={{ ...savedNote, body: "Before the visit:\n\n- [ ] Bloods" }}
+        onSave={onSave}
+      />,
+    );
+    await user.click(screen.getByRole("checkbox", { name: "Bloods" }));
+    expect(onSave).toHaveBeenCalledExactlyOnceWith(
+      "Before the visit:\n\n- [x] Bloods",
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: "Bloods" })).toBeChecked(),
+    );
+    expect(feedback.success).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  });
+
+  it("restores a ticked task when its save fails", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn(() => Promise.reject(new Error("Offline")));
+    const { feedback } = render(
+      <NoteDialog
+        open
+        onOpenChange={vi.fn()}
+        note={{ ...savedNote, body: "- [ ] Bloods" }}
+        onSave={onSave}
+      />,
+    );
+    await user.click(screen.getByRole("checkbox", { name: "Bloods" }));
+    await waitFor(() => expect(feedback.error).toHaveBeenCalledOnce());
+    expect(screen.getByRole("checkbox", { name: "Bloods" })).not.toBeChecked();
+  });
+
+  it("deletes from the menu without asking and closes", async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    const onOpenChange = vi.fn();
+    render(
       <NoteDialog
         open
         onOpenChange={onOpenChange}
@@ -266,17 +357,29 @@ describe("NoteDialog read and edit", () => {
         onDelete={onDelete}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Delete note" }));
-    expect(screen.getByRole("alertdialog")).toHaveAccessibleName(
-      "Delete note?",
+    expect(screen.queryByRole("button", { name: "Delete note" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Delete note" }),
     );
-    const confirm = screen.getByRole("button", { name: "Delete" });
-    await user.click(confirm);
-    await user.click(confirm);
     expect(onDelete).toHaveBeenCalledTimes(1);
-    pending.resolve();
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(feedback.success).toHaveBeenCalledWith("Note deleted");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("copies the note's Markdown from the menu", async () => {
+    const user = userEvent.setup();
+    const { feedback } = render(
+      <NoteDialog open onOpenChange={vi.fn()} note={savedNote} />,
+    );
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Copy Markdown" }),
+    );
+    await waitFor(() =>
+      expect(feedback.success).toHaveBeenCalledWith("Markdown copied"),
+    );
+    expect(await navigator.clipboard.readText()).toBe("Consultation notes");
   });
 
   it("guards completion and reports success only after the callback succeeds", async () => {
@@ -291,7 +394,7 @@ describe("NoteDialog read and edit", () => {
         onToggleDone={onToggleDone}
       />,
     );
-    const done = screen.getByRole("button", { name: "Done" });
+    const done = screen.getByRole("button", { name: "Mark done" });
     await user.click(done);
     await user.click(done);
     expect(onToggleDone).toHaveBeenCalledTimes(1);
@@ -302,28 +405,9 @@ describe("NoteDialog read and edit", () => {
       expect(feedback.success).toHaveBeenCalledWith("Note completed"),
     );
   });
-
-  it("prevents saving an empty edited body", async () => {
-    const user = userEvent.setup();
-    const onSave = vi.fn();
-    render(
-      <NoteDialog
-        open
-        onOpenChange={vi.fn()}
-        note={savedNote}
-        onSave={onSave}
-      />,
-    );
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    const textarea = screen.getByRole("textbox", { name: "Note body" });
-    await user.clear(textarea);
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-    fireEvent.keyDown(textarea, { key: "Enter", ctrlKey: true });
-    expect(onSave).not.toHaveBeenCalled();
-  });
 });
 
-describe("NoteDialog compose dismissal", () => {
+describe("NoteDialog dismissal", () => {
   it("closes an empty compose draft without asking", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
@@ -333,7 +417,24 @@ describe("NoteDialog compose dismissal", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("keeps a dirty compose draft until discard is confirmed", async () => {
+  it("closes an unchanged saved note on Escape, even in Write", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(
+      <NoteDialog
+        open
+        onOpenChange={onOpenChange}
+        note={savedNote}
+        onSave={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("tab", { name: "Write" }));
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("asks inside the footer before dropping a dirty draft", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
     render(<NoteDialog open onOpenChange={onOpenChange} onSubmit={vi.fn()} />);
@@ -342,17 +443,54 @@ describe("NoteDialog compose dismissal", () => {
       "Unsaved thought",
     );
     await user.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.getByRole("alertdialog")).toHaveAccessibleName(
-      "Discard changes?",
-    );
+    const question = screen.getByRole("alertdialog", { name: discardQuestion });
+    expect(screen.getByRole("dialog")).toContainElement(question);
+    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Keep editing" })).toHaveFocus();
     await user.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(screen.getByRole("textbox", { name: "Note body" })).toHaveValue(
       "Unsaved thought",
     );
     expect(onOpenChange).not.toHaveBeenCalled();
     await user.keyboard("{Escape}");
+    expect(
+      screen.getByRole("alertdialog", { name: discardQuestion }),
+    ).toBeVisible();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(onOpenChange).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Close" }));
     await user.click(screen.getByRole("button", { name: "Discard" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("asks before closing a dirty saved-note edit and keeps it on Escape", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(
+      <NoteDialog
+        open
+        onOpenChange={onOpenChange}
+        note={savedNote}
+        onSave={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("tab", { name: "Write" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Note body" }),
+      " changed",
+    );
+    await user.keyboard("{Escape}");
+    expect(
+      screen.getByRole("alertdialog", { name: discardQuestion }),
+    ).toBeVisible();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Note body" })).toHaveValue(
+      "Consultation notes changed",
+    );
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 
   it("guards clicking outside an unsaved compose draft", async () => {
@@ -364,13 +502,13 @@ describe("NoteDialog compose dismissal", () => {
       "Unsaved thought",
     );
     await user.click(document.querySelector('[data-slot="dialog-overlay"]')!);
-    expect(screen.getByRole("alertdialog")).toHaveAccessibleName(
-      "Discard changes?",
-    );
+    expect(
+      screen.getByRole("alertdialog", { name: discardQuestion }),
+    ).toBeVisible();
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
-  it("confirms compose dismissal when only the Attention Date has changed", async () => {
+  it("asks before closing when only the Attention Date has changed", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
     render(<NoteDialog open onOpenChange={onOpenChange} onSubmit={vi.fn()} />);
@@ -384,9 +522,9 @@ describe("NoteDialog compose dismissal", () => {
     expect(day).toBeDefined();
     await user.click(day!);
     await user.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.getByRole("alertdialog")).toHaveAccessibleName(
-      "Discard changes?",
-    );
+    expect(
+      screen.getByRole("alertdialog", { name: discardQuestion }),
+    ).toBeVisible();
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
@@ -415,7 +553,7 @@ describe("NoteDialog compose dismissal", () => {
   });
 });
 
-describe("NoteDialog mobile Escape", () => {
+describe("NoteDialog on a phone", () => {
   const originalWidth = window.innerWidth;
   beforeEach(() => {
     window.innerWidth = 390;
@@ -424,7 +562,7 @@ describe("NoteDialog mobile Escape", () => {
     window.innerWidth = originalWidth;
   });
 
-  it("returns an unchanged mobile edit to read without closing the drawer", async () => {
+  it("asks in place on Escape and keeps the draft when Escape is pressed again", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
     render(
@@ -439,59 +577,15 @@ describe("NoteDialog mobile Escape", () => {
       "data-slot",
       "drawer-content",
     );
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    await user.keyboard("{Escape}");
-    expect(screen.queryByRole("textbox")).toBeNull();
-    expect(screen.getByRole("button", { name: "Edit" })).toHaveFocus();
-    expect(onOpenChange).not.toHaveBeenCalled();
-  });
-
-  it("discards a changed mobile edit back to read without closing the drawer", async () => {
-    const user = userEvent.setup();
-    const onOpenChange = vi.fn();
-    render(
-      <NoteDialog
-        open
-        note={savedNote}
-        onOpenChange={onOpenChange}
-        onSave={vi.fn()}
-      />,
-    );
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("tab", { name: "Write" }));
     await user.type(
       screen.getByRole("textbox", { name: "Note body" }),
       " changed",
     );
     await user.keyboard("{Escape}");
-    expect(screen.getByRole("alertdialog")).toHaveAccessibleName(
-      "Discard changes?",
-    );
-    await user.click(screen.getByRole("button", { name: "Discard" }));
-    expect(screen.queryByRole("textbox")).toBeNull();
-    expect(screen.getByRole("button", { name: "Edit" })).toHaveFocus();
-    expect(onOpenChange).not.toHaveBeenCalled();
-  });
-
-  it("cancels a mobile discard confirmation with Escape and keeps the edited draft", async () => {
-    const user = userEvent.setup();
-    const onOpenChange = vi.fn();
-    render(
-      <NoteDialog
-        open
-        note={savedNote}
-        onOpenChange={onOpenChange}
-        onSave={vi.fn()}
-      />,
-    );
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Note body" }),
-      " changed",
-    );
-    await user.keyboard("{Escape}");
-    expect(screen.getByRole("alertdialog")).toHaveAccessibleName(
-      "Discard changes?",
-    );
+    expect(
+      screen.getByRole("alertdialog", { name: discardQuestion }),
+    ).toBeVisible();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(screen.getByRole("textbox", { name: "Note body" })).toHaveValue(
@@ -500,7 +594,7 @@ describe("NoteDialog mobile Escape", () => {
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
-  it("keeps a dirty mobile drawer in place after a downward header swipe", async () => {
+  it("keeps a dirty drawer in place after a downward header swipe", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
     render(<NoteDialog open onOpenChange={onOpenChange} onSubmit={vi.fn()} />);
@@ -529,9 +623,9 @@ describe("NoteDialog mobile Escape", () => {
         button: 0,
       }),
     );
-    expect(screen.getByRole("alertdialog")).toHaveAccessibleName(
-      "Discard changes?",
-    );
+    expect(
+      screen.getByRole("alertdialog", { name: discardQuestion }),
+    ).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(screen.getByRole("textbox", { name: "Note body" })).toHaveValue(
       "Unsaved thought",
@@ -540,7 +634,7 @@ describe("NoteDialog mobile Escape", () => {
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
-  it("blocks mobile swipe attempts while a note is being added", async () => {
+  it("blocks swipe attempts while a note is being added", async () => {
     const user = userEvent.setup();
     const pending = deferred();
     const onOpenChange = vi.fn();
@@ -584,7 +678,7 @@ describe("NoteDialog mobile Escape", () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
 
-  it("still asks before closing a dirty mobile draft from outside", async () => {
+  it("still asks before closing a dirty draft from outside", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
     render(<NoteDialog open onOpenChange={onOpenChange} onSubmit={vi.fn()} />);
@@ -593,36 +687,15 @@ describe("NoteDialog mobile Escape", () => {
       "Unsaved thought",
     );
     await user.click(document.querySelector('[data-slot="drawer-overlay"]')!);
-    expect(screen.getByRole("alertdialog")).toHaveAccessibleName(
-      "Discard changes?",
-    );
+    expect(
+      screen.getByRole("alertdialog", { name: discardQuestion }),
+    ).toBeVisible();
     expect(onOpenChange).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Discard" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("keeps a mobile deletion confirmation clickable and waits for success to close", async () => {
-    const user = userEvent.setup();
-    const pending = deferred();
-    const onDelete = vi.fn(() => pending.promise);
-    const onOpenChange = vi.fn();
-    render(
-      <NoteDialog
-        open
-        note={savedNote}
-        onOpenChange={onOpenChange}
-        onDelete={onDelete}
-      />,
-    );
-    await user.click(screen.getByRole("button", { name: "Delete note" }));
-    await user.click(screen.getByRole("button", { name: "Delete" }));
-    expect(onDelete).toHaveBeenCalledTimes(1);
-    expect(onOpenChange).not.toHaveBeenCalled();
-    pending.resolve();
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-  });
-
-  it("cancels mobile deletion with Escape while retaining the read drawer", async () => {
+  it("deletes from the menu and closes the drawer", async () => {
     const user = userEvent.setup();
     const onDelete = vi.fn();
     const onOpenChange = vi.fn();
@@ -632,21 +705,17 @@ describe("NoteDialog mobile Escape", () => {
         note={savedNote}
         onOpenChange={onOpenChange}
         onDelete={onDelete}
-        onSave={vi.fn()}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Delete note" }));
-    expect(screen.getByRole("alertdialog")).toHaveAccessibleName(
-      "Delete note?",
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Delete note" }),
     );
-    await user.keyboard("{Escape}");
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
-    expect(onDelete).not.toHaveBeenCalled();
-    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("discards a nested mobile edit to read without closing its parent drawer", async () => {
+  it("discards a nested draft without closing its parent drawer", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
     const onParentOpenChange = vi.fn();
@@ -664,16 +733,15 @@ describe("NoteDialog mobile Escape", () => {
         </DrawerContent>
       </Drawer>,
     );
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("tab", { name: "Write" }));
     await user.type(
       screen.getByRole("textbox", { name: "Note body" }),
       " changed",
     );
     await user.keyboard("{Escape}");
-    await user.click(screen.getByRole("button", { name: "Discard" }));
-    expect(screen.queryByRole("textbox")).toBeNull();
-    expect(screen.getByRole("button", { name: "Edit" })).toHaveFocus();
     expect(onOpenChange).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Discard" }));
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
     expect(onParentOpenChange).not.toHaveBeenCalled();
   });
 });

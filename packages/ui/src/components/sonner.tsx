@@ -25,6 +25,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
           "--border-radius": "var(--radius)",
+          // Radix drawers disable body pointer events; a toast's Undo must
+          // still take a tap while one is open.
+          pointerEvents: "auto",
         } as React.CSSProperties
       }
       toastOptions={{

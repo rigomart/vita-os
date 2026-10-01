@@ -11,6 +11,7 @@ import { newRecordId } from "@vita-os/core";
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
 import type { PagedResult } from "../cache/use-paged-application-query";
 
+import { afterUndoWindow } from "../cache/undo-window";
 import { useApplicationMutation } from "../cache/use-application-mutation";
 import { useApplicationQuery } from "../cache/use-application-query";
 import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
@@ -160,11 +161,17 @@ export function useReopenNote(): ApplicationMutationResult<
 }
 
 export function useDiscardNote(): ApplicationMutationResult<
-  { noteId: NoteId },
+  { noteId: NoteId; undoWindow?: () => Promise<boolean> },
   CommandAcknowledgement
 > {
-  return useApplicationMutation<{ noteId: NoteId }, CommandAcknowledgement>({
-    run: (client, input) => client.removeNote(input),
+  return useApplicationMutation<
+    { noteId: NoteId; undoWindow?: () => Promise<boolean> },
+    CommandAcknowledgement
+  >({
+    run: async (client, input) => {
+      await afterUndoWindow(input.undoWindow);
+      return client.removeNote({ noteId: input.noteId });
+    },
     affected: () => noteKeys(),
     optimistic: (cache, input) => showNoteLeavingOpenNotes(cache, input.noteId),
   });

@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { useNoteRowActions } from "../note-row/use-note-row-actions";
 import { NoteDialog } from "./note-dialog";
+import { useDeleteNoteWithUndo } from "./use-delete-note-with-undo";
 
 /** Mount above moving cards, keyed by id, for the lifetime of an open view. */
 export function StandaloneNoteDialog({
@@ -15,6 +16,7 @@ export function StandaloneNoteDialog({
 }) {
   const [savedNote, setSavedNote] = useState(note);
   const actions = useNoteRowActions(savedNote);
+  const deleteWithUndo = useDeleteNoteWithUndo();
 
   return (
     <NoteDialog
@@ -30,10 +32,7 @@ export function StandaloneNoteDialog({
         const updated = await actions.toggleDone();
         setSavedNote(updated);
       }}
-      onDelete={async () => {
-        await actions.deleteNote();
-        onOpenChange(false);
-      }}
+      onDelete={() => void deleteWithUndo(actions.deleteNote)}
       onSetWhen={async (when) => {
         const updated = await actions.setWhen(when);
         setSavedNote(updated);

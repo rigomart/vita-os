@@ -178,10 +178,13 @@ describe("InboxNoteList", () => {
       await user.click(
         screen.getByRole("button", { name: /Open note: Saved thought/ }),
       );
-      await user.click(screen.getByRole("button", { name: "Delete note" }));
-      expect(actions.deleteNote).not.toHaveBeenCalled();
-      await user.click(screen.getByRole("button", { name: "Delete" }));
-      expect(actions.deleteNote).toHaveBeenCalledOnce();
+      await user.click(screen.getByRole("button", { name: "More actions" }));
+      await user.click(
+        await screen.findByRole("menuitem", { name: "Delete note" }),
+      );
+      // Delete happens at once and offers Undo instead of asking first.
+      await waitFor(() => expect(actions.deleteNote).toHaveBeenCalledOnce());
+      expect(screen.queryByRole("dialog")).toBeNull();
     },
   );
 
@@ -266,11 +269,11 @@ describe("InboxNoteList", () => {
       rerender(<InboxNoteList notes={[]} />);
       return Promise.resolve({ ...saved, state: "done", completedAt: today });
     });
-    await user.click(screen.getByRole("button", { name: "Done" }));
+    await user.click(screen.getByRole("button", { name: "Mark done" }));
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Reopen" })).toBeVisible(),
     );
     expect(screen.getByRole("dialog")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Edit" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Write" })).toBeVisible();
   });
 });

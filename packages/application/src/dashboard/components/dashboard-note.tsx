@@ -19,7 +19,7 @@ import {
  * has a bold title, and a margin rule rather than a tag, since on this board a
  * pill always means an Area.
  *
- * Its two-line plain-text preview opens the full Note view.
+ * The whole card opens the full Note view, except its footer controls.
  */
 export function DashboardNote({
   currentDate,
@@ -68,7 +68,9 @@ export function DashboardNote({
         type="button"
         aria-label={`Open note: ${markdownToPlainText(note.body).slice(0, 120)}`}
         onClick={() => onOpenNote(note)}
-        className="line-clamp-2 min-h-0 rounded-sm py-0 text-left text-sm leading-snug whitespace-pre-line wrap-anywhere text-foreground/85 outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+        // The overlay stretches the button over the whole card; the footer's
+        // controls sit above it, so only they keep their own clicks.
+        className="line-clamp-2 min-h-0 rounded-sm py-0 text-left text-sm leading-snug whitespace-pre-line wrap-anywhere text-foreground/85 outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:ring-3 focus-visible:ring-ring/30"
       >
         {markdownToPlainText(note.body)}
       </button>

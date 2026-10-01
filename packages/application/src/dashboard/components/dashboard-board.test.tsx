@@ -56,7 +56,7 @@ describe("DashboardBoard Note view", () => {
     expect(screen.getByRole("link", { name: "Clinic" })).toBeVisible();
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Done",
+        name: "Mark done",
       }),
     );
     await waitFor(() =>

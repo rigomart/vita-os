@@ -23,7 +23,8 @@ interface ThreadNotesProps {
   onCreate: (body: string) => Promise<void> | void;
   onUpdateBody: (note: ThreadNote, body: string) => Promise<void> | void;
   onToggleDone: (note: ThreadNote) => Promise<void> | void;
-  onRemove: (note: ThreadNote) => Promise<void> | void;
+  /** Deletes at once; the owner offers Undo. */
+  onRemove: (note: ThreadNote) => void;
 }
 
 export function ThreadNotes({
@@ -127,10 +128,7 @@ export function ThreadNotes({
               completedAt: done ? Date.now() : undefined,
             });
           }}
-          onDelete={async () => {
-            await onRemove(currentNote);
-            setSelected(null);
-          }}
+          onDelete={() => onRemove(currentNote)}
         />
       )}
     </section>

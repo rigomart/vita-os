@@ -31,7 +31,11 @@ const thread = aThread({
 });
 
 function render<T>(client: ApplicationClient, hook: () => T) {
-  const feedback = { success: vi.fn(), error: vi.fn() };
+  const feedback = {
+    success: vi.fn(),
+    error: vi.fn(),
+    undoable: vi.fn(async () => true),
+  };
   const { cache, wrapper: application } = createHarness(client, (cache) => {
     cache.setQueryData(queryKeys.threads.open(), [thread]);
     cache.setQueryData<ThreadDetail>(queryKeys.threads.detail(thread.slug), {

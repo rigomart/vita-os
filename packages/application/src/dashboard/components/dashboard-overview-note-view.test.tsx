@@ -1,7 +1,7 @@
 import type { Note, NoteId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { useOpenNotes } from "../../notes/hooks";
 import { queryKeys } from "../../query-keys";
@@ -66,7 +66,7 @@ describe("the last Dashboard Note", () => {
     );
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Done",
+        name: "Mark done",
       }),
     );
 
@@ -86,7 +86,7 @@ describe("the last Dashboard Note", () => {
     await waitFor(() =>
       expect(
         within(screen.getByRole("dialog")).getByRole("button", {
-          name: "Done",
+          name: "Mark done",
         }),
       ).toBeVisible(),
     );
@@ -115,7 +115,7 @@ describe("the last Dashboard Note", () => {
     );
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Done",
+        name: "Mark done",
       }),
     );
     await waitFor(() =>
@@ -137,7 +137,7 @@ describe("the last Dashboard Note", () => {
     expect(feedback.success).not.toHaveBeenCalled();
     expect(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Done",
+        name: "Mark done",
       }),
     ).toBeEnabled();
     expect(screen.queryByText("Nothing is asking for you.")).toBeNull();
@@ -145,5 +145,66 @@ describe("the last Dashboard Note", () => {
     expect(
       screen.getByRole("button", { name: "Open note: Last thought" }),
     ).toBeVisible();
+  });
+});
+
+describe("deleting a Dashboard Note", () => {
+  async function deleteFromView(undoable: () => Promise<boolean>) {
+    const user = userEvent.setup();
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(queryKeys.notes.open(), [saved]);
+    const removeNote = vi.fn(async () =>
+      success({ acknowledged: true as const }),
+    );
+    const feedback = {
+      success: vi.fn(),
+      error: vi.fn(),
+      undoable: vi.fn(undoable),
+    };
+    const applicationClient = createQuietApplicationClient({
+      listOpenNotes: async () => success([saved]),
+      removeNote,
+    });
+    render(<Dashboard />, { applicationClient, queryClient, feedback });
+    await user.click(
+      screen.getByRole("button", { name: "Open note: Last thought" }),
+    );
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Delete note" }),
+    );
+    return { feedback, removeNote };
+  }
+
+  it("hides the Note at once and restores it on Undo without reaching the service", async () => {
+    const offer = deferred<boolean>();
+    const { feedback, removeNote } = await deleteFromView(() => offer.promise);
+    await waitFor(() =>
+      expect(feedback.undoable).toHaveBeenCalledWith("Note deleted"),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Open note: Last thought" }),
+    ).toBeNull();
+    await act(async () => offer.resolve(false));
+    expect(
+      await screen.findByRole("button", { name: "Open note: Last thought" }),
+    ).toBeVisible();
+    expect(removeNote).not.toHaveBeenCalled();
+    expect(feedback.error).not.toHaveBeenCalled();
+  });
+
+  it("deletes the Note once the Undo offer lapses", async () => {
+    const offer = deferred<boolean>();
+    const { feedback, removeNote } = await deleteFromView(() => offer.promise);
+    await waitFor(() => expect(feedback.undoable).toHaveBeenCalledOnce());
+    expect(removeNote).not.toHaveBeenCalled();
+    await act(async () => offer.resolve(true));
+    await waitFor(() =>
+      expect(removeNote).toHaveBeenCalledExactlyOnceWith({
+        noteId: "last-note",
+      }),
+    );
+    expect(feedback.error).not.toHaveBeenCalled();
   });
 });

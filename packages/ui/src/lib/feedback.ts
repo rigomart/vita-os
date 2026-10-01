@@ -10,11 +10,34 @@ import { toast } from "./toast";
 export type Feedback = {
   success(message: string): void;
   error(message: string): void;
+  /**
+   * Offer an Undo for an action that has already happened on screen. Resolves
+   * `true` once the offer lapses and the action should be committed, or `false`
+   * when the person undoes it.
+   */
+  undoable(message: string): Promise<boolean>;
 };
+
+const UNDO_WINDOW_MS = 5000;
 
 const defaultFeedback: Feedback = {
   success: (message) => toast.success(message),
   error: (message) => toast.error(message),
+  undoable: (message) =>
+    new Promise((resolve) => {
+      let settled = false;
+      const settle = (commit: boolean) => {
+        if (settled) return;
+        settled = true;
+        resolve(commit);
+      };
+      toast(message, {
+        duration: UNDO_WINDOW_MS,
+        action: { label: "Undo", onClick: () => settle(false) },
+        onAutoClose: () => settle(true),
+        onDismiss: () => settle(true),
+      });
+    }),
 };
 
 const FeedbackContext = createContext<Feedback | null>(null);
