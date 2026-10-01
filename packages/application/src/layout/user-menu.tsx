@@ -12,7 +12,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@vita-os/ui/components/dropdown-menu";
-import { LogOut, Monitor, Moon, Palette, Sun, Tags } from "lucide-react";
+import { LogOut, Monitor, Moon, Palette, Sun } from "lucide-react";
 
 import type { ThemePreference } from "../theme/theme-provider";
 
@@ -23,7 +23,6 @@ interface UserMenuUser {
 
 interface UserMenuProps {
   onThemeChange: (theme: ThemePreference) => void;
-  onManageAreas: () => void;
   user?: UserMenuUser | null;
   onSignOut: () => void;
   theme: ThemePreference;
@@ -43,7 +42,6 @@ export function UserMenu({
   user,
   theme,
   onThemeChange,
-  onManageAreas,
   onSignOut,
 }: UserMenuProps) {
   const accountName = user?.name ?? user?.email ?? "Account";
@@ -75,10 +73,6 @@ export function UserMenu({
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={onManageAreas}>
-            <Tags />
-            Manage areas
-          </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <Palette />

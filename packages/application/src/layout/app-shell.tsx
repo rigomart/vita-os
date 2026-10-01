@@ -124,7 +124,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           onToggleInbox={inbox.toggle}
           onNewNote={dialogs.openNewNote}
           onNewThread={() => dialogs.openCreateThread(filteredAreaId)}
-          onManageAreas={dialogs.openManageAreas}
           onOpenPalette={() => setPaletteOpen(true)}
         />
         <InboxSurface />

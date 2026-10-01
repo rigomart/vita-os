@@ -24,7 +24,6 @@ interface AppChromeProps {
   onToggleInbox: () => void;
   onNewNote: () => void;
   onNewThread: () => void;
-  onManageAreas: () => void;
   onOpenPalette: () => void;
 }
 
@@ -41,7 +40,6 @@ interface AppChromeProps {
 export function AppChrome({
   inboxOpen,
   noteCount,
-  onManageAreas,
   onNewNote,
   onNewThread,
   onOpenPalette,
@@ -131,7 +129,6 @@ export function AppChrome({
             user={viewer}
             theme={theme}
             onThemeChange={setTheme}
-            onManageAreas={onManageAreas}
             onSignOut={signOut}
           />
         </div>

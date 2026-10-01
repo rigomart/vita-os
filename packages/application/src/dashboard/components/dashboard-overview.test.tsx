@@ -140,6 +140,18 @@ describe("DashboardOverview", () => {
     expect(
       screen.queryByRole("navigation", { name: "Filter by area" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Manage areas" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers Manage areas beside the filter", () => {
+    renderOverview();
+
+    const row = screen.getByRole("navigation", { name: "Filter by area" });
+    expect(row.nextElementSibling).toBe(
+      screen.getByRole("button", { name: "Manage areas" }),
+    );
   });
 
   it("offers All, each Area with its count, and No area, each as a link", () => {

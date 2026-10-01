@@ -1,6 +1,6 @@
 # Areas as optional labels
 
-**Status:** Accepted
+**Status:** Accepted. Amended 2026-10-01: Manage areas opens from the Dashboard's Area filter row instead of the user menu.
 **Date:** 2026-09-26
 
 An **Area** stops being an entity with state of its own and becomes an optional label on a **Thread**: a name and an **Area Icon**, nothing more. A Thread has zero or one Area, and capturing a Thread needs only a title. The Area's **Condition** and **Standard** are removed, along with every surface that existed to show or maintain them: the Area page and its attention lanes, the top-bar Area strip, the Area Quick Panel and its shared Area Actions model, the Condition colour role, and the palette's per-Area drill-in pages. Issue #371 is the specification.
@@ -26,7 +26,7 @@ This supersedes ADRs 0008 (Condition colour ramp, as a Condition role), 0009 (Ar
 - **The Dashboard gains a filter row** above the board: `All · each Area with its Open Thread count · No area`, in the user's Area order, with empty Areas kept but muted. The choice lives in the URL as `?area=<slug>` or `?area=none`, survives the in-place Thread pane and Notes surface, and falls back to All for an unknown Area. Any filter hides Standalone Notes. The board components receive already-filtered input; the rules live in one pure model (`dashboard-filter-model`). On a phone the row folds into one dropdown.
 - **The Area tag on a Thread card is neutral** — icon and name in the card's muted ink. Colour on the board belongs to time.
 - **`1..9` select the matching Area filter and `0` returns to All**, keeping the old jump keys useful. The palette offers "Filter: {Area}", "Clear filter" and "Manage areas".
-- **A Manage areas dialog**, opened from the palette and the user menu, renames, re-icons, reorders, deletes and adds Areas. The delete confirmation states how many open Threads will lose the label.
+- **A Manage areas dialog**, opened from the palette and from a button at the end of the Dashboard's Area filter row, renames, re-icons, reorders, deletes and adds Areas. The delete confirmation states how many open Threads will lose the label.
 - **Thread links lose the Area segment**: `/threads/$threadSlug`, with the Dashboard underneath the pane. `/$areaSlug/$threadSlug` redirects there, and `/$areaSlug` redirects to `/?area=<slug>`, both as replace navigations. The static `threads` segment wins over any Area slug.
 
 ## Consequences
