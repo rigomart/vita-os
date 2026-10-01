@@ -1,7 +1,7 @@
 import type { AreaId, ThreadId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createQuietApplicationClient,
@@ -9,6 +9,7 @@ import {
 } from "../../test/fake-application-client";
 import { anArea, aThread } from "../../test/fixtures";
 import {
+  act,
   render,
   screen,
   waitFor,
@@ -25,7 +26,7 @@ const home = anArea({
   order: 1,
 });
 
-function renderDialog(overrides = {}) {
+function renderDialog(overrides = {}, onOpenChange = vi.fn()) {
   const client = createQuietApplicationClient({
     listAreas: async () => success([health, home]),
     listOpenThreads: async () =>
@@ -40,13 +41,30 @@ function renderDialog(overrides = {}) {
       ]),
     ...overrides,
   });
-  render(<ManageAreasDialog open onOpenChange={vi.fn()} />, {
+  render(<ManageAreasDialog open onOpenChange={onOpenChange} />, {
     applicationClient: client,
   });
   return client;
 }
 
+// jsdom lays nothing out. Stack the rows in a column so a drag can tell which
+// row sits below which.
+function stackRows() {
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+    function (this: HTMLElement) {
+      const row = this.closest("li");
+      const rows = row?.parentElement?.children;
+      const top = row && rows ? [...rows].indexOf(row) * 40 : 0;
+      return DOMRect.fromRect({ x: 0, y: top, width: 300, height: 32 });
+    },
+  );
+}
+
 describe("ManageAreasDialog", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("renames an Area when its name is committed", async () => {
     const user = userEvent.setup();
     const updateArea = vi.fn(async () =>
@@ -89,7 +107,8 @@ describe("ManageAreasDialog", () => {
     );
   });
 
-  it("moves an Area down the order", async () => {
+  it("moves an Area by dragging its handle with the keyboard", async () => {
+    stackRows();
     const user = userEvent.setup();
     const reorderAreas = vi.fn(async () =>
       success([
@@ -99,15 +118,41 @@ describe("ManageAreasDialog", () => {
     );
     renderDialog({ reorderAreas });
 
-    await user.click(
-      await screen.findByRole("button", { name: `Move ${health.name} down` }),
-    );
+    const handle = await screen.findByRole("button", {
+      name: `Reorder ${health.name}`,
+    });
+    act(() => handle.focus());
+    await user.keyboard(" ");
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard(" ");
 
     await waitFor(() =>
       expect(reorderAreas).toHaveBeenCalledWith({
         areaIds: [home._id, health._id],
       }),
     );
+  });
+
+  it("cancels a held move on Escape and keeps the dialog open", async () => {
+    stackRows();
+    const user = userEvent.setup();
+    const reorderAreas = vi.fn();
+    const onOpenChange = vi.fn();
+    renderDialog({ reorderAreas }, onOpenChange);
+
+    const handle = await screen.findByRole("button", {
+      name: `Reorder ${health.name}`,
+    });
+    act(() => handle.focus());
+    await user.keyboard(" ");
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Escape}");
+
+    await waitFor(() =>
+      expect(handle).not.toHaveAttribute("aria-pressed", "true"),
+    );
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(reorderAreas).not.toHaveBeenCalled();
   });
 
   it("states how many open Threads will lose the label before deleting", async () => {
