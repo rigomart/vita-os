@@ -6,13 +6,20 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@vita-os/ui/components/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@vita-os/ui/components/tooltip";
 import { cn } from "@vita-os/ui/lib/utils";
-import { ChevronDown, Layers, Tag } from "lucide-react";
+import { ChevronDown, Layers, Settings2, Tag } from "lucide-react";
+import { useState } from "react";
 
 import type { ProductSearch } from "../../navigation/search-params";
 import type { DashboardFilterOption } from "./dashboard-filter-model";
 
 import { AreaIcon } from "../../areas/components/area-icon";
+import { ManageAreasDialog } from "../../areas/manage-areas/manage-areas-dialog";
 import { useIsMobile } from "../../hooks/use-mobile";
 
 /** Where choosing an option leaves the URL: only `?area=` changes. */
@@ -26,7 +33,8 @@ function withArea(param: string | undefined) {
 /**
  * All · each Area with its count · No area. Choosing one filters the board
  * and writes the choice to the URL, so a filtered Dashboard survives a reload
- * and an open Thread. On a phone the row folds into one dropdown.
+ * and an open Thread. On a phone the row folds into one dropdown. Manage areas
+ * sits at the end of the row, beside the Areas it edits.
  */
 export function DashboardFilterRow({
   options,
@@ -34,9 +42,20 @@ export function DashboardFilterRow({
   options: DashboardFilterOption[];
 }) {
   const isMobile = useIsMobile();
-  return isMobile ? (
-    <FilterDropdown options={options} />
-  ) : (
+  return (
+    <div className="flex items-center gap-1">
+      {isMobile ? (
+        <FilterDropdown options={options} />
+      ) : (
+        <FilterLinks options={options} />
+      )}
+      <ManageAreasButton />
+    </div>
+  );
+}
+
+function FilterLinks({ options }: { options: DashboardFilterOption[] }) {
+  return (
     <nav aria-label="Filter by area">
       <ul className="flex flex-wrap items-center gap-1">
         {options.map((option) => (
@@ -115,6 +134,32 @@ function FilterDropdown({ options }: { options: DashboardFilterOption[] }) {
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function ManageAreasButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              aria-label="Manage areas"
+              onClick={() => setOpen(true)}
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+            />
+          }
+        >
+          <Settings2 aria-hidden className="size-3.5" />
+        </TooltipTrigger>
+        <TooltipContent>Manage areas</TooltipContent>
+      </Tooltip>
+      {/* Mounted on demand, like the shell's dialogs: it holds form state
+          that should not survive a close. */}
+      {open && <ManageAreasDialog open onOpenChange={setOpen} />}
+    </>
   );
 }
 

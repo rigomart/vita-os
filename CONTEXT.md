@@ -134,7 +134,7 @@ _Avoid_: Task list, project board, backlog.
 - When nothing is open at all the board is replaced by a single line saying nothing is asking.
 - Opening a **Thread** from any surface — **Dashboard**, **Notes**, or the palette — shows its detail pane in place over the current page; closing the pane returns the user to where they were. A Thread's own address is `/threads/$threadSlug`, which opens the pane over the Dashboard. The in-place behavior is recorded in ADR 0007.
 - Opening the **Notes** from any surface — the top bar, the palette, or the mobile tab — summons it in place over the current page rather than navigating; closing returns the user exactly where they were. `/notes` opens Notes over the Dashboard; `/inbox` remains a compatibility deep link. The in-place behavior and chosen form are recorded in ADR 0012.
-- **Areas** are managed in one **Manage areas** dialog, opened from the palette or the user menu: rename, re-icon, reorder, delete, and add. The delete confirmation states how many open Threads will lose the label. A new Thread starts in the Area the Dashboard is filtered to, and the label can be cleared before saving.
+- **Areas** are managed in one **Manage areas** dialog, opened from the palette or from the end of the Dashboard's Area filter row: rename, re-icon, reorder, delete, and add. The delete confirmation states how many open Threads will lose the label. A new Thread starts in the Area the Dashboard is filtered to, and the label can be cleared before saving.
 
 ## Note Handling
 
