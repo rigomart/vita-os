@@ -53,8 +53,11 @@ A meaningful automatic change recorded in an **Activity Log**.
 _Avoid_: Audit event, comment.
 
 **Note**:
-A body-only capture that is valid as soon as it is saved: information, a thought, or an action. A Note is either a **Standalone Note** or a **Thread Note**.
+A body-only capture that is valid as soon as it is saved: information, a thought, or an action. A Note is either a **Standalone Note** or a **Thread Note**. Its body is Markdown; single line breaks are kept.
 _Avoid_: Task, item, todo, ticket.
+
+**Note view**:
+The dialog where a **Note** is written, read, edited, completed, and deleted.
 
 **Standalone Note**:
 A **Note** that belongs to no **Area** or **Thread** and requires no classification. It appears in the global **Notes** collection and may have an **Attention Date**.
@@ -127,15 +130,18 @@ _Avoid_: Task list, project board, backlog.
 - A **Thread** card has two fixed rows that never trade places. The first is always the **Thread** title. The second is the move slot: the **Focused Move**, else the only **Move**, else — with several **Moves** and none focused — "N moves · none focused", because the card must not invent a headline the user never chose. A quiet count of pips, the focused one filled, says how many **Moves** there are. A **Thread** with no **Moves** is its title alone. A labeled Thread shows its **Area** as a small neutral tag, icon and name; an unlabeled Thread shows none. Colour on the board belongs to time. Dates are compact tokens rather than phrases.
 - The Dashboard **can act on attention in place**: a card's rail — shown on hover or keyboard focus — completes the **Move** the card shows, and only that one, or sets, changes, and clears the **Follow-up**; a **Standalone Note** offers done and its **Attention Date**. Focusing, removing, and choosing among **Moves**, changing a **Thread**'s **Area**, editing its text, and resolving it still happen in **Thread** detail, where the Area is a chip in the header.
 - **Thread** detail lists every **Move** in capture order. Focus is a radio beside each Move: pressing it focuses that Move, and pressing the filled one unfocuses it. The **Focused Move** is tinted where it sits.
-- Opening a card summons **Thread** detail in place; opening a **Note** summons **Notes** in place.
+- Opening a card summons **Thread** detail in place; opening a **Note** opens the **Note view** over the current page.
 - When nothing is open at all the board is replaced by a single line saying nothing is asking.
 - Opening a **Thread** from any surface — **Dashboard**, **Notes**, or the palette — shows its detail pane in place over the current page; closing the pane returns the user to where they were. A Thread's own address is `/threads/$threadSlug`, which opens the pane over the Dashboard. The in-place behavior is recorded in ADR 0007.
-- Opening the **Notes** from any surface — the top bar, the palette, a Dashboard Note, or the mobile tab — summons it in place over the current page rather than navigating; closing returns the user exactly where they were. `/notes` opens Notes over the Dashboard; `/inbox` remains a compatibility deep link. The in-place behavior and chosen form are recorded in ADR 0012.
+- Opening the **Notes** from any surface — the top bar, the palette, or the mobile tab — summons it in place over the current page rather than navigating; closing returns the user exactly where they were. `/notes` opens Notes over the Dashboard; `/inbox` remains a compatibility deep link. The in-place behavior and chosen form are recorded in ADR 0012.
 - **Areas** are managed in one **Manage areas** dialog, opened from the palette or the user menu: rename, re-icon, reorder, delete, and add. The delete confirmation states how many open Threads will lose the label. A new Thread starts in the Area the Dashboard is filtered to, and the label can be cleared before saving.
 
 ## Note Handling
 
 - A **Note** can be captured and edited with just a body; it has no title or type selector.
+- Saved Note cards are read-only previews that open the **Note view**. Thread and Notes-panel previews render Markdown in a bounded space; the Dashboard uses a two-line plain-text preview.
+- The **Note view** renders the full body for reading and uses a Markdown textarea for writing and editing. Changed drafts ask for confirmation before being discarded.
+- Markdown supports headings, lists, emphasis, code, links, quotes, dividers, and tables. Checkbox markers remain literal text for now.
 - A **Standalone Note** can have its **Attention Date** set, changed, or cleared.
 - A **Thread Note** appears only on its parent **Thread** and has no **Attention Date**.
 - Any **Note** can be marked **Done**, reopened, or permanently deleted from active Notes or completed history.

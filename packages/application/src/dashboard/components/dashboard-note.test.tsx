@@ -43,36 +43,40 @@ describe("DashboardNote", () => {
     mocks.updateNoteWhen.mockReset();
   });
 
-  it("edits the body in place instead of opening Notes", async () => {
+  it("opens the Note from a two-line plain text preview", async () => {
     const user = userEvent.setup();
+    const onOpenNote = vi.fn();
+    const saved = note(
+      "# Consultation\n**Next steps** [Clinic](https://example.com)",
+    );
     render(
       <DashboardNote
         currentDate={currentDate}
-        note={note("Water the plants")}
+        note={saved}
+        onOpenNote={onOpenNote}
       />,
     );
 
     expect(screen.queryByRole("link")).toBeNull();
-    const editor = screen.getByRole("textbox", { name: "Edit note body" });
-    expect(editor).toHaveValue("Water the plants");
-
-    await user.click(editor);
-    await user.clear(editor);
-    await user.type(editor, "Water the basil");
-    await user.tab();
-
-    expect(mocks.updateNoteBody).toHaveBeenCalledExactlyOnceWith(
-      "note1",
-      "Water the basil",
-    );
+    expect(screen.queryByRole("textbox")).toBeNull();
+    const preview = screen.getByRole("button", {
+      name: /Open note: Consultation/,
+    });
+    expect(preview).toHaveTextContent("Consultation Next steps Clinic");
+    expect(preview).not.toHaveTextContent("**");
+    expect(preview).toHaveClass("line-clamp-2");
+    await user.click(preview);
+    expect(onOpenNote).toHaveBeenCalledExactlyOnceWith(saved);
   });
 
   it("still completes the note from the footer", async () => {
     const user = userEvent.setup();
+    const onOpenNote = vi.fn();
     render(
       <DashboardNote
         currentDate={currentDate}
         note={note("Water the plants")}
+        onOpenNote={onOpenNote}
       />,
     );
 
@@ -80,6 +84,7 @@ describe("DashboardNote", () => {
 
     expect(mocks.completeNote).toHaveBeenCalledExactlyOnceWith("note1");
     expect(mocks.updateNoteBody).not.toHaveBeenCalled();
+    expect(onOpenNote).not.toHaveBeenCalled();
   });
 
   it("dates itself with the board's token and wears no Area-style tag", () => {
@@ -89,6 +94,7 @@ describe("DashboardNote", () => {
         note={note("Water the plants", {
           attentionDate: currentDate - 2 * 24 * 60 * 60 * 1000,
         })}
+        onOpenNote={vi.fn()}
       />,
     );
 

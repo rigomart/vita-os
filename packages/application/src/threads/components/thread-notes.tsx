@@ -1,18 +1,19 @@
 import type { ThreadNote } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
-import { Textarea } from "@vita-os/ui/components/textarea";
+import { Markdown, markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format, isThisYear } from "date-fns";
 import { Check, Loader2, Undo2 } from "lucide-react";
 import { useState } from "react";
 
-import { AttentionCollapsed, RowDeleteAction } from "../../attention-list";
-import { EditableField } from "../../ui/editable-field";
+import { AttentionCollapsed } from "../../attention-list";
+import { NoteDialog } from "../../notes/note-view/note-dialog";
 
 interface ThreadNotesProps {
   notes: ThreadNote[] | undefined;
+  threadTitle?: string;
   doneNotes?: ThreadNote[];
   isDoneExhausted?: boolean;
   isDoneInitialLoading?: boolean;
@@ -27,6 +28,7 @@ interface ThreadNotesProps {
 
 export function ThreadNotes({
   notes,
+  threadTitle = "Thread",
   doneNotes = [],
   isDoneExhausted = true,
   isDoneInitialLoading = false,
@@ -38,39 +40,37 @@ export function ThreadNotes({
   onToggleDone,
   onRemove,
 }: ThreadNotesProps) {
+  const [composing, setComposing] = useState(false);
+  // Kept above both lists: completing a Note can move or remove its card.
+  const [selected, setSelected] = useState<ThreadNote | null>(null);
   const showCompleted =
     doneNotes.length > 0 || (!isDoneInitialLoading && !isDoneExhausted);
+  const currentNote = selected;
+  const card = (note: ThreadNote) => (
+    <ThreadNoteCard
+      key={note._id}
+      note={note}
+      onOpen={() => setSelected(note)}
+      onToggleDone={onToggleDone}
+    />
+  );
 
   return (
     <section aria-label="Thread Notes" className="flex flex-col gap-3">
-      <ThreadNoteComposer onCreate={onCreate} />
-
+      <button
+        type="button"
+        onClick={() => setComposing(true)}
+        className="min-h-10 rounded-2xl border border-border/60 bg-muted/30 px-3 py-2.5 text-left text-sm text-muted-foreground outline-none transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+      >
+        Write a note…
+      </button>
       {notes && notes.length > 0 ? (
-        <div className="flex flex-col gap-2.5">
-          {notes.map((note) => (
-            <ThreadNoteCard
-              key={note._id}
-              note={note}
-              onUpdateBody={onUpdateBody}
-              onToggleDone={onToggleDone}
-              onRemove={onRemove}
-            />
-          ))}
-        </div>
+        <div className="flex flex-col gap-2.5">{notes.map(card)}</div>
       ) : null}
-
       {showCompleted && (
         <AttentionCollapsed title="Completed" count={doneNotes.length}>
           <div className="flex flex-col gap-2.5 pt-1">
-            {doneNotes.map((note) => (
-              <ThreadNoteCard
-                key={note._id}
-                note={note}
-                onUpdateBody={onUpdateBody}
-                onToggleDone={onToggleDone}
-                onRemove={onRemove}
-              />
-            ))}
+            {doneNotes.map(card)}
           </div>
           {(canLoadMoreDone || isLoadingMoreDone) && (
             <div className="flex justify-center pt-2">
@@ -84,7 +84,7 @@ export function ThreadNotes({
               >
                 {isLoadingMoreDone ? (
                   <>
-                    <Loader2 className="size-3.5 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Loading…
                   </>
                 ) : (
@@ -95,167 +95,111 @@ export function ThreadNotes({
           )}
         </AttentionCollapsed>
       )}
+      {composing && (
+        <NoteDialog
+          open
+          threadTitle={threadTitle}
+          onOpenChange={setComposing}
+          onSubmit={async ({ body }) => {
+            await onCreate(body);
+          }}
+        />
+      )}
+      {currentNote && (
+        <NoteDialog
+          key={currentNote._id}
+          open
+          note={currentNote}
+          threadTitle={threadTitle}
+          onOpenChange={(open) => {
+            if (!open) setSelected(null);
+          }}
+          onSave={async (body) => {
+            await onUpdateBody(currentNote, body);
+            setSelected({ ...currentNote, body, updatedAt: Date.now() });
+          }}
+          onToggleDone={async () => {
+            await onToggleDone(currentNote);
+            const done = currentNote.state !== "done";
+            setSelected({
+              ...currentNote,
+              state: done ? "done" : "open",
+              completedAt: done ? Date.now() : undefined,
+            });
+          }}
+          onDelete={async () => {
+            await onRemove(currentNote);
+            setSelected(null);
+          }}
+        />
+      )}
     </section>
-  );
-}
-
-/**
- * Where a Note is written, deliberately not shaped like one: a saved Note is a
- * raised card on a heavy edge, so this is its inverse — a recessed well, a
- * thinner rule, one radius smaller. At rest it is a single row, opening to a
- * writing surface only while there is a draft.
- */
-function ThreadNoteComposer({
-  onCreate,
-}: {
-  onCreate: (body: string) => Promise<void> | void;
-}) {
-  const [body, setBody] = useState("");
-  const [focused, setFocused] = useState(false);
-  const { run: createNote, isPending } = useGuardedAsyncAction(onCreate, {
-    successMessage: "Note added",
-    errorToast: true,
-  });
-
-  // A draft holds it open past blur, so a stray click cannot swallow one.
-  const open = focused || body.trim().length > 0;
-
-  const submit = async () => {
-    const trimmed = body.trim();
-    if (!trimmed || isPending) return;
-    const result = await createNote(trimmed);
-    if (result.ok) setBody("");
-  };
-
-  return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        void submit();
-      }}
-      onFocus={() => setFocused(true)}
-      onBlur={(event) => {
-        // Focus moving to the Add button is still focus inside the composer.
-        if (event.currentTarget.contains(event.relatedTarget)) return;
-        setFocused(false);
-      }}
-      className={cn(
-        "rounded-2xl border border-border/60 bg-muted/30 px-3 transition-[background-color,border-color] focus-within:border-ring/50 focus-within:bg-muted/50 motion-reduce:transition-none",
-        open ? "py-3" : "py-0",
-      )}
-    >
-      <Textarea
-        variant="inline"
-        aria-label="New Thread Note"
-        value={body}
-        onChange={(event) => setBody(event.target.value)}
-        placeholder="Write a note…"
-        rows={1}
-        disabled={isPending}
-        className={cn(
-          "field-sizing-content text-sm leading-relaxed caret-ring disabled:opacity-100",
-          open ? "min-h-16" : "min-h-10 py-2.5",
-        )}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-            event.preventDefault();
-            void submit();
-          }
-        }}
-      />
-      {open && (
-        <div className="mt-2 flex justify-end">
-          <Button
-            type="submit"
-            size="sm"
-            className="rounded-full px-4"
-            disabled={!body.trim() || isPending}
-            aria-busy={isPending}
-          >
-            Add
-          </Button>
-        </div>
-      )}
-    </form>
   );
 }
 
 function ThreadNoteCard({
   note,
-  onUpdateBody,
+  onOpen,
   onToggleDone,
-  onRemove,
 }: {
   note: ThreadNote;
-  onUpdateBody: (note: ThreadNote, body: string) => Promise<void> | void;
+  onOpen: () => void;
   onToggleDone: (note: ThreadNote) => Promise<void> | void;
-  onRemove: (note: ThreadNote) => Promise<void> | void;
 }) {
   const done = note.state === "done";
-  const { run: updateBody, isPending: isSaving } = useGuardedAsyncAction(
-    (body: string) => onUpdateBody(note, body),
-    { errorToast: true },
-  );
-  const { run: toggleDone, isPending: isToggling } = useGuardedAsyncAction(
+  const { run: toggle, isPending } = useGuardedAsyncAction(
     () => onToggleDone(note),
-    { errorToast: true },
+    {
+      successMessage: done ? "Note reopened" : "Note completed",
+    },
   );
-  const { run: remove, isPending: isRemoving } = useGuardedAsyncAction(
-    () => onRemove(note),
-    { successMessage: "Note deleted", errorToast: true },
-  );
-
+  const timestamp = done
+    ? (note.completedAt ?? note.createdAt)
+    : note.createdAt;
+  const date = new Date(timestamp);
   return (
     <article
       className={cn(
-        "group/card flex flex-col rounded-3xl border-2 border-border/70 bg-surface-2 p-4",
+        "group/card relative flex flex-col rounded-3xl border-2 border-border/70 bg-surface-2 p-4",
         "animate-in fade-in slide-in-from-bottom-2 transition-colors duration-300 hover:border-border has-focus-visible:border-ring/50 motion-reduce:animate-none",
         done && "border-border/40 bg-transparent opacity-70",
       )}
     >
-      <EditableField
-        value={note.body}
-        variant="textarea"
-        onSave={(body) => {
-          if (body && !isSaving) void updateBody(body);
-        }}
-        disabled={isSaving}
-        inputAriaLabel="Edit note body"
-        editOnFocus
-        textareaRows={1}
-        chromeless
-        className={cn(
-          "min-h-0 py-0 text-left text-sm leading-relaxed whitespace-pre-wrap wrap-anywhere caret-ring",
-          done && "text-muted-foreground/60",
-        )}
-      />
-
-      <div className="mt-3 flex items-center gap-1">
-        <ThreadNoteTimestamp note={note} />
-        <span className="ml-auto opacity-0 transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100">
-          <RowDeleteAction
-            label="Delete note"
-            title="Delete note?"
-            description="This note will be permanently removed from this Thread. This action cannot be undone."
-            confirmLabel="Delete"
-            busy={isRemoving}
-            onConfirm={() => {
-              void remove();
-            }}
-          />
-        </span>
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open note: ${markdownToPlainText(note.body).slice(0, 120)}`}
+        className="text-left outline-none after:absolute after:inset-0 after:rounded-3xl focus-visible:after:ring-3 focus-visible:after:ring-ring/30"
+      >
+        <div className="relative max-h-36 overflow-hidden after:pointer-events-none after:absolute after:inset-x-0 after:top-32 after:h-4 after:bg-linear-to-b after:from-transparent after:to-surface-2">
+          <Markdown
+            variant="preview"
+            className={cn("text-sm", done && "text-muted-foreground/60")}
+          >
+            {note.body}
+          </Markdown>
+        </div>
+      </button>
+      <div className="mt-3 flex items-center justify-end gap-2">
+        <time
+          dateTime={date.toISOString()}
+          className="text-2xs text-muted-foreground/60"
+        >
+          {format(date, isThisYear(date) ? "MMM d" : "MMM d, yyyy")}
+        </time>
         <Button
           variant="secondary"
           size="icon-sm"
           className={cn(
-            "group/toggle shrink-0 rounded-full",
+            "group/toggle relative shrink-0 rounded-full",
             done && "bg-transparent text-brand-accent-text",
           )}
-          disabled={isToggling}
-          aria-busy={isToggling}
+          disabled={isPending}
+          aria-busy={isPending}
           aria-label={done ? "Mark note open" : "Mark note done"}
-          onClick={() => {
-            void toggleDone();
+          onClick={(event) => {
+            event.stopPropagation();
+            void toggle();
           }}
         >
           {done ? (
@@ -269,29 +213,5 @@ function ThreadNoteCard({
         </Button>
       </div>
     </article>
-  );
-}
-
-function ThreadNoteTimestamp({ note }: { note: ThreadNote }) {
-  const stamp =
-    note.state === "done" && note.completedAt !== undefined
-      ? note.completedAt
-      : note.updatedAt;
-  const prefix =
-    note.state === "done"
-      ? "Done"
-      : note.updatedAt > note.createdAt
-        ? "Edited"
-        : "Added";
-  const date = new Date(stamp);
-
-  return (
-    <time
-      dateTime={date.toISOString()}
-      title={format(date, "PPpp")}
-      className="pr-1 text-2xs text-muted-foreground/60"
-    >
-      {prefix} {format(date, isThisYear(date) ? "MMM d" : "MMM d, yyyy")}
-    </time>
   );
 }

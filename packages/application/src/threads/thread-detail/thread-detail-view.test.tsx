@@ -647,7 +647,7 @@ describe("ThreadDetailView", () => {
     expect(scrollRegion!.contains(attention)).toBe(false);
     expect(
       scrollRegion!.contains(
-        screen.getByRole("textbox", { name: "New Thread Note" }),
+        screen.getByRole("button", { name: "Write a note…" }),
       ),
     ).toBe(true);
     const notesTab = screen.getByRole("tab", { name: /Notes/ });

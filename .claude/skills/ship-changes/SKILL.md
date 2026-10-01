@@ -65,7 +65,15 @@ Before pushing, run the verification required by `AGENTS.md` for meaningful code
 
 ```bash
 bun run lint
+bun run lint:check
+bun run typecheck
 bun run build
+```
+
+Run `typecheck` separately: the application build excludes tests, but CI type-checks them. After build, also run CI's route-split chunk check from the repo root:
+
+```bash
+bun apps/web/scripts/check-chunks.mjs apps/web/dist
 ```
 
 If tests exist for affected code, also run:
@@ -94,7 +102,10 @@ Use this body:
 
 ## Verification
 - `bun run lint`
+- `bun run lint:check`
+- `bun run typecheck`
 - `bun run build`
+- `bun apps/web/scripts/check-chunks.mjs apps/web/dist`
 - `bun run test:run`
 
 Closes #123

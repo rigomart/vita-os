@@ -13,7 +13,13 @@ import { ThreadNotes } from "./thread-notes";
 
 const PAGE_SIZE = 20;
 
-export function ThreadNotesSection({ threadId }: { threadId: ThreadId }) {
+export function ThreadNotesSection({
+  threadId,
+  threadTitle,
+}: {
+  threadId: ThreadId;
+  threadTitle: string;
+}) {
   const openNotes = useThreadNotes(threadId);
   const doneNotes = useDoneThreadNotes(threadId, PAGE_SIZE);
   const capture = useCaptureThreadNote();
@@ -24,6 +30,7 @@ export function ThreadNotesSection({ threadId }: { threadId: ThreadId }) {
 
   return (
     <ThreadNotes
+      threadTitle={threadTitle}
       // A Thread that is gone reads as no Notes, the way it always did.
       notes={openNotes.data ?? undefined}
       doneNotes={doneNotes.notes}

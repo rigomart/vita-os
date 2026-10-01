@@ -13,6 +13,7 @@ import { ThreadNotesSection } from "./thread-notes-section";
 
 interface ThreadBodyTabsProps {
   threadId: ThreadId;
+  threadTitle: string;
   lastActivityAt?: number;
 }
 
@@ -23,6 +24,7 @@ interface ThreadBodyTabsProps {
  */
 export function ThreadBodyTabs({
   threadId,
+  threadTitle,
   lastActivityAt,
 }: ThreadBodyTabsProps) {
   // The same read ThreadNotesSection observes, so the count costs nothing
@@ -47,7 +49,7 @@ export function ThreadBodyTabs({
       >
         {/* Kept mounted so a half-written Note survives a look at Activity. */}
         <TabsContent value="notes" keepMounted>
-          <ThreadNotesSection threadId={threadId} />
+          <ThreadNotesSection threadId={threadId} threadTitle={threadTitle} />
         </TabsContent>
         <TabsContent value="activity">
           <ActivityLogSection

@@ -1,9 +1,9 @@
 import type { Note } from "@vita-os/contracts";
 
+import { markdownToPlainText } from "@vita-os/ui/components/markdown";
+
 import { useCompleteNote } from "../../notes/use-complete-note";
-import { useUpdateNoteBody } from "../../notes/use-update-note-body";
 import { useUpdateNoteWhen } from "../../notes/use-update-note-when";
-import { EditableField } from "../../ui/editable-field";
 import {
   BoardCard,
   BoardCompleteButton,
@@ -19,20 +19,20 @@ import {
  * has a bold title, and a margin rule rather than a tag, since on this board a
  * pill always means an Area.
  *
- * The body is still the writing surface: click it to edit in place, the same
- * way a Note edits in the Notes panel and on a Thread.
+ * Its two-line plain-text preview opens the full Note view.
  */
 export function DashboardNote({
   currentDate,
   note,
   onTray,
+  onOpenNote,
 }: {
   currentDate: number;
   note: Note;
   onTray?: boolean;
+  onOpenNote: (note: Note) => void;
 }) {
   const completeNote = useCompleteNote();
-  const updateNoteBody = useUpdateNoteBody();
   const updateNoteWhen = useUpdateNoteWhen();
 
   const when = note.attentionDate ?? undefined;
@@ -64,19 +64,14 @@ export function DashboardNote({
         </>
       }
     >
-      <EditableField
-        value={note.body}
-        variant="textarea"
-        onSave={(text) => {
-          if (!text) return;
-          void updateNoteBody(note._id, text);
-        }}
-        inputAriaLabel="Edit note body"
-        editOnFocus
-        textareaRows={1}
-        chromeless
-        className="min-h-0 py-0 text-left text-sm leading-snug whitespace-pre-wrap wrap-anywhere text-foreground/85 caret-ring"
-      />
+      <button
+        type="button"
+        aria-label={`Open note: ${markdownToPlainText(note.body).slice(0, 120)}`}
+        onClick={() => onOpenNote(note)}
+        className="line-clamp-2 min-h-0 rounded-sm py-0 text-left text-sm leading-snug whitespace-pre-line wrap-anywhere text-foreground/85 outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+      >
+        {markdownToPlainText(note.body)}
+      </button>
     </BoardCard>
   );
 }

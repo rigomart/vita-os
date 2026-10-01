@@ -262,6 +262,7 @@ function ThreadDetailContent({ thread }: ThreadDetailContentProps) {
       )}
 
       <ThreadBodyTabs
+        threadTitle={thread.title}
         threadId={thread._id}
         lastActivityAt={thread.lastActivityAt}
       />

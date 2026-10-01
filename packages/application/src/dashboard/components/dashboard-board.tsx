@@ -1,4 +1,4 @@
-import type { AreaSummary } from "@vita-os/contracts";
+import type { AreaSummary, Note } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import {
@@ -13,6 +13,7 @@ import { useState } from "react";
 import type { AttentionBoard, BoardItem } from "./attention-board-model";
 
 import { useIsMobile } from "../../hooks/use-mobile";
+import { StandaloneNoteDialog } from "../../notes/note-view/standalone-note-dialog";
 import { ConnectedThreadAttentionCard } from "../../threads/components/thread-attention-card";
 import { itemId, unscheduledCount } from "./attention-board-model";
 import { DashboardNote } from "./dashboard-note";
@@ -26,13 +27,17 @@ export function DashboardBoard({
   areas,
   board,
   currentDate,
+  emptyState,
 }: {
   areas: AreaSummary[];
   board: AttentionBoard;
   currentDate: number;
+  /** Keep the Note view mounted even when its last open card leaves. */
+  emptyState?: ReactNode;
 }) {
   const areaById = new Map(areas.map((area) => [area._id, area]));
   const isMobile = useIsMobile();
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
   const columns = [
     {
@@ -68,6 +73,7 @@ export function DashboardBoard({
         currentDate={currentDate}
         note={item.note}
         onTray={onTray}
+        onOpenNote={setSelectedNote}
       />
     ) : (
       <ConnectedThreadAttentionCard
@@ -85,64 +91,77 @@ export function DashboardBoard({
   return (
     // No date is a peer of the dated lanes and a little wider, because its
     // cards carry as much as theirs do.
-    <div className="grid gap-6 md:grid-cols-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.25fr)] xl:gap-6">
-      {columns.map((column) => (
-        <BoardLane
-          key={column.key}
-          collapsible={isMobile && column.key === "later"}
-          count={column.items.length}
-          hint={column.hint}
-          title={column.title}
-          tone={column.urgent ? "urgent" : "default"}
-        >
-          <ul className="-mx-1 flex flex-col gap-1.5 px-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-            {column.items.map((item) => (
-              <li key={itemId(item)}>{renderItem(item)}</li>
-            ))}
-            {column.items.length === 0 && (
-              <li className="rounded-xl border border-dashed border-border/60 px-3 py-3 text-xs text-muted-foreground/60">
-                Nothing here.
-              </li>
-            )}
-          </ul>
-        </BoardLane>
-      ))}
-
-      {/* A tray, not a fourth stretch of the calendar: recessed, unruled. */}
-      <BoardLane
-        className="rounded-3xl bg-muted/50 p-3 pb-1 xl:p-4 xl:pb-2"
-        collapsible={isMobile}
-        count={unscheduledCount(board)}
-        element="aside"
-        hint="Not on the calendar"
-        title="No date"
-        tone="tray"
-      >
-        <div className="-mx-1 flex flex-col gap-4 px-1 pb-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-          {runs.map((run) => (
-            <section key={run.key}>
-              <h3 className="flex items-baseline gap-1.5 px-3 pb-1.5 text-xs font-medium text-foreground/70">
-                {run.title}
-                <span className="tabular-nums text-muted-foreground/60">
-                  {run.items.length}
-                </span>
-              </h3>
-              <ul className="flex flex-col gap-1.5">
-                {run.items.map((item) => (
-                  <li key={itemId(item)}>{renderItem(item, true)}</li>
+    <>
+      {emptyState ?? (
+        <div className="grid gap-6 md:grid-cols-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.25fr)] xl:gap-6">
+          {columns.map((column) => (
+            <BoardLane
+              key={column.key}
+              collapsible={isMobile && column.key === "later"}
+              count={column.items.length}
+              hint={column.hint}
+              title={column.title}
+              tone={column.urgent ? "urgent" : "default"}
+            >
+              <ul className="-mx-1 flex flex-col gap-1.5 px-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+                {column.items.map((item) => (
+                  <li key={itemId(item)}>{renderItem(item)}</li>
                 ))}
+                {column.items.length === 0 && (
+                  <li className="rounded-xl border border-dashed border-border/60 px-3 py-3 text-xs text-muted-foreground/60">
+                    Nothing here.
+                  </li>
+                )}
               </ul>
-            </section>
+            </BoardLane>
           ))}
 
-          {runs.length === 0 && (
-            <p className="px-3 py-2 text-xs text-muted-foreground/60">
-              Nothing unscheduled.
-            </p>
-          )}
+          {/* A tray, not a fourth stretch of the calendar: recessed, unruled. */}
+          <BoardLane
+            className="rounded-3xl bg-muted/50 p-3 pb-1 xl:p-4 xl:pb-2"
+            collapsible={isMobile}
+            count={unscheduledCount(board)}
+            element="aside"
+            hint="Not on the calendar"
+            title="No date"
+            tone="tray"
+          >
+            <div className="-mx-1 flex flex-col gap-4 px-1 pb-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+              {runs.map((run) => (
+                <section key={run.key}>
+                  <h3 className="flex items-baseline gap-1.5 px-3 pb-1.5 text-xs font-medium text-foreground/70">
+                    {run.title}
+                    <span className="tabular-nums text-muted-foreground/60">
+                      {run.items.length}
+                    </span>
+                  </h3>
+                  <ul className="flex flex-col gap-1.5">
+                    {run.items.map((item) => (
+                      <li key={itemId(item)}>{renderItem(item, true)}</li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+
+              {runs.length === 0 && (
+                <p className="px-3 py-2 text-xs text-muted-foreground/60">
+                  Nothing unscheduled.
+                </p>
+              )}
+            </div>
+          </BoardLane>
         </div>
-      </BoardLane>
-    </div>
+      )}
+      {selectedNote && (
+        <StandaloneNoteDialog
+          key={selectedNote._id}
+          note={selectedNote}
+          onOpenChange={(open) => {
+            if (!open) setSelectedNote(null);
+          }}
+        />
+      )}
+    </>
   );
 }
 

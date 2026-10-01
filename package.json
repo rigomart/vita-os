@@ -29,7 +29,7 @@
     "format:check": "oxfmt --check .",
     "setup": "bun scripts/dev-setup.ts",
     "test": "turbo run test",
-    "test:run": "turbo run test:run",
+    "test:run": "bun test ./scripts && turbo run test:run",
     "typecheck": "turbo run typecheck",
     "verify": "bun .claude/skills/verify-vita-os/scripts/vita.ts"
   },

@@ -1,6 +1,6 @@
 # Dashboard board
 
-A signed-in user with open Threads or Notes sees the Dashboard board: three dated lanes (`Now`, `This week`, `Later`) and a wider, recessed `No date` tray that groups undated items under `Ready to move`, `Open`, and `Notes`. Threads and Notes share one card: a title, then the Focused Move or the note body at full width, then a footer with the date token and, on a Thread, its Area tag on the left and the set-date and complete controls on the right, shown on hover or focus. A Note has no tag; a short margin rule at its left edge marks it. A late item gets a tint and a negative day token such as `-3d`. With nothing open, the board is replaced by `Nothing is asking for you.`
+A signed-in user with open Threads or Notes sees the Dashboard board: three dated lanes (`Now`, `This week`, `Later`) and a wider, recessed `No date` tray that groups undated items under `Ready to move`, `Open`, and `Notes`. Threads and Notes share one card: a title, then the Focused Move or a two-line plain-text Note preview at full width, then a footer with the date token and, on a Thread, its Area tag on the left and the set-date and complete controls on the right, shown on hover or focus. A Note has no tag; a short margin rule at its left edge marks it. A late item gets a tint and a negative day token such as `-3d`. With nothing open, the board is replaced by `Nothing is asking for you.`
 
 Status: proven on ba85712 (lanes, tray groups, card rows and footer, late tint, empty lane placeholder, hover controls, `board-card-actions` at 1440×900; `board-stack` at 1024×768 and 390×844 with the tray folded and unfolded).
 
@@ -9,7 +9,7 @@ Status: proven on ba85712 (lanes, tray groups, card rows and footer, late tint, 
 - `board-empty` shows `Nothing is asking for you.` when no Thread or Note is open.
 - `board-lanes` sorts dated items into `Now` (late or due today), `This week` (the next six days), and `Later`, each with a count and a hint. An empty lane shows a dashed `Nothing here.` placeholder.
 - `board-tray` groups undated items in the `No date` tray under `Ready to move` (Threads with Moves), `Open` (Threads without), and `Notes`.
-- `board-card` renders Threads and Notes with the same three rows. A Thread card shows `link "<title>"`, the Focused Move, `Set Follow-up`, and `Complete “<move>”`. A Note card shows `textbox "Edit note body"`, `Set attention date`, and `Mark note done`.
+- `board-card` renders Threads and Notes with the same three rows. A Thread card shows `link "<title>"`, the Focused Move, `Set Follow-up`, and `Complete “<move>”`. A Note card shows `button "Open note: <plain-text preview>"`, `Set attention date`, and `Mark note done`.
 - `board-card-actions` completes a Move, dates a Note, and marks a Note done from the card.
 - `board-stack` stacks the lanes two per row at `md` and in one column on a phone, where `Later` and `No date` start folded.
 

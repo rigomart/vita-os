@@ -1,12 +1,12 @@
 import type { Note } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
+import { Markdown, markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format, isThisYear } from "date-fns";
 import { Bell, Check, Undo2 } from "lucide-react";
 
-import { RowDeleteAction, whenTone, WhenPopover } from "../../attention-list";
-import { EditableField } from "../../ui/editable-field";
+import { whenTone, WhenPopover } from "../../attention-list";
 import { useNoteRowActions } from "../note-row/use-note-row-actions";
 
 const whenToneClassName = {
@@ -19,22 +19,19 @@ function shortDate(timestamp: number) {
   return format(date, isThisYear(date) ? "MMM d" : "MMM d, yyyy");
 }
 
-/**
- * A Note as a card, in the same grammar as the new Note dialog: one open
- * writing surface, a heavy edge doing all the containing, and controls floating
- * on the surface rather than framing it. The card is a step down from the
- * dialog — a fainter edge, one radius smaller — so a Note reads as the
- * same kind of object as the one you wrote it in. Nothing precedes the text,
- * because a Note is a thing you wrote, not a line item with a state in front.
- */
-export function NoteCard({ note, now }: { note: Note; now: number }) {
+/** A saved Note previews its body and opens the full Note view. */
+export function NoteCard({
+  note,
+  now,
+  onOpenNote,
+}: {
+  note: Note;
+  now: number;
+  onOpenNote: (note: Note) => void;
+}) {
   const {
-    handleRemove,
     handleToggleComplete,
-    handleUpdateText,
     handleUpdateWhen,
-    isDeletePending,
-    isSavingText,
     isTogglePending,
     isWhenPending,
   } = useNoteRowActions(note);
@@ -46,32 +43,36 @@ export function NoteCard({ note, now }: { note: Note; now: number }) {
   return (
     <article
       className={cn(
-        "group/card flex flex-col rounded-3xl border-2 border-border/70 bg-surface-2 p-4",
+        "group/card relative flex flex-col rounded-3xl border-2 border-border/70 bg-surface-2 p-4",
         "animate-in fade-in slide-in-from-bottom-2 transition-colors duration-300 hover:border-border has-focus-visible:border-ring/50 motion-reduce:animate-none",
         done && "border-border/40 bg-transparent opacity-70",
       )}
     >
-      <EditableField
-        value={note.body}
-        variant="textarea"
-        onSave={(text) => {
-          if (!text || isSavingText) return;
-          handleUpdateText(text);
-        }}
-        disabled={isSavingText}
-        inputAriaLabel="Edit note body"
-        editOnFocus
-        textareaRows={1}
-        chromeless
+      <button
+        type="button"
+        aria-label={`Open note: ${markdownToPlainText(note.body).slice(0, 120)}`}
+        onClick={() => onOpenNote(note)}
         className={cn(
-          "min-h-0 py-0 text-left text-sm leading-relaxed whitespace-pre-wrap wrap-anywhere caret-ring",
-          // Not struck through: a completed Note is still there to be read.
+          "min-w-0 rounded-lg text-left outline-none after:absolute after:inset-0 after:rounded-3xl focus-visible:ring-3 focus-visible:ring-ring/30",
           done && "text-muted-foreground/60",
         )}
-      />
+      >
+        <span className="relative block">
+          <Markdown
+            variant="preview"
+            className="line-clamp-6 max-h-36 overflow-hidden text-sm leading-relaxed"
+          >
+            {note.body}
+          </Markdown>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-linear-to-t from-surface-2 to-transparent"
+          />
+        </span>
+      </button>
 
       {/* No divider: the dialog separates by whitespace, and so does the card. */}
-      <div className="mt-3 flex items-center gap-1">
+      <div className="relative mt-3 flex items-center gap-1">
         <WhenPopover
           when={note.attentionDate}
           busy={isWhenPending}
@@ -109,17 +110,6 @@ export function NoteCard({ note, now }: { note: Note; now: number }) {
         >
           {shortDate(stamp)}
         </time>
-
-        <span className="opacity-0 transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100">
-          <RowDeleteAction
-            label="Delete note"
-            title="Delete note?"
-            description="This note will be permanently removed from your Notes. This action cannot be undone."
-            confirmLabel="Delete"
-            busy={isDeletePending}
-            onConfirm={handleRemove}
-          />
-        </span>
 
         {/* Done is a state, so the icon stays a check — until you reach for it,
             when it becomes the undo it would perform. */}
