@@ -22,6 +22,7 @@ import { ConnectedThreadAttentionCard } from "../../threads/components/thread-at
 import { groupByWhen, itemId, unscheduledCount } from "./attention-board-model";
 import { dateToken } from "./dashboard-model";
 import { DashboardNote } from "./dashboard-note";
+import { LaterHorizon } from "./later-horizon";
 
 /**
  * The lanes sit side by side only at `xl`, where the board owns the viewport's
@@ -31,7 +32,8 @@ import { DashboardNote } from "./dashboard-note";
  * Later starts folded at every size: what it holds is already scheduled, and
  * each item walks into This week on its own once it is six days out. Folded,
  * it is a narrow rail at `xl` and a single ruled heading below it, both
- * stating how many items wait there and when the next one arrives.
+ * stating how many items wait there and when the next one arrives; the rail
+ * also draws them on a horizon, so their spread reads without unfolding.
  */
 export function DashboardBoard({
   areas,
@@ -137,7 +139,12 @@ export function DashboardBoard({
                     ? {
                         open: laterOpen,
                         onOpenChange: setLaterOpen,
-                        rail: true,
+                        rail: (
+                          <LaterHorizon
+                            currentDate={currentDate}
+                            items={column.items}
+                          />
+                        ),
                         next:
                           nextLater === undefined
                             ? undefined
@@ -281,14 +288,15 @@ const tones = {
 
 /**
  * How a lane folds. Without `open`, it keeps its own state and starts folded.
- * A `rail` lane folds at `xl` into a narrow rail rather than a heading over
- * nothing, and says when its soonest item, `next`, arrives.
+ * A lane with a `rail` folds at `xl` into a narrow rail rather than a heading
+ * over nothing: its title and count, when its soonest item arrives (`next`),
+ * and the rail itself under them.
  */
 interface LaneFold {
   next?: string | undefined;
   onOpenChange?: (open: boolean) => void;
   open?: boolean;
-  rail?: boolean;
+  rail?: ReactNode;
 }
 
 /**
@@ -328,7 +336,7 @@ function BoardLane({
 
   const Element = element;
   const { border, title: titleClass } = tones[tone];
-  const railed = fold?.rail === true && !open;
+  const railed = fold?.rail !== undefined && !open;
 
   const titleText = (
     <span className={cn("text-sm font-medium", titleClass)}>{title}</span>
@@ -380,6 +388,7 @@ function BoardLane({
       className={cn(
         "size-4 shrink-0 self-center text-muted-foreground/60 transition-transform group-hover:text-foreground motion-reduce:transition-none",
         open && "rotate-90",
+        railed && "xl:ml-auto",
       )}
     />
   );
@@ -405,25 +414,51 @@ function BoardLane({
             className={cn(
               "group flex w-full items-baseline gap-2 pb-1.5 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/30",
               railed &&
-                "xl:h-full xl:w-14 xl:flex-col xl:items-center xl:gap-1.5 xl:rounded-2xl xl:border xl:border-border/70 xl:py-3 xl:text-center xl:transition-colors xl:hover:bg-muted/60",
+                "xl:h-full xl:w-21 xl:flex-col xl:items-stretch xl:gap-0 xl:rounded-xl xl:pb-0 xl:transition-colors xl:hover:bg-muted/45",
             )}
           >
-            {titleText}
-            {countText}
             {railed ? (
-              // Folded, the hint gives way to when the next item arrives.
+              // Folded, the hint gives way to when the next item arrives. At
+              // `xl` the heading row keeps the lanes' rule, and the next date
+              // and the rail stack under it.
               <>
+                <span
+                  className={cn(
+                    "contents xl:mb-2 xl:flex xl:items-baseline xl:gap-1.5 xl:border-b xl:px-2 xl:pb-1.5",
+                    border,
+                  )}
+                >
+                  {titleText}
+                  {countText}
+                  {fold.next ? (
+                    <span className="ml-auto pl-2 text-[11px] text-muted-foreground/70 tabular-nums xl:hidden">
+                      next {fold.next}
+                    </span>
+                  ) : (
+                    <span className="ml-auto" />
+                  )}
+                  {chevron}
+                </span>
                 {fold.next && (
-                  <span className="ml-auto flex gap-1 pl-2 text-[11px] text-muted-foreground/70 tabular-nums xl:ml-0 xl:flex-col xl:gap-0 xl:pl-0">
-                    <span>next</span> <span>{fold.next}</span>
+                  <span className="hidden px-2 text-[10.5px] leading-snug text-muted-foreground xl:block">
+                    next{" "}
+                    <b className="block text-xs font-semibold text-brand-accent-text tabular-nums">
+                      {fold.next}
+                    </b>
                   </span>
                 )}
-                {!fold.next && <span className="ml-auto xl:hidden" />}
+                <span className="hidden min-h-0 flex-1 flex-col xl:flex">
+                  {fold.rail}
+                </span>
               </>
             ) : (
-              (hintText ?? <span className="ml-auto" />)
+              <>
+                {titleText}
+                {countText}
+                {hintText ?? <span className="ml-auto" />}
+                {chevron}
+              </>
             )}
-            {chevron}
           </CollapsibleTrigger>
         </h2>
 

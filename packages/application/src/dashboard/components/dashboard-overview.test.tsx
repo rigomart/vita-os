@@ -298,8 +298,14 @@ describe("DashboardOverview", () => {
 
     const fold = screen.getByRole("button", { name: /Later/ });
     expect(fold).toHaveAttribute("aria-expanded", "false");
-    expect(fold).toHaveTextContent("Later2next Aug 16");
+    expect(fold).toHaveTextContent(/^Later2next Aug 16/);
     expect(screen.queryByText("Distant")).not.toBeInTheDocument();
+    // The rail's horizon names each item on hover, and only on hover.
+    expect(
+      [...fold.querySelectorAll("[data-label]")].map((mark) =>
+        mark.getAttribute("data-label"),
+      ),
+    ).toEqual(["Distant · Aug 16", "Further · Aug 26"]);
 
     await userEvent.click(fold);
     expect(fold).toHaveAttribute("aria-expanded", "true");
