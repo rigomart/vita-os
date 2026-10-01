@@ -1,7 +1,8 @@
 #!/bin/sh
 # Sets up every new worktree (scripts/dev-setup.ts): dependencies, env files,
 # a migrated local D1, and sample data. Enabled by `bun run setup`, which sets
-# core.hooksPath to .githooks.
+# core.hooksPath to .githooks. Claude Code creates worktrees with git hooks
+# off; .claude/hooks/setup-worktree.ts covers those.
 #
 # Git runs post-checkout on every checkout. A new worktree is the one that
 # starts from the null commit, so anything else returns at once.
