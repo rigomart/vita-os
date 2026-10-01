@@ -68,7 +68,8 @@ export function useNoteRowActions(note: Note) {
     saveBody: (body: string) => updateNoteBody(note._id, body),
     toggleDone: () =>
       note.state === "done" ? uncompleteNote(note) : completeNote(note._id),
-    deleteNote: () => removeNote(note._id),
+    deleteNote: (undoWindow?: () => Promise<boolean>) =>
+      removeNote(note._id, undoWindow),
     setWhen: (when: number | undefined) => updateNoteWhen(note._id, when),
     handleToggleComplete,
     isTogglePending,

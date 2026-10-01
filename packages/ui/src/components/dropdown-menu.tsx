@@ -39,6 +39,8 @@ function DropdownMenuContent({
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
+        // Radix drawers disable body pointer events while this portal is open.
+        style={{ pointerEvents: "auto" }}
       >
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"

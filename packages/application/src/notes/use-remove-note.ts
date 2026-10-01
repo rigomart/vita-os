@@ -5,5 +5,6 @@ import { useDiscardNote } from "./hooks";
 export function useRemoveNote() {
   const discard = useDiscardNote();
 
-  return (noteId: NoteId) => discard.mutateAsync({ noteId });
+  return (noteId: NoteId, undoWindow?: () => Promise<boolean>) =>
+    discard.mutateAsync({ noteId, undoWindow });
 }

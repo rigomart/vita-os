@@ -34,6 +34,8 @@ function PopoverContent({
         side={side}
         sideOffset={sideOffset}
         className="isolate z-50"
+        // Radix drawers disable body pointer events while this portal is open.
+        style={{ pointerEvents: "auto" }}
       >
         <PopoverPrimitive.Popup
           data-slot="popover-content"

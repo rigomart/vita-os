@@ -1,13 +1,46 @@
 import type { Nodes } from "mdast";
 
-import ReactMarkdown, { type Components } from "react-markdown";
+import { CheckIcon } from "lucide-react";
+import { createContext, use } from "react";
+import ReactMarkdown, {
+  type Components,
+  type ExtraProps,
+} from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 
 import { cn } from "../lib/utils";
+import { Checkbox } from "./checkbox";
 import { Separator } from "./separator";
+
+/** The task list item a checkbox belongs to: where it starts in the source. */
+const TaskItemContext = createContext<{ offset?: number; label: string }>({
+  label: "",
+});
+
+type HastElement = NonNullable<ExtraProps["node"]>;
+
+function hastText(node: HastElement | HastElement["children"][number]): string {
+  if (node.type === "text") return node.value;
+  if (node.type !== "element") return "";
+  return node.children.map(hastText).join("");
+}
+
+const taskMarker = /^((?:[-*+]|\d+[.)])[ \t]+)\[([ xX])\]/;
+
+/**
+ * Flip the task marker of the list item that starts at `offset`. Returns the
+ * body unchanged when no task marker starts there.
+ */
+export function toggleMarkdownTask(body: string, offset: number): string {
+  const match = taskMarker.exec(body.slice(offset));
+  if (!match) return body;
+  const at = offset + match[1]!.length + 1;
+  const next = body[at] === " " ? "x" : " ";
+  return body.slice(0, at) + next + body.slice(at + 1);
+}
 
 const linkClassName = "text-primary underline underline-offset-2 break-words";
 
@@ -17,33 +50,56 @@ function safeLink(url: string) {
 
 const components: Components = {
   h1: ({ children }) => (
-    <h1 className="mt-5 mb-2 text-base font-semibold first:mt-0">{children}</h1>
+    <h1 className="mt-5 mb-2 font-heading text-[1.25em] leading-snug font-semibold first:mt-0">
+      {children}
+    </h1>
   ),
   h2: ({ children }) => (
-    <h2 className="mt-4 mb-2 text-base font-semibold first:mt-0">{children}</h2>
+    <h2 className="mt-4 mb-2 font-heading text-[1.125em] leading-snug font-semibold first:mt-0">
+      {children}
+    </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="mt-3 mb-1 text-sm font-semibold first:mt-0">{children}</h3>
+    <h3 className="mt-3 mb-1 font-semibold first:mt-0">{children}</h3>
   ),
   h4: ({ children }) => (
-    <h4 className="mt-3 mb-1 text-sm font-semibold first:mt-0">{children}</h4>
+    <h4 className="mt-3 mb-1 font-semibold first:mt-0">{children}</h4>
   ),
   h5: ({ children }) => (
-    <h5 className="mt-3 mb-1 text-sm font-semibold first:mt-0">{children}</h5>
+    <h5 className="mt-3 mb-1 font-semibold first:mt-0">{children}</h5>
   ),
   h6: ({ children }) => (
-    <h6 className="mt-3 mb-1 text-sm font-semibold first:mt-0">{children}</h6>
+    <h6 className="mt-3 mb-1 font-semibold first:mt-0">{children}</h6>
   ),
   p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
-  ul: ({ children }) => (
-    <ul className="my-2 flex list-disc flex-col gap-1 pl-5">{children}</ul>
+  ul: ({ children, className }) => (
+    <ul
+      className={cn(
+        "my-2 flex list-disc flex-col gap-1 pl-5",
+        className?.includes("contains-task-list") && "list-none pl-0.5",
+      )}
+    >
+      {children}
+    </ul>
   ),
   ol: ({ children, start }) => (
     <ol start={start} className="my-2 flex list-decimal flex-col gap-1 pl-5">
       {children}
     </ol>
   ),
-  li: ({ children }) => <li className="pl-0.5 [&>p]:mb-1">{children}</li>,
+  li: ({ children, className, node }) =>
+    className?.includes("task-list-item") ? (
+      <TaskItemContext
+        value={{
+          offset: node?.position?.start.offset,
+          label: node ? hastText(node).trim() : "",
+        }}
+      >
+        <li className="flex items-start gap-2.5 [&>p]:mb-1">{children}</li>
+      </TaskItemContext>
+    ) : (
+      <li className="pl-0.5 [&>p]:mb-1">{children}</li>
+    ),
   strong: ({ children }) => (
     <strong className="font-semibold">{children}</strong>
   ),
@@ -84,18 +140,54 @@ const components: Components = {
       {children}
     </td>
   ),
-  input: ({ checked }) => <span>{checked ? "[x] " : "[ ] "}</span>,
   img: ({ alt }) => <span>{alt}</span>,
 };
+
+function TaskCheckbox({
+  checked,
+  onToggleTask,
+}: {
+  checked: boolean;
+  onToggleTask?: (offset: number) => void;
+}) {
+  const { offset, label } = use(TaskItemContext);
+
+  if (!onToggleTask || offset === undefined) {
+    // A preview sits inside a card button, so it draws the box without a control.
+    return (
+      <span
+        className={cn(
+          "mt-1 flex size-4 shrink-0 items-center justify-center rounded-[5px] bg-input/90",
+          checked && "bg-primary text-primary-foreground",
+        )}
+      >
+        {checked ? <CheckIcon aria-hidden className="size-3.5" /> : null}
+        <span className="sr-only">{checked ? "Done: " : "To do: "}</span>
+      </span>
+    );
+  }
+
+  return (
+    <Checkbox
+      checked={checked}
+      aria-label={label}
+      onCheckedChange={() => onToggleTask(offset)}
+      className="mt-1"
+    />
+  );
+}
 
 export function Markdown({
   children,
   variant = "read",
   className,
+  onToggleTask,
 }: {
   children: string;
   variant?: "read" | "preview";
   className?: string;
+  /** Makes task list checkboxes interactive; receives the item's source offset. */
+  onToggleTask?: (offset: number) => void;
 }) {
   return (
     <div
@@ -107,6 +199,12 @@ export function Markdown({
         urlTransform={safeLink}
         components={{
           ...components,
+          input: ({ checked }) => (
+            <TaskCheckbox
+              checked={checked === true}
+              onToggleTask={variant === "read" ? onToggleTask : undefined}
+            />
+          ),
           a: ({ children: label, href }) =>
             variant === "read" && href ? (
               <a

@@ -47,6 +47,8 @@ export function createFeedbackMock(): FeedbackMock {
   return {
     success: vi.fn(),
     error: vi.fn(),
+    // Commit at once unless a test chooses to undo.
+    undoable: vi.fn(async () => true),
   };
 }
 

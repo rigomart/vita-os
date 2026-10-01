@@ -1,5 +1,6 @@
 import type { ThreadId } from "@vita-os/contracts";
 
+import { useDeleteNoteWithUndo } from "../../notes/note-view/use-delete-note-with-undo";
 import {
   useCaptureThreadNote,
   useCompleteThreadNote,
@@ -27,6 +28,7 @@ export function ThreadNotesSection({
   const complete = useCompleteThreadNote();
   const reopen = useReopenThreadNote();
   const discard = useDiscardThreadNote();
+  const deleteWithUndo = useDeleteNoteWithUndo();
 
   return (
     <ThreadNotes
@@ -53,9 +55,15 @@ export function ThreadNotesSection({
         if (note.state === "done") await reopen.mutateAsync({ threadId, note });
         else await complete.mutateAsync({ threadId, threadNoteId: note._id });
       }}
-      onRemove={async (note) => {
-        await discard.mutateAsync({ threadId, threadNoteId: note._id });
-      }}
+      onRemove={(note) =>
+        void deleteWithUndo((undoWindow) =>
+          discard.mutateAsync({
+            threadId,
+            threadNoteId: note._id,
+            undoWindow,
+          }),
+        )
+      }
     />
   );
 }

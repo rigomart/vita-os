@@ -101,7 +101,7 @@ The feature map is only as good as its last update, and you are the one who upda
 ## Gotchas
 
 - On a Mac whose display is asleep or locked, Chrome stops producing frames and screenshots hang. The CLI launches every browser session with `--disable-frame-rate-limit` (via `AGENT_BROWSER_ARGS`), which avoids it. Launch args only apply when a session starts, so a session opened with plain `agent-browser` still hangs: close it, or run `bun run verify down` then `up`. Snapshots, `eval`, and `pdf` never need a frame.
-- Saved Notes are read-only preview buttons named `Open note: <plain-text preview>`. Use `wait --text` for saved text and click the button to open the Note view. Its editor is `Note body` after clicking `Edit`.
+- Saved Notes are read-only preview buttons named `Open note: <plain-text preview>`. Use `wait --text` for saved text and click the button to open the Note view. Its editor is `Note body` after choosing the `Write` tab.
 - Use `localhost`, never `127.0.0.1`. CORS allows exactly the instance's `http://localhost:<webPort>` origin.
 - "Continue with GitHub" and "Continue with Google" render but have no local credentials. Do not click them.
 - Keep a desktop viewport. Below 768px the Notes panel becomes a drawer and the "Later" and "No date" columns start collapsed.
