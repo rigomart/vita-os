@@ -1,8 +1,9 @@
 import type { Note, Thread } from "@vita-os/contracts";
 
 import { hasMoves } from "@vita-os/core";
+import { addDays, format } from "date-fns";
 
-import { dayDelta } from "./dashboard-model";
+import { dayDelta, startOfLocalDay } from "./dashboard-model";
 
 /**
  * The Dashboard board is one axis — **when** — plus a margin for everything
@@ -38,6 +39,32 @@ export type BoardItem =
 
 /** The last six days of "soon" — day 7 and beyond reads as Later. */
 const WEEK_HORIZON = 6;
+
+/** From four weeks out, a week is too fine a grain and a month takes over. */
+const MONTH_HORIZON = 28;
+
+/**
+ * A run of a column's items that come due together, under one heading.
+ *
+ * The grain widens with distance: Now splits into Late and Today, This week
+ * into its days, Later into weeks and then months. Every group reads the way a
+ * lane does — label, count, then a quiet hint — so a column says when its
+ * items come due without anyone reading each card's date.
+ */
+export interface BoardGroup {
+  /**
+   * The heading names the one day every item under it comes due, so its cards
+   * leave their date to the heading.
+   */
+  exact: boolean;
+  /** The weekday beside Tomorrow, how far out a day is, or a week's span. */
+  hint?: string;
+  items: BoardItem[];
+  key: string;
+  label: string;
+  /** How loudly the heading reads: nearer is louder, and late alarms. */
+  tone: "far" | "late" | "near" | "soon" | "today" | "week";
+}
 
 export function buildAttentionBoard(
   threads: Thread[],
@@ -105,6 +132,80 @@ export function unscheduledCount(board: AttentionBoard) {
     board.unscheduled.open.length +
     board.unscheduled.notes.length
   );
+}
+
+/**
+ * Splits a column's soonest-first items into the groups their dates fall in,
+ * keeping their order. A day with nothing due gets no heading.
+ */
+export function groupByWhen(
+  items: BoardItem[],
+  currentDate: number,
+): BoardGroup[] {
+  const groups: BoardGroup[] = [];
+  for (const item of items) {
+    const group = groupFor(item.when ?? currentDate, currentDate);
+    const last = groups.at(-1);
+    if (last?.key === group.key) last.items.push(item);
+    else groups.push({ ...group, items: [item] });
+  }
+  return groups;
+}
+
+function groupFor(
+  when: number,
+  currentDate: number,
+): Omit<BoardGroup, "items"> {
+  const days = dayDelta(when, currentDate);
+  if (days < 0)
+    return { key: "late", label: "Late", exact: false, tone: "late" };
+  if (days === 0) {
+    return { key: "today", label: "Today", exact: true, tone: "today" };
+  }
+  if (days === 1) {
+    return {
+      key: "day-1",
+      label: "Tomorrow",
+      hint: format(when, "EEEE"),
+      exact: true,
+      tone: "near",
+    };
+  }
+  if (days <= WEEK_HORIZON) {
+    return {
+      key: `day-${days}`,
+      label: format(when, "EEEE"),
+      hint: `${days}d`,
+      exact: true,
+      tone: days <= 3 ? "soon" : "week",
+    };
+  }
+  if (days < MONTH_HORIZON) {
+    const weeks = Math.floor(days / 7);
+    const today = startOfLocalDay(currentDate);
+    return {
+      key: `week-${weeks}`,
+      label: weeks === 1 ? "In 1 week" : `In ${weeks} weeks`,
+      hint: span(addDays(today, weeks * 7), addDays(today, weeks * 7 + 6)),
+      exact: false,
+      tone: "far",
+    };
+  }
+  const sameYear =
+    new Date(when).getFullYear() === new Date(currentDate).getFullYear();
+  return {
+    key: `month-${format(when, "yyyy-MM")}`,
+    label: format(when, sameYear ? "MMMM" : "MMMM yyyy"),
+    exact: false,
+    tone: "far",
+  };
+}
+
+/** Oct 8–14, or Oct 29–Nov 4 across a month's end. */
+function span(start: Date, end: Date) {
+  return start.getMonth() === end.getMonth()
+    ? `${format(start, "MMM d")}–${format(end, "d")}`
+    : `${format(start, "MMM d")}–${format(end, "MMM d")}`;
 }
 
 /** The Thread or Note behind an item, whichever it is. */

@@ -74,16 +74,19 @@ export function BoardTag({ icon, label }: { icon: ReactNode; label: string }) {
 }
 
 /**
- * The item's date as a token that opens the picker. Undated, it is only a
- * revealed control, so `BoardCard` footers place it with the other controls.
+ * The item's date as a token that opens the picker. Undated — or dated under
+ * a heading that already names its day — it is only a revealed control, so
+ * `BoardCard` footers place it with the other controls.
  */
 export function BoardDate({
   currentDate,
+  inHeading = false,
   labels,
   onSetWhen,
   when,
 }: {
   currentDate: number;
+  inHeading?: boolean;
   labels: { change: string; set: string };
   onSetWhen: (when: number | undefined) => void;
   when?: number;
@@ -93,8 +96,11 @@ export function BoardDate({
       when={when}
       onSetWhen={onSetWhen}
       trigger={
-        when === undefined ? (
-          <BoardControl className={revealed} label={labels.set}>
+        when === undefined || inHeading ? (
+          <BoardControl
+            className={revealed}
+            label={when === undefined ? labels.set : labels.change}
+          >
             <CalendarClock className="size-3.5" />
           </BoardControl>
         ) : (

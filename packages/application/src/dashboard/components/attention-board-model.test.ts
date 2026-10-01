@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   boardItems,
   buildAttentionBoard,
+  groupByWhen,
   itemId,
   unscheduledCount,
 } from "./attention-board-model";
@@ -188,5 +189,85 @@ describe("buildAttentionBoard", () => {
     );
 
     expect(board.unscheduled.open.map(itemId)).toEqual(["cleared"]);
+  });
+});
+
+describe("groupByWhen", () => {
+  const groupsOf = (...offsets: number[]) => {
+    const board = buildAttentionBoard(
+      offsets.map((offset, order) =>
+        thread(`d${offset}`, { followUp: day(offset), order }),
+      ),
+      [],
+      currentDate,
+    );
+    return groupByWhen(
+      [...board.now, ...board.week, ...board.later],
+      currentDate,
+    ).map(({ items, key: _key, ...group }) => ({
+      ...group,
+      items: items.map(itemId),
+    }));
+  };
+
+  it("splits Now into Late and Today, and only Today names the cards' day", () => {
+    expect(groupsOf(-3, -1, 0)).toEqual([
+      { label: "Late", exact: false, tone: "late", items: ["d-3", "d-1"] },
+      { label: "Today", exact: true, tone: "today", items: ["d0"] },
+    ]);
+  });
+
+  it("gives each day of the week ahead that has something due its own heading", () => {
+    expect(groupsOf(1, 2, 2, 5)).toEqual([
+      {
+        label: "Tomorrow",
+        hint: "Saturday",
+        exact: true,
+        tone: "near",
+        items: ["d1"],
+      },
+      {
+        label: "Sunday",
+        hint: "2d",
+        exact: true,
+        tone: "soon",
+        items: ["d2", "d2"],
+      },
+      {
+        label: "Wednesday",
+        hint: "5d",
+        exact: true,
+        tone: "week",
+        items: ["d5"],
+      },
+    ]);
+  });
+
+  it("widens Later's grain to weeks, then months", () => {
+    expect(groupsOf(7, 13, 14, 27, 28, 200)).toEqual([
+      {
+        label: "In 1 week",
+        hint: "Jul 24–30",
+        exact: false,
+        tone: "far",
+        items: ["d7", "d13"],
+      },
+      {
+        label: "In 2 weeks",
+        hint: "Jul 31–Aug 6",
+        exact: false,
+        tone: "far",
+        items: ["d14"],
+      },
+      {
+        label: "In 3 weeks",
+        hint: "Aug 7–13",
+        exact: false,
+        tone: "far",
+        items: ["d27"],
+      },
+      { label: "August", exact: false, tone: "far", items: ["d28"] },
+      { label: "February 2027", exact: false, tone: "far", items: ["d200"] },
+    ]);
   });
 });

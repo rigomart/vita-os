@@ -1,6 +1,6 @@
 # Dashboard time columns with an unscheduled margin
 
-Status: Amended by ADR 0021 — the row of Area Conditions becomes an Area filter row (All · each Area · No area), and a card's Area is a neutral icon-and-name tag instead of a Condition-coloured glyph. Amended by ADR 0022 — a card's title always heads it, with the Focused Move, the only Move, or a Move count in a fixed second row; **Ready to move** holds every undated Thread with at least one Move.
+Status: Amended by ADR 0021 — the row of Area Conditions becomes an Area filter row (All · each Area · No area), and a card's Area is a neutral icon-and-name tag instead of a Condition-coloured glyph. Amended by ADR 0022 — a card's title always heads it, with the Focused Move, the only Move, or a Move count in a fixed second row; **Ready to move** holds every undated Thread with at least one Move. Amended by ADR 0026 — **Later** starts folded at every size, a rail at `xl` stating its count and next date; each dated column groups its cards by when they come due (Late · Today, each day, then weeks and months), and a card under a heading that names its day drops its date token.
 
 The **Dashboard** lays every **Open Thread** and every open **Standalone Note** on one axis of time: three full-height columns — **Now** (late or due today), **This week** (the next six days), **Later** — beside a margin holding everything unscheduled, in three labelled runs: **Ready to move**, **Open**, **Notes**. A single row above carries the date, the **Area Conditions** as status, and four counts. Each column scrolls itself.
 

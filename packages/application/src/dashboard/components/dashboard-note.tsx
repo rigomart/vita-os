@@ -23,11 +23,14 @@ import {
  */
 export function DashboardNote({
   currentDate,
+  dateInHeading = false,
   note,
   onTray,
   onOpenNote,
 }: {
   currentDate: number;
+  /** The group heading above already names this Note's day. */
+  dateInHeading?: boolean;
   note: Note;
   onTray?: boolean;
   onOpenNote: (note: Note) => void;
@@ -36,9 +39,11 @@ export function DashboardNote({
   const updateNoteWhen = useUpdateNoteWhen();
 
   const when = note.attentionDate ?? undefined;
+  const showsDate = when !== undefined && !dateInHeading;
   const attentionDate = (
     <BoardDate
       currentDate={currentDate}
+      inHeading={dateInHeading}
       labels={{ change: "Change attention date", set: "Set attention date" }}
       onSetWhen={(next) => void updateNoteWhen(note._id, next)}
       when={when}
@@ -52,10 +57,10 @@ export function DashboardNote({
       ruled
       footer={
         <>
-          {when !== undefined && attentionDate}
+          {showsDate && attentionDate}
 
           <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-1">
-            {when === undefined && attentionDate}
+            {!showsDate && attentionDate}
             <BoardCompleteButton
               label="Mark note done"
               onClick={() => void completeNote(note._id)}
