@@ -14,6 +14,7 @@ import {
   SquareCheck,
 } from "lucide-react";
 
+import { withTimeToken } from "../../attention-list/date-parts";
 import { getActivityLogEntryLabel } from "../activity-log-entry";
 
 interface ActivityLogProps {
@@ -278,20 +279,36 @@ function getDayLabel(createdAt: number) {
 }
 
 function getAutomaticChangeSummary(log: AutomaticActivityLogEntry) {
-  if (log.previousValue && log.newValue) {
-    return `${log.previousValue} → ${log.newValue}`;
+  const previousValue = displayValue(log, log.previousValue);
+  const newValue = displayValue(log, log.newValue);
+
+  if (previousValue && newValue) {
+    return `${previousValue} → ${newValue}`;
   }
 
-  if (log.newValue) return `Set to ${log.newValue}`;
+  if (newValue) return `Set to ${newValue}`;
 
-  if (log.previousValue) {
+  if (previousValue) {
     const completed =
       log.type === "move_completed" ||
       (log.type === "next_move_change" && log.content.startsWith("Completed"));
     return completed
-      ? `Completed ${log.previousValue}`
-      : `Cleared ${log.previousValue}`;
+      ? `Completed ${previousValue}`
+      : `Cleared ${previousValue}`;
   }
 
   return log.content;
+}
+
+/**
+ * A Follow-up change records the raw timestamp, written here in the reader's
+ * own time zone. Entries recorded before that hold their date already
+ * written, and read as they are.
+ */
+function displayValue(log: AutomaticActivityLogEntry, value?: string) {
+  if (log.type !== "follow_up_change" || !value || !/^\d+$/.test(value)) {
+    return value;
+  }
+  const when = Number(value);
+  return withTimeToken(format(when, "MMM d, yyyy"), when);
 }

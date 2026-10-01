@@ -43,6 +43,26 @@ describe("ActivityLog", () => {
     expect(screen.queryByRole("button", { name: "Add note" })).toBeNull();
   });
 
+  it("writes a recorded Follow-up in the reader's time zone, time and all", () => {
+    const may20 = new Date(2026, 4, 20).getTime();
+    const jun1At3 = new Date(2026, 5, 1, 15).getTime();
+
+    render(
+      <ActivityLog
+        logs={[
+          {
+            ...followUp,
+            content: "Follow-up changed",
+            previousValue: String(may20),
+            newValue: String(jun1At3),
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("May 20, 2026 → Jun 1, 2026 · 3 PM")).toBeVisible();
+  });
+
   it("groups automatic changes by day", () => {
     const currentTime = Date.now();
     const yesterday = subDays(new Date(currentTime), 1).getTime();
