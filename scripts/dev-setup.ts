@@ -10,6 +10,9 @@
  *
  * `.githooks/post-checkout` runs it in every new git worktree, so a worktree
  * opens ready to use. Run it once in the main checkout to turn that hook on.
+ * Claude Code creates worktrees with git hooks off, so for those
+ * `.claude/hooks/setup-worktree.ts` runs it instead, once: it skips a checkout
+ * that holds SETUP_MARKER.
  */
 import { spawn, spawnSync } from "node:child_process";
 import {
@@ -18,6 +21,7 @@ import {
   existsSync,
   readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { createServer } from "node:net";
 import { dirname, join, relative, resolve } from "node:path";
@@ -37,6 +41,9 @@ const DEV_PASSWORD = "vita-dev-password";
 const SEED_ORIGIN = "http://localhost:5173";
 
 const flags = new Set(process.argv.slice(2));
+
+/** Left in this checkout's git dir once setup succeeds. */
+const SETUP_MARKER = "vita-setup-done";
 
 function log(message: string): void {
   console.log(`vita setup: ${message}`);
@@ -76,7 +83,12 @@ function enableWorktreeHook(): void {
     ["git", "config", "--get", "core.hooksPath"],
     ROOT,
   ).output.trim();
-  if (current === ".githooks") return;
+  if (
+    current === ".githooks" ||
+    current === join(primaryCheckout(), ".githooks")
+  ) {
+    return;
+  }
   if (current !== "") {
     log(
       `core.hooksPath is ${current}; leaving it, so new worktrees won't set up`,
@@ -422,6 +434,11 @@ async function main(): Promise<void> {
   log("local D1 migrated");
 
   if (!flags.has("--no-seed")) await seed();
+
+  const gitDir = run(["git", "rev-parse", "--absolute-git-dir"], ROOT);
+  if (gitDir.code === 0) {
+    writeFileSync(join(gitDir.output.trim(), SETUP_MARKER), "");
+  }
 
   log(`ready: bun run dev, then sign in as ${DEV_EMAIL} / ${DEV_PASSWORD}`);
 }

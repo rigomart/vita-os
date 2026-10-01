@@ -27,7 +27,7 @@ Vita OS is a personal life-awareness app: open Threads and standalone Notes, opt
 
 ## Worktrees
 
-- Parallel sessions work in git worktrees under `.claude/worktrees/`. A new worktree sets itself up: `.githooks/post-checkout` runs `bun run setup`, which installs dependencies, copies `apps/api/.dev.vars` and `apps/web/.env.local` from the main checkout, migrates the local D1, and seeds `dev@vita.test` / `vita-dev-password` with sample data.
+- Parallel sessions work in git worktrees under `.claude/worktrees/`. A new worktree sets itself up: `bun run setup` runs from `.githooks/post-checkout` after `git worktree add`, and from `.claude/hooks/setup-worktree.ts` when Claude Code creates the worktree, since Claude Code runs `git worktree add` with git hooks off. Setup installs dependencies, copies `apps/api/.dev.vars` and `apps/web/.env.local` from the main checkout, migrates the local D1, and seeds `dev@vita.test` / `vita-dev-password` with sample data.
 - If a worktree is missing any of that, run `bun run setup`. It is idempotent. `bun run setup --reset` wipes and reseeds the local D1. Without `BROWSER_ORIGIN` in `.dev.vars` every browser request fails CORS.
 - Never symlink `node_modules` between worktrees: bun's workspace links would resolve `@vita-os/*` to another checkout's source.
 - Only one agent at a time adds a migration. Migrations apply in order, so parallel ones produce a conflicting history.
