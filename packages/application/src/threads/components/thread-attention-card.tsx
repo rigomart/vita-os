@@ -41,6 +41,7 @@ export function ThreadAttentionCard({
   actions,
   area,
   currentDate,
+  dateInHeading = false,
   onCompleteMove,
   onSetFollowUp,
   onTray,
@@ -49,6 +50,8 @@ export function ThreadAttentionCard({
   actions?: ReactNode;
   area?: AreaSummary;
   currentDate: number;
+  /** The group heading above already names this Thread's day. */
+  dateInHeading?: boolean;
   onCompleteMove: (moveId: MoveId) => void;
   onSetFollowUp: (when: number | undefined) => void;
   onTray?: boolean;
@@ -58,9 +61,11 @@ export function ThreadAttentionCard({
   const lead = leadMove(thread);
   const focused = lead !== undefined && lead._id === thread.focusedMoveId;
   const followUp = thread.followUp ?? undefined;
+  const showsDate = followUp !== undefined && !dateInHeading;
   const followUpDate = (
     <BoardDate
       currentDate={currentDate}
+      inHeading={dateInHeading}
       labels={{ change: "Change Follow-up", set: "Set Follow-up" }}
       onSetWhen={onSetFollowUp}
       when={followUp}
@@ -73,7 +78,7 @@ export function ThreadAttentionCard({
       onTray={onTray}
       footer={
         <>
-          {followUp !== undefined && followUpDate}
+          {showsDate && followUpDate}
           {area && (
             <BoardTag
               icon={<AreaIcon icon={area.icon} className="size-3 shrink-0" />}
@@ -95,7 +100,7 @@ export function ThreadAttentionCard({
               />
             )}
             <span className="flex items-center gap-1.5">
-              {followUp === undefined && followUpDate}
+              {!showsDate && followUpDate}
               {lead !== undefined && (
                 <BoardCompleteButton
                   label={`Complete “${lead.text}”`}
@@ -157,11 +162,13 @@ export function ThreadAttentionCard({
 export function ConnectedThreadAttentionCard({
   area,
   currentDate,
+  dateInHeading,
   onTray,
   thread,
 }: {
   area?: AreaSummary;
   currentDate: number;
+  dateInHeading?: boolean;
   onTray?: boolean;
   thread: Thread;
 }) {
@@ -172,6 +179,7 @@ export function ConnectedThreadAttentionCard({
     <ThreadAttentionCard
       area={area}
       currentDate={currentDate}
+      dateInHeading={dateInHeading}
       onTray={onTray}
       thread={thread}
       onCompleteMove={(moveId) => void completeMove(moveId)}

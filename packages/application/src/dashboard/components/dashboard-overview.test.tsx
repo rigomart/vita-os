@@ -270,13 +270,15 @@ describe("DashboardOverview", () => {
       ],
     });
 
-    const now = screen.getByRole("region", { name: "Now" });
-    expect(within(now).getByText("2")).toBeVisible();
-    const week = screen.getByRole("region", { name: "This week" });
-    expect(within(week).getByText("1")).toBeVisible();
+    const laneHeading = (name: string) =>
+      within(screen.getByRole("region", { name })).getByRole("heading", {
+        level: 2,
+      });
+    expect(laneHeading("Now")).toHaveTextContent(/^Now2/);
+    expect(laneHeading("This week")).toHaveTextContent(/^This week1/);
   });
 
-  it("puts dated Threads and Notes in the column their date earns", () => {
+  it("puts dated Threads and Notes in the column their date earns", async () => {
     renderOverview({
       threads: [
         thread("Overdue", { followUp: currentDate - DAY }),
@@ -294,7 +296,71 @@ describe("DashboardOverview", () => {
     expect(columnText("This week")).toEqual([
       expect.stringContaining("Midweek"),
     ]);
+    await userEvent.click(screen.getByRole("button", { name: /Later/ }));
     expect(columnText("Later")).toEqual([expect.stringContaining("Distant")]);
+  });
+
+  it("starts Later folded, saying how many wait there and when the next arrives", async () => {
+    renderOverview({
+      threads: [
+        thread("Distant", { followUp: currentDate + 30 * DAY }),
+        thread("Further", { followUp: currentDate + 40 * DAY, order: 1 }),
+      ],
+    });
+
+    const fold = screen.getByRole("button", { name: /Later/ });
+    expect(fold).toHaveAttribute("aria-expanded", "false");
+    expect(fold).toHaveTextContent(/^Later2next Aug 16/);
+    expect(screen.queryByText("Distant")).not.toBeInTheDocument();
+    // The rail's horizon names each item on hover, and only on hover.
+    expect(
+      [...fold.querySelectorAll("[data-label]")].map((mark) =>
+        mark.getAttribute("data-label"),
+      ),
+    ).toEqual(["Distant · Aug 16", "Further · Aug 26"]);
+
+    await userEvent.click(fold);
+    expect(fold).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Distant")).toBeVisible();
+    expect(fold).toHaveTextContent("Dated beyond this week");
+
+    await userEvent.click(fold);
+    expect(screen.queryByText("Distant")).not.toBeInTheDocument();
+  });
+
+  it("heads each column's runs with when they come due, and leaves an exact day to its heading", () => {
+    renderOverview({
+      threads: [
+        thread("Overdue", { followUp: currentDate - 3 * DAY }),
+        thread("Dentist", { followUp: currentDate }),
+        thread("Tomorrow one", { followUp: currentDate + DAY, order: 1 }),
+        thread("Sunday one", { followUp: currentDate + 2 * DAY, order: 2 }),
+        thread("Sunday two", { followUp: currentDate + 2 * DAY, order: 3 }),
+      ],
+    });
+
+    const group = (lane: string, name: string) =>
+      within(screen.getByRole("region", { name: lane })).getByRole("region", {
+        name,
+      });
+
+    // A late card keeps its own date: "Late" says only that it slipped.
+    expect(group("Now", "Late")).toHaveTextContent("Late1");
+    expect(within(group("Now", "Late")).getByText("−3d")).toBeVisible();
+    // Only the heading says Today; the card under it carries no token.
+    expect(within(group("Now", "Today")).getAllByText(/Today/)).toHaveLength(1);
+
+    const tomorrow = group("This week", "Tomorrow");
+    expect(tomorrow).toHaveTextContent(/^Tomorrow1Saturday/);
+    expect(within(tomorrow).queryByText("Sat")).not.toBeInTheDocument();
+    // The date still opens from the card, as a control rather than a token.
+    expect(
+      within(tomorrow).getByRole("button", { name: "Change Follow-up" }),
+    ).toBeInTheDocument();
+
+    const sunday = group("This week", "Sunday");
+    expect(sunday).toHaveTextContent(/^Sunday22d/);
+    expect(within(sunday).getAllByRole("listitem")).toHaveLength(2);
   });
 
   /**

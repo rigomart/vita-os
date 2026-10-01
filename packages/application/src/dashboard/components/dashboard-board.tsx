@@ -10,18 +10,30 @@ import { cn } from "@vita-os/ui/lib/utils";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 
-import type { AttentionBoard, BoardItem } from "./attention-board-model";
+import type {
+  AttentionBoard,
+  BoardGroup,
+  BoardItem,
+} from "./attention-board-model";
 
 import { useIsMobile } from "../../hooks/use-mobile";
 import { StandaloneNoteDialog } from "../../notes/note-view/standalone-note-dialog";
 import { ConnectedThreadAttentionCard } from "../../threads/components/thread-attention-card";
-import { itemId, unscheduledCount } from "./attention-board-model";
+import { groupByWhen, itemId, unscheduledCount } from "./attention-board-model";
+import { dateToken } from "./dashboard-model";
 import { DashboardNote } from "./dashboard-note";
+import { LaterHorizon } from "./later-horizon";
 
 /**
  * The lanes sit side by side only at `xl`, where the board owns the viewport's
  * height and each lane scrolls. Below it they stack and the page scrolls, and
- * on a phone Later and the No date tray start folded.
+ * on a phone the No date tray starts folded.
+ *
+ * Later starts folded at every size: what it holds is already scheduled, and
+ * each item walks into This week on its own once it is six days out. Folded,
+ * it is a narrow rail at `xl` and a single ruled heading below it, both
+ * stating how many items wait there and when the next one arrives; the rail
+ * also draws them on a horizon, so their spread reads without unfolding.
  */
 export function DashboardBoard({
   areas,
@@ -38,6 +50,7 @@ export function DashboardBoard({
   const areaById = new Map(areas.map((area) => [area._id, area]));
   const isMobile = useIsMobile();
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [laterOpen, setLaterOpen] = useState(false);
 
   const columns = [
     {
@@ -67,10 +80,16 @@ export function DashboardBoard({
     { key: "notes", title: "Notes", items: board.unscheduled.notes },
   ].filter((run) => run.items.length > 0);
 
-  const renderItem = (item: BoardItem, onTray = false) =>
+  const nextLater = board.later[0]?.when;
+
+  const renderItem = (
+    item: BoardItem,
+    { dateInHeading = false, onTray = false } = {},
+  ) =>
     item.kind === "note" ? (
       <DashboardNote
         currentDate={currentDate}
+        dateInHeading={dateInHeading}
         note={item.note}
         onTray={onTray}
         onOpenNote={setSelectedNote}
@@ -83,6 +102,7 @@ export function DashboardBoard({
             : areaById.get(item.thread.areaId)
         }
         currentDate={currentDate}
+        dateInHeading={dateInHeading}
         onTray={onTray}
         thread={item.thread}
       />
@@ -90,54 +110,103 @@ export function DashboardBoard({
 
   return (
     // No date is a peer of the dated lanes and a little wider, because its
-    // cards carry as much as theirs do.
+    // cards carry as much as theirs do. While Later is a rail, This week takes
+    // the width it gives up, since that is where days need the room.
     <>
       {emptyState ?? (
-        <div className="grid gap-6 md:grid-cols-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.25fr)] xl:gap-6">
-          {columns.map((column) => (
-            <BoardLane
-              key={column.key}
-              collapsible={isMobile && column.key === "later"}
-              count={column.items.length}
-              hint={column.hint}
-              title={column.title}
-              tone={column.urgent ? "urgent" : "default"}
-            >
-              <ul className="-mx-1 flex flex-col gap-1.5 px-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-                {column.items.map((item) => (
-                  <li key={itemId(item)}>{renderItem(item)}</li>
-                ))}
-                {column.items.length === 0 && (
-                  <li className="rounded-xl border border-dashed border-border/60 px-3 py-3 text-xs text-muted-foreground/60">
-                    Nothing here.
-                  </li>
-                )}
-              </ul>
-            </BoardLane>
-          ))}
+        <div
+          className={cn(
+            "grid gap-6 md:grid-cols-2 xl:min-h-0 xl:flex-1 xl:gap-6",
+            laterOpen
+              ? "xl:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.25fr)]"
+              : "xl:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_auto_minmax(0,1.25fr)]",
+          )}
+        >
+          {columns.map((column) => {
+            const later = column.key === "later";
+            return (
+              <BoardLane
+                key={column.key}
+                // Below `xl` a folded Later is one heading; it spans the row
+                // rather than leave a hole beside the tray.
+                className={cn(later && "md:col-span-2 xl:col-span-1")}
+                count={column.items.length}
+                hint={column.hint}
+                title={column.title}
+                tone={column.urgent ? "urgent" : "default"}
+                fold={
+                  later
+                    ? {
+                        open: laterOpen,
+                        onOpenChange: setLaterOpen,
+                        rail: (
+                          <LaterHorizon
+                            currentDate={currentDate}
+                            items={column.items}
+                          />
+                        ),
+                        next:
+                          nextLater === undefined
+                            ? undefined
+                            : dateToken(nextLater, currentDate),
+                      }
+                    : undefined
+                }
+              >
+                <div className="-mx-1 flex flex-col gap-3 px-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+                  {groupByWhen(column.items, currentDate).map((group) => (
+                    <section key={group.key} aria-label={group.label}>
+                      <RunHeading
+                        className={cn(
+                          groupTones[group.tone],
+                          "xl:sticky xl:top-0 xl:z-20 xl:bg-surface-1",
+                        )}
+                        count={group.items.length}
+                        hint={group.hint}
+                        title={group.label}
+                      />
+                      <ul className="flex flex-col gap-1.5">
+                        {group.items.map((item) => (
+                          <li key={itemId(item)}>
+                            {renderItem(item, { dateInHeading: group.exact })}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  ))}
+                  {column.items.length === 0 && (
+                    <p className="rounded-xl border border-dashed border-border/60 px-3 py-3 text-xs text-muted-foreground/60">
+                      Nothing here.
+                    </p>
+                  )}
+                </div>
+              </BoardLane>
+            );
+          })}
 
           {/* A tray, not a fourth stretch of the calendar: recessed, unruled. */}
           <BoardLane
-            className="rounded-3xl bg-muted/50 p-3 pb-1 xl:p-4 xl:pb-2"
-            collapsible={isMobile}
+            className="rounded-3xl bg-muted/50 p-3 pb-1 md:col-span-2 xl:col-span-1 xl:p-4 xl:pb-2"
             count={unscheduledCount(board)}
             element="aside"
             hint="Not on the calendar"
             title="No date"
             tone="tray"
+            fold={isMobile ? {} : undefined}
           >
             <div className="-mx-1 flex flex-col gap-4 px-1 pb-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
               {runs.map((run) => (
-                <section key={run.key}>
-                  <h3 className="flex items-baseline gap-1.5 px-3 pb-1.5 text-xs font-medium text-foreground/70">
-                    {run.title}
-                    <span className="tabular-nums text-muted-foreground/60">
-                      {run.items.length}
-                    </span>
-                  </h3>
+                <section key={run.key} aria-label={run.title}>
+                  <RunHeading
+                    className="text-foreground/70"
+                    count={run.items.length}
+                    title={run.title}
+                  />
                   <ul className="flex flex-col gap-1.5">
                     {run.items.map((item) => (
-                      <li key={itemId(item)}>{renderItem(item, true)}</li>
+                      <li key={itemId(item)}>
+                        {renderItem(item, { onTray: true })}
+                      </li>
                     ))}
                   </ul>
                 </section>
@@ -165,6 +234,49 @@ export function DashboardBoard({
   );
 }
 
+/** Nearer reads louder; late alarms, as its cards' dates do. */
+const groupTones: Record<BoardGroup["tone"], string> = {
+  late: "text-condition-attention",
+  today: "text-foreground",
+  near: "text-foreground/85",
+  soon: "text-foreground/70",
+  week: "text-foreground/55",
+  far: "text-muted-foreground",
+};
+
+/**
+ * The heading over one run of cards, in a lane or on the tray: what the run
+ * is, how many it holds, and a quiet hint flush right.
+ */
+function RunHeading({
+  className,
+  count,
+  hint,
+  title,
+}: {
+  className?: string;
+  count: number;
+  hint?: string;
+  title: string;
+}) {
+  return (
+    <h3
+      className={cn(
+        "flex items-baseline gap-1.5 px-3 pb-1.5 text-xs font-medium",
+        className,
+      )}
+    >
+      {title}
+      <span className="tabular-nums text-muted-foreground/60">{count}</span>
+      {hint && (
+        <span className="ml-auto truncate pl-2 text-[11px] font-normal text-muted-foreground/60">
+          {hint}
+        </span>
+      )}
+    </h3>
+  );
+}
+
 const tones = {
   urgent: {
     border: "border-condition-attention/50",
@@ -175,88 +287,184 @@ const tones = {
 };
 
 /**
+ * How a lane folds. Without `open`, it keeps its own state and starts folded.
+ * A lane with a `rail` folds at `xl` into a narrow rail rather than a heading
+ * over nothing: its title and count, when its soonest item arrives (`next`),
+ * and the rail itself under them.
+ */
+interface LaneFold {
+  next?: string | undefined;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
+  rail?: ReactNode;
+}
+
+/**
  * One lane: a ruled heading — title, count, and what the lane holds — and its
  * cards under it.
  */
 function BoardLane({
   children,
   className,
-  collapsible = false,
   count,
   element = "section",
+  fold,
   hint,
   title,
   tone,
 }: {
   children: ReactNode;
   className?: string;
-  collapsible?: boolean;
   count: number;
   element?: "aside" | "section";
+  fold?: LaneFold | undefined;
   hint?: string;
   title: string;
   tone: keyof typeof tones;
 }) {
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = fold?.open ?? ownOpen;
+  const setOpen = fold?.onOpenChange ?? setOwnOpen;
+
+  // A folded lane can't show its cards arrive, so its count marks each one.
+  const [seenCount, setSeenCount] = useState(count);
+  const [arrivals, setArrivals] = useState(0);
+  if (count !== seenCount) {
+    setSeenCount(count);
+    if (fold && !open && count > seenCount) setArrivals((n) => n + 1);
+  }
+
   const Element = element;
   const { border, title: titleClass } = tones[tone];
+  const railed = fold?.rail !== undefined && !open;
 
-  const label = (
-    <>
-      <span className={cn("text-sm font-medium", titleClass)}>{title}</span>
-      {/* Colour only when urgent and non-empty: the one number worth alarming. */}
-      <span
-        className={cn(
-          "text-sm tabular-nums",
-          tone === "urgent" && count > 0
-            ? "font-medium text-condition-attention"
-            : "text-muted-foreground/70",
-        )}
-      >
-        {count}
-      </span>
-      {hint && (
-        <span className="ml-auto truncate pl-2 text-[11px] text-muted-foreground/60">
-          {hint}
-        </span>
+  const titleText = (
+    <span className={cn("text-sm font-medium", titleClass)}>{title}</span>
+  );
+  // Colour only when urgent and non-empty: the one number worth alarming.
+  const countText = (
+    <span
+      key={arrivals}
+      className={cn(
+        "text-sm tabular-nums",
+        tone === "urgent" && count > 0
+          ? "font-medium text-condition-attention"
+          : "text-muted-foreground/70",
+        arrivals > 0 &&
+          "animate-in duration-500 fade-in-0 zoom-in-150 motion-reduce:animate-none",
       )}
-    </>
+    >
+      {count}
+    </span>
+  );
+  const hintText = hint && (
+    <span className="ml-auto truncate pl-2 text-[11px] text-muted-foreground/60">
+      {hint}
+    </span>
   );
 
   // Inset like a card's text, so a lane's title lines up with its cards.
   const headingClassName = cn("mb-2 flex items-baseline border-b px-3", border);
 
-  if (!collapsible) {
+  if (!fold) {
     return (
       <Element
         aria-label={title}
         className={cn("flex flex-col xl:min-h-0", className)}
       >
-        <h2 className={cn(headingClassName, "gap-2 pb-1.5")}>{label}</h2>
+        <h2 className={cn(headingClassName, "gap-2 pb-1.5")}>
+          {titleText}
+          {countText}
+          {hintText}
+        </h2>
         {children}
       </Element>
     );
   }
 
+  const chevron = (
+    <ChevronRight
+      aria-hidden
+      className={cn(
+        "size-4 shrink-0 self-center text-muted-foreground/60 transition-transform group-hover:text-foreground motion-reduce:transition-none",
+        open && "rotate-90",
+        railed && "xl:ml-auto",
+      )}
+    />
+  );
+
   return (
-    <Element aria-label={title} className={cn("flex flex-col", className)}>
-      <Collapsible open={open} onOpenChange={setOpen}>
+    <Element
+      aria-label={title}
+      className={cn("flex flex-col xl:min-h-0", className)}
+    >
+      <Collapsible
+        open={open}
+        onOpenChange={setOpen}
+        className="flex flex-col xl:min-h-0 xl:flex-1"
+      >
         {/* Keep a real heading while making the whole rule the trigger. */}
-        <h2 className={headingClassName}>
-          <CollapsibleTrigger className="group flex w-full items-baseline gap-2 pb-1.5 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/30">
-            {label}
-            {!hint && <span className="ml-auto" />}
-            <ChevronRight
-              aria-hidden
-              className={cn(
-                "size-4 shrink-0 self-center text-muted-foreground/60 transition-transform group-hover:text-foreground motion-reduce:transition-none",
-                open && "rotate-90",
-              )}
-            />
+        <h2
+          className={cn(
+            headingClassName,
+            railed && "xl:mb-0 xl:flex-1 xl:border-b-0 xl:px-0",
+          )}
+        >
+          <CollapsibleTrigger
+            className={cn(
+              "group flex w-full items-baseline gap-2 pb-1.5 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/30",
+              railed &&
+                "xl:h-full xl:w-21 xl:flex-col xl:items-stretch xl:gap-0 xl:rounded-xl xl:pb-0 xl:transition-colors xl:hover:bg-muted/45",
+            )}
+          >
+            {railed ? (
+              // Folded, the hint gives way to when the next item arrives. At
+              // `xl` the heading row keeps the lanes' rule, and the next date
+              // and the rail stack under it.
+              <>
+                <span
+                  className={cn(
+                    "contents xl:mb-2 xl:flex xl:items-baseline xl:gap-1.5 xl:border-b xl:px-2 xl:pb-1.5",
+                    border,
+                  )}
+                >
+                  {titleText}
+                  {countText}
+                  {fold.next ? (
+                    <span className="ml-auto pl-2 text-[11px] text-muted-foreground/70 tabular-nums xl:hidden">
+                      next {fold.next}
+                    </span>
+                  ) : (
+                    <span className="ml-auto" />
+                  )}
+                  {chevron}
+                </span>
+                {fold.next && (
+                  <span className="hidden px-2 text-[10.5px] leading-snug text-muted-foreground xl:block">
+                    next{" "}
+                    <b className="block text-xs font-semibold text-brand-accent-text tabular-nums">
+                      {fold.next}
+                    </b>
+                  </span>
+                )}
+                <span className="hidden min-h-0 flex-1 flex-col xl:flex">
+                  {fold.rail}
+                </span>
+              </>
+            ) : (
+              <>
+                {titleText}
+                {countText}
+                {hintText ?? <span className="ml-auto" />}
+                {chevron}
+              </>
+            )}
           </CollapsibleTrigger>
         </h2>
 
-        <CollapsibleContent>{children}</CollapsibleContent>
+        <CollapsibleContent className="flex flex-col xl:min-h-0 xl:flex-1">
+          {children}
+        </CollapsibleContent>
       </Collapsible>
     </Element>
   );
