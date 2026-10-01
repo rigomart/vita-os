@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactElement, ReactNode } from "react";
 
 import { Link } from "@tanstack/react-router";
+import { timeOfDay, withTimeOfDay } from "@vita-os/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,13 +17,14 @@ import {
 import { Button } from "@vita-os/ui/components/button";
 import { Calendar } from "@vita-os/ui/components/calendar";
 import { Checkbox } from "@vita-os/ui/components/checkbox";
+import { Input } from "@vita-os/ui/components/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@vita-os/ui/components/popover";
 import { cn } from "@vita-os/ui/lib/utils";
-import { Trash2 } from "lucide-react";
+import { Clock, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
 import type { ProductSearch } from "../navigation/search-params";
@@ -99,24 +101,51 @@ export function AreaTag({
   );
 }
 
+/**
+ * The picker every When shares: a day, and optionally a time on it.
+ *
+ * Picking a day saves at once, carrying whatever time is typed. A time typed
+ * for a day already chosen waits until the popover closes — Enter closes it —
+ * so editing it writes one change, not one per keystroke. The time only
+ * orders a day's items; it never moves one to another day or column.
+ */
 export function WhenPopover({
   busy,
+  hint,
   onSetWhen,
   trigger,
   when,
 }: {
   busy?: boolean;
+  /** A line above the calendar saying what the date means. */
+  hint?: string;
   onSetWhen?: (when: number | undefined) => void;
   trigger: ReactElement;
   when?: number;
 }) {
   const [open, setOpen] = useState(false);
+  const [time, setTime] = useState("");
   const selected = when === undefined ? undefined : new Date(when);
+  const savedTime = when === undefined ? "" : (timeOfDay(when) ?? "");
+
+  function handleOpenChange(next: boolean) {
+    if (next) {
+      setTime(savedTime);
+    } else if (when !== undefined && time !== savedTime && !busy) {
+      onSetWhen?.(withTimeOfDay(when, time));
+    }
+    setOpen(next);
+  }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger render={trigger} />
       <PopoverContent className="w-auto gap-0 p-0" align="end">
+        {hint && (
+          <p className="max-w-56 border-b border-border/60 px-3 py-2 text-xs leading-snug text-muted-foreground">
+            {hint}
+          </p>
+        )}
         <Calendar
           mode="single"
           selected={selected}
@@ -124,10 +153,40 @@ export function WhenPopover({
           disabled={busy}
           onSelect={(date) => {
             if (!date || busy) return;
-            onSetWhen?.(date.getTime());
+            onSetWhen?.(withTimeOfDay(date.getTime(), time));
             setOpen(false);
           }}
         />
+        <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2">
+          <Clock aria-hidden className="size-3.5 text-muted-foreground" />
+          <Input
+            type="time"
+            aria-label="Time"
+            value={time}
+            step={300}
+            disabled={busy}
+            onChange={(event) => setTime(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              handleOpenChange(false);
+            }}
+            className="h-8 w-auto flex-1 rounded-lg px-2 text-sm tabular-nums"
+          />
+          {time && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Remove time"
+              disabled={busy}
+              onClick={() => setTime("")}
+              className="text-muted-foreground"
+            >
+              <X />
+            </Button>
+          )}
+        </div>
         {selected && (
           <div className="border-t border-border/60 p-2">
             <Button

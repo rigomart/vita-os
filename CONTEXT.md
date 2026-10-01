@@ -41,7 +41,7 @@ The one **Move** the user has singled out on a **Thread**, when they have. Focus
 _Avoid_: Next Move, priority, current move.
 
 **Follow-up**:
-A soft resurfacing point on a **Thread** that brings the situation back into awareness around a chosen time.
+A soft resurfacing point on a **Thread** that brings the situation back into awareness around a chosen time: a day, optionally with a time of day that orders it within that day (ADR 0027).
 _Avoid_: Due date, deadline, reminder.
 
 **Activity Log**:
@@ -76,7 +76,7 @@ A **Note** marked Done and retained in completed history.
 _Avoid_: Resolved, processed.
 
 **Attention Date**:
-An optional date on a **Note** meaning “bring this back into attention.”
+An optional date on a **Note** meaning “bring this back into attention,” optionally with a time of day that orders it within that day.
 _Avoid_: Due date, deadline.
 
 **Notes**:
@@ -118,6 +118,7 @@ _Avoid_: Task list, project board, backlog.
 - A **Follow-up** takes precedence when a **Thread** also has **Moves**.
 - **Threads with Moves** have at least one **Move** and no **Follow-up**, whether or not a Move is focused. Plain **Open Threads** have neither.
 - Dated items are ordered soonest-first within a column; the user's **Thread** order breaks ties and orders the undated runs, and undated **Notes** read newest-first.
+- **A time orders; it never places.** Within a day, a date alone comes first, then timed items in time order. A time never moves an item to another day, column, or heading, never makes it late before its day ends, and never pings. A date alone is stored as local midnight, so midnight reads as no time (ADR 0027).
 - Each dated column groups its items under headings for when they come due, the grain widening with distance: **Now** reads Late then Today; **This week** gives each day with something due its own heading (Tomorrow, then the weekday and how many days out); **Later** reads in weeks, then calendar months (ADR 0026).
 - Every **Open Thread** and open **Standalone Note** appears in exactly one column or run. Nothing is capped; each column scrolls itself. **Later** starts folded on every visit, showing how many items it holds, when the next arrives, and, on a wide screen, a horizon marking when each comes due; folding hides its cards, never that they exist, and each walks into **This week** on its own once it is six days out (ADR 0026).
 - An **Open Thread** with no **Moves** and no **Follow-up** is valid; it is not automatically overdue, stale, or broken.
@@ -128,7 +129,7 @@ _Avoid_: Task list, project board, backlog.
 
 - The Dashboard has one attention-first view and no tabs or secondary schedule. It fills the viewport: the columns are full height and scroll independently, so a busy column never pushes the others down and a quiet one never leaves a hole.
 - One row above the board filters it by **Area**: `All · each Area with its Open Thread count · No area`, in the user's Area order. Areas with nothing open stay in the row, muted. Choosing an Area shows only its **Open Threads** across every column and run, and any filter hides **Standalone Notes**; **No area** shows only unlabeled Threads. The filter lives in the URL (`?area=<slug>` or `?area=none`), survives the in-place Thread pane and Notes surface, and falls back to All for an unknown Area. `1..9` select the matching Area and `0` returns to All; on a phone the row folds into one dropdown (ADR 0021).
-- A **Thread** card has two fixed rows that never trade places. The first is always the **Thread** title. The second is the move slot: the **Focused Move**, else the only **Move**, else — with several **Moves** and none focused — "N moves · none focused", because the card must not invent a headline the user never chose. A quiet count of pips, the focused one filled, says how many **Moves** there are. A **Thread** with no **Moves** is its title alone. A labeled Thread shows its **Area** as a small neutral tag, icon and name; an unlabeled Thread shows none. Colour on the board belongs to time. Dates are compact tokens rather than phrases, and a card under a heading that names its day (Today, or a day of **This week**) leaves the date to the heading.
+- A **Thread** card has two fixed rows that never trade places. The first is always the **Thread** title. The second is the move slot: the **Focused Move**, else the only **Move**, else — with several **Moves** and none focused — "N moves · none focused", because the card must not invent a headline the user never chose. A quiet count of pips, the focused one filled, says how many **Moves** there are. A **Thread** with no **Moves** is its title alone. A labeled Thread shows its **Area** as a small neutral tag, icon and name; an unlabeled Thread shows none. Colour on the board belongs to time. Dates are compact tokens rather than phrases, and a card under a heading that names its day (Today, or a day of **This week**) leaves the date to the heading, showing only its time when it has one.
 - The Dashboard **can act on attention in place**: a card's rail — shown on hover or keyboard focus — completes the **Move** the card shows, and only that one, or sets, changes, and clears the **Follow-up**; a **Standalone Note** offers done and its **Attention Date**. Focusing, removing, and choosing among **Moves**, changing a **Thread**'s **Area**, editing its text, and resolving it still happen in **Thread** detail, where the Area is a chip in the header.
 - **Thread** detail lists every **Move** in capture order. Focus is a radio beside each Move: pressing it focuses that Move, and pressing the filled one unfocuses it. The **Focused Move** is tinted where it sits.
 - Opening a card summons **Thread** detail in place; opening a **Note** opens the **Note view** over the current page.

@@ -17,6 +17,7 @@ import {
   concealed,
   isLate,
   revealed,
+  showsBoardDate,
 } from "../../dashboard/components/board-card";
 import { useCompleteMove } from "../use-moves";
 import { useUpdateThread } from "../use-update-thread";
@@ -61,7 +62,7 @@ export function ThreadAttentionCard({
   const lead = leadMove(thread);
   const focused = lead !== undefined && lead._id === thread.focusedMoveId;
   const followUp = thread.followUp ?? undefined;
-  const showsDate = followUp !== undefined && !dateInHeading;
+  const showsDate = showsBoardDate(followUp, dateInHeading);
   const followUpDate = (
     <BoardDate
       currentDate={currentDate}

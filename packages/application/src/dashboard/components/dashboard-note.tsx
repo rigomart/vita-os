@@ -9,6 +9,7 @@ import {
   BoardCompleteButton,
   BoardDate,
   isLate,
+  showsBoardDate,
 } from "./board-card";
 
 /**
@@ -39,7 +40,7 @@ export function DashboardNote({
   const updateNoteWhen = useUpdateNoteWhen();
 
   const when = note.attentionDate ?? undefined;
-  const showsDate = when !== undefined && !dateInHeading;
+  const showsDate = showsBoardDate(when, dateInHeading);
   const attentionDate = (
     <BoardDate
       currentDate={currentDate}

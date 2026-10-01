@@ -23,6 +23,8 @@ export {
   groupThreadsByAttention,
   isOpenNote,
   startOfLocalDay,
+  timeOfDay,
+  withTimeOfDay,
   type NoteAttentionGroups,
   type NoteAttentionInput,
   type ThreadAttentionGroups,

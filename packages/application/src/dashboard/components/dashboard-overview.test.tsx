@@ -62,6 +62,8 @@ vi.mock("../../hooks/use-mobile", () => ({
 }));
 
 const currentDate = new Date(2026, 6, 17, 12).getTime();
+/** Today as the pickers store a date alone: local midnight. */
+const today = new Date(2026, 6, 17).getTime();
 const DAY = 86_400_000;
 
 function moves(...texts: string[]) {
@@ -184,14 +186,14 @@ describe("DashboardOverview", () => {
     renderOverview({
       areaFilter: "home",
       threads: [
-        thread("Checkup", { followUp: currentDate }),
+        thread("Checkup", { followUp: today }),
         thread("Fix the gate", {
           areaId: "home" as Thread["areaId"],
-          followUp: currentDate,
+          followUp: today,
           order: 1,
         }),
       ],
-      notes: [note("Water the plants", { attentionDate: currentDate })],
+      notes: [note("Water the plants", { attentionDate: today })],
     });
 
     expect(columnText("Now")).toEqual([
@@ -210,10 +212,10 @@ describe("DashboardOverview", () => {
     renderOverview({
       areaFilter: "none",
       threads: [
-        thread("Checkup", { followUp: currentDate }),
+        thread("Checkup", { followUp: today }),
         thread("Passport", {
           areaId: undefined,
-          followUp: currentDate,
+          followUp: today,
           order: 1,
         }),
       ],
@@ -225,8 +227,8 @@ describe("DashboardOverview", () => {
   it("falls back to the whole board for an Area that is not there", () => {
     renderOverview({
       areaFilter: "deleted-area",
-      threads: [thread("Checkup", { followUp: currentDate })],
-      notes: [note("Water the plants", { attentionDate: currentDate })],
+      threads: [thread("Checkup", { followUp: today })],
+      notes: [note("Water the plants", { attentionDate: today })],
     });
 
     expect(screen.getByText("Checkup")).toBeVisible();
@@ -244,10 +246,10 @@ describe("DashboardOverview", () => {
   it("tags a labeled Thread's card with its Area and leaves an unlabeled one bare", () => {
     renderOverview({
       threads: [
-        thread("Checkup", { followUp: currentDate }),
+        thread("Checkup", { followUp: today }),
         thread("Passport", {
           areaId: undefined,
-          followUp: currentDate,
+          followUp: today,
           order: 1,
         }),
       ],
@@ -264,9 +266,9 @@ describe("DashboardOverview", () => {
   it("states each lane's count on the lane", () => {
     renderOverview({
       threads: [
-        thread("Late one", { followUp: currentDate - DAY }),
-        thread("Also late", { followUp: currentDate - DAY, order: 1 }),
-        thread("Midweek", { followUp: currentDate + 2 * DAY, order: 2 }),
+        thread("Late one", { followUp: today - DAY }),
+        thread("Also late", { followUp: today - DAY, order: 1 }),
+        thread("Midweek", { followUp: today + 2 * DAY, order: 2 }),
       ],
     });
 
@@ -281,11 +283,11 @@ describe("DashboardOverview", () => {
   it("puts dated Threads and Notes in the column their date earns", async () => {
     renderOverview({
       threads: [
-        thread("Overdue", { followUp: currentDate - DAY }),
-        thread("Midweek", { followUp: currentDate + 2 * DAY, order: 1 }),
-        thread("Distant", { followUp: currentDate + 30 * DAY, order: 2 }),
+        thread("Overdue", { followUp: today - DAY }),
+        thread("Midweek", { followUp: today + 2 * DAY, order: 1 }),
+        thread("Distant", { followUp: today + 30 * DAY, order: 2 }),
       ],
-      notes: [note("Water the plants", { attentionDate: currentDate })],
+      notes: [note("Water the plants", { attentionDate: today })],
     });
 
     const now = screen.getByRole("region", { name: "Now" });
@@ -303,8 +305,8 @@ describe("DashboardOverview", () => {
   it("starts Later folded, saying how many wait there and when the next arrives", async () => {
     renderOverview({
       threads: [
-        thread("Distant", { followUp: currentDate + 30 * DAY }),
-        thread("Further", { followUp: currentDate + 40 * DAY, order: 1 }),
+        thread("Distant", { followUp: today + 30 * DAY }),
+        thread("Further", { followUp: today + 40 * DAY, order: 1 }),
       ],
     });
 
@@ -331,11 +333,11 @@ describe("DashboardOverview", () => {
   it("heads each column's runs with when they come due, and leaves an exact day to its heading", () => {
     renderOverview({
       threads: [
-        thread("Overdue", { followUp: currentDate - 3 * DAY }),
-        thread("Dentist", { followUp: currentDate }),
-        thread("Tomorrow one", { followUp: currentDate + DAY, order: 1 }),
-        thread("Sunday one", { followUp: currentDate + 2 * DAY, order: 2 }),
-        thread("Sunday two", { followUp: currentDate + 2 * DAY, order: 3 }),
+        thread("Overdue", { followUp: today - 3 * DAY }),
+        thread("Dentist", { followUp: today }),
+        thread("Tomorrow one", { followUp: today + DAY, order: 1 }),
+        thread("Sunday one", { followUp: today + 2 * DAY, order: 2 }),
+        thread("Sunday two", { followUp: today + 2 * DAY, order: 3 }),
       ],
     });
 
@@ -363,6 +365,32 @@ describe("DashboardOverview", () => {
     expect(within(sunday).getAllByRole("listitem")).toHaveLength(2);
   });
 
+  it("orders a day by time and gives a timed card only its time under a day's heading", () => {
+    renderOverview({
+      threads: [
+        thread("Afternoon call", { followUp: today + 15 * 3_600_000 }),
+        thread("Sometime today", { followUp: today, order: 1 }),
+        thread("Late timed", {
+          followUp: today - 2 * DAY + 9.5 * 3_600_000,
+          order: 2,
+        }),
+      ],
+    });
+
+    const now = screen.getByRole("region", { name: "Now" });
+    const todayGroup = within(now).getByRole("region", { name: "Today" });
+    const titles = within(todayGroup)
+      .getAllByRole("link")
+      .map((link) => link.textContent);
+    expect(titles).toEqual(["Sometime today", "Afternoon call"]);
+    expect(within(todayGroup).getByText("3 PM")).toBeVisible();
+    expect(
+      within(within(now).getByRole("region", { name: "Late" })).getByText(
+        "−2d · 9:30 AM",
+      ),
+    ).toBeVisible();
+  });
+
   /**
    * #236, settled: a Follow-up outranks undated Moves, so an actionable
    * Thread with no date keeps its own run in the margin rather than in Now.
@@ -370,7 +398,7 @@ describe("DashboardOverview", () => {
   it("keeps undated Moves out of Now and in the No date margin", () => {
     renderOverview({
       threads: [
-        thread("Dated", { followUp: currentDate }),
+        thread("Dated", { followUp: today }),
         thread("Actionable", { moves: moves("Call the clinic"), order: 1 }),
         thread("Idle", { order: 2 }),
       ],
@@ -396,8 +424,8 @@ describe("DashboardOverview", () => {
     try {
       renderOverview({
         threads: [
-          thread("Overdue", { followUp: currentDate - DAY }),
-          thread("Distant", { followUp: currentDate + 30 * DAY, order: 1 }),
+          thread("Overdue", { followUp: today - DAY }),
+          thread("Distant", { followUp: today + 30 * DAY, order: 1 }),
           thread("Actionable", {
             moves: moves("Call the clinic"),
             order: 2,

@@ -6,7 +6,7 @@ import { cn } from "@vita-os/ui/lib/utils";
 import { format, isThisYear } from "date-fns";
 import { Bell, Check, Undo2 } from "lucide-react";
 
-import { whenTone, WhenPopover } from "../../attention-list";
+import { whenTone, WhenPopover, withTimeToken } from "../../attention-list";
 import { useNoteRowActions } from "../note-row/use-note-row-actions";
 
 const whenToneClassName = {
@@ -101,7 +101,10 @@ export function NoteCard({
               <Bell className="size-3" />
               {note.attentionDate === undefined
                 ? "Attention date"
-                : shortDate(note.attentionDate)}
+                : withTimeToken(
+                    shortDate(note.attentionDate),
+                    note.attentionDate,
+                  )}
             </Button>
           }
         />
