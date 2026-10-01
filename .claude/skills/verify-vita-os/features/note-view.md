@@ -7,6 +7,7 @@ Status: proven on 6231a78 plus the Read/Write working-tree change (Dashboard dia
 ## Sub-features
 
 - `note-compose` opens New note from the dock or Write a note… on a Thread, on Write with the body focused. Only standalone Notes have an Attention Date. Add or Command/Control+Enter saves.
+- `note-open` opens the view from anywhere on a Dashboard, Notes, or Thread card except its controls. Proven on the Dashboard and Notes cards with a real mouse: `get box` the card, then `mouse move`, `mouse down left`, `mouse up left` on empty footer space; `Set attention date` and `Mark note done` keep their own clicks.
 - `note-read` renders full Markdown. Preview links are inert; read links open safely in a new tab. Task items are checkboxes: ticking one on a saved Note with no unsaved edits saves it quietly; on a draft it edits the draft. Card previews draw the boxes without controls.
 - `note-write` edits the same draft. Leaving Write never discards: Read shows the unsaved text, the Write tab shows a dot (named `Write , unsaved changes`), and the footer shows `Unsaved changes` and Save in either mode. Save returns to Read.
 - `note-discard` asks only when closing a changed draft (Close, Escape, outside click, phone handle/header swipe). The question replaces the footer: `alertdialog "Discard unsaved changes?"` with Keep editing (focused) and Discard. Escape answers Keep editing.

@@ -71,8 +71,10 @@ export function NoteCard({
         </span>
       </button>
 
-      {/* No divider: the dialog separates by whitespace, and so does the card. */}
-      <div className="relative mt-3 flex items-center gap-1">
+      {/* No divider: the dialog separates by whitespace, and so does the card.
+          The row stays unpositioned so its gaps open the Note; only the
+          controls rise above the card-wide button. */}
+      <div className="mt-3 flex items-center gap-1">
         <WhenPopover
           when={note.attentionDate}
           busy={isWhenPending}
@@ -89,7 +91,7 @@ export function NoteCard({
                   : "Change attention date"
               }
               className={cn(
-                "-ml-1 h-7 gap-1.5 rounded-full px-2 text-2xs font-normal",
+                "relative -ml-1 h-7 gap-1.5 rounded-full px-2 text-2xs font-normal",
                 note.attentionDate === undefined
                   ? "text-muted-foreground/60 opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 aria-expanded:opacity-100"
                   : "text-muted-foreground",
@@ -117,7 +119,7 @@ export function NoteCard({
           variant="secondary"
           size="icon-sm"
           className={cn(
-            "group/toggle shrink-0 rounded-full",
+            "group/toggle relative shrink-0 rounded-full",
             done && "bg-transparent text-brand-accent-text",
           )}
           disabled={isTogglePending}
