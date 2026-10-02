@@ -47,7 +47,7 @@ describe("buildAttentionBoard", () => {
         thread("today", { followUp: day(0) }),
         thread("late", { followUp: day(-3) }),
       ],
-      [note("late-note", { attentionDate: day(-1) })],
+      [note("late-note", { followUp: day(-1) })],
       currentDate,
     );
 
@@ -64,7 +64,7 @@ describe("buildAttentionBoard", () => {
         thread("all-day", { followUp: today }),
         thread("morning", { followUp: at(9, 30) }),
       ],
-      [note("noon-note", { attentionDate: at(12) })],
+      [note("noon-note", { followUp: at(12) })],
       currentDate,
     );
 
@@ -97,7 +97,7 @@ describe("buildAttentionBoard", () => {
   it("keeps dated Notes beside dated Threads rather than apart", () => {
     const board = buildAttentionBoard(
       [thread("thread", { followUp: day(3) })],
-      [note("note", { attentionDate: day(2) })],
+      [note("note", { followUp: day(2) })],
       currentDate,
     );
 
@@ -189,7 +189,7 @@ describe("buildAttentionBoard", () => {
       thread("idle"),
     ];
     const notes = [
-      note("dated-note", { attentionDate: day(1) }),
+      note("dated-note", { followUp: day(1) }),
       note("loose-note"),
     ];
     const board = buildAttentionBoard(threads, notes, currentDate);

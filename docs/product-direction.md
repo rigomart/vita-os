@@ -41,7 +41,7 @@ Task managers handle the "act" step. They fail the "wait" step: an item with not
 Vita OS does three things for a slow situation:
 
 1. **Holds it** as a **Thread**, open until the user resolves it, valid even with nothing to do.
-2. **Brings it back** through a **Follow-up**: a soft date, never a deadline.
+2. **Brings it back** through a **Follow-up date**: a soft date, never a deadline.
 3. **Keeps its history** in an automatic **Activity Log** and in **Thread Notes**, so returning after weeks needs no reconstruction.
 
 ---
@@ -65,8 +65,8 @@ The Dashboard is the product. Everything else exists to make the Dashboard trust
 Two kinds of thing live in Vita OS. Areas label one of them.
 
 ```text
-Thread → Summary · Moves (one optionally Focused) · Follow-up · Thread Notes · Activity Log
-Standalone Note → Attention Date
+Thread → Summary · Moves (one optionally Focused) · Follow-up date · Thread Notes · Activity Log
+Standalone Note → Follow-up date
 Area → an optional label on a Thread
 ```
 
@@ -79,16 +79,16 @@ A Thread may carry:
 - a **Summary**: what the Thread is about right now.
 - **Moves**: useful actions, as unordered peers. No dates, no done state, no order. Completing one removes it and writes it into the Activity Log.
 - a **Focused Move**: the one Move the user has singled out, if any. Focus is emphasis only.
-- a **Follow-up**: the soft date that brings the Thread back.
+- a **Follow-up date**: the soft date that brings the Thread back.
 - **Thread Notes**: body-only notes that belong to this Thread and nowhere else.
 - an **Activity Log**: the automatic, read-only record of meaningful changes.
 - an **Area**.
 
-A plain Open Thread, with no Moves and no Follow-up, is valid. It means the situation still matters and nothing is clear yet.
+A plain Open Thread, with no Moves and no Follow-up date, is valid. It means the situation still matters and nothing is clear yet.
 
 ### Standalone Note
 
-A body-only capture, valid the moment it is saved: a fact, a thought, or an action. It needs no classification and no processing. It may carry an **Attention Date**, which works on the Dashboard exactly like a Follow-up. A Note is Open or Done; Done Notes stay in a collapsed history.
+A body-only capture, valid the moment it is saved: a fact, a thought, or an action. It needs no classification and no processing. It may carry a **Follow-up date**, which brings it back into view on the Dashboard. A Note is Open or Done; Done Notes stay in a collapsed history.
 
 ### Area
 
@@ -100,14 +100,14 @@ An optional label naming the part of life a Thread concerns: Family Health, Care
 
 The Dashboard lays every Open Thread and every open Standalone Note on one axis of time:
 
-- **Now**: a Follow-up or Attention Date today or earlier.
+- **Now**: a Follow-up date today or earlier.
 - **This week**: the next six days.
 - **Later**: day seven onward.
 - **The unscheduled margin**: **Ready to move** (Threads with Moves), **Open** (plain Threads), **Notes** (undated Notes).
 
-Placement is derived from dates and from whether a Thread has Moves. The user never sets a status. A date outranks undated Moves, so a Thread with Moves and no Follow-up leads the margin and never enters Now. Nothing is capped or hidden.
+Placement is derived from dates and from whether a Thread has Moves. The user never sets a status. A date outranks undated Moves, so a Thread with Moves and no Follow-up date leads the margin and never enters Now. Nothing is capped or hidden.
 
-The board can act on what it shows. A card completes the Move it displays and sets, changes, or clears the Follow-up; a Note can be marked done or given a date. Everything else happens in Thread detail, which opens in place over the board.
+The board can act on what it shows. A card completes the Move it displays and sets, changes, or clears the Follow-up date; a Note can be marked done or given a date. Everything else happens in Thread detail, which opens in place over the board.
 
 The intended loop takes one to two minutes:
 
@@ -119,12 +119,12 @@ Open the Dashboard → read Now → handle or reschedule what is asking → glan
 
 ## Principles
 
-1. **Capture asks nothing.** A Thread needs a title. A Note needs a body. Area, Moves, Follow-up, and Summary are optional and can come later.
+1. **Capture asks nothing.** A Thread needs a title. A Note needs a body. Area, Moves, Follow-up date, and Summary are optional and can come later.
 2. **Derive, never ask.** Attention comes from dates and Moves. The user does not maintain statuses, conditions, or priorities.
 3. **The app never invents a priority.** Capture order is not rank. If several Moves exist and none is focused, the card says so rather than picking one.
-4. **Dates are soft.** A Follow-up and an Attention Date mean "bring this back", not "due". There are no deadlines.
+4. **Dates are soft.** A Follow-up date means "bring this back", not "due". There are no deadlines.
 5. **Colour belongs to time.** Lateness is the only thing the board colours. Areas are neutral.
-6. **Reading is not handling.** Opening a Thread never clears its Follow-up. The user clears, reschedules, or resolves it.
+6. **Reading is not handling.** Opening a Thread never clears its Follow-up date. The user clears, reschedules, or resolves it.
 7. **Keep Threads alive, not noisy.** The Activity Log records what changed without being asked and records nothing trivial.
 8. **One board.** No second schedule, no per-Area pages, no tabs.
 
@@ -142,7 +142,7 @@ The first direction (2025/12/01) described a life-domain dashboard: Areas with a
 | A read-only list of status groups | Time columns with an unscheduled margin, actionable in place | One column wasted a desktop screen, and a board that cannot fix what it shows is always slightly wrong. | ADR 0017 |
 | Manual Activity Log entries | An automatic Activity Log plus Thread Notes | Prose and change history were mixed. Separating them keeps Notes editable and the changelog trustworthy. | ADR 0016 |
 
-**What was given up.** The app no longer shows a neglected part of life that has no Threads. A part of life that needs a periodic look gets a Thread with a Follow-up, such as "Review finances" in two weeks.
+**What was given up.** The app no longer shows a neglected part of life that has no Threads. A part of life that needs a periodic look gets a Thread with a Follow-up date, such as "Review finances" in two weeks.
 
 ---
 
@@ -152,7 +152,7 @@ Ordered by how directly they serve the thesis. None is committed; each needs a s
 
 1. **Reach Resolved Threads again.** The Area pages were the only place resolved Threads were listed. Since ADR 0021 removed them, a resolved Thread is reachable only by its URL, and its history is effectively lost. The palette, or a small resolved list, needs a way back to find and reopen them.
 2. **Connect a Note to a Thread.** A Standalone Note that turns out to be part of a situation has no path into a Thread. Starting a Thread from a Note, or moving a Note into one as a Thread Note, closes the gap between capture and continuity. `CONTEXT.md` currently marks this out of scope.
-3. **Watch for recurring Follow-ups.** ADR 0021 makes "a Thread with a Follow-up" the answer for periodic reviews. If resetting the same Follow-up by hand becomes routine, that is the evidence to build recurrence. Until then, no recurrence engine.
+3. **Watch for recurring Follow-up dates.** ADR 0021 makes "a Thread with a Follow-up date" the answer for periodic reviews. If resetting the same Follow-up date by hand becomes routine, that is the evidence to build recurrence. Until then, no recurrence engine.
 4. **Cross-device freshness stays parked** (issue #342) until normal use shows that refresh on focus is not enough.
 
 ---

@@ -95,8 +95,8 @@ export type NoteState = "open" | "done";
 export interface Note {
   _id: NoteId;
   body: string;
-  /** The Attention Date, when the person gave the Note one. */
-  attentionDate?: number;
+  /** The Follow-up date, when the person gave the Note one. */
+  followUp?: number;
   state: NoteState;
   completedAt?: number;
   createdAt: number;

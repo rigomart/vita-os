@@ -6,31 +6,31 @@ function startOfDayMs(timestamp: number): number {
   return date.getTime();
 }
 
-/** An Attention Date that has arrived, by the day rather than by the minute. */
+/** An Follow-up date that has arrived, by the day rather than by the minute. */
 export function isNoteWhenDue(
-  attentionDate: number | undefined,
+  followUp: number | undefined,
   referenceDate: number,
 ): boolean {
-  if (attentionDate === undefined) {
+  if (followUp === undefined) {
     return false;
   }
 
-  return startOfDayMs(attentionDate) <= startOfDayMs(referenceDate);
+  return startOfDayMs(followUp) <= startOfDayMs(referenceDate);
 }
 
 /**
- * Whether a Note's Attention Date should draw the eye.
+ * Whether a Note's Follow-up date should draw the eye.
  *
  * A Done Note never does, however overdue it was: it has already been dealt
  * with.
  */
 export function isNoteWhenEmphasized(
-  note: Pick<Note, "state" | "attentionDate">,
+  note: Pick<Note, "state" | "followUp">,
   referenceDate: number,
 ): boolean {
   if (note.state === "done") {
     return false;
   }
 
-  return isNoteWhenDue(note.attentionDate, referenceDate);
+  return isNoteWhenDue(note.followUp, referenceDate);
 }

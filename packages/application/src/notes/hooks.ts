@@ -70,7 +70,7 @@ export function useDoneNotes(limit = DONE_PAGE_SIZE): DoneNotesResult {
 
 export interface CaptureNoteVariables {
   body: string;
-  attentionDate?: number;
+  followUp?: number;
 }
 
 export function useCaptureNote(): ApplicationMutationResult<
@@ -87,9 +87,7 @@ export function useCaptureNote(): ApplicationMutationResult<
       showCapturedNote(cache, {
         _id: pendingId,
         body: input.body,
-        ...(input.attentionDate === undefined
-          ? {}
-          : { attentionDate: input.attentionDate }),
+        ...(input.followUp === undefined ? {} : { followUp: input.followUp }),
         state: "open",
         createdAt: now,
         updatedAt: now,
@@ -115,24 +113,24 @@ export function useUpdateNoteBody(): ApplicationMutationResult<
   });
 }
 
-/** The Attention Date, set or cleared. */
-export function useUpdateNoteAttentionDate(): ApplicationMutationResult<
-  { noteId: NoteId; attentionDate: number | null },
+/** The Follow-up date, set or cleared. */
+export function useUpdateNoteFollowUp(): ApplicationMutationResult<
+  { noteId: NoteId; followUp: number | null },
   Note
 > {
   return useApplicationMutation<
-    { noteId: NoteId; attentionDate: number | null },
+    { noteId: NoteId; followUp: number | null },
     Note
   >({
-    run: (client, input) => client.updateNoteAttentionDate(input),
+    run: (client, input) => client.updateNoteFollowUp(input),
     affected: () => noteKeys(),
     optimistic: (cache, input) =>
       showNoteEdit(
         cache,
         input.noteId,
-        input.attentionDate === null
-          ? { attentionDate: undefined }
-          : { attentionDate: input.attentionDate },
+        input.followUp === null
+          ? { followUp: undefined }
+          : { followUp: input.followUp },
       ),
   });
 }

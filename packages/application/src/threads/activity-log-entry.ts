@@ -7,7 +7,7 @@ const ACTIVITY_LOG_ENTRY_LABELS: Record<ActivityLogType, string> = {
   next_move_change: "Next move",
   move_completed: "Move done",
   state_change: "Lifecycle",
-  follow_up_change: "Follow-up",
+  follow_up_change: "Follow-up date",
   area_move: "Area",
 };
 

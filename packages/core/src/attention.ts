@@ -28,7 +28,7 @@ export interface NoteAttentionInput {
   completedAt?: number | null;
   createdAt: number;
   state: "done" | "open";
-  attentionDate?: number | null;
+  followUp?: number | null;
 }
 
 export interface NoteAttentionGroups<TNote> {
@@ -134,10 +134,7 @@ export function compareNotesByAttention<TNote extends NoteAttentionInput>(
   }
 
   if (aGroup === "pastDue" || aGroup === "comingUp") {
-    return (
-      (a.attentionDate ?? 0) - (b.attentionDate ?? 0) ||
-      b.createdAt - a.createdAt
-    );
+    return (a.followUp ?? 0) - (b.followUp ?? 0) || b.createdAt - a.createdAt;
   }
 
   return b.createdAt - a.createdAt;
@@ -153,7 +150,7 @@ export function startOfLocalDay(timestamp: number) {
 }
 
 /**
- * The time of day a Follow-up or Attention Date carries, as `HH:mm`, or
+ * The time of day a Follow-up date carries, as `HH:mm`, or
  * `undefined` when it carries only a date.
  *
  * A date alone is stored as local midnight, so midnight is the one time that
@@ -186,9 +183,9 @@ function getNoteAttentionGroup(
   timezoneOffsetMinutes?: number,
 ): NoteAttentionGroup {
   if (note.state === "done") return "completed";
-  if (note.attentionDate == null) return "noDate";
+  if (note.followUp == null) return "noDate";
 
-  const attention = getDayKey(note.attentionDate, timezoneOffsetMinutes);
+  const attention = getDayKey(note.followUp, timezoneOffsetMinutes);
   const today = getDayKey(currentDate, timezoneOffsetMinutes);
 
   if (attention < today) return "pastDue";

@@ -284,14 +284,14 @@ describe("Notes through the HTTP client", () => {
     expect(edited.body).toBe("Refill both");
 
     const dated = await value(
-      client.updateNoteAttentionDate({
+      client.updateNoteFollowUp({
         noteId: note._id,
-        attentionDate: may20,
+        followUp: may20,
       }),
     );
-    expect(dated.attentionDate).toBe(may20);
+    expect(dated.followUp).toBe(may20);
     const undated = await value(
-      client.updateNoteAttentionDate({ noteId: note._id, attentionDate: null }),
+      client.updateNoteFollowUp({ noteId: note._id, followUp: null }),
     );
     expect(undated).not.toHaveProperty("when");
 

@@ -71,7 +71,7 @@ describe("ThreadAttention", () => {
     ).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByText("3")).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Follow up Aug 13" }),
+      screen.getByRole("button", { name: "Change follow-up date: Aug 13" }),
     ).toBeVisible();
   });
 
@@ -178,9 +178,11 @@ describe("ThreadAttention", () => {
       followUp: today,
     });
 
-    await user.click(screen.getByRole("button", { name: "Follow up Aug 13" }));
+    await user.click(
+      screen.getByRole("button", { name: "Change follow-up date: Aug 13" }),
+    );
     expect(
-      await screen.findByText("When to bring this Thread back."),
+      await screen.findByText("Bring this back into view around this date."),
     ).toBeVisible();
     // The time waits behind its button until asked for.
     expect(screen.queryByLabelText("Time")).not.toBeInTheDocument();
@@ -188,7 +190,9 @@ describe("ThreadAttention", () => {
     await user.click(within(await screen.findByRole("grid")).getByText("20"));
     expect(onSetFollowUp).toHaveBeenCalledWith(new Date(2026, 7, 20).getTime());
 
-    await user.click(screen.getByRole("button", { name: "Clear follow-up" }));
+    await user.click(
+      screen.getByRole("button", { name: "Clear follow-up date" }),
+    );
     expect(onClearFollowUp).toHaveBeenCalled();
   });
 
@@ -196,7 +200,9 @@ describe("ThreadAttention", () => {
     const user = userEvent.setup();
     const { onSetFollowUp } = renderAttention({ followUp: today });
 
-    await user.click(screen.getByRole("button", { name: "Follow up Aug 13" }));
+    await user.click(
+      screen.getByRole("button", { name: "Change follow-up date: Aug 13" }),
+    );
     await user.click(await screen.findByRole("button", { name: "Add time" }));
     const time = screen.getByLabelText("Time");
     expect(time).toHaveFocus();
@@ -216,7 +222,9 @@ describe("ThreadAttention", () => {
     });
 
     await user.click(
-      screen.getByRole("button", { name: "Follow up Aug 13 · 9 AM" }),
+      screen.getByRole("button", {
+        name: "Change follow-up date: Aug 13 · 9 AM",
+      }),
     );
     await user.click(
       await screen.findByRole("button", { name: "Remove time" }),

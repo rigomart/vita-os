@@ -278,11 +278,11 @@ export function createHttpApplicationClient({
         { body: input.body },
         decodeNote,
       ),
-    updateNoteAttentionDate: (input) =>
+    updateNoteFollowUp: (input) =>
       send(
         "PATCH",
-        `${path("notes", input.noteId)}/attention-date`,
-        { attentionDate: input.attentionDate },
+        `${path("notes", input.noteId)}/follow-up`,
+        { followUp: input.followUp },
         decodeNote,
       ),
     markNoteDone: (input) =>

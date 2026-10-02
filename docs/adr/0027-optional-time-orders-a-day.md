@@ -1,5 +1,7 @@
 # An optional time orders a day
 
+Terminology amended by ADR 0028: Follow-up and Attention Date are one **Follow-up date** on Threads and standalone Notes. Existing behavior is retained.
+
 **Status:** Accepted
 **Date:** 2026-10-01
 

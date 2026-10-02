@@ -18,6 +18,6 @@ export function useCreateNote() {
   return (value: CreateNoteValue) =>
     capture.mutateAsync({
       body: value.body,
-      ...(value.when === undefined ? {} : { attentionDate: value.when }),
+      ...(value.when === undefined ? {} : { followUp: value.when }),
     });
 }

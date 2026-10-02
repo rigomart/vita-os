@@ -193,7 +193,7 @@ describe("DashboardOverview", () => {
           order: 1,
         }),
       ],
-      notes: [note("Water the plants", { attentionDate: today })],
+      notes: [note("Water the plants", { followUp: today })],
     });
 
     expect(columnText("Now")).toEqual([
@@ -228,7 +228,7 @@ describe("DashboardOverview", () => {
     renderOverview({
       areaFilter: "deleted-area",
       threads: [thread("Checkup", { followUp: today })],
-      notes: [note("Water the plants", { attentionDate: today })],
+      notes: [note("Water the plants", { followUp: today })],
     });
 
     expect(screen.getByText("Checkup")).toBeVisible();
@@ -287,7 +287,7 @@ describe("DashboardOverview", () => {
         thread("Midweek", { followUp: today + 2 * DAY, order: 1 }),
         thread("Distant", { followUp: today + 30 * DAY, order: 2 }),
       ],
-      notes: [note("Water the plants", { attentionDate: today })],
+      notes: [note("Water the plants", { followUp: today })],
     });
 
     const now = screen.getByRole("region", { name: "Now" });
@@ -357,7 +357,7 @@ describe("DashboardOverview", () => {
     expect(within(tomorrow).queryByText("Sat")).not.toBeInTheDocument();
     // The date still opens from the card, as a control rather than a token.
     expect(
-      within(tomorrow).getByRole("button", { name: "Change Follow-up" }),
+      within(tomorrow).getByRole("button", { name: "Change follow-up date" }),
     ).toBeInTheDocument();
 
     const sunday = group("This week", "Sunday");

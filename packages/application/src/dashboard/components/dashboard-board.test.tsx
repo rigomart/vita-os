@@ -66,15 +66,15 @@ describe("DashboardBoard Note view", () => {
     expect(markNoteDone).toHaveBeenCalledExactlyOnceWith({ noteId: "note1" });
   });
 
-  it("keeps the Note view open when an Attention Date moves its card to another lane", async () => {
+  it("keeps the Note view open when a Follow-up date moves its card to another lane", async () => {
     const user = userEvent.setup();
     const nextDate = new Date(2026, 6, 18).getTime();
     const datedNote = {
       ...saved,
-      attentionDate: new Date(2026, 6, 17).getTime(),
+      followUp: new Date(2026, 6, 17).getTime(),
     };
-    const updateNoteAttentionDate = vi.fn(async () => {
-      const updated = { ...saved, attentionDate: nextDate };
+    const updateNoteFollowUp = vi.fn(async () => {
+      const updated = { ...saved, followUp: nextDate };
       rerender(
         <DashboardBoard
           areas={[]}
@@ -85,7 +85,7 @@ describe("DashboardBoard Note view", () => {
       return success(updated);
     });
     const applicationClient = createQuietApplicationClient({
-      updateNoteAttentionDate,
+      updateNoteFollowUp,
     });
     const { rerender } = render(
       <DashboardBoard
@@ -100,21 +100,21 @@ describe("DashboardBoard Note view", () => {
     );
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Change attention date",
+        name: "Change follow-up date",
       }),
     );
     await user.click(screen.getByRole("button", { name: /July 18/i }));
     await waitFor(() =>
       expect(
         within(screen.getByRole("dialog")).getByRole("button", {
-          name: "Change attention date",
+          name: "Change follow-up date",
         }),
       ).toBeVisible(),
     );
     expect(screen.getByRole("dialog")).toBeVisible();
-    expect(updateNoteAttentionDate).toHaveBeenCalledExactlyOnceWith({
+    expect(updateNoteFollowUp).toHaveBeenCalledExactlyOnceWith({
       noteId: "note1",
-      attentionDate: nextDate,
+      followUp: nextDate,
     });
   });
 });

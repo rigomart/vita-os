@@ -39,13 +39,12 @@ export function DashboardNote({
   const completeNote = useCompleteNote();
   const updateNoteWhen = useUpdateNoteWhen();
 
-  const when = note.attentionDate ?? undefined;
+  const when = note.followUp ?? undefined;
   const showsDate = showsBoardDate(when, dateInHeading);
-  const attentionDate = (
+  const followUp = (
     <BoardDate
       currentDate={currentDate}
       inHeading={dateInHeading}
-      labels={{ change: "Change attention date", set: "Set attention date" }}
       onSetWhen={(next) => void updateNoteWhen(note._id, next)}
       when={when}
     />
@@ -58,10 +57,10 @@ export function DashboardNote({
       ruled
       footer={
         <>
-          {showsDate && attentionDate}
+          {showsDate && followUp}
 
           <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-1">
-            {!showsDate && attentionDate}
+            {!showsDate && followUp}
             <BoardCompleteButton
               label="Mark note done"
               onClick={() => void completeNote(note._id)}

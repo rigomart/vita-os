@@ -48,7 +48,7 @@ export function createFakeApplicationClient(
     countOpenNotes: unconfigured,
     createNote: unconfigured,
     updateNoteBody: unconfigured,
-    updateNoteAttentionDate: unconfigured,
+    updateNoteFollowUp: unconfigured,
     markNoteDone: unconfigured,
     markNoteOpen: unconfigured,
     removeNote: unconfigured,

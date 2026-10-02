@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { INBOX_SURFACE_TRIGGER_SELECTOR } from "./inbox-surface-trigger";
 
 /**
- * Everything Notes can open on top of itself — the attention date picker
+ * Everything Notes can open on top of itself — the follow-up date picker
  * (Popover + Calendar), the delete confirmation (AlertDialog), any dialog,
  * Select or Combobox — portals out of the
  * surface and tags its popup with a `*-content` data-slot. A document-level

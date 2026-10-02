@@ -18,22 +18,24 @@ function isNoteState(value: unknown): value is NoteState {
 
 export function decodeCreateNote(value: unknown): Decoded<{
   body: string;
-  attentionDate?: number;
+  followUp?: number;
 }> {
   if (
     !isObject(value) ||
-    !hasOnlyKeys(value, ["body", "attentionDate"]) ||
+    !hasOnlyKeys(value, ["body", "followUp", "attentionDate"]) ||
+    (Object.hasOwn(value, "followUp") &&
+      Object.hasOwn(value, "attentionDate")) ||
     typeof value.body !== "string" ||
-    (value.attentionDate !== undefined && !isTimestamp(value.attentionDate))
+    (noteFollowUp(value) !== undefined && !isTimestamp(noteFollowUp(value)))
   ) {
     return undefined;
   }
 
   return {
     body: value.body,
-    ...(value.attentionDate === undefined
+    ...(noteFollowUp(value) === undefined
       ? {}
-      : { attentionDate: value.attentionDate as number }),
+      : { followUp: noteFollowUp(value) as number }),
   };
 }
 
@@ -50,19 +52,27 @@ export function decodeBody(value: unknown): Decoded<{ body: string }> {
   return { body: value.body };
 }
 
-export function decodeAttentionDate(
+export function decodeFollowUp(
   value: unknown,
-): Decoded<{ attentionDate: number | null }> {
+): Decoded<{ followUp: number | null }> {
   if (
     !isObject(value) ||
-    !hasOnlyKeys(value, ["attentionDate"]) ||
-    !Object.hasOwn(value, "attentionDate") ||
-    !isClearableTimestamp(value.attentionDate)
+    !hasOnlyKeys(value, ["followUp", "attentionDate"]) ||
+    Object.hasOwn(value, "followUp") ===
+      Object.hasOwn(value, "attentionDate") ||
+    !isClearableTimestamp(noteFollowUp(value))
   ) {
     return undefined;
   }
 
-  return { attentionDate: value.attentionDate as number | null };
+  return { followUp: noteFollowUp(value) as number | null };
+}
+
+/** Accept the old web app's field during the API-before-web deployment. */
+function noteFollowUp(value: Record<string, unknown>): unknown {
+  return Object.hasOwn(value, "followUp")
+    ? value.followUp
+    : value.attentionDate;
 }
 
 /** Open or Done, for either kind of Note. */

@@ -49,10 +49,10 @@ describe("InboxNoteList", () => {
     render(
       <InboxNoteList
         notes={[
-          note("Coming up", { attentionDate: new Date(2026, 6, 18).getTime() }),
+          note("Coming up", { followUp: new Date(2026, 6, 18).getTime() }),
           note("No date", { createdAt: 4 }),
-          note("Today", { attentionDate: new Date(2026, 6, 17).getTime() }),
-          note("Past due", { attentionDate: new Date(2026, 6, 16).getTime() }),
+          note("Today", { followUp: new Date(2026, 6, 17).getTime() }),
+          note("Past due", { followUp: new Date(2026, 6, 16).getTime() }),
         ]}
         doneNotes={[note("Done", { state: "done", completedAt: 8 })]}
       />,
@@ -84,20 +84,18 @@ describe("InboxNoteList", () => {
 
     render(
       <InboxNoteList
-        notes={[
-          note("Today", { attentionDate: new Date(2026, 6, 17).getTime() }),
-        ]}
+        notes={[note("Today", { followUp: new Date(2026, 6, 17).getTime() })]}
       />,
     );
 
-    const attentionDate = () =>
-      screen.getByRole("button", { name: "Change attention date" });
+    const followUp = () =>
+      screen.getByRole("button", { name: "Change follow-up date" });
 
-    expect(attentionDate()).toHaveClass("text-brand-accent-text");
+    expect(followUp()).toHaveClass("text-brand-accent-text");
 
     act(() => vi.advanceTimersByTime(30 * 60_000));
 
-    expect(attentionDate()).toHaveClass("text-condition-attention");
+    expect(followUp()).toHaveClass("text-condition-attention");
   });
 
   it("keeps Completed Notes collapsed when the Open Inbox is clear", async () => {
@@ -215,26 +213,28 @@ describe("InboxNoteList", () => {
     },
   );
 
-  it("changes and clears an attention date through the calendar", async () => {
+  it("changes and clears an follow-up date through the calendar", async () => {
     const user = userEvent.setup();
     render(
       <InboxNoteList
         notes={[
-          note("Remember", { attentionDate: new Date(2026, 6, 17).getTime() }),
+          note("Remember", { followUp: new Date(2026, 6, 17).getTime() }),
         ]}
       />,
     );
     await user.click(
-      screen.getByRole("button", { name: "Change attention date" }),
+      screen.getByRole("button", { name: "Change follow-up date" }),
     );
     await user.click(screen.getByRole("button", { name: /July 18/i }));
     expect(actions.handleUpdateWhen).toHaveBeenCalledWith(
       new Date(2026, 6, 18).getTime(),
     );
     await user.click(
-      screen.getByRole("button", { name: "Change attention date" }),
+      screen.getByRole("button", { name: "Change follow-up date" }),
     );
-    await user.click(screen.getByRole("button", { name: "Clear" }));
+    await user.click(
+      screen.getByRole("button", { name: "Clear follow-up date" }),
+    );
     expect(actions.handleUpdateWhen).toHaveBeenLastCalledWith(undefined);
   });
   it("opens a rendered preview with inert links and no inline editor", async () => {

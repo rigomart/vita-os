@@ -20,7 +20,7 @@ import { THREAD_NOTE_COLUMNS, toThreadNote } from "./rows";
  * Notes captured inside one Thread, and owned by it. One D1 round trip per
  * function, every statement scoped by the owner.
  *
- * Distinct from Standalone Notes: a Thread Note has no Attention Date of its own,
+ * Distinct from Standalone Notes: a Thread Note has no Follow-up date of its own,
  * because the Thread it belongs to already carries the attention. Capturing one
  * counts as Thread activity, so the Thread's activity stamp moves with it.
  */

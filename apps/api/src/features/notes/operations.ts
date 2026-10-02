@@ -41,7 +41,7 @@ export async function getDoneNotePage(
 
 export async function createNote(
   scope: RequestScope,
-  input: { body: string; attentionDate?: number },
+  input: { body: string; followUp?: number },
 ): Promise<OperationResult<Note>> {
   const body = requireNonBlankText(input.body, "Note body");
   return found(await noteStorage(scope).insert({ ...input, body }));
@@ -55,15 +55,12 @@ export async function updateNoteBody(
   return found(await noteStorage(scope).setBody(input.noteId, body));
 }
 
-export async function updateNoteAttentionDate(
+export async function updateNoteFollowUp(
   scope: RequestScope,
-  input: { noteId: NoteId; attentionDate: number | null },
+  input: { noteId: NoteId; followUp: number | null },
 ): Promise<OperationResult<Note>> {
   return found(
-    await noteStorage(scope).setAttentionDate(
-      input.noteId,
-      input.attentionDate,
-    ),
+    await noteStorage(scope).setFollowUp(input.noteId, input.followUp),
   );
 }
 

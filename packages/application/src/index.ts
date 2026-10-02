@@ -70,7 +70,7 @@ export {
   useOpenNoteCount,
   useOpenNotes,
   useReopenNote,
-  useUpdateNoteAttentionDate,
+  useUpdateNoteFollowUp,
   useUpdateNoteBody,
   type CaptureNoteVariables,
   type DoneNotesResult,

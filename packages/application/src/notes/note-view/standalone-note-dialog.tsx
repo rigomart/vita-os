@@ -23,7 +23,7 @@ export function StandaloneNoteDialog({
       open
       onOpenChange={onOpenChange}
       note={savedNote}
-      attentionDate={savedNote.attentionDate}
+      followUp={savedNote.followUp}
       onSave={async (body) => {
         const updated = await actions.saveBody(body);
         setSavedNote(updated);

@@ -227,12 +227,12 @@ export function decodeThreadList(value: unknown): Thread[] | undefined {
 export function decodeNote(value: unknown): Note | undefined {
   if (!isObject(value)) return undefined;
 
-  const { _id, body, attentionDate, state, completedAt, createdAt, updatedAt } =
+  const { _id, body, followUp, state, completedAt, createdAt, updatedAt } =
     value;
   if (
     typeof _id !== "string" ||
     typeof body !== "string" ||
-    !isOptionalSafeInteger(attentionDate) ||
+    !isOptionalSafeInteger(followUp) ||
     !isNoteState(state) ||
     !isOptionalSafeInteger(completedAt) ||
     !isSafeInteger(createdAt) ||
@@ -244,7 +244,7 @@ export function decodeNote(value: unknown): Note | undefined {
   return {
     _id: _id as NoteId,
     body,
-    ...(attentionDate === undefined ? {} : { attentionDate }),
+    ...(followUp === undefined ? {} : { followUp }),
     state,
     ...(completedAt === undefined ? {} : { completedAt }),
     createdAt,

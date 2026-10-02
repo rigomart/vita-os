@@ -297,7 +297,7 @@ async function seed(): Promise<void> {
         body: note.body,
         ...(note.inDays === undefined
           ? {}
-          : { attentionDate: dayFromToday(note.inDays, note.at) }),
+          : { followUp: dayFromToday(note.inDays, note.at) }),
       });
     }
 
