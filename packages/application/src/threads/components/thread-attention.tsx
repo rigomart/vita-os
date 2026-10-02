@@ -282,7 +282,7 @@ function FollowUpSatellite({
       <WhenPopover
         when={followUp}
         busy={isPending}
-        hint="A soft date — the Thread comes back to your attention around it. A time orders it within its day."
+        hint="When to bring this Thread back."
         onSetWhen={(when) => (when === undefined ? onClear() : onSet(when))}
         trigger={
           <Button

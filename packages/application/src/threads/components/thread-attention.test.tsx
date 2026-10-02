@@ -180,8 +180,10 @@ describe("ThreadAttention", () => {
 
     await user.click(screen.getByRole("button", { name: "Follow up Aug 13" }));
     expect(
-      await screen.findByText(/A soft date — the Thread comes back/),
+      await screen.findByText("When to bring this Thread back."),
     ).toBeVisible();
+    // The time waits behind its button until asked for.
+    expect(screen.queryByLabelText("Time")).not.toBeInTheDocument();
     // The calendar opens on the Follow-up's month.
     await user.click(within(await screen.findByRole("grid")).getByText("20"));
     expect(onSetFollowUp).toHaveBeenCalledWith(new Date(2026, 7, 20).getTime());
@@ -195,7 +197,9 @@ describe("ThreadAttention", () => {
     const { onSetFollowUp } = renderAttention({ followUp: today });
 
     await user.click(screen.getByRole("button", { name: "Follow up Aug 13" }));
-    const time = await screen.findByLabelText("Time");
+    await user.click(await screen.findByRole("button", { name: "Add time" }));
+    const time = screen.getByLabelText("Time");
+    expect(time).toHaveFocus();
     await user.type(time, "15:30");
     expect(onSetFollowUp).not.toHaveBeenCalled();
 
@@ -217,6 +221,7 @@ describe("ThreadAttention", () => {
     await user.click(
       await screen.findByRole("button", { name: "Remove time" }),
     );
+    expect(screen.getByRole("button", { name: "Add time" })).toBeVisible();
     await user.keyboard("{Escape}");
     expect(onSetFollowUp).toHaveBeenCalledExactlyOnceWith(today);
   });

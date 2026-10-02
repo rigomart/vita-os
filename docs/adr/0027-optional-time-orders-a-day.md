@@ -7,7 +7,7 @@ When many items share a day, **Now** has no order worth reading. Everything due 
 
 ## Decision
 
-**A Follow-up and an Attention Date may carry a time of day.** The picker keeps its calendar and gains one time field under it. Picking a day still saves and closes in one click, carrying any time already typed. A time typed for a day already chosen is saved when the picker closes, and Enter closes it, so editing a time writes one change and one **Activity Log** entry rather than one per keystroke. Removing the time puts the item back to its day alone.
+**A Follow-up and an Attention Date may carry a time of day.** The picker keeps its calendar and gains an `Add time` button under it, which opens a time field you type into (the browser's own time dropdown is hidden, as in shadcn's date-and-time picker). A date that already has a time opens with the field showing. Picking a day still saves and closes in one click, carrying any time already typed. A time typed for a day already chosen is saved when the picker closes, and Enter closes it, so editing a time writes one change and one **Activity Log** entry rather than one per keystroke. Removing the time puts the item back to its day alone.
 
 **The time orders; it never places.** Columns and group headings stay in whole days: a 3 PM item is in **Now** and under `Today` from the start of the day, and after 3 PM it is still there, neither late nor moved. Within a day, a date alone comes first, as an all-day event does on a calendar, then timed items in time order. Nothing pings.
 

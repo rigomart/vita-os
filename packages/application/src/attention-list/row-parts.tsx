@@ -104,7 +104,9 @@ export function AreaTag({
 /**
  * The picker every When shares: a day, and optionally a time on it.
  *
- * Picking a day saves at once, carrying whatever time is typed. A time typed
+ * The time stays behind an Add time button until asked for, then is typed
+ * rather than picked. Picking a day saves at once, carrying whatever time is
+ * typed. A time typed
  * for a day already chosen waits until the popover closes — Enter closes it —
  * so editing it writes one change, not one per keystroke. The time only
  * orders a day's items; it never moves one to another day or column.
@@ -125,12 +127,14 @@ export function WhenPopover({
 }) {
   const [open, setOpen] = useState(false);
   const [time, setTime] = useState("");
+  const [addingTime, setAddingTime] = useState(false);
   const selected = when === undefined ? undefined : new Date(when);
   const savedTime = when === undefined ? "" : (timeOfDay(when) ?? "");
 
   function handleOpenChange(next: boolean) {
     if (next) {
       setTime(savedTime);
+      setAddingTime(savedTime !== "");
     } else if (when !== undefined && time !== savedTime && !busy) {
       onSetWhen?.(withTimeOfDay(when, time));
     }
@@ -157,33 +161,50 @@ export function WhenPopover({
             setOpen(false);
           }}
         />
-        <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2">
-          <Clock aria-hidden className="size-3.5 text-muted-foreground" />
-          <Input
-            type="time"
-            aria-label="Time"
-            value={time}
-            step={300}
-            disabled={busy}
-            onChange={(event) => setTime(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter") return;
-              event.preventDefault();
-              handleOpenChange(false);
-            }}
-            className="h-8 w-auto flex-1 rounded-lg px-2 text-sm tabular-nums"
-          />
-          {time && (
+        <div className="border-t border-border/60 p-2">
+          {addingTime ? (
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="time"
+                aria-label="Time"
+                autoFocus
+                value={time}
+                disabled={busy}
+                onChange={(event) => setTime(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  handleOpenChange(false);
+                }}
+                // Typed, never picked: the browser's own time dropdown is hidden.
+                className="h-8 flex-1 appearance-none rounded-lg bg-background px-2.5 text-sm tabular-nums [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Remove time"
+                disabled={busy}
+                onClick={() => {
+                  setTime("");
+                  setAddingTime(false);
+                }}
+                className="text-muted-foreground"
+              >
+                <X />
+              </Button>
+            </div>
+          ) : (
             <Button
               type="button"
               variant="ghost"
-              size="icon-xs"
-              aria-label="Remove time"
+              size="sm"
               disabled={busy}
-              onClick={() => setTime("")}
-              className="text-muted-foreground"
+              onClick={() => setAddingTime(true)}
+              className="w-full justify-start text-muted-foreground"
             >
-              <X />
+              <Clock />
+              Add time
             </Button>
           )}
         </div>
