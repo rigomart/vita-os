@@ -26,8 +26,7 @@ import { useFeedback } from "@vita-os/ui/lib/feedback";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
 import {
-  BellIcon,
-  CalendarIcon,
+  CalendarClock,
   CheckIcon,
   CopyIcon,
   EllipsisIcon,
@@ -41,6 +40,7 @@ import {
 import { useEffect, useId, useRef, useState } from "react";
 
 import { withTimeToken } from "../../attention-list/date-parts";
+import { followUpDateLabels } from "../../attention-list/follow-up-date";
 import { WhenPopover } from "../../attention-list/row-parts";
 import { useMarkdownTextarea } from "./use-markdown-textarea";
 
@@ -62,7 +62,7 @@ export interface NoteDialogProps {
   onToggleDone?: () => Promise<void> | void;
   /** Deletes without asking: the owner offers Undo once the view has closed. */
   onDelete?: () => void;
-  attentionDate?: number;
+  followUp?: number;
   onSetWhen?: (when: number | undefined) => Promise<void> | void;
 }
 
@@ -89,7 +89,7 @@ export function NoteDialog({
   onSave,
   onToggleDone,
   onDelete,
-  attentionDate,
+  followUp,
   onSetWhen,
 }: NoteDialogProps) {
   const feedback = useFeedback();
@@ -100,7 +100,7 @@ export function NoteDialog({
   // The unsaved text, or null when nothing has been edited. Read shows it, so
   // switching modes previews a draft instead of throwing it away.
   const [draft, setDraft] = useState<string | null>(null);
-  const [when, setWhen] = useState<number | undefined>(attentionDate);
+  const [when, setWhen] = useState<number | undefined>(followUp);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const writeTabRef = useRef<HTMLButtonElement>(null);
@@ -158,7 +158,7 @@ export function NoteDialog({
     changeWhen.isPending;
   const error = isCompose ? submit.error : save.error;
   const isDirty = isCompose
-    ? body !== "" || when !== attentionDate
+    ? body !== "" || when !== followUp
     : draft !== null && draft !== savedBody;
   const markdownTextarea = useMarkdownTextarea({
     value: body,
@@ -167,7 +167,7 @@ export function NoteDialog({
 
   const finishDismissal = () => {
     setDraft(null);
-    setWhen(attentionDate);
+    setWhen(followUp);
     setConfirmingDiscard(false);
     save.clearError();
     submit.clearError();
@@ -253,7 +253,7 @@ export function NoteDialog({
         .join(" · ")
     : undefined;
 
-  const shownWhen = isCompose ? when : attentionDate;
+  const shownWhen = isCompose ? when : followUp;
   const attentionPicker =
     threadTitle === undefined && (isCompose || onSetWhen) ? (
       <WhenPopover
@@ -271,23 +271,19 @@ export function NoteDialog({
             disabled={isPending}
             aria-label={
               isCompose
-                ? "Attention date"
-                : attentionDate === undefined
-                  ? "Set attention date"
-                  : "Change attention date"
+                ? followUpDateLabels.name
+                : followUp === undefined
+                  ? followUpDateLabels.set
+                  : followUpDateLabels.change
             }
             className={cn(
               "-ml-2 rounded-full text-muted-foreground",
               shownWhen !== undefined && "text-brand-accent-text",
             )}
           >
-            {shownWhen === undefined ? (
-              <CalendarIcon className="size-3.5" />
-            ) : (
-              <BellIcon className="size-3.5" />
-            )}
+            <CalendarClock className="size-3.5" />
             {shownWhen === undefined
-              ? "Attention date"
+              ? followUpDateLabels.name
               : withTimeToken(format(shownWhen, "MMM d"), shownWhen)}
           </Button>
         }

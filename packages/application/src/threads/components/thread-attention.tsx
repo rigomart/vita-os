@@ -3,10 +3,15 @@ import type { Move, MoveId } from "@vita-os/contracts";
 import { Button } from "@vita-os/ui/components/button";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
-import { Bell, Check, Plus, X } from "lucide-react";
+import { CalendarClock, Check, Plus, X } from "lucide-react";
 import { useState } from "react";
 
-import { WhenPopover, whenTone, withTimeToken } from "../../attention-list";
+import {
+  followUpDateLabels,
+  WhenPopover,
+  whenTone,
+  withTimeToken,
+} from "../../attention-list";
 import { EditableField } from "../../ui/editable-field";
 
 export interface ThreadAttentionPending {
@@ -282,19 +287,23 @@ function FollowUpSatellite({
       <WhenPopover
         when={followUp}
         busy={isPending}
-        hint="When to bring this Thread back."
         onSetWhen={(when) => (when === undefined ? onClear() : onSet(when))}
         trigger={
           <Button
             variant="ghost"
             size="xs"
             disabled={isPending}
-            // The Bell already says "follow-up", so the label stays visually
-            // to the date alone — the phrase survives as the accessible name.
-            aria-label={label ? `Follow up ${label}` : undefined}
+            aria-label={
+              label
+                ? `${followUpDateLabels.change}: ${label}`
+                : followUpDateLabels.set
+            }
             className="h-8 gap-1.5 px-1.5 font-normal xl:h-6"
           >
-            <Bell aria-hidden className="size-3 text-muted-foreground/70" />
+            <CalendarClock
+              aria-hidden
+              className="size-3 text-muted-foreground/70"
+            />
             {label ? (
               <span
                 className={cn(
@@ -305,7 +314,9 @@ function FollowUpSatellite({
                 {label}
               </span>
             ) : (
-              <span className="text-muted-foreground">Add a follow-up…</span>
+              <span className="text-muted-foreground">
+                {followUpDateLabels.set}
+              </span>
             )}
           </Button>
         }
@@ -318,7 +329,7 @@ function FollowUpSatellite({
           onClick={onClear}
           disabled={isPending}
           aria-busy={isPending}
-          aria-label="Clear follow-up"
+          aria-label={followUpDateLabels.clear}
           className="size-7 shrink-0 text-muted-foreground/50 hover:text-destructive xl:size-5"
         >
           <X />

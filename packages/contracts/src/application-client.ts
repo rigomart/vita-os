@@ -147,15 +147,15 @@ export interface ApplicationClient {
   countOpenNotes(): Promise<OperationResult<number>>;
   createNote(input: {
     body: string;
-    attentionDate?: number;
+    followUp?: number;
   }): Promise<OperationResult<Note>>;
   updateNoteBody(input: {
     noteId: NoteId;
     body: string;
   }): Promise<OperationResult<Note>>;
-  updateNoteAttentionDate(input: {
+  updateNoteFollowUp(input: {
     noteId: NoteId;
-    attentionDate: Clearable<number>;
+    followUp: Clearable<number>;
   }): Promise<OperationResult<Note>>;
   markNoteDone(input: { noteId: NoteId }): Promise<OperationResult<Note>>;
   markNoteOpen(input: { noteId: NoteId }): Promise<OperationResult<Note>>;

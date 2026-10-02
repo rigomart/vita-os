@@ -23,14 +23,14 @@ function thread(id: string, followUp: number, order = 0): Thread {
   } as Thread;
 }
 
-function note(id: string, attentionDate: number): Note {
+function note(id: string, followUp: number): Note {
   return {
     _id: id as Note["_id"],
     body: id,
     state: "open",
     revision: 0,
     createdAt: currentDate,
-    attentionDate,
+    followUp,
   } as Note;
 }
 

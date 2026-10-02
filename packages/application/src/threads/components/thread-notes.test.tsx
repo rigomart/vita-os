@@ -39,7 +39,7 @@ describe("ThreadNotes", () => {
     expect(screen.getByRole("button", { name: "Write a note…" })).toBeVisible();
     expect(screen.queryByRole("textbox")).toBeNull();
   });
-  it("opens a Thread compose view without an Attention Date", async () => {
+  it("opens a Thread compose view without a Follow-up date", async () => {
     const user = userEvent.setup();
     const callbacks = actions();
     render(
@@ -50,7 +50,7 @@ describe("ThreadNotes", () => {
       screen.getByRole("dialog", { name: "New note · Dad's health" }),
     ).toBeVisible();
     expect(
-      screen.queryByRole("button", { name: /attention date/i }),
+      screen.queryByRole("button", { name: /follow-up date/i }),
     ).toBeNull();
     await user.type(
       screen.getByRole("textbox", { name: "Note body" }),

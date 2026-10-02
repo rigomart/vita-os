@@ -8,6 +8,6 @@ describe("getActivityLogEntryLabel", () => {
     expect(getActivityLogEntryLabel("move_completed")).toBe("Move done");
     expect(getActivityLogEntryLabel("state_change")).toBe("Lifecycle");
     expect(getActivityLogEntryLabel("area_move")).toBe("Area");
-    expect(getActivityLogEntryLabel("follow_up_change")).toBe("Follow-up");
+    expect(getActivityLogEntryLabel("follow_up_change")).toBe("Follow-up date");
   });
 });

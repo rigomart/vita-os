@@ -13,7 +13,7 @@ import { dayDelta, startOfLocalDay } from "./dashboard-model";
  * unscheduled group carries what is not on the calendar at all: Threads with
  * Moves ready to be made, Threads simply open, and standalone Notes. Focus never
  * moves a Thread between groups: timing belongs to Follow-ups alone.
- * Follow-ups and Note attention dates are the same kind of signal here, so a
+ * Follow-up dates are the same kind of signal on Threads and Notes, so a
  * Note due tomorrow sits beside a Thread due tomorrow.
  *
  * A dated item never appears in the unscheduled group and vice versa, so every
@@ -25,7 +25,7 @@ export interface AttentionBoard {
   unscheduled: {
     /** Threads with at least one Move but no date: what you could do today. */
     moves: BoardItem[];
-    /** Standalone Notes with no attention date. */
+    /** Standalone Notes with no follow-up date. */
     notes: BoardItem[];
     /** Threads with neither a date nor a Move. */
     open: BoardItem[];
@@ -83,7 +83,7 @@ export function buildAttentionBoard(
       (note): BoardItem => ({
         kind: "note",
         note,
-        when: note.attentionDate ?? undefined,
+        when: note.followUp ?? undefined,
       }),
     ),
   ];
@@ -107,7 +107,7 @@ export function buildAttentionBoard(
         .sort(byThreadOrder)
         .map((thread) => ({ kind: "thread", thread })),
       notes: notes
-        .filter((note) => note.attentionDate == null)
+        .filter((note) => note.followUp == null)
         .sort((a, b) => b.createdAt - a.createdAt)
         .map((note) => ({ kind: "note", note })),
     },

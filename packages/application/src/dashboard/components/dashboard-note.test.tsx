@@ -92,14 +92,14 @@ describe("DashboardNote", () => {
       <DashboardNote
         currentDate={currentDate}
         note={note("Water the plants", {
-          attentionDate: currentDate - 2 * 24 * 60 * 60 * 1000,
+          followUp: currentDate - 2 * 24 * 60 * 60 * 1000,
         })}
         onOpenNote={vi.fn()}
       />,
     );
 
     expect(
-      screen.getByRole("button", { name: "Change attention date" }),
+      screen.getByRole("button", { name: "Change follow-up date" }),
     ).toHaveTextContent("−2d");
     expect(screen.queryByText("Note")).not.toBeInTheDocument();
   });

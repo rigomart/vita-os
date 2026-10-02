@@ -21,7 +21,7 @@ import {
   useOpenNoteCount,
   useOpenNotes,
   useReopenNote,
-  useUpdateNoteAttentionDate,
+  useUpdateNoteFollowUp,
   useUpdateNoteBody,
 } from "./hooks";
 
@@ -157,29 +157,26 @@ describe("editing a Note", () => {
     pending.resolve(success({ ...note, body: "Refill both" }));
   });
 
-  it("sets and clears the Attention Date", async () => {
+  it("sets and clears the Follow-up date", async () => {
     const client = createFakeApplicationClient({
-      updateNoteAttentionDate: async () =>
-        success({ ...note, attentionDate: 5_000 }),
+      updateNoteFollowUp: async () => success({ ...note, followUp: 5_000 }),
     });
     const { wrapper, cache } = createHarness(client, seedInbox([note]));
-    const { result } = renderHook(() => useUpdateNoteAttentionDate(), {
+    const { result } = renderHook(() => useUpdateNoteFollowUp(), {
       wrapper,
     });
 
-    act(() =>
-      result.current.mutate({ noteId: note._id, attentionDate: 5_000 }),
-    );
+    act(() => result.current.mutate({ noteId: note._id, followUp: 5_000 }));
     await waitFor(() =>
       expect(
-        cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]?.attentionDate,
+        cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]?.followUp,
       ).toBe(5_000),
     );
 
-    act(() => result.current.mutate({ noteId: note._id, attentionDate: null }));
+    act(() => result.current.mutate({ noteId: note._id, followUp: null }));
     await waitFor(() =>
       expect(
-        cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]?.attentionDate,
+        cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]?.followUp,
       ).toBeUndefined(),
     );
   });

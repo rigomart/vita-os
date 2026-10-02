@@ -99,7 +99,7 @@ export function noteStorage({ db, clock, actorId }: RequestScope) {
 
     async insert(note: {
       body: string;
-      attentionDate?: number;
+      followUp?: number;
     }): Promise<Note | null> {
       const now = clock.now();
       const row = await db
@@ -115,7 +115,7 @@ export function noteStorage({ db, clock, actorId }: RequestScope) {
           clock.newId(),
           actorId,
           note.body,
-          note.attentionDate ?? null,
+          note.followUp ?? null,
           now,
           now,
         )
@@ -128,12 +128,9 @@ export function noteStorage({ db, clock, actorId }: RequestScope) {
       return update(noteId, { body, updated_at: clock.now() });
     },
 
-    setAttentionDate(
-      noteId: string,
-      attentionDate: number | null,
-    ): Promise<Note | null> {
+    setFollowUp(noteId: string, followUp: number | null): Promise<Note | null> {
       return update(noteId, {
-        attention_date: attentionDate,
+        attention_date: followUp,
         updated_at: clock.now(),
       });
     },

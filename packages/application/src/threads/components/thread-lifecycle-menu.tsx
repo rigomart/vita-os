@@ -108,8 +108,8 @@ export function ThreadLifecycleMenu({
           <AlertDialogHeader>
             <AlertDialogTitle>Resolve thread?</AlertDialogTitle>
             <AlertDialogDescription>
-              &ldquo;{thread.title}&rdquo; will be marked as resolved. Its
-              current Next Move and Follow-up will be cleared.
+              &ldquo;{thread.title}&rdquo; will be marked as resolved. Its Moves
+              and Follow-up date will be cleared.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex flex-col gap-2">

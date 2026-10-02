@@ -3,7 +3,12 @@ import type { ReactNode } from "react";
 import { cn } from "@vita-os/ui/lib/utils";
 import { CalendarClock, Check } from "lucide-react";
 
-import { timeToken, WhenPopover, withTimeToken } from "../../attention-list";
+import {
+  followUpDateLabels,
+  timeToken,
+  WhenPopover,
+  withTimeToken,
+} from "../../attention-list";
 import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
 
 /** Held in place at rest, so the footer never reflows on hover. */
@@ -82,13 +87,11 @@ export function BoardTag({ icon, label }: { icon: ReactNode; label: string }) {
 export function BoardDate({
   currentDate,
   inHeading = false,
-  labels,
   onSetWhen,
   when,
 }: {
   currentDate: number;
   inHeading?: boolean;
-  labels: { change: string; set: string };
   onSetWhen: (when: number | undefined) => void;
   when?: number;
 }) {
@@ -100,14 +103,18 @@ export function BoardDate({
         when === undefined || !showsBoardDate(when, inHeading) ? (
           <BoardControl
             className={revealed}
-            label={when === undefined ? labels.set : labels.change}
+            label={
+              when === undefined
+                ? followUpDateLabels.set
+                : followUpDateLabels.change
+            }
           >
             <CalendarClock className="size-3.5" />
           </BoardControl>
         ) : (
           <button
             type="button"
-            aria-label={labels.change}
+            aria-label={followUpDateLabels.change}
             className={cn(
               "relative z-10 -mx-1 -my-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-1 py-0.5 tabular-nums transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40",
               dateToneClassName(when, currentDate),

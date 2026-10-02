@@ -178,7 +178,7 @@ describe("NoteDialog saved note", () => {
       "true",
     );
     expect(screen.queryByRole("textbox")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Attention date" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Follow-up date" })).toBeNull();
   });
 
   it("marks a Done note in the header", () => {
@@ -508,11 +508,11 @@ describe("NoteDialog dismissal", () => {
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
-  it("asks before closing when only the Attention Date has changed", async () => {
+  it("asks before closing when only the Follow-up date has changed", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
     render(<NoteDialog open onOpenChange={onOpenChange} onSubmit={vi.fn()} />);
-    await user.click(screen.getByRole("button", { name: "Attention date" }));
+    await user.click(screen.getByRole("button", { name: "Follow-up date" }));
     const day = screen
       .getAllByRole("button")
       .find(
@@ -528,7 +528,7 @@ describe("NoteDialog dismissal", () => {
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
-  it("omits Attention Date for Thread compose and closes after adding", async () => {
+  it("omits Follow-up date for Thread compose and closes after adding", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
     const onSubmit = vi.fn(async () => undefined);
@@ -543,7 +543,7 @@ describe("NoteDialog dismissal", () => {
     expect(screen.getByRole("dialog")).toHaveAccessibleName(
       "New note · Health",
     );
-    expect(screen.queryByRole("button", { name: "Attention date" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Follow-up date" })).toBeNull();
     await user.type(
       screen.getByRole("textbox", { name: "Note body" }),
       "New consultation",

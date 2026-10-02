@@ -31,6 +31,7 @@ import type { ProductSearch } from "../navigation/search-params";
 import type { AttentionRowModel } from "./attention-row-model";
 
 import { AreaIcon } from "../areas/components/area-icon";
+import { followUpDateLabels } from "./follow-up-date";
 
 export function RowShell({
   children,
@@ -113,7 +114,7 @@ export function AreaTag({
  */
 export function WhenPopover({
   busy,
-  hint,
+  hint = followUpDateLabels.hint,
   onSetWhen,
   trigger,
   when,
@@ -222,7 +223,7 @@ export function WhenPopover({
                 setOpen(false);
               }}
             >
-              Clear
+              {followUpDateLabels.clear}
             </Button>
           </div>
         )}

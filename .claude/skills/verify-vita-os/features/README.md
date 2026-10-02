@@ -35,4 +35,5 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 - [Create a thread](./create-thread.md) covers the New thread dialog and the thread pane it opens.
 - [Moves](./moves.md) covers adding, focusing, and completing a Move in the thread pane, the drawer, and the Dashboard card.
 - [Dashboard board](./dashboard-board.md) covers the dated lanes, the No date tray, the shared Thread and Note card, and the stacked layouts.
+- [Follow-up dates](./follow-up-dates.md) covers the shared date controls on Threads and standalone Notes, their Dashboard placement, and resolve/reopen behavior.
 - [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter by area row.

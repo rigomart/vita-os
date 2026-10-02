@@ -67,7 +67,6 @@ export function ThreadAttentionCard({
     <BoardDate
       currentDate={currentDate}
       inHeading={dateInHeading}
-      labels={{ change: "Change Follow-up", set: "Set Follow-up" }}
       onSetWhen={onSetFollowUp}
       when={followUp}
     />

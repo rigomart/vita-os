@@ -4,9 +4,14 @@ import { Button } from "@vita-os/ui/components/button";
 import { Markdown, markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format, isThisYear } from "date-fns";
-import { Bell, Check, Undo2 } from "lucide-react";
+import { CalendarClock, Check, Undo2 } from "lucide-react";
 
-import { whenTone, WhenPopover, withTimeToken } from "../../attention-list";
+import {
+  followUpDateLabels,
+  whenTone,
+  WhenPopover,
+  withTimeToken,
+} from "../../attention-list";
 import { useNoteRowActions } from "../note-row/use-note-row-actions";
 
 const whenToneClassName = {
@@ -36,7 +41,7 @@ export function NoteCard({
     isWhenPending,
   } = useNoteRowActions(note);
   const done = note.state === "done";
-  const tone = done ? undefined : whenTone(note.attentionDate, now);
+  const tone = done ? undefined : whenTone(note.followUp, now);
   const stamp =
     done && note.completedAt !== undefined ? note.completedAt : note.createdAt;
 
@@ -76,7 +81,7 @@ export function NoteCard({
           controls rise above the card-wide button. */}
       <div className="mt-3 flex items-center gap-1">
         <WhenPopover
-          when={note.attentionDate}
+          when={note.followUp}
           busy={isWhenPending}
           onSetWhen={handleUpdateWhen}
           trigger={
@@ -86,25 +91,22 @@ export function NoteCard({
               disabled={isWhenPending}
               aria-busy={isWhenPending}
               aria-label={
-                note.attentionDate === undefined
-                  ? "Set attention date"
-                  : "Change attention date"
+                note.followUp === undefined
+                  ? followUpDateLabels.set
+                  : followUpDateLabels.change
               }
               className={cn(
                 "relative -ml-1 h-7 gap-1.5 rounded-full px-2 text-2xs font-normal",
-                note.attentionDate === undefined
+                note.followUp === undefined
                   ? "text-muted-foreground/60 opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 aria-expanded:opacity-100"
                   : "text-muted-foreground",
                 tone && whenToneClassName[tone],
               )}
             >
-              <Bell className="size-3" />
-              {note.attentionDate === undefined
-                ? "Attention date"
-                : withTimeToken(
-                    shortDate(note.attentionDate),
-                    note.attentionDate,
-                  )}
+              <CalendarClock className="size-3" />
+              {note.followUp === undefined
+                ? followUpDateLabels.name
+                : withTimeToken(shortDate(note.followUp), note.followUp)}
             </Button>
           }
         />

@@ -10,12 +10,12 @@ import { call, createSession, expectError, succeed } from "./sessions";
 async function capture(
   session: Session,
   body: string,
-  attentionDate?: number,
+  followUp?: number,
 ): Promise<Note> {
   return succeed<Note>("/v1/notes", {
     method: "POST",
     session,
-    body: { body, ...(attentionDate === undefined ? {} : { attentionDate }) },
+    body: { body, ...(followUp === undefined ? {} : { followUp }) },
   });
 }
 
@@ -31,7 +31,7 @@ async function openCount(session: Session): Promise<number> {
 }
 
 describe("capturing a Note", () => {
-  it("captures an Open Note with an optional Attention Date", async () => {
+  it("captures an Open Note with an optional Follow-up date", async () => {
     const owner = await createSession("note-capture");
     const may20 = Date.UTC(2026, 4, 20);
 
@@ -39,10 +39,10 @@ describe("capturing a Note", () => {
     const dated = await capture(owner, "Call the dentist", may20);
 
     expect(plain).toMatchObject({ body: "Refill prescription", state: "open" });
-    expect(plain).not.toHaveProperty("when");
+    expect(plain).not.toHaveProperty("followUp");
     expect(plain).not.toHaveProperty("completedAt");
     expect(plain.updatedAt).toBe(plain.createdAt);
-    expect(dated.attentionDate).toBe(may20);
+    expect(dated.followUp).toBe(may20);
   });
 
   it("refuses a blank body", async () => {
@@ -118,6 +118,67 @@ describe("the Open Notes inventory", () => {
 });
 
 describe("editing a Note", () => {
+  it("uses Follow-up dates while keeping older clients and saved dates working", async () => {
+    const owner = await createSession("note-follow-up-compatibility");
+    const original = Date.UTC(2026, 4, 20, 15);
+    const next = Date.UTC(2026, 4, 21, 9);
+    const note = await succeed<Note>("/v1/notes", {
+      method: "POST",
+      session: owner,
+      body: { body: "Previously saved Note", attentionDate: original },
+    });
+
+    expect(note).toMatchObject({ followUp: original, attentionDate: original });
+    const changed = await succeed(`/v1/notes/${note._id}/follow-up`, {
+      method: "PATCH",
+      session: owner,
+      body: { followUp: next },
+    });
+    expect(changed).toMatchObject({ followUp: next, attentionDate: next });
+    expect((await openNotes(owner))[0]).toMatchObject({ followUp: next });
+    const stored = await env.DB.prepare(
+      "SELECT attention_date FROM notes WHERE id = ?",
+    )
+      .bind(note._id)
+      .first<{ attention_date: number }>();
+    expect(stored?.attention_date).toBe(next);
+
+    const cleared = await succeed(`/v1/notes/${note._id}/attention-date`, {
+      method: "PATCH",
+      session: owner,
+      body: { attentionDate: null },
+    });
+    expect(cleared).not.toHaveProperty("followUp");
+    expect(cleared).not.toHaveProperty("attentionDate");
+  });
+
+  it("rejects ambiguous or invalid Follow-up dates", async () => {
+    const owner = await createSession("note-follow-up-validation");
+    const note = await capture(owner, "Remember this");
+    for (const body of [
+      { followUp: "tomorrow" },
+      {},
+      { followUp: 1, attentionDate: 2 },
+    ]) {
+      expectError(
+        await call(`/v1/notes/${note._id}/follow-up`, {
+          method: "PATCH",
+          session: owner,
+          body,
+        }),
+        { status: 400, code: "validation" },
+      );
+    }
+    expectError(
+      await call("/v1/notes", {
+        method: "POST",
+        session: owner,
+        body: { body: "Ambiguous", followUp: 1, attentionDate: 2 },
+      }),
+      { status: 400, code: "validation" },
+    );
+  });
+
   it("rewrites the body and moves the updated stamp", async () => {
     const owner = await createSession("note-edit-body");
     const note = await capture(owner, "Refill prescription");
@@ -133,30 +194,27 @@ describe("editing a Note", () => {
     expect(edited.createdAt).toBe(note.createdAt);
   });
 
-  it("sets and clears the Attention Date", async () => {
+  it("sets and clears the Follow-up date", async () => {
     const owner = await createSession("note-edit-when");
     const note = await capture(owner, "Call the dentist");
     const may20 = Date.UTC(2026, 4, 20);
 
-    const dated = await succeed<Note>(`/v1/notes/${note._id}/attention-date`, {
+    const dated = await succeed<Note>(`/v1/notes/${note._id}/follow-up`, {
       method: "PATCH",
       session: owner,
-      body: { attentionDate: may20 },
+      body: { followUp: may20 },
     });
-    const cleared = await succeed<Note>(
-      `/v1/notes/${note._id}/attention-date`,
-      {
-        method: "PATCH",
-        session: owner,
-        body: { attentionDate: null },
-      },
-    );
+    const cleared = await succeed<Note>(`/v1/notes/${note._id}/follow-up`, {
+      method: "PATCH",
+      session: owner,
+      body: { followUp: null },
+    });
 
-    expect(dated.attentionDate).toBe(may20);
-    expect(cleared).not.toHaveProperty("when");
+    expect(dated.followUp).toBe(may20);
+    expect(cleared).not.toHaveProperty("followUp");
   });
 
-  it("refuses a blank body and an unreadable Attention Date", async () => {
+  it("refuses a blank body and an unreadable Follow-up date", async () => {
     const owner = await createSession("note-edit-refusals");
     const note = await capture(owner, "Refill prescription");
 
@@ -169,10 +227,10 @@ describe("editing a Note", () => {
       { status: 400, code: "validation", message: "Note body cannot be empty" },
     );
     expectError(
-      await call(`/v1/notes/${note._id}/attention-date`, {
+      await call(`/v1/notes/${note._id}/follow-up`, {
         method: "PATCH",
         session: owner,
-        body: { attentionDate: "tomorrow" },
+        body: { followUp: "tomorrow" },
       }),
       { status: 400, code: "validation" },
     );
@@ -335,7 +393,7 @@ describe("discarding a Note", () => {
 
     for (const [path, body] of [
       [`/v1/notes/${theirs._id}/body`, { body: "Mine now" }],
-      [`/v1/notes/${theirs._id}/attention-date`, { attentionDate: 1 }],
+      [`/v1/notes/${theirs._id}/follow-up`, { followUp: 1 }],
       [`/v1/notes/${theirs._id}/state`, { state: "done" }],
     ] as const) {
       expectError(await call(path, { method: "PATCH", session: owner, body }), {

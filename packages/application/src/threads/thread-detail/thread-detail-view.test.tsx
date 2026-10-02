@@ -521,7 +521,7 @@ describe("ThreadDetailView", () => {
       within(attention).getByRole("textbox", { name: "Add a move" }),
     ).toBeVisible();
     expect(
-      within(attention).getByRole("button", { name: "Add a follow-up…" }),
+      within(attention).getByRole("button", { name: "Set follow-up date" }),
     ).toBeVisible();
     expect(attention).not.toHaveAttribute("data-slot", "card");
     expect(
@@ -684,7 +684,7 @@ describe("ThreadDetailView", () => {
     ).toBeNull();
     expect(screen.queryByRole("textbox", { name: "Add a move" })).toBeNull();
     expect(
-      screen.getByText(/No next move or follow-up while resolved/),
+      screen.getByText(/No Moves or follow-up date while resolved/),
     ).toBeVisible();
 
     await userEvent.click(

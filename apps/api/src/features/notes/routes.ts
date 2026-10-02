@@ -15,11 +15,11 @@ import {
   markNoteDone,
   markNoteOpen,
   removeNote,
-  updateNoteAttentionDate,
+  updateNoteFollowUp,
   updateNoteBody,
 } from "./operations";
 import {
-  decodeAttentionDate,
+  decodeFollowUp,
   decodeBody,
   decodeCreateNote,
   decodeNoteState,
@@ -78,18 +78,22 @@ export const noteRoutes: Routes = (app) => {
     );
   });
 
-  app.patch("/v1/notes/:noteId/attention-date", async (context) => {
-    const input =
-      decodeAttentionDate(await readJsonBody(context)) ??
-      refuse(invalidRequest("Invalid Attention Date."));
-    return reply(
-      context,
-      await updateNoteAttentionDate(scope(context), {
-        noteId: context.req.param("noteId") as NoteId,
-        attentionDate: input.attentionDate,
-      }),
-    );
-  });
+  app.on(
+    "PATCH",
+    ["/v1/notes/:noteId/follow-up", "/v1/notes/:noteId/attention-date"],
+    async (context) => {
+      const input =
+        decodeFollowUp(await readJsonBody(context)) ??
+        refuse(invalidRequest("Invalid Follow-up date."));
+      return reply(
+        context,
+        await updateNoteFollowUp(scope(context), {
+          noteId: context.req.param("noteId") as NoteId,
+          followUp: input.followUp,
+        }),
+      );
+    },
+  );
 
   app.patch("/v1/notes/:noteId/state", async (context) => {
     const input =
