@@ -66,6 +66,7 @@ const client = {
   removeArea: async () => ({ ok: true, value: commandAcknowledged }),
 
   listOpenThreads: async () => ({ ok: true, value: [thread] }),
+  listResolvedThreads: async () => ({ ok: true, value: [] }),
   getThreadDetail: async () => ({ ok: true, value: { thread, area } }),
   createThread: async () => ({ ok: true, value: thread }),
   updateThread: async () => ({ ok: true, value: thread }),

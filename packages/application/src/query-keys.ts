@@ -16,6 +16,7 @@ export const queryKeys = {
   threads: {
     all: ["threads"] as const,
     open: () => ["threads", "open"] as const,
+    resolved: () => ["threads", "resolved"] as const,
     detail: (slug: string) => ["threads", "detail", slug] as const,
     details: () => ["threads", "detail"] as const,
     activity: (threadId: ThreadId) =>

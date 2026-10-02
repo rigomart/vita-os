@@ -112,6 +112,44 @@ function authenticatedWorkerFetch(cookie: string): typeof fetch {
 }
 
 describe("HTTP ApplicationClient against the Worker", () => {
+  it("finds resolved Threads and removes reopened Threads from that list without restoring attention", async () => {
+    const owner = await createSession();
+    const thread = await seedThread(owner);
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "http://api.test",
+      fetchImpl: authenticatedWorkerFetch(owner.cookie),
+    });
+    await client.updateThread({
+      threadId: thread.id,
+      followUp: 1_800_000_000_000,
+    });
+    await expect(client.listResolvedThreads()).resolves.toEqual({
+      ok: true,
+      value: [],
+    });
+    const resolved = await client.updateThread({
+      threadId: thread.id,
+      state: "resolved",
+    });
+    expect(resolved.ok).toBe(true);
+    await expect(client.listResolvedThreads()).resolves.toEqual({
+      ok: true,
+      value: [expect.objectContaining({ _id: thread.id, state: "resolved" })],
+    });
+    const reopened = await client.updateThread({
+      threadId: thread.id,
+      state: "open",
+    });
+    expect(reopened.ok).toBe(true);
+    expect(reopened.ok && reopened.value).not.toHaveProperty("followUp");
+    expect(reopened.ok && reopened.value).not.toHaveProperty("moves");
+    expect(reopened.ok && reopened.value).not.toHaveProperty("focusedMoveId");
+    await expect(client.listResolvedThreads()).resolves.toEqual({
+      ok: true,
+      value: [],
+    });
+  });
+
   it("uses the Better Auth cookie for detail, Activity Log, completion, not-found, and conflict", async () => {
     const owner = await createSession();
     const thread = await seedThread(owner);

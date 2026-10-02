@@ -37,6 +37,21 @@ const thread = {
   createdAt: 0,
 } satisfies Thread;
 
+const resolvedThread = {
+  ...thread,
+  _id: "resolved1" as ThreadId,
+  title: "Sister's checkup",
+  slug: "sister-checkup",
+  state: "resolved",
+} satisfies Thread;
+
+const olderResolvedThread = {
+  ...resolvedThread,
+  _id: "resolved2" as ThreadId,
+  title: "Sister",
+  slug: "sister-older",
+} satisfies Thread;
+
 const navigate = vi.hoisted(() => vi.fn());
 /** The search the shell and palette read, so a test can put a filter on. */
 const search = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
@@ -53,6 +68,16 @@ vi.mock("../threads/hooks", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../threads/hooks")>()),
   useOpenThreads: ({ enabled }: { enabled?: boolean } = {}) => ({
     data: enabled === false ? undefined : [thread],
+  }),
+  useResolvedThreads: ({ enabled }: { enabled?: boolean } = {}) => ({
+    data:
+      enabled === false
+        ? undefined
+        : [
+            resolvedThread,
+            olderResolvedThread,
+            { ...resolvedThread, _id: "resolved3" as ThreadId, title: "sr" },
+          ],
   }),
 }));
 
@@ -146,6 +171,127 @@ describe("CommandPalette", () => {
     expect(
       screen.queryByRole("button", { name: /Actions for/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows only open work until the Resolved chip is selected", async () => {
+    const user = userEvent.setup();
+    renderShell();
+    await openPalette(user);
+    expect(screen.getByRole("button", { name: "Resolved" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(
+      screen.queryByRole("option", { name: /Sister's checkup/ }),
+    ).not.toBeInTheDocument();
+
+    const input = screen.getByPlaceholderText(PLACEHOLDER);
+    await user.type(input, "Sister");
+    expect(optionLabels()).toEqual(["Sister's front teethMoney"]);
+    await user.click(screen.getByRole("button", { name: "Resolved" }));
+    expect(screen.getByRole("combobox")).toHaveValue("");
+    expect(screen.getByRole("combobox")).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Resolved" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(optionLabels()).toEqual([
+      "Sister's checkupMoney",
+      "SisterMoney",
+      "srMoney",
+    ]);
+    expect(
+      [...document.querySelectorAll("[cmdk-group-heading]")].map(
+        (el) => el.textContent,
+      ),
+    ).toEqual(["Resolved"]);
+  });
+
+  it("filters resolved history in resolution order and clears search when returning", async () => {
+    const user = userEvent.setup();
+    renderShell();
+    await openPalette(user);
+    await user.click(screen.getByRole("button", { name: "Resolved" }));
+    const input = screen.getByRole("combobox");
+    await user.type(input, "Sister");
+    expect(optionLabels()).toEqual(["Sister's checkupMoney", "SisterMoney"]);
+    await user.clear(input);
+    await user.type(input, "Money");
+    expect(optionLabels()).toEqual([
+      "Sister's checkupMoney",
+      "SisterMoney",
+      "srMoney",
+    ]);
+    await user.click(screen.getByRole("button", { name: "Resolved" }));
+    expect(screen.getByRole("combobox")).toHaveValue("");
+    expect(optionLabels()[0]).toContain(thread.title);
+    expect(screen.getByRole("option", { name: "New thread" })).toBeVisible();
+    expect(
+      screen.queryByRole("option", { name: /Sister's checkup/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not match hidden identifiers when searching resolved history", async () => {
+    const user = userEvent.setup();
+    renderShell();
+    await openPalette(user);
+    await user.click(screen.getByRole("button", { name: "Resolved" }));
+    const input = screen.getByRole("combobox");
+    for (const query of ["resolved", "thread", "resolved1"]) {
+      await user.clear(input);
+      await user.type(input, query);
+      expect(screen.queryByRole("option")).not.toBeInTheDocument();
+      expect(screen.getByText("No results found.")).toBeVisible();
+    }
+  });
+
+  it("opens a resolved Thread in place and preserves the current filter", async () => {
+    const user = userEvent.setup();
+    search.value = { area: money.slug };
+    renderShell();
+    await openPalette(user);
+    await user.click(screen.getByRole("button", { name: "Resolved" }));
+    await user.type(screen.getByRole("combobox"), "checkup");
+    await user.click(screen.getByRole("option", { name: /Sister's checkup/ }));
+    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ to: "." }));
+    expect(
+      searchAfter(navigate.mock.calls[0]?.[0], { area: money.slug }),
+    ).toEqual({
+      area: money.slug,
+      thread: resolvedThread.slug,
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("combobox")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("switches with the keyboard without opening a Thread and resets on dismissal", async () => {
+    const user = userEvent.setup();
+    renderShell();
+    await openPalette(user);
+    await user.click(screen.getByRole("button", { name: "Resolved" }));
+    await user.type(screen.getByRole("combobox"), "nothing matches");
+    await user.click(screen.getByRole("button", { name: "Resolved" }));
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Resolved" })).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(navigate).not.toHaveBeenCalled();
+    expect(screen.getByRole("combobox")).toHaveFocus();
+    expect(optionLabels()[0]).toContain(resolvedThread.title);
+    await user.keyboard("{Enter}");
+    expect(searchAfter(navigate.mock.calls[0]?.[0])).toEqual({
+      thread: resolvedThread.slug,
+    });
+    navigate.mockClear();
+    await openPalette(user);
+    await user.click(screen.getByRole("button", { name: "Resolved" }));
+    await user.keyboard("{Escape}");
+    await openPalette(user);
+    expect(screen.getByRole("button", { name: "Resolved" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(optionLabels()[0]).toContain(thread.title);
   });
 
   it("filters the Dashboard by an Area, keeping the rest of the search", async () => {

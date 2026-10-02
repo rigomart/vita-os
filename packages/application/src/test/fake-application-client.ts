@@ -31,6 +31,7 @@ export function createFakeApplicationClient(
     removeArea: unconfigured,
 
     listOpenThreads: unconfigured,
+    listResolvedThreads: unconfigured,
     getThreadDetail: unconfigured,
     createThread: unconfigured,
     updateThread: unconfigured,
@@ -101,6 +102,7 @@ export function createQuietApplicationClient(
   return createFakeApplicationClient({
     listAreas: async () => success([]),
     listOpenThreads: async () => success([]),
+    listResolvedThreads: async () => success([]),
     getThreadDetail: async () => notFound(),
     getThreadActivityPage: emptyPage,
     listOpenNotes: async () => success([]),
