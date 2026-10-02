@@ -51,6 +51,17 @@ export function useOpenThreads(
   });
 }
 
+/** Resolved Threads, ordered by the most recent resolution. */
+export function useResolvedThreads(
+  options: { enabled?: boolean } = {},
+): UseQueryResult<Thread[], ApplicationError> {
+  return useApplicationQuery({
+    queryKey: queryKeys.threads.resolved(),
+    run: (client) => client.listResolvedThreads(),
+    ...(options.enabled === undefined ? {} : { enabled: options.enabled }),
+  });
+}
+
 /**
  * Everything the Thread rail renders: the Thread, the revision it was read at,
  * and its Area when it has one. `null` means the Thread is not there.
@@ -142,7 +153,10 @@ export function useUpdateThread(): ApplicationMutationResult<
         },
       ),
     // A Thread change can write Activity Log entries, which are read separately.
-    alsoInvalidate: ({ thread }) => [queryKeys.threads.activity(thread._id)],
+    alsoInvalidate: ({ thread }) => [
+      queryKeys.threads.activity(thread._id),
+      queryKeys.threads.resolved(),
+    ],
   });
 }
 
@@ -159,6 +173,7 @@ export function useRemoveThread(): ApplicationMutationResult<
     alsoInvalidate: ({ thread }) => [
       queryKeys.threads.activity(thread._id),
       queryKeys.threadNotes.all,
+      queryKeys.threads.resolved(),
     ],
   });
 }

@@ -59,6 +59,12 @@ export async function listOpenThreads(
   return succeeded(await threadStorage(scope).listOpen());
 }
 
+export async function listResolvedThreads(
+  scope: RequestScope,
+): Promise<OperationResult<Thread[]>> {
+  return succeeded(await threadStorage(scope).listResolved());
+}
+
 export async function getThreadDetail(
   scope: RequestScope,
   input: { slug: string },

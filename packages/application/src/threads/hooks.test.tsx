@@ -22,6 +22,7 @@ import {
   useCreateThread,
   useOpenThreads,
   useRemoveThread,
+  useResolvedThreads,
   useUpdateThread,
 } from "./hooks";
 
@@ -65,6 +66,93 @@ describe("useOpenThreads", () => {
     const { result } = renderHook(() => useOpenThreads(), { wrapper });
 
     await waitFor(() => expect(result.current.data).toEqual([thread]));
+  });
+});
+
+describe("useResolvedThreads", () => {
+  it("starts reading only when enabled", async () => {
+    const resolved = aThread({ state: "resolved" });
+    const client = createFakeApplicationClient({
+      listResolvedThreads: async () => success([resolved]),
+    });
+    const { wrapper } = createHarness(client);
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useResolvedThreads({ enabled }),
+      {
+        wrapper,
+        initialProps: { enabled: false },
+      },
+    );
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(result.current.data).toBeUndefined();
+    rerender({ enabled: true });
+    await waitFor(() => expect(result.current.data).toEqual([resolved]));
+  });
+
+  it("refreshes resolved history after resolving, editing, reopening, and deleting a Thread", async () => {
+    let stored: Thread | undefined = aThread();
+    const client = createFakeApplicationClient({
+      listResolvedThreads: async () =>
+        success(stored?.state === "resolved" ? [stored] : []),
+      updateThread: async ({
+        threadId: _id,
+        resolutionNote: _note,
+        ...change
+      }) => {
+        stored = { ...stored!, ...change } as Thread;
+        return success(stored);
+      },
+      removeThread: async () => {
+        stored = undefined;
+        return success({ acknowledged: true as const });
+      },
+    });
+    const { wrapper } = createHarness(client);
+    const { result } = renderHook(
+      () => ({
+        resolved: useResolvedThreads(),
+        update: useUpdateThread(),
+        remove: useRemoveThread(),
+      }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.resolved.data).toEqual([]));
+    await act(async () => {
+      await result.current.update.mutateAsync({
+        thread: stored!,
+        state: "resolved",
+      });
+    });
+    await waitFor(() =>
+      expect(result.current.resolved.data?.[0]?.state).toBe("resolved"),
+    );
+    await act(async () => {
+      await result.current.update.mutateAsync({
+        thread: stored!,
+        title: "Renamed history",
+      });
+    });
+    await waitFor(() =>
+      expect(result.current.resolved.data?.[0]?.title).toBe("Renamed history"),
+    );
+    await act(async () => {
+      await result.current.update.mutateAsync({
+        thread: stored!,
+        state: "open",
+      });
+    });
+    await waitFor(() => expect(result.current.resolved.data).toEqual([]));
+    await act(async () => {
+      await result.current.update.mutateAsync({
+        thread: stored!,
+        state: "resolved",
+      });
+    });
+    await waitFor(() => expect(result.current.resolved.data).toHaveLength(1));
+    await act(async () => {
+      await result.current.remove.mutateAsync({ thread: stored! });
+    });
+    await waitFor(() => expect(result.current.resolved.data).toEqual([]));
   });
 });
 

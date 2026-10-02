@@ -336,6 +336,97 @@ beforeAll(async () => {
   await seedActivityFixture(fixture.owner, fixture.other);
 });
 
+describe("Resolved Threads", () => {
+  it("lists only owned resolved Threads by their latest resolution, with unknown dates last", async () => {
+    const { owner, other } = fixture;
+    const records = [
+      ["resolved-old", owner.actorId, "resolved", 9000],
+      ["resolved-new", owner.actorId, "resolved", 1],
+      ["resolved-tie", owner.actorId, "resolved", 2],
+      ["resolved-foreign", other.actorId, "resolved", 3],
+    ] as const;
+    await env.DB.batch(
+      records.map(([id, userId, state, createdAt]) =>
+        env.DB.prepare(
+          "INSERT INTO threads (id, user_id, title, slug, sort_order, state, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ).bind(id, userId, id, id, 0, state, createdAt),
+      ),
+    );
+    const logs = [
+      ["r-old", owner.actorId, "resolved-old", "state_change", "resolved", 100],
+      [
+        "r-new-first",
+        owner.actorId,
+        "resolved-new",
+        "state_change",
+        "resolved",
+        50,
+      ],
+      [
+        "r-new-latest",
+        owner.actorId,
+        "resolved-new",
+        "state_change",
+        "resolved",
+        200,
+      ],
+      ["r-tie", owner.actorId, "resolved-tie", "state_change", "resolved", 200],
+      [
+        "r-foreign",
+        other.actorId,
+        "resolved-foreign",
+        "state_change",
+        "resolved",
+        1000,
+      ],
+      [
+        "r-cross-owner",
+        other.actorId,
+        "resolved-old",
+        "state_change",
+        "resolved",
+        2000,
+      ],
+      [
+        "r-later-area",
+        owner.actorId,
+        "resolved-old",
+        "area_move",
+        "resolved",
+        3000,
+      ],
+      ["r-reopen", owner.actorId, "resolved-old", "state_change", "open", 4000],
+    ] as const;
+    await env.DB.batch(
+      logs.map(([id, userId, threadId, type, newValue, createdAt]) =>
+        env.DB.prepare(
+          "INSERT INTO activity_log_entries (id, user_id, thread_id, type, content, new_value, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ).bind(id, userId, threadId, type, id, newValue, createdAt),
+      ),
+    );
+    const response = await SELF.fetch("http://api.test/v1/threads/resolved", {
+      headers: { cookie: owner.cookie },
+    });
+    expect(response.status).toBe(200);
+    const threads = (await response.json()) as Array<{
+      _id: string;
+      state: string;
+    }>;
+    expect(threads.map((thread) => thread._id)).toEqual([
+      "resolved-new",
+      "resolved-tie",
+      "resolved-old",
+      "thread-owner-nullable",
+    ]);
+    expect(threads.every((thread) => thread.state === "resolved")).toBe(true);
+  });
+
+  it("requires a session", async () => {
+    const response = await SELF.fetch("http://api.test/v1/threads/resolved");
+    expect(response.status).toBe(401);
+  });
+});
+
 describe("Thread detail", () => {
   it("returns every public Thread and Area field to the owner", async () => {
     const { owner } = fixture;

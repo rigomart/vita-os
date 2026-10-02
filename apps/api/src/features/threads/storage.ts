@@ -60,6 +60,27 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
       return result.results.map(toThread);
     },
 
+    /** Latest resolution wins; legacy Threads without a resolution entry come last. */
+    async listResolved(): Promise<Thread[]> {
+      const result = await db
+        .prepare(
+          `SELECT ${prefixColumns("t", THREAD_COLUMNS)}
+           FROM threads t
+           LEFT JOIN (
+             SELECT thread_id, MAX(created_at) AS resolved_at
+             FROM activity_log_entries
+             WHERE user_id = ? AND type = 'state_change' AND new_value = 'resolved'
+             GROUP BY thread_id
+           ) resolutions ON resolutions.thread_id = t.id
+           WHERE t.user_id = ? AND t.state = 'resolved'
+           ORDER BY resolutions.resolved_at DESC, t.id ASC`,
+        )
+        .bind(actorId, actorId)
+        .all<ThreadRow>();
+
+      return result.results.map(toThread);
+    },
+
     /**
      * The Thread and its Area label, in one ownership-constrained join. Both
      * records are matched against the owner, so an inconsistent cross-owner

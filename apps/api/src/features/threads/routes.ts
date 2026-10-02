@@ -12,6 +12,7 @@ import {
   focusMove,
   getThreadDetail,
   listOpenThreads,
+  listResolvedThreads,
   removeMove,
   removeThread,
   updateThread,
@@ -31,6 +32,10 @@ const invalidMoveCommand = () => refuse(invalidRequest("Invalid Move change."));
 export const threadRoutes: Routes = (app) => {
   app.get("/v1/threads", async (context) =>
     reply(context, await listOpenThreads(scope(context))),
+  );
+
+  app.get("/v1/threads/resolved", async (context) =>
+    reply(context, await listResolvedThreads(scope(context))),
   );
 
   app.post("/v1/threads", async (context) => {

@@ -216,6 +216,8 @@ export function createHttpApplicationClient({
 
     /* Threads */
     listOpenThreads: () => read(literalPath("threads"), decodeThreadList),
+    listResolvedThreads: () =>
+      read(literalPath("threads/resolved"), decodeThreadList),
     getThreadDetail: (input) =>
       read(path("threads", input.slug), decodeThreadDetail),
     createThread: (input) =>

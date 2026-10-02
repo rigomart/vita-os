@@ -118,6 +118,8 @@ export interface ApplicationClient {
 
   /* Threads */
   listOpenThreads(): Promise<OperationResult<Thread[]>>;
+  /** Resolved Threads, most recently resolved first; unknown resolution dates last. */
+  listResolvedThreads(): Promise<OperationResult<Thread[]>>;
   getThreadDetail(input: {
     slug: string;
   }): Promise<OperationResult<ThreadDetail>>;
