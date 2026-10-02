@@ -37,3 +37,4 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 - [Dashboard board](./dashboard-board.md) covers the dated lanes, the No date tray, the shared Thread and Note card, and the stacked layouts.
 - [Follow-up dates](./follow-up-dates.md) covers the shared date controls on Threads and standalone Notes, their Dashboard placement, and resolve/reopen behavior.
 - [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter by area row.
+- [Phone installation and sharing](./phone-installation.md) covers manifest/icons, shared Note capture through sign-in, retry, and persistence.

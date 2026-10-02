@@ -5,7 +5,10 @@ import {
   RouteErrorFallback,
 } from "@vita-os/application";
 
+import { receiveSharedNote } from "../sharing/pending-share";
 import { unauthenticatedRouteTree } from "./unauthenticated-routes";
+
+receiveSharedNote();
 
 /**
  * The browser host's route tree and router.

@@ -1,8 +1,14 @@
 import { Navigate } from "@tanstack/react-router";
-import { type PropsWithChildren } from "react";
+import { lazy, type PropsWithChildren, Suspense } from "react";
 
 import { AuthVerifyingLoader } from "@/components/auth/auth-verifying-loader";
 import { useSessionGate } from "@/lib/session";
+
+const SharedNoteCapture = lazy(() =>
+  import("../sharing/shared-note-capture").then((module) => ({
+    default: module.SharedNoteCapture,
+  })),
+);
 
 /**
  * The browser's answer to "is somebody here?", in front of the product.
@@ -22,5 +28,9 @@ export function BrowserSessionGate({ children }: PropsWithChildren) {
     return <Navigate to="/sign-in" />;
   }
 
-  return children;
+  return (
+    <Suspense fallback={<AuthVerifyingLoader />}>
+      <SharedNoteCapture>{children}</SharedNoteCapture>
+    </Suspense>
+  );
 }
