@@ -1,18 +1,12 @@
 import type { Move, MoveId } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
-import { Calendar } from "@vita-os/ui/components/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@vita-os/ui/components/popover";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
 import { Bell, Check, Plus, X } from "lucide-react";
 import { useState } from "react";
 
-import { whenTone } from "../../attention-list";
+import { WhenPopover, whenTone, withTimeToken } from "../../attention-list";
 import { EditableField } from "../../ui/editable-field";
 
 export interface ThreadAttentionPending {
@@ -277,60 +271,47 @@ function FollowUpSatellite({
   onClear: () => void;
   isPending?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const selected = followUp === undefined ? undefined : new Date(followUp);
+  const label =
+    followUp === undefined
+      ? undefined
+      : withTimeToken(format(followUp, "MMM d"), followUp);
   const tone = whenTone(followUp, now);
 
   return (
     <span className="flex shrink-0 items-center">
-      <Popover open={open} onOpenChange={isPending ? undefined : setOpen}>
-        <PopoverTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="xs"
-              disabled={isPending}
-              // The Bell already says "follow-up", so the label stays visually
-              // to the date alone — the phrase survives as the accessible name.
-              aria-label={
-                selected ? `Follow up ${format(selected, "MMM d")}` : undefined
-              }
-              className="h-8 gap-1.5 px-1.5 font-normal xl:h-6"
-            />
-          }
-        >
-          <Bell aria-hidden className="size-3 text-muted-foreground/70" />
-          {selected ? (
-            <span
-              className={cn(
-                "tabular-nums",
-                tone ? FOLLOW_UP_TONE[tone] : "text-muted-foreground",
-              )}
-            >
-              {format(selected, "MMM d")}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">Add a follow-up…</span>
-          )}
-        </PopoverTrigger>
-        <PopoverContent className="w-auto gap-0 p-0" align="end">
-          <p className="max-w-56 border-b border-border/60 px-3 py-2 text-xs leading-snug text-muted-foreground">
-            A soft date — the Thread comes back to your attention around it.
-          </p>
-          <Calendar
-            mode="single"
-            selected={selected}
+      <WhenPopover
+        when={followUp}
+        busy={isPending}
+        hint="When to bring this Thread back."
+        onSetWhen={(when) => (when === undefined ? onClear() : onSet(when))}
+        trigger={
+          <Button
+            variant="ghost"
+            size="xs"
             disabled={isPending}
-            onSelect={(date) => {
-              if (!date || isPending) return;
-              onSet(date.getTime());
-              setOpen(false);
-            }}
-          />
-        </PopoverContent>
-      </Popover>
+            // The Bell already says "follow-up", so the label stays visually
+            // to the date alone — the phrase survives as the accessible name.
+            aria-label={label ? `Follow up ${label}` : undefined}
+            className="h-8 gap-1.5 px-1.5 font-normal xl:h-6"
+          >
+            <Bell aria-hidden className="size-3 text-muted-foreground/70" />
+            {label ? (
+              <span
+                className={cn(
+                  "tabular-nums",
+                  tone ? FOLLOW_UP_TONE[tone] : "text-muted-foreground",
+                )}
+              >
+                {label}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">Add a follow-up…</span>
+            )}
+          </Button>
+        }
+      />
 
-      {selected && (
+      {followUp !== undefined && (
         <Button
           variant="ghost"
           size="icon-xs"

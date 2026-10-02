@@ -54,6 +54,31 @@ describe("buildAttentionBoard", () => {
     expect(board.now.map(itemId)).toEqual(["late", "late-note", "today"]);
   });
 
+  it("orders a day's items by their time, a date alone first", () => {
+    const today = new Date(2026, 6, 17).getTime();
+    const at = (hours: number, minutes = 0) =>
+      new Date(2026, 6, 17, hours, minutes).getTime();
+    const board = buildAttentionBoard(
+      [
+        thread("afternoon", { followUp: at(15) }),
+        thread("all-day", { followUp: today }),
+        thread("morning", { followUp: at(9, 30) }),
+      ],
+      [note("noon-note", { attentionDate: at(12) })],
+      currentDate,
+    );
+
+    expect(board.now.map(itemId)).toEqual([
+      "all-day",
+      "morning",
+      "noon-note",
+      "afternoon",
+    ]);
+    expect(groupByWhen(board.now, currentDate).map((g) => g.key)).toEqual([
+      "today",
+    ]);
+  });
+
   it("splits the future at six days", () => {
     const board = buildAttentionBoard(
       [

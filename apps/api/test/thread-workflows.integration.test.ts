@@ -171,9 +171,7 @@ describe("Thread changes", () => {
     });
     const detail = await detailOf(owner, thread);
 
-    expect(detail.thread.lastActivityContent).toBe(
-      'Follow-up set to "May 20, 2026"',
-    );
+    expect(detail.thread.lastActivityContent).toBe("Follow-up set");
     expect(detail.thread.lastActivityAt).toEqual(expect.any(Number));
   });
 
@@ -194,7 +192,7 @@ describe("Thread changes", () => {
 });
 
 describe("Follow-up changes", () => {
-  it("records a Follow-up in UTC, and clearing it", async () => {
+  it("records a Follow-up's timestamp for the reader to write, and clearing it", async () => {
     const owner = await createSession("thread-follow-up");
     const area = await createArea(owner);
     const thread = await createThread(owner, area);
@@ -214,8 +212,25 @@ describe("Follow-up changes", () => {
     expect(scheduled.followUp).toBe(may20);
     expect(cleared).not.toHaveProperty("followUp");
     expect(
-      (await activityOf(owner, thread)).map((entry) => entry.content),
-    ).toEqual(['Follow-up set to "May 20, 2026"', "Follow-up cleared"]);
+      (await activityOf(owner, thread)).map(
+        ({ content, previousValue, newValue }) => ({
+          content,
+          previousValue,
+          newValue,
+        }),
+      ),
+    ).toEqual([
+      {
+        content: "Follow-up set",
+        previousValue: undefined,
+        newValue: `${may20}`,
+      },
+      {
+        content: "Follow-up cleared",
+        previousValue: `${may20}`,
+        newValue: undefined,
+      },
+    ]);
   });
 });
 

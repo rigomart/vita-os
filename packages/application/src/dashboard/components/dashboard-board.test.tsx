@@ -69,7 +69,10 @@ describe("DashboardBoard Note view", () => {
   it("keeps the Note view open when an Attention Date moves its card to another lane", async () => {
     const user = userEvent.setup();
     const nextDate = new Date(2026, 6, 18).getTime();
-    const datedNote = { ...saved, attentionDate: currentDate };
+    const datedNote = {
+      ...saved,
+      attentionDate: new Date(2026, 6, 17).getTime(),
+    };
     const updateNoteAttentionDate = vi.fn(async () => {
       const updated = { ...saved, attentionDate: nextDate };
       rerender(

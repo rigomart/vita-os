@@ -70,15 +70,15 @@ describe("buildThreadPatchLogEntries", () => {
     ]);
   });
 
-  it("formats Follow-up dates in UTC", () => {
+  it("keeps Follow-up timestamps for the reader's time zone to write", () => {
     expect(
       buildThreadPatchLogEntries(makeThread(), { followUp: may20 }),
     ).toEqual([
       {
         type: "follow_up_change",
-        content: 'Follow-up set to "May 20, 2026"',
+        content: "Follow-up set",
         previousValue: undefined,
-        newValue: "May 20, 2026",
+        newValue: String(may20),
       },
     ]);
 
@@ -89,9 +89,9 @@ describe("buildThreadPatchLogEntries", () => {
     ).toEqual([
       {
         type: "follow_up_change",
-        content: 'Follow-up changed from "May 20, 2026" to "Jun 1, 2026"',
-        previousValue: "May 20, 2026",
-        newValue: "Jun 1, 2026",
+        content: "Follow-up changed",
+        previousValue: String(may20),
+        newValue: String(jun1),
       },
     ]);
 
@@ -103,7 +103,7 @@ describe("buildThreadPatchLogEntries", () => {
       {
         type: "follow_up_change",
         content: "Follow-up cleared",
-        previousValue: "May 20, 2026",
+        previousValue: String(may20),
         newValue: undefined,
       },
     ]);
@@ -273,7 +273,7 @@ describe("decideThreadUpdate", () => {
       {
         type: "follow_up_change",
         content: "Follow-up cleared",
-        previousValue: "May 20, 2026",
+        previousValue: String(may20),
         newValue: undefined,
       },
     ]);

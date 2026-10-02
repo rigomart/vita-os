@@ -4,6 +4,8 @@ import {
   groupNotesByAttention,
   groupThreadsByAttention,
   isOpenNote,
+  timeOfDay,
+  withTimeOfDay,
 } from "./attention";
 
 const today = new Date(2026, 6, 17).getTime();
@@ -124,5 +126,23 @@ describe("Note attention ordering", () => {
       "undated",
       "scheduled",
     ]);
+  });
+});
+
+describe("time of day", () => {
+  it("reads local midnight as a date with no time", () => {
+    expect(timeOfDay(new Date(2026, 6, 17).getTime())).toBeUndefined();
+    expect(timeOfDay(new Date(2026, 6, 17, 9, 5).getTime())).toBe("09:05");
+    expect(timeOfDay(new Date(2026, 6, 17, 15, 30).getTime())).toBe("15:30");
+  });
+
+  it("puts a day at a time, or back to the day alone", () => {
+    const afternoon = new Date(2026, 6, 17, 15, 30).getTime();
+
+    expect(withTimeOfDay(afternoon, "09:15")).toBe(
+      new Date(2026, 6, 17, 9, 15).getTime(),
+    );
+    expect(withTimeOfDay(afternoon)).toBe(new Date(2026, 6, 17).getTime());
+    expect(withTimeOfDay(afternoon, "")).toBe(new Date(2026, 6, 17).getTime());
   });
 });

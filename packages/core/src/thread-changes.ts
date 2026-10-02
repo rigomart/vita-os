@@ -57,49 +57,29 @@ export function sanitizeThreadPatch(patch: ThreadPatch): ThreadPatch {
   return safe;
 }
 
-function formatFollowUpDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
+/**
+ * A Follow-up change keeps the raw timestamps rather than a written date: the
+ * API that records the entry has no idea of the user's time zone, so the date
+ * — and the time, when the Follow-up has one — is written where the Activity
+ * Log is read.
+ */
+function buildFollowUpLogEntry(
+  oldFollowUp: number | undefined,
+  newFollowUp: number | undefined,
+): AutoActivityLogEntry | null {
+  if (oldFollowUp === newFollowUp) return null;
 
-function buildFieldChangeLogEntry(options: {
-  type: AutoActivityLogEntry["type"];
-  oldValue: string | undefined;
-  newValue: string | undefined;
-  label: string;
-}): AutoActivityLogEntry | null {
-  const { type, oldValue, newValue, label } = options;
-  if (oldValue === newValue) return null;
-
-  if (oldValue && newValue) {
-    return {
-      type,
-      content: `${label} changed from "${oldValue}" to "${newValue}"`,
-      previousValue: oldValue,
-      newValue,
-    };
-  }
-  if (!oldValue && newValue) {
-    return {
-      type,
-      content: `${label} set to "${newValue}"`,
-      previousValue: undefined,
-      newValue,
-    };
-  }
-  if (oldValue && !newValue) {
-    return {
-      type,
-      content: `${label} cleared`,
-      previousValue: oldValue,
-      newValue: undefined,
-    };
-  }
-  return null;
+  return {
+    type: "follow_up_change",
+    content:
+      newFollowUp === undefined
+        ? "Follow-up cleared"
+        : oldFollowUp === undefined
+          ? "Follow-up set"
+          : "Follow-up changed",
+    previousValue: oldFollowUp === undefined ? undefined : String(oldFollowUp),
+    newValue: newFollowUp === undefined ? undefined : String(newFollowUp),
+  };
 }
 
 /** The Activity Log a patch earns, in the order the entries are written. */
@@ -144,24 +124,11 @@ export function buildThreadPatchLogEntries(
   }
 
   if (hasOwn(safePatch, "followUp")) {
-    const oldFollowUp = thread.followUp ?? undefined;
-    const newFollowUp = safePatch.followUp ?? undefined;
-
-    if (oldFollowUp !== newFollowUp) {
-      const entry = buildFieldChangeLogEntry({
-        type: "follow_up_change",
-        oldValue:
-          oldFollowUp === undefined
-            ? undefined
-            : formatFollowUpDate(oldFollowUp),
-        newValue:
-          newFollowUp === undefined
-            ? undefined
-            : formatFollowUpDate(newFollowUp),
-        label: "Follow-up",
-      });
-      if (entry) logs.push(entry);
-    }
+    const entry = buildFollowUpLogEntry(
+      thread.followUp ?? undefined,
+      safePatch.followUp ?? undefined,
+    );
+    if (entry) logs.push(entry);
   }
 
   return logs;

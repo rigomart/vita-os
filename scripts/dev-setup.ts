@@ -281,7 +281,7 @@ async function seed(): Promise<void> {
       }
       if (spec.followUpInDays !== undefined) {
         thread = await call<Thread>("PATCH", `/v1/threads/${thread._id}`, {
-          followUp: dayFromToday(spec.followUpInDays),
+          followUp: dayFromToday(spec.followUpInDays, spec.followUpAt),
         });
       }
       if (spec.resolution !== undefined) {
@@ -297,7 +297,7 @@ async function seed(): Promise<void> {
         body: note.body,
         ...(note.inDays === undefined
           ? {}
-          : { attentionDate: dayFromToday(note.inDays) }),
+          : { attentionDate: dayFromToday(note.inDays, note.at) }),
       });
     }
 
@@ -317,10 +317,14 @@ async function seed(): Promise<void> {
   }
 }
 
-/** Local midnight, `days` from today: what the date pickers store. */
-function dayFromToday(days: number): number {
+/**
+ * `days` from today, as the date pickers store it: local midnight for a date
+ * alone, or that day at `at` (`HH:mm`).
+ */
+function dayFromToday(days: number, at?: string): number {
   const date = new Date();
-  date.setHours(0, 0, 0, 0);
+  const [hours = 0, minutes = 0] = at?.split(":").map(Number) ?? [];
+  date.setHours(hours, minutes, 0, 0);
   date.setDate(date.getDate() + days);
   return date.getTime();
 }
@@ -333,6 +337,8 @@ interface SeedThread {
   /** Index into `moves` of the Focused Move. */
   focus?: number;
   followUpInDays?: number;
+  /** The Follow-up's time of day, `HH:mm`. */
+  followUpAt?: string;
   resolution?: string;
 }
 
@@ -340,7 +346,7 @@ interface SeedThread {
 const SEED: {
   areas: { name: string; icon: string }[];
   threads: SeedThread[];
-  notes: { body: string; inDays?: number }[];
+  notes: { body: string; inDays?: number; at?: string }[];
 } = {
   areas: [
     { name: "Health", icon: "HeartPulse" },
@@ -363,6 +369,7 @@ const SEED: {
       moves: ["Gather Q3 receipts", "Send the summary to the accountant"],
       focus: 0,
       followUpInDays: 0,
+      followUpAt: "10:00",
     },
     {
       title: "Quarterly review prep",
@@ -396,6 +403,7 @@ const SEED: {
   ],
   notes: [
     { body: "Ask Sam about the spare moving boxes", inDays: 1 },
+    { body: "Pick up the dry cleaning", inDays: 0, at: "16:30" },
     { body: "Book club picks: The Overstory, Piranesi" },
     { body: "Guest wifi password is on the fridge" },
   ],

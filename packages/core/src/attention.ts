@@ -152,6 +152,34 @@ export function startOfLocalDay(timestamp: number) {
   ).getTime();
 }
 
+/**
+ * The time of day a Follow-up or Attention Date carries, as `HH:mm`, or
+ * `undefined` when it carries only a date.
+ *
+ * A date alone is stored as local midnight, so midnight is the one time that
+ * cannot be chosen: it reads as no time at all.
+ */
+export function timeOfDay(timestamp: number): string | undefined {
+  const date = new Date(timestamp);
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  if (hours === 0 && minutes === 0) return undefined;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+/**
+ * The local day of `timestamp` at `time` (`HH:mm`), or that day alone when no
+ * time is given.
+ */
+export function withTimeOfDay(timestamp: number, time?: string): number {
+  const day = startOfLocalDay(timestamp);
+  const match = time ? /^(\d{1,2}):(\d{2})$/.exec(time) : null;
+  if (!match) return day;
+  const date = new Date(day);
+  date.setHours(Number(match[1]), Number(match[2]));
+  return date.getTime();
+}
+
 function getNoteAttentionGroup(
   note: NoteAttentionInput,
   currentDate: number,

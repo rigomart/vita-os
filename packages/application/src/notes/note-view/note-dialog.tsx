@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { withTimeToken } from "../../attention-list/date-parts";
 import { WhenPopover } from "../../attention-list/row-parts";
 import { useMarkdownTextarea } from "./use-markdown-textarea";
 
@@ -287,7 +288,7 @@ export function NoteDialog({
             )}
             {shownWhen === undefined
               ? "Attention date"
-              : format(shownWhen, "MMM d")}
+              : withTimeToken(format(shownWhen, "MMM d"), shownWhen)}
           </Button>
         }
       />
