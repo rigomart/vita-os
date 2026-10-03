@@ -1,5 +1,7 @@
 # Standalone Notes replace Inbox Tasks
 
+Status: Amended by ADR 0030 (a Note can be added to a Thread) and ADR 0031 — the Notes collection, its ordering, its collapsed Done history and the navigation badge are retired; Notes live on the Dashboard and Done Notes are Archived Notes, found in the palette's History. Storage, paging and owner scoping stand.
+
 Issue #313 replaces the capture model in ADRs 0001 and 0003: a saved body is a valid standalone Note, whether information, a thought, or an action. Capture requires neither a title nor classification. Processing, conversion, and attachment to a Thread are removed from this version. Thread Notes stay outside the global Notes collection.
 
 ## Decision

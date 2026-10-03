@@ -1,6 +1,6 @@
 # Areas as optional labels
 
-**Status:** Accepted. Amended 2026-10-01: Manage areas opens from the Dashboard's Area filter row instead of the user menu.
+**Status:** Accepted. Amended 2026-10-01: Manage areas opens from the Dashboard's Area filter row instead of the user menu. Amended by ADR 0031: the filter row ends with Notes, in its own `?show=notes` parameter; any Area filter still hides Notes.
 **Date:** 2026-09-26
 
 An **Area** stops being an entity with state of its own and becomes an optional label on a **Thread**: a name and an **Area Icon**, nothing more. A Thread has zero or one Area, and capturing a Thread needs only a title. The Area's **Condition** and **Standard** are removed, along with every surface that existed to show or maintain them: the Area page and its attention lanes, the top-bar Area strip, the Area Quick Panel and its shared Area Actions model, the Condition colour role, and the palette's per-Area drill-in pages. Issue #371 is the specification.

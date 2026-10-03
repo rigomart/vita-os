@@ -57,10 +57,10 @@ A body-only capture that is valid as soon as it is saved: information, a thought
 _Avoid_: Task, item, todo, ticket.
 
 **Note view**:
-The dialog where a **Note** is written, read, edited, completed, and deleted.
+The dialog where a **Note** is written, read, edited, archived, unarchived, and deleted.
 
 **Standalone Note**:
-A **Note** that belongs to no **Area** or **Thread** and requires no classification. It appears in the global **Notes** collection and may have a **Follow-up date**.
+A **Note** that belongs to no **Area** or **Thread** and requires no classification. While open it appears on the **Dashboard**, and it may have a **Follow-up date**.
 _Avoid_: Inbox item, task.
 
 **Thread Note**:
@@ -68,20 +68,20 @@ A **Note** that belongs to exactly one **Thread**, appears only there, and has n
 _Avoid_: Manual Activity Log Entry, comment.
 
 **Open Note**:
-A **Note** that has not been marked Done.
+A **Note** that has not been archived.
 _Avoid_: Pending item, unprocessed.
 
-**Done Note**:
-A **Note** marked Done and retained in completed history.
-_Avoid_: Resolved, processed.
-
-**Notes**:
-The global collection of standalone **Notes**, with **Open Notes** in attention order and **Done Notes** in collapsed history. Thread notes do not belong to this collection.
-_Avoid_: Inbox, backlog.
+**Archived Note**:
+A **Note** put away: it leaves the **Dashboard**, or its **Thread**'s open Notes, unchanged and still findable. An archived **Standalone Note** is found in **History**; an archived **Thread Note** stays in its **Thread**'s Archived notes. Unarchiving puts it back as it was. Stored as `done` (ADR 0031).
+_Avoid_: Done, completed, resolved, processed.
 
 **Dashboard**:
-The main awareness surface: three time columns — **Now**, **This week**, **Later** — beside a margin of everything unscheduled, holding every **Open Thread** and open **Standalone Note**, under a row that filters the board by **Area**.
+The main awareness surface: three time columns — **Now**, **This week**, **Later** — beside a margin of everything unscheduled, holding every **Open Thread** and open **Standalone Note**, under a row that filters the board by **Area** or to **Standalone Notes**.
 _Avoid_: Task list, project board, backlog.
+
+**History**:
+The palette's mode for what is finished: every **Resolved Thread** and every archived **Standalone Note**, searchable, reached from its History chip. Choosing one opens it in place (ADR 0029, ADR 0031).
+_Avoid_: Archive (as a place), trash, completed list.
 
 ## Relationships
 
@@ -97,15 +97,13 @@ _Avoid_: Task list, project board, backlog.
 - A **Thread**'s **Area** may be added, changed, or removed. A **Resolved Thread** keeps its Area.
 - An **Activity Log** has zero or more automatically recorded **Activity Log Entries**.
 - A **Standalone Note** belongs to no **Area** and no **Thread**.
-- A **Thread Note** belongs to exactly one **Thread** and never appears in the global **Notes** collection.
-- A visible **Note** is either **Open** or **Done**.
+- A **Thread Note** belongs to exactly one **Thread** and never appears on the **Dashboard** or in **History**.
+- A visible **Note** is either **Open** or **Archived**.
 - A **Standalone Note** has zero or one **Follow-up date**; a **Thread Note** has none because its **Thread** already has a **Follow-up date**.
-- Adding an Open **Standalone Note** to an Open **Thread** makes it a **Thread Note** there, with its body and creation time; it leaves the **Notes** collection. A **Done Note**, a **Thread Note**, and a **Resolved Thread** take no part. Adding is one-way.
+- Adding an Open **Standalone Note** to an Open **Thread** makes it a **Thread Note** there, with its body and creation time; it leaves the **Dashboard**. An **Archived Note**, a **Thread Note**, and a **Resolved Thread** take no part. Adding is one-way.
 - When a **Standalone Note** is added to a **Thread**, the earlier **Follow-up date** wins: the **Thread** takes the Note's date, time included, when it has none or a later one; otherwise the Note's date is dropped. A **Thread** started from a Note takes the Note's date.
-- **Done Notes** remain available as collapsed **Notes** history in the MVP.
-- The **Notes** collection shows all visible **Notes**; **Follow-up date** affects emphasis, not whether the **Note** exists in Notes.
-- The **Notes** collection orders **Open Notes** in one flat run: past follow-up date, today, no date, then coming up. Past and future Notes are ordered by Follow-up date; today and undated Notes are newest-first. Done Notes are separate, most-recently-completed first.
-- The navigation badge (top bar on desktop, tab bar on mobile) counts every **Open Note**, whether or not it has a **Follow-up date**.
+- Archiving a **Note** changes nothing about it but where it is shown; unarchiving returns a **Standalone Note** to the **Dashboard** where its **Follow-up date** puts it. Resolving a **Thread** does more (see Activity Rules), so the two actions keep their own words.
+- **History** lists archived **Standalone Notes** most recently archived first, and searches every one of them by body.
 
 ## Thread Attention
 
@@ -125,27 +123,27 @@ _Avoid_: Task list, project board, backlog.
 
 ## Dashboard Structure
 
-- The palette's **Resolved** chip switches to all **Resolved Threads**, newest resolution first, with search within that history; choosing one opens the existing Thread pane, where it can be reopened (ADR 0029).
+- The palette's **History** chip switches to two groups: **Resolved threads**, newest resolution first, and **Archived notes**, most recently archived first, one bounded page until a search reaches every archived **Standalone Note** by body. Choosing a **Thread** opens its pane, where it can be reopened; choosing a **Note** opens the **Note view** over the current page, where it can be read, unarchived, or deleted (ADR 0029, ADR 0031).
 - The Dashboard has one attention-first view and no tabs or secondary schedule. It fills the viewport: the columns are full height and scroll independently, so a busy column never pushes the others down and a quiet one never leaves a hole.
-- One row above the board filters it by **Area**: `All · each Area with its Open Thread count · No area`, in the user's Area order. Areas with nothing open stay in the row, muted. Choosing an Area shows only its **Open Threads** across every column and run, and any filter hides **Standalone Notes**; **No area** shows only unlabeled Threads. The filter lives in the URL (`?area=<slug>` or `?area=none`), survives the in-place Thread pane and Notes surface, and falls back to All for an unknown Area. `1..9` select the matching Area and `0` returns to All; on a phone the row folds into one dropdown (ADR 0021).
+- One row above the board filters it: `All · each Area with its Open Thread count · No area`, in the user's Area order, then **Notes** with its open **Standalone Note** count, set apart from the Areas. Options with nothing open stay in the row, muted; **No area** is left out while there are no Areas. Choosing an Area shows only its **Open Threads** across every column and run, and any Area filter hides **Standalone Notes**; **No area** shows only unlabeled Threads; **Notes** shows only open **Standalone Notes**, laid out by the same rules. The filter lives in the URL as one of two parameters, never both: `?area=<slug>` or `?area=none`, or `?show=notes`, which no Area slug can collide with. It survives the in-place Thread pane and the **Note view**, and falls back to All for an unknown value. `1..9` select the matching Area and `0` returns to All; on a phone the row folds into one dropdown (ADR 0021, ADR 0031).
 - A **Thread** card has two fixed rows that never trade places. The first is always the **Thread** title. The second is the move slot: the **Focused Move**, else the only **Move**, else — with several **Moves** and none focused — "N moves · none focused", because the card must not invent a headline the user never chose. A quiet count of pips, the focused one filled, says how many **Moves** there are. A **Thread** with no **Moves** is its title alone. A labeled Thread shows its **Area** as a small neutral tag, icon and name; an unlabeled Thread shows none. Colour on the board belongs to time. Dates are compact tokens rather than phrases, and a card under a heading that names its day (Today, or a day of **This week**) leaves the date to the heading, showing only its time when it has one.
-- The Dashboard **can act on attention in place**: a card's rail — shown on hover or keyboard focus — completes the **Move** the card shows, and only that one, or sets, changes, and clears the **Follow-up date**; a **Standalone Note** offers done and its **Follow-up date**. Focusing, removing, and choosing among **Moves**, changing a **Thread**'s **Area**, editing its text, and resolving it still happen in **Thread** detail, where the Area is a chip in the header.
+- The Dashboard **can act on attention in place**: a card's rail — shown on hover or keyboard focus — completes the **Move** the card shows, and only that one, or sets, changes, and clears the **Follow-up date**; a **Standalone Note** offers Archive and its **Follow-up date**. Focusing, removing, and choosing among **Moves**, changing a **Thread**'s **Area**, editing its text, and resolving it still happen in **Thread** detail, where the Area is a chip in the header.
 - **Thread** detail lists every **Move** in capture order. Focus is a radio beside each Move: pressing it focuses that Move, and pressing the filled one unfocuses it. The **Focused Move** is tinted where it sits.
 - Opening a card summons **Thread** detail in place; opening a **Note** opens the **Note view** over the current page.
 - When nothing is open at all the board is replaced by a single line saying nothing is asking.
-- Opening a **Thread** from any surface — **Dashboard**, **Notes**, or the palette — shows its detail pane in place over the current page; closing the pane returns the user to where they were. A Thread's own address is `/threads/$threadSlug`, which opens the pane over the Dashboard. The in-place behavior is recorded in ADR 0007.
-- Opening the **Notes** from any surface — the top bar, the palette, or the mobile tab — summons it in place over the current page rather than navigating; closing returns the user exactly where they were. `/notes` opens Notes over the Dashboard; `/inbox` remains a compatibility deep link. The in-place behavior and chosen form are recorded in ADR 0012.
-- **Areas** are managed in one **Manage areas** dialog, opened from the palette or from the end of the Dashboard's Area filter row: rename, re-icon, reorder, delete, and add. The delete confirmation states how many open Threads will lose the label. A new Thread starts in the Area the Dashboard is filtered to, and the label can be cleared before saving.
+- Opening a **Thread** from any surface — the **Dashboard** or the palette — shows its detail pane in place over the current page; closing the pane returns the user to where they were. A Thread's own address is `/threads/$threadSlug`, which opens the pane over the Dashboard. The in-place behavior is recorded in ADR 0007.
+- **Notes** have no surface of their own: they are on the **Dashboard**, and its **Notes** filter shows them alone. `/notes`, `/inbox`, and `?inbox=true` land on the Dashboard with that filter selected (ADR 0031, superseding ADR 0012).
+- **Areas** are managed in one **Manage areas** dialog, opened from the palette or from the Dashboard's filter row, where it follows the Areas: rename, re-icon, reorder, delete, and add. The delete confirmation states how many open Threads will lose the label. A new Thread starts in the Area the Dashboard is filtered to, and the label can be cleared before saving; the **Notes** filter is not an Area, so a Thread captured under it starts with none.
 
 ## Note Handling
 
 - A **Note** can be captured and edited with just a body; it has no title or type selector.
-- Saved Note cards are read-only previews that open the **Note view**. Thread and Notes-panel previews render Markdown in a bounded space; the Dashboard uses a two-line plain-text preview.
+- Saved Note cards are read-only previews that open the **Note view**. **Thread Note** previews render Markdown in a bounded space; the Dashboard uses a two-line plain-text preview, and **History** one line.
 - The **Note view** renders the full body for reading and uses a Markdown textarea for writing and editing. Changed drafts ask for confirmation before being discarded.
 - Markdown supports headings, lists, emphasis, code, links, quotes, dividers, and tables. Checkbox markers remain literal text for now.
 - A **Standalone Note** can have its **Follow-up date** set, changed, or cleared.
 - A **Thread Note** appears only on its parent **Thread** and has no **Follow-up date**.
-- Any **Note** can be marked **Done**, reopened, or permanently deleted from active Notes or completed history.
+- Any **Note** can be archived, unarchived, or permanently deleted, whether open or archived.
 - Creation time is preserved; last-edited time is retained going forward. An unknown historical edit time remains unknown.
 - An Open **Standalone Note** can be added to an Open **Thread**, or start a new **Thread**, from the ⋯ menu of its **Note view**: Add to thread… or New thread from note (ADR 0030). Both are optional and never prompted; nothing suggests a Thread or counts Notes that have none.
 - Processing and conversion are outside this version.
@@ -154,7 +152,7 @@ _Avoid_: Task list, project board, backlog.
 
 - Capturing a **Thread Note** updates its **Thread**'s last-activity date without adding an **Activity Log Entry**.
 - Adding a **Standalone Note** to a **Thread**, or starting a **Thread** from one, counts as capturing a **Thread Note**. It adds an **Activity Log** entry only when the Note's date changes the **Thread**'s **Follow-up date**, the same entry any Follow-up change adds.
-- Editing, completing, reopening, or deleting an existing **Thread Note** changes only the Note and does not update Thread activity.
+- Editing, archiving, unarchiving, or deleting an existing **Thread Note** changes only the Note and does not update Thread activity.
 - Setting, changing, or intentionally clearing a **Thread**'s saved **Follow-up date** adds an **Activity Log** entry.
 - Completing any **Move**, focused or not, removes it and adds an **Activity Log** entry. Completing the **Focused Move** leaves the **Thread** unfocused: nothing is promoted. Completing every **Move** leaves the **Thread** open.
 - Adding, editing, removing, focusing, and unfocusing **Moves** add no **Activity Log** entries. Removing the **Focused Move** leaves the **Thread** unfocused, as completing it does.
@@ -180,10 +178,11 @@ _Avoid_: Task list, project board, backlog.
 ## Flagged Ambiguities
 
 - "Project" was the old term for a multi-step effort with a defined end state. Resolved: **Thread** is canonical because these life situations may not have a clean execution plan or defined finish line.
-- "Task" and "Inbox" were the old capture vocabulary. Resolved by issue 313: **Note** and **Notes** are canonical; standalone Notes need no classification or processing.
+- "Task" and "Inbox" were the old capture vocabulary. Resolved by issue 313: **Note** is canonical; standalone Notes need no classification or processing. The **Notes** collection that replaced the Inbox was itself retired by ADR 0031: Notes live on the **Dashboard**.
 - "Action queue", then **Next Move** and **Up Next**, were the old terms for a Thread's upcoming steps. Resolved by issue 366: **Moves** are unordered peers with an optional **Focused Move**, because most situations have no known sequence and a queue ranked them by capture order. "Next moves" is retired as a list name; that group of **Threads** is **Ready to move** everywhere (ADR 0022).
 - "Project log" was the old term for the timeline on a **Thread**. Resolved: **Activity Log** is the automatic changelog; body-only manual continuity belongs in **Thread Notes**.
 - "Health status", later **Condition**, was the manual judgment on an **Area**, with a **Standard** to judge it against. Resolved by issue 371: both are removed. An Area is an optional label; a part of life that needs a periodic look gets a **Thread** with a **Follow-up date** (ADR 0021).
 - "Definition of Done" belongs to project-management language and is not a **Thread** concept. Resolved: use **Summary** or the **Activity Log** when context is needed.
 - "Move a Note to a Thread" was the first name for adding a **Standalone Note** to a **Thread**. Resolved by ADR 0030: the action is **Add to thread**, because **Move** names one useful action on a **Thread**. "Convert", "process", and "attach" stay out of the interface; a Note added to a Thread is not processed, it is one of the Thread's Notes.
+- "Done" and "completed" were the words for a finished **Note**. Resolved by ADR 0031: a Note is **archived**, because most Notes are information or thoughts, which are put away rather than finished, and archiving changes nothing but where a Note is shown. **Threads** keep **Resolve**, because resolving clears Moves, focus and the Follow-up date and writes the Activity Log, and Reopen restores none of it. Stored values keep `done`.
 - "Stale Thread" is not part of the MVP domain language. Resolved: use the plain **Open Thread** group until there is a stronger rule.
