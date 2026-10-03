@@ -1,10 +1,7 @@
-import type { ApplicationError } from "@vita-os/contracts";
+import { NotFound, RefusedByState } from "../../platform/failures";
 
-export const threadNotFound: ApplicationError = {
-  code: "not_found",
-  message: "Thread not found.",
-  retryable: false,
-};
+export const threadNotFound = () =>
+  new NotFound({ message: "Thread not found." });
 
 /**
  * A Move command made against a Thread that has moved on, or naming a Move it
@@ -12,8 +9,5 @@ export const threadNotFound: ApplicationError = {
  * for what it is rather than as a generic change conflict, and it is not worth
  * retrying: a retry could act on a different Move.
  */
-export const moveConflict: ApplicationError = {
-  code: "conflict",
-  message: "The Thread's Moves have changed.",
-  retryable: false,
-};
+export const moveConflict = () =>
+  new RefusedByState({ message: "The Thread's Moves have changed." });

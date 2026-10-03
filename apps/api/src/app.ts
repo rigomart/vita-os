@@ -30,7 +30,14 @@ export interface AppDependencies {
   createScope?: CreateScope;
 }
 
-/** Build stateless routing once; bindings and actor identity stay request-local. */
+/**
+ * The Worker, composed.
+ *
+ * This file owns only what every route shares: who may call, who is calling,
+ * the scope they are given, and the one way a failure becomes a response. It
+ * holds no bindings of its own — each request supplies them — so the app is
+ * built once and serves every request.
+ */
 export function createApp({
   createScope = createRequestScope,
 }: AppDependencies = {}) {

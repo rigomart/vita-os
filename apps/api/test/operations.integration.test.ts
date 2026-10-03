@@ -3,6 +3,7 @@ import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
 import { createNote } from "../src/features/notes/operations";
+import { toRefusal } from "../src/platform/http/errors";
 import { RequestContext } from "../src/platform/request-scope";
 
 describe("Effect operations", () => {
@@ -60,14 +61,20 @@ describe("Effect operations", () => {
         }),
         Effect.match({
           onSuccess: () => null,
-          onFailure: (failure) => failure.error,
+          onFailure: (failure) => ({
+            tag: failure._tag,
+            error: toRefusal(failure).error,
+          }),
         }),
       ),
     );
     expect(outcome).toEqual({
-      code: "validation",
-      message: "Note body cannot be empty",
-      retryable: false,
+      tag: "InvalidInput",
+      error: {
+        code: "validation",
+        message: "Note body cannot be empty",
+        retryable: false,
+      },
     });
     const row = await env.DB.prepare(
       "SELECT COUNT(*) AS count FROM notes WHERE user_id = ?",

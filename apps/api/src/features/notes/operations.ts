@@ -10,33 +10,26 @@ import { commandAcknowledged } from "@vita-os/contracts";
 import { noteSearchTerms, requireNonBlankText } from "@vita-os/core";
 import { Effect } from "effect";
 
-import type { RequestRefusal } from "../../platform/http/errors";
+import type { NotFound } from "../../platform/failures";
+import type { Operation } from "../../platform/operation";
 
-import { attempt, database, failed, succeeded } from "../../platform/operation";
+import { attempt, database } from "../../platform/operation";
 import { RequestContext } from "../../platform/request-scope";
 import { noteNotFound } from "./errors";
 import { noteStorage } from "./storage";
 
-function found(note: Note | null): Effect.Effect<Note, RequestRefusal> {
-  return note === null ? failed(noteNotFound) : succeeded(note);
+function found(note: Note | null): Effect.Effect<Note, NotFound> {
+  return note === null ? Effect.fail(noteNotFound()) : Effect.succeed(note);
 }
 
-export function listOpenNotes(): Effect.Effect<
-  Note[],
-  RequestRefusal,
-  RequestContext
-> {
+export function listOpenNotes(): Operation<Note[]> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     return yield* database(() => noteStorage(scope).listOpen());
   });
 }
 
-export function countOpenNotes(): Effect.Effect<
-  number,
-  RequestRefusal,
-  RequestContext
-> {
+export function countOpenNotes(): Operation<number> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     return yield* database(() => noteStorage(scope).countOpen());
@@ -46,7 +39,7 @@ export function countOpenNotes(): Effect.Effect<
 /** Archived Notes, newest archive first; `query` searches their bodies. */
 export function getDoneNotePage(
   input: DoneNotePageRequest,
-): Effect.Effect<NotePage, RequestRefusal, RequestContext> {
+): Operation<NotePage> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     const { query, ...page } = input;
@@ -58,7 +51,7 @@ export function getDoneNotePage(
 export function createNote(input: {
   body: string;
   followUp?: number;
-}): Effect.Effect<Note, RequestRefusal, RequestContext> {
+}): Operation<Note> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     const body = yield* attempt(() =>
@@ -73,7 +66,7 @@ export function createNote(input: {
 export function updateNoteBody(input: {
   noteId: NoteId;
   body: string;
-}): Effect.Effect<Note, RequestRefusal, RequestContext> {
+}): Operation<Note> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     const body = yield* attempt(() =>
@@ -88,7 +81,7 @@ export function updateNoteBody(input: {
 export function updateNoteFollowUp(input: {
   noteId: NoteId;
   followUp: number | null;
-}): Effect.Effect<Note, RequestRefusal, RequestContext> {
+}): Operation<Note> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     return yield* found(
@@ -99,9 +92,7 @@ export function updateNoteFollowUp(input: {
   });
 }
 
-export function markNoteDone(input: {
-  noteId: NoteId;
-}): Effect.Effect<Note, RequestRefusal, RequestContext> {
+export function markNoteDone(input: { noteId: NoteId }): Operation<Note> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     return yield* found(
@@ -110,9 +101,7 @@ export function markNoteDone(input: {
   });
 }
 
-export function markNoteOpen(input: {
-  noteId: NoteId;
-}): Effect.Effect<Note, RequestRefusal, RequestContext> {
+export function markNoteOpen(input: { noteId: NoteId }): Operation<Note> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     return yield* found(
@@ -123,14 +112,12 @@ export function markNoteOpen(input: {
 
 export function removeNote(input: {
   noteId: NoteId;
-}): Effect.Effect<CommandAcknowledgement, RequestRefusal, RequestContext> {
+}): Operation<CommandAcknowledgement> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     const removed = yield* database(() =>
       noteStorage(scope).remove(input.noteId),
     );
-    return yield* removed
-      ? succeeded(commandAcknowledged)
-      : failed(noteNotFound);
+    return removed ? commandAcknowledged : yield* noteNotFound();
   });
 }

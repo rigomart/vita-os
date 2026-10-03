@@ -1,7 +1,4 @@
-import type { ApplicationError } from "@vita-os/contracts";
+import { NotFound } from "../../platform/failures";
 
-export const threadNoteNotFound: ApplicationError = {
-  code: "not_found",
-  message: "Thread note not found.",
-  retryable: false,
-};
+export const threadNoteNotFound = () =>
+  new NotFound({ message: "Thread note not found." });

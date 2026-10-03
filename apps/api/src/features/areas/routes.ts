@@ -10,6 +10,7 @@ import {
 } from "./operations";
 import { normalizeAreaChange } from "./requests";
 
+/** Areas: the optional labels a Thread may carry. */
 export const AreasHandlers = HttpApiBuilder.group(
   ApplicationApi,
   "areas",

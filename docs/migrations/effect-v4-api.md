@@ -6,7 +6,7 @@ The API now uses pinned Effect 4.0.0 in place of Hono. Better Auth, native D1 st
 
 `worker.ts` builds one web handler per isolate. Each `fetch` supplies its own Worker bindings. CORS and mutation guards run first; authentication supplies `RequestContext`; HttpApi decodes the endpoint's input; the handler runs its Effect operation; HttpApi validates and encodes the response.
 
-Each feature's `api.ts` declares endpoint schemas and `routes.ts` supplies handlers. Operations return lazy `Effect<Value, RequestRefusal, RequestContext>` values. `attempt` converts throwing domain decisions, and `database` converts rejected native D1 calls, into typed failures. The original database cause remains available for selective slug retries, while HTTP responses expose only the existing public error envelope.
+Each feature's `api.ts` declares endpoint schemas and `routes.ts` supplies handlers. Operations return lazy `Effect<Value, OperationFailure, RequestContext>` values whose failures are tagged by kind (`NotFound`, `InvalidInput`, `RefusedByState`, `ChangeConflict`, `Unexpected`) and carry no status. `attempt` converts throwing domain rules, and `database` classifies rejected native D1 calls at the call, so a slug collision is a `SlugTaken` that retry loops catch by tag. The HttpApi error schemas map each failure to the existing public error envelope and status; `RequestRefusal` remains only in the HTTP layer for transport and decoding refusals.
 
 Storage still performs one D1 statement or batch per method. No SQL or migration changed. Conditional revisions, batch rollback, affected-row metadata, and three-attempt retry limits remain intact.
 

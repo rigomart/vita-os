@@ -14,6 +14,7 @@ import {
 } from "./operations";
 
 const NOTE_PAGE_SIZE = { fallback: 20, maximum: 50 };
+/** Notes captured inside one Thread. */
 export const ThreadNotesHandlers = HttpApiBuilder.group(
   ApplicationApi,
   "threadNotes",

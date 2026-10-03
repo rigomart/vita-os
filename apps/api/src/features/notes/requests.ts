@@ -49,6 +49,7 @@ export const NoteStateBody = Schema.Struct({
   state: Schema.Literals(["open", "done"]),
 });
 
+/** Accept the old web app's field during the API-before-web deployment. */
 export function normalizeCreateNote(input: typeof CreateNoteBody.Type): {
   body: string;
   followUp?: number;

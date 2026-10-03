@@ -1,11 +1,26 @@
 import type { ApplicationError } from "@vita-os/contracts";
 
-import { ConflictError, ValidationError } from "@vita-os/core";
 import { Schema, SchemaGetter } from "effect";
 import { HttpServerResponse } from "effect/http";
 import { HttpApiSchema } from "effect/http-api";
 
-import { InvalidPageCursorError } from "../d1/page-cursor";
+import type { OperationFailure } from "../failures";
+
+import {
+  ChangeConflict,
+  InvalidInput,
+  NotFound,
+  RefusedByState,
+  Unexpected,
+} from "../failures";
+
+/**
+ * The one way a failure becomes a response.
+ *
+ * Every refusal — an unreadable request, an operation's failure, a domain rule
+ * that threw, an edited cursor — reaches `toRefusal`, and its status comes from
+ * its code.
+ */
 
 export const STATUS_BY_CODE: Record<ApplicationError["code"], number> = {
   unauthorized: 401,
@@ -34,11 +49,13 @@ export const unexpectedFailure: ApplicationError = {
 export function invalidRequest(message: string): ApplicationError {
   return { code: "validation", message, retryable: false };
 }
-export function refusedByState(message: string): ApplicationError {
-  return { code: "conflict", message, retryable: false };
-}
 
-/** Internal failure; only the public error is encoded into HTTP responses. */
+/**
+ * A request this Worker will not answer with a value.
+ *
+ * The status is the code's own unless the refusal is about the transport
+ * rather than the operation — a forbidden origin or a body that is not JSON.
+ */
 export class RequestRefusal extends Error {
   readonly _tag = "RequestRefusal";
   constructor(
@@ -50,16 +67,39 @@ export class RequestRefusal extends Error {
     this.name = "RequestRefusal";
   }
 }
+
+/** What HttpApi may encode as an error response. */
+type Refusable = RequestRefusal | OperationFailure;
+
+function isOperationFailure(value: unknown): value is OperationFailure {
+  return (
+    value instanceof NotFound ||
+    value instanceof InvalidInput ||
+    value instanceof RefusedByState ||
+    value instanceof ChangeConflict ||
+    value instanceof Unexpected
+  );
+}
+
+function publicError(failure: OperationFailure): ApplicationError {
+  switch (failure._tag) {
+    case "NotFound":
+      return { code: "not_found", message: failure.message, retryable: false };
+    case "InvalidInput":
+      return { code: "validation", message: failure.message, retryable: false };
+    case "RefusedByState":
+      return { code: "conflict", message: failure.message, retryable: false };
+    case "ChangeConflict":
+      return { code: "conflict", message: failure.message, retryable: true };
+    case "Unexpected":
+      return unexpectedFailure;
+  }
+}
+
 export function toRefusal(cause: unknown): RequestRefusal {
   if (cause instanceof RequestRefusal) return cause;
-  if (cause instanceof ValidationError) {
-    return new RequestRefusal(invalidRequest(cause.message), undefined, cause);
-  }
-  if (cause instanceof ConflictError) {
-    return new RequestRefusal(refusedByState(cause.message), undefined, cause);
-  }
-  if (cause instanceof InvalidPageCursorError) {
-    return new RequestRefusal(cause.refusal, undefined, cause);
+  if (isOperationFailure(cause)) {
+    return new RequestRefusal(publicError(cause), undefined, cause);
   }
   return new RequestRefusal(unexpectedFailure, undefined, cause);
 }
@@ -79,18 +119,19 @@ function refusalSchema<C extends ApplicationError["code"]>(code: C) {
       retryable: Schema.Boolean,
     }),
   });
-  return Schema.declare<RequestRefusal>(
-    (value): value is RequestRefusal =>
-      value instanceof RequestRefusal &&
-      value.error.code === code &&
-      value.status === status,
-  ).pipe(
+  return Schema.declare<Refusable>((value): value is Refusable => {
+    if (!(value instanceof RequestRefusal || isOperationFailure(value))) {
+      return false;
+    }
+    const refusal = toRefusal(value);
+    return refusal.error.code === code && refusal.status === status;
+  }).pipe(
     Schema.encodeTo(wire, {
       decode: SchemaGetter.transform(
         (value) => new RequestRefusal(value.error, status),
       ),
       encode: SchemaGetter.transform((value) => ({
-        error: { ...value.error, code },
+        error: { ...toRefusal(value).error, code },
       })),
     }),
     HttpApiSchema.status(status),

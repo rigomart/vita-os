@@ -7,8 +7,12 @@ import { HttpApiMiddleware } from "effect/http-api";
 import type { CreateScope } from "../request-scope";
 
 import { WorkerBindings } from "../http/context";
-import { RequestRefusalSchemas, toRefusal } from "../http/errors";
-import { attempt, database, failed } from "../operation";
+import {
+  RequestRefusal,
+  RequestRefusalSchemas,
+  toRefusal,
+} from "../http/errors";
+import { attempt, database } from "../operation";
 import { RequestContext } from "../request-scope";
 import { createAuth } from "./auth";
 
@@ -23,7 +27,15 @@ export class Authentication extends HttpApiMiddleware.Service<
   { provides: RequestContext; requires: WorkerBindings }
 >()("vita/Authentication", { error: RequestRefusalSchemas }) {}
 
-/** Authentication executes in the incoming request, never while layers build. */
+/**
+ * Resolve who is calling, then build the request scope around them.
+ *
+ * The scope is the only way a route reaches storage, so a request without a
+ * session is refused before anything is constructed. Better Auth starts
+ * asynchronous initialization when constructed; building it here keeps that
+ * work in the request that uses it, and preflight or rejected requests need no
+ * auth at all.
+ */
 export function authenticatedScope(createScope: CreateScope) {
   return Effect.gen(function* () {
     const env = yield* WorkerBindings;
@@ -35,7 +47,9 @@ export function authenticatedScope(createScope: CreateScope) {
     const session = yield* database(() =>
       auth.api.getSession({ headers: rawRequest.headers }),
     );
-    if (!session) return yield* failed(authenticationRequired);
+    if (!session) {
+      return yield* Effect.fail(new RequestRefusal(authenticationRequired));
+    }
     return yield* attempt(() =>
       createScope({ db: env.DB, actorId: session.user.id }),
     );

@@ -13,13 +13,14 @@ import { env } from "cloudflare:test";
 import { Effect } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { RequestRefusal } from "../src/platform/http/errors";
+import type { OperationFailure } from "../src/platform/failures";
 import type { RequestScope } from "../src/platform/request-scope";
 import type { Session } from "./sessions";
 
 import * as adding from "../src/features/add-to-thread/operations";
 import * as notes from "../src/features/notes/operations";
 import * as threads from "../src/features/threads/operations";
+import { toRefusal } from "../src/platform/http/errors";
 import { RequestContext } from "../src/platform/request-scope";
 import { call, createSession, expectError, succeed } from "./sessions";
 
@@ -444,7 +445,7 @@ describe("contention", () => {
   const clock = { now: () => Date.now(), newId: () => crypto.randomUUID() };
   function run<T>(
     scope: RequestScope,
-    operation: Effect.Effect<T, RequestRefusal, RequestContext>,
+    operation: Effect.Effect<T, OperationFailure, RequestContext>,
   ): Promise<OperationResult<T>> {
     return Effect.runPromise(
       operation.pipe(
@@ -453,7 +454,7 @@ describe("contention", () => {
           onSuccess: (value): OperationResult<T> => ({ ok: true, value }),
           onFailure: (failure): OperationResult<T> => ({
             ok: false,
-            error: failure.error,
+            error: toRefusal(failure).error,
           }),
         }),
       ),
