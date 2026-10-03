@@ -3,8 +3,10 @@ import type { ComponentProps, ComponentPropsWithoutRef } from "react";
 
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
 import { describe, expect, it, vi } from "vitest";
 
+import { createFeedbackMock } from "../../test/render-with-providers";
 import { DashboardOverview } from "./dashboard-overview";
 
 // A link's search is a function of the current one; starting from none, its
@@ -23,11 +25,13 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({
     to,
     params: _params,
+    activeOptions: _activeOptions,
     search,
     children,
     ...props
   }: ComponentPropsWithoutRef<"a"> & {
     params?: unknown;
+    activeOptions?: unknown;
     search?: unknown;
     to: string;
   }) => (
@@ -45,8 +49,8 @@ vi.mock("../../threads/use-moves", () => ({
 vi.mock("../../threads/use-update-thread", () => ({
   useUpdateThread: () => vi.fn(),
 }));
-vi.mock("../../notes/use-complete-note", () => ({
-  useCompleteNote: () => vi.fn(),
+vi.mock("../../notes/use-archive-note", () => ({
+  useArchiveNote: () => vi.fn(),
 }));
 vi.mock("../../notes/use-update-note-body", () => ({
   useUpdateNoteBody: () => vi.fn(),
@@ -122,7 +126,14 @@ function renderOverview(overrides: Partial<OverviewProps> = {}) {
     currentDate,
     ...overrides,
   };
-  return { ...render(<DashboardOverview {...props} />), props };
+  return {
+    ...render(
+      <FeedbackProvider feedback={createFeedbackMock()}>
+        <DashboardOverview {...props} />
+      </FeedbackProvider>,
+    ),
+    props,
+  };
 }
 
 function columnText(name: string) {
@@ -132,40 +143,44 @@ function columnText(name: string) {
 }
 
 describe("DashboardOverview", () => {
-  it("needs no Area to show the board, and offers no filter without one", () => {
+  it("needs no Area to show the board, and still offers All and Notes without one", () => {
     renderOverview({
       areas: [],
       threads: [thread("Unlabeled", { areaId: undefined })],
+      notes: [note("Water the plants")],
     });
 
     expect(screen.getByText("Unlabeled")).toBeVisible();
+    const row = screen.getByRole("navigation", { name: "Filter the board" });
     expect(
-      screen.queryByRole("navigation", { name: "Filter by area" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Manage areas" }),
-    ).not.toBeInTheDocument();
+      within(row)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["All1", "Notes1"]);
   });
 
-  it("offers Manage areas beside the filter", () => {
+  it("offers Manage areas beside the Areas, before Notes", () => {
     renderOverview();
 
-    const row = screen.getByRole("navigation", { name: "Filter by area" });
-    expect(row.nextElementSibling).toBe(
-      screen.getByRole("button", { name: "Manage areas" }),
-    );
+    const row = screen.getByRole("navigation", { name: "Filter the board" });
+    const manage = within(row).getByRole("button", { name: "Manage areas" });
+    const notes = within(row).getByRole("link", { name: /Notes/ });
+    expect(
+      manage.compareDocumentPosition(notes) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
-  it("offers All, each Area with its count, and No area, each as a link", () => {
+  it("offers All, each Area with its count, No area, and Notes, each as a link", () => {
     renderOverview({
       threads: [
         thread("Checkup"),
         thread("Dentist", { order: 1 }),
         thread("Passport", { areaId: undefined, order: 2 }),
       ],
+      notes: [note("Water the plants"), note("Call the bank")],
     });
 
-    const row = screen.getByRole("navigation", { name: "Filter by area" });
+    const row = screen.getByRole("navigation", { name: "Filter the board" });
     expect(
       within(row)
         .getAllByRole("link")
@@ -175,6 +190,7 @@ describe("DashboardOverview", () => {
       ["Health2", "/?area=health"],
       ["Home0", "/?area=home"],
       ["No area1", "/?area=none"],
+      ["Notes2", "/?show=notes"],
     ]);
     expect(within(row).getByRole("link", { name: /All/ })).toHaveAttribute(
       "aria-current",
@@ -184,7 +200,7 @@ describe("DashboardOverview", () => {
 
   it("narrows the board to one Area and leaves Standalone Notes out", () => {
     renderOverview({
-      areaFilter: "home",
+      filter: { area: "home" },
       threads: [
         thread("Checkup", { followUp: today }),
         thread("Fix the gate", {
@@ -210,7 +226,7 @@ describe("DashboardOverview", () => {
 
   it("shows only unlabeled Threads under No area", () => {
     renderOverview({
-      areaFilter: "none",
+      filter: { area: "none" },
       threads: [
         thread("Checkup", { followUp: today }),
         thread("Passport", {
@@ -226,7 +242,7 @@ describe("DashboardOverview", () => {
 
   it("falls back to the whole board for an Area that is not there", () => {
     renderOverview({
-      areaFilter: "deleted-area",
+      filter: { area: "deleted-area" },
       threads: [thread("Checkup", { followUp: today })],
       notes: [note("Water the plants", { followUp: today })],
     });
@@ -238,9 +254,45 @@ describe("DashboardOverview", () => {
   });
 
   it("says when a filtered Area has nothing open", () => {
-    renderOverview({ areaFilter: "home", threads: [thread("Checkup")] });
+    renderOverview({ filter: { area: "home" }, threads: [thread("Checkup")] });
 
     expect(screen.getByText("Nothing open in Home.")).toBeVisible();
+  });
+
+  it("shows only Notes under the Notes filter, dated in columns and undated in the margin", () => {
+    renderOverview({
+      filter: { show: "notes" },
+      threads: [
+        thread("Checkup", { followUp: today }),
+        thread("Passport", { areaId: undefined, order: 1 }),
+      ],
+      notes: [
+        note("Water the plants", { followUp: today }),
+        note("Idea for the garden"),
+      ],
+    });
+
+    expect(columnText("Now")).toEqual([
+      expect.stringContaining("Water the plants"),
+    ]);
+    expect(screen.queryByText("Checkup")).not.toBeInTheDocument();
+    expect(screen.queryByText("Passport")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open note: Idea for the garden" }),
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: /Notes/ })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+  });
+
+  it("says when no Note is open under the Notes filter", () => {
+    renderOverview({
+      filter: { show: "notes" },
+      threads: [thread("Checkup")],
+    });
+
+    expect(screen.getByText("No Note is asking for you.")).toBeVisible();
   });
 
   it("tags a labeled Thread's card with its Area and leaves an unlabeled one bare", () => {

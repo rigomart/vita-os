@@ -143,11 +143,16 @@ export function showsBoardDate(
   return !inHeading || timeToken(when) !== undefined;
 }
 
-/** The complete control both kinds of item share. */
+/**
+ * The control that takes an item off the board: completing a Thread's Move,
+ * or archiving a Note.
+ */
 export function BoardCompleteButton({
+  icon: Icon = Check,
   label,
   onClick,
 }: {
+  icon?: typeof Check;
   label: string;
   onClick: () => void;
 }) {
@@ -160,7 +165,7 @@ export function BoardCompleteButton({
         "bg-muted hover:bg-condition-healthy/15 hover:text-condition-healthy",
       )}
     >
-      <Check className="size-3.5" />
+      <Icon className="size-3.5" />
     </BoardControl>
   );
 }

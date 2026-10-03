@@ -55,7 +55,7 @@ function ResponsiveDialog({
   );
 
   if (isMobile) {
-    // Opened from inside a drawer — the Inbox surface on a phone — this has to
+    // Opened from inside a drawer — the Thread drawer on a phone — this has to
     // be a nested root, or the two drawers fight over the body scroll lock.
     const DrawerRoot = insideDrawer ? DrawerNested : Drawer;
     return (

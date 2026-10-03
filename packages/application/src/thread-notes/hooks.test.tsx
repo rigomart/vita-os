@@ -20,10 +20,10 @@ import { aThreadNote } from "../test/fixtures";
 import { createHarness } from "../test/harness";
 import {
   useCaptureThreadNote,
-  useCompleteThreadNote,
+  useArchiveThreadNote,
   useDiscardThreadNote,
-  useDoneThreadNotes,
-  useReopenThreadNote,
+  useArchivedThreadNotes,
+  useUnarchiveThreadNote,
   useThreadNotes,
   useUpdateThreadNoteBody,
 } from "./hooks";
@@ -94,7 +94,7 @@ describe("reading a Thread's Notes", () => {
     });
     const { wrapper } = createHarness(client);
 
-    const { result } = renderHook(() => useDoneThreadNotes(threadId, 1), {
+    const { result } = renderHook(() => useArchivedThreadNotes(threadId, 1), {
       wrapper,
     });
 
@@ -192,7 +192,7 @@ describe("changing a Thread Note", () => {
     const { wrapper, cache } = createHarness(client, seedNotes([note]));
     const { result } = renderHook(
       () => ({
-        complete: useCompleteThreadNote(),
+        complete: useArchiveThreadNote(),
         discard: useDiscardThreadNote(),
       }),
       { wrapper },
@@ -226,7 +226,7 @@ describe("changing a Thread Note", () => {
         success({ ...done, state: "open" as const }),
     });
     const { wrapper, cache } = createHarness(client, seedNotes([note]));
-    const { result } = renderHook(() => useReopenThreadNote(), { wrapper });
+    const { result } = renderHook(() => useUnarchiveThreadNote(), { wrapper });
 
     await act(async () => {
       await result.current.mutateAsync({ threadId, note: done });
@@ -262,7 +262,7 @@ describe("Done ThreadNote optimistic changes", () => {
       const { result } = renderHook(
         () => ({
           edit: useUpdateThreadNoteBody(),
-          reopen: useReopenThreadNote(),
+          reopen: useUnarchiveThreadNote(),
           discard: useDiscardThreadNote(),
         }),
         { wrapper },

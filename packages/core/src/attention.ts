@@ -1,10 +1,9 @@
 /**
  * How Vita OS decides what deserves attention, and in what order.
  *
- * Pure grouping over values the caller already holds: the Dashboard, the Area
- * page, and the Notes screen all read the same rules, so the awareness model
- * cannot drift between them. Nothing here knows about storage, React, or a
- * transport.
+ * Pure grouping over values the caller already holds, so the awareness model
+ * cannot drift between the surfaces that read it. Nothing here knows about
+ * storage, React, or a transport.
  */
 
 export interface ThreadAttentionInput {
@@ -24,32 +23,7 @@ export interface ThreadAttentionGroups<TThread> {
   withMoves: TThread[];
 }
 
-export interface NoteAttentionInput {
-  completedAt?: number | null;
-  createdAt: number;
-  state: "done" | "open";
-  followUp?: number | null;
-}
-
-export interface NoteAttentionGroups<TNote> {
-  comingUp: TNote[];
-  completed: TNote[];
-  noDate: TNote[];
-  pastDue: TNote[];
-  today: TNote[];
-}
-
-type NoteAttentionGroup = keyof NoteAttentionGroups<never>;
-
 const DAY = 86_400_000;
-
-const noteGroupOrder: Record<NoteAttentionGroup, number> = {
-  pastDue: 0,
-  today: 1,
-  noDate: 2,
-  comingUp: 3,
-  completed: 4,
-};
 
 export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(
   threads: TThread[],
@@ -84,60 +58,6 @@ export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(
   groups.open.sort(compareThreadOrder);
 
   return groups;
-}
-
-export function groupNotesByAttention<TNote extends NoteAttentionInput>(
-  notes: TNote[],
-  currentDate: number,
-  timezoneOffsetMinutes?: number,
-): NoteAttentionGroups<TNote> {
-  const groups: NoteAttentionGroups<TNote> = {
-    pastDue: [],
-    today: [],
-    noDate: [],
-    comingUp: [],
-    completed: [],
-  };
-
-  for (const note of [...notes].sort((a, b) =>
-    compareNotesByAttention(a, b, currentDate, timezoneOffsetMinutes),
-  )) {
-    groups[
-      getNoteAttentionGroup(note, currentDate, timezoneOffsetMinutes)
-    ].push(note);
-  }
-
-  return groups;
-}
-
-export function isOpenNote(note: Pick<NoteAttentionInput, "state">) {
-  return note.state === "open";
-}
-
-export function compareNotesByAttention<TNote extends NoteAttentionInput>(
-  a: TNote,
-  b: TNote,
-  currentDate: number,
-  timezoneOffsetMinutes?: number,
-) {
-  const aGroup = getNoteAttentionGroup(a, currentDate, timezoneOffsetMinutes);
-  const bGroup = getNoteAttentionGroup(b, currentDate, timezoneOffsetMinutes);
-  const groupDifference = noteGroupOrder[aGroup] - noteGroupOrder[bGroup];
-
-  if (groupDifference !== 0) return groupDifference;
-
-  if (aGroup === "completed") {
-    return (
-      (b.completedAt ?? b.createdAt) - (a.completedAt ?? a.createdAt) ||
-      b.createdAt - a.createdAt
-    );
-  }
-
-  if (aGroup === "pastDue" || aGroup === "comingUp") {
-    return (a.followUp ?? 0) - (b.followUp ?? 0) || b.createdAt - a.createdAt;
-  }
-
-  return b.createdAt - a.createdAt;
 }
 
 export function startOfLocalDay(timestamp: number) {
@@ -175,22 +95,6 @@ export function withTimeOfDay(timestamp: number, time?: string): number {
   const date = new Date(day);
   date.setHours(Number(match[1]), Number(match[2]));
   return date.getTime();
-}
-
-function getNoteAttentionGroup(
-  note: NoteAttentionInput,
-  currentDate: number,
-  timezoneOffsetMinutes?: number,
-): NoteAttentionGroup {
-  if (note.state === "done") return "completed";
-  if (note.followUp == null) return "noDate";
-
-  const attention = getDayKey(note.followUp, timezoneOffsetMinutes);
-  const today = getDayKey(currentDate, timezoneOffsetMinutes);
-
-  if (attention < today) return "pastDue";
-  if (attention === today) return "today";
-  return "comingUp";
 }
 
 function getDayKey(timestamp: number, timezoneOffsetMinutes?: number) {

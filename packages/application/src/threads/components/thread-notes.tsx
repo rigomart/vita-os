@@ -5,7 +5,7 @@ import { Markdown, markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format, isThisYear } from "date-fns";
-import { Check, Loader2, Undo2 } from "lucide-react";
+import { Archive, ArchiveRestore, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { AttentionCollapsed } from "../../attention-list";
@@ -14,15 +14,16 @@ import { NoteDialog } from "../../notes/note-view/note-dialog";
 interface ThreadNotesProps {
   notes: ThreadNote[] | undefined;
   threadTitle?: string;
-  doneNotes?: ThreadNote[];
-  isDoneExhausted?: boolean;
-  isDoneInitialLoading?: boolean;
-  canLoadMoreDone?: boolean;
-  isLoadingMoreDone?: boolean;
-  onLoadMoreDone?: () => void;
+  archivedNotes?: ThreadNote[];
+  isArchivedExhausted?: boolean;
+  isArchivedInitialLoading?: boolean;
+  canLoadMoreArchived?: boolean;
+  isLoadingMoreArchived?: boolean;
+  onLoadMoreArchived?: () => void;
   onCreate: (body: string) => Promise<void> | void;
   onUpdateBody: (note: ThreadNote, body: string) => Promise<void> | void;
-  onToggleDone: (note: ThreadNote) => Promise<void> | void;
+  /** Archive an Open Note, or unarchive an Archived one. */
+  onToggleArchived: (note: ThreadNote) => Promise<void> | void;
   /** Deletes at once; the owner offers Undo. */
   onRemove: (note: ThreadNote) => void;
 }
@@ -30,29 +31,30 @@ interface ThreadNotesProps {
 export function ThreadNotes({
   notes,
   threadTitle = "Thread",
-  doneNotes = [],
-  isDoneExhausted = true,
-  isDoneInitialLoading = false,
-  canLoadMoreDone = false,
-  isLoadingMoreDone = false,
-  onLoadMoreDone,
+  archivedNotes = [],
+  isArchivedExhausted = true,
+  isArchivedInitialLoading = false,
+  canLoadMoreArchived = false,
+  isLoadingMoreArchived = false,
+  onLoadMoreArchived,
   onCreate,
   onUpdateBody,
-  onToggleDone,
+  onToggleArchived,
   onRemove,
 }: ThreadNotesProps) {
   const [composing, setComposing] = useState(false);
-  // Kept above both lists: completing a Note can move or remove its card.
+  // Kept above both lists: archiving a Note can move or remove its card.
   const [selected, setSelected] = useState<ThreadNote | null>(null);
-  const showCompleted =
-    doneNotes.length > 0 || (!isDoneInitialLoading && !isDoneExhausted);
+  const showArchived =
+    archivedNotes.length > 0 ||
+    (!isArchivedInitialLoading && !isArchivedExhausted);
   const currentNote = selected;
   const card = (note: ThreadNote) => (
     <ThreadNoteCard
       key={note._id}
       note={note}
       onOpen={() => setSelected(note)}
-      onToggleDone={onToggleDone}
+      onToggleArchived={onToggleArchived}
     />
   );
 
@@ -68,22 +70,22 @@ export function ThreadNotes({
       {notes && notes.length > 0 ? (
         <div className="flex flex-col gap-2.5">{notes.map(card)}</div>
       ) : null}
-      {showCompleted && (
-        <AttentionCollapsed title="Completed" count={doneNotes.length}>
+      {showArchived && (
+        <AttentionCollapsed title="Archived notes" count={archivedNotes.length}>
           <div className="flex flex-col gap-2.5 pt-1">
-            {doneNotes.map(card)}
+            {archivedNotes.map(card)}
           </div>
-          {(canLoadMoreDone || isLoadingMoreDone) && (
+          {(canLoadMoreArchived || isLoadingMoreArchived) && (
             <div className="flex justify-center pt-2">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={isLoadingMoreDone}
-                aria-busy={isLoadingMoreDone || undefined}
-                onClick={onLoadMoreDone}
+                disabled={isLoadingMoreArchived}
+                aria-busy={isLoadingMoreArchived || undefined}
+                onClick={onLoadMoreArchived}
               >
-                {isLoadingMoreDone ? (
+                {isLoadingMoreArchived ? (
                   <>
                     <Loader2 className="animate-spin" />
                     Loading…
@@ -119,13 +121,13 @@ export function ThreadNotes({
             await onUpdateBody(currentNote, body);
             setSelected({ ...currentNote, body, updatedAt: Date.now() });
           }}
-          onToggleDone={async () => {
-            await onToggleDone(currentNote);
-            const done = currentNote.state !== "done";
+          onToggleArchived={async () => {
+            await onToggleArchived(currentNote);
+            const archiving = currentNote.state !== "done";
             setSelected({
               ...currentNote,
-              state: done ? "done" : "open",
-              completedAt: done ? Date.now() : undefined,
+              state: archiving ? "done" : "open",
+              completedAt: archiving ? Date.now() : undefined,
             });
           }}
           onDelete={() => onRemove(currentNote)}
@@ -138,20 +140,20 @@ export function ThreadNotes({
 function ThreadNoteCard({
   note,
   onOpen,
-  onToggleDone,
+  onToggleArchived,
 }: {
   note: ThreadNote;
   onOpen: () => void;
-  onToggleDone: (note: ThreadNote) => Promise<void> | void;
+  onToggleArchived: (note: ThreadNote) => Promise<void> | void;
 }) {
-  const done = note.state === "done";
+  const archived = note.state === "done";
   const { run: toggle, isPending } = useGuardedAsyncAction(
-    () => onToggleDone(note),
+    () => onToggleArchived(note),
     {
-      successMessage: done ? "Note reopened" : "Note completed",
+      successMessage: archived ? "Note unarchived" : "Note archived",
     },
   );
-  const timestamp = done
+  const timestamp = archived
     ? (note.completedAt ?? note.createdAt)
     : note.createdAt;
   const date = new Date(timestamp);
@@ -160,7 +162,7 @@ function ThreadNoteCard({
       className={cn(
         "group/card relative flex flex-col rounded-3xl border-2 border-border/70 bg-surface-2 p-4",
         "animate-in fade-in slide-in-from-bottom-2 transition-colors duration-300 hover:border-border has-focus-visible:border-ring/50 motion-reduce:animate-none",
-        done && "border-border/40 bg-transparent opacity-70",
+        archived && "border-border/40 bg-transparent opacity-70",
       )}
     >
       <button
@@ -172,7 +174,7 @@ function ThreadNoteCard({
         <div className="relative max-h-36 overflow-hidden after:pointer-events-none after:absolute after:inset-x-0 after:top-32 after:h-4 after:bg-linear-to-b after:from-transparent after:to-surface-2">
           <Markdown
             variant="preview"
-            className={cn("text-sm", done && "text-muted-foreground/60")}
+            className={cn("text-sm", archived && "text-muted-foreground/60")}
           >
             {note.body}
           </Markdown>
@@ -190,23 +192,23 @@ function ThreadNoteCard({
           size="icon-sm"
           className={cn(
             "group/toggle relative shrink-0 rounded-full",
-            done && "bg-transparent text-brand-accent-text",
+            archived && "bg-transparent text-brand-accent-text",
           )}
           disabled={isPending}
           aria-busy={isPending}
-          aria-label={done ? "Mark note open" : "Mark note done"}
+          aria-label={archived ? "Unarchive note" : "Archive note"}
           onClick={(event) => {
             event.stopPropagation();
             void toggle();
           }}
         >
-          {done ? (
+          {archived ? (
             <>
-              <Check className="group-hover/toggle:hidden" />
-              <Undo2 className="hidden group-hover/toggle:block" />
+              <Archive className="group-hover/toggle:hidden" />
+              <ArchiveRestore className="hidden group-hover/toggle:block" />
             </>
           ) : (
-            <Check />
+            <Archive />
           )}
         </Button>
       </div>

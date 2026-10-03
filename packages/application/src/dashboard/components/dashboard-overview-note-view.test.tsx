@@ -42,7 +42,7 @@ function Dashboard() {
 }
 
 describe("the last Dashboard Note", () => {
-  it("keeps its Note view open through completion and can reopen it from the empty Dashboard", async () => {
+  it("keeps its Note view open through archiving and can unarchive it from the empty Dashboard", async () => {
     const user = userEvent.setup();
     const pending = deferred<ReturnType<typeof success<Note>>>();
     let serverNotes = [saved];
@@ -66,7 +66,7 @@ describe("the last Dashboard Note", () => {
     );
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Mark done",
+        name: "Archive",
       }),
     );
 
@@ -82,11 +82,11 @@ describe("the last Dashboard Note", () => {
         success({ ...saved, state: "done", completedAt: currentDate }),
       );
     });
-    await user.click(await screen.findByRole("button", { name: "Reopen" }));
+    await user.click(await screen.findByRole("button", { name: "Unarchive" }));
     await waitFor(() =>
       expect(
         within(screen.getByRole("dialog")).getByRole("button", {
-          name: "Mark done",
+          name: "Archive",
         }),
       ).toBeVisible(),
     );
@@ -97,7 +97,7 @@ describe("the last Dashboard Note", () => {
     expect(screen.queryByText("Nothing is asking for you.")).toBeNull();
   });
 
-  it("restores its card and keeps the view open when completion fails", async () => {
+  it("restores its card and keeps the view open when archiving fails", async () => {
     const user = userEvent.setup();
     const pending = deferred<ReturnType<typeof failure<Note>>>();
     const queryClient = createTestQueryClient();
@@ -115,7 +115,7 @@ describe("the last Dashboard Note", () => {
     );
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Mark done",
+        name: "Archive",
       }),
     );
     await waitFor(() =>
@@ -128,7 +128,7 @@ describe("the last Dashboard Note", () => {
       pending.resolve(
         failure({
           code: "unexpected",
-          message: "Could not complete note",
+          message: "Could not archive note",
           retryable: false,
         }),
       );
@@ -137,7 +137,7 @@ describe("the last Dashboard Note", () => {
     expect(feedback.success).not.toHaveBeenCalled();
     expect(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Mark done",
+        name: "Archive",
       }),
     ).toBeEnabled();
     expect(screen.queryByText("Nothing is asking for you.")).toBeNull();

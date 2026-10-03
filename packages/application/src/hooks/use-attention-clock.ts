@@ -1,10 +1,10 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * The attention clock — one "now" for every surface that reads a date. Inbox
- * ordering grouping, and the Dashboard date all classify
- * by *day*, so they share a timestamp that holds still for the local day and
- * steps forward at local midnight.
+ * The attention clock — one "now" for every surface that reads a date. The
+ * Dashboard's columns and its date all classify by *day*, so they share a
+ * timestamp that holds still for the local day and steps forward at local
+ * midnight.
  *
  * A module-level store, not per-component state: every consumer sees the same
  * instant and the app arms one timer.

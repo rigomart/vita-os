@@ -39,16 +39,16 @@ export function useThreadNotes(
   });
 }
 
-export type DoneThreadNotesResult = PagedResult<ThreadNote> & {
+export type ArchivedThreadNotesResult = PagedResult<ThreadNote> & {
   /** The same entries, named for what they are on this surface. */
   notes: ThreadNote[];
 };
 
-/** A Thread's Done Notes, a bounded page at a time. */
-export function useDoneThreadNotes(
+/** A Thread's Archived Notes (stored as Done), a bounded page at a time. */
+export function useArchivedThreadNotes(
   threadId: ThreadId,
   limit = DONE_PAGE_SIZE,
-): DoneThreadNotesResult {
+): ArchivedThreadNotesResult {
   const page = usePagedApplicationQuery<ThreadNote>({
     queryKey: queryKeys.threadNotes.done(threadId, limit),
     run: (client, cursor) =>
@@ -150,7 +150,8 @@ export function useUpdateThreadNoteBody(): ApplicationMutationResult<
   });
 }
 
-export function useCompleteThreadNote(): ApplicationMutationResult<
+/** Archiving is the stored Done state. */
+export function useArchiveThreadNote(): ApplicationMutationResult<
   { threadId: ThreadId; threadNoteId: ThreadNoteId },
   ThreadNote
 > {
@@ -175,10 +176,10 @@ export function useCompleteThreadNote(): ApplicationMutationResult<
 }
 
 /**
- * Reopening a Thread Note. The caller passes the record because a Done Note was
- * never in the open list to rebuild it from.
+ * Unarchiving a Thread Note. The caller passes the record because an Archived
+ * Note was never in the open list to rebuild it from.
  */
-export function useReopenThreadNote(): ApplicationMutationResult<
+export function useUnarchiveThreadNote(): ApplicationMutationResult<
   { threadId: ThreadId; note: ThreadNote },
   ThreadNote
 > {

@@ -11,6 +11,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -163,18 +164,46 @@ describe("shared product routes", { timeout: 20_000 }, () => {
   });
 
   it.each(["/inbox", "/notes"])(
-    "redirects %s to the Notes surface and preserves an open Thread",
+    "redirects %s to the Dashboard filtered to Notes, keeping an open Thread",
     async (path) => {
-      const { router } = await mountProduct(`${path}?thread=roof`);
+      const { router } = await mountProduct(`${path}?thread=roof&area=home`);
 
       await waitFor(() => expect(router.state.location.pathname).toBe("/"));
       expect(router.state.location.search).toEqual({
         thread: "roof",
-        inbox: true,
+        show: "notes",
       });
+      const notes = await screen.findByRole("link", { name: /^Notes/ });
+      const row = screen.getByRole("navigation", { name: "Filter the board" });
       expect(
-        await screen.findByRole("dialog", { name: "Notes" }),
-      ).toBeInTheDocument();
+        within(row)
+          .getAllByRole("link")
+          .filter((link) => link.hasAttribute("aria-current")),
+      ).toEqual([notes]);
     },
   );
+
+  it("redirects the legacy Notes panel param to the Notes filter", async () => {
+    const { router } = await mountProduct("/threads/roof?inbox=true");
+
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({
+        thread: "roof",
+        show: "notes",
+      }),
+    );
+    expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("keeps the Notes filter when a Thread opened in place closes", async () => {
+    const { router } = await mountProduct("/?show=notes&thread=roof");
+
+    expect(await screen.findByText("Thread not found.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Close thread" }));
+
+    await waitFor(() =>
+      expect(router.state.location.search).not.toHaveProperty("thread"),
+    );
+    expect(router.state.location.search).toEqual({ show: "notes" });
+  });
 });

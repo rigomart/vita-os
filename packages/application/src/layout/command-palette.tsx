@@ -1,12 +1,18 @@
+import type { Note } from "@vita-os/contracts";
+
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { matchesNoteSearch } from "@vita-os/core";
 import { Button } from "@vita-os/ui/components/button";
+import { markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { defaultFilter } from "cmdk";
+import { format, isThisYear } from "date-fns";
 import {
   FilterX,
-  Inbox,
+  History,
   LayoutDashboard,
   MessageSquare,
   Plus,
+  StickyNote,
   Tags,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,6 +21,9 @@ import type { ProductSearch } from "../navigation/search-params";
 
 import { AreaIcon } from "../areas/components/area-icon";
 import { useAreas } from "../areas/hooks";
+import { useDebouncedValue } from "../hooks/use-debounced-value";
+import { NOTES_FILTER, withDashboardFilter } from "../navigation/search-params";
+import { useArchivedNotes } from "../notes/hooks";
 import { useOpenThreads, useResolvedThreads } from "../threads/hooks";
 import {
   CommandDialog,
@@ -32,13 +41,22 @@ interface CommandPaletteProps {
   onNewNote: () => void;
   onNewThread: () => void;
   onManageAreas: () => void;
-  onOpenInbox: () => void;
+  /** Read an Archived Note chosen from History over the current page. */
+  onOpenNote: (note: Note) => void;
 }
 
-// Equal resolved scores retain the API's resolution order when searching.
+/** How long typing settles before History searches Archived Notes. */
+const ARCHIVED_SEARCH_DELAY = 250;
+
+// Equal History scores retain the API's order when searching. Archived Notes
+// are searched on the service; the same rule here narrows what is already on
+// screen while that answer is on its way.
 function paletteFilter(value: string, search: string, keywords?: string[]) {
   if (value.startsWith("resolved-thread-")) {
     return defaultFilter((keywords ?? []).join(" "), search) > 0 ? 1 : 0;
+  }
+  if (value.startsWith("archived-note-")) {
+    return matchesNoteSearch((keywords ?? []).join(" "), search) ? 1 : 0;
   }
   const score = defaultFilter(value, search, keywords);
   if (score === 0) return 0;
@@ -52,22 +70,29 @@ export function CommandPalette({
   onNewNote,
   onNewThread,
   onManageAreas,
-  onOpenInbox,
+  onOpenNote,
 }: CommandPaletteProps) {
   const navigate = useNavigate();
-  const { area: areaFilter }: ProductSearch = useSearch({ strict: false });
+  const { area: areaFilter, show }: ProductSearch = useSearch({
+    strict: false,
+  });
   // The palette is mounted only while it is open, so these subscriptions live
   // exactly as long as the surface that reads them.
   const areas = useAreas({ enabled: open }).data;
   const threads = useOpenThreads({ enabled: open }).data;
   const [search, setSearch] = useState("");
-  const [showResolved, setShowResolved] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const resolvedQuery = useResolvedThreads({ enabled: open && showResolved });
-  const visibleThreads = showResolved ? resolvedQuery.data : threads;
+  const resolvedQuery = useResolvedThreads({ enabled: open && showHistory });
+  const archivedQuery = useArchivedNotes({
+    query: useDebouncedValue(search, ARCHIVED_SEARCH_DELAY),
+    enabled: open && showHistory,
+  });
+  const visibleThreads = showHistory ? resolvedQuery.data : threads;
+  const archivedNotes = showHistory ? archivedQuery.notes : [];
   useEffect(() => {
     inputRef.current?.focus();
-  }, [showResolved]);
+  }, [showHistory]);
   const areaById = useMemo(
     () => new Map((areas ?? []).map((area) => [area._id, area])),
     [areas],
@@ -86,25 +111,22 @@ export function CommandPalette({
     action();
   };
 
-  const filterBy = (area: string | undefined) =>
-    run(() =>
-      navigate({
-        to: "/",
-        search: (prev: ProductSearch): ProductSearch => ({ ...prev, area }),
-      }),
-    );
+  const filterBy = (filter: Parameters<typeof withDashboardFilter>[0]) =>
+    run(() => navigate({ to: "/", search: withDashboardFilter(filter) }));
+  const historyLoading =
+    showHistory && (resolvedQuery.isPending || archivedQuery.isPending);
 
   return (
     <CommandDialog
       open={open}
       onOpenChange={onOpenChange}
       title="Jump to"
-      description="Jump to a thread, filter by an area, or run an action"
+      description="Jump to a thread, filter the board, or run an action"
       showCloseButton={false}
       filter={paletteFilter}
       // Each view owns its selection. Otherwise cmdk can retain an item from
       // the previous view and leave Enter without a visible target.
-      commandKey={showResolved ? "resolved" : "open"}
+      commandKey={showHistory ? "history" : "open"}
       // Function form: Base UI reads it at close time, after `run` has set the
       // flag, which a plain value could not see in the same commit.
       finalFocus={() => !skipFocusReturn.current}
@@ -114,8 +136,8 @@ export function CommandPalette({
       <CommandInput
         ref={inputRef}
         placeholder={
-          showResolved
-            ? "Search resolved threads…"
+          showHistory
+            ? "Search resolved threads and archived notes…"
             : "Jump to a thread, area, or action…"
         }
         value={search}
@@ -124,8 +146,8 @@ export function CommandPalette({
       <div className="border-b px-3 py-2">
         <Button
           size="xs"
-          variant={showResolved ? "secondary" : "outline"}
-          aria-pressed={showResolved}
+          variant={showHistory ? "secondary" : "outline"}
+          aria-pressed={showHistory}
           // cmdk handles Enter for list selection. The chip owns its keyboard
           // activation, so it must not also select the current Thread.
           onKeyDown={(event) => {
@@ -133,25 +155,26 @@ export function CommandPalette({
               event.stopPropagation();
           }}
           onClick={() => {
-            setShowResolved((previous) => !previous);
+            setShowHistory((previous) => !previous);
             setSearch("");
           }}
         >
-          Resolved
+          <History aria-hidden />
+          History
         </Button>
       </div>
       <CommandList>
         <CommandEmpty>
-          {showResolved && resolvedQuery.isPending
-            ? "Loading resolved threads…"
-            : showResolved && !search.trim()
-              ? "No resolved threads yet."
+          {historyLoading
+            ? "Loading history…"
+            : showHistory && !search.trim()
+              ? "No resolved threads or archived notes yet."
               : "No results found."}
         </CommandEmpty>
         {/* Jumping first: Threads are the work. Create lives last because the
             dock already offers those one-tap actions; keeping the rows means
             "new thread" still matches when someone searches rather than taps. */}
-        <CommandGroup heading={showResolved ? "Resolved" : "Threads"}>
+        <CommandGroup heading={showHistory ? "Resolved threads" : "Threads"}>
           {(visibleThreads ?? []).map((thread) => {
             const area =
               thread.areaId === undefined
@@ -160,7 +183,7 @@ export function CommandPalette({
             return (
               <CommandItem
                 key={thread._id}
-                value={`${showResolved ? "resolved-thread" : "thread"}-${thread._id}`}
+                value={`${showHistory ? "resolved-thread" : "thread"}-${thread._id}`}
                 keywords={area ? [thread.title, area.name] : [thread.title]}
                 onSelect={() =>
                   run(() =>
@@ -185,7 +208,18 @@ export function CommandPalette({
             );
           })}
         </CommandGroup>
-        {!showResolved && (
+        {showHistory && (
+          <CommandGroup heading="Archived notes">
+            {archivedNotes.map((note) => (
+              <ArchivedNoteItem
+                key={note._id}
+                note={note}
+                onSelect={() => run(() => onOpenNote(note))}
+              />
+            ))}
+          </CommandGroup>
+        )}
+        {!showHistory && (
           <>
             <CommandGroup heading="Filter">
               {(areas ?? []).map((area) => (
@@ -193,7 +227,7 @@ export function CommandPalette({
                   key={area._id}
                   value={`filter-${area._id}`}
                   keywords={[`Filter: ${area.name}`, area.name]}
-                  onSelect={() => filterBy(area.slug)}
+                  onSelect={() => filterBy({ area: area.slug })}
                 >
                   <AreaIcon icon={area.icon} className="size-4" />
                   <span className="min-w-0 flex-1 truncate">
@@ -201,11 +235,11 @@ export function CommandPalette({
                   </span>
                 </CommandItem>
               ))}
-              {areaFilter !== undefined && (
+              {(areaFilter !== undefined || show !== undefined) && (
                 <CommandItem
                   value="filter-clear"
                   keywords={["Clear filter", "all"]}
-                  onSelect={() => filterBy(undefined)}
+                  onSelect={() => filterBy({})}
                 >
                   <FilterX />
                   Clear filter
@@ -217,8 +251,12 @@ export function CommandPalette({
                 <LayoutDashboard />
                 Dashboard
               </CommandItem>
-              <CommandItem onSelect={() => run(onOpenInbox)}>
-                <Inbox />
+              {/* Notes live on the Dashboard: going to them filters it. */}
+              <CommandItem
+                keywords={["Filter: Notes", "notes"]}
+                onSelect={() => filterBy({ show: NOTES_FILTER })}
+              >
+                <StickyNote />
                 Notes
               </CommandItem>
             </CommandGroup>
@@ -250,5 +288,36 @@ export function CommandPalette({
         )}
       </CommandList>
     </CommandDialog>
+  );
+}
+
+/** An Archived Note in History: one line of its text and when it was archived. */
+function ArchivedNoteItem({
+  note,
+  onSelect,
+}: {
+  note: Note;
+  onSelect: () => void;
+}) {
+  const preview = markdownToPlainText(note.body).replace(/\s+/g, " ").trim();
+  const archivedAt =
+    note.completedAt === undefined ? undefined : new Date(note.completedAt);
+  return (
+    <CommandItem
+      value={`archived-note-${note._id}`}
+      keywords={[note.body]}
+      onSelect={onSelect}
+    >
+      <StickyNote />
+      <span className="min-w-0 flex-1 truncate">{preview}</span>
+      {archivedAt && (
+        <time
+          dateTime={archivedAt.toISOString()}
+          className="shrink-0 text-xs text-muted-foreground"
+        >
+          {format(archivedAt, isThisYear(archivedAt) ? "MMM d" : "MMM d, yyyy")}
+        </time>
+      )}
+    </CommandItem>
   );
 }

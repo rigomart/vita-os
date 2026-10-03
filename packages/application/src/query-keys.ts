@@ -27,8 +27,9 @@ export const queryKeys = {
   notes: {
     all: ["notes"] as const,
     open: () => ["notes", "open"] as const,
-    openCount: () => ["notes", "open-count"] as const,
-    done: (limit: number) => ["notes", "done", limit] as const,
+    /** Archived Notes, stored as Done: one page size and search per read. */
+    done: (limit: number, query = "") =>
+      ["notes", "done", limit, query] as const,
     doneAll: () => ["notes", "done"] as const,
   },
   threadNotes: {

@@ -8,20 +8,15 @@ import {
 } from "@vita-os/ui/components/tooltip";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
-import { Inbox, MessageSquare, Plus, Search } from "lucide-react";
+import { MessageSquare, Plus, Search } from "lucide-react";
 
 import { useAttentionClock } from "../hooks/use-attention-clock";
-import { inboxSurfaceTriggerProps } from "../inbox/surface/inbox-surface-trigger";
 import { isApplePlatform } from "../lib/platform";
 import { useTheme } from "../theme/theme-provider";
 import { useViewer } from "../viewer/viewer-context";
-import { InboxNoteCountBadge } from "./inbox-note-count-badge";
 import { UserMenu } from "./user-menu";
 
 interface AppChromeProps {
-  noteCount: number | undefined;
-  inboxOpen: boolean;
-  onToggleInbox: () => void;
   onNewNote: () => void;
   onNewThread: () => void;
   onOpenPalette: () => void;
@@ -38,12 +33,9 @@ interface AppChromeProps {
  */
 
 export function AppChrome({
-  inboxOpen,
-  noteCount,
   onNewNote,
   onNewThread,
   onOpenPalette,
-  onToggleInbox,
 }: AppChromeProps) {
   const { viewer, signOut } = useViewer();
   const { theme, setTheme } = useTheme();
@@ -107,24 +99,6 @@ export function AppChrome({
             className="hidden h-5 w-px shrink-0 bg-border sm:block"
           />
 
-          <button
-            type="button"
-            aria-label="Notes"
-            aria-expanded={inboxOpen}
-            {...inboxSurfaceTriggerProps}
-            onClick={onToggleInbox}
-            className={cn(
-              "relative flex size-8 items-center justify-center rounded-md transition-colors",
-              inboxOpen
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-            )}
-          >
-            <Inbox className="size-4" />
-            <span className="absolute -top-1 -right-1">
-              <InboxNoteCountBadge noteCount={noteCount} />
-            </span>
-          </button>
           <UserMenu
             user={viewer}
             theme={theme}

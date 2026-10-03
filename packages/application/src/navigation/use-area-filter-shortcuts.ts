@@ -3,11 +3,12 @@ import type { AreaSummary } from "@vita-os/contracts";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import type { ProductSearch } from "./search-params";
+import { withDashboardFilter } from "./search-params";
 
 /**
  * Bare `1..9` filters the Dashboard to the Nth Area in the user's own order,
- * and `0` returns it to All. Modifier chords are left alone — ⌘/Ctrl+digit is
+ * and `0` returns it to All. Either replaces the Notes filter, which has no
+ * key of its own. Modifier chords are left alone — ⌘/Ctrl+digit is
  * the browser's own tab switcher. Matching on `e.code` keeps the digit row
  * working on layouts where digits are typed shifted.
  */
@@ -36,10 +37,7 @@ export function useAreaFilterShortcuts(
       e.preventDefault();
       void navigate({
         to: "/",
-        search: (previous: ProductSearch): ProductSearch => ({
-          ...previous,
-          area: area?.slug,
-        }),
+        search: withDashboardFilter({ area: area?.slug }),
       });
     }
     document.addEventListener("keydown", handleKeyDown);

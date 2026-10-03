@@ -10,7 +10,7 @@ import type {
   Page,
 } from "@vita-os/contracts";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 
 import { useApplicationClient } from "../application-client-provider";
 
@@ -27,8 +27,11 @@ export type PagedResult<TEntry> = UseInfiniteQueryResult<
  *
  * Pages already read stay read: asking for more adds to what is on screen rather
  * than replacing it, and the cursor the service handed back is the only way to
- * ask. Every bounded history in Vita OS — the Activity Log, Done Notes, a
- * Thread's Done Notes — reads exactly this way.
+ * ask. Every bounded history in Vita OS — the Activity Log, Archived Notes, a
+ * Thread's Archived Notes — reads exactly this way.
+ *
+ * `keepPrevious` holds what is on screen while a read under a new key — a new
+ * search, say — is on its way, instead of flashing empty.
  */
 export function usePagedApplicationQuery<TEntry>(options: {
   queryKey: QueryKey;
@@ -36,6 +39,8 @@ export function usePagedApplicationQuery<TEntry>(options: {
     client: ApplicationClient,
     cursor: string | undefined,
   ) => Promise<OperationResult<Page<TEntry>>>;
+  enabled?: boolean;
+  keepPrevious?: boolean;
   throwOnError?: boolean;
 }): PagedResult<TEntry> {
   const client = useApplicationClient();
@@ -54,6 +59,8 @@ export function usePagedApplicationQuery<TEntry>(options: {
       return result.value;
     },
     getNextPageParam: (page) => page.nextCursor,
+    ...(options.enabled === undefined ? {} : { enabled: options.enabled }),
+    ...(options.keepPrevious ? { placeholderData: keepPreviousData } : {}),
     throwOnError: options.throwOnError ?? true,
   });
 

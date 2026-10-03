@@ -63,28 +63,27 @@ export {
 } from "./areas/hooks";
 export type { ApplicationMutationResult } from "./cache/use-application-mutation";
 export {
+  useArchivedNotes,
+  useArchiveNote,
   useCaptureNote,
-  useCompleteNote,
   useDiscardNote,
-  useDoneNotes,
-  useOpenNoteCount,
   useOpenNotes,
-  useReopenNote,
+  useUnarchiveNote,
   useUpdateNoteFollowUp,
   useUpdateNoteBody,
+  type ArchivedNotesResult,
   type CaptureNoteVariables,
-  type DoneNotesResult,
 } from "./notes/hooks";
 export { queryKeys, threadQueryKeys } from "./query-keys";
 export {
   useCaptureThreadNote,
-  useCompleteThreadNote,
+  useArchiveThreadNote,
   useDiscardThreadNote,
-  useDoneThreadNotes,
-  useReopenThreadNote,
+  useArchivedThreadNotes,
+  useUnarchiveThreadNote,
   useThreadNotes,
   useUpdateThreadNoteBody,
-  type DoneThreadNotesResult,
+  type ArchivedThreadNotesResult,
 } from "./thread-notes/hooks";
 export {
   useCreateThread,

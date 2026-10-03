@@ -13,11 +13,13 @@ import { readProductSearch } from "../navigation/search-params";
  * Vita OS' routes, as the application's own.
  *
  * The product's addresses are part of the product: `/` is the Dashboard
- * (`?area=` filters it), `/threads/$threadSlug` a Thread deep link, and
- * `?thread=`/`?inbox=` summon a Thread or the Notes panel over whatever is
- * showing. The old Area addresses, `/$areaSlug` and `/$areaSlug/$threadSlug`,
- * redirect. A host mounts this tree, adds whatever routes are its own — signing
- * in is the host's, not the product's — and hands the result to `createRouter`.
+ * (`?area=` or `?show=notes` filters it), `/threads/$threadSlug` a Thread deep
+ * link, and `?thread=` summons a Thread over whatever is showing. The old
+ * addresses redirect: the Area pages, `/$areaSlug` and
+ * `/$areaSlug/$threadSlug`, and the Notes panel, `/notes`, `/inbox` and
+ * `?inbox=true`. A host mounts this tree, adds whatever routes are its own —
+ * signing in is the host's, not the product's — and hands the result to
+ * `createRouter`.
  *
  * Every component below is loaded lazily, which is what keeps the authenticated
  * app out of the bundle a signed-out visitor downloads. `check-chunks.mjs`
@@ -105,28 +107,28 @@ const legacyAreaThreadRoute = createRoute({
   ),
 });
 
-const inboxDeepLink = lazyRouteComponent(
-  () => import("../inbox/surface/inbox-deep-link-redirect"),
-  "InboxDeepLinkRedirect",
+const notesDeepLink = lazyRouteComponent(
+  () => import("./notes-deep-link-redirect"),
+  "NotesDeepLinkRedirect",
 );
 
 /**
- * The Inbox has no page of its own — it is summoned over whatever is showing —
- * so both of its old addresses survive as deep links onto the Dashboard with it
- * open.
+ * Notes live on the Dashboard, so both old addresses of the Notes panel land
+ * there with the Notes filter selected. The static segments win over an Area
+ * slug, as `threads` does.
  */
 const inboxRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/inbox",
   errorComponent: RouteErrorFallback,
-  component: inboxDeepLink,
+  component: notesDeepLink,
 });
 
 const notesRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/notes",
   errorComponent: RouteErrorFallback,
-  component: inboxDeepLink,
+  component: notesDeepLink,
 });
 
 export const authenticatedRouteTree = authenticatedRoute.addChildren([
