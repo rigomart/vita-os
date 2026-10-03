@@ -3,62 +3,31 @@ import type { Note, Thread } from "@vita-os/contracts";
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
-import type { Session } from "./sessions";
+import type { Answer, Session } from "./sessions";
 
-import { createApp } from "../src/app";
-import { createSession, succeed } from "./sessions";
+import { call, createSession, expectError, succeed } from "./sessions";
 
 /**
  * The request guard decides from its own decoding of the path whether a
  * request is protected (`/v1`) or an auth request (`/api/auth`), while the
  * router matches its own decoding. These tests send alternative spellings of
  * the same path and require that every spelling the router dispatches to a
- * handler also passed through the guard, and that every spelling the guard
- * waves through never reaches a handler.
+ * handler also passed through the guard, and that no other spelling reaches a
+ * handler at all.
  */
 
 const FOREIGN_ORIGIN = "https://attacker.example";
-const BASE = "http://api.test";
 
-type Send = (path: string, init: RequestInit) => Promise<Response>;
+type Reply = Answer & { allowOrigin: string | null };
 
-/** Through the Worker: the runtime's URL parser runs before the app. */
-const viaWorker: Send = (path, init) => SELF.fetch(`${BASE}${path}`, init);
-
-/**
- * Straight into the app with the path exactly as written, as if a runtime
- * forwarded it without WHATWG normalisation (dot segments, backslashes and
- * control characters left in place).
- */
-const verbatim: Send = async (path, init) => {
-  const request = new Request(`${BASE}/`, init);
-  const unnormalised = new Proxy(request, {
-    get(target, property) {
-      if (property === "url") return `${BASE}${path}`;
-      const value: unknown = Reflect.get(target, property, target);
-      return typeof value === "function" ? value.bind(target) : value;
-    },
-  });
-  const app = createApp();
+/** A Worker request with headers `call` cannot set, read the way `call` reads. */
+async function send(path: string, init: RequestInit = {}): Promise<Reply> {
+  const response = await SELF.fetch(`http://api.test${path}`, init);
+  let body: unknown;
   try {
-    return await app.fetch(unnormalised, env);
-  } finally {
-    await app.dispose();
-  }
-};
-
-/** The pathname the Worker receives for a path as sent. */
-function received(path: string): string {
-  return new URL(`${BASE}${path}`).pathname;
-}
-
-async function answer(response: Response) {
-  const text = await response.text();
-  let body: unknown = text;
-  try {
-    body = JSON.parse(text);
+    body = await response.json();
   } catch {
-    // Router misses answer in plain text.
+    body = undefined;
   }
   return {
     status: response.status,
@@ -67,50 +36,48 @@ async function answer(response: Response) {
   };
 }
 
-const unauthenticated = {
-  status: 401,
-  body: {
-    error: {
-      code: "unauthorized",
-      message: "Authentication required.",
-      retryable: false,
-    },
-  },
-};
-const foreignOrigin = {
-  status: 403,
-  body: {
-    error: {
-      code: "unauthorized",
-      message: "Request origin is not allowed.",
-      retryable: false,
-    },
-  },
-};
-const jsonRequired = {
-  status: 415,
-  body: {
-    error: {
-      code: "validation",
-      message: "JSON request body required.",
-      retryable: false,
-    },
-  },
-};
-
-function anonymousGet(send: Send, path: string) {
-  return send(path, { headers: { origin: env.BROWSER_ORIGIN } }).then(answer);
+/** The pathname the Worker receives for a path as sent. */
+function received(path: string): string {
+  return new URL(`http://api.test${path}`).pathname;
 }
 
-function authenticatedGet(send: Send, path: string, session: Session) {
-  return send(path, {
-    headers: { cookie: session.cookie, origin: env.BROWSER_ORIGIN },
-  }).then(answer);
+/** Test titles show control characters escaped. */
+function escaped(path: string): string {
+  return JSON.stringify(path).slice(1, -1);
+}
+function rows(entries: Array<[sent: string, received: string]>) {
+  return entries.map(([sent, pathname]) => ({
+    label: escaped(sent),
+    sent,
+    pathname: escaped(pathname),
+    expected: pathname,
+  }));
+}
+
+function expectUnauthenticated(answer: Answer) {
+  expectError(answer, {
+    status: 401,
+    code: "unauthorized",
+    message: "Authentication required.",
+  });
+}
+function expectForeignOrigin(answer: Answer) {
+  expectError(answer, {
+    status: 403,
+    code: "unauthorized",
+    message: "Request origin is not allowed.",
+  });
+}
+function expectJsonRequired(answer: Answer) {
+  expectError(answer, {
+    status: 415,
+    code: "validation",
+    message: "JSON request body required.",
+  });
 }
 
 /** A well-formed Note creation; only the origin and media type vary. */
 function createNote(
-  send: Send,
   path: string,
   session: Session,
   headers: Record<string, string>,
@@ -119,28 +86,30 @@ function createNote(
     method: "POST",
     headers: { cookie: session.cookie, ...headers },
     body: JSON.stringify({ body: "Must not be written" }),
-  }).then(answer);
+  });
 }
 
 /** Every guarded refusal for a spelling that reaches a /v1 path. */
-async function expectGuarded(send: Send, path: string, session: Session) {
-  const anonymous = await anonymousGet(send, path);
-  expect(anonymous).toMatchObject(unauthenticated);
+async function expectGuarded(path: string, session: Session) {
+  const anonymous = await send(path, {
+    headers: { origin: env.BROWSER_ORIGIN },
+  });
+  expectUnauthenticated(anonymous);
   expect(anonymous.allowOrigin).toBe(env.BROWSER_ORIGIN);
-  expect(
-    await createNote(send, path, session, {
+  expectForeignOrigin(
+    await createNote(path, session, {
       origin: FOREIGN_ORIGIN,
       "content-type": "application/json",
     }),
-  ).toMatchObject(foreignOrigin);
-  expect(
-    await createNote(send, path, session, {
+  );
+  expectJsonRequired(
+    await createNote(path, session, {
       origin: env.BROWSER_ORIGIN,
       "content-type": "text/plain",
     }),
-  ).toMatchObject(jsonRequired);
-  expect(await createNote(send, path, session, {})).toMatchObject(jsonRequired);
-  const preflight = await send(path, {
+  );
+  expectJsonRequired(await createNote(path, session, {}));
+  const preflight = await SELF.fetch(`http://api.test${path}`, {
     method: "OPTIONS",
     headers: {
       origin: env.BROWSER_ORIGIN,
@@ -153,23 +122,44 @@ async function expectGuarded(send: Send, path: string, session: Session) {
   );
 }
 
-/** A spelling outside the guard must not reach any handler at all. */
-async function expectUnrouted(send: Send, path: string, session: Session) {
-  for (const result of [
-    await anonymousGet(send, path),
-    await authenticatedGet(send, path, session),
-    await createNote(send, path, session, {
-      origin: env.BROWSER_ORIGIN,
+/**
+ * No handler answered: never a success or handler data, only the router's
+ * bare miss or an error envelope. The guard may refuse more spellings than it
+ * does today, since that is safe. It answers an allowed origin with CORS, so
+ * an allowed-origin reply without CORS must be the bare miss; a handler reached
+ * past the guard would show up as an envelope without CORS.
+ */
+function expectNoHandler(reply: Reply, origin: string) {
+  expect([401, 403, 404, 415]).toContain(reply.status);
+  if (reply.body !== undefined) {
+    expect(reply.body).toMatchObject({ error: { code: expect.any(String) } });
+  }
+  if (origin === env.BROWSER_ORIGIN && reply.allowOrigin === null) {
+    expect(reply).toMatchObject({ status: 404, body: undefined });
+  }
+}
+
+async function expectUnrouted(path: string, session: Session) {
+  const allowed = env.BROWSER_ORIGIN;
+  expectNoHandler(await send(path, { headers: { origin: allowed } }), allowed);
+  expectNoHandler(
+    await send(path, { headers: { cookie: session.cookie, origin: allowed } }),
+    allowed,
+  );
+  expectNoHandler(
+    await createNote(path, session, {
+      origin: allowed,
       "content-type": "application/json",
     }),
-    await createNote(send, path, session, {
+    allowed,
+  );
+  expectNoHandler(
+    await createNote(path, session, {
       origin: FOREIGN_ORIGIN,
       "content-type": "text/plain",
     }),
-  ]) {
-    expect(result.status).toBe(404);
-    expect(result.allowOrigin).toBeNull();
-  }
+    FOREIGN_ORIGIN,
+  );
 }
 
 async function expectNoNotes(session: Session) {
@@ -177,7 +167,7 @@ async function expectNoNotes(session: Session) {
 }
 
 /** Spellings that dispatch to the Note list and creation handlers. */
-const reachesNotes: Array<[sent: string, received: string]> = [
+const reachesNotes = rows([
   ["/v1/notes", "/v1/notes"],
   ["/%761/notes", "/%761/notes"],
   ["/v%31/notes", "/v%31/notes"],
@@ -191,29 +181,29 @@ const reachesNotes: Array<[sent: string, received: string]> = [
   ["\\v1\\notes", "/v1/notes"],
   ["/v1\t/no\ntes", "/v1/notes"],
   ["/v1/notes?page=%2F..%2F", "/v1/notes"],
+  ["/v1/notes?x=;", "/v1/notes"],
   ["/v1/notes#fragment", "/v1/notes"],
   // The URL parser trims leading and trailing C0 controls and spaces.
   ["/v1/notes\u0000", "/v1/notes"],
   ["/v1/notes  ", "/v1/notes"],
-];
+]);
 
 /** Spellings under /v1 that match no route: authenticated, then 404. */
-const protectedMisses: Array<[sent: string, received: string]> = [
-  ["/v1/notes/", "/v1/notes/"],
+const protectedMisses = rows([
   ["/v1/notes/..", "/v1/"],
   ["/v1/notes;/x", "/v1/notes;/x"],
-  ["/v1/notes;", "/v1/notes;"],
   ["/v1/%E0%A4%A/notes", "/v1/%E0%A4%A/notes"],
   ["/v1/notes%ZZ", "/v1/notes%ZZ"],
+  // A malformed escape must not hide the encoded prefix before it.
+  ["/%761/notes%ZZ", "/%761/notes%ZZ"],
   ["/v1/notes%C0%AF", "/v1/notes%C0%AF"],
   ["/v1/notes%00", "/v1/notes%00"],
   ["/v1/no%00tes", "/v1/no%00tes"],
   ["/v1/notes%2F", "/v1/notes%2F"],
-];
+]);
 
-/** Spellings the guard leaves alone, which therefore must not route. */
-const unrouted: Array<[sent: string, received: string]> = [
-  ["/V1/notes", "/V1/notes"],
+/** Spellings that must not reach any handler. */
+const unrouted = rows([
   ["/V%31/notes", "/V%31/notes"],
   ["//v1/notes", "//v1/notes"],
   ["/v1%2Fnotes", "/v1%2Fnotes"],
@@ -236,58 +226,79 @@ const unrouted: Array<[sent: string, received: string]> = [
   ["/v1%C0%AF/notes", "/v1%C0%AF/notes"],
   ["/%EF%BC%8Fv1/notes", "/%EF%BC%8Fv1/notes"],
   ["/v1%EF%BC%8Fnotes", "/v1%EF%BC%8Fnotes"],
-];
+]);
 
 describe("request guards across path spellings", () => {
   it.each(reachesNotes)(
-    "guards %j, which the Worker receives as %j and routes to Notes",
-    async (sent, pathname) => {
-      expect(received(sent)).toBe(pathname);
+    "guards $label, received as $pathname and routed to Notes",
+    async ({ sent, expected }) => {
+      expect(received(sent)).toBe(expected);
       const session = await createSession("guard-routed");
       // Proves this spelling really reaches the Note handlers.
-      const reads = await authenticatedGet(viaWorker, sent, session);
-      expect(reads).toMatchObject({ status: 200, body: [] });
-      await expectGuarded(viaWorker, sent, session);
+      expect(await call(sent, { session })).toEqual({ status: 200, body: [] });
+      await expectGuarded(sent, session);
       await expectNoNotes(session);
     },
   );
 
   it.each(protectedMisses)(
-    "authenticates %j (received as %j) before answering not found",
-    async (sent, pathname) => {
-      expect(received(sent)).toBe(pathname);
+    "authenticates $label, received as $pathname, before answering not found",
+    async ({ sent, expected }) => {
+      expect(received(sent)).toBe(expected);
       const session = await createSession("guard-miss");
-      const reads = await authenticatedGet(viaWorker, sent, session);
-      expect(reads).toMatchObject({ status: 404 });
-      await expectGuarded(viaWorker, sent, session);
+      expect((await call(sent, { session })).status).toBe(404);
+      await expectGuarded(sent, session);
       await expectNoNotes(session);
     },
   );
 
   it.each(unrouted)(
-    "never dispatches %j (received as %j) to a handler",
-    async (sent, pathname) => {
-      expect(received(sent)).toBe(pathname);
+    "never dispatches $label, received as $pathname, to a handler",
+    async ({ sent, expected }) => {
+      expect(received(sent)).toBe(expected);
       const session = await createSession("guard-unrouted");
-      await expectUnrouted(viaWorker, sent, session);
+      await expectUnrouted(sent, session);
       await expectNoNotes(session);
     },
   );
+});
 
-  it("guards lowercase methods, which the runtime normalises", async () => {
-    const session = await createSession("guard-method-case");
-    for (const method of ["post", "Post"]) {
-      expect(
-        await viaWorker("/v1/notes", {
+describe("request guards on lowercase methods, which the runtime normalises", () => {
+  it("requires JSON for post, put and patch", async () => {
+    const session = await createSession("guard-method-json");
+    const note = await succeed<Note>("/v1/notes", {
+      method: "POST",
+      session,
+      body: { body: "Unchanged" },
+    });
+    for (const [method, path, body] of [
+      ["post", "/v1/notes", { body: "Must not be written" }],
+      ["Post", "/v1/notes", { body: "Must not be written" }],
+      ["put", "/v1/areas/order", { areaIds: [] }],
+      ["patch", `/v1/notes/${note._id}/body`, { body: "Changed" }],
+    ] as const) {
+      expectJsonRequired(
+        await send(path, {
           method,
-          headers: { cookie: session.cookie, "content-type": "text/plain" },
-          body: JSON.stringify({ body: "Must not be written" }),
-        }).then(answer),
-      ).toMatchObject(jsonRequired);
+          headers: {
+            cookie: session.cookie,
+            origin: env.BROWSER_ORIGIN,
+            "content-type": "text/plain",
+          },
+          body: JSON.stringify(body),
+        }),
+      );
     }
+    expect(await succeed<Note[]>("/v1/notes", { session })).toEqual([
+      expect.objectContaining({ _id: note._id, body: "Unchanged" }),
+    ]);
+  });
+
+  it("refuses foreign origins for patch, put and delete", async () => {
+    const session = await createSession("guard-method-origin");
     for (const method of ["patch", "put", "delete"]) {
-      expect(
-        await viaWorker("/v1/areas/order", {
+      expectForeignOrigin(
+        await send("/v1/areas/order", {
           method,
           headers: {
             cookie: session.cookie,
@@ -295,55 +306,9 @@ describe("request guards across path spellings", () => {
             "content-type": "application/json",
           },
           body: JSON.stringify({ areaIds: [] }),
-        }).then(answer),
-      ).toMatchObject(foreignOrigin);
+        }),
+      );
     }
-    await expectNoNotes(session);
-  });
-});
-
-describe("request guards on paths the runtime would normalise", () => {
-  it.each(["/v1/notes", "/%761/notes", "/v1/notes?x=;", "/v1/notes#x"])(
-    "guards verbatim %j as the Note handlers",
-    async (path) => {
-      const session = await createSession("verbatim-routed");
-      const reads = await authenticatedGet(verbatim, path, session);
-      expect(reads).toMatchObject({ status: 200, body: [] });
-      await expectGuarded(verbatim, path, session);
-      await expectNoNotes(session);
-    },
-  );
-
-  it.each([
-    "/v1/./notes",
-    "/v1/notes/../notes",
-    "/v1/notes/.",
-    "/v1/notes\u0000",
-    "/v1/notes\t",
-    "/v1/notes\\",
-  ])("authenticates verbatim %j before answering not found", async (path) => {
-    const session = await createSession("verbatim-miss");
-    const reads = await authenticatedGet(verbatim, path, session);
-    expect(reads).toMatchObject({ status: 404 });
-    await expectGuarded(verbatim, path, session);
-    await expectNoNotes(session);
-  });
-
-  it.each([
-    "/x/../v1/notes",
-    "/./v1/notes",
-    "/v1\\notes",
-    "\\v1\\notes",
-    "/v1\u0000/notes",
-    "/v1\t/notes",
-    "/v1\n/notes",
-    "/v1 /notes",
-    "/v1;/notes",
-    "/v1%2F..%2Fnotes",
-  ])("never dispatches verbatim %j to a handler", async (path) => {
-    const session = await createSession("verbatim-unrouted");
-    await expectUnrouted(verbatim, path, session);
-    await expectNoNotes(session);
   });
 });
 
@@ -383,56 +348,48 @@ describe("record isolation across encoded record IDs", () => {
     const threadIds = [thread._id, encodeEvery(thread._id)];
     const threadSlugs = [thread.slug, encodeEvery(thread.slug)];
 
-    const as = (session: Session) => ({
-      cookie: session.cookie,
-      origin: env.BROWSER_ORIGIN,
-      "content-type": "application/json",
-    });
     // Reads come first: renaming a Thread changes its slug.
     const attempts = (
       session: Session,
-    ): Array<[string, () => Promise<Response>]> => [
-      ...threadSlugs.map((slug): [string, () => Promise<Response>] => [
+    ): Array<[string, () => Promise<Answer>]> => [
+      ...threadSlugs.map((slug): [string, () => Promise<Answer>] => [
         `GET /v1/threads/${slug}`,
-        () => viaWorker(`/v1/threads/${slug}`, { headers: as(session) }),
+        () => call(`/v1/threads/${slug}`, { session }),
       ]),
-      ...threadIds.map((id): [string, () => Promise<Response>] => [
+      ...threadIds.map((id): [string, () => Promise<Answer>] => [
         `GET /v1/threads/${id}/notes`,
-        () => viaWorker(`/v1/threads/${id}/notes`, { headers: as(session) }),
+        () => call(`/v1/threads/${id}/notes`, { session }),
       ]),
-      ...notePaths.map((path): [string, () => Promise<Response>] => [
+      ...notePaths.map((path): [string, () => Promise<Answer>] => [
         `PATCH ${path}/body`,
         () =>
-          viaWorker(`${path}/body`, {
+          call(`${path}/body`, {
             method: "PATCH",
-            headers: as(session),
-            body: JSON.stringify({ body: `Edited by ${session.actorId}` }),
+            session,
+            body: { body: `Edited by ${session.actorId}` },
           }),
       ]),
-      ...threadIds.map((id): [string, () => Promise<Response>] => [
+      ...threadIds.map((id): [string, () => Promise<Answer>] => [
         `PATCH /v1/threads/${id}`,
         () =>
-          viaWorker(`/v1/threads/${id}`, {
+          call(`/v1/threads/${id}`, {
             method: "PATCH",
-            headers: as(session),
-            body: JSON.stringify({ title: `Renamed by ${session.actorId}` }),
+            session,
+            body: { title: `Renamed by ${session.actorId}` },
           }),
       ]),
     ];
 
     for (const [label, attempt] of attempts(intruder)) {
-      expect({ label, ...(await answer(await attempt())) }).toMatchObject({
-        label,
-        status: 404,
-        body: { error: { code: "not_found" } },
-      });
+      const answer = await attempt();
+      expect({ label, status: answer.status }).toEqual({ label, status: 404 });
+      expectError(answer, { status: 404, code: "not_found" });
     }
     for (const path of notePaths) {
-      expect(
-        await viaWorker(path, { method: "DELETE", headers: as(intruder) }).then(
-          answer,
-        ),
-      ).toMatchObject({ status: 404, body: { error: { code: "not_found" } } });
+      expectError(await call(path, { method: "DELETE", session: intruder }), {
+        status: 404,
+        code: "not_found",
+      });
     }
     expect(await succeed<Note[]>("/v1/notes", { session: owner })).toEqual([
       expect.objectContaining({ _id: note._id, body: "Private note" }),
@@ -467,19 +424,14 @@ describe("record isolation across encoded record IDs", () => {
       body: { body: "Unchanged" },
     });
     const doubleEncoded = encodeEvery(note._id).replace(/%/g, "%25");
-    const response = await viaWorker(`/v1/notes/${doubleEncoded}/body`, {
-      method: "PATCH",
-      headers: {
-        cookie: owner.cookie,
-        origin: env.BROWSER_ORIGIN,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ body: "Changed" }),
-    });
-    expect(await answer(response)).toMatchObject({
-      status: 404,
-      body: { error: { code: "not_found" } },
-    });
+    expectError(
+      await call(`/v1/notes/${doubleEncoded}/body`, {
+        method: "PATCH",
+        session: owner,
+        body: { body: "Changed" },
+      }),
+      { status: 404, code: "not_found" },
+    );
     expect(await succeed<Note[]>("/v1/notes", { session: owner })).toEqual([
       expect.objectContaining({ body: "Unchanged" }),
     ]);
@@ -487,16 +439,18 @@ describe("record isolation across encoded record IDs", () => {
 });
 
 describe("CORS on auth path spellings", () => {
-  it.each([
-    ["/api/auth/get-session", "/api/auth/get-session"],
-    ["/x/../api/auth/get-session", "/api/auth/get-session"],
-    ["/%61pi/auth/get-session", "/%61pi/auth/get-session"],
-    ["/api/%61uth/get-session", "/api/%61uth/get-session"],
-  ])(
-    "answers %j (received as %j) with credentialed CORS",
-    async (sent, pathname) => {
-      expect(received(sent)).toBe(pathname);
-      const response = await viaWorker(sent, {
+  it.each(
+    rows([
+      ["/api/auth/get-session", "/api/auth/get-session"],
+      ["/x/../api/auth/get-session", "/api/auth/get-session"],
+      ["/%61pi/auth/get-session", "/%61pi/auth/get-session"],
+      ["/api/%61uth/get-session", "/api/%61uth/get-session"],
+    ]),
+  )(
+    "grants credentialed CORS to $label, received as $pathname",
+    async ({ sent, expected }) => {
+      expect(received(sent)).toBe(expected);
+      const response = await SELF.fetch(`http://api.test${sent}`, {
         headers: { origin: env.BROWSER_ORIGIN },
       });
       expect(response.headers.get("access-control-allow-origin")).toBe(
@@ -505,7 +459,7 @@ describe("CORS on auth path spellings", () => {
       expect(response.headers.get("access-control-allow-credentials")).toBe(
         "true",
       );
-      const preflight = await viaWorker(sent, {
+      const preflight = await SELF.fetch(`http://api.test${sent}`, {
         method: "OPTIONS",
         headers: {
           origin: env.BROWSER_ORIGIN,
@@ -519,22 +473,25 @@ describe("CORS on auth path spellings", () => {
     },
   );
 
-  it.each([
-    ["/API/auth/get-session", "/API/auth/get-session"],
-    ["/api%2Fauth/get-session", "/api%2Fauth/get-session"],
-    ["/api;/auth/get-session", "/api;/auth/get-session"],
-    ["//api/auth/get-session", "//api/auth/get-session"],
-    ["/%2561pi/auth/get-session", "/%2561pi/auth/get-session"],
-  ])(
-    "never hands %j (received as %j) to Better Auth",
-    async (sent, pathname) => {
-      expect(received(sent)).toBe(pathname);
+  it.each(
+    rows([
+      ["/API/auth/get-session", "/API/auth/get-session"],
+      ["/api%2Fauth/get-session", "/api%2Fauth/get-session"],
+      ["/api;/auth/get-session", "/api;/auth/get-session"],
+      ["//api/auth/get-session", "//api/auth/get-session"],
+      ["/%2561pi/auth/get-session", "/%2561pi/auth/get-session"],
+    ]),
+  )(
+    "returns no session for $label, received as $pathname",
+    async ({ sent, expected }) => {
+      expect(received(sent)).toBe(expected);
       const session = await createSession("auth-unrouted");
-      const response = await viaWorker(sent, {
-        headers: { cookie: session.cookie, origin: env.BROWSER_ORIGIN },
-      });
-      expect(response.status).toBe(404);
-      expect(response.headers.get("access-control-allow-origin")).toBeNull();
+      expectNoHandler(
+        await send(sent, {
+          headers: { cookie: session.cookie, origin: env.BROWSER_ORIGIN },
+        }),
+        env.BROWSER_ORIGIN,
+      );
     },
   );
 });

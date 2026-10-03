@@ -26,6 +26,8 @@ export function browserOrigin(value: string): string {
 
 /** Decode ordinary path characters once, keeping reserved separators encoded. */
 function requestPath(url: string): string {
+  // Keeping %25 encoded mirrors the router's decoding. decodeURI runs once, so
+  // %25 can only ever become "%", which cannot change whether a path is protected.
   const path = url.split(/[?#]/, 1)[0].replace(/%25/g, "%2525");
   try {
     return decodeURI(path);
