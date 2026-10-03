@@ -3,86 +3,131 @@ import type {
   Note,
   NoteId,
   NotePage,
-  OperationResult,
   PageRequest,
 } from "@vita-os/contracts";
 
 import { commandAcknowledged } from "@vita-os/contracts";
 import { requireNonBlankText } from "@vita-os/core";
+import { Effect } from "effect";
 
-import type { RequestScope } from "../../platform/request-scope";
+import type { RequestRefusal } from "../../platform/http/errors";
 
-import { failed, succeeded } from "../../platform/operation";
+import { attempt, database, failed, succeeded } from "../../platform/operation";
+import { RequestContext } from "../../platform/request-scope";
 import { noteNotFound } from "./errors";
 import { noteStorage } from "./storage";
 
-function found(note: Note | null): OperationResult<Note> {
+function found(note: Note | null): Effect.Effect<Note, RequestRefusal> {
   return note === null ? failed(noteNotFound) : succeeded(note);
 }
 
-export async function listOpenNotes(
-  scope: RequestScope,
-): Promise<OperationResult<Note[]>> {
-  return succeeded(await noteStorage(scope).listOpen());
+export function listOpenNotes(): Effect.Effect<
+  Note[],
+  RequestRefusal,
+  RequestContext
+> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    return yield* database(() => noteStorage(scope).listOpen());
+  });
 }
 
-export async function countOpenNotes(
-  scope: RequestScope,
-): Promise<OperationResult<number>> {
-  return succeeded(await noteStorage(scope).countOpen());
+export function countOpenNotes(): Effect.Effect<
+  number,
+  RequestRefusal,
+  RequestContext
+> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    return yield* database(() => noteStorage(scope).countOpen());
+  });
 }
 
-export async function getDoneNotePage(
-  scope: RequestScope,
+export function getDoneNotePage(
   page: PageRequest,
-): Promise<OperationResult<NotePage>> {
-  return succeeded(await noteStorage(scope).readDonePage(page));
+): Effect.Effect<NotePage, RequestRefusal, RequestContext> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    return yield* database(() => noteStorage(scope).readDonePage(page));
+  });
 }
 
-export async function createNote(
-  scope: RequestScope,
-  input: { body: string; followUp?: number },
-): Promise<OperationResult<Note>> {
-  const body = requireNonBlankText(input.body, "Note body");
-  return found(await noteStorage(scope).insert({ ...input, body }));
+export function createNote(input: {
+  body: string;
+  followUp?: number;
+}): Effect.Effect<Note, RequestRefusal, RequestContext> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    const body = yield* attempt(() =>
+      requireNonBlankText(input.body, "Note body"),
+    );
+    return yield* found(
+      yield* database(() => noteStorage(scope).insert({ ...input, body })),
+    );
+  });
 }
 
-export async function updateNoteBody(
-  scope: RequestScope,
-  input: { noteId: NoteId; body: string },
-): Promise<OperationResult<Note>> {
-  const body = requireNonBlankText(input.body, "Note body");
-  return found(await noteStorage(scope).setBody(input.noteId, body));
+export function updateNoteBody(input: {
+  noteId: NoteId;
+  body: string;
+}): Effect.Effect<Note, RequestRefusal, RequestContext> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    const body = yield* attempt(() =>
+      requireNonBlankText(input.body, "Note body"),
+    );
+    return yield* found(
+      yield* database(() => noteStorage(scope).setBody(input.noteId, body)),
+    );
+  });
 }
 
-export async function updateNoteFollowUp(
-  scope: RequestScope,
-  input: { noteId: NoteId; followUp: number | null },
-): Promise<OperationResult<Note>> {
-  return found(
-    await noteStorage(scope).setFollowUp(input.noteId, input.followUp),
-  );
+export function updateNoteFollowUp(input: {
+  noteId: NoteId;
+  followUp: number | null;
+}): Effect.Effect<Note, RequestRefusal, RequestContext> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    return yield* found(
+      yield* database(() =>
+        noteStorage(scope).setFollowUp(input.noteId, input.followUp),
+      ),
+    );
+  });
 }
 
-export async function markNoteDone(
-  scope: RequestScope,
-  input: { noteId: NoteId },
-): Promise<OperationResult<Note>> {
-  return found(await noteStorage(scope).markDone(input.noteId));
+export function markNoteDone(input: {
+  noteId: NoteId;
+}): Effect.Effect<Note, RequestRefusal, RequestContext> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    return yield* found(
+      yield* database(() => noteStorage(scope).markDone(input.noteId)),
+    );
+  });
 }
 
-export async function markNoteOpen(
-  scope: RequestScope,
-  input: { noteId: NoteId },
-): Promise<OperationResult<Note>> {
-  return found(await noteStorage(scope).markOpen(input.noteId));
+export function markNoteOpen(input: {
+  noteId: NoteId;
+}): Effect.Effect<Note, RequestRefusal, RequestContext> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    return yield* found(
+      yield* database(() => noteStorage(scope).markOpen(input.noteId)),
+    );
+  });
 }
 
-export async function removeNote(
-  scope: RequestScope,
-  input: { noteId: NoteId },
-): Promise<OperationResult<CommandAcknowledgement>> {
-  return (await noteStorage(scope).remove(input.noteId))
-    ? succeeded(commandAcknowledged)
-    : failed(noteNotFound);
+export function removeNote(input: {
+  noteId: NoteId;
+}): Effect.Effect<CommandAcknowledgement, RequestRefusal, RequestContext> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    const removed = yield* database(() =>
+      noteStorage(scope).remove(input.noteId),
+    );
+    return yield* removed
+      ? succeeded(commandAcknowledged)
+      : failed(noteNotFound);
+  });
 }

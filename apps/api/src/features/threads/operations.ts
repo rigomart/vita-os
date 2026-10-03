@@ -5,7 +5,6 @@ import type {
   CreateThreadInput,
   EditMoveInput,
   FocusMoveInput,
-  OperationResult,
   RemoveMoveInput,
   Thread,
   ThreadDetail,
@@ -28,267 +27,237 @@ import {
   requireMoveText,
   requireNonBlankText,
 } from "@vita-os/core";
+import { Effect } from "effect";
 
-import type { RequestScope } from "../../platform/request-scope";
+import type { RequestRefusal } from "../../platform/http/errors";
 import type { ThreadChange } from "./storage";
 
-import { changeConflict, failed, succeeded } from "../../platform/operation";
+import {
+  attempt,
+  changeConflict,
+  database,
+  failed,
+} from "../../platform/operation";
+import { RequestContext } from "../../platform/request-scope";
 import { areaNotFound } from "../areas/errors";
 import { areaStorage } from "../areas/storage";
 import { moveConflict, threadNotFound } from "./errors";
 import { isThreadSlugTaken, threadStorage } from "./storage";
 
-/**
- * How many times a Thread change re-reads and re-decides after losing a
- * revision race.
- *
- * An ordinary edit should not fail because somebody else wrote first, so a lost
- * race is retried from the fresh Thread instead of surfacing a conflict. Only a
- * caller that supplied its own expectation — every Move command — is told
- * about the conflict, because for that caller a retry could act on a different
- * Move.
- */
+/** Ordinary Thread edits re-read after a lost race; Move expectations never retry. */
 const CHANGE_ATTEMPTS = 3;
-
-/** How many times a create re-mints a colliding slug. */
+/** Only a collision of the owner's slug permits a newly minted slug. */
 const SLUG_ATTEMPTS = 3;
+type Operation<A> = Effect.Effect<A, RequestRefusal, RequestContext>;
 
-export async function listOpenThreads(
-  scope: RequestScope,
-): Promise<OperationResult<Thread[]>> {
-  return succeeded(await threadStorage(scope).listOpen());
+export function listOpenThreads(): Operation<Thread[]> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    return yield* database(() => threadStorage(scope).listOpen());
+  });
 }
 
-export async function listResolvedThreads(
-  scope: RequestScope,
-): Promise<OperationResult<Thread[]>> {
-  return succeeded(await threadStorage(scope).listResolved());
+export function listResolvedThreads(): Operation<Thread[]> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    return yield* database(() => threadStorage(scope).listResolved());
+  });
 }
 
-export async function getThreadDetail(
-  scope: RequestScope,
-  input: { slug: string },
-): Promise<OperationResult<ThreadDetail>> {
-  const detail = await threadStorage(scope).findDetail(input.slug);
-  return detail === null ? failed(threadNotFound) : succeeded(detail);
+export function getThreadDetail(input: {
+  slug: string;
+}): Operation<ThreadDetail> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    const detail = yield* database(() =>
+      threadStorage(scope).findDetail(input.slug),
+    );
+    return detail === null ? yield* failed(threadNotFound) : detail;
+  });
 }
 
-/**
- * A Thread needs only a title. When it is labeled at creation, the Area must be
- * one the owner holds, so the failure names the Area when it is not theirs.
- */
-export async function createThread(
-  scope: RequestScope,
-  input: CreateThreadInput,
-): Promise<OperationResult<Thread>> {
-  const threads = threadStorage(scope);
-  const title = requireNonBlankText(input.title, "Thread title");
-
-  for (let attempt = 0; attempt < SLUG_ATTEMPTS; attempt += 1) {
-    try {
-      const thread = await threads.insert({
-        ...input,
-        title,
-        slug: generateSlug(title),
-      });
-      if (thread === null) return failed(areaNotFound);
-
-      return succeeded(thread);
-    } catch (error) {
-      if (!isThreadSlugTaken(error)) throw error;
-    }
-  }
-
-  return failed(changeConflict);
-}
-
-/**
- * One Thread edit: title, Summary, Area, Follow-up, or lifecycle.
- * The Activity Log the change earns is written with it or not at all.
- */
-export async function updateThread(
-  scope: RequestScope,
-  { threadId, resolutionNote, ...requested }: UpdateThreadInput,
-): Promise<OperationResult<Thread>> {
-  const areas = areaStorage(scope);
-  const title =
-    requested.title === undefined
-      ? undefined
-      : requireNonBlankText(requested.title, "Thread title");
-
-  return changeThread(scope, threadId, async (thread) => {
-    const patch: ThreadPatch = clearedToAbsent({
-      ...requested,
-      ...(title === undefined ? {} : { title }),
-    });
-    // A retitled Thread gets a new slug; the old one stops resolving.
-    const rename =
-      title !== undefined && title !== thread.title
-        ? { slug: generateSlug(title) }
-        : {};
-
-    // Naming the ends of a label change is what lets the Activity Log say
-    // where the Thread came from and went. An Area that is not the owner's
-    // stops the change here.
-    const areaNames: { from?: string; to?: string } = {};
-    if (Object.hasOwn(patch, "areaId") && patch.areaId !== thread.areaId) {
-      if (patch.areaId !== undefined) {
-        const destination = await areas.find(patch.areaId);
-        if (destination === null) return failed(areaNotFound);
-        areaNames.to = destination.name;
-      }
-      if (thread.areaId !== undefined) {
-        const origin = await areas.find(thread.areaId);
-        if (origin !== null) areaNames.from = origin.name;
+export function createThread(input: CreateThreadInput): Operation<Thread> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    const threads = threadStorage(scope);
+    const title = yield* attempt(() =>
+      requireNonBlankText(input.title, "Thread title"),
+    );
+    for (let execution = 0; execution < SLUG_ATTEMPTS; execution += 1) {
+      const slug = yield* attempt(() => generateSlug(title));
+      const inserted = yield* database(() =>
+        threads.insert({ ...input, title, slug }),
+      ).pipe(
+        Effect.map((thread) => ({ kind: "written" as const, thread })),
+        Effect.catch((error) =>
+          isThreadSlugTaken(error.cause)
+            ? Effect.succeed({ kind: "collision" as const })
+            : Effect.fail(error),
+        ),
+      );
+      if (inserted.kind === "written") {
+        return inserted.thread === null
+          ? yield* failed(areaNotFound)
+          : inserted.thread;
       }
     }
+    return yield* failed(changeConflict);
+  });
+}
 
-    return succeeded(
-      decideThreadUpdate({
-        thread,
-        patch: { ...patch, ...rename },
-        ...(resolutionNote === undefined ? {} : { resolutionNote }),
-        areaNames,
+/** The patch and the Activity Log it earns remain one native D1 batch. */
+export function updateThread({
+  threadId,
+  resolutionNote,
+  ...requested
+}: UpdateThreadInput): Operation<Thread> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    const areas = areaStorage(scope);
+    const title =
+      requested.title === undefined
+        ? undefined
+        : yield* attempt(() =>
+            requireNonBlankText(requested.title!, "Thread title"),
+          );
+    return yield* changeThread(threadId, (thread) =>
+      Effect.gen(function* () {
+        const patch: ThreadPatch = clearedToAbsent({
+          ...requested,
+          ...(title === undefined ? {} : { title }),
+        });
+        const rename =
+          title !== undefined && title !== thread.title
+            ? { slug: yield* attempt(() => generateSlug(title)) }
+            : {};
+        const areaNames: { from?: string; to?: string } = {};
+        if (Object.hasOwn(patch, "areaId") && patch.areaId !== thread.areaId) {
+          if (patch.areaId !== undefined) {
+            const destination = yield* database(() =>
+              areas.find(patch.areaId!),
+            );
+            if (destination === null) return yield* failed(areaNotFound);
+            areaNames.to = destination.name;
+          }
+          if (thread.areaId !== undefined) {
+            const origin = yield* database(() => areas.find(thread.areaId!));
+            if (origin !== null) areaNames.from = origin.name;
+          }
+        }
+        return yield* attempt(() =>
+          decideThreadUpdate({
+            thread,
+            patch: { ...patch, ...rename },
+            ...(resolutionNote === undefined ? {} : { resolutionNote }),
+            areaNames,
+          }),
+        );
       }),
     );
   });
 }
 
-/** A new Move joins the end of the Thread's Moves, unfocused. */
-export async function addMove(
-  scope: RequestScope,
-  input: AddMoveInput,
-): Promise<OperationResult<Thread>> {
-  const move = {
-    _id: requireMoveId(input.moveId),
-    text: requireMoveText(input.text),
-  };
-  return changeMoves(scope, input, (thread) => decideAddMove(thread, move));
+export function addMove(input: AddMoveInput): Operation<Thread> {
+  return Effect.gen(function* () {
+    const move = yield* attempt(() => ({
+      _id: requireMoveId(input.moveId),
+      text: requireMoveText(input.text),
+    }));
+    return yield* changeMoves(input, (thread) => decideAddMove(thread, move));
+  });
 }
 
-export async function editMove(
-  scope: RequestScope,
-  input: EditMoveInput,
-): Promise<OperationResult<Thread>> {
-  const text = requireMoveText(input.text);
-  return changeMoves(scope, input, (thread) =>
-    decideEditMove(thread, input.moveId, text),
-  );
+export function editMove(input: EditMoveInput): Operation<Thread> {
+  return Effect.gen(function* () {
+    const text = yield* attempt(() => requireMoveText(input.text));
+    return yield* changeMoves(input, (thread) =>
+      decideEditMove(thread, input.moveId, text),
+    );
+  });
 }
 
-export async function removeMove(
-  scope: RequestScope,
-  input: RemoveMoveInput,
-): Promise<OperationResult<Thread>> {
-  return changeMoves(scope, input, (thread) =>
-    decideRemoveMove(thread, input.moveId),
-  );
+export function removeMove(input: RemoveMoveInput): Operation<Thread> {
+  return changeMoves(input, (thread) => decideRemoveMove(thread, input.moveId));
 }
 
-/**
- * Complete one Move, focused or not. Its Activity Log entry is written with the
- * change or not at all, and two competing completions of the same Move record
- * one: the loser finds the revision moved on.
- */
-export async function completeMove(
-  scope: RequestScope,
-  input: CompleteMoveInput,
-): Promise<OperationResult<Thread>> {
-  return changeMoves(scope, input, (thread) =>
+export function completeMove(input: CompleteMoveInput): Operation<Thread> {
+  return changeMoves(input, (thread) =>
     decideCompleteMove(thread, input.moveId),
   );
 }
 
-export async function focusMove(
-  scope: RequestScope,
-  input: FocusMoveInput,
-): Promise<OperationResult<Thread>> {
-  return changeMoves(scope, input, (thread) =>
-    decideFocusMove(thread, input.moveId),
-  );
+export function focusMove(input: FocusMoveInput): Operation<Thread> {
+  return changeMoves(input, (thread) => decideFocusMove(thread, input.moveId));
 }
 
-export async function removeThread(
-  scope: RequestScope,
-  input: { threadId: ThreadId },
-): Promise<OperationResult<CommandAcknowledgement>> {
-  return (await threadStorage(scope).remove(input.threadId))
-    ? succeeded(commandAcknowledged)
-    : failed(threadNotFound);
+export function removeThread(input: {
+  threadId: ThreadId;
+}): Operation<CommandAcknowledgement> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    const removed = yield* database(() =>
+      threadStorage(scope).remove(input.threadId),
+    );
+    return removed ? commandAcknowledged : yield* failed(threadNotFound);
+  });
 }
 
-/**
- * One Move command, decided against the Thread the caller read.
- *
- * The caller's revision must be the Thread's, and the Move it names must still
- * be there; otherwise the command is a conflict and nothing is written. The
- * write is conditional on the same revision, so a command that loses a race
- * after the check is refused too — never retried, since a retry could land on
- * a different Move.
- */
-async function changeMoves(
-  scope: RequestScope,
+/** A Move command is decided and conditionally written against the caller's revision. */
+function changeMoves(
   command: { threadId: ThreadId; expectedRevision: number },
   decide: (thread: Thread) => ThreadUpdateDecision | null,
-): Promise<OperationResult<Thread>> {
-  const threads = threadStorage(scope);
-  const thread = await threads.find(command.threadId);
-  if (thread === null) return failed(threadNotFound);
-  if (thread.revision !== command.expectedRevision) {
-    return failed(moveConflict);
-  }
-
-  const decision = decide(thread);
-  if (decision === null) return failed(moveConflict);
-  if (Object.keys(decision.patch).length === 0 && decision.logs.length === 0) {
-    return succeeded(thread);
-  }
-
-  const written = await threads.writeChange({
-    threadId: command.threadId,
-    expectedRevision: command.expectedRevision,
-    change: decision,
+): Operation<Thread> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    const threads = threadStorage(scope);
+    const thread = yield* database(() => threads.find(command.threadId));
+    if (thread === null) return yield* failed(threadNotFound);
+    if (thread.revision !== command.expectedRevision)
+      return yield* failed(moveConflict);
+    const decision = yield* attempt(() => decide(thread));
+    if (decision === null) return yield* failed(moveConflict);
+    if (Object.keys(decision.patch).length === 0 && decision.logs.length === 0)
+      return thread;
+    const written = yield* database(() =>
+      threads.writeChange({
+        threadId: command.threadId,
+        expectedRevision: command.expectedRevision,
+        change: decision,
+      }),
+    );
+    return written === null ? yield* failed(moveConflict) : written;
   });
-  return written === null ? failed(moveConflict) : succeeded(written);
 }
 
-/**
- * Read the Thread, let a rule decide the change, and write it atomically.
- *
- * The write is conditional on the revision the decision was made against, so a
- * Thread that changed underneath is decided again from its new state rather
- * than overwritten with a stale conclusion.
- */
-async function changeThread(
-  scope: RequestScope,
+/** Re-run the entire read and decision only for a revision race or slug collision. */
+function changeThread(
   threadId: ThreadId,
-  decide: (thread: Thread) => Promise<OperationResult<ThreadChange>>,
-): Promise<OperationResult<Thread>> {
-  const threads = threadStorage(scope);
-
-  for (let attempt = 0; attempt < CHANGE_ATTEMPTS; attempt += 1) {
-    const thread = await threads.find(threadId);
-    if (thread === null) return failed(threadNotFound);
-
-    const decision = await decide(thread);
-    if (!decision.ok) return decision;
-
-    const change = decision.value;
-    if (Object.keys(change.patch).length === 0 && change.logs.length === 0) {
-      return succeeded(thread);
+  decide: (thread: Thread) => Effect.Effect<ThreadChange, RequestRefusal>,
+): Operation<Thread> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    const threads = threadStorage(scope);
+    for (let execution = 0; execution < CHANGE_ATTEMPTS; execution += 1) {
+      const thread = yield* database(() => threads.find(threadId));
+      if (thread === null) return yield* failed(threadNotFound);
+      const change = yield* decide(thread);
+      if (Object.keys(change.patch).length === 0 && change.logs.length === 0)
+        return thread;
+      const written = yield* database(() =>
+        threads.writeChange({
+          threadId,
+          expectedRevision: thread.revision,
+          change,
+        }),
+      ).pipe(
+        Effect.catch((error) =>
+          isThreadSlugTaken(error.cause)
+            ? Effect.succeed(null)
+            : Effect.fail(error),
+        ),
+      );
+      if (written !== null) return written;
     }
-
-    try {
-      const written = await threads.writeChange({
-        threadId,
-        expectedRevision: thread.revision,
-        change,
-      });
-      if (written !== null) return succeeded(written);
-    } catch (error) {
-      if (!isThreadSlugTaken(error)) throw error;
-    }
-  }
-
-  return failed(changeConflict);
+    return yield* failed(changeConflict);
+  });
 }

@@ -1,63 +1,45 @@
-import type {
-  AreaId,
-  CreateAreaInput,
-  UpdateAreaInput,
-} from "@vita-os/contracts";
+import type { AreaId, UpdateAreaInput } from "@vita-os/contracts";
 
-import { isAreaIcon } from "@vita-os/core";
+import { Schema } from "effect";
 
-import type { Decoded } from "../../platform/http/decode";
+export const AreaIconSchema = Schema.Literals([
+  "Compass",
+  "HeartPulse",
+  "Dumbbell",
+  "Users",
+  "Home",
+  "BriefcaseBusiness",
+  "WalletCards",
+  "BookOpen",
+  "Utensils",
+  "Car",
+  "CalendarDays",
+  "Palette",
+  "Leaf",
+  "Shield",
+  "Plane",
+]);
 
-import {
-  hasOnlyKeys,
-  isNonEmptyString,
-  isObject,
-} from "../../platform/http/decode";
+export const AreaIdSchema = Schema.String.pipe(
+  Schema.refine((value): value is AreaId => value.length > 0),
+);
+export const CreateAreaBody = Schema.Struct({
+  name: Schema.String,
+  icon: AreaIconSchema,
+});
+export const UpdateAreaBody = Schema.Struct({
+  name: Schema.optional(Schema.String),
+  icon: Schema.optional(AreaIconSchema),
+});
+export const AreaOrderBody = Schema.Struct({
+  areaIds: Schema.Array(AreaIdSchema),
+});
 
-const AREA_KEYS = ["name", "icon"] as const;
-
-export function decodeCreateArea(value: unknown): Decoded<CreateAreaInput> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, AREA_KEYS) ||
-    typeof value.name !== "string" ||
-    !isAreaIcon(value.icon)
-  ) {
-    return undefined;
-  }
-
-  return { name: value.name, icon: value.icon };
-}
-
-export function decodeUpdateArea(
-  value: unknown,
-): Decoded<Omit<UpdateAreaInput, "areaId">> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, AREA_KEYS) ||
-    (value.name !== undefined && typeof value.name !== "string") ||
-    (value.icon !== undefined && !isAreaIcon(value.icon))
-  ) {
-    return undefined;
-  }
-
+export function normalizeAreaChange(
+  input: typeof UpdateAreaBody.Type,
+): Omit<UpdateAreaInput, "areaId"> {
   return {
-    ...(value.name === undefined ? {} : { name: value.name }),
-    ...(value.icon === undefined ? {} : { icon: value.icon }),
+    ...(input.name === undefined ? {} : { name: input.name }),
+    ...(input.icon === undefined ? {} : { icon: input.icon }),
   };
-}
-
-export function decodeAreaOrder(
-  value: unknown,
-): Decoded<{ areaIds: AreaId[] }> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, ["areaIds"]) ||
-    !Array.isArray(value.areaIds) ||
-    !value.areaIds.every(isNonEmptyString)
-  ) {
-    return undefined;
-  }
-
-  return { areaIds: value.areaIds as AreaId[] };
 }

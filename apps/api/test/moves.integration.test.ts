@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Session } from "./sessions";
 
-import { createApp } from "../src/app";
+import { createTestApp } from "./app";
 import { call, createSession, expectError, succeed } from "./sessions";
 
 /**
@@ -351,7 +351,7 @@ describe("rollback", () => {
       )
       .run();
     const before = await read(owner, thread);
-    const app = createApp({
+    const app = createTestApp({
       // The change token and the entry ID come from the same injected mint,
       // so the insert hits the existing entry's primary key and the whole batch
       // must roll back.

@@ -3,7 +3,8 @@
 Issue [#349](https://github.com/rigomart/vita-os/issues/349) completes the
 replacement the [proof](../superpowers/specs/2026-09-19-cloudflare-target-architecture-proof-design.md)
 validated: every Vita OS workflow now runs through an asynchronous application
-client, a Hono Worker, Better Auth, and D1. Production is that stack:
+client, a Cloudflare Worker, Better Auth, and D1. The repository now implements
+the Worker API with Effect v4; the Cloudflare hosting remains:
 `vita.rigos.dev`, `vita-api.rigos.dev`, and D1 `vita-os-production`.
 
 Convex was the previous production backend. After cutover it was removed from
@@ -17,7 +18,7 @@ retirement in [#364](https://github.com/rigomart/vita-os/issues/364)).
 packages/contracts     plain models, inputs, outputs, errors, ApplicationClient
 packages/core          the domain rules, framework-free
 packages/application   Vita OS as an application: routes, screens, cache, commands
-apps/api               Hono routes, Better Auth, canonical D1 storage
+apps/api               Effect HttpApi handlers, Better Auth, canonical D1 storage
 apps/web               the browser host: auth, configuration, HTTP client, session gate
 ```
 
@@ -27,15 +28,15 @@ Inside `apps/api/src`, code is organized by feature
 ```text
 worker.ts              builds the app once per isolate
 app.ts                 middleware and mounting
-platform/http          CORS, origin and JSON guards, the one error handler, request decoding
+platform/http          HttpApi composition, schemas, CORS, guards, and error responses
 platform/auth          Better Auth, and the middleware that builds the request scope
 platform/d1            page cursors, the SET builder, unique-violation detection
 platform/request-scope { db, clock, actorId }, built once per request after authentication
 features/<feature>     areas, threads, activity-log, notes, thread-notes:
-                       routes, operations, storage, rows, errors, request decoders
+                       endpoint schemas, handlers, Effect operations, storage, rows, errors
 ```
 
-The shared application imports no Convex, Hono, database, Cloudflare, or Better
+The shared application imports no Effect, database, Cloudflare, or Better
 Auth type. The web host is what remains once the product is taken out of it:
 Better Auth in the browser, `VITE_API_BASE_URL`, the HTTP implementation of the
 contract, the session gate, and its sign-in/sign-up routes. It mounts the shared
@@ -92,10 +93,12 @@ writes neither the patch nor an orphan entry. An ordinary edit re-reads and
 re-decides rather than failing; only a caller that supplied its own expectation
 is told about the conflict.
 
-Operations return the contract's `OperationResult`. Every failure — a failed
-result, a refused domain rule, an unreadable request or cursor, anything
-unexpected — becomes a response in one error handler, with the status taken
-from the error's code.
+Operations return lazy Effects with typed failures and require an authenticated
+`RequestContext`. Native D1 calls and domain rules use shared Effect boundaries.
+HttpApi schemas validate requests and responses, and shared middleware maps
+failures to the existing JSON error envelope. Worker bindings enter the context
+per request; layers never capture an owner or database globally. The browser
+client continues returning the contract's `OperationResult`.
 
 ## Reads and writes in the browser
 
@@ -153,6 +156,9 @@ which avoids circular dependencies between routes and screens.
 ## Migration history
 
 These steps are done. The layout above is the current system.
+
+- The [Effect v4 API migration](./effect-v4-api.md) replaces Hono routing and
+  Promise-based API operations while retaining native D1 and the browser contract.
 
 - Production data was imported and validated ([#350](https://github.com/rigomart/vita-os/issues/350)).
   The importer translated Convex's `tasks`/`text` storage and its

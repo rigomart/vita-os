@@ -1,22 +1,28 @@
-import type { ApplicationError, OperationResult } from "@vita-os/contracts";
+import type { ApplicationError } from "@vita-os/contracts";
 
-/**
- * What every operation answers with: the contract's own result.
- *
- * Operations are where a missing record, a lost race, or a stale expectation is
- * named. Storage only reports what the database said; a domain rule that refuses
- * still throws, and the error handler translates it.
- */
+import { Effect } from "effect";
 
-export function succeeded<T>(value: T): OperationResult<T> {
-  return { ok: true, value };
+import { RequestRefusal, toRefusal } from "./http/errors";
+
+/** Domain rules and native D1 rejections enter the same typed failure channel. */
+export function attempt<T>(
+  evaluate: () => T,
+): Effect.Effect<T, RequestRefusal> {
+  return Effect.try({ try: evaluate, catch: toRefusal });
 }
-
-export function failed(error: ApplicationError): OperationResult<never> {
-  return { ok: false, error };
+export function database<T>(
+  evaluate: () => Promise<T>,
+): Effect.Effect<T, RequestRefusal> {
+  return Effect.tryPromise({ try: evaluate, catch: toRefusal });
 }
-
-/** The record moved underneath the request more often than it was retried. */
+export function succeeded<T>(value: T): Effect.Effect<T> {
+  return Effect.succeed(value);
+}
+export function failed(
+  error: ApplicationError,
+): Effect.Effect<never, RequestRefusal> {
+  return Effect.fail(new RequestRefusal(error));
+}
 export const changeConflict: ApplicationError = {
   code: "conflict",
   message: "The record changed while this request was in flight.",

@@ -1,8 +1,8 @@
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it, vi } from "vitest";
 
-import { createApp } from "../src/app";
 import { getSocialProviders } from "../src/platform/auth/auth";
+import { createTestApp } from "./app";
 
 describe("authentication and actor gate", () => {
   it("keeps migrated social providers available when their credentials are configured", () => {
@@ -23,7 +23,7 @@ describe("authentication and actor gate", () => {
   });
 
   it("responds to an allowed-origin application preflight request", async () => {
-    const response = await createApp().request(
+    const response = await createTestApp().request(
       "/v1/threads/private-thread",
       {
         method: "OPTIONS",
@@ -69,7 +69,7 @@ describe("authentication and actor gate", () => {
 
   it("rejects an unauthenticated application request before creating storage", async () => {
     const createStore = vi.fn();
-    const response = await createApp({ createScope: createStore }).request(
+    const response = await createTestApp({ createScope: createStore }).request(
       "/v1/threads/private-thread",
       undefined,
       env,
@@ -87,7 +87,7 @@ describe("authentication and actor gate", () => {
   });
 
   it("includes credentialed CORS headers on an allowed-origin application rejection", async () => {
-    const response = await createApp().request(
+    const response = await createTestApp().request(
       "/v1/threads/private-thread",
       {
         headers: { origin: env.BROWSER_ORIGIN },
@@ -105,7 +105,7 @@ describe("authentication and actor gate", () => {
   });
 
   it("does not grant CORS access to a disallowed application origin", async () => {
-    const response = await createApp().request(
+    const response = await createTestApp().request(
       "/v1/threads/private-thread",
       {
         method: "OPTIONS",
@@ -132,7 +132,7 @@ describe("authentication and actor gate", () => {
       }),
     });
     const createStore = vi.fn();
-    const response = await createApp({ createScope: createStore }).request(
+    const response = await createTestApp({ createScope: createStore }).request(
       "/v1/threads/private-thread/moves/move-1/complete",
       {
         method: "POST",
@@ -159,7 +159,7 @@ describe("authentication and actor gate", () => {
 
   it("requires JSON for an allowed-origin mutation before storage", async () => {
     const createStore = vi.fn();
-    const response = await createApp({ createScope: createStore }).request(
+    const response = await createTestApp({ createScope: createStore }).request(
       "/v1/threads/private-thread/moves/move-1/complete",
       {
         method: "POST",
@@ -205,7 +205,7 @@ describe("authentication and actor gate", () => {
         return Reflect.get(database, property);
       },
     });
-    const response = await createApp().request(
+    const response = await createTestApp().request(
       "/v1/threads/private-thread",
       { headers: { cookie: signUp.headers.get("set-cookie") ?? "" } },
       { ...env, DB: failingDatabase },
@@ -231,7 +231,7 @@ describe("authentication and actor gate", () => {
         password: "correct horse battery staple",
       }),
     });
-    const response = await createApp({
+    const response = await createTestApp({
       createScope() {
         throw new Error("storage connection details must remain private");
       },
