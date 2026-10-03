@@ -19,6 +19,8 @@ This supersedes ADR 0012. It amends ADR 0015 (the **Notes** collection, its orde
 
 **Notes are archived; Threads are resolved.** For Standalone Notes and Thread Notes, Archive and Unarchive replace Mark done and Reopen everywhere: the Note view's button, the board card's rail, a Thread Note card's toggle, "Archived Oct 3" in the view's header, an "Archived notes" history section in a Thread, and the toasts and labels that go with them. Unarchiving returns a Standalone Note to the Dashboard where its Follow-up date puts it. Thread copy (Resolve, Reopen, Resolved) does not change.
 
+When a nonempty search has further matching Notes, **Load more archived notes** appends the next page without closing the palette or clearing the search. This makes every match reachable even when more than 20 Notes share the same body. The empty search still shows just the most recent page.
+
 ## Why Notes archive and Threads resolve
 
 The difference is what each action does, not how the word sounds. Archiving a Note changes nothing about it: its body, dates, and Follow-up date stay as they were, it only leaves the board, and Unarchive puts it back exactly as it was. That is putting something away. Resolving a Thread is a decision with consequences: it clears the Thread's Moves, its focus, and its Follow-up date, takes an optional resolution note, and writes an Activity Log entry, and Reopen restores none of it. Calling both "archive" would hide that a Thread loses its Moves; calling both "resolve" or "done" would claim a Note was a task that got finished. Most Notes are information or thoughts, which are never finished, only no longer needed in view.

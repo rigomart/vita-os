@@ -288,6 +288,67 @@ describe("CommandPalette", () => {
     ]);
   });
 
+  it("loads further search matches and opens an older identical Note", async () => {
+    const user = userEvent.setup();
+    const notes = Array.from({ length: 21 }, (_, index) =>
+      archived(
+        `receipt-${index}`,
+        "Rent payment receipt",
+        new Date(2025, 0, 21 - index).getTime(),
+      ),
+    );
+    render(
+      <AppShell>
+        <p>page body</p>
+      </AppShell>,
+      {
+        applicationClient: createQuietApplicationClient({
+          getDoneNotePage: async ({ cursor }) => ({
+            ok: true,
+            value:
+              cursor === undefined
+                ? { entries: notes.slice(0, 20), nextCursor: "older-receipts" }
+                : { entries: notes.slice(20) },
+          }),
+        }),
+      },
+    );
+    await openPalette(user);
+    await user.click(screen.getByRole("button", { name: "History" }));
+    await screen.findAllByRole("option", { name: /Rent payment receipt/ });
+    expect(
+      screen.queryByRole("button", { name: "Load more archived notes" }),
+    ).not.toBeInTheDocument();
+
+    await user.type(screen.getByRole("combobox"), "receipt");
+    const loadMore = await screen.findByRole("button", {
+      name: "Load more archived notes",
+    });
+    await user.keyboard("{Home}");
+    await user.tab();
+    await user.tab();
+    expect(loadMore).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    await screen.findByRole("option", {
+      name: "Rent payment receiptJan 1, 2025",
+    });
+    expect(
+      screen.getAllByRole("option", { name: /Rent payment receipt/ }),
+    ).toHaveLength(21);
+    expect(screen.getByRole("combobox")).toHaveValue("receipt");
+    expect(
+      screen.queryByRole("button", { name: "Load more archived notes" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toHaveFocus();
+    await user.keyboard("{End}{Enter}");
+    expect(await screen.findByRole("dialog", { name: "Note" })).toBeVisible();
+    expect(screen.getByRole("dialog", { name: "Note" })).toHaveTextContent(
+      "Archived Jan 1",
+    );
+    expect(screen.getByRole("button", { name: "Unarchive" })).toBeVisible();
+  });
+
   it("filters resolved history in resolution order and clears search when returning", async () => {
     const user = userEvent.setup();
     renderShell();

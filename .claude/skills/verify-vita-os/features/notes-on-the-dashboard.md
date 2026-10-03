@@ -6,6 +6,8 @@ Status: proven on 446055e at 1440×900 (no Notes button, filter row, Notes-only 
 
 ## Sub-features
 
+Pagination follow-up: proven with the PR 394 fix at 1440×900 and 390×844. Created and archived 21 Notes with the same body through the UI, searched for their shared word, loaded the final match by mouse on desktop and by Tab → Tab → Enter on phone, and opened the oldest Note with End → Enter. Unarchiving the oldest Note on desktop restored it to the board (`state = 'open'`, `completed_at = null`). Evidence: `.verify/evidence/pr394-fix/2026-10-03T03-03-34-835Z/`, captures `desktop-search-before-more`, `desktop-search-after-more`, `desktop-oldest-note`, and their `phone-` equivalents.
+
 - `notes-no-panel`: the chrome has no Notes button or badge at any width; the top-right cluster is the date and the account menu.
 - `notes-filter`: `navigation "Filter the board"` lists `All <n>`, each Area `<name> <n>`, `No area <n>`, `button "Manage areas"`, then `link "Notes <open Note count>"`. Choosing it sets `?show=notes` and shows only open Standalone Notes: dated ones under Now / This week / Later headings, undated ones in `No date` → `Notes`. Muted at zero. Empty: `No Note is asking for you.`
 - `notes-filter-collision`: an Area named `Notes` is its own link (`Notes 0`, slug `notes-<hex>`) before `Manage areas`; it sets `?area=notes-<hex>` and says `Nothing open in Notes.`
@@ -13,6 +15,7 @@ Status: proven on 446055e at 1440×900 (no Notes button, filter row, Notes-only 
 - `notes-redirects`: `/notes` and `/inbox` land on `/?show=notes`; `/threads/<slug>?inbox=true` lands on `/?thread=<slug>&show=notes`.
 - `notes-archive`: a card's `Archive note` and the Note view's `Archive` both answer `Note archived` and take the Note off the board; the view stays open with `Archived <Mon d>` and `Unarchive`. D1 stores `state = 'done'` and `completed_at`.
 - `history-archived`: the palette's `History` chip shows `group "Resolved threads"` then `group "Archived notes"`, the latter 20 most recently archived first, each `option "<one-line preview> <Mon d>"`. A search narrows both groups; Archived notes come from the service, so an older Note past the first page is found by a word of its body.
+- `history-more-matches`: a nonempty search with more matches shows `button "Load more archived notes"`. Activating it appends the next page and returns focus to the search, preserving the query. Every matching Note is reachable even when more than 20 share the same body. An empty search stays bounded to one page.
 - `history-open-note`: choosing an Archived note opens `dialog "Note"` over the page with `Archived <Mon d>`, `Unarchive`, and a ⋯ menu of only Copy Markdown and Delete note. `Unarchive` answers `Note unarchived` and returns the Note to the board.
 - `notes-thread-capture`: `New thread` under `?show=notes` opens with `Add area` (no Area).
 - `notes-palette-go-to`: the palette's Go to → `Notes` sets `?show=notes`.
@@ -44,12 +47,13 @@ Preconditions: `bun run verify up --instance notes`, then `bun run verify signin
 14. **Phone.** `set viewport 390 844`, `bun run verify open / --instance notes`, capture `a-phone-dashboard` (no Notes control in the chrome). `find role button click --name "Filter the board: All" --exact`, capture `a-phone-filter-dropdown`, `find role menuitemradio click --name "Notes <n>" --exact`, unfold `No date` by ref, capture `a-phone-notes-filter`. Jump anywhere → History → an Archived note opens in a drawer with `Archived` and `Unarchive` (`e-phone-history-note-fixed`).
 15. **Drawer.** `set viewport 1024 768`, open `/?show=notes`, `press Meta+k`, History, `find role option click --name "Renew passport"`: `dialog "Renew passport"` and `?show=notes&thread=…`; `Close thread` returns to `?show=notes`. `set viewport 1440 900`.
 16. **Shared capture.** `open "http://localhost:<webPort>/share-target?title=Shared+capture&text=Shared+from+another+app+share-proof-7781"`, `wait --text "Note added"`, `get url` (`/`), `reload`, `wait --text "share-proof-7781"`, and `verify d1 "SELECT body, state FROM notes WHERE body LIKE '%share-proof%'"`.
+17. **All matching archived Notes.** Create and archive 21 Notes with the same body, then reload. Open History and fill the combobox with their shared word. Wait for `Load more archived notes`, capture the 20 results, and click that button. Wait until 21 archived options appear, capture the appended results, then `press End`, `press Enter` to open the oldest Note. Repeat at 390×844 after reloading: from the search input, `press Home`, `press Tab`, `press Tab`, `press Enter` activates the button without opening a Note; focus returns to the search. The button disappears after the final page.
 
 ## Gotchas
 
 - With an Area named `Notes`, two links read `Notes <n>`. The Area's comes before `Manage areas`; the filter's comes after it. Use `--exact` with the count, or the order.
 - `Archive note` with `--exact` matches the first card on the board. Undated Notes read newest-first, so repeated clicks archive the newest first, which makes the first-archived Note the oldest in History.
-- History's Archived notes reads one page of 20; an older Note appears only once a search names it. The search is debounced by 250 ms, so `wait --text` for the result rather than snapshotting at once.
+- History's empty search reads one page of 20. A nonempty search offers `Load more archived notes` for further matches. The search is debounced by 250 ms, so wait for the result. A cached search may already contain all loaded pages and no longer show the button; reload before verifying pagination from its first page.
 - `Thread actions` can be clicked before the pane renders, leaving no menu. Click it again after the pane's title shows.
 - Adding to a Thread waits out a five-second Undo window before it writes; prove it after a reload or with D1. The toast says `Note added to thread`.
 - On a phone the Note view's header shows `Archived` without the date to leave room for the Read/Write switch.

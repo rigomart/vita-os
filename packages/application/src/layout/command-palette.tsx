@@ -1,7 +1,7 @@
 import type { Note } from "@vita-os/contracts";
 
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { matchesNoteSearch } from "@vita-os/core";
+import { boundNoteSearch, matchesNoteSearch } from "@vita-os/core";
 import { Button } from "@vita-os/ui/components/button";
 import { markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { defaultFilter } from "cmdk";
@@ -10,6 +10,7 @@ import {
   FilterX,
   History,
   LayoutDashboard,
+  Loader2,
   MessageSquare,
   Plus,
   StickyNote,
@@ -82,14 +83,25 @@ export function CommandPalette({
   const threads = useOpenThreads({ enabled: open }).data;
   const [search, setSearch] = useState("");
   const [showHistory, setShowHistory] = useState(false);
+  const archivedSearch = useDebouncedValue(
+    boundNoteSearch(search),
+    ARCHIVED_SEARCH_DELAY,
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const resolvedQuery = useResolvedThreads({ enabled: open && showHistory });
   const archivedQuery = useArchivedNotes({
-    query: useDebouncedValue(search, ARCHIVED_SEARCH_DELAY),
+    query: archivedSearch,
     enabled: open && showHistory,
   });
   const visibleThreads = showHistory ? resolvedQuery.data : threads;
   const archivedNotes = showHistory ? archivedQuery.notes : [];
+  // Pagination belongs to the settled search, never the previous results
+  // retained while a new search is on its way. Empty History stays one page.
+  const canLoadMoreArchived =
+    archivedSearch !== "" &&
+    archivedSearch === boundNoteSearch(search) &&
+    !archivedQuery.isPlaceholderData &&
+    archivedQuery.hasNextPage;
   useEffect(() => {
     inputRef.current?.focus();
   }, [showHistory]);
@@ -217,6 +229,34 @@ export function CommandPalette({
                 onSelect={() => run(() => onOpenNote(note))}
               />
             ))}
+            {canLoadMoreArchived && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-1 w-full"
+                aria-label="Load more archived notes"
+                aria-busy={archivedQuery.isFetching || undefined}
+                disabled={archivedQuery.isFetching}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ")
+                    event.stopPropagation();
+                }}
+                onClick={() => {
+                  if (archivedQuery.isFetching) return;
+                  inputRef.current?.focus();
+                  void archivedQuery.fetchNextPage();
+                }}
+              >
+                {archivedQuery.isFetching ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Plus />
+                )}
+                {archivedQuery.isFetching
+                  ? "Loading…"
+                  : "Load more archived notes"}
+              </Button>
+            )}
           </CommandGroup>
         )}
         {!showHistory && (
