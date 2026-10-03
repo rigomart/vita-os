@@ -1,164 +1,57 @@
-import type {
-  AreaId,
-  CreateThreadInput,
-  MoveId,
-  ThreadState,
-  UpdateThreadInput,
-} from "@vita-os/contracts";
+import type { MoveId, ThreadId, UpdateThreadInput } from "@vita-os/contracts";
 
-import type { Decoded } from "../../platform/http/decode";
+import { Schema } from "effect";
 
-import {
-  hasOnlyKeys,
-  isClearableString,
-  isClearableTimestamp,
-  isNonEmptyString,
-  isObject,
-  isRevision,
-} from "../../platform/http/decode";
+import { Revision, Timestamp } from "../../platform/http/schemas";
+import { AreaIdSchema } from "../areas/requests";
 
-function isThreadState(value: unknown): value is ThreadState {
-  return value === "open" || value === "resolved";
-}
+/** IDs stay opaque strings, including identifiers minted before UUIDs. */
+export const ThreadIdSchema = Schema.String.pipe(
+  Schema.refine((value): value is ThreadId => value.length > 0),
+);
+export const MoveIdSchema = Schema.String.pipe(
+  Schema.refine((value): value is MoveId => value.length > 0),
+);
+export const CreateThreadBody = Schema.Struct({
+  title: Schema.String,
+  summary: Schema.optional(Schema.String),
+  areaId: Schema.optional(AreaIdSchema),
+});
+export const UpdateThreadBody = Schema.Struct({
+  title: Schema.optional(Schema.String),
+  summary: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  areaId: Schema.optionalKey(Schema.NullOr(AreaIdSchema)),
+  followUp: Schema.optionalKey(Schema.NullOr(Timestamp)),
+  state: Schema.optional(Schema.Literals(["open", "resolved"])),
+  resolutionNote: Schema.optional(Schema.String),
+});
+export const AddMoveBody = Schema.Struct({
+  moveId: MoveIdSchema,
+  text: Schema.String,
+  expectedRevision: Revision,
+});
+export const EditMoveBody = Schema.Struct({
+  text: Schema.String,
+  expectedRevision: Revision,
+});
+export const MoveRevisionBody = Schema.Struct({ expectedRevision: Revision });
+export const FocusMoveBody = Schema.Struct({
+  moveId: Schema.NullOr(MoveIdSchema),
+  expectedRevision: Revision,
+});
 
-export function decodeCreateThread(value: unknown): Decoded<CreateThreadInput> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, ["title", "summary", "areaId"]) ||
-    typeof value.title !== "string" ||
-    (value.areaId !== undefined && !isNonEmptyString(value.areaId)) ||
-    (value.summary !== undefined && typeof value.summary !== "string")
-  ) {
-    return undefined;
-  }
-
+/** Only present clearable fields enter the domain patch; absence leaves them alone. */
+export function normalizeThreadChange(
+  input: typeof UpdateThreadBody.Type,
+): Omit<UpdateThreadInput, "threadId"> {
   return {
-    title: value.title,
-    ...(value.summary === undefined ? {} : { summary: value.summary }),
-    ...(value.areaId === undefined ? {} : { areaId: value.areaId as AreaId }),
-  };
-}
-
-const UPDATE_THREAD_KEYS = [
-  "title",
-  "summary",
-  "areaId",
-  "followUp",
-  "state",
-  "resolutionNote",
-] as const;
-
-export function decodeUpdateThread(
-  value: unknown,
-): Decoded<Omit<UpdateThreadInput, "threadId">> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, UPDATE_THREAD_KEYS) ||
-    (value.title !== undefined && typeof value.title !== "string") ||
-    (Object.hasOwn(value, "summary") && !isClearableString(value.summary)) ||
-    (Object.hasOwn(value, "areaId") &&
-      value.areaId !== null &&
-      !isNonEmptyString(value.areaId)) ||
-    (Object.hasOwn(value, "followUp") &&
-      !isClearableTimestamp(value.followUp)) ||
-    (value.state !== undefined && !isThreadState(value.state)) ||
-    (value.resolutionNote !== undefined &&
-      typeof value.resolutionNote !== "string")
-  ) {
-    return undefined;
-  }
-
-  return {
-    ...(value.title === undefined ? {} : { title: value.title }),
-    ...(Object.hasOwn(value, "summary")
-      ? { summary: value.summary as string | null }
-      : {}),
-    ...(Object.hasOwn(value, "areaId")
-      ? { areaId: value.areaId as AreaId | null }
-      : {}),
-    ...(Object.hasOwn(value, "followUp")
-      ? { followUp: value.followUp as number | null }
-      : {}),
-    ...(value.state === undefined ? {} : { state: value.state }),
-    ...(value.resolutionNote === undefined
+    ...(input.title === undefined ? {} : { title: input.title }),
+    ...(Object.hasOwn(input, "summary") ? { summary: input.summary } : {}),
+    ...(Object.hasOwn(input, "areaId") ? { areaId: input.areaId } : {}),
+    ...(Object.hasOwn(input, "followUp") ? { followUp: input.followUp } : {}),
+    ...(input.state === undefined ? {} : { state: input.state }),
+    ...(input.resolutionNote === undefined
       ? {}
-      : { resolutionNote: value.resolutionNote }),
-  };
-}
-
-/** Every Move command carries the revision its caller read the Thread at. */
-function hasRevision(
-  value: Record<string, unknown>,
-): value is Record<string, unknown> & { expectedRevision: number } {
-  return isRevision(value.expectedRevision);
-}
-
-export function decodeAddMove(
-  value: unknown,
-): Decoded<{ moveId: MoveId; text: string; expectedRevision: number }> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, ["moveId", "text", "expectedRevision"]) ||
-    !isNonEmptyString(value.moveId) ||
-    typeof value.text !== "string" ||
-    !hasRevision(value)
-  ) {
-    return undefined;
-  }
-
-  return {
-    moveId: value.moveId as MoveId,
-    text: value.text,
-    expectedRevision: value.expectedRevision,
-  };
-}
-
-export function decodeEditMove(
-  value: unknown,
-): Decoded<{ text: string; expectedRevision: number }> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, ["text", "expectedRevision"]) ||
-    typeof value.text !== "string" ||
-    !hasRevision(value)
-  ) {
-    return undefined;
-  }
-
-  return { text: value.text, expectedRevision: value.expectedRevision };
-}
-
-/** Removing and completing name the Move in the path; the body holds only the revision. */
-export function decodeMoveRevision(
-  value: unknown,
-): Decoded<{ expectedRevision: number }> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, ["expectedRevision"]) ||
-    !hasRevision(value)
-  ) {
-    return undefined;
-  }
-
-  return { expectedRevision: value.expectedRevision };
-}
-
-/** `moveId: null` unfocuses, and must be spelled out: absent is not a choice. */
-export function decodeFocusMove(
-  value: unknown,
-): Decoded<{ moveId: MoveId | null; expectedRevision: number }> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, ["moveId", "expectedRevision"]) ||
-    !Object.hasOwn(value, "moveId") ||
-    (value.moveId !== null && !isNonEmptyString(value.moveId)) ||
-    !hasRevision(value)
-  ) {
-    return undefined;
-  }
-
-  return {
-    moveId: value.moveId as MoveId | null,
-    expectedRevision: value.expectedRevision,
+      : { resolutionNote: input.resolutionNote }),
   };
 }

@@ -1,9 +1,6 @@
-import type { MoveId, ThreadId } from "@vita-os/contracts";
+import { HttpApiBuilder } from "effect/http-api";
 
-import type { Routes } from "../../platform/http/context";
-
-import { readJsonBody, reply, scope } from "../../platform/http/context";
-import { invalidRequest, refuse } from "../../platform/http/errors";
+import { ApplicationApi } from "../../platform/http/api";
 import {
   addMove,
   completeMove,
@@ -17,125 +14,67 @@ import {
   removeThread,
   updateThread,
 } from "./operations";
-import {
-  decodeAddMove,
-  decodeCreateThread,
-  decodeEditMove,
-  decodeFocusMove,
-  decodeMoveRevision,
-  decodeUpdateThread,
-} from "./requests";
+import { normalizeThreadChange } from "./requests";
 
-const invalidMoveCommand = () => refuse(invalidRequest("Invalid Move change."));
-
-/** Threads and their Moves. */
-export const threadRoutes: Routes = (app) => {
-  app.get("/v1/threads", async (context) =>
-    reply(context, await listOpenThreads(scope(context))),
-  );
-
-  app.get("/v1/threads/resolved", async (context) =>
-    reply(context, await listResolvedThreads(scope(context))),
-  );
-
-  app.post("/v1/threads", async (context) => {
-    const input =
-      decodeCreateThread(await readJsonBody(context)) ??
-      refuse(invalidRequest("Invalid Thread."));
-    return reply(context, await createThread(scope(context), input), 201);
-  });
-
-  app.get("/v1/threads/:slug", async (context) =>
-    reply(
-      context,
-      await getThreadDetail(scope(context), {
-        slug: context.req.param("slug"),
-      }),
-    ),
-  );
-
-  app.patch("/v1/threads/:threadId", async (context) => {
-    const input =
-      decodeUpdateThread(await readJsonBody(context)) ??
-      refuse(invalidRequest("Invalid Thread change."));
-    return reply(
-      context,
-      await updateThread(scope(context), {
-        threadId: context.req.param("threadId") as ThreadId,
-        ...input,
-      }),
-    );
-  });
-
-  app.delete("/v1/threads/:threadId", async (context) =>
-    reply(
-      context,
-      await removeThread(scope(context), {
-        threadId: context.req.param("threadId") as ThreadId,
-      }),
-    ),
-  );
-
-  app.post("/v1/threads/:threadId/moves", async (context) => {
-    const input =
-      decodeAddMove(await readJsonBody(context)) ?? invalidMoveCommand();
-    return reply(
-      context,
-      await addMove(scope(context), {
-        threadId: context.req.param("threadId") as ThreadId,
-        ...input,
-      }),
-    );
-  });
-
-  app.patch("/v1/threads/:threadId/moves/:moveId", async (context) => {
-    const input =
-      decodeEditMove(await readJsonBody(context)) ?? invalidMoveCommand();
-    return reply(
-      context,
-      await editMove(scope(context), {
-        threadId: context.req.param("threadId") as ThreadId,
-        moveId: context.req.param("moveId") as MoveId,
-        ...input,
-      }),
-    );
-  });
-
-  app.delete("/v1/threads/:threadId/moves/:moveId", async (context) => {
-    const input =
-      decodeMoveRevision(await readJsonBody(context)) ?? invalidMoveCommand();
-    return reply(
-      context,
-      await removeMove(scope(context), {
-        threadId: context.req.param("threadId") as ThreadId,
-        moveId: context.req.param("moveId") as MoveId,
-        ...input,
-      }),
-    );
-  });
-
-  app.post("/v1/threads/:threadId/moves/:moveId/complete", async (context) => {
-    const input =
-      decodeMoveRevision(await readJsonBody(context)) ?? invalidMoveCommand();
-    return reply(
-      context,
-      await completeMove(scope(context), {
-        threadId: context.req.param("threadId") as ThreadId,
-        moveId: context.req.param("moveId") as MoveId,
-        ...input,
-      }),
-    );
-  });
-
-  app.put("/v1/threads/:threadId/focus", async (context) => {
-    const input =
-      decodeFocusMove(await readJsonBody(context)) ?? invalidMoveCommand();
-    return reply(
-      context,
-      await focusMove(scope(context), {
-        threadId: context.req.param("threadId") as ThreadId,
-        ...input,
-      }),
-    );
-  });
-};
+export const ThreadsHandlers = HttpApiBuilder.group(
+  ApplicationApi,
+  "threads",
+  (handlers) =>
+    handlers
+      .handle("listOpen", () => listOpenThreads())
+      .handle("listResolved", () => listResolvedThreads())
+      .handle("create", ({ payload }) =>
+        createThread({
+          title: payload.title,
+          ...(payload.summary === undefined
+            ? {}
+            : { summary: payload.summary }),
+          ...(payload.areaId === undefined ? {} : { areaId: payload.areaId }),
+        }),
+      )
+      .handle("detail", ({ params }) => getThreadDetail({ slug: params.slug }))
+      .handle("update", ({ params, payload }) =>
+        updateThread({
+          ...normalizeThreadChange(payload),
+          threadId: params.threadId,
+        }),
+      )
+      .handle("remove", ({ params }) =>
+        removeThread({ threadId: params.threadId }),
+      )
+      .handle("addMove", ({ params, payload }) =>
+        addMove({
+          ...payload,
+          threadId: params.threadId,
+          moveId: payload.moveId,
+        }),
+      )
+      .handle("editMove", ({ params, payload }) =>
+        editMove({
+          ...payload,
+          threadId: params.threadId,
+          moveId: params.moveId,
+        }),
+      )
+      .handle("removeMove", ({ params, payload }) =>
+        removeMove({
+          ...payload,
+          threadId: params.threadId,
+          moveId: params.moveId,
+        }),
+      )
+      .handle("completeMove", ({ params, payload }) =>
+        completeMove({
+          ...payload,
+          threadId: params.threadId,
+          moveId: params.moveId,
+        }),
+      )
+      .handle("focusMove", ({ params, payload }) =>
+        focusMove({
+          ...payload,
+          threadId: params.threadId,
+          moveId: payload.moveId,
+        }),
+      ),
+);

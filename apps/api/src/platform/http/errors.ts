@@ -1,22 +1,13 @@
 import type { ApplicationError } from "@vita-os/contracts";
-import type { ErrorHandler } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { ConflictError, ValidationError } from "@vita-os/core";
+import { Schema, SchemaGetter } from "effect";
+import { HttpServerResponse } from "effect/http";
+import { HttpApiSchema } from "effect/http-api";
 
 import { InvalidPageCursorError } from "../d1/page-cursor";
 
-/**
- * The one way a failure becomes a response.
- *
- * Every refusal — an unreadable request, an operation's failed result, a domain
- * rule that threw, an edited cursor — reaches `handleError`, and its status
- * comes from its code. A missing record and a record owned by somebody else
- * produce the same status, body, and message, so a caller cannot use the
- * difference to discover that somebody else's record exists.
- */
-
-const STATUS_BY_CODE: Record<ApplicationError["code"], ContentfulStatusCode> = {
+export const STATUS_BY_CODE: Record<ApplicationError["code"], number> = {
   unauthorized: 401,
   not_found: 404,
   validation: 400,
@@ -30,69 +21,88 @@ export const requestOriginNotAllowed: ApplicationError = {
   message: "Request origin is not allowed.",
   retryable: false,
 };
-
 export const jsonRequestRequired: ApplicationError = {
   code: "validation",
   message: "JSON request body required.",
   retryable: false,
 };
-
 export const unexpectedFailure: ApplicationError = {
   code: "unexpected",
   message: "Unexpected error.",
   retryable: false,
 };
-
-/** A refused input, carrying the rule's own words for the person who typed it. */
 export function invalidRequest(message: string): ApplicationError {
   return { code: "validation", message, retryable: false };
 }
-
-/** A refused write, because of the state the record is in. */
 export function refusedByState(message: string): ApplicationError {
   return { code: "conflict", message, retryable: false };
 }
 
-/**
- * A request this Worker will not answer with a value.
- *
- * The status is the code's own unless the refusal is about the transport
- * rather than the operation — a forbidden origin or a body that is not JSON.
- */
+/** Internal failure; only the public error is encoded into HTTP responses. */
 export class RequestRefusal extends Error {
+  readonly _tag = "RequestRefusal";
   constructor(
     readonly error: ApplicationError,
-    readonly status: ContentfulStatusCode = STATUS_BY_CODE[error.code],
+    readonly status: number = STATUS_BY_CODE[error.code],
+    readonly cause?: unknown,
   ) {
     super(error.message);
     this.name = "RequestRefusal";
   }
 }
-
-export function refuse(
-  error: ApplicationError,
-  status?: ContentfulStatusCode,
-): never {
-  throw new RequestRefusal(error, status);
+export function toRefusal(cause: unknown): RequestRefusal {
+  if (cause instanceof RequestRefusal) return cause;
+  if (cause instanceof ValidationError) {
+    return new RequestRefusal(invalidRequest(cause.message), undefined, cause);
+  }
+  if (cause instanceof ConflictError) {
+    return new RequestRefusal(refusedByState(cause.message), undefined, cause);
+  }
+  if (cause instanceof InvalidPageCursorError) {
+    return new RequestRefusal(cause.refusal, undefined, cause);
+  }
+  return new RequestRefusal(unexpectedFailure, undefined, cause);
+}
+export function refusalResponse(refusal: RequestRefusal) {
+  return HttpServerResponse.jsonUnsafe(
+    { error: refusal.error },
+    { status: refusal.status },
+  );
 }
 
-/** A rule that refuses says why in its own words; anything else says nothing. */
-function toRefusal(error: unknown): RequestRefusal {
-  if (error instanceof RequestRefusal) return error;
-  if (error instanceof ValidationError) {
-    return new RequestRefusal(invalidRequest(error.message));
-  }
-  if (error instanceof ConflictError) {
-    return new RequestRefusal(refusedByState(error.message));
-  }
-  if (error instanceof InvalidPageCursorError) {
-    return new RequestRefusal(error.refusal);
-  }
-
-  return new RequestRefusal(unexpectedFailure);
+function refusalSchema<C extends ApplicationError["code"]>(code: C) {
+  const status = STATUS_BY_CODE[code];
+  const wire = Schema.Struct({
+    error: Schema.Struct({
+      code: Schema.Literal(code),
+      message: Schema.String,
+      retryable: Schema.Boolean,
+    }),
+  });
+  return Schema.declare<RequestRefusal>(
+    (value): value is RequestRefusal =>
+      value instanceof RequestRefusal &&
+      value.error.code === code &&
+      value.status === status,
+  ).pipe(
+    Schema.encodeTo(wire, {
+      decode: SchemaGetter.transform(
+        (value) => new RequestRefusal(value.error, status),
+      ),
+      encode: SchemaGetter.transform((value) => ({
+        error: { ...value.error, code },
+      })),
+    }),
+    HttpApiSchema.status(status),
+  );
 }
 
-export const handleError: ErrorHandler = (error, context) => {
-  const refusal = toRefusal(error);
-  return context.json({ error: refusal.error }, refusal.status);
-};
+/** One codec per public status lets HttpApi choose the correct error response. */
+export const RequestRefusalSchemas = [
+  refusalSchema("unauthorized"),
+  refusalSchema("not_found"),
+  refusalSchema("validation"),
+  refusalSchema("conflict"),
+  refusalSchema("unavailable"),
+  refusalSchema("unexpected"),
+] as const;

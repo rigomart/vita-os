@@ -1,12 +1,8 @@
-import type { ThreadId, ThreadNoteId } from "@vita-os/contracts";
+import { Effect } from "effect";
+import { HttpApiBuilder } from "effect/http-api";
 
-import type { Routes } from "../../platform/http/context";
-
-import { invalidPagination } from "../../platform/d1/page-cursor";
-import { readJsonBody, reply, scope } from "../../platform/http/context";
-import { decodeLimit } from "../../platform/http/decode";
-import { invalidRequest, refuse } from "../../platform/http/errors";
-import { decodeBody, decodeNoteState, NOTE_PAGE_SIZE } from "../notes/requests";
+import { ApplicationApi } from "../../platform/http/api";
+import { pageRequest } from "../../platform/http/schemas";
 import {
   createThreadNote,
   getDoneThreadNotePage,
@@ -17,80 +13,40 @@ import {
   updateThreadNoteBody,
 } from "./operations";
 
-/** Notes captured inside one Thread. */
-export const threadNoteRoutes: Routes = (app) => {
-  app.get("/v1/threads/:threadId/notes", async (context) =>
-    reply(
-      context,
-      await listOpenThreadNotes(scope(context), {
-        threadId: context.req.param("threadId") as ThreadId,
-      }),
-    ),
-  );
-
-  app.get("/v1/threads/:threadId/notes/done", async (context) => {
-    const limit =
-      decodeLimit(context.req.query("limit"), NOTE_PAGE_SIZE) ??
-      refuse(invalidPagination);
-    const cursor = context.req.query("cursor");
-    return reply(
-      context,
-      await getDoneThreadNotePage(scope(context), {
-        threadId: context.req.param("threadId") as ThreadId,
-        limit,
-        ...(cursor === undefined ? {} : { cursor }),
-      }),
-    );
-  });
-
-  app.post("/v1/threads/:threadId/notes", async (context) => {
-    const input =
-      decodeBody(await readJsonBody(context)) ??
-      refuse(invalidRequest("Invalid Thread note."));
-    return reply(
-      context,
-      await createThreadNote(scope(context), {
-        threadId: context.req.param("threadId") as ThreadId,
-        body: input.body,
-      }),
-      201,
-    );
-  });
-
-  app.patch("/v1/thread-notes/:threadNoteId/body", async (context) => {
-    const input =
-      decodeBody(await readJsonBody(context)) ??
-      refuse(invalidRequest("Invalid Thread note."));
-    return reply(
-      context,
-      await updateThreadNoteBody(scope(context), {
-        threadNoteId: context.req.param("threadNoteId") as ThreadNoteId,
-        body: input.body,
-      }),
-    );
-  });
-
-  app.patch("/v1/thread-notes/:threadNoteId/state", async (context) => {
-    const input =
-      decodeNoteState(await readJsonBody(context)) ??
-      refuse(invalidRequest("Invalid Thread note state."));
-    const target = {
-      threadNoteId: context.req.param("threadNoteId") as ThreadNoteId,
-    };
-    return reply(
-      context,
-      input.state === "done"
-        ? await markThreadNoteDone(scope(context), target)
-        : await markThreadNoteOpen(scope(context), target),
-    );
-  });
-
-  app.delete("/v1/thread-notes/:threadNoteId", async (context) =>
-    reply(
-      context,
-      await removeThreadNote(scope(context), {
-        threadNoteId: context.req.param("threadNoteId") as ThreadNoteId,
-      }),
-    ),
-  );
-};
+const NOTE_PAGE_SIZE = { fallback: 20, maximum: 50 };
+export const ThreadNotesHandlers = HttpApiBuilder.group(
+  ApplicationApi,
+  "threadNotes",
+  (handlers) =>
+    handlers
+      .handle("listOpen", ({ params }) =>
+        listOpenThreadNotes({ threadId: params.threadId }),
+      )
+      .handle("donePage", ({ params, query }) =>
+        Effect.gen(function* () {
+          const page = yield* pageRequest(query, NOTE_PAGE_SIZE);
+          return yield* getDoneThreadNotePage({
+            threadId: params.threadId,
+            ...page,
+          });
+        }),
+      )
+      .handle("create", ({ params, payload }) =>
+        createThreadNote({ threadId: params.threadId, body: payload.body }),
+      )
+      .handle("updateBody", ({ params, payload }) =>
+        updateThreadNoteBody({
+          threadNoteId: params.threadNoteId,
+          body: payload.body,
+        }),
+      )
+      .handle("setState", ({ params, payload }) => {
+        const target = { threadNoteId: params.threadNoteId };
+        return payload.state === "done"
+          ? markThreadNoteDone(target)
+          : markThreadNoteOpen(target);
+      })
+      .handle("remove", ({ params }) =>
+        removeThreadNote({ threadNoteId: params.threadNoteId }),
+      ),
+);

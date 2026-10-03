@@ -1,89 +1,62 @@
-import type { NoteState } from "@vita-os/contracts";
+import { Schema } from "effect";
 
-import type { Decoded, PageSize } from "../../platform/http/decode";
+import type { PageSize } from "../../platform/http/decode";
 
-import {
-  hasOnlyKeys,
-  isClearableTimestamp,
-  isObject,
-  isTimestamp,
-} from "../../platform/http/decode";
+import { Timestamp } from "../../platform/http/schemas";
 
 /** Done Notes only grow, so both kinds of Note page them at this size. */
 export const NOTE_PAGE_SIZE: PageSize = { fallback: 20, maximum: 50 };
 
-function isNoteState(value: unknown): value is NoteState {
-  return value === "open" || value === "done";
-}
+/** Creation accepts no date or one alias; a present null is never a timestamp. */
+export const CreateNoteBody = Schema.Struct({
+  body: Schema.String,
+  followUp: Schema.optionalKey(Timestamp),
+  attentionDate: Schema.optionalKey(Timestamp),
+}).check(
+  Schema.makeFilter(
+    (input) =>
+      !(
+        Object.hasOwn(input, "followUp") &&
+        Object.hasOwn(input, "attentionDate")
+      ),
+  ),
+);
 
-export function decodeCreateNote(value: unknown): Decoded<{
+export const NoteBody = Schema.Struct({ body: Schema.String });
+
+/** Setting a date requires exactly one field, including when clearing with null. */
+export const NoteFollowUp = Schema.Struct({
+  followUp: Schema.optionalKey(Schema.NullOr(Timestamp)),
+  attentionDate: Schema.optionalKey(Schema.NullOr(Timestamp)),
+}).check(
+  Schema.makeFilter(
+    (input) =>
+      Object.hasOwn(input, "followUp") !==
+      Object.hasOwn(input, "attentionDate"),
+  ),
+);
+
+export const NoteStateBody = Schema.Struct({
+  state: Schema.Literals(["open", "done"]),
+});
+
+export function normalizeCreateNote(input: typeof CreateNoteBody.Type): {
   body: string;
   followUp?: number;
-}> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, ["body", "followUp", "attentionDate"]) ||
-    (Object.hasOwn(value, "followUp") &&
-      Object.hasOwn(value, "attentionDate")) ||
-    typeof value.body !== "string" ||
-    (noteFollowUp(value) !== undefined && !isTimestamp(noteFollowUp(value)))
-  ) {
-    return undefined;
-  }
+} {
+  const followUp = Object.hasOwn(input, "followUp")
+    ? input.followUp
+    : input.attentionDate;
+  return { body: input.body, ...(followUp === undefined ? {} : { followUp }) };
+}
 
+export function normalizeNoteFollowUp(input: typeof NoteFollowUp.Type): {
+  followUp: number | null;
+} {
+  // NoteFollowUp's presence check guarantees exactly one nullable timestamp.
   return {
-    body: value.body,
-    ...(noteFollowUp(value) === undefined
-      ? {}
-      : { followUp: noteFollowUp(value) as number }),
+    followUp: (Object.hasOwn(input, "followUp")
+      ? input.followUp
+      : input.attentionDate) as number | null,
   };
-}
-
-/** A Note's body, for either kind of Note. */
-export function decodeBody(value: unknown): Decoded<{ body: string }> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, ["body"]) ||
-    typeof value.body !== "string"
-  ) {
-    return undefined;
-  }
-
-  return { body: value.body };
-}
-
-export function decodeFollowUp(
-  value: unknown,
-): Decoded<{ followUp: number | null }> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, ["followUp", "attentionDate"]) ||
-    Object.hasOwn(value, "followUp") ===
-      Object.hasOwn(value, "attentionDate") ||
-    !isClearableTimestamp(noteFollowUp(value))
-  ) {
-    return undefined;
-  }
-
-  return { followUp: noteFollowUp(value) as number | null };
-}
-
-/** Accept the old web app's field during the API-before-web deployment. */
-function noteFollowUp(value: Record<string, unknown>): unknown {
-  return Object.hasOwn(value, "followUp")
-    ? value.followUp
-    : value.attentionDate;
-}
-
-/** Open or Done, for either kind of Note. */
-export function decodeNoteState(value: unknown): Decoded<{ state: NoteState }> {
-  if (
-    !isObject(value) ||
-    !hasOnlyKeys(value, ["state"]) ||
-    !isNoteState(value.state)
-  ) {
-    return undefined;
-  }
-
-  return { state: value.state };
 }
