@@ -21,6 +21,8 @@ interface NewThreadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultAreaId?: AreaId;
+  /** A suggested title the person can edit, as when starting from a Note. */
+  defaultTitle?: string;
   onSubmit: (value: CreateThreadValue) => Promise<void> | void;
 }
 
@@ -40,9 +42,10 @@ export function NewThreadDialog({
   open,
   onOpenChange,
   defaultAreaId,
+  defaultTitle = "",
   onSubmit,
 }: NewThreadDialogProps) {
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(defaultTitle);
   const [areaId, setAreaId] = useState<AreaId | undefined>(defaultAreaId);
 
   const {
@@ -71,7 +74,7 @@ export function NewThreadDialog({
     });
     if (!result.ok) return;
 
-    setTitle("");
+    setTitle(defaultTitle);
     setAreaId(defaultAreaId);
   };
 

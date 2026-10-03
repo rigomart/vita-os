@@ -311,6 +311,45 @@ export function settleMoveChange(cache: QueryClient, settled: Thread): void {
 }
 
 /**
+ * A Note added to the Thread, shown before the service answers: the Follow-up
+ * date it may bring forward and the activity stamp. A cleared field stays
+ * absent; nothing else on the Thread changes.
+ */
+export function showNoteAddedToThread(
+  cache: QueryClient,
+  threadId: ThreadId,
+  change: Pick<Thread, "followUp" | "lastActivityAt" | "lastActivityContent">,
+): void {
+  patchThreadEverywhere(cache, threadId, (thread) =>
+    withoutAbsent({
+      ...thread,
+      ...(change.followUp === undefined ? {} : { followUp: change.followUp }),
+      lastActivityAt: change.lastActivityAt,
+      lastActivityContent: change.lastActivityContent,
+    }),
+  );
+}
+
+/**
+ * The service's answer to adding a Note: only what that command changes — the
+ * date, the activity stamp, and the revision the next command carries.
+ */
+export function settleNoteAddedToThread(
+  cache: QueryClient,
+  settled: Thread,
+): void {
+  patchThreadEverywhere(cache, settled._id, (thread) =>
+    withoutAbsent({
+      ...thread,
+      followUp: settled.followUp,
+      revision: settled.revision,
+      lastActivityAt: settled.lastActivityAt,
+      lastActivityContent: settled.lastActivityContent,
+    }),
+  );
+}
+
+/**
  * The newest revision any read holds for the Thread. Reads refresh on their
  * own schedules, so the freshest of them — or the caller's own copy — is the
  * one a command must carry.

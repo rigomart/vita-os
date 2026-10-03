@@ -7,6 +7,7 @@ import type { ThreadChangeState } from "./thread-changes";
 import {
   buildThreadLifecyclePatch,
   buildThreadPatchLogEntries,
+  decideAddNoteToThread,
   decideThreadUpdate,
   sanitizeThreadPatch,
 } from "./thread-changes";
@@ -308,5 +309,59 @@ describe("decideThreadUpdate", () => {
     });
 
     expect(decision.patch).toEqual({ title: "New" });
+  });
+});
+
+describe("decideAddNoteToThread", () => {
+  const thread = makeThread();
+
+  it("leaves the Thread alone for an undated Note", () => {
+    expect(decideAddNoteToThread(thread, {})).toEqual({ patch: {}, logs: [] });
+    expect(decideAddNoteToThread(makeThread({ followUp: may20 }), {})).toEqual({
+      patch: {},
+      logs: [],
+    });
+  });
+
+  it("brings an undated Thread back at the Note's date", () => {
+    expect(decideAddNoteToThread(thread, { followUp: may20 })).toEqual({
+      patch: { followUp: may20 },
+      logs: [
+        {
+          type: "follow_up_change",
+          content: "Follow-up set",
+          newValue: String(may20),
+        },
+      ],
+    });
+  });
+
+  it("lets an earlier Note date win, past dates included", () => {
+    const past = new Date("2020-01-01T15:30:00").getTime();
+    expect(
+      decideAddNoteToThread(makeThread({ followUp: jun1 }), { followUp: past }),
+    ).toEqual({
+      patch: { followUp: past },
+      logs: [
+        {
+          type: "follow_up_change",
+          content: "Follow-up changed",
+          previousValue: String(jun1),
+          newValue: String(past),
+        },
+      ],
+    });
+  });
+
+  it("drops a Note date that is later than or equal to the Thread's", () => {
+    const dated = makeThread({ followUp: may20 });
+    expect(decideAddNoteToThread(dated, { followUp: jun1 })).toEqual({
+      patch: {},
+      logs: [],
+    });
+    expect(decideAddNoteToThread(dated, { followUp: may20 })).toEqual({
+      patch: {},
+      logs: [],
+    });
   });
 });

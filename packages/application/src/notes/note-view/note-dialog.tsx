@@ -31,6 +31,8 @@ import {
   CopyIcon,
   EllipsisIcon,
   EyeIcon,
+  MessageSquareIcon,
+  MessageSquarePlusIcon,
   PencilIcon,
   Trash2Icon,
   TriangleAlertIcon,
@@ -62,6 +64,10 @@ export interface NoteDialogProps {
   onToggleDone?: () => Promise<void> | void;
   /** Deletes without asking: the owner offers Undo once the view has closed. */
   onDelete?: () => void;
+  /** Offered on an Open Standalone Note only: choose a Thread for it. */
+  onAddToThread?: () => void;
+  /** Offered on an Open Standalone Note only: start a Thread from it. */
+  onNewThread?: () => void;
   followUp?: number;
   onSetWhen?: (when: number | undefined) => Promise<void> | void;
 }
@@ -89,6 +95,8 @@ export function NoteDialog({
   onSave,
   onToggleDone,
   onDelete,
+  onAddToThread,
+  onNewThread,
   followUp,
   onSetWhen,
 }: NoteDialogProps) {
@@ -230,6 +238,10 @@ export function NoteDialog({
       () => feedback.error("The note could not be copied."),
     );
   };
+
+  // Adding takes the saved Note; an unsaved draft must be saved or discarded
+  // first, so it is never lost on the way into a Thread.
+  const canAddToThread = note?.state === "open" && !isPending && !isDirty;
 
   const handleDelete = () => {
     if (isPending || !onDelete) return;
@@ -399,6 +411,24 @@ export function NoteDialog({
                       <CopyIcon />
                       Copy Markdown
                     </DropdownMenuItem>
+                    {note?.state === "open" && onAddToThread ? (
+                      <DropdownMenuItem
+                        disabled={!canAddToThread}
+                        onClick={onAddToThread}
+                      >
+                        <MessageSquarePlusIcon />
+                        Add to thread…
+                      </DropdownMenuItem>
+                    ) : null}
+                    {note?.state === "open" && onNewThread ? (
+                      <DropdownMenuItem
+                        disabled={!canAddToThread}
+                        onClick={onNewThread}
+                      >
+                        <MessageSquareIcon />
+                        New thread from note
+                      </DropdownMenuItem>
+                    ) : null}
                     {onDelete ? (
                       <DropdownMenuItem
                         variant="destructive"

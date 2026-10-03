@@ -11,6 +11,7 @@ import type { WorkerEnv } from "./platform/env";
 import type { CreateScope } from "./platform/request-scope";
 
 import { ActivityLogHandlers } from "./features/activity-log/routes";
+import { AddToThreadHandlers } from "./features/add-to-thread/routes";
 import { AreasHandlers } from "./features/areas/routes";
 import { NotesHandlers } from "./features/notes/routes";
 import { ThreadNotesHandlers } from "./features/thread-notes/routes";
@@ -39,6 +40,7 @@ export function createApp({
     ThreadsHandlers,
     ThreadNotesHandlers,
     ActivityLogHandlers,
+    AddToThreadHandlers,
   ).pipe(
     Layer.provide(
       Layer.mergeAll(authenticationLayer(createScope), schemaErrorLayer),

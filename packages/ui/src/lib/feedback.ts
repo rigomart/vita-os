@@ -13,9 +13,14 @@ export type Feedback = {
   /**
    * Offer an Undo for an action that has already happened on screen. Resolves
    * `true` once the offer lapses and the action should be committed, or `false`
-   * when the person undoes it.
+   * when the person undoes it. An optional second action commits at once,
+   * then runs — Open thread, say, after adding a Note to one.
    */
-  undoable(message: string): Promise<boolean>;
+  undoable(message: string, options?: UndoableOptions): Promise<boolean>;
+};
+
+export type UndoableOptions = {
+  action?: { label: string; onClick: () => void };
 };
 
 const UNDO_WINDOW_MS = 5000;
@@ -23,7 +28,7 @@ const UNDO_WINDOW_MS = 5000;
 const defaultFeedback: Feedback = {
   success: (message) => toast.success(message),
   error: (message) => toast.error(message),
-  undoable: (message) =>
+  undoable: (message, options) =>
     new Promise((resolve) => {
       let settled = false;
       const settle = (commit: boolean) => {
@@ -31,9 +36,22 @@ const defaultFeedback: Feedback = {
         settled = true;
         resolve(commit);
       };
+      const second = options?.action;
       toast(message, {
         duration: UNDO_WINDOW_MS,
         action: { label: "Undo", onClick: () => settle(false) },
+        // Sonner's second button; it closes the toast without onDismiss.
+        ...(second === undefined
+          ? {}
+          : {
+              cancel: {
+                label: second.label,
+                onClick: () => {
+                  settle(true);
+                  second.onClick();
+                },
+              },
+            }),
         onAutoClose: () => settle(true),
         onDismiss: () => settle(true),
       });

@@ -246,3 +246,23 @@ export function decideThreadUpdate(input: {
     }),
   };
 }
+
+/**
+ * What adding a Standalone Note to a Thread does to the Thread's Follow-up
+ * date: the earlier date wins. A Note dated before the Thread's date, or a
+ * dated Note on an undated Thread, brings the Thread back at the Note's date —
+ * time of day included, and even when that date has already passed — and earns
+ * the same entry as any Follow-up change. Otherwise the Note's date is dropped
+ * and the Thread's date is left alone, so nothing comes back later than the
+ * person asked for.
+ */
+export function decideAddNoteToThread(
+  thread: ThreadChangeState,
+  note: { followUp?: number },
+): ThreadUpdateDecision {
+  const earlier =
+    note.followUp !== undefined &&
+    (thread.followUp === undefined || note.followUp < thread.followUp);
+  const patch: ThreadPatch = earlier ? { followUp: note.followUp } : {};
+  return { patch, logs: buildThreadPatchLogEntries(thread, patch) };
+}

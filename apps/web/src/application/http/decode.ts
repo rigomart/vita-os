@@ -9,6 +9,7 @@ import type {
   Move,
   MoveId,
   Note,
+  NoteAddedToThread,
   NoteId,
   NotePage,
   Thread,
@@ -283,6 +284,18 @@ export function decodeThreadNote(value: unknown): ThreadNote | undefined {
 
 export function decodeThreadNoteList(value: unknown): ThreadNote[] | undefined {
   return decodeList(value, decodeThreadNote);
+}
+
+export function decodeNoteAddedToThread(
+  value: unknown,
+): NoteAddedToThread | undefined {
+  if (!isObject(value)) return undefined;
+
+  const thread = decodeThread(value.thread);
+  const threadNote = decodeThreadNote(value.threadNote);
+  if (thread === undefined || threadNote === undefined) return undefined;
+
+  return { thread, threadNote };
 }
 
 export function decodeActivityLogEntry(
