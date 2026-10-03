@@ -83,3 +83,9 @@ export function joinedColumns(
   }
   return columns;
 }
+
+/**
+ * A condition a workflow adds to another feature's statement, so that statement
+ * writes only when the workflow's own records allow it.
+ */
+export type SqlCondition = { readonly sql: string; readonly binds: SqlValue[] };

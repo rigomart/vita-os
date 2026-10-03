@@ -1,6 +1,6 @@
 # Vita OS: Product Direction
 
-> Last update: 2026/09/28. Replaces the direction of 2025/12/01.
+> Last update: 2026/10/02. Replaces the direction of 2025/12/01.
 
 This document says what Vita OS is for and where it is going. `CONTEXT.md` owns the vocabulary and the exact rules; `docs/adr/` records each decision. When this document and either of those disagree, they win and this document is stale.
 
@@ -90,6 +90,8 @@ A plain Open Thread, with no Moves and no Follow-up date, is valid. It means the
 
 A body-only capture, valid the moment it is saved: a fact, a thought, or an action. It needs no classification and no processing. It may carry a **Follow-up date**, which brings it back into view on the Dashboard. A Note is Open or Done; Done Notes stay in a collapsed history.
 
+A Note that turns out to belong to a situation can be added to an Open Thread, or start a new one, from its Note view. It keeps its body and creation time, and the earlier Follow-up date wins. Nothing prompts it: a Note with no Thread is complete (ADR 0030).
+
 ### Area
 
 An optional label naming the part of life a Thread concerns: Family Health, Career, Home. It is a name and an icon. It has no state, no page, and no effect on attention. Its one job is to filter the Dashboard to one part of life.
@@ -151,9 +153,8 @@ The first direction (2025/12/01) described a life-domain dashboard: Areas with a
 Ordered by how directly they serve the thesis. None is committed; each needs a spec before work starts.
 
 1. **Reach Resolved Threads again.** The Area pages were the only place resolved Threads were listed. Since ADR 0021 removed them, a resolved Thread is reachable only by its URL, and its history is effectively lost. The palette, or a small resolved list, needs a way back to find and reopen them.
-2. **Connect a Note to a Thread.** A Standalone Note that turns out to be part of a situation has no path into a Thread. Starting a Thread from a Note, or moving a Note into one as a Thread Note, closes the gap between capture and continuity. `CONTEXT.md` currently marks this out of scope.
-3. **Watch for recurring Follow-up dates.** ADR 0021 makes "a Thread with a Follow-up date" the answer for periodic reviews. If resetting the same Follow-up date by hand becomes routine, that is the evidence to build recurrence. Until then, no recurrence engine.
-4. **Cross-device freshness stays parked** (issue #342) until normal use shows that refresh on focus is not enough.
+2. **Watch for recurring Follow-up dates.** ADR 0021 makes "a Thread with a Follow-up date" the answer for periodic reviews. If resetting the same Follow-up date by hand becomes routine, that is the evidence to build recurrence. Until then, no recurrence engine.
+3. **Cross-device freshness stays parked** (issue #342) until normal use shows that refresh on focus is not enough.
 
 ---
 

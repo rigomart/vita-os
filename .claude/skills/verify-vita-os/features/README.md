@@ -33,6 +33,7 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 - [Capture a note](./capture-note.md) covers the dock button, the Q shortcut, and the command palette, plus persistence.
 - [Note view](./note-view.md) covers Read/Write over one draft, task checkboxes, inline discard, Delete with Undo, previews, and nested phone drawers.
 - [Thread Notes](./thread-notes.md) covers capture, editing, completion/history, reopening, and persisted deletion inside a Thread.
+- [Add a Note to a Thread](./add-to-thread.md) covers Add to thread… with its date preview, Undo and Open thread, and New thread from note.
 - [Create a thread](./create-thread.md) covers the New thread dialog and the thread pane it opens.
 - [Resolved Threads](./resolved-threads.md) covers the palette's Resolved chip, history search and resolution ordering, opening in place, and Reopen in the pane and drawer.
 - [Moves](./moves.md) covers adding, focusing, and completing a Move in the thread pane, the drawer, and the Dashboard card.

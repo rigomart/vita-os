@@ -56,6 +56,7 @@ export { requireNonBlankText } from "./text";
 export {
   buildThreadLifecyclePatch,
   buildThreadPatchLogEntries,
+  decideAddNoteToThread,
   decideThreadUpdate,
   sanitizeThreadPatch,
   type ThreadChangeState,

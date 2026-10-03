@@ -1,7 +1,11 @@
 import type { Thread, ThreadDetail } from "@vita-os/contracts";
 import type { AutoActivityLogEntry, ThreadPatch } from "@vita-os/core";
 
-import type { SqlExpression, SqlValue } from "../../platform/d1/statements";
+import type {
+  SqlCondition,
+  SqlExpression,
+  SqlValue,
+} from "../../platform/d1/statements";
 import type { RequestScope } from "../../platform/request-scope";
 import type { AreaRow } from "../areas/rows";
 import type { ThreadRow } from "./rows";
@@ -21,6 +25,36 @@ export type ThreadChange = {
   patch: ThreadPatch;
   logs: AutoActivityLogEntry[];
 };
+
+export type NewThread = {
+  title: string;
+  slug: string;
+  summary?: string;
+  areaId?: string;
+};
+
+export type ThreadChangeInput = {
+  threadId: string;
+  expectedRevision: number;
+  change: ThreadChange;
+  guard?: SqlCondition;
+  stampActivity?: boolean;
+};
+
+/**
+ * One Thread change, prepared but not yet sent: the statements `writeChange`
+ * batches, for a workflow that must write them in the same batch as its own.
+ */
+export interface PreparedThreadChange {
+  statements: D1PreparedStatement[];
+  /**
+   * Stamped on the Thread only when the change is written, so a later
+   * statement in the same batch can make itself conditional on the change.
+   */
+  changeToken: string;
+  /** The Thread as written, from these statements' results; `null` if the race was lost. */
+  settle(results: D1Result<ThreadRow>[]): Thread | null;
+}
 
 /** A create or rename lost its slug to another of the owner's Threads. */
 export function isThreadSlugTaken(error: unknown): boolean {
@@ -45,6 +79,151 @@ const PATCH_COLUMNS = {
  * else's Thread read the same: `null`.
  */
 export function threadStorage({ db, clock, actorId }: RequestScope) {
+  /**
+   * The insert of a new Thread, not yet sent. `guard` adds a composing
+   * workflow's own condition, so the Thread is created only when it holds.
+   */
+  function prepareInsert(
+    thread: NewThread,
+    guard?: SqlCondition,
+  ): { threadId: string; statement: D1PreparedStatement } {
+    const threadId = clock.newId();
+    const statement = db
+      .prepare(
+        `INSERT INTO threads (
+           id, user_id, area_id, title, slug, summary, sort_order, state,
+           created_at, revision
+         )
+         SELECT ?, ?, ?, ?, ?, ?,
+                (SELECT COALESCE(MAX(sort_order) + 1, 0)
+                 FROM threads WHERE user_id = ?),
+                'open', ?, 0
+         WHERE (? IS NULL
+                OR EXISTS (SELECT 1 FROM areas WHERE id = ? AND user_id = ?))${
+                  guard === undefined ? "" : ` AND ${guard.sql}`
+                }
+         RETURNING ${THREAD_COLUMNS}`,
+      )
+      .bind(
+        threadId,
+        actorId,
+        thread.areaId ?? null,
+        thread.title,
+        thread.slug,
+        thread.summary ?? null,
+        actorId,
+        clock.now(),
+        thread.areaId ?? null,
+        thread.areaId ?? null,
+        actorId,
+        ...(guard?.binds ?? []),
+      );
+
+    return { threadId, statement };
+  }
+
+  /**
+   * The statements of one Thread change, not yet sent.
+   *
+   * The update is conditional on the revision the change was decided against
+   * and stamps a fresh change token. Each entry is inserted only from the
+   * Thread row carrying that token, so a lost race writes neither the patch
+   * nor a single orphan entry. `guard` adds a composing workflow's own
+   * condition to the update; `stampActivity` stamps the last activity even
+   * when the change earns no entry, with nothing to quote.
+   */
+  function prepareChange(input: ThreadChangeInput): PreparedThreadChange {
+    const { patch, logs } = input.change;
+    const changedAt = clock.now();
+    const changeToken = clock.newId();
+    const lastLog = logs.at(-1);
+
+    const columns: Record<string, SqlValue | SqlExpression | undefined> = {};
+    for (const [field, column] of Object.entries(PATCH_COLUMNS)) {
+      if (Object.hasOwn(patch, field)) {
+        columns[column] = patch[field as keyof typeof PATCH_COLUMNS] ?? null;
+      }
+    }
+    if (Object.hasOwn(patch, "moves")) {
+      columns.moves_json = serializeMoves(patch.moves);
+    }
+    if (lastLog !== undefined || input.stampActivity === true) {
+      columns.last_activity_at = changedAt;
+      columns.last_activity_content = lastLog?.content ?? null;
+    }
+    columns.revision = sqlExpression("revision + 1");
+    columns.last_change_token = changeToken;
+    const set = setClause(columns);
+
+    // A destination may disappear after the decision read it. Guard it in
+    // the write so the normal re-read reports the missing Area without a
+    // foreign-key failure or any Activity Log entries. Removing the label
+    // has no destination to guard.
+    const areaCondition =
+      patch.areaId === undefined
+        ? ""
+        : " AND EXISTS (SELECT 1 FROM areas WHERE id = ? AND user_id = ?)";
+    const guardCondition =
+      input.guard === undefined ? "" : ` AND ${input.guard.sql}`;
+    const statements = [
+      db
+        .prepare(
+          `UPDATE threads
+           SET ${set.sql}
+           WHERE user_id = ? AND id = ? AND revision = ?${areaCondition}${guardCondition}
+           RETURNING ${THREAD_COLUMNS}`,
+        )
+        .bind(
+          ...set.binds,
+          actorId,
+          input.threadId,
+          input.expectedRevision,
+          ...(patch.areaId === undefined ? [] : [patch.areaId, actorId]),
+          ...(input.guard?.binds ?? []),
+        ),
+      ...logs.map((log) =>
+        db
+          .prepare(
+            `INSERT INTO activity_log_entries (
+               id, user_id, thread_id, type, content, previous_value,
+               new_value, created_at
+             )
+             SELECT ?, user_id, id, ?, ?, ?, ?, ?
+             FROM threads
+             WHERE id = ? AND user_id = ? AND last_change_token = ?`,
+          )
+          .bind(
+            clock.newId(),
+            log.type,
+            log.content,
+            log.previousValue ?? null,
+            log.newValue ?? null,
+            changedAt,
+            input.threadId,
+            actorId,
+            changeToken,
+          ),
+      ),
+    ];
+
+    return {
+      statements,
+      changeToken,
+      settle([update, ...inserts]) {
+        const written = update?.results.at(0);
+        if (written === undefined) return null;
+
+        if (inserts.some((insert) => insert.meta.changes !== 1)) {
+          throw new Error(
+            "Thread change wrote an unexpected number of log entries",
+          );
+        }
+
+        return toThread(written);
+      },
+    };
+  }
+
   return {
     async listOpen(): Promise<Thread[]> {
       const result = await db
@@ -137,140 +316,24 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
      * created at once cannot claim the same position. `null` means the Area is
      * missing or belongs to somebody else; throws when the slug is taken.
      */
-    async insert(thread: {
-      title: string;
-      slug: string;
-      summary?: string;
-      areaId?: string;
-    }): Promise<Thread | null> {
-      const row = await db
-        .prepare(
-          `INSERT INTO threads (
-             id, user_id, area_id, title, slug, summary, sort_order, state,
-             created_at, revision
-           )
-           SELECT ?, ?, ?, ?, ?, ?,
-                  (SELECT COALESCE(MAX(sort_order) + 1, 0)
-                   FROM threads WHERE user_id = ?),
-                  'open', ?, 0
-           WHERE ? IS NULL
-              OR EXISTS (SELECT 1 FROM areas WHERE id = ? AND user_id = ?)
-           RETURNING ${THREAD_COLUMNS}`,
-        )
-        .bind(
-          clock.newId(),
-          actorId,
-          thread.areaId ?? null,
-          thread.title,
-          thread.slug,
-          thread.summary ?? null,
-          actorId,
-          clock.now(),
-          thread.areaId ?? null,
-          thread.areaId ?? null,
-          actorId,
-        )
-        .first<ThreadRow>();
-
+    async insert(thread: NewThread): Promise<Thread | null> {
+      const row = await prepareInsert(thread).statement.first<ThreadRow>();
       return row === null ? null : toThread(row);
     },
+
+    prepareInsert,
 
     /**
      * One atomic Thread change: the patch, the revision bump, the denormalized
      * last-activity stamp, and every Activity Log entry the change earned.
-     *
-     * The update is conditional on the revision the change was decided against
-     * and stamps a fresh change token. Each entry is inserted only from the Thread row carrying
-     * that token, so a lost race writes neither the patch nor a single orphan
-     * entry. `null` means the race was lost; throws when a new slug is taken.
+     * `null` means the race was lost; throws when a new slug is taken.
      */
-    async writeChange(input: {
-      threadId: string;
-      expectedRevision: number;
-      change: ThreadChange;
-    }): Promise<Thread | null> {
-      const { patch, logs } = input.change;
-      const changedAt = clock.now();
-      const changeToken = clock.newId();
-      const lastLog = logs.at(-1);
-
-      const columns: Record<string, SqlValue | SqlExpression | undefined> = {};
-      for (const [field, column] of Object.entries(PATCH_COLUMNS)) {
-        if (Object.hasOwn(patch, field)) {
-          columns[column] = patch[field as keyof typeof PATCH_COLUMNS] ?? null;
-        }
-      }
-      if (Object.hasOwn(patch, "moves")) {
-        columns.moves_json = serializeMoves(patch.moves);
-      }
-      if (lastLog !== undefined) {
-        columns.last_activity_at = changedAt;
-        columns.last_activity_content = lastLog.content;
-      }
-      columns.revision = sqlExpression("revision + 1");
-      columns.last_change_token = changeToken;
-      const set = setClause(columns);
-
-      // A destination may disappear after the decision read it. Guard it in
-      // the write so the normal re-read reports the missing Area without a
-      // foreign-key failure or any Activity Log entries. Removing the label
-      // has no destination to guard.
-      const areaCondition =
-        patch.areaId === undefined
-          ? ""
-          : " AND EXISTS (SELECT 1 FROM areas WHERE id = ? AND user_id = ?)";
-      const statements = [
-        db
-          .prepare(
-            `UPDATE threads
-             SET ${set.sql}
-             WHERE user_id = ? AND id = ? AND revision = ?${areaCondition}
-             RETURNING ${THREAD_COLUMNS}`,
-          )
-          .bind(
-            ...set.binds,
-            actorId,
-            input.threadId,
-            input.expectedRevision,
-            ...(patch.areaId === undefined ? [] : [patch.areaId, actorId]),
-          ),
-        ...logs.map((log) =>
-          db
-            .prepare(
-              `INSERT INTO activity_log_entries (
-                 id, user_id, thread_id, type, content, previous_value,
-                 new_value, created_at
-               )
-               SELECT ?, user_id, id, ?, ?, ?, ?, ?
-               FROM threads
-               WHERE id = ? AND user_id = ? AND last_change_token = ?`,
-            )
-            .bind(
-              clock.newId(),
-              log.type,
-              log.content,
-              log.previousValue ?? null,
-              log.newValue ?? null,
-              changedAt,
-              input.threadId,
-              actorId,
-              changeToken,
-            ),
-        ),
-      ];
-
-      const [update, ...inserts] = await db.batch<ThreadRow>(statements);
-      const written = update.results.at(0);
-      if (written === undefined) return null;
-
-      if (inserts.some((insert) => insert.meta.changes !== 1)) {
-        throw new Error(
-          "Thread change wrote an unexpected number of log entries",
-        );
-      }
-
-      return toThread(written);
+    async writeChange(input: ThreadChangeInput): Promise<Thread | null> {
+      const prepared = prepareChange(input);
+      return prepared.settle(await db.batch<ThreadRow>(prepared.statements));
     },
+
+    prepareChange,
 
     /**
      * Delete a Thread, the Activity Log it accumulated, and the Notes captured

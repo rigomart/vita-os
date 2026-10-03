@@ -53,6 +53,8 @@ export function createFakeApplicationClient(
     markNoteDone: unconfigured,
     markNoteOpen: unconfigured,
     removeNote: unconfigured,
+    addNoteToThread: unconfigured,
+    createThreadFromNote: unconfigured,
 
     listOpenThreadNotes: unconfigured,
     getDoneThreadNotePage: unconfigured,

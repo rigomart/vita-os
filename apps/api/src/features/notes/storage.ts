@@ -59,6 +59,20 @@ export function noteStorage({ db, clock, actorId }: RequestScope) {
       return result.results.map(toNote);
     },
 
+    async find(noteId: string): Promise<Note | null> {
+      const row = await db
+        .prepare(
+          `SELECT ${NOTE_COLUMNS}
+           FROM notes
+           WHERE user_id = ? AND id = ?
+           LIMIT 1`,
+        )
+        .bind(actorId, noteId)
+        .first<NoteRow>();
+
+      return row === null ? null : toNote(row);
+    },
+
     /**
      * How many Open Notes there are. Read from the same index the collection
      * reads, so the navigation badge and the collection cannot disagree.

@@ -11,6 +11,7 @@ import {
   decodeAreaSummary,
   decodeCount,
   decodeNote,
+  decodeNoteAddedToThread,
   decodeNoteList,
   decodeNotePage,
   decodeThread,
@@ -307,6 +308,20 @@ export function createHttpApplicationClient({
         path("notes", input.noteId),
         undefined,
         decodeAcknowledgement,
+      ),
+    addNoteToThread: (input) =>
+      send(
+        "POST",
+        `${path("notes", input.noteId)}/add-to-thread`,
+        { threadId: input.threadId },
+        decodeNoteAddedToThread,
+      ),
+    createThreadFromNote: ({ noteId, ...thread }) =>
+      send(
+        "POST",
+        `${path("notes", noteId)}/new-thread`,
+        thread,
+        decodeNoteAddedToThread,
       ),
 
     /* Thread Notes */

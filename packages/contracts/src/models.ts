@@ -114,6 +114,15 @@ export interface ThreadNote {
 }
 
 /**
+ * A Standalone Note added to a Thread: the Thread as it now stands — its
+ * Follow-up date, activity, and revision — and the Thread Note the Note became.
+ */
+export interface NoteAddedToThread {
+  thread: Thread;
+  threadNote: ThreadNote;
+}
+
+/**
  * `next_move_change` is no longer written. Entries recorded before Moves
  * replaced the Next Move keep it, and read as they always did.
  */

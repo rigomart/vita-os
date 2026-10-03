@@ -14,6 +14,7 @@ import { useAreaFilterShortcuts } from "../navigation/use-area-filter-shortcuts"
 import { useCommandPaletteShortcut } from "../navigation/use-command-palette-shortcut";
 import { useCreateDialogs } from "../navigation/use-create-dialogs";
 import { useGlobalNewNoteShortcut } from "../navigation/use-global-new-note-shortcut";
+import { useOpenThreadInPlace } from "../navigation/use-open-thread-in-place";
 import { useOpenNoteCount } from "../notes/hooks";
 import { NoteDialog } from "../notes/note-view/note-dialog";
 import { useCreateNote } from "../notes/use-create-note";
@@ -32,6 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const createNote = useCreateNote();
   const createThread = useCreateThread();
   const dialogs = useCreateDialogs();
+  const openThreadInPlace = useOpenThreadInPlace();
   const inbox = useInboxSurface();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const areas = useAreas().data;
@@ -57,16 +59,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   // that Area; the dialog's chip can clear it before saving.
   const filter = readDashboardFilter(areaFilter, areas ?? []);
   const filteredAreaId = filter.kind === "area" ? filter.area._id : undefined;
-
-  const openThreadInPlace = (slug: string) => {
-    navigate({
-      to: ".",
-      search: (prev: ProductSearch): ProductSearch => ({
-        ...prev,
-        thread: slug,
-      }),
-    });
-  };
 
   // Close must leave the thread route when one is matched underneath, even if
   // the pane was showing a search-param thread on top of it — stripping only

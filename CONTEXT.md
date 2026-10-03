@@ -100,6 +100,8 @@ _Avoid_: Task list, project board, backlog.
 - A **Thread Note** belongs to exactly one **Thread** and never appears in the global **Notes** collection.
 - A visible **Note** is either **Open** or **Done**.
 - A **Standalone Note** has zero or one **Follow-up date**; a **Thread Note** has none because its **Thread** already has a **Follow-up date**.
+- Adding an Open **Standalone Note** to an Open **Thread** makes it a **Thread Note** there, with its body and creation time; it leaves the **Notes** collection. A **Done Note**, a **Thread Note**, and a **Resolved Thread** take no part. Adding is one-way.
+- When a **Standalone Note** is added to a **Thread**, the earlier **Follow-up date** wins: the **Thread** takes the Note's date, time included, when it has none or a later one; otherwise the Note's date is dropped. A **Thread** started from a Note takes the Note's date.
 - **Done Notes** remain available as collapsed **Notes** history in the MVP.
 - The **Notes** collection shows all visible **Notes**; **Follow-up date** affects emphasis, not whether the **Note** exists in Notes.
 - The **Notes** collection orders **Open Notes** in one flat run: past follow-up date, today, no date, then coming up. Past and future Notes are ordered by Follow-up date; today and undated Notes are newest-first. Done Notes are separate, most-recently-completed first.
@@ -145,11 +147,13 @@ _Avoid_: Task list, project board, backlog.
 - A **Thread Note** appears only on its parent **Thread** and has no **Follow-up date**.
 - Any **Note** can be marked **Done**, reopened, or permanently deleted from active Notes or completed history.
 - Creation time is preserved; last-edited time is retained going forward. An unknown historical edit time remains unknown.
-- Processing, conversion, and attaching an existing **Standalone Note** to a **Thread** are outside this version.
+- An Open **Standalone Note** can be added to an Open **Thread**, or start a new **Thread**, from the ⋯ menu of its **Note view**: Add to thread… or New thread from note (ADR 0030). Both are optional and never prompted; nothing suggests a Thread or counts Notes that have none.
+- Processing and conversion are outside this version.
 
 ## Activity Rules
 
 - Capturing a **Thread Note** updates its **Thread**'s last-activity date without adding an **Activity Log Entry**.
+- Adding a **Standalone Note** to a **Thread**, or starting a **Thread** from one, counts as capturing a **Thread Note**. It adds an **Activity Log** entry only when the Note's date changes the **Thread**'s **Follow-up date**, the same entry any Follow-up change adds.
 - Editing, completing, reopening, or deleting an existing **Thread Note** changes only the Note and does not update Thread activity.
 - Setting, changing, or intentionally clearing a **Thread**'s saved **Follow-up date** adds an **Activity Log** entry.
 - Completing any **Move**, focused or not, removes it and adds an **Activity Log** entry. Completing the **Focused Move** leaves the **Thread** unfocused: nothing is promoted. Completing every **Move** leaves the **Thread** open.
@@ -181,4 +185,5 @@ _Avoid_: Task list, project board, backlog.
 - "Project log" was the old term for the timeline on a **Thread**. Resolved: **Activity Log** is the automatic changelog; body-only manual continuity belongs in **Thread Notes**.
 - "Health status", later **Condition**, was the manual judgment on an **Area**, with a **Standard** to judge it against. Resolved by issue 371: both are removed. An Area is an optional label; a part of life that needs a periodic look gets a **Thread** with a **Follow-up date** (ADR 0021).
 - "Definition of Done" belongs to project-management language and is not a **Thread** concept. Resolved: use **Summary** or the **Activity Log** when context is needed.
+- "Move a Note to a Thread" was the first name for adding a **Standalone Note** to a **Thread**. Resolved by ADR 0030: the action is **Add to thread**, because **Move** names one useful action on a **Thread**. "Convert", "process", and "attach" stay out of the interface; a Note added to a Thread is not processed, it is one of the Thread's Notes.
 - "Stale Thread" is not part of the MVP domain language. Resolved: use the plain **Open Thread** group until there is a stronger rule.

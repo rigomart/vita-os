@@ -3,6 +3,7 @@ import { HttpServerError } from "effect/http";
 import { HttpApi, HttpApiError, HttpApiMiddleware } from "effect/http-api";
 
 import { ActivityLogApi } from "../../features/activity-log/api";
+import { AddToThreadApi } from "../../features/add-to-thread/api";
 import { AreasApi } from "../../features/areas/api";
 import { NotesApi } from "../../features/notes/api";
 import { ThreadNotesApi } from "../../features/thread-notes/api";
@@ -58,5 +59,6 @@ export const ApplicationApi = HttpApi.make("vita")
   .add(ThreadsApi)
   .add(ThreadNotesApi)
   .add(ActivityLogApi)
+  .add(AddToThreadApi)
   .middleware(SchemaErrors)
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" });

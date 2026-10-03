@@ -118,6 +118,11 @@ const client = {
   }),
   markNoteOpen: async () => ({ ok: true, value: note }),
   removeNote: async () => ({ ok: true, value: commandAcknowledged }),
+  addNoteToThread: async () => ({ ok: true, value: { thread, threadNote } }),
+  createThreadFromNote: async () => ({
+    ok: true,
+    value: { thread, threadNote },
+  }),
 
   listOpenThreadNotes: async () => ({ ok: true, value: [threadNote] }),
   getDoneThreadNotePage: async () => ({ ok: true, value: { entries: [] } }),

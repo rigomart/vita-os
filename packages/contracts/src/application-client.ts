@@ -5,6 +5,7 @@ import type {
   AreaIcon,
   AreaSummary,
   Note,
+  NoteAddedToThread,
   NotePage,
   Thread,
   ThreadDetail,
@@ -88,6 +89,17 @@ export interface FocusMoveInput extends MoveCommand {
   moveId: Clearable<MoveId>;
 }
 
+export interface AddNoteToThreadInput {
+  noteId: NoteId;
+  threadId: ThreadId;
+}
+
+export interface CreateThreadFromNoteInput {
+  noteId: NoteId;
+  title: string;
+  areaId?: AreaId;
+}
+
 export interface PageRequest {
   limit: number;
   cursor?: string;
@@ -164,6 +176,17 @@ export interface ApplicationClient {
   removeNote(input: {
     noteId: NoteId;
   }): Promise<OperationResult<CommandAcknowledgement>>;
+  /**
+   * Makes an Open Standalone Note a Thread Note on an Open Thread, keeping its
+   * body and creation time. The earlier Follow-up date wins.
+   */
+  addNoteToThread(
+    input: AddNoteToThreadInput,
+  ): Promise<OperationResult<NoteAddedToThread>>;
+  /** Starts a Thread whose first Thread Note is the Note, with its date. */
+  createThreadFromNote(
+    input: CreateThreadFromNoteInput,
+  ): Promise<OperationResult<NoteAddedToThread>>;
 
   /* Thread Notes */
   listOpenThreadNotes(input: {

@@ -2,6 +2,10 @@ import type { Note } from "@vita-os/contracts";
 
 import { useState } from "react";
 
+import { useOpenThreadInPlace } from "../../navigation/use-open-thread-in-place";
+import { AddToThreadDialog } from "../add-to-thread/add-to-thread-dialog";
+import { NewThreadFromNoteDialog } from "../add-to-thread/new-thread-from-note-dialog";
+import { useAddNoteToThreadWithUndo } from "../add-to-thread/use-add-note-to-thread-with-undo";
 import { useNoteRowActions } from "../note-row/use-note-row-actions";
 import { NoteDialog } from "./note-dialog";
 import { useDeleteNoteWithUndo } from "./use-delete-note-with-undo";
@@ -15,28 +19,61 @@ export function StandaloneNoteDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const [savedNote, setSavedNote] = useState(note);
+  // Adding the Note to a Thread steps aside from the Note view; cancelling
+  // returns to it unchanged.
+  const [adding, setAdding] = useState<"existing" | "new" | null>(null);
   const actions = useNoteRowActions(savedNote);
   const deleteWithUndo = useDeleteNoteWithUndo();
+  const openThread = useOpenThreadInPlace();
+  const addWithUndo = useAddNoteToThreadWithUndo(openThread);
 
   return (
-    <NoteDialog
-      open
-      onOpenChange={onOpenChange}
-      note={savedNote}
-      followUp={savedNote.followUp}
-      onSave={async (body) => {
-        const updated = await actions.saveBody(body);
-        setSavedNote(updated);
-      }}
-      onToggleDone={async () => {
-        const updated = await actions.toggleDone();
-        setSavedNote(updated);
-      }}
-      onDelete={() => void deleteWithUndo(actions.deleteNote)}
-      onSetWhen={async (when) => {
-        const updated = await actions.setWhen(when);
-        setSavedNote(updated);
-      }}
-    />
+    <>
+      <NoteDialog
+        open={adding === null}
+        onOpenChange={onOpenChange}
+        note={savedNote}
+        followUp={savedNote.followUp}
+        onSave={async (body) => {
+          const updated = await actions.saveBody(body);
+          setSavedNote(updated);
+        }}
+        onToggleDone={async () => {
+          const updated = await actions.toggleDone();
+          setSavedNote(updated);
+        }}
+        onDelete={() => void deleteWithUndo(actions.deleteNote)}
+        onAddToThread={() => setAdding("existing")}
+        onNewThread={() => setAdding("new")}
+        onSetWhen={async (when) => {
+          const updated = await actions.setWhen(when);
+          setSavedNote(updated);
+        }}
+      />
+      {adding === "existing" && (
+        <AddToThreadDialog
+          note={savedNote}
+          onOpenChange={(open) => {
+            if (!open) setAdding(null);
+          }}
+          onChoose={(thread) => {
+            void addWithUndo(savedNote, thread);
+            onOpenChange(false);
+          }}
+        />
+      )}
+      {adding === "new" && (
+        <NewThreadFromNoteDialog
+          note={savedNote}
+          onOpenChange={(open) => {
+            if (!open) setAdding(null);
+          }}
+          onCreated={(slug) => {
+            onOpenChange(false);
+            openThread(slug);
+          }}
+        />
+      )}
+    </>
   );
 }

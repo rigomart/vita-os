@@ -1,4 +1,4 @@
-import type { MoveId, ThreadId } from "@vita-os/contracts";
+import type { AreaId, MoveId, NoteId, ThreadId } from "@vita-os/contracts";
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -251,5 +251,65 @@ describe("createHttpApplicationClient", () => {
         retryable: false,
       },
     });
+  });
+
+  it("adds a Note to a Thread and starts a Thread from a Note", async () => {
+    const added = {
+      thread: detail.thread,
+      threadNote: {
+        _id: "thread-note-1",
+        body: "Clinic opens at nine",
+        state: "open",
+        createdAt: 1_600_000_000_000,
+        updatedAt: 1_600_000_000_000,
+      },
+    };
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse(added))
+      .mockResolvedValueOnce(jsonResponse(added, 201))
+      .mockResolvedValueOnce(jsonResponse({ thread: detail.thread }));
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      fetchImpl,
+    });
+
+    await expect(
+      client.addNoteToThread({
+        noteId: "note/1" as NoteId,
+        threadId: "thread/with/slashes" as ThreadId,
+      }),
+    ).resolves.toEqual({ ok: true, value: added });
+    await expect(
+      client.createThreadFromNote({
+        noteId: "note/1" as NoteId,
+        title: "Book checkup",
+        areaId: "area-1" as AreaId,
+      }),
+    ).resolves.toEqual({ ok: true, value: added });
+    await expect(
+      client.addNoteToThread({
+        noteId: "note-1" as NoteId,
+        threadId: "thread-1" as ThreadId,
+      }),
+    ).resolves.toMatchObject({ ok: false, error: { code: "unexpected" } });
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      1,
+      "https://api.test/v1/notes/note%2F1/add-to-thread",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({ threadId: "thread/with/slashes" }),
+      }),
+    );
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      "https://api.test/v1/notes/note%2F1/new-thread",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ title: "Book checkup", areaId: "area-1" }),
+      }),
+    );
   });
 });
