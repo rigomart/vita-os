@@ -3,10 +3,10 @@ import type { ThreadId } from "@vita-os/contracts";
 import { useDeleteNoteWithUndo } from "../../notes/note-view/use-delete-note-with-undo";
 import {
   useCaptureThreadNote,
-  useCompleteThreadNote,
+  useArchiveThreadNote,
   useDiscardThreadNote,
-  useDoneThreadNotes,
-  useReopenThreadNote,
+  useArchivedThreadNotes,
+  useUnarchiveThreadNote,
   useThreadNotes,
   useUpdateThreadNoteBody,
 } from "../../thread-notes/hooks";
@@ -22,11 +22,11 @@ export function ThreadNotesSection({
   threadTitle: string;
 }) {
   const openNotes = useThreadNotes(threadId);
-  const doneNotes = useDoneThreadNotes(threadId, PAGE_SIZE);
+  const archivedNotes = useArchivedThreadNotes(threadId, PAGE_SIZE);
   const capture = useCaptureThreadNote();
   const updateBody = useUpdateThreadNoteBody();
-  const complete = useCompleteThreadNote();
-  const reopen = useReopenThreadNote();
+  const archive = useArchiveThreadNote();
+  const unarchive = useUnarchiveThreadNote();
   const discard = useDiscardThreadNote();
   const deleteWithUndo = useDeleteNoteWithUndo();
 
@@ -35,12 +35,16 @@ export function ThreadNotesSection({
       threadTitle={threadTitle}
       // A Thread that is gone reads as no Notes, the way it always did.
       notes={openNotes.data ?? undefined}
-      doneNotes={doneNotes.notes}
-      isDoneExhausted={!doneNotes.hasNextPage && !doneNotes.isPending}
-      isDoneInitialLoading={doneNotes.isPending}
-      canLoadMoreDone={doneNotes.hasNextPage && !doneNotes.isFetchingNextPage}
-      isLoadingMoreDone={doneNotes.isFetchingNextPage}
-      onLoadMoreDone={() => void doneNotes.fetchNextPage()}
+      archivedNotes={archivedNotes.notes}
+      isArchivedExhausted={
+        !archivedNotes.hasNextPage && !archivedNotes.isPending
+      }
+      isArchivedInitialLoading={archivedNotes.isPending}
+      canLoadMoreArchived={
+        archivedNotes.hasNextPage && !archivedNotes.isFetchingNextPage
+      }
+      isLoadingMoreArchived={archivedNotes.isFetchingNextPage}
+      onLoadMoreArchived={() => void archivedNotes.fetchNextPage()}
       onCreate={async (body) => {
         await capture.mutateAsync({ threadId, body });
       }}
@@ -51,9 +55,12 @@ export function ThreadNotesSection({
           body,
         });
       }}
-      onToggleDone={async (note) => {
-        if (note.state === "done") await reopen.mutateAsync({ threadId, note });
-        else await complete.mutateAsync({ threadId, threadNoteId: note._id });
+      onToggleArchived={async (note) => {
+        if (note.state === "done") {
+          await unarchive.mutateAsync({ threadId, note });
+        } else {
+          await archive.mutateAsync({ threadId, threadNoteId: note._id });
+        }
       }}
       onRemove={(note) =>
         void deleteWithUndo((undoWindow) =>

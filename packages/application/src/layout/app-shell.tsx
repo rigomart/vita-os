@@ -1,22 +1,22 @@
+import type { Note } from "@vita-os/contracts";
 import type { CSSProperties, ReactNode } from "react";
 
 import { useMatch, useNavigate, useSearch } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { ProductSearch } from "../navigation/search-params";
 
 import { useAreas } from "../areas/hooks";
 import { ManageAreasDialog } from "../areas/manage-areas/manage-areas-dialog";
-import { readDashboardFilter } from "../dashboard/components/dashboard-filter-model";
-import { InboxSurface } from "../inbox/surface/inbox-surface";
-import { useInboxSurface } from "../inbox/surface/use-inbox-surface";
+import { filteredAreaId } from "../dashboard/components/dashboard-filter-model";
+import { toNotesFilter } from "../navigation/search-params";
 import { useAreaFilterShortcuts } from "../navigation/use-area-filter-shortcuts";
 import { useCommandPaletteShortcut } from "../navigation/use-command-palette-shortcut";
 import { useCreateDialogs } from "../navigation/use-create-dialogs";
 import { useGlobalNewNoteShortcut } from "../navigation/use-global-new-note-shortcut";
 import { useOpenThreadInPlace } from "../navigation/use-open-thread-in-place";
-import { useOpenNoteCount } from "../notes/hooks";
 import { NoteDialog } from "../notes/note-view/note-dialog";
+import { StandaloneNoteDialog } from "../notes/note-view/standalone-note-dialog";
 import { useCreateNote } from "../notes/use-create-note";
 import { NewThreadDialog } from "../threads/new-thread/new-thread-dialog";
 import { ThreadDetailView } from "../threads/thread-detail/thread-detail-view";
@@ -28,14 +28,14 @@ import { CommandPalette } from "./command-palette";
 const RAIL_WIDTH = "clamp(28rem,34vw,34rem)";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const noteCount = useOpenNoteCount().data;
   const navigate = useNavigate();
   const createNote = useCreateNote();
   const createThread = useCreateThread();
   const dialogs = useCreateDialogs();
   const openThreadInPlace = useOpenThreadInPlace();
-  const inbox = useInboxSurface();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // An Archived Note chosen from the palette's History, read over the page.
+  const [historyNote, setHistoryNote] = useState<Note | null>(null);
   const areas = useAreas().data;
 
   useGlobalNewNoteShortcut(dialogs.openNewNote);
@@ -45,8 +45,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   // The thread pane opens from two sources: the global `?thread=<slug>`
   // search param (any page, in place) or the /threads/$threadSlug deep link.
   // When both are present, the search param wins.
-  const { thread: searchThreadSlug, area: areaFilter }: ProductSearch =
-    useSearch({ from: "/_authenticated" });
+  const {
+    thread: searchThreadSlug,
+    area,
+    show,
+    inbox,
+  }: ProductSearch = useSearch({ from: "/_authenticated" });
   const threadRouteMatch = useMatch({
     from: "/_authenticated/threads/$threadSlug",
     shouldThrow: false,
@@ -55,10 +59,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   const openThreadSlug =
     searchThreadSlug ?? threadRouteMatch?.params.threadSlug;
 
+  // `?inbox=true` summoned the Notes panel over any page. Notes now live on
+  // the Dashboard, so the old address lands there filtered to Notes, keeping
+  // a Thread that was open.
+  useEffect(() => {
+    if (inbox !== true) return;
+    void navigate({
+      to: "/",
+      search: (prev: ProductSearch): ProductSearch =>
+        toNotesFilter({ ...prev, thread: openThreadSlug }),
+      replace: true,
+    });
+  }, [inbox, navigate, openThreadSlug]);
+
   // A Thread captured while the Dashboard is filtered to an Area starts in
-  // that Area; the dialog's chip can clear it before saving.
-  const filter = readDashboardFilter(areaFilter, areas ?? []);
-  const filteredAreaId = filter.kind === "area" ? filter.area._id : undefined;
+  // that Area; the dialog's chip can clear it before saving. The Notes filter
+  // is not an Area, so it gives none.
+  const createForAreaId = filteredAreaId({ area, show }, areas ?? []);
 
   // Close must leave the thread route when one is matched underneath, even if
   // the pane was showing a search-param thread on top of it — stripping only
@@ -100,7 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     // The thread rail covers the page rather than pushing it (ADR 0023). The
     // page keeps its full width; only the controls anchored to the right edge
-    // — the chrome and the Notes panel — clear the rail, by `--rail`.
+    // — the chrome — clear the rail, by `--rail`.
     <div
       className="flex min-h-svh"
       style={
@@ -111,14 +128,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     >
       <div className="flex min-h-svh min-w-0 flex-1 flex-col">
         <AppChrome
-          noteCount={noteCount}
-          inboxOpen={inbox.isOpen}
-          onToggleInbox={inbox.toggle}
           onNewNote={dialogs.openNewNote}
-          onNewThread={() => dialogs.openCreateThread(filteredAreaId)}
+          onNewThread={() => dialogs.openCreateThread(createForAreaId)}
           onOpenPalette={() => setPaletteOpen(true)}
         />
-        <InboxSurface />
         {/* The chrome floats, so this padding is what clears it. */}
         <main className="w-full min-w-0 flex-1 px-4 pt-20 pb-24">
           {children}
@@ -139,9 +152,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           open
           onOpenChange={setPaletteOpen}
           onNewNote={dialogs.openNewNote}
-          onNewThread={() => dialogs.openCreateThread(filteredAreaId)}
+          onNewThread={() => dialogs.openCreateThread(createForAreaId)}
           onManageAreas={dialogs.openManageAreas}
-          onOpenInbox={inbox.open}
+          onOpenNote={setHistoryNote}
+        />
+      )}
+      {historyNote && (
+        <StandaloneNoteDialog
+          key={historyNote._id}
+          note={historyNote}
+          onOpenChange={(open) => {
+            if (!open) setHistoryNote(null);
+          }}
         />
       )}
 

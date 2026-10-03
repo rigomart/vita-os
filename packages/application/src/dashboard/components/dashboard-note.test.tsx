@@ -1,19 +1,19 @@
 import type { Note, NoteId } from "@vita-os/contracts";
 
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { render, screen, waitFor } from "../../test/render-with-providers";
 import { DashboardNote } from "./dashboard-note";
 
 const mocks = vi.hoisted(() => ({
-  completeNote: vi.fn(),
+  archiveNote: vi.fn(),
   updateNoteBody: vi.fn(),
   updateNoteWhen: vi.fn(),
 }));
 
-vi.mock("../../notes/use-complete-note", () => ({
-  useCompleteNote: () => mocks.completeNote,
+vi.mock("../../notes/use-archive-note", () => ({
+  useArchiveNote: () => mocks.archiveNote,
 }));
 
 vi.mock("../../notes/use-update-note-body", () => ({
@@ -38,7 +38,7 @@ function note(body: string, fields: Partial<Note> = {}): Note {
 
 describe("DashboardNote", () => {
   beforeEach(() => {
-    mocks.completeNote.mockReset();
+    mocks.archiveNote.mockReset();
     mocks.updateNoteBody.mockReset();
     mocks.updateNoteWhen.mockReset();
   });
@@ -69,10 +69,11 @@ describe("DashboardNote", () => {
     expect(onOpenNote).toHaveBeenCalledExactlyOnceWith(saved);
   });
 
-  it("still completes the note from the footer", async () => {
+  it("archives the note from the footer and says so", async () => {
     const user = userEvent.setup();
     const onOpenNote = vi.fn();
-    render(
+    mocks.archiveNote.mockResolvedValue(undefined);
+    const { feedback } = render(
       <DashboardNote
         currentDate={currentDate}
         note={note("Water the plants")}
@@ -80,9 +81,15 @@ describe("DashboardNote", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Mark note done" }));
+    expect(
+      screen.queryByRole("button", { name: /done/i }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Archive note" }));
 
-    expect(mocks.completeNote).toHaveBeenCalledExactlyOnceWith("note1");
+    expect(mocks.archiveNote).toHaveBeenCalledExactlyOnceWith("note1");
+    await waitFor(() =>
+      expect(feedback.success).toHaveBeenCalledWith("Note archived"),
+    );
     expect(mocks.updateNoteBody).not.toHaveBeenCalled();
     expect(onOpenNote).not.toHaveBeenCalled();
   });

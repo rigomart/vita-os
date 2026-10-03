@@ -88,13 +88,17 @@ A plain Open Thread, with no Moves and no Follow-up date, is valid. It means the
 
 ### Standalone Note
 
-A body-only capture, valid the moment it is saved: a fact, a thought, or an action. It needs no classification and no processing. It may carry a **Follow-up date**, which brings it back into view on the Dashboard. A Note is Open or Done; Done Notes stay in a collapsed history.
+A body-only capture, valid the moment it is saved: a fact, a thought, or an action. It needs no classification and no processing. It lives on the Dashboard, and it may carry a **Follow-up date**, which places it in a time column instead of the margin. A Note is Open or **Archived**: archiving puts it away unchanged, and it stays findable by its words in the palette's **History**. Notes are archived rather than "done" because most of them are information or thoughts, which are put away, not finished (ADR 0031).
 
 A Note that turns out to belong to a situation can be added to an Open Thread, or start a new one, from its Note view. It keeps its body and creation time, and the earlier Follow-up date wins. Nothing prompts it: a Note with no Thread is complete (ADR 0030).
 
 ### Area
 
 An optional label naming the part of life a Thread concerns: Family Health, Career, Home. It is a name and an icon. It has no state, no page, and no effect on attention. Its one job is to filter the Dashboard to one part of life.
+
+### History
+
+Finished things leave the Dashboard but not the product. The palette's **History** holds every Resolved Thread and every Archived Note, searchable, and opens either in place, where it can be reopened or unarchived (ADR 0029, ADR 0031).
 
 ---
 
@@ -109,7 +113,9 @@ The Dashboard lays every Open Thread and every open Standalone Note on one axis 
 
 Placement is derived from dates and from whether a Thread has Moves. The user never sets a status. A date outranks undated Moves, so a Thread with Moves and no Follow-up date leads the margin and never enters Now. Nothing is capped or hidden.
 
-The board can act on what it shows. A card completes the Move it displays and sets, changes, or clears the Follow-up date; a Note can be marked done or given a date. Everything else happens in Thread detail, which opens in place over the board.
+A row above the board filters it to one Area, to unlabeled Threads, or to Notes alone. Notes have no list of their own: the Notes filter is where to read them together.
+
+The board can act on what it shows. A card completes the Move it displays and sets, changes, or clears the Follow-up date; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
 
 The intended loop takes one to two minutes:
 
@@ -143,6 +149,7 @@ The first direction (2025/12/01) described a life-domain dashboard: Areas with a
 | One Next Move, then an Up Next queue | Peer Moves with an optional Focus | Most situations have no known order. The queue turned capture order into a priority the user never chose. | ADR 0022 |
 | A read-only list of status groups | Time columns with an unscheduled margin, actionable in place | One column wasted a desktop screen, and a board that cannot fix what it shows is always slightly wrong. | ADR 0017 |
 | Manual Activity Log entries | An automatic Activity Log plus Thread Notes | Prose and change history were mixed. Separating them keeps Notes editable and the changelog trustworthy. | ADR 0016 |
+| A Notes panel beside the board; Notes marked done | Notes on the Dashboard with a Notes filter; Notes archived and found in History | The panel listed the same Notes the board already showed. "Done" claimed a fact or a thought was a finished task. | ADR 0031 |
 
 **What was given up.** The app no longer shows a neglected part of life that has no Threads. A part of life that needs a periodic look gets a Thread with a Follow-up date, such as "Review finances" in two weeks.
 
@@ -152,9 +159,10 @@ The first direction (2025/12/01) described a life-domain dashboard: Areas with a
 
 Ordered by how directly they serve the thesis. None is committed; each needs a spec before work starts.
 
-1. **Reach Resolved Threads again.** The Area pages were the only place resolved Threads were listed. Since ADR 0021 removed them, a resolved Thread is reachable only by its URL, and its history is effectively lost. The palette, or a small resolved list, needs a way back to find and reopen them.
-2. **Watch for recurring Follow-up dates.** ADR 0021 makes "a Thread with a Follow-up date" the answer for periodic reviews. If resetting the same Follow-up date by hand becomes routine, that is the evidence to build recurrence. Until then, no recurrence engine.
-3. **Cross-device freshness stays parked** (issue #342) until normal use shows that refresh on focus is not enough.
+1. **Watch for recurring Follow-up dates.** ADR 0021 makes "a Thread with a Follow-up date" the answer for periodic reviews. If resetting the same Follow-up date by hand becomes routine, that is the evidence to build recurrence. Until then, no recurrence engine.
+2. **Cross-device freshness stays parked** (issue #342) until normal use shows that refresh on focus is not enough.
+
+Reaching Resolved Threads again, once an open direction, shipped as the palette's History (ADR 0029), which now holds Archived Notes too (ADR 0031).
 
 ---
 

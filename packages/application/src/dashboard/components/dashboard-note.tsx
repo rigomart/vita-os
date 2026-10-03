@@ -1,8 +1,10 @@
 import type { Note } from "@vita-os/contracts";
 
 import { markdownToPlainText } from "@vita-os/ui/components/markdown";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
+import { Archive } from "lucide-react";
 
-import { useCompleteNote } from "../../notes/use-complete-note";
+import { useArchiveNote } from "../../notes/use-archive-note";
 import { useUpdateNoteWhen } from "../../notes/use-update-note-when";
 import {
   BoardCard,
@@ -36,7 +38,11 @@ export function DashboardNote({
   onTray?: boolean;
   onOpenNote: (note: Note) => void;
 }) {
-  const completeNote = useCompleteNote();
+  const archiveNote = useArchiveNote();
+  // The card leaves at once; the toast says where the Note went.
+  const archive = useGuardedAsyncAction(() => archiveNote(note._id), {
+    successMessage: "Note archived",
+  });
   const updateNoteWhen = useUpdateNoteWhen();
 
   const when = note.followUp ?? undefined;
@@ -62,8 +68,9 @@ export function DashboardNote({
           <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-1">
             {!showsDate && followUp}
             <BoardCompleteButton
-              label="Mark note done"
-              onClick={() => void completeNote(note._id)}
+              icon={Archive}
+              label="Archive note"
+              onClick={() => void archive.run()}
             />
           </span>
         </>

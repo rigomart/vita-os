@@ -32,12 +32,13 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 - [Sign in](./sign-in.md) covers the email and password form, the session check, and the signed-out redirect.
 - [Capture a note](./capture-note.md) covers the dock button, the Q shortcut, and the command palette, plus persistence.
 - [Note view](./note-view.md) covers Read/Write over one draft, task checkboxes, inline discard, Delete with Undo, previews, and nested phone drawers.
-- [Thread Notes](./thread-notes.md) covers capture, editing, completion/history, reopening, and persisted deletion inside a Thread.
+- [Thread Notes](./thread-notes.md) covers capture, editing, archiving and its history, unarchiving, and persisted deletion inside a Thread.
 - [Add a Note to a Thread](./add-to-thread.md) covers Add to thread… with its date preview, Undo and Open thread, and New thread from note.
 - [Create a thread](./create-thread.md) covers the New thread dialog and the thread pane it opens.
-- [Resolved Threads](./resolved-threads.md) covers the palette's Resolved chip, history search and resolution ordering, opening in place, and Reopen in the pane and drawer.
+- [Resolved Threads](./resolved-threads.md) covers the Resolved threads group of the palette's History chip, its search and resolution ordering, opening in place, and Reopen in the pane and drawer.
+- [Notes on the Dashboard](./notes-on-the-dashboard.md) covers the Dashboard's Notes filter and its URL, the old Notes addresses, Archive and Unarchive, and finding Archived Notes in History by searching their bodies.
 - [Moves](./moves.md) covers adding, focusing, and completing a Move in the thread pane, the drawer, and the Dashboard card.
 - [Dashboard board](./dashboard-board.md) covers the dated lanes, the No date tray, the shared Thread and Note card, and the stacked layouts.
 - [Follow-up dates](./follow-up-dates.md) covers the shared date controls on Threads and standalone Notes, their Dashboard placement, and resolve/reopen behavior.
-- [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter by area row.
+- [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter the board row.
 - [Phone installation and sharing](./phone-installation.md) covers manifest/icons, shared Note capture through sign-in, retry, and persistence.

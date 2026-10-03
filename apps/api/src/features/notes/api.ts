@@ -11,12 +11,12 @@ import {
 import { Authentication } from "../../platform/auth/authenticated-scope";
 import {
   CommandAck,
-  PageQuery,
   Timestamp,
   ValidationMessage,
 } from "../../platform/http/schemas";
 import {
   CreateNoteBody,
+  DoneNotesQuery,
   NoteBody,
   NoteFollowUp,
   NoteStateBody,
@@ -51,7 +51,7 @@ export const NotesApi = HttpApiGroup.make("notes")
       success: Schema.Struct({ count: Timestamp }),
     }),
     HttpApiEndpoint.get("done", "/v1/notes/done", {
-      query: PageQuery,
+      query: DoneNotesQuery,
       success: NotePageSchema,
     }).annotate(ValidationMessage, "Invalid pagination."),
     HttpApiEndpoint.post("create", "/v1/notes", {

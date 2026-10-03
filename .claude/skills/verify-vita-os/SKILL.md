@@ -69,7 +69,7 @@ Files land in `.verify/evidence/<instance>/<run>/` (printed by `up` and `env`). 
 
 - Drive the real user path. Never call internal setters, test-only endpoints, or write to D1 to fake a state.
 - Capture the action and the resulting state, not only the final screen: `shot` before and after.
-- Drive every path your change touched. The thread pane is a side pane at 1280px wide and up, and a drawer below that, built from different components. `signin` pins a 1440×900 viewport. A change to thread pane, layout, or navigation code gets a second run in the drawer: `bun run verify browser -- set viewport 1024 768`, drive it, then `set viewport 1440 900`. The snapshot tells you which one you are in: the side pane is `complementary "<title>"`, the drawer is `dialog "<title>"`. Below 768px the dashboard columns and Notes panel change too. Name any path you changed but did not drive in your report.
+- Drive every path your change touched. The thread pane is a side pane at 1280px wide and up, and a drawer below that, built from different components. `signin` pins a 1440×900 viewport. A change to thread pane, layout, or navigation code gets a second run in the drawer: `bun run verify browser -- set viewport 1024 768`, drive it, then `set viewport 1440 900`. The snapshot tells you which one you are in: the side pane is `complementary "<title>"`, the drawer is `dialog "<title>"`. Below 768px the dashboard columns and the filter row (a dropdown) change too. Name any path you changed but did not drive in your report.
 - Toasts are transient and may not appear in the `.aria.txt` snapshot. The proof of a toast is the `wait --text "<toast>"` output. For an image, run `shot` immediately after that wait.
 - Vita updates optimistically. A new note or thread appears before the server confirms it. Prove a mutation with the server confirmation toast plus a reload and a read-only second view: the UI after reload and `verify d1`.
 - A check you could not run is `INCONCLUSIVE`, never a pass.
@@ -104,5 +104,5 @@ The feature map is only as good as its last update, and you are the one who upda
 - Saved Notes are read-only preview buttons named `Open note: <plain-text preview>`. Use `wait --text` for saved text and click the button to open the Note view. Its editor is `Note body` after choosing the `Write` tab.
 - Use `localhost`, never `127.0.0.1`. CORS allows exactly the instance's `http://localhost:<webPort>` origin.
 - "Continue with GitHub" and "Continue with Google" render but have no local credentials. Do not click them.
-- Keep a desktop viewport. Below 768px the Notes panel becomes a drawer and the "Later" and "No date" columns start collapsed.
+- Keep a desktop viewport. Below 768px the filter row folds into a dropdown and the "Later" and "No date" columns start collapsed.
 - The TanStack Router devtools toggle floats in a corner in dev. If a corner control will not click, check whether the toggle covers it.

@@ -305,6 +305,12 @@ describe("Notes through the HTTP client", () => {
       ok: true,
       value: { entries: [done] },
     });
+    await expect(
+      client.getDoneNotePage({ limit: 20, query: done.body.slice(0, 4) }),
+    ).resolves.toEqual({ ok: true, value: { entries: [done] } });
+    await expect(
+      client.getDoneNotePage({ limit: 20, query: "nothing like it" }),
+    ).resolves.toEqual({ ok: true, value: { entries: [] } });
 
     const reopened = await value(client.markNoteOpen({ noteId: note._id }));
     expect(reopened.state).toBe("open");

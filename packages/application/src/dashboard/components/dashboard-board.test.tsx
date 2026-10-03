@@ -25,7 +25,7 @@ const saved: Note = {
 };
 
 describe("DashboardBoard Note view", () => {
-  it("keeps the Note view open when completion removes its board card", async () => {
+  it("keeps the Note view open when archiving removes its board card", async () => {
     const user = userEvent.setup();
     const markNoteDone = vi.fn(async () => {
       rerender(
@@ -56,11 +56,11 @@ describe("DashboardBoard Note view", () => {
     expect(screen.getByRole("link", { name: "Clinic" })).toBeVisible();
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Mark done",
+        name: "Archive",
       }),
     );
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Reopen" })).toBeVisible(),
+      expect(screen.getByRole("button", { name: "Unarchive" })).toBeVisible(),
     );
     expect(screen.getByRole("dialog")).toBeVisible();
     expect(markNoteDone).toHaveBeenCalledExactlyOnceWith({ noteId: "note1" });

@@ -40,6 +40,15 @@ const thread = {
   createdAt: 0,
 } satisfies Thread;
 
+const archivedNote = {
+  _id: "note-archived" as NoteId,
+  body: "Passport photo sizes",
+  state: "done" as const,
+  completedAt: 1,
+  createdAt: 0,
+  updatedAt: 1,
+};
+
 const newNote = {
   _id: "note1" as NoteId,
   body: "Buy milk",
@@ -90,11 +99,6 @@ vi.mock("../hooks/use-thread-pane-viewport", () => ({
   useThreadPaneViewport: () => true,
 }));
 
-// Covered by its own tests; the shell cares only where it sits.
-vi.mock("../inbox/screens/inbox-screen", () => ({
-  InboxScreen: () => <p>inbox screen</p>,
-}));
-
 /**
  * The shell's own reads, as spies.
  *
@@ -105,6 +109,7 @@ type ReadSpies = {
   listAreas: Mock<ApplicationClient["listAreas"]>;
   listOpenThreads: Mock<ApplicationClient["listOpenThreads"]>;
   countOpenNotes: Mock<ApplicationClient["countOpenNotes"]>;
+  getDoneNotePage: Mock<ApplicationClient["getDoneNotePage"]>;
 };
 
 let reads: ReadSpies;
@@ -126,6 +131,10 @@ function renderShell() {
     countOpenNotes: vi.fn<ApplicationClient["countOpenNotes"]>(async () => ({
       ok: true,
       value: 0,
+    })),
+    getDoneNotePage: vi.fn<ApplicationClient["getDoneNotePage"]>(async () => ({
+      ok: true,
+      value: { entries: [archivedNote] },
     })),
   };
 
@@ -150,6 +159,7 @@ function renderShell() {
           value: { entries: [] },
         }),
         createNote: async () => ({ ok: true, value: newNote }),
+        listResolvedThreads: async () => ({ ok: true, value: [] }),
       }),
     },
   );
@@ -191,23 +201,25 @@ describe("AppShell", () => {
     expect(shell.style.getPropertyValue("--rail")).toBe("0px");
   });
 
-  it("keeps Notes out of the thread rail when both are open", async () => {
-    mocks.search = { inbox: true, thread: thread.slug };
+  it("sends the legacy Notes panel param to the Notes filter, keeping the Thread", async () => {
+    mocks.navigate.mockClear();
+    mocks.search = { inbox: true, thread: thread.slug, area: area.slug };
     renderShell();
 
-    const positioner = await waitFor(() => {
-      const node = document.querySelector(
-        '[data-slot="inbox-surface-positioner"]',
-      );
-      expect(node).not.toBeNull();
-      return node as HTMLElement;
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalled());
+    const redirect = mocks.navigate.mock.calls[0]?.[0] as {
+      to: string;
+      replace: boolean;
+      search: (previous: object) => object;
+    };
+    expect(redirect.to).toBe("/");
+    expect(redirect.replace).toBe(true);
+    expect(redirect.search(mocks.search)).toEqual({
+      thread: thread.slug,
+      area: undefined,
+      show: "notes",
+      inbox: undefined,
     });
-    const rail = document.querySelector('[data-slot="thread-detail-pane"]');
-
-    // Sibling, not ancestor: the panel clears the rail by --rail instead.
-    expect(rail).not.toBeNull();
-    expect(rail).not.toContainElement(positioner);
-    expect(positioner.parentElement).not.toContainElement(rail as HTMLElement);
   });
 
   it("mounts no create surface and no palette-only subscription while closed", () => {
@@ -218,7 +230,37 @@ describe("AppShell", () => {
     // The Areas back the filter shortcuts, so the shell reads them itself.
     expect(read("listAreas")).toBe(true);
     expect(read("listOpenThreads")).toBe(false);
-    expect(read("countOpenNotes")).toBe(true);
+    // No badge: the shell counts nothing, and History is read only on demand.
+    expect(read("countOpenNotes")).toBe(false);
+    expect(read("getDoneNotePage")).toBe(false);
+  });
+
+  it("opens an Archived Note from History over the page, without Add to thread", async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    await user.click(screen.getByRole("button", { name: "chrome palette" }));
+    await user.click(await screen.findByRole("button", { name: "History" }));
+    await user.click(
+      await screen.findByRole("option", { name: /Passport photo sizes/ }),
+    );
+
+    const view = await screen.findByRole("dialog", { name: "Note" });
+    expect(screen.getByText("page body")).toBeInTheDocument();
+    expect(view).toHaveTextContent("Passport photo sizes");
+    expect(
+      screen.getByRole("button", { name: "Unarchive" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Delete note" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Add to thread/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /New thread from note/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("filters the Dashboard to the Nth Area on a bare digit, and back to All on 0", async () => {
@@ -240,6 +282,7 @@ describe("AppShell", () => {
     expect(toArea.search({ thread: "x" })).toEqual({
       thread: "x",
       area: area.slug,
+      show: undefined,
     });
 
     mocks.navigate.mockClear();
@@ -247,7 +290,21 @@ describe("AppShell", () => {
     const toAll = mocks.navigate.mock.calls[0]?.[0] as {
       search: (previous: object) => object;
     };
-    expect(toAll.search({ area: area.slug })).toEqual({ area: undefined });
+    expect(toAll.search({ area: area.slug })).toEqual({
+      area: undefined,
+      show: undefined,
+    });
+
+    // A digit replaces the Notes filter too: the two never coexist.
+    mocks.navigate.mockClear();
+    await user.keyboard("1");
+    const fromNotes = mocks.navigate.mock.calls[0]?.[0] as {
+      search: (previous: object) => object;
+    };
+    expect(fromNotes.search({ show: "notes" })).toEqual({
+      area: area.slug,
+      show: undefined,
+    });
 
     mocks.navigate.mockClear();
     await user.keyboard("2");

@@ -1,13 +1,13 @@
 import type {
   CommandAcknowledgement,
+  DoneNotePageRequest,
   Note,
   NoteId,
   NotePage,
-  PageRequest,
 } from "@vita-os/contracts";
 
 import { commandAcknowledged } from "@vita-os/contracts";
-import { requireNonBlankText } from "@vita-os/core";
+import { noteSearchTerms, requireNonBlankText } from "@vita-os/core";
 import { Effect } from "effect";
 
 import type { RequestRefusal } from "../../platform/http/errors";
@@ -43,12 +43,15 @@ export function countOpenNotes(): Effect.Effect<
   });
 }
 
+/** Archived Notes, newest archive first; `query` searches their bodies. */
 export function getDoneNotePage(
-  page: PageRequest,
+  input: DoneNotePageRequest,
 ): Effect.Effect<NotePage, RequestRefusal, RequestContext> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
-    return yield* database(() => noteStorage(scope).readDonePage(page));
+    const { query, ...page } = input;
+    const terms = yield* attempt(() => noteSearchTerms(query ?? ""));
+    return yield* database(() => noteStorage(scope).readDonePage(page, terms));
   });
 }
 

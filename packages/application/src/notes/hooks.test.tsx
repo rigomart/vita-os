@@ -14,13 +14,12 @@ import {
 import { aNote } from "../test/fixtures";
 import { createHarness } from "../test/harness";
 import {
+  useArchivedNotes,
+  useArchiveNote,
   useCaptureNote,
-  useCompleteNote,
   useDiscardNote,
-  useDoneNotes,
-  useOpenNoteCount,
   useOpenNotes,
-  useReopenNote,
+  useUnarchiveNote,
   useUpdateNoteFollowUp,
   useUpdateNoteBody,
 } from "./hooks";
@@ -37,35 +36,74 @@ const unavailable: ApplicationError = {
   retryable: true,
 };
 
-function seedInbox(notes: Note[]) {
+function seedOpenNotes(notes: Note[]) {
   return (cache: {
     setQueryData: (key: readonly unknown[], value: unknown) => unknown;
   }) => {
     cache.setQueryData(queryKeys.notes.open(), notes);
-    cache.setQueryData(queryKeys.notes.openCount(), notes.length);
   };
 }
 
 describe("reading Notes", () => {
-  it("reads the Open Notes and their count", async () => {
+  it("reads the Open Notes", async () => {
     const client = createFakeApplicationClient({
       listOpenNotes: async () => success([note, older]),
-      countOpenNotes: async () => success(2),
     });
     const { wrapper } = createHarness(client);
 
-    const { result } = renderHook(
-      () => ({ notes: useOpenNotes(), count: useOpenNoteCount() }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useOpenNotes(), { wrapper });
 
-    await waitFor(() => {
-      expect(result.current.notes.data).toEqual([note, older]);
-      expect(result.current.count.data).toBe(2);
-    });
+    await waitFor(() => expect(result.current.data).toEqual([note, older]));
   });
 
-  it("keeps the Done Notes already read while reading more", async () => {
+  it("searches Archived Notes on the service, within its bounds", async () => {
+    const match = aNote({
+      _id: "archived-1" as NoteId,
+      state: "done",
+      completedAt: 9,
+    });
+    const requests: unknown[] = [];
+    const client = createFakeApplicationClient({
+      getDoneNotePage: async (request) => {
+        requests.push(request);
+        return success({ entries: [match] });
+      },
+    });
+    const { wrapper } = createHarness(client);
+
+    const { result, rerender } = renderHook(
+      ({ query }: { query: string }) => useArchivedNotes({ query, limit: 5 }),
+      { wrapper, initialProps: { query: "" } },
+    );
+    await waitFor(() => expect(result.current.notes).toEqual([match]));
+    rerender({ query: "  milk   eggs a b c d e f g h " });
+    await waitFor(() => expect(requests).toHaveLength(2));
+
+    expect(requests).toEqual([
+      { limit: 5 },
+      { limit: 5, query: "milk eggs a b c d e f" },
+    ]);
+  });
+
+  it("reads nothing until History asks", async () => {
+    let calls = 0;
+    const client = createFakeApplicationClient({
+      getDoneNotePage: async () => {
+        calls += 1;
+        return success({ entries: [] });
+      },
+    });
+    const { wrapper } = createHarness(client);
+
+    const { result } = renderHook(() => useArchivedNotes({ enabled: false }), {
+      wrapper,
+    });
+
+    expect(result.current.notes).toEqual([]);
+    expect(calls).toBe(0);
+  });
+
+  it("keeps the Archived Notes already read while reading more", async () => {
     const first = aNote({
       _id: "done-1" as NoteId,
       state: "done",
@@ -84,7 +122,9 @@ describe("reading Notes", () => {
     });
     const { wrapper } = createHarness(client);
 
-    const { result } = renderHook(() => useDoneNotes(1), { wrapper });
+    const { result } = renderHook(() => useArchivedNotes({ limit: 1 }), {
+      wrapper,
+    });
 
     await waitFor(() => expect(result.current.notes).toEqual([first]));
     await act(async () => {
@@ -96,21 +136,20 @@ describe("reading Notes", () => {
 });
 
 describe("useCaptureNote", () => {
-  it("puts the captured Note at the top of the Inbox and counts it", async () => {
+  it("puts the captured Note at the top of the Open Notes", async () => {
     const stored = aNote({ _id: "note-stored" as NoteId, body: "Refill" });
     const pending = deferred<ReturnType<typeof success<Note>>>();
     const client = createFakeApplicationClient({
       createNote: () => pending.promise,
     });
-    const { wrapper, cache } = createHarness(client, seedInbox([older]));
+    const { wrapper, cache } = createHarness(client, seedOpenNotes([older]));
     const { result } = renderHook(() => useCaptureNote(), { wrapper });
 
     act(() => result.current.mutate({ body: "Refill" }));
 
     await waitFor(() => {
       const notes = cache.getQueryData<Note[]>(queryKeys.notes.open());
-      expect(notes?.[0]?.body).toBe("Refill");
-      expect(cache.getQueryData(queryKeys.notes.openCount())).toBe(2);
+      expect(notes?.map((entry) => entry.body)).toEqual(["Refill", "Older"]);
     });
 
     pending.resolve(success(stored));
@@ -118,22 +157,6 @@ describe("useCaptureNote", () => {
       expect(cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]).toEqual(
         stored,
       ),
-    );
-  });
-
-  it("still counts a Note captured with the Inbox unread", async () => {
-    const client = createFakeApplicationClient({
-      createNote: async () => success(note),
-    });
-    const { wrapper, cache } = createHarness(client, (seeded) => {
-      seeded.setQueryData(queryKeys.notes.openCount(), 4);
-    });
-    const { result } = renderHook(() => useCaptureNote(), { wrapper });
-
-    act(() => result.current.mutate({ body: "Refill" }));
-
-    await waitFor(() =>
-      expect(cache.getQueryData(queryKeys.notes.openCount())).toBe(5),
     );
   });
 });
@@ -144,7 +167,7 @@ describe("editing a Note", () => {
     const client = createFakeApplicationClient({
       updateNoteBody: () => pending.promise,
     });
-    const { wrapper, cache } = createHarness(client, seedInbox([note]));
+    const { wrapper, cache } = createHarness(client, seedOpenNotes([note]));
     const { result } = renderHook(() => useUpdateNoteBody(), { wrapper });
 
     act(() => result.current.mutate({ noteId: note._id, body: "Refill both" }));
@@ -161,7 +184,7 @@ describe("editing a Note", () => {
     const client = createFakeApplicationClient({
       updateNoteFollowUp: async () => success({ ...note, followUp: 5_000 }),
     });
-    const { wrapper, cache } = createHarness(client, seedInbox([note]));
+    const { wrapper, cache } = createHarness(client, seedOpenNotes([note]));
     const { result } = renderHook(() => useUpdateNoteFollowUp(), {
       wrapper,
     });
@@ -182,39 +205,35 @@ describe("editing a Note", () => {
   });
 });
 
-describe("completing, reopening, and discarding", () => {
+describe("archiving, unarchiving, and discarding", () => {
   it.each([
-    ["completed", true],
-    ["discarded", false],
-  ] as const)(
-    "a %s Note leaves the Inbox and the count",
-    async (_label, complete) => {
-      const client = createFakeApplicationClient({
-        markNoteDone: async () =>
-          success({ ...note, state: "done" as const, completedAt: 9 }),
-        removeNote: async () => success({ acknowledged: true as const }),
-      });
-      const { wrapper, cache } = createHarness(
-        client,
-        seedInbox([note, older]),
-      );
-      const { result } = renderHook(
-        () => ({ complete: useCompleteNote(), discard: useDiscardNote() }),
-        { wrapper },
-      );
+    ["an archived", true],
+    ["a discarded", false],
+  ] as const)("%s Note leaves the Open Notes", async (_label, archive) => {
+    const client = createFakeApplicationClient({
+      markNoteDone: async () =>
+        success({ ...note, state: "done" as const, completedAt: 9 }),
+      removeNote: async () => success({ acknowledged: true as const }),
+    });
+    const { wrapper, cache } = createHarness(
+      client,
+      seedOpenNotes([note, older]),
+    );
+    const { result } = renderHook(
+      () => ({ archive: useArchiveNote(), discard: useDiscardNote() }),
+      { wrapper },
+    );
 
-      await act(async () => {
-        await (complete
-          ? result.current.complete.mutateAsync({ noteId: note._id })
-          : result.current.discard.mutateAsync({ noteId: note._id }));
-      });
+    await act(async () => {
+      await (archive
+        ? result.current.archive.mutateAsync({ noteId: note._id })
+        : result.current.discard.mutateAsync({ noteId: note._id }));
+    });
 
-      expect(cache.getQueryData(queryKeys.notes.open())).toEqual([older]);
-      expect(cache.getQueryData(queryKeys.notes.openCount())).toBe(1);
-    },
-  );
+    expect(cache.getQueryData(queryKeys.notes.open())).toEqual([older]);
+  });
 
-  it("puts a reopened Note back where the Inbox orders it", async () => {
+  it("puts an unarchived Note back in creation order", async () => {
     const done = aNote({
       _id: "note-done" as NoteId,
       state: "done",
@@ -224,8 +243,11 @@ describe("completing, reopening, and discarding", () => {
     const client = createFakeApplicationClient({
       markNoteOpen: async () => success({ ...done, state: "open" as const }),
     });
-    const { wrapper, cache } = createHarness(client, seedInbox([note, older]));
-    const { result } = renderHook(() => useReopenNote(), { wrapper });
+    const { wrapper, cache } = createHarness(
+      client,
+      seedOpenNotes([note, older]),
+    );
+    const { result } = renderHook(() => useUnarchiveNote(), { wrapper });
 
     await act(async () => {
       await result.current.mutateAsync({ note: done });
@@ -240,14 +262,16 @@ describe("completing, reopening, and discarding", () => {
     expect(notes?.[1]).toMatchObject({ state: "open", completedAt: undefined });
   });
 
-  it("puts the Inbox back when a completion fails", async () => {
+  it("puts the Open Notes back when archiving fails", async () => {
     const client = createFakeApplicationClient({
       markNoteDone: async () => ({ ok: false, error: unavailable }),
       listOpenNotes: async () => success([note, older]),
-      countOpenNotes: async () => success(2),
     });
-    const { wrapper, cache } = createHarness(client, seedInbox([note, older]));
-    const { result } = renderHook(() => useCompleteNote(), { wrapper });
+    const { wrapper, cache } = createHarness(
+      client,
+      seedOpenNotes([note, older]),
+    );
+    const { result } = renderHook(() => useArchiveNote(), { wrapper });
 
     await act(async () => {
       await result.current
@@ -257,12 +281,11 @@ describe("completing, reopening, and discarding", () => {
 
     await waitFor(() => expect(result.current.error).toEqual(unavailable));
     expect(cache.getQueryData(queryKeys.notes.open())).toEqual([note, older]);
-    expect(cache.getQueryData(queryKeys.notes.openCount())).toBe(2);
   });
 });
 
-describe("Done Note optimistic changes", () => {
-  it.each(["edit", "reopen", "discard"] as const)(
+describe("Archived Note optimistic changes", () => {
+  it.each(["edit", "unarchive", "discard"] as const)(
     "updates cached history for %s and restores it on failure",
     async (operation) => {
       const done = aNote({ state: "done", completedAt: 5000 });
@@ -272,7 +295,7 @@ describe("Done Note optimistic changes", () => {
         markNoteOpen: () => pending.promise,
         removeNote: () => pending.promise,
       });
-      const key = queryKeys.notes.done(20);
+      const key = queryKeys.notes.done(20, "milk");
       const original = {
         pages: [{ entries: [done], nextCursor: "next-page" }],
         pageParams: [undefined],
@@ -283,7 +306,7 @@ describe("Done Note optimistic changes", () => {
       const { result } = renderHook(
         () => ({
           edit: useUpdateNoteBody(),
-          reopen: useReopenNote(),
+          unarchive: useUnarchiveNote(),
           discard: useDiscardNote(),
         }),
         { wrapper },
@@ -291,8 +314,8 @@ describe("Done Note optimistic changes", () => {
       act(() => {
         if (operation === "edit")
           result.current.edit.mutate({ noteId: done._id, body: "Changed" });
-        else if (operation === "reopen")
-          result.current.reopen.mutate({ note: done });
+        else if (operation === "unarchive")
+          result.current.unarchive.mutate({ note: done });
         else result.current.discard.mutate({ noteId: done._id });
       });
       await waitFor(() => {

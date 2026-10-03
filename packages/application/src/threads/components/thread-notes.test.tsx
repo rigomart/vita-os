@@ -19,7 +19,7 @@ function note(id: string, fields: Partial<ThreadNote> = {}): ThreadNote {
 const actions = () => ({
   onCreate: vi.fn(),
   onUpdateBody: vi.fn(),
-  onToggleDone: vi.fn(),
+  onToggleArchived: vi.fn(),
   onRemove: vi.fn(),
 });
 
@@ -28,14 +28,16 @@ describe("ThreadNotes", () => {
     render(
       <ThreadNotes
         notes={undefined}
-        doneNotes={[]}
-        isDoneExhausted={false}
-        isDoneInitialLoading
+        archivedNotes={[]}
+        isArchivedExhausted={false}
+        isArchivedInitialLoading
         {...actions()}
       />,
     );
     expect(screen.queryByText("Loading Notes…")).toBeNull();
-    expect(screen.queryByRole("button", { name: /completed/i })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /archived notes/i }),
+    ).toBeNull();
     expect(screen.getByRole("button", { name: "Write a note…" })).toBeVisible();
     expect(screen.queryByRole("textbox")).toBeNull();
   });
@@ -98,16 +100,16 @@ describe("ThreadNotes", () => {
     );
     expect(screen.queryByRole("dialog")).toBeNull();
   });
-  it("completes a card without opening the view", async () => {
+  it("archives a card without opening the view", async () => {
     const user = userEvent.setup();
     const callbacks = actions();
     const saved = note("Called the clinic");
     render(<ThreadNotes notes={[saved]} {...callbacks} />);
-    await user.click(screen.getByRole("button", { name: "Mark note done" }));
-    expect(callbacks.onToggleDone).toHaveBeenCalledWith(saved);
+    await user.click(screen.getByRole("button", { name: "Archive note" }));
+    expect(callbacks.onToggleArchived).toHaveBeenCalledWith(saved);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
-  it("keeps a Note view open when completion removes its card from Open Notes", async () => {
+  it("keeps a Note view open when archiving removes its card from Open Notes", async () => {
     const user = userEvent.setup();
     const callbacks = actions();
     const saved = note("Consultation");
@@ -115,27 +117,27 @@ describe("ThreadNotes", () => {
     await user.click(
       screen.getByRole("button", { name: /Open note: Consultation/ }),
     );
-    await user.click(screen.getByRole("button", { name: "Mark done" }));
+    await user.click(screen.getByRole("button", { name: "Archive" }));
     rerender(
       <ThreadNotes
         notes={[]}
-        doneNotes={[{ ...saved, state: "done", completedAt: 2000 }]}
+        archivedNotes={[{ ...saved, state: "done", completedAt: 2000 }]}
         {...callbacks}
       />,
     );
     expect(screen.getByRole("dialog")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Reopen" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Unarchive" })).toBeVisible();
   });
-  it("keeps Done Notes in collapsed history and can reopen them", async () => {
+  it("keeps Archived notes in collapsed history and can unarchive them", async () => {
     const user = userEvent.setup();
     const callbacks = actions();
     const done = note("Finished note", { state: "done", completedAt: 2000 });
-    render(<ThreadNotes notes={[]} doneNotes={[done]} {...callbacks} />);
+    render(<ThreadNotes notes={[]} archivedNotes={[done]} {...callbacks} />);
     expect(
       screen.queryByRole("button", { name: /Open note: Finished note/ }),
     ).toBeNull();
-    await user.click(screen.getByRole("button", { name: /completed/i }));
-    await user.click(screen.getByRole("button", { name: "Mark note open" }));
-    expect(callbacks.onToggleDone).toHaveBeenCalledWith(done);
+    await user.click(screen.getByRole("button", { name: /archived notes/i }));
+    await user.click(screen.getByRole("button", { name: "Unarchive note" }));
+    expect(callbacks.onToggleArchived).toHaveBeenCalledWith(done);
   });
 });

@@ -26,8 +26,9 @@ import { useFeedback } from "@vita-os/ui/lib/feedback";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
 import {
+  ArchiveIcon,
+  ArchiveRestoreIcon,
   CalendarClock,
-  CheckIcon,
   CopyIcon,
   EllipsisIcon,
   EyeIcon,
@@ -36,7 +37,6 @@ import {
   PencilIcon,
   Trash2Icon,
   TriangleAlertIcon,
-  Undo2Icon,
   XIcon,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -53,6 +53,7 @@ export interface NoteDialogProps {
   onOpenChange: (open: boolean) => void;
   note?: {
     body: string;
+    /** `done` is how an Archived Note is stored. */
     state: "open" | "done";
     createdAt: number;
     updatedAt?: number;
@@ -61,7 +62,8 @@ export interface NoteDialogProps {
   threadTitle?: string;
   onSubmit?: (value: { body: string; when?: number }) => Promise<void> | void;
   onSave?: (body: string) => Promise<void> | void;
-  onToggleDone?: () => Promise<void> | void;
+  /** Archive an Open Note, or unarchive an Archived one. */
+  onToggleArchived?: () => Promise<void> | void;
   /** Deletes without asking: the owner offers Undo once the view has closed. */
   onDelete?: () => void;
   /** Offered on an Open Standalone Note only: choose a Thread for it. */
@@ -93,7 +95,7 @@ export function NoteDialog({
   threadTitle,
   onSubmit,
   onSave,
-  onToggleDone,
+  onToggleArchived,
   onDelete,
   onAddToThread,
   onNewThread,
@@ -152,8 +154,9 @@ export function NoteDialog({
   const saveTask = useGuardedAsyncAction(async (value: string) =>
     onSave?.(value),
   );
-  const toggle = useGuardedAsyncAction(async () => onToggleDone?.(), {
-    successMessage: note?.state === "done" ? "Note reopened" : "Note completed",
+  const archived = note?.state === "done";
+  const toggle = useGuardedAsyncAction(async () => onToggleArchived?.(), {
+    successMessage: archived ? "Note unarchived" : "Note archived",
   });
   const changeWhen = useGuardedAsyncAction(async (value: number | undefined) =>
     onSetWhen?.(value),
@@ -342,11 +345,19 @@ export function NoteDialog({
                 <span className="truncate">{title}</span>
               </ResponsiveDialogTitle>
               {note?.state === "done" ? (
-                <span className="inline-flex h-5.5 shrink-0 items-center gap-1 rounded-full bg-condition-healthy/10 px-2 text-xs font-semibold text-condition-healthy">
-                  <CheckIcon aria-hidden className="size-3" />
-                  {note.completedAt === undefined
-                    ? "Done"
-                    : `Done ${format(note.completedAt, "MMM d")}`}
+                <span
+                  data-slot="note-archived"
+                  className="inline-flex h-5.5 shrink-0 items-center gap-1 rounded-full bg-muted px-2 text-xs font-semibold text-muted-foreground"
+                >
+                  <ArchiveIcon aria-hidden className="size-3" />
+                  Archived
+                  {/* A phone's header has no room for the date beside the
+                      switch; the footer still says when the Note was added. */}
+                  {note.completedAt === undefined ? null : (
+                    <span className="hidden sm:inline">
+                      {` ${format(note.completedAt, "MMM d")}`}
+                    </span>
+                  )}
                 </span>
               ) : null}
               <ResponsiveDialogDescription className="sr-only">
@@ -544,7 +555,7 @@ export function NoteDialog({
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
               <div className="flex items-center gap-1.5">
                 {attentionPicker}
-                {note && onToggleDone ? (
+                {note && onToggleArchived ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -556,8 +567,8 @@ export function NoteDialog({
                       void toggle.run();
                     }}
                   >
-                    {note.state === "done" ? <Undo2Icon /> : <CheckIcon />}
-                    {note.state === "done" ? "Reopen" : "Mark done"}
+                    {archived ? <ArchiveRestoreIcon /> : <ArchiveIcon />}
+                    {archived ? "Unarchive" : "Archive"}
                   </Button>
                 ) : null}
               </div>

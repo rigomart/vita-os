@@ -114,7 +114,6 @@ function setup(
   server.notes = [note];
   server.threads = threads;
   queryClient.setQueryData(queryKeys.notes.open(), [note]);
-  queryClient.setQueryData(queryKeys.notes.openCount(), 1);
   queryClient.setQueryData(queryKeys.threads.open(), threads);
   queryClient.setQueryData(queryKeys.threadNotes.open(undatedThread._id), [
     existingThreadNote,
@@ -228,7 +227,7 @@ describe("adding a Note to a Thread", () => {
       screen.queryByRole("button", { name: /^Open note: Dentist/ }),
     ).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(queryClient.getQueryData(queryKeys.notes.openCount())).toBe(0);
+    expect(queryClient.getQueryData(queryKeys.notes.open())).toEqual([]);
     const shown = queryClient
       .getQueryData<Thread[]>(queryKeys.threads.open())
       ?.find((thread) => thread._id === undatedThread._id);
@@ -288,7 +287,7 @@ describe("adding a Note to a Thread", () => {
         .getQueryData<Thread[]>(queryKeys.threads.open())
         ?.find((thread) => thread._id === laterThread._id),
     ).toEqual(laterThread);
-    expect(queryClient.getQueryData(queryKeys.notes.openCount())).toBe(1);
+    expect(queryClient.getQueryData(queryKeys.notes.open())).toEqual([note]);
     expect(addNoteToThread).not.toHaveBeenCalled();
   });
 

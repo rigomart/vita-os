@@ -352,6 +352,104 @@ describe("Done and Open history", () => {
   });
 });
 
+describe("searching Archived Notes", () => {
+  async function archive(session: Session, body: string): Promise<Note> {
+    const note = await capture(session, body);
+    return succeed<Note>(`/v1/notes/${note._id}/state`, {
+      method: "PATCH",
+      session,
+      body: { state: "done" },
+    });
+  }
+
+  async function search(session: Session, q: string, limit = 20) {
+    const page = await succeed<NotePage>(
+      `/v1/notes/done?limit=${limit}&q=${encodeURIComponent(q)}`,
+      { session },
+    );
+    return page;
+  }
+
+  it("finds bodies containing every word, in any order or case, newest archive first", async () => {
+    const owner = await createSession("note-search-words");
+    const milk = await archive(owner, "Buy milk and EGGS");
+    await archive(owner, "Buy bread");
+    const later = await archive(owner, "eggs, then milk");
+    await capture(owner, "Open milk eggs note");
+
+    const page = await search(owner, "  eggs   milk ");
+
+    expect(page.entries.map((note) => note._id)).toEqual([later._id, milk._id]);
+    expect((await search(owner, "   ")).entries).toHaveLength(3);
+  });
+
+  it("matches %, _ and the escape character literally", async () => {
+    const owner = await createSession("note-search-escaping");
+    const percent = await archive(owner, "Rent up 50% this year");
+    await archive(owner, "Rent up 500 this year");
+    const underscore = await archive(owner, "file_name.txt");
+    await archive(owner, "filename.txt");
+    const backslash = await archive(owner, "C:\\temp\\notes");
+    await archive(owner, "C:/temp/notes");
+
+    expect((await search(owner, "50%")).entries.map((n) => n._id)).toEqual([
+      percent._id,
+    ]);
+    expect((await search(owner, "e_n")).entries.map((n) => n._id)).toEqual([
+      underscore._id,
+    ]);
+    expect((await search(owner, "\\temp")).entries.map((n) => n._id)).toEqual([
+      backslash._id,
+    ]);
+  });
+
+  it("searches only the actor's Archived Notes", async () => {
+    const owner = await createSession("note-search-owner");
+    const other = await createSession("note-search-other");
+    const mine = await archive(owner, "Passport renewal receipt");
+    await archive(other, "Passport renewal receipt");
+
+    expect((await search(owner, "passport")).entries.map((n) => n._id)).toEqual(
+      [mine._id],
+    );
+  });
+
+  it("pages a search across every Archived Note, not only the first page", async () => {
+    const owner = await createSession("note-search-pages");
+    const match = await archive(owner, "The oldest needle");
+    for (let index = 0; index < 4; index += 1) {
+      await archive(owner, `Haystack ${index}`);
+    }
+
+    const first = await search(owner, "needle", 2);
+    expect(first.entries.map((note) => note._id)).toEqual([match._id]);
+    expect(first.nextCursor).toBeUndefined();
+
+    const unsearched = await succeed<NotePage>("/v1/notes/done?limit=2", {
+      session: owner,
+    });
+    expect(unsearched.entries.map((note) => note._id)).not.toContain(match._id);
+  });
+
+  it("refuses a search past its bounds", async () => {
+    const owner = await createSession("note-search-bounds");
+
+    expectError(
+      await call(`/v1/notes/done?q=${"a".repeat(201)}`, { session: owner }),
+      { status: 400, code: "validation" },
+    );
+    expectError(
+      await call(
+        `/v1/notes/done?q=${encodeURIComponent("a b c d e f g h i")}`,
+        {
+          session: owner,
+        },
+      ),
+      { status: 400, code: "validation" },
+    );
+  });
+});
+
 describe("discarding a Note", () => {
   it("removes the Note from the Inbox", async () => {
     const owner = await createSession("note-remove");

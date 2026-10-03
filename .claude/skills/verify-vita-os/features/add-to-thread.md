@@ -1,12 +1,12 @@
 # Add a Note to a Thread
 
-An Open Standalone Note's Note view offers two optional actions in its ⋯ `More actions` menu: **Add to thread…** opens a searchable picker of Open Threads (title and Area, as in the palette), and **New thread from note** opens the New thread dialog with a title suggested from the Note's first line. Adding takes the Note out of Notes and the Dashboard at once and offers Undo and Open thread for five seconds; the Thread Note keeps the Note's creation time. The earlier Follow-up date wins: a row whose Thread would come back earlier says `Brings this thread back <Ddd Mon d>`, and that change writes the usual Follow-up Activity Log entry. Starting a Thread carries the Note's date and opens the new Thread's pane with the Note inside (ADR 0030).
+An Open Standalone Note's Note view offers two optional actions in its ⋯ `More actions` menu: **Add to thread…** opens a searchable picker of Open Threads (title and Area, as in the palette), and **New thread from note** opens the New thread dialog with a title suggested from the Note's first line. Adding takes the Note off the Dashboard at once and offers Undo and Open thread for five seconds; the Thread Note keeps the Note's creation time. The earlier Follow-up date wins: a row whose Thread would come back earlier says `Brings this thread back <Ddd Mon d>`, and that change writes the usual Follow-up Activity Log entry. Starting a Thread carries the Note's date and opens the new Thread's pane with the Note inside (ADR 0030).
 
-Status: proven on dfb3aaa (Dashboard and Notes panel at 1440×900: dated Note into an undated Thread, Note into a Thread with an earlier date, Undo, New thread from note; Thread drawer at 1024×768 via the toast's Open thread). Not driven: the phone Note drawer at 390×844, a failed request's error toast (automated tests cover it).
+Status: proven on dfb3aaa (Dashboard and the since-removed Notes panel at 1440×900: dated Note into an undated Thread, Note into a Thread with an earlier date, Undo, New thread from note; Thread drawer at 1024×768 via the toast's Open thread). Re-driven on 446055e from the Dashboard's Notes filter at 1440×900: menu, picker, commit into a labeled Thread, the Note leaving the Notes board, and the Thread Note in the pane; an Archived Note opened from History offers neither action (ADR 0031). Not driven: the phone Note drawer at 390×844, a failed request's error toast (automated tests cover it).
 
 ## Sub-features
 
-- `add-menu` shows `Add to thread…` and `New thread from note` only on an Open Standalone Note; never on a Thread Note or a Done Note. Both are disabled while the Note has unsaved changes.
+- `add-menu` shows `Add to thread…` and `New thread from note` only on an Open Standalone Note; never on a Thread Note or an Archived Note (one opened from the palette's History shows only Copy Markdown and Delete note). Both are disabled while the Note has unsaved changes.
 - `add-picker` lists Open Threads as `option "<title>"`, with `Brings this thread back <date>` in the option's name when the Note's date is earlier than the Thread's or the Thread has none.
 - `add-commit` hides the Note, moves the Thread to its new date column, shows `Note added to thread` with `Open thread` and `Undo`, and writes after the toast lapses: the Thread Note (`thread_notes`, original `created_at`), the deleted Note (`notes`), the Thread's `follow_up`, `last_activity_at`, and a `follow_up_change` entry only when the date changed.
 - `add-undo` restores the Note and the Thread's date; nothing reaches D1.
@@ -15,7 +15,7 @@ Status: proven on dfb3aaa (Dashboard and Notes panel at 1440×900: dated Note in
 
 ## How to get to it (user POV)
 
-- Open a Standalone Note from a Dashboard card or the Notes panel, then choose `More actions`.
+- Open a Standalone Note from a Dashboard card, with or without the `Notes` filter, then choose `More actions`.
 
 ## Driving it with agent-browser
 
@@ -31,7 +31,7 @@ Preconditions: an isolated instance (`up`, `signin`). Create two Threads through
 
 ## Gotchas
 
-- Notes dated a week or more out sit in the folded Later column; open them from the Notes panel (`find role button click --name "Notes" --exact`).
-- The Undo and Open thread buttons live in a toast; click them by snapshot ref. Clicking the toast closes an open Notes panel.
+- Notes dated a week or more out sit in the folded Later column; unfold it (`find role button click --name "Later"`) or choose the `Notes` filter link (`find role link click --name "Notes <count>" --exact`, the one after `Manage areas`).
+- The Undo and Open thread buttons live in a toast; click them by snapshot ref.
 - The write happens only after the five-second Undo window. D1 shows nothing until then; `Open thread` commits at once.
 - The New thread dialog says `Thread created` on success; adding to an existing Thread has no separate server toast, so prove it after the window with D1 and a reload.

@@ -6,7 +6,7 @@ import type {
   NoteId,
 } from "@vita-os/contracts";
 
-import { newRecordId } from "@vita-os/core";
+import { boundNoteSearch, newRecordId } from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
 import type { PagedResult } from "../cache/use-paged-application-query";
@@ -22,17 +22,17 @@ import {
   showCapturedNote,
   showNoteEdit,
   showNoteLeavingOpenNotes,
-  showReopenedNote,
+  showUnarchivedNote,
 } from "./optimistic";
 
-const DONE_PAGE_SIZE = 20;
+const ARCHIVED_PAGE_SIZE = 20;
 
 /**
  * Every Open Note, newest first.
  *
  * Read whole rather than paged: an Open Note is one the person still has to deal
- * with, so this is the set they have agreed to look at. Done Notes grow without
- * limit and are paged instead.
+ * with, so this is the set they have agreed to look at. Archived Notes grow
+ * without limit and are paged instead.
  */
 export function useOpenNotes(): UseQueryResult<Note[], ApplicationError> {
   return useApplicationQuery({
@@ -41,28 +41,31 @@ export function useOpenNotes(): UseQueryResult<Note[], ApplicationError> {
   });
 }
 
-/** How many Open Notes there are, for the navigation badge. */
-export function useOpenNoteCount(): UseQueryResult<number, ApplicationError> {
-  return useApplicationQuery({
-    queryKey: queryKeys.notes.openCount(),
-    run: (client) => client.countOpenNotes(),
-  });
-}
-
-export type DoneNotesResult = PagedResult<Note> & {
+export type ArchivedNotesResult = PagedResult<Note> & {
   /** The same entries, named for what they are on this surface. */
   notes: Note[];
 };
 
-/** Done Notes, newest completion first, a page at a time. */
-export function useDoneNotes(limit = DONE_PAGE_SIZE): DoneNotesResult {
+/**
+ * Archived Notes, most recently archived first: one bounded page, narrowed on
+ * the service to the bodies containing every word of `query`. The service
+ * stores them as Done.
+ */
+export function useArchivedNotes(
+  options: { query?: string; limit?: number; enabled?: boolean } = {},
+): ArchivedNotesResult {
+  const limit = options.limit ?? ARCHIVED_PAGE_SIZE;
+  const query = boundNoteSearch(options.query ?? "");
   const page = usePagedApplicationQuery<Note>({
-    queryKey: queryKeys.notes.done(limit),
+    queryKey: queryKeys.notes.done(limit, query),
     run: (client, cursor) =>
       client.getDoneNotePage({
         limit,
+        ...(query === "" ? {} : { query }),
         ...(cursor === undefined ? {} : { cursor }),
       }),
+    ...(options.enabled === undefined ? {} : { enabled: options.enabled }),
+    keepPrevious: true,
   });
 
   return { ...page, notes: page.entries };
@@ -135,7 +138,8 @@ export function useUpdateNoteFollowUp(): ApplicationMutationResult<
   });
 }
 
-export function useCompleteNote(): ApplicationMutationResult<
+/** Archiving is the stored Done state: the Note leaves the board for History. */
+export function useArchiveNote(): ApplicationMutationResult<
   { noteId: NoteId },
   Note
 > {
@@ -146,15 +150,15 @@ export function useCompleteNote(): ApplicationMutationResult<
   });
 }
 
-/** Reopening needs the whole Note: it is not in the open list to rebuild from. */
-export function useReopenNote(): ApplicationMutationResult<
+/** Unarchiving needs the whole Note: it is not in the open list to rebuild from. */
+export function useUnarchiveNote(): ApplicationMutationResult<
   { note: Note },
   Note
 > {
   return useApplicationMutation<{ note: Note }, Note>({
     run: (client, input) => client.markNoteOpen({ noteId: input.note._id }),
     affected: () => noteKeys(),
-    optimistic: (cache, input) => showReopenedNote(cache, input.note),
+    optimistic: (cache, input) => showUnarchivedNote(cache, input.note),
   });
 }
 

@@ -26,9 +26,6 @@ function renderChrome(
   const onOpenPalette = vi.fn();
   render(
     <AppChrome
-      noteCount={0}
-      inboxOpen={false}
-      onToggleInbox={vi.fn()}
       onNewNote={vi.fn()}
       onNewThread={vi.fn()}
       onOpenPalette={onOpenPalette}
@@ -37,6 +34,16 @@ function renderChrome(
   );
   return { onOpenPalette };
 }
+
+describe("AppChrome", () => {
+  it("has no Notes button: Notes live on the Dashboard", () => {
+    renderChrome();
+
+    expect(
+      screen.queryByRole("button", { name: /^Notes/ }),
+    ).not.toBeInTheDocument();
+  });
+});
 
 describe("AppChrome palette trigger", () => {
   it("is an icon button on small screens, with the field waiting at sm", () => {

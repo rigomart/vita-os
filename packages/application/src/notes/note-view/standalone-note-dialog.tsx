@@ -6,9 +6,9 @@ import { useOpenThreadInPlace } from "../../navigation/use-open-thread-in-place"
 import { AddToThreadDialog } from "../add-to-thread/add-to-thread-dialog";
 import { NewThreadFromNoteDialog } from "../add-to-thread/new-thread-from-note-dialog";
 import { useAddNoteToThreadWithUndo } from "../add-to-thread/use-add-note-to-thread-with-undo";
-import { useNoteRowActions } from "../note-row/use-note-row-actions";
 import { NoteDialog } from "./note-dialog";
 import { useDeleteNoteWithUndo } from "./use-delete-note-with-undo";
+import { useStandaloneNoteActions } from "./use-standalone-note-actions";
 
 /** Mount above moving cards, keyed by id, for the lifetime of an open view. */
 export function StandaloneNoteDialog({
@@ -22,7 +22,7 @@ export function StandaloneNoteDialog({
   // Adding the Note to a Thread steps aside from the Note view; cancelling
   // returns to it unchanged.
   const [adding, setAdding] = useState<"existing" | "new" | null>(null);
-  const actions = useNoteRowActions(savedNote);
+  const actions = useStandaloneNoteActions(savedNote);
   const deleteWithUndo = useDeleteNoteWithUndo();
   const openThread = useOpenThreadInPlace();
   const addWithUndo = useAddNoteToThreadWithUndo(openThread);
@@ -38,8 +38,8 @@ export function StandaloneNoteDialog({
           const updated = await actions.saveBody(body);
           setSavedNote(updated);
         }}
-        onToggleDone={async () => {
-          const updated = await actions.toggleDone();
+        onToggleArchived={async () => {
+          const updated = await actions.toggleArchived();
           setSavedNote(updated);
         }}
         onDelete={() => void deleteWithUndo(actions.deleteNote)}

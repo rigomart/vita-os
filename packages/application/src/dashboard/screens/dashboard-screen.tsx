@@ -1,6 +1,6 @@
 import { useAreas } from "../../areas/hooks";
 import { useAttentionClock } from "../../hooks/use-attention-clock";
-import { useAreaFilterParam } from "../../navigation/use-area-filter-param";
+import { useDashboardFilterParams } from "../../navigation/use-dashboard-filter-params";
 import { useOpenNotes } from "../../notes/hooks";
 import { useOpenThreads } from "../../threads/hooks";
 import { DashboardOverview } from "../components/dashboard-overview";
@@ -13,7 +13,7 @@ import { DashboardOverviewSkeleton } from "../components/dashboard-overview-skel
  */
 export function DashboardScreen() {
   const currentDate = useAttentionClock();
-  const areaFilter = useAreaFilterParam();
+  const filter = useDashboardFilterParams();
   const areas = useAreas().data;
   const threads = useOpenThreads().data;
   const notes = useOpenNotes().data;
@@ -28,7 +28,7 @@ export function DashboardScreen() {
       ) : (
         <DashboardOverview
           areas={areas}
-          areaFilter={areaFilter}
+          filter={filter}
           threads={threads}
           notes={notes}
           currentDate={currentDate}

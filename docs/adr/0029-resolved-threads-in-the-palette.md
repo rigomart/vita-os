@@ -1,5 +1,7 @@
 # Resolved Threads in the palette
 
+Status: Amended by ADR 0031 — the Resolved chip is now History, holding Resolved threads (unchanged) and Archived notes.
+
 Resolved Threads need a way back for reading and reopening. The Dashboard continues to hold open work; the palette reaches resolved history without adding another browsing surface.
 
 ## Decision

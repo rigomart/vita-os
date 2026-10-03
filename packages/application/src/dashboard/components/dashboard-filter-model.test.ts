@@ -2,8 +2,15 @@ import type { AreaId, ThreadId } from "@vita-os/contracts";
 
 import { describe, expect, it } from "vitest";
 
+import type { DashboardFilterParams } from "../../navigation/use-dashboard-filter-params";
+
 import { anArea, aNote, aThread } from "../../test/fixtures";
-import { filterDashboard, NO_AREA_PARAM } from "./dashboard-filter-model";
+import {
+  filterDashboard,
+  filteredAreaId,
+  NO_AREA_PARAM,
+  readDashboardFilter,
+} from "./dashboard-filter-model";
 
 const health = anArea({
   _id: "area-health" as AreaId,
@@ -41,8 +48,13 @@ const note = aNote();
 const threads = [checkup, dentist, gate, unlabeled];
 const areas = [health, home, career];
 
-function view(param: string | undefined) {
-  return filterDashboard({ threads, notes: [note], areas, param });
+function view(area: string | undefined, show?: "notes") {
+  return filterDashboard({
+    threads,
+    notes: [note],
+    areas,
+    params: { area, show },
+  });
 }
 
 describe("filterDashboard", () => {
@@ -89,26 +101,70 @@ describe("filterDashboard", () => {
       threads: [orphan],
       notes: [],
       areas,
-      param: NO_AREA_PARAM,
+      params: { area: NO_AREA_PARAM },
     });
 
     expect(result.threads).toEqual([orphan]);
-    expect(result.options.at(-1)?.count).toBe(1);
+    expect(result.options.find((option) => option.key === "none")?.count).toBe(
+      1,
+    );
   });
 
-  it("offers All, each Area in the user's order, then No area, with counts", () => {
+  it("offers All, each Area in the user's order, No area, then Notes apart, with counts", () => {
     expect(
       view(undefined).options.map((option) => [
         option.label,
         option.count,
-        option.param,
+        option.search,
+        option.separated,
       ]),
     ).toEqual([
-      ["All", 4, undefined],
-      ["Home", 1, home.slug],
-      ["Health", 2, health.slug],
-      ["Career", 0, career.slug],
-      ["No area", 1, NO_AREA_PARAM],
+      ["All", 4, {}, false],
+      ["Home", 1, { area: home.slug }, false],
+      ["Health", 2, { area: health.slug }, false],
+      ["Career", 0, { area: career.slug }, false],
+      ["No area", 1, { area: NO_AREA_PARAM }, false],
+      ["Notes", 1, { show: "notes" }, true],
+    ]);
+  });
+
+  it("shows only the open Standalone Notes under Notes", () => {
+    const result = view(undefined, "notes");
+
+    expect(result.filter).toEqual({ kind: "notes" });
+    expect(result.threads).toEqual([]);
+    expect(result.notes).toEqual([note]);
+    expect(
+      result.options.filter((option) => option.selected).map((o) => o.key),
+    ).toEqual(["notes"]);
+  });
+
+  it("mutes Notes when no Note is open", () => {
+    const result = filterDashboard({
+      threads,
+      notes: [],
+      areas,
+      params: {},
+    });
+
+    expect(result.options.at(-1)).toMatchObject({
+      key: "notes",
+      count: 0,
+      muted: true,
+    });
+  });
+
+  it("offers All and Notes alone when there are no Areas", () => {
+    const result = filterDashboard({
+      threads,
+      notes: [note],
+      areas: [],
+      params: {},
+    });
+
+    expect(result.options.map((option) => option.key)).toEqual([
+      "all",
+      "notes",
     ]);
   });
 
@@ -131,5 +187,43 @@ describe("filterDashboard", () => {
         .options.filter((option) => option.selected)
         .map((option) => option.key),
     ).toEqual([home._id]);
+  });
+});
+
+describe("readDashboardFilter", () => {
+  const read = (params: DashboardFilterParams) =>
+    readDashboardFilter(params, areas);
+
+  it("reads the Notes filter from its own parameter", () => {
+    expect(read({ show: "notes" })).toEqual({ kind: "notes" });
+  });
+
+  it("never mistakes an Area named Notes for the Notes filter", () => {
+    const notesArea = anArea({
+      _id: "area-notes" as AreaId,
+      name: "Notes",
+      slug: "notes",
+      order: 3,
+    });
+
+    expect(readDashboardFilter({ area: "notes" }, [notesArea])).toEqual({
+      kind: "area",
+      area: notesArea,
+    });
+    expect(readDashboardFilter({ show: "notes" }, [notesArea])).toEqual({
+      kind: "notes",
+    });
+  });
+
+  it("lets Notes win when a URL carries both parameters", () => {
+    expect(read({ area: health.slug, show: "notes" })).toEqual({
+      kind: "notes",
+    });
+  });
+
+  it("starts a new Thread in the filtered Area, and in none under Notes", () => {
+    expect(filteredAreaId({ area: health.slug }, areas)).toBe(health._id);
+    expect(filteredAreaId({ show: "notes" }, areas)).toBeUndefined();
+    expect(filteredAreaId({ area: NO_AREA_PARAM }, areas)).toBeUndefined();
   });
 });

@@ -19,12 +19,14 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({
     to,
     params: _params,
+    activeOptions: _activeOptions,
     search: _search,
     children,
     ...props
   }: ComponentPropsWithoutRef<"a"> & {
     to: string;
     params?: unknown;
+    activeOptions?: unknown;
     search?: unknown;
   }) => (
     <a href={to} {...props}>
@@ -70,8 +72,8 @@ vi.mock("../../threads/use-moves", () => ({
 vi.mock("../../threads/use-update-thread", () => ({
   useUpdateThread: () => vi.fn(),
 }));
-vi.mock("../../notes/use-complete-note", () => ({
-  useCompleteNote: () => vi.fn(),
+vi.mock("../../notes/use-archive-note", () => ({
+  useArchiveNote: () => vi.fn(),
 }));
 vi.mock("../../notes/use-update-note-body", () => ({
   useUpdateNoteBody: () => vi.fn(),

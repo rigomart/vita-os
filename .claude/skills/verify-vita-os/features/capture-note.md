@@ -10,7 +10,7 @@ Status: proven on 1d2885d by an independent cold run (dock entry point, body onl
 - `note-add` saves a body and confirms with the `Note added` toast.
 - `note-persist` keeps the note after a reload and in D1 (`notes.body`, `state = 'open'`).
 - `note-attention` saves an optional `Follow-up date` with the note.
-- `note-done` marks a saved note done with `Mark note done`.
+- `note-archive` archives a saved note with `Archive note` (see [Notes on the Dashboard](./notes-on-the-dashboard.md)).
 
 ## How to get to it (user POV)
 
@@ -31,7 +31,7 @@ Preconditions:
 - **Save.** Run `bun run verify browser -- find role button click --name "Add" --exact`, then `bun run verify browser -- wait --text "Note added"`, then `bun run verify shot note-toast`. The wait prints `Note added`, the PNG shows the toast, and the dialog closes. The toast may be missing from `note-toast.aria.txt`. The wait output is the proof.
 - **Persist in UI.** Run `bun run verify browser -- reload`, then `bun run verify browser -- wait --text "verify note 1727461234"`. It prints the saved Note text.
 - **Persist in D1.** Run `bun run verify d1 "SELECT body, state FROM notes"`. A row has the note's body and `state` `open`.
-- **Proof.** Run `bun run verify shot note-after` after the reload. The after snapshot lists `button "Open note: verify note 1727461234"` inside an `article` that also has `Set follow-up date` and `Mark note done`.
+- **Proof.** Run `bun run verify shot note-after` after the reload. The after snapshot lists `button "Open note: verify note 1727461234"` on a card that also has `Set follow-up date` and `Archive note`.
 
 ## Gotchas
 

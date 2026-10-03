@@ -181,7 +181,7 @@ describe("NoteDialog saved note", () => {
     expect(screen.queryByRole("button", { name: "Follow-up date" })).toBeNull();
   });
 
-  it("marks a Done note in the header", () => {
+  it("marks an Archived note in the header and offers Unarchive", () => {
     render(
       <NoteDialog
         open
@@ -191,11 +191,28 @@ describe("NoteDialog saved note", () => {
           state: "done",
           completedAt: new Date("2026-10-01T12:00:00").getTime(),
         }}
-        onToggleDone={vi.fn()}
+        onToggleArchived={vi.fn()}
       />,
     );
-    expect(screen.getByText("Done Oct 1")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Reopen" })).toBeVisible();
+    expect(
+      document.querySelector('[data-slot="note-archived"]'),
+    ).toHaveTextContent("Archived Oct 1");
+    expect(screen.getByRole("button", { name: "Unarchive" })).toBeVisible();
+    expect(screen.queryByText(/Done/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reopen" })).toBeNull();
+  });
+
+  it("offers Archive, never Mark done, on an Open note", () => {
+    render(
+      <NoteDialog
+        open
+        onOpenChange={vi.fn()}
+        note={savedNote}
+        onToggleArchived={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Archive" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Mark done" })).toBeNull();
   });
 
   it("saves an edited body with Ctrl+Enter, returns to Read and displays it while the parent catches up", async () => {
@@ -382,27 +399,43 @@ describe("NoteDialog saved note", () => {
     expect(await navigator.clipboard.readText()).toBe("Consultation notes");
   });
 
-  it("guards completion and reports success only after the callback succeeds", async () => {
+  it("guards archiving and reports success only after the callback succeeds", async () => {
     const user = userEvent.setup();
     const pending = deferred();
-    const onToggleDone = vi.fn(() => pending.promise);
+    const onToggleArchived = vi.fn(() => pending.promise);
     const { feedback } = render(
       <NoteDialog
         open
         onOpenChange={vi.fn()}
         note={savedNote}
-        onToggleDone={onToggleDone}
+        onToggleArchived={onToggleArchived}
       />,
     );
-    const done = screen.getByRole("button", { name: "Mark done" });
-    await user.click(done);
-    await user.click(done);
-    expect(onToggleDone).toHaveBeenCalledTimes(1);
-    expect(done).toBeDisabled();
+    const archive = screen.getByRole("button", { name: "Archive" });
+    await user.click(archive);
+    await user.click(archive);
+    expect(onToggleArchived).toHaveBeenCalledTimes(1);
+    expect(archive).toBeDisabled();
     expect(feedback.success).not.toHaveBeenCalled();
     pending.resolve();
     await waitFor(() =>
-      expect(feedback.success).toHaveBeenCalledWith("Note completed"),
+      expect(feedback.success).toHaveBeenCalledWith("Note archived"),
+    );
+  });
+
+  it("says Note unarchived after unarchiving", async () => {
+    const user = userEvent.setup();
+    const { feedback } = render(
+      <NoteDialog
+        open
+        onOpenChange={vi.fn()}
+        note={{ ...savedNote, state: "done", completedAt: 1 }}
+        onToggleArchived={vi.fn(async () => undefined)}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Unarchive" }));
+    await waitFor(() =>
+      expect(feedback.success).toHaveBeenCalledWith("Note unarchived"),
     );
   });
 });

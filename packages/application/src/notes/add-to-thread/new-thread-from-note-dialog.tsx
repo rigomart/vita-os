@@ -1,8 +1,8 @@
 import type { Note } from "@vita-os/contracts";
 
 import { useAreas } from "../../areas/hooks";
-import { readDashboardFilter } from "../../dashboard/components/dashboard-filter-model";
-import { useAreaFilterParam } from "../../navigation/use-area-filter-param";
+import { filteredAreaId } from "../../dashboard/components/dashboard-filter-model";
+import { useDashboardFilterParams } from "../../navigation/use-dashboard-filter-params";
 import { NewThreadDialog } from "../../threads/new-thread/new-thread-dialog";
 import { useCreateThreadFromNote } from "./hooks";
 import { suggestThreadTitle } from "./thread-title";
@@ -23,7 +23,7 @@ export function NewThreadFromNoteDialog({
   onCreated: (slug: string) => void;
 }) {
   const areas = useAreas().data;
-  const filter = readDashboardFilter(useAreaFilterParam(), areas ?? []);
+  const areaId = filteredAreaId(useDashboardFilterParams(), areas ?? []);
   const createThread = useCreateThreadFromNote();
 
   return (
@@ -31,7 +31,7 @@ export function NewThreadFromNoteDialog({
       open
       onOpenChange={onOpenChange}
       defaultTitle={suggestThreadTitle(note.body)}
-      defaultAreaId={filter.kind === "area" ? filter.area._id : undefined}
+      defaultAreaId={areaId}
       onSubmit={async (value) => {
         const added = await createThread.mutateAsync({ note, ...value });
         onCreated(added.thread.slug);
