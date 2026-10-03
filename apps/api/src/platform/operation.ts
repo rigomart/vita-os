@@ -58,7 +58,7 @@ export function database<T>(
     catch: (cause) => {
       if (isSlugTaken?.(cause)) return new SlugTaken({ cause });
       if (cause instanceof InvalidPageCursorError) {
-        return new InvalidInput({ message: cause.refusal.message });
+        return new InvalidInput({ message: cause.refusal });
       }
       return new Unexpected({ cause });
     },

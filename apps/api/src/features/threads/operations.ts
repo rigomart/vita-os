@@ -95,8 +95,9 @@ export function createThread(input: CreateThreadInput): Operation<Thread> {
     );
 
     for (let execution = 0; execution < SLUG_ATTEMPTS; execution += 1) {
+      const slug = generateSlug(title);
       const thread = yield* database(
-        () => threads.insert({ ...input, title, slug: generateSlug(title) }),
+        () => threads.insert({ ...input, title, slug }),
         isThreadSlugTaken,
       ).pipe(Effect.catchTag("SlugTaken", () => Effect.succeed(undefined)));
       if (thread === undefined) continue;

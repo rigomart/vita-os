@@ -21,11 +21,9 @@ import { threadStorage } from "../threads/storage";
 import { threadNoteNotFound } from "./errors";
 import { threadNoteStorage } from "./storage";
 
-/**
- * Reads are addressed through the Thread that owns them, which must be the
- * caller's; a single Note is addressed by itself, because that is what the
- * person is editing.
- */
+// Reads are addressed through the Thread that owns them, which must be the
+// caller's; a single Note is addressed by itself, because that is what the
+// person is editing.
 
 function found(note: ThreadNote | null): Effect.Effect<ThreadNote, NotFound> {
   return note === null

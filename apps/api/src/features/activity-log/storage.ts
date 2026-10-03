@@ -13,7 +13,7 @@ import { ACTIVITY_COLUMNS, toActivityLogEntry } from "./rows";
 
 /** The Activity Log reads by entry creation time. */
 const activityCursor = createPageCursorCodec("createdAt", {
-  refusal: invalidActivityPagination,
+  refusal: invalidActivityPagination.message,
 });
 
 /**

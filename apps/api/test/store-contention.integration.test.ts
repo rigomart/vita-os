@@ -120,12 +120,15 @@ describe("slug write failures", () => {
   async function createAreaFailingWith(rejection: Error) {
     const { scope } = await setup();
     const prepare = env.DB.prepare.bind(env.DB);
-    let inserts = 0;
+    // The slug each insert attempt bound, in the insert's parameter order.
+    const slugs: unknown[] = [];
     vi.spyOn(env.DB, "prepare").mockImplementation((sql) => {
       if (!sql.startsWith("INSERT INTO areas")) return prepare(sql);
-      inserts += 1;
       return {
-        bind: () => ({ first: () => Promise.reject(rejection) }),
+        bind: (...values: unknown[]) => {
+          slugs.push(values[3]);
+          return { first: () => Promise.reject(rejection) };
+        },
       } as unknown as D1PreparedStatement;
     });
     const failure = await Effect.runPromise(
@@ -133,17 +136,19 @@ describe("slug write failures", () => {
         .createArea({ name: "Rejected", icon: "Home" })
         .pipe(Effect.provideService(RequestContext, scope), Effect.flip),
     );
-    return { failure, inserts };
+    return { failure, slugs };
   }
 
   it("retries every slug collision, then reports a retryable conflict", async () => {
-    const { failure, inserts } = await createAreaFailingWith(
+    const { failure, slugs } = await createAreaFailingWith(
       new Error(
         "D1_ERROR: UNIQUE constraint failed: areas.user_id, areas.slug",
       ),
     );
 
-    expect(inserts).toBe(3);
+    expect(slugs).toHaveLength(3);
+    expect(new Set(slugs).size).toBe(3);
+    for (const slug of slugs) expect(slug).toMatch(/^rejected-[0-9a-f]{8}$/);
     expect(failure._tag).toBe("ChangeConflict");
     expect(toRefusal(failure).error).toEqual({
       code: "conflict",
@@ -154,9 +159,9 @@ describe("slug write failures", () => {
 
   it("does not retry a storage error that is not a slug collision", async () => {
     const outage = new Error("D1_ERROR: database is locked");
-    const { failure, inserts } = await createAreaFailingWith(outage);
+    const { failure, slugs } = await createAreaFailingWith(outage);
 
-    expect(inserts).toBe(1);
+    expect(slugs).toHaveLength(1);
     expect(failure).toMatchObject({ _tag: "Unexpected", cause: outage });
     expect(toRefusal(failure).error).toEqual({
       code: "unexpected",

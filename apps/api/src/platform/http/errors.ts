@@ -1,25 +1,23 @@
 import type { ApplicationError } from "@vita-os/contracts";
 
+import { ConflictError, ValidationError } from "@vita-os/core";
 import { Schema, SchemaGetter } from "effect";
 import { HttpServerResponse } from "effect/http";
 import { HttpApiSchema } from "effect/http-api";
 
 import type { OperationFailure } from "../failures";
 
-import {
-  ChangeConflict,
-  InvalidInput,
-  NotFound,
-  RefusedByState,
-  Unexpected,
-} from "../failures";
+import { InvalidPageCursorError } from "../d1/page-cursor";
+import { operationFailures } from "../failures";
 
 /**
- * The one way a failure becomes a response.
+ * How a failure becomes a response.
  *
- * Every refusal — an unreadable request, an operation's failure, a domain rule
- * that threw, an edited cursor — reaches `toRefusal`, and its status comes from
- * its code.
+ * Operations fail with tagged failures — `attempt` has already turned a domain
+ * rule that threw into one — and HttpApi encodes each through these schemas;
+ * the request guards send everything else through `toRefusal`. A status comes
+ * from the public code, except the transport refusals — a forbidden origin
+ * (403) and a body that is not JSON (415) — which carry their own.
  */
 
 export const STATUS_BY_CODE: Record<ApplicationError["code"], number> = {
@@ -72,13 +70,7 @@ export class RequestRefusal extends Error {
 type Refusable = RequestRefusal | OperationFailure;
 
 function isOperationFailure(value: unknown): value is OperationFailure {
-  return (
-    value instanceof NotFound ||
-    value instanceof InvalidInput ||
-    value instanceof RefusedByState ||
-    value instanceof ChangeConflict ||
-    value instanceof Unexpected
-  );
+  return operationFailures.some((failure) => value instanceof failure);
 }
 
 function publicError(failure: OperationFailure): ApplicationError {
@@ -100,6 +92,21 @@ export function toRefusal(cause: unknown): RequestRefusal {
   if (cause instanceof RequestRefusal) return cause;
   if (isOperationFailure(cause)) {
     return new RequestRefusal(publicError(cause), undefined, cause);
+  }
+  // A domain rule that throws outside `attempt` arrives as a defect, and still
+  // refuses in its own words.
+  if (cause instanceof ValidationError) {
+    return new RequestRefusal(invalidRequest(cause.message), undefined, cause);
+  }
+  if (cause instanceof ConflictError) {
+    return new RequestRefusal(
+      { code: "conflict", message: cause.message, retryable: false },
+      undefined,
+      cause,
+    );
+  }
+  if (cause instanceof InvalidPageCursorError) {
+    return new RequestRefusal(invalidRequest(cause.refusal), undefined, cause);
   }
   return new RequestRefusal(unexpectedFailure, undefined, cause);
 }

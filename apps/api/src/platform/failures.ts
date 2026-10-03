@@ -45,9 +45,13 @@ export class SlugTaken extends Data.TaggedError("SlugTaken")<{
   readonly cause: unknown;
 }> {}
 
-export type OperationFailure =
-  | NotFound
-  | InvalidInput
-  | RefusedByState
-  | ChangeConflict
-  | Unexpected;
+/** Every failure an operation can end with. */
+export const operationFailures = [
+  NotFound,
+  InvalidInput,
+  RefusedByState,
+  ChangeConflict,
+  Unexpected,
+] as const;
+
+export type OperationFailure = InstanceType<(typeof operationFailures)[number]>;
