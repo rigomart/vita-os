@@ -30,7 +30,12 @@ export const NotesHandlers = HttpApiBuilder.group(
         Effect.map(countOpenNotes(), (count) => ({ count })),
       )
       .handle("done", ({ query }) =>
-        Effect.flatMap(pageRequest(query, NOTE_PAGE_SIZE), getDoneNotePage),
+        Effect.flatMap(pageRequest(query, NOTE_PAGE_SIZE), (page) =>
+          getDoneNotePage({
+            ...page,
+            ...(query.q === undefined ? {} : { query: query.q }),
+          }),
+        ),
       )
       .handle("create", ({ payload }) =>
         createNote(normalizeCreateNote(payload)),

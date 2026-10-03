@@ -269,8 +269,11 @@ export function createHttpApplicationClient({
 
     /* Standalone Notes */
     listOpenNotes: () => read(literalPath("notes"), decodeNoteList),
-    getDoneNotePage: (input) =>
-      read(literalPath(`notes/done?${pageQuery(input)}`), decodeNotePage),
+    getDoneNotePage: ({ query, ...page }) => {
+      const params = new URLSearchParams(pageQuery(page));
+      if (query?.trim()) params.set("q", query);
+      return read(literalPath(`notes/done?${params}`), decodeNotePage);
+    },
     countOpenNotes: () => read(literalPath("notes/open-count"), decodeCount),
     createNote: (input) =>
       send("POST", literalPath("notes"), input, decodeNote),

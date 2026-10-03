@@ -13,12 +13,27 @@ import { setClause } from "../../platform/d1/statements";
 import { NOTE_COLUMNS, toNote } from "./rows";
 
 /**
+ * A `LIKE` condition per term, each matching the term literally: `%`, `_` and
+ * the escape character itself are escaped, so a search for `50%` finds "50%"
+ * rather than everything starting with "50". SQLite's `LIKE` ignores ASCII case.
+ */
+export function bodyContainsAll(terms: readonly string[]): {
+  sql: string;
+  binds: string[];
+} {
+  return {
+    sql: terms.map(() => " AND body LIKE ? ESCAPE '\\'").join(""),
+    binds: terms.map((term) => `%${term.replace(/[\\%_]/g, "\\$&")}%`),
+  };
+}
+
+/**
  * Standalone Notes: captured on their own, attached to no Thread. One D1 round
  * trip per function, every statement scoped by the owner.
  *
  * Open Notes are read whole — they are what the person has agreed to look at, so
- * they keep the collection small themselves. Done Notes only grow, so they are
- * paged.
+ * they keep the collection small themselves. Done Notes (Archived, in the
+ * product's words) only grow, so they are paged, and searched by body.
  */
 export function noteStorage({ db, clock, actorId }: RequestScope) {
   /**
@@ -74,8 +89,8 @@ export function noteStorage({ db, clock, actorId }: RequestScope) {
     },
 
     /**
-     * How many Open Notes there are. Read from the same index the collection
-     * reads, so the navigation badge and the collection cannot disagree.
+     * How many Open Notes there are. Read from the same index the list reads,
+     * so a count and the list cannot disagree.
      */
     async countOpen(): Promise<number> {
       const row = await db
@@ -88,20 +103,27 @@ export function noteStorage({ db, clock, actorId }: RequestScope) {
       return row?.total ?? 0;
     },
 
-    /** Throws when the cursor is not one this Worker minted. */
-    async readDonePage(page: PageRequest): Promise<NotePage> {
+    /**
+     * One page of Done Notes, narrowed to the bodies containing every term.
+     * Throws when the cursor is not one this Worker minted.
+     */
+    async readDonePage(
+      page: PageRequest,
+      terms: readonly string[] = [],
+    ): Promise<NotePage> {
       const cursor =
         page.cursor === undefined ? undefined : doneCursor.decode(page.cursor);
       const boundary = pageBoundary("completed_at", cursor);
+      const search = bodyContainsAll(terms);
       const result = await db
         .prepare(
           `SELECT ${NOTE_COLUMNS}
            FROM notes
-           WHERE user_id = ? AND state = 'done'${boundary.sql}
+           WHERE user_id = ? AND state = 'done'${search.sql}${boundary.sql}
            ORDER BY completed_at DESC, id DESC
            LIMIT ?`,
         )
-        .bind(actorId, ...boundary.binds, page.limit + 1)
+        .bind(actorId, ...search.binds, ...boundary.binds, page.limit + 1)
         .all<NoteRow>();
 
       return toPage(result.results, page.limit, {

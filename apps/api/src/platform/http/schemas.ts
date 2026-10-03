@@ -11,7 +11,7 @@ export const Timestamp = Schema.Number.check(Schema.isInt());
 export const Revision = Timestamp.check(Schema.isGreaterThanOrEqualTo(0));
 export const CommandAck = Schema.Struct({ acknowledged: Schema.Literal(true) });
 // Repeated query keys retain the first value, matching the previous router.
-const QueryValue = Schema.String.pipe(
+export const QueryValue = Schema.String.pipe(
   Schema.encodeTo(
     Schema.Union([
       Schema.String,

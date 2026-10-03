@@ -31,6 +31,13 @@ export {
   type ThreadAttentionInput,
 } from "./attention";
 export { clearedToAbsent } from "./clearable";
+export {
+  boundNoteSearch,
+  matchesNoteSearch,
+  NOTE_SEARCH_MAX_LENGTH,
+  NOTE_SEARCH_MAX_TERMS,
+  noteSearchTerms,
+} from "./note-search";
 export { newRecordId } from "./record-id";
 export { ConflictError, ValidationError } from "./errors";
 export {

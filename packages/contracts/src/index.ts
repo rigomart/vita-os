@@ -7,6 +7,7 @@ export type {
   CreateAreaInput,
   CreateThreadFromNoteInput,
   CreateThreadInput,
+  DoneNotePageRequest,
   EditMoveInput,
   FocusMoveInput,
   PageRequest,

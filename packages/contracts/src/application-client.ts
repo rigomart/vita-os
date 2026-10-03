@@ -106,6 +106,14 @@ export interface PageRequest {
 }
 
 /**
+ * A page of Archived Notes (stored as Done). `query` narrows it to the Notes
+ * whose body contains every word of it; blank or absent reads them all.
+ */
+export interface DoneNotePageRequest extends PageRequest {
+  query?: string;
+}
+
+/**
  * Every Vita OS operation, named after what the product does rather than after
  * a route, a table, or a transport.
  *
@@ -157,7 +165,9 @@ export interface ApplicationClient {
 
   /* Standalone Notes */
   listOpenNotes(): Promise<OperationResult<Note[]>>;
-  getDoneNotePage(input: PageRequest): Promise<OperationResult<NotePage>>;
+  getDoneNotePage(
+    input: DoneNotePageRequest,
+  ): Promise<OperationResult<NotePage>>;
   countOpenNotes(): Promise<OperationResult<number>>;
   createNote(input: {
     body: string;
