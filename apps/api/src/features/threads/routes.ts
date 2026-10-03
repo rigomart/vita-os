@@ -16,6 +16,7 @@ import {
 } from "./operations";
 import { normalizeThreadChange } from "./requests";
 
+/** Threads and their Moves. */
 export const ThreadsHandlers = HttpApiBuilder.group(
   ApplicationApi,
   "threads",

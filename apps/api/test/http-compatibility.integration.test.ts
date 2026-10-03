@@ -1,9 +1,13 @@
 import type { Note, NotePage, Thread } from "@vita-os/contracts";
 
+import { ConflictError, ValidationError } from "@vita-os/core";
 import { SELF } from "cloudflare:test";
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
+import type { RequestScope } from "../src/platform/request-scope";
+
+import { systemClock } from "../src/platform/request-scope";
 import { createTestApp } from "./app";
 import { call, createSession, expectError, succeed } from "./sessions";
 
@@ -206,6 +210,51 @@ describe("HTTP contract compatibility", () => {
     });
     expect(await succeed<Note[]>("/v1/notes", { session })).toEqual([]);
   });
+
+  it.each([
+    {
+      thrown: new ValidationError("Escaped validation"),
+      status: 400,
+      code: "validation",
+    },
+    {
+      thrown: new ConflictError("Escaped conflict"),
+      status: 409,
+      code: "conflict",
+    },
+  ])(
+    "refuses a $code rule that throws outside the typed channel in its own words",
+    async ({ thrown, status, code }) => {
+      const session = await createSession(`escaped-${code}`);
+      // Thread creation builds its storage outside any typed boundary, so a
+      // throwing scope reaches the response as a defect.
+      const app = createTestApp({
+        createScope: ({ actorId }) => ({
+          actorId,
+          clock: systemClock,
+          get db(): RequestScope["db"] {
+            throw thrown;
+          },
+        }),
+      });
+      const response = await app.request(
+        "/v1/threads",
+        {
+          method: "POST",
+          headers: {
+            cookie: session.cookie,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ title: "Escaping" }),
+        },
+        env,
+      );
+      expect(response.status).toBe(status);
+      await expect(response.json()).resolves.toEqual({
+        error: { code, message: thrown.message, retryable: false },
+      });
+    },
+  );
 
   it("serves HEAD through GET while omitting the body", async () => {
     const session = await createSession("head-fallback");

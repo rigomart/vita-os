@@ -4,13 +4,13 @@ import { env } from "cloudflare:test";
 import { Effect } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { RequestRefusal } from "../src/platform/http/errors";
+import type { OperationFailure } from "../src/platform/failures";
 import type { RequestScope } from "../src/platform/request-scope";
 
 import { getThreadActivityPage } from "../src/features/activity-log/operations";
-import { areaNotFound } from "../src/features/areas/errors";
 import * as areas from "../src/features/areas/operations";
 import * as threads from "../src/features/threads/operations";
+import { toRefusal } from "../src/platform/http/errors";
 import { RequestContext } from "../src/platform/request-scope";
 
 const clock = { now: () => Date.now(), newId: () => crypto.randomUUID() };
@@ -20,7 +20,7 @@ function value<T>(result: OperationResult<T>): T {
 }
 function result<T>(
   scope: RequestScope,
-  operation: Effect.Effect<T, RequestRefusal, RequestContext>,
+  operation: Effect.Effect<T, OperationFailure, RequestContext>,
 ): Promise<OperationResult<T>> {
   return Effect.runPromise(
     operation.pipe(
@@ -29,7 +29,7 @@ function result<T>(
         onSuccess: (value): OperationResult<T> => ({ ok: true, value }),
         onFailure: (failure): OperationResult<T> => ({
           ok: false,
-          error: failure.error,
+          error: toRefusal(failure).error,
         }),
       }),
     ),
@@ -116,6 +116,61 @@ describe("slug collision recovery", () => {
   );
 });
 
+describe("slug write failures", () => {
+  async function createAreaFailingWith(rejection: Error) {
+    const { scope } = await setup();
+    const prepare = env.DB.prepare.bind(env.DB);
+    // The slug each insert attempt bound, in the insert's parameter order.
+    const slugs: unknown[] = [];
+    vi.spyOn(env.DB, "prepare").mockImplementation((sql) => {
+      if (!sql.startsWith("INSERT INTO areas")) return prepare(sql);
+      return {
+        bind: (...values: unknown[]) => {
+          slugs.push(values[3]);
+          return { first: () => Promise.reject(rejection) };
+        },
+      } as unknown as D1PreparedStatement;
+    });
+    const failure = await Effect.runPromise(
+      areas
+        .createArea({ name: "Rejected", icon: "Home" })
+        .pipe(Effect.provideService(RequestContext, scope), Effect.flip),
+    );
+    return { failure, slugs };
+  }
+
+  it("retries every slug collision, then reports a retryable conflict", async () => {
+    const { failure, slugs } = await createAreaFailingWith(
+      new Error(
+        "D1_ERROR: UNIQUE constraint failed: areas.user_id, areas.slug",
+      ),
+    );
+
+    expect(slugs).toHaveLength(3);
+    expect(new Set(slugs).size).toBe(3);
+    for (const slug of slugs) expect(slug).toMatch(/^rejected-[0-9a-f]{8}$/);
+    expect(failure._tag).toBe("ChangeConflict");
+    expect(toRefusal(failure).error).toEqual({
+      code: "conflict",
+      message: "The record changed while this request was in flight.",
+      retryable: true,
+    });
+  });
+
+  it("does not retry a storage error that is not a slug collision", async () => {
+    const outage = new Error("D1_ERROR: database is locked");
+    const { failure, slugs } = await createAreaFailingWith(outage);
+
+    expect(slugs).toHaveLength(1);
+    expect(failure).toMatchObject({ _tag: "Unexpected", cause: outage });
+    expect(toRefusal(failure).error).toEqual({
+      code: "unexpected",
+      message: "Unexpected error.",
+      retryable: false,
+    });
+  });
+});
+
 describe("Area contention", () => {
   it("reports a missing destination when an Area disappears during a Thread move", async () => {
     const { scope, area } = await setup();
@@ -141,7 +196,14 @@ describe("Area contention", () => {
         scope,
         threads.updateThread({ threadId: thread._id, areaId: destination._id }),
       ),
-    ).resolves.toEqual({ ok: false, error: areaNotFound });
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "not_found",
+        message: "Area not found.",
+        retryable: false,
+      },
+    });
     expect(
       value(await result(scope, threads.getThreadDetail({ slug: thread.slug })))
         .thread.areaId,

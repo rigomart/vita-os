@@ -10,114 +10,108 @@ import { commandAcknowledged } from "@vita-os/contracts";
 import { generateSlug, slugify, validateAreaName } from "@vita-os/core";
 import { Effect } from "effect";
 
-import type { RequestRefusal } from "../../platform/http/errors";
+import type { Operation } from "../../platform/operation";
 import type { AreaChanges } from "./storage";
 
-import {
-  attempt,
-  changeConflict,
-  database,
-  failed,
-  succeeded,
-} from "../../platform/operation";
+import { ChangeConflict } from "../../platform/failures";
+import { attempt, database } from "../../platform/operation";
 import { RequestContext } from "../../platform/request-scope";
 import { areaNotFound, areaOrderMismatch } from "./errors";
 import { areaStorage, isAreaSlugTaken } from "./storage";
 
-/** Three total attempts; only slug collisions and concurrent renames retry. */
+/**
+ * How many times a create or change re-mints a slug, or re-reads an Area that
+ * moved underneath it, before giving up.
+ *
+ * Slugs carry eight hex characters of randomness and are unique per owner, so a
+ * collision is already improbable; retrying twice makes it unreachable in
+ * practice without leaving the uniqueness invariant to chance.
+ */
 const ATTEMPTS = 3;
 
-export function listAreas(): Effect.Effect<
-  AreaSummary[],
-  RequestRefusal,
-  RequestContext
-> {
+export function listAreas(): Operation<AreaSummary[]> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     return yield* database(() => areaStorage(scope).list());
   });
 }
 
-/** A name that reads as an existing slug selects the owner's existing Area. */
-export function createArea(
-  input: CreateAreaInput,
-): Effect.Effect<AreaSummary, RequestRefusal, RequestContext> {
+/**
+ * Create an Area, or return the owner's existing Area whose name reads as the
+ * same slug. That is what lets a picker create on type: typing "health" when
+ * "Health" exists picks it instead of adding a duplicate.
+ */
+export function createArea(input: CreateAreaInput): Operation<AreaSummary> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     const areas = areaStorage(scope);
     const name = yield* attempt(() => validateAreaName(input.name));
-    const base = yield* attempt(() => slugify(name));
+
+    const base = slugify(name);
     const listed = yield* database(() => areas.list());
-    const existing = yield* attempt(() =>
-      listed.find((area) => slugify(area.name) === base),
-    );
+    const existing = listed.find((area) => slugify(area.name) === base);
     if (existing !== undefined) return existing;
 
     for (let execution = 0; execution < ATTEMPTS; execution += 1) {
-      const slug = yield* attempt(() => generateSlug(name));
-      const area = yield* database(() =>
-        areas.insert({ name, icon: input.icon, slug }),
-      ).pipe(
-        Effect.catch((error) =>
-          isAreaSlugTaken(error.cause)
-            ? succeeded(undefined)
-            : Effect.fail(error),
-        ),
-      );
+      const slug = generateSlug(name);
+      const area = yield* database(
+        () => areas.insert({ name, icon: input.icon, slug }),
+        isAreaSlugTaken,
+      ).pipe(Effect.catchTag("SlugTaken", () => Effect.succeed(undefined)));
       if (area === undefined) continue;
-      if (area === null) return yield* failed(changeConflict);
+      if (area === null) return yield* new ChangeConflict();
       return area;
     }
-    return yield* failed(changeConflict);
+    return yield* new ChangeConflict();
   });
 }
 
-/** Re-read before every conditional rename so concurrent changes are decided again. */
+/**
+ * Rename or re-icon an Area. A rename mints a new slug, so the caller reads
+ * the slug back rather than assuming an old link still names it.
+ *
+ * Whether a change is a rename depends on the name as read, so the write is
+ * conditional on that name and a concurrent rename is decided again.
+ */
 export function updateArea({
   areaId,
   ...requested
-}: UpdateAreaInput): Effect.Effect<
-  AreaSummary,
-  RequestRefusal,
-  RequestContext
-> {
+}: UpdateAreaInput): Operation<AreaSummary> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     const areas = areaStorage(scope);
+
     for (let execution = 0; execution < ATTEMPTS; execution += 1) {
       const existing = yield* database(() => areas.find(areaId));
-      if (existing === null) return yield* failed(areaNotFound);
+      if (existing === null) return yield* areaNotFound();
+
       const name =
         requested.name === undefined
           ? undefined
           : yield* attempt(() => validateAreaName(requested.name!));
-      const slug =
-        name !== undefined && name !== existing.name
-          ? yield* attempt(() => generateSlug(name))
-          : undefined;
       const changes: AreaChanges = {
         ...(name === undefined ? {} : { name }),
-        ...(slug === undefined ? {} : { slug }),
+        ...(name !== undefined && name !== existing.name
+          ? { slug: generateSlug(name) }
+          : {}),
         ...(requested.icon === undefined ? {} : { icon: requested.icon }),
       };
       if (Object.keys(changes).length === 0) return existing;
-      const updated = yield* database(() =>
-        areas.update(areaId, existing.name, changes),
-      ).pipe(
-        Effect.catch((error) =>
-          isAreaSlugTaken(error.cause) ? succeeded(null) : Effect.fail(error),
-        ),
-      );
+
+      const updated = yield* database(
+        () => areas.update(areaId, existing.name, changes),
+        isAreaSlugTaken,
+      ).pipe(Effect.catchTag("SlugTaken", () => Effect.succeed(null)));
       if (updated !== null) return updated;
     }
-    return yield* failed(changeConflict);
+    return yield* new ChangeConflict();
   });
 }
 
-/** The order must name exactly the owner's Areas, each once. */
+/** Put the owner's Areas in the given order. The list must name each once. */
 export function reorderAreas(input: {
   areaIds: AreaId[];
-}): Effect.Effect<AreaSummary[], RequestRefusal, RequestContext> {
+}): Operation<AreaSummary[]> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     const areas = areaStorage(scope);
@@ -129,24 +123,27 @@ export function reorderAreas(input: {
       requested.size !== owned.size ||
       input.areaIds.some((areaId) => !owned.has(areaId))
     ) {
-      return yield* failed(areaOrderMismatch);
+      return yield* areaOrderMismatch();
     }
+
     yield* database(() => areas.reorder(input.areaIds));
     return yield* database(() => areas.list());
   });
 }
 
-/** Native D1 keeps Area deletion and removal of its Thread labels atomic. */
+/**
+ * Delete an Area. It never waits on its Threads: they lose the label and stay
+ * as they are.
+ */
 export function removeArea(input: {
   areaId: AreaId;
-}): Effect.Effect<CommandAcknowledgement, RequestRefusal, RequestContext> {
+}): Operation<CommandAcknowledgement> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     const removed = yield* database(() =>
       areaStorage(scope).removeClearingLabels(input.areaId),
     );
-    return yield* removed
-      ? succeeded(commandAcknowledged)
-      : failed(areaNotFound);
+    if (!removed) return yield* areaNotFound();
+    return commandAcknowledged;
   });
 }

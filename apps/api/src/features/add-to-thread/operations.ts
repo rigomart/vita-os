@@ -11,14 +11,10 @@ import {
 } from "@vita-os/core";
 import { Effect } from "effect";
 
-import type { RequestRefusal } from "../../platform/http/errors";
+import type { Operation } from "../../platform/operation";
 
-import {
-  attempt,
-  changeConflict,
-  database,
-  failed,
-} from "../../platform/operation";
+import { ChangeConflict } from "../../platform/failures";
+import { attempt, database } from "../../platform/operation";
 import { RequestContext } from "../../platform/request-scope";
 import { areaNotFound } from "../areas/errors";
 import { areaStorage } from "../areas/storage";
@@ -30,7 +26,6 @@ import { addToThreadStorage } from "./storage";
 
 /** The same limit as other revision-conditional Thread changes. */
 const CHANGE_ATTEMPTS = 3;
-type Operation<A> = Effect.Effect<A, RequestRefusal, RequestContext>;
 
 /**
  * Turn an Open Standalone Note into a Thread Note on an Open Thread.
@@ -55,11 +50,10 @@ export function addNoteToThread(
         ],
         { concurrency: "unbounded" },
       );
-      if (note === null || note.state !== "open")
-        return yield* failed(noteNotFound);
+      if (note === null || note.state !== "open") return yield* noteNotFound();
       if (thread === null || thread.state !== "open")
-        return yield* failed(threadNotFound);
-      const change = yield* attempt(() => decideAddNoteToThread(thread, note));
+        return yield* threadNotFound();
+      const change = decideAddNoteToThread(thread, note);
       const added = yield* database(() =>
         storage.addToThread({
           note,
@@ -70,7 +64,7 @@ export function addNoteToThread(
       );
       if (added !== null) return added;
     }
-    return yield* failed(changeConflict);
+    return yield* new ChangeConflict();
   });
 }
 
@@ -91,41 +85,36 @@ export function createThreadFromNote(
     );
     for (let execution = 0; execution < CHANGE_ATTEMPTS; execution += 1) {
       const note = yield* database(() => notes.find(input.noteId));
-      if (note === null || note.state !== "open")
-        return yield* failed(noteNotFound);
-      const slug = yield* attempt(() => generateSlug(title));
-      const change = yield* attempt(() =>
-        decideAddNoteToThread({ title, slug, state: "open" }, note),
+      if (note === null || note.state !== "open") return yield* noteNotFound();
+      const slug = generateSlug(title);
+      const change = decideAddNoteToThread(
+        { title, slug, state: "open" },
+        note,
       );
-      const written = yield* database(() =>
-        storage.startThread({
-          note,
-          thread: {
-            title,
-            slug,
-            ...(input.areaId === undefined ? {} : { areaId: input.areaId }),
-          },
-          change,
-        }),
-      ).pipe(
-        Effect.map((added) => ({ kind: "written" as const, added })),
-        Effect.catch((error) =>
-          isThreadSlugTaken(error.cause)
-            ? Effect.succeed({ kind: "collision" as const })
-            : Effect.fail(error),
-        ),
-      );
-      if (written.kind === "collision") continue;
-      if (written.added !== null) return written.added;
+      const added = yield* database(
+        () =>
+          storage.startThread({
+            note,
+            thread: {
+              title,
+              slug,
+              ...(input.areaId === undefined ? {} : { areaId: input.areaId }),
+            },
+            change,
+          }),
+        isThreadSlugTaken,
+      ).pipe(Effect.catchTag("SlugTaken", () => Effect.succeed(undefined)));
+      if (added === undefined) continue;
+      if (added !== null) return added;
       // Nothing was written: the Area is gone, or the Note changed and is
       // read again.
       if (input.areaId !== undefined) {
         const area = yield* database(() =>
           areaStorage(scope).find(input.areaId!),
         );
-        if (area === null) return yield* failed(areaNotFound);
+        if (area === null) return yield* areaNotFound();
       }
     }
-    return yield* failed(changeConflict);
+    return yield* new ChangeConflict();
   });
 }

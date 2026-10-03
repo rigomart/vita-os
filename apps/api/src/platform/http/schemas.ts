@@ -3,8 +3,8 @@ import type { ApplicationError, PageRequest } from "@vita-os/contracts";
 import { Context, Effect, Schema, SchemaGetter } from "effect";
 
 import { invalidPagination } from "../d1/page-cursor";
-import { attempt, failed } from "../operation";
 import { decodeLimit, type PageSize } from "./decode";
+import { RequestRefusal } from "./errors";
 
 export const Id = Schema.String.check(Schema.isMinLength(1));
 export const Timestamp = Schema.Number.check(Schema.isInt());
@@ -40,13 +40,11 @@ export function pageRequest(
   query: { readonly limit?: string; readonly cursor?: string },
   size: PageSize,
   invalid: ApplicationError = invalidPagination,
-) {
-  return Effect.gen(function* () {
-    const limit = yield* attempt(() => decodeLimit(query.limit, size));
-    if (limit === undefined) return yield* failed(invalid);
-    return {
-      limit,
-      ...(query.cursor === undefined ? {} : { cursor: query.cursor }),
-    } satisfies PageRequest;
+): Effect.Effect<PageRequest, RequestRefusal> {
+  const limit = decodeLimit(query.limit, size);
+  if (limit === undefined) return Effect.fail(new RequestRefusal(invalid));
+  return Effect.succeed({
+    limit,
+    ...(query.cursor === undefined ? {} : { cursor: query.cursor }),
   });
 }

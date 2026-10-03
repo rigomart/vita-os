@@ -1,7 +1,3 @@
-import type { ApplicationError } from "@vita-os/contracts";
+import { NotFound } from "../../platform/failures";
 
-export const noteNotFound: ApplicationError = {
-  code: "not_found",
-  message: "Note not found.",
-  retryable: false,
-};
+export const noteNotFound = () => new NotFound({ message: "Note not found." });

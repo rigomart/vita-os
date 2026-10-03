@@ -7,6 +7,7 @@ import { invalidActivityPagination } from "./errors";
 import { getThreadActivityPage } from "./operations";
 
 const ACTIVITY_PAGE_SIZE = { fallback: 20, maximum: 50 };
+/** A Thread's Activity Log, a page at a time. */
 export const ActivityLogHandlers = HttpApiBuilder.group(
   ApplicationApi,
   "activityLog",

@@ -34,7 +34,9 @@ export const EditMoveBody = Schema.Struct({
   text: Schema.String,
   expectedRevision: Revision,
 });
+/** Removing and completing name the Move in the path; the body holds only the revision. */
 export const MoveRevisionBody = Schema.Struct({ expectedRevision: Revision });
+/** `moveId: null` unfocuses, and must be spelled out: absent is not a choice. */
 export const FocusMoveBody = Schema.Struct({
   moveId: Schema.NullOr(MoveIdSchema),
   expectedRevision: Revision,

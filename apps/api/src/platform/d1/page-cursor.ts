@@ -24,13 +24,13 @@ export const invalidPagination: ApplicationError = {
 };
 
 /**
- * A cursor this Worker did not mint. It carries the refusal its history
- * answers with, so the error handler needs no knowledge of which read it was.
+ * A cursor this Worker did not mint. It carries the words its history refuses
+ * with, so the error handler needs no knowledge of which read it was.
  */
 export class InvalidPageCursorError extends Error {
   constructor(
     message: string,
-    readonly refusal: ApplicationError = invalidPagination,
+    readonly refusal: string = invalidPagination.message,
   ) {
     super(message);
     this.name = "InvalidPageCursorError";
@@ -83,7 +83,7 @@ export interface PageCursorCodec {
  */
 export function createPageCursorCodec(
   timestampKey: string,
-  options: { nullableTimestamp?: boolean; refusal?: ApplicationError } = {},
+  options: { nullableTimestamp?: boolean; refusal?: string } = {},
 ): PageCursorCodec {
   const nullableTimestamp = options.nullableTimestamp ?? false;
   const invalid = (message: string) =>

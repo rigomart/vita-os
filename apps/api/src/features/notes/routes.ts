@@ -20,12 +20,17 @@ import {
   NOTE_PAGE_SIZE,
 } from "./requests";
 
+/**
+ * Standalone Notes: the collection, its count, its Done history, and the four
+ * ways one Note changes.
+ */
 export const NotesHandlers = HttpApiBuilder.group(
   ApplicationApi,
   "notes",
   (handlers) =>
     handlers
       .handle("list", () => listOpenNotes())
+      // The count travels wrapped, so the body is a JSON object like every other.
       .handle("openCount", () =>
         Effect.map(countOpenNotes(), (count) => ({ count })),
       )

@@ -11,20 +11,24 @@ import { commandAcknowledged } from "@vita-os/contracts";
 import { requireNonBlankText } from "@vita-os/core";
 import { Effect } from "effect";
 
-import type { RequestRefusal } from "../../platform/http/errors";
+import type { NotFound } from "../../platform/failures";
+import type { Operation } from "../../platform/operation";
 
-import { attempt, database, failed } from "../../platform/operation";
+import { attempt, database } from "../../platform/operation";
 import { RequestContext } from "../../platform/request-scope";
 import { threadNotFound } from "../threads/errors";
 import { threadStorage } from "../threads/storage";
 import { threadNoteNotFound } from "./errors";
 import { threadNoteStorage } from "./storage";
 
-type Operation<A> = Effect.Effect<A, RequestRefusal, RequestContext>;
-function found(
-  note: ThreadNote | null,
-): Effect.Effect<ThreadNote, RequestRefusal> {
-  return note === null ? failed(threadNoteNotFound) : Effect.succeed(note);
+// Reads are addressed through the Thread that owns them, which must be the
+// caller's; a single Note is addressed by itself, because that is what the
+// person is editing.
+
+function found(note: ThreadNote | null): Effect.Effect<ThreadNote, NotFound> {
+  return note === null
+    ? Effect.fail(threadNoteNotFound())
+    : Effect.succeed(note);
 }
 
 export function listOpenThreadNotes(input: {
@@ -33,7 +37,7 @@ export function listOpenThreadNotes(input: {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     if (!(yield* database(() => threadStorage(scope).exists(input.threadId))))
-      return yield* failed(threadNotFound);
+      return yield* threadNotFound();
     return yield* database(() =>
       threadNoteStorage(scope).listOpen(input.threadId),
     );
@@ -47,7 +51,7 @@ export function getDoneThreadNotePage({
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     if (!(yield* database(() => threadStorage(scope).exists(threadId))))
-      return yield* failed(threadNotFound);
+      return yield* threadNotFound();
     return yield* database(() =>
       threadNoteStorage(scope).readDonePage(threadId, page),
     );
@@ -66,7 +70,7 @@ export function createThreadNote(input: {
     const note = yield* database(() =>
       threadNoteStorage(scope).insert(input.threadId, body),
     );
-    return note === null ? yield* failed(threadNotFound) : note;
+    return note === null ? yield* threadNotFound() : note;
   });
 }
 
@@ -121,6 +125,6 @@ export function removeThreadNote(input: {
     const removed = yield* database(() =>
       threadNoteStorage(scope).remove(input.threadNoteId),
     );
-    return removed ? commandAcknowledged : yield* failed(threadNoteNotFound);
+    return removed ? commandAcknowledged : yield* threadNoteNotFound();
   });
 }
