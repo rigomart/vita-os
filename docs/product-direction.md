@@ -1,6 +1,6 @@
 # Vita OS: Product Direction
 
-> Last update: 2026/10/02. Replaces the direction of 2025/12/01.
+> Last update: 2026/10/04. Replaces the direction of 2025/12/01.
 
 This document says what Vita OS is for and where it is going. `CONTEXT.md` owns the vocabulary and the exact rules; `docs/adr/` records each decision. When this document and either of those disagree, they win and this document is stale.
 
@@ -159,7 +159,7 @@ The first direction (2025/12/01) described a life-domain dashboard: Areas with a
 
 Ordered by how directly they serve the thesis. None is committed; each needs a spec before work starts.
 
-1. **Watch for recurring Follow-up dates.** ADR 0021 makes "a Thread with a Follow-up date" the answer for periodic reviews. If resetting the same Follow-up date by hand becomes routine, that is the evidence to build recurrence. Until then, no recurrence engine.
+1. **Moves with an optional date and repeat** (issue #397, ADR 0032, proposed). The evidence this direction waited for arrived: a daily check-in did not fit a single Follow-up date, and was never tracked in the app at all. A Move becomes text with an optional date and repeat, and a Thread's Follow-up date folds into its Moves. How it looks on the Dashboard is still open.
 2. **Cross-device freshness stays parked** (issue #342) until normal use shows that refresh on focus is not enough.
 
 Reaching Resolved Threads again, once an open direction, shipped as the palette's History (ADR 0029), which now holds Archived Notes too (ADR 0031).
