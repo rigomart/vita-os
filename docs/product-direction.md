@@ -197,7 +197,7 @@ The first direction (2025/12/01) described a life-domain dashboard: Areas with a
 
 Ordered by how directly they serve the thesis. None is committed; each needs a spec before work starts.
 
-1. **Moves with an optional date and repeat** (issue #397, ADR 0032, proposed). The evidence this direction waited for arrived: a daily check-in did not fit a single Follow-up date, and was never tracked in the app at all. A Move becomes text with an optional date and repeat, and a Thread's Follow-up date folds into its Moves. How it looks on the Dashboard is still open.
+1. **Moves with an optional date and repeat** (issue #397, ADR 0032, proposed). The evidence this direction waited for arrived: a daily check-in did not fit a single Follow-up date, and was never tracked in the app at all. A Move becomes text with an optional date and repeat, and a Thread's Follow-up date folds into its Moves. Move is renamed Task first (ADR 0033).
 2. **Cross-device freshness stays parked** (issue #342) until normal use shows that refresh on focus is not enough.
 
 Reaching Resolved Threads again, once an open direction, shipped as the palette's History (ADR 0029), which now holds Archived Notes too (ADR 0031).

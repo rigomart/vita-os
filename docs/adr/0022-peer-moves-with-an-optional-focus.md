@@ -1,5 +1,7 @@
 # Peer Moves with an optional Focus
 
+Terminology amended by ADR 0033: **Move** is renamed **Task**, and **Focused Move** is **Focused Task**. Existing behavior is retained.
+
 **Status:** Accepted
 **Date:** 2026-09-26
 
