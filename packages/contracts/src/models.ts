@@ -1,7 +1,7 @@
 import type {
   ActivityLogEntryId,
   AreaId,
-  MoveId,
+  TaskId,
   NoteId,
   ThreadId,
   ThreadNoteId,
@@ -53,16 +53,16 @@ export interface Thread {
   order: number;
   state: ThreadState;
   /**
-   * The Thread's Moves: peers, in the order they were captured. The order is
+   * The Thread's Tasks: peers, in the order they were captured. The order is
    * for finding things, never a priority. Absent means the Thread holds none —
    * an empty list is never stored.
    */
-  moves?: Move[];
+  tasks?: Task[];
   /**
-   * The one Move the person singled out, when they did. It is always one of
-   * `moves`. Focus is emphasis only: it never changes when the Thread surfaces.
+   * The one Task the person singled out, when they did. It is always one of
+   * `tasks`. Focus is emphasis only: it never changes when the Thread surfaces.
    */
-  focusedMoveId?: MoveId;
+  focusedTaskId?: TaskId;
   followUp?: number;
   lastActivityAt?: number;
   lastActivityContent?: string;
@@ -70,7 +70,7 @@ export interface Thread {
   /**
    * How many times the Thread has changed.
    *
-   * Every read carries it, so any surface that shows a Move can also act on
+   * Every read carries it, so any surface that shows a Task can also act on
    * one: the revision travels back with the command, and a request made against
    * a Thread that has since moved on is refused rather than applied twice.
    */
@@ -78,8 +78,8 @@ export interface Thread {
 }
 
 /** One useful action a Thread holds: plain text, no date, no done state. */
-export interface Move {
-  _id: MoveId;
+export interface Task {
+  _id: TaskId;
   text: string;
 }
 
@@ -123,7 +123,7 @@ export interface NoteAddedToThread {
 }
 
 /**
- * `next_move_change` is no longer written. Entries recorded before Moves
+ * `next_move_change` is no longer written. Entries recorded before Tasks
  * replaced the Next Move keep it, and read as they always did.
  */
 export type ActivityLogEntryType =

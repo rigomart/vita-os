@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { clearedToAbsent } from "./clearable";
 import { ConflictError, ValidationError } from "./errors";
-import { requireMoveId, requireMoveText, requireOpenForMoves } from "./moves";
 import { generateSlug, slugify, validateAreaName } from "./slug";
+import { requireTaskId, requireTaskText, requireOpenForTasks } from "./tasks";
 import { requireNonBlankText } from "./text";
 
 describe("text", () => {
   it("trims accepted text", () => {
-    expect(requireNonBlankText("  Call clinic  ", "Move")).toBe("Call clinic");
+    expect(requireNonBlankText("  Call clinic  ", "Task")).toBe("Call clinic");
   });
 
   it("refuses blank text by the caller's label", () => {
@@ -53,24 +53,24 @@ describe("validateAreaName", () => {
   });
 });
 
-describe("Move input", () => {
-  it("trims a Move and refuses a blank one", () => {
-    expect(requireMoveText(" Book slot ")).toBe("Book slot");
-    expect(() => requireMoveText("  ")).toThrow(
-      new ValidationError("Move cannot be empty"),
+describe("Task input", () => {
+  it("trims a Task and refuses a blank one", () => {
+    expect(requireTaskText(" Book slot ")).toBe("Book slot");
+    expect(() => requireTaskText("  ")).toThrow(
+      new ValidationError("Task cannot be empty"),
     );
   });
 
-  it("refuses a Move ID that no row could hold", () => {
-    expect(requireMoveId("move-1")).toBe("move-1");
-    expect(() => requireMoveId("")).toThrow(ValidationError);
-    expect(() => requireMoveId("x".repeat(65))).toThrow(ValidationError);
+  it("refuses a Task ID that no row could hold", () => {
+    expect(requireTaskId("task-1")).toBe("task-1");
+    expect(() => requireTaskId("")).toThrow(ValidationError);
+    expect(() => requireTaskId("x".repeat(65))).toThrow(ValidationError);
   });
 
-  it("refuses to change the Moves of a resolved Thread", () => {
-    expect(() => requireOpenForMoves({ state: "open" })).not.toThrow();
-    expect(() => requireOpenForMoves({ state: "resolved" })).toThrow(
-      new ConflictError("Cannot change the moves of a resolved thread"),
+  it("refuses to change the Tasks of a resolved Thread", () => {
+    expect(() => requireOpenForTasks({ state: "open" })).not.toThrow();
+    expect(() => requireOpenForTasks({ state: "resolved" })).toThrow(
+      new ConflictError("Cannot change the tasks of a resolved thread"),
     );
   });
 });

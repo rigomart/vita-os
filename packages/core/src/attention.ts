@@ -8,19 +8,19 @@
 
 export interface ThreadAttentionInput {
   followUp?: number | null;
-  moves?: readonly unknown[];
+  tasks?: readonly unknown[];
   order: number;
 }
 
 /**
- * A Thread with at least one Move and no Follow-up is ready to move. Focus and
- * the number of Moves never decide a group: timing belongs to Follow-ups.
+ * A Thread with at least one Task and no Follow-up is ready to move. Focus and
+ * the number of Tasks never decide a group: timing belongs to Follow-ups.
  */
 export interface ThreadAttentionGroups<TThread> {
   open: TThread[];
   overdue: TThread[];
   upcoming: TThread[];
-  withMoves: TThread[];
+  withTasks: TThread[];
 }
 
 const DAY = 86_400_000;
@@ -33,7 +33,7 @@ export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(
   const today = getDayKey(currentDate, timezoneOffsetMinutes);
   const groups: ThreadAttentionGroups<TThread> = {
     overdue: [],
-    withMoves: [],
+    withTasks: [],
     upcoming: [],
     open: [],
   };
@@ -45,8 +45,8 @@ export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(
       } else {
         groups.upcoming.push(thread);
       }
-    } else if ((thread.moves?.length ?? 0) > 0) {
-      groups.withMoves.push(thread);
+    } else if ((thread.tasks?.length ?? 0) > 0) {
+      groups.withTasks.push(thread);
     } else {
       groups.open.push(thread);
     }
@@ -54,7 +54,7 @@ export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(
 
   groups.overdue.sort(compareFollowUps);
   groups.upcoming.sort(compareFollowUps);
-  groups.withMoves.sort(compareThreadOrder);
+  groups.withTasks.sort(compareThreadOrder);
   groups.open.sort(compareThreadOrder);
 
   return groups;
