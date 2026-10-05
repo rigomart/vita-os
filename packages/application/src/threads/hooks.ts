@@ -31,7 +31,6 @@ import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
 import { queryKeys } from "../query-keys";
 import {
   cachedRevision,
-  cachedThread,
   changesTasks,
   type TaskChange,
   settleTaskChange,
@@ -183,6 +182,15 @@ export function useRemoveThread(): ApplicationMutationResult<
   });
 }
 
+/** Results standing in for a command that was dropped: nothing to fold in. */
+const droppedResults = new WeakSet<Thread>();
+
+function dropped(thread: Thread): Thread {
+  const result = { ...thread };
+  droppedResults.add(result);
+  return result;
+}
+
 /**
  * One kind of Task command, for one Thread.
  *
@@ -197,8 +205,10 @@ export function useRemoveThread(): ApplicationMutationResult<
  * queued command left — the Task is gone, or nothing would change — is dropped
  * at the head of the queue: no request, no refusal to report. Duplicate
  * activations arrive before the first command's optimistic layer lands, so
- * this cannot be decided when the command is issued. A change made on another
- * device is unknown here, so that command is still sent and refused once.
+ * this cannot be decided when the command is issued. The basis is only what
+ * this Thread's own queue got back, so a change made on another device is
+ * unknown here: that command is still sent and refused once, and identical
+ * commands queued behind a refusal are dropped rather than refused again.
  */
 export function useTaskCommand<TInput>(
   thread: Thread,
@@ -213,35 +223,44 @@ export function useTaskCommand<TInput>(
 ): ApplicationMutationResult<TInput, Thread> {
   const cache = useQueryClient();
   const scope = `thread-tasks:${thread._id}`;
+  const refusedKey = `${scope}:refused`;
 
   return useApplicationMutation<TInput, Thread>({
     scope,
     run: async (client, input) => {
-      const basis =
-        (queueMemo(cache)?.get(scope) as Thread | undefined) ?? thread;
-      if (!changesTasks(basis, command.change(input))) {
-        return { ok: true, value: basis };
+      const change = command.change(input);
+      const signature = JSON.stringify(change);
+      const memo = queueMemo(cache);
+      // What this Thread's own queue got back from the service. Without it
+      // (the head of a fresh queue) there is nothing to decide against.
+      const basis = memo?.get(scope) as Thread | undefined;
+      const refused = (memo?.get(refusedKey) as string[] | undefined) ?? [];
+      if (
+        refused.includes(signature) ||
+        (basis !== undefined && !changesTasks(basis, change))
+      ) {
+        return { ok: true, value: dropped(basis ?? thread) };
       }
       const result = await command.run(
         client,
         input,
         cachedRevision(cache, thread),
       );
-      // The next queued command is decided against what this one left.
-      if (result.ok) queueMemo(cache)?.set(scope, result.value);
+      if (result.ok) {
+        memo?.set(scope, result.value);
+      } else if (result.error.code === "conflict") {
+        // Sent again, it would carry the same stale basis and be refused again.
+        memo?.set(refusedKey, [...refused, signature]);
+      }
       return result;
     },
-    affected: (_input, cache) => {
-      // The first command of a burst runs this before any layer lands, so the
-      // cache still holds the Thread as last read.
-      const memo = queueMemo(cache);
-      if (memo && !memo.has(scope))
-        memo.set(scope, cachedThread(cache, thread));
-      return threadChangeKeys(cache, { threadId: thread._id });
-    },
+    affected: (_input, cache) =>
+      threadChangeKeys(cache, { threadId: thread._id }),
     optimistic: (cache, input) =>
       showTaskChange(cache, thread._id, command.change(input)),
-    reconcile: (cache, settled) => settleTaskChange(cache, settled),
+    reconcile: (cache, settled) => {
+      if (!droppedResults.has(settled)) settleTaskChange(cache, settled);
+    },
     // Completion writes an Activity Log entry, which is read separately.
     alsoInvalidate: () => [queryKeys.threads.activity(thread._id)],
   });

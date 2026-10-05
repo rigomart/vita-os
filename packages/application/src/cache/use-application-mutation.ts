@@ -75,7 +75,12 @@ interface MutationBatch {
   base: Map<string, [QueryKey, unknown]>;
   layers: Array<{ apply: () => void }>;
   invalidate: Map<string, QueryKey>;
-  /** What commands noted for later commands in the queue; gone once it drains. */
+  /** Pending commands per scope; a scope's memo goes when its count reaches 0. */
+  scopes: Map<string, number>;
+  /**
+   * What commands noted for later commands in their scope's queue, keyed
+   * `<scope>` or `<scope>:<name>`.
+   */
   memo: Map<string, unknown>;
 }
 
@@ -90,9 +95,9 @@ interface Snapshot<TLocal> {
 const batches = new WeakMap<QueryClient, MutationBatch>();
 
 /**
- * A note a command leaves for the commands queued behind it, valid until every
- * pending command has settled. Reads cannot refetch before then, so it cannot
- * go stale. `undefined` outside a batch.
+ * A note a command leaves for the commands queued behind it in its scope,
+ * dropped once that scope has no pending command. Reads can refetch while
+ * another scope holds the batch open, so a note must not outlive its queue. `undefined` outside a batch.
  */
 export function queueMemo(
   cache: QueryClient,
@@ -136,11 +141,18 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
           base: new Map(),
           layers: [],
           invalidate: new Map(),
+          scopes: new Map(),
           memo: new Map(),
         };
         batches.set(cache, batch);
       }
       batch.pending += 1;
+      if (options.scope !== undefined) {
+        batch.scopes.set(
+          options.scope,
+          (batch.scopes.get(options.scope) ?? 0) + 1,
+        );
+      }
       const affected = options.affected(variables, cache);
       await Promise.all(
         affected.map((queryKey) => cache.cancelQueries({ queryKey })),
@@ -189,6 +201,18 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
       const { batch } = snapshot;
       replay(cache, batch);
       batch.pending -= 1;
+      if (options.scope !== undefined) {
+        const left = (batch.scopes.get(options.scope) ?? 1) - 1;
+        if (left > 0) {
+          batch.scopes.set(options.scope, left);
+        } else {
+          batch.scopes.delete(options.scope);
+          for (const key of batch.memo.keys()) {
+            if (key === options.scope || key.startsWith(`${options.scope}:`))
+              batch.memo.delete(key);
+          }
+        }
+      }
       // Refetching while a command is pending would erase its optimistic changes.
       if (batch.pending !== 0) return;
       batches.delete(cache);

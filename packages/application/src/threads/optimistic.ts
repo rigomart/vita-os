@@ -371,26 +371,18 @@ export function settleNoteAddedToThread(
  * one a command must carry.
  */
 export function cachedRevision(cache: QueryClient, thread: Thread): number {
-  return cachedThread(cache, thread).revision;
-}
-
-/** The freshest copy of the Thread any read holds, or the caller's own. */
-export function cachedThread(cache: QueryClient, thread: Thread): Thread {
-  let freshest = thread;
+  let revision = thread.revision;
   const open = cache
     .getQueryData<Thread[]>(queryKeys.threads.open())
     ?.find((candidate) => candidate._id === thread._id);
-  if (open && open.revision > freshest.revision) freshest = open;
+  if (open) revision = Math.max(revision, open.revision);
 
   for (const [, detail] of cache.getQueriesData<ThreadDetail | null>({
     queryKey: queryKeys.threads.details(),
   })) {
-    if (
-      detail?.thread._id === thread._id &&
-      detail.thread.revision > freshest.revision
-    ) {
-      freshest = detail.thread;
+    if (detail?.thread._id === thread._id) {
+      revision = Math.max(revision, detail.thread.revision);
     }
   }
-  return freshest;
+  return revision;
 }
