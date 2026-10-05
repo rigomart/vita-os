@@ -1,7 +1,7 @@
 import type {
   AreaId,
-  Move,
-  MoveId,
+  Task,
+  TaskId,
   Thread,
   ThreadId,
 } from "@vita-os/contracts";
@@ -15,6 +15,8 @@ import type {
  * never something a read hands back.
  */
 
+// Storage names predate Tasks and stay (ADR 0033): `moves_json` holds the
+// Tasks and `focused_move_id` the Focused Task. They are mapped here, at the edge.
 export const THREAD_COLUMNS =
   "id, title, slug, summary, area_id, sort_order, state, moves_json, " +
   "focused_move_id, follow_up, last_activity_at, last_activity_content, " +
@@ -38,18 +40,18 @@ export interface ThreadRow {
 }
 
 /**
- * Moves as the Thread stores them: SQL NULL, or a non-empty JSON array of
+ * Tasks as the Thread stores them: SQL NULL, or a non-empty JSON array of
  * `{id, text}` in capture order. An empty array is never stored, so reading one
  * back means the row was written by something that does not honor the rule.
  */
-export function parseMoves(value: string | null): Move[] | undefined {
+export function parseTasks(value: string | null): Task[] | undefined {
   if (value === null) return undefined;
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(value);
   } catch {
-    throw new Error("Stored Moves must be valid JSON");
+    throw new Error("Stored Tasks must be valid JSON");
   }
 
   if (
@@ -63,30 +65,40 @@ export function parseMoves(value: string | null): Move[] | undefined {
         typeof item.text === "string",
     )
   ) {
-    throw new Error("Stored Moves must be a non-empty array of Moves");
+    throw new Error("Stored Tasks must be a non-empty array of Tasks");
   }
 
   return parsed.map((item: { id: string; text: string }) => ({
-    _id: item.id as MoveId,
+    _id: item.id as TaskId,
     text: item.text,
   }));
 }
 
-export function serializeMoves(
-  moves: readonly Move[] | undefined,
+export function serializeTasks(
+  tasks: readonly Task[] | undefined,
 ): string | null {
-  return moves === undefined || moves.length === 0
+  return tasks === undefined || tasks.length === 0
     ? null
-    : JSON.stringify(moves.map((move) => ({ id: move._id, text: move.text })));
+    : JSON.stringify(tasks.map((task) => ({ id: task._id, text: task.text })));
 }
 
-export function toThread(row: ThreadRow): Thread {
-  const moves = parseMoves(row.moves_json);
+/**
+ * Compatibility (ADR 0033, removal in #402): a Thread read also carries the old
+ * names for its Tasks, with the same values, until older clients have reloaded.
+ */
+export type ThreadWithOldNames = Thread & {
+  moves?: Task[];
+  focusedMoveId?: TaskId;
+};
+
+/** Storage keeps `moves_json` and `focused_move_id`; the domain says Tasks. */
+export function toThread(row: ThreadRow): ThreadWithOldNames {
+  const tasks = parseTasks(row.moves_json);
   if (
     row.focused_move_id !== null &&
-    !moves?.some((move) => move._id === row.focused_move_id)
+    !tasks?.some((task) => task._id === row.focused_move_id)
   ) {
-    throw new Error("A stored Focused Move must be one of the Thread's Moves");
+    throw new Error("A stored Focused Task must be one of the Thread's Tasks");
   }
 
   return {
@@ -97,10 +109,13 @@ export function toThread(row: ThreadRow): Thread {
     ...(row.area_id === null ? {} : { areaId: row.area_id as AreaId }),
     order: row.sort_order,
     state: row.state,
-    ...(moves === undefined ? {} : { moves }),
+    ...(tasks === undefined ? {} : { tasks, moves: tasks }),
     ...(row.focused_move_id === null
       ? {}
-      : { focusedMoveId: row.focused_move_id as MoveId }),
+      : {
+          focusedTaskId: row.focused_move_id as TaskId,
+          focusedMoveId: row.focused_move_id as TaskId,
+        }),
     ...(row.follow_up === null ? {} : { followUp: row.follow_up }),
     ...(row.last_activity_at === null
       ? {}

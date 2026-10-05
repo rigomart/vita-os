@@ -1,4 +1,4 @@
-import type { MoveId, ThreadId } from "@vita-os/contracts";
+import type { TaskId, ThreadId } from "@vita-os/contracts";
 
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -81,8 +81,8 @@ async function seedThread(owner: Session): Promise<{
       "Choose a clinic",
       1,
       "open",
-      '[{"id":"move-1","text":"Call clinic"}]',
-      "move-1",
+      '[{"id":"task-1","text":"Call clinic"}]',
+      "task-1",
       1_600_000_000_001,
       0,
     ),
@@ -142,8 +142,8 @@ describe("HTTP ApplicationClient against the Worker", () => {
     });
     expect(reopened.ok).toBe(true);
     expect(reopened.ok && reopened.value).not.toHaveProperty("followUp");
-    expect(reopened.ok && reopened.value).not.toHaveProperty("moves");
-    expect(reopened.ok && reopened.value).not.toHaveProperty("focusedMoveId");
+    expect(reopened.ok && reopened.value).not.toHaveProperty("tasks");
+    expect(reopened.ok && reopened.value).not.toHaveProperty("focusedTaskId");
     await expect(client.listResolvedThreads()).resolves.toEqual({
       ok: true,
       value: [],
@@ -165,8 +165,8 @@ describe("HTTP ApplicationClient against the Worker", () => {
       value: {
         thread: expect.objectContaining({
           _id: thread.id,
-          moves: [{ _id: "move-1", text: "Call clinic" }],
-          focusedMoveId: "move-1",
+          tasks: [{ _id: "task-1", text: "Call clinic" }],
+          focusedTaskId: "task-1",
           revision: 0,
         }),
         area: expect.objectContaining({ name: "Family Health" }),
@@ -185,14 +185,14 @@ describe("HTTP ApplicationClient against the Worker", () => {
         ],
       },
     });
-    const completed = await client.completeMove({
+    const completed = await client.completeTask({
       threadId: thread.id,
-      moveId: "move-1" as MoveId,
+      taskId: "task-1" as TaskId,
       expectedRevision: 0,
     });
     expect(completed.ok).toBe(true);
-    expect(completed.ok && completed.value).not.toHaveProperty("moves");
-    expect(completed.ok && completed.value).not.toHaveProperty("focusedMoveId");
+    expect(completed.ok && completed.value).not.toHaveProperty("tasks");
+    expect(completed.ok && completed.value).not.toHaveProperty("focusedTaskId");
     await expect(
       client.getThreadActivityPage({ threadId: thread.id, limit: 1 }),
     ).resolves.toEqual({
@@ -218,16 +218,16 @@ describe("HTTP ApplicationClient against the Worker", () => {
       },
     });
     await expect(
-      client.completeMove({
+      client.completeTask({
         threadId: thread.id,
-        moveId: "move-1" as MoveId,
+        taskId: "task-1" as TaskId,
         expectedRevision: 0,
       }),
     ).resolves.toEqual({
       ok: false,
       error: {
         code: "conflict",
-        message: "The Thread's Moves have changed.",
+        message: "The Thread's Tasks have changed.",
         retryable: false,
       },
     });

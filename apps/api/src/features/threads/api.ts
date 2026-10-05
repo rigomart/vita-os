@@ -16,15 +16,17 @@ import {
 import { AreaSummarySchema } from "../areas/api";
 import { AreaIdSchema } from "../areas/requests";
 import {
-  AddMoveBody,
+  AddTaskBody,
   CreateThreadBody,
-  EditMoveBody,
-  FocusMoveBody,
-  MoveRevisionBody,
+  EditTaskBody,
+  FocusTaskBody,
+  TaskRevisionBody,
   UpdateThreadBody,
   ThreadIdSchema,
-  MoveIdSchema,
+  TaskIdSchema,
 } from "./requests";
+
+const TaskSchema = Schema.Struct({ _id: TaskIdSchema, text: Schema.String });
 
 export const ThreadSchema = Schema.Struct({
   _id: ThreadIdSchema,
@@ -34,10 +36,12 @@ export const ThreadSchema = Schema.Struct({
   areaId: Schema.optionalKey(AreaIdSchema),
   order: Timestamp,
   state: Schema.Literals(["open", "resolved"]),
-  moves: Schema.optionalKey(
-    Schema.Array(Schema.Struct({ _id: MoveIdSchema, text: Schema.String })),
-  ),
-  focusedMoveId: Schema.optionalKey(MoveIdSchema),
+  tasks: Schema.optionalKey(Schema.Array(TaskSchema)),
+  focusedTaskId: Schema.optionalKey(TaskIdSchema),
+  // Compatibility (ADR 0033, removal in #402): the old names for the two
+  // fields above, with the same values.
+  moves: Schema.optionalKey(Schema.Array(TaskSchema)),
+  focusedMoveId: Schema.optionalKey(TaskIdSchema),
   followUp: Schema.optionalKey(Timestamp),
   lastActivityAt: Schema.optionalKey(Timestamp),
   lastActivityContent: Schema.optionalKey(Schema.String),
@@ -49,7 +53,10 @@ export const ThreadDetailSchema = Schema.Struct({
   area: Schema.optionalKey(AreaSummarySchema),
 });
 const ThreadParams = { threadId: ThreadIdSchema };
-const MoveParams = { threadId: ThreadIdSchema, moveId: MoveIdSchema };
+const TaskParams = { threadId: ThreadIdSchema, taskId: TaskIdSchema };
+// Compatibility (ADR 0033, removal in #402): the `/moves` routes name the same
+// Tasks in the path as `:moveId`.
+const MoveParams = { threadId: ThreadIdSchema, moveId: TaskIdSchema };
 
 export const ThreadsApi = HttpApiGroup.make("threads")
   .add(
@@ -76,39 +83,70 @@ export const ThreadsApi = HttpApiGroup.make("threads")
       params: ThreadParams,
       success: CommandAck,
     }),
+    HttpApiEndpoint.post("addTask", "/v1/threads/:threadId/tasks", {
+      params: ThreadParams,
+      payload: AddTaskBody,
+      success: ThreadSchema,
+    }).annotate(ValidationMessage, "Invalid Task change."),
+    HttpApiEndpoint.patch("editTask", "/v1/threads/:threadId/tasks/:taskId", {
+      params: TaskParams,
+      payload: EditTaskBody,
+      success: ThreadSchema,
+    }).annotate(ValidationMessage, "Invalid Task change."),
+    HttpApiEndpoint.delete(
+      "removeTask",
+      "/v1/threads/:threadId/tasks/:taskId",
+      {
+        params: TaskParams,
+        payload: TaskRevisionBody,
+        success: ThreadSchema,
+      },
+    ).annotate(ValidationMessage, "Invalid Task change."),
+    HttpApiEndpoint.post(
+      "completeTask",
+      "/v1/threads/:threadId/tasks/:taskId/complete",
+      {
+        params: TaskParams,
+        payload: TaskRevisionBody,
+        success: ThreadSchema,
+      },
+    ).annotate(ValidationMessage, "Invalid Task change."),
+    // Focus has no Task in its path, so one route serves both spellings of the
+    // body field.
+    HttpApiEndpoint.put("focusTask", "/v1/threads/:threadId/focus", {
+      params: ThreadParams,
+      payload: FocusTaskBody,
+      success: ThreadSchema,
+    }).annotate(ValidationMessage, "Invalid Task change."),
+    // Compatibility (ADR 0033, removal in #402): the former `/moves` routes.
     HttpApiEndpoint.post("addMove", "/v1/threads/:threadId/moves", {
       params: ThreadParams,
-      payload: AddMoveBody,
+      payload: AddTaskBody,
       success: ThreadSchema,
-    }).annotate(ValidationMessage, "Invalid Move change."),
+    }).annotate(ValidationMessage, "Invalid Task change."),
     HttpApiEndpoint.patch("editMove", "/v1/threads/:threadId/moves/:moveId", {
       params: MoveParams,
-      payload: EditMoveBody,
+      payload: EditTaskBody,
       success: ThreadSchema,
-    }).annotate(ValidationMessage, "Invalid Move change."),
+    }).annotate(ValidationMessage, "Invalid Task change."),
     HttpApiEndpoint.delete(
       "removeMove",
       "/v1/threads/:threadId/moves/:moveId",
       {
         params: MoveParams,
-        payload: MoveRevisionBody,
+        payload: TaskRevisionBody,
         success: ThreadSchema,
       },
-    ).annotate(ValidationMessage, "Invalid Move change."),
+    ).annotate(ValidationMessage, "Invalid Task change."),
     HttpApiEndpoint.post(
       "completeMove",
       "/v1/threads/:threadId/moves/:moveId/complete",
       {
         params: MoveParams,
-        payload: MoveRevisionBody,
+        payload: TaskRevisionBody,
         success: ThreadSchema,
       },
-    ).annotate(ValidationMessage, "Invalid Move change."),
-    HttpApiEndpoint.put("focusMove", "/v1/threads/:threadId/focus", {
-      params: ThreadParams,
-      payload: FocusMoveBody,
-      success: ThreadSchema,
-    }).annotate(ValidationMessage, "Invalid Move change."),
+    ).annotate(ValidationMessage, "Invalid Task change."),
   )
   .middleware(Authentication)
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" });

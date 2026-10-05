@@ -1,4 +1,4 @@
-import type { MoveId, ThreadId, UpdateThreadInput } from "@vita-os/contracts";
+import type { TaskId, ThreadId, UpdateThreadInput } from "@vita-os/contracts";
 
 import { Schema } from "effect";
 
@@ -9,8 +9,8 @@ import { AreaIdSchema } from "../areas/requests";
 export const ThreadIdSchema = Schema.String.pipe(
   Schema.refine((value): value is ThreadId => value.length > 0),
 );
-export const MoveIdSchema = Schema.String.pipe(
-  Schema.refine((value): value is MoveId => value.length > 0),
+export const TaskIdSchema = Schema.String.pipe(
+  Schema.refine((value): value is TaskId => value.length > 0),
 );
 export const CreateThreadBody = Schema.Struct({
   title: Schema.String,
@@ -25,22 +25,64 @@ export const UpdateThreadBody = Schema.Struct({
   state: Schema.optional(Schema.Literals(["open", "resolved"])),
   resolutionNote: Schema.optional(Schema.String),
 });
-export const AddMoveBody = Schema.Struct({
-  moveId: MoveIdSchema,
+/**
+ * Compatibility (ADR 0033, removal in #402): a request may spell the Task's ID
+ * with the old field name `moveId` instead of `taskId`. Exactly one is allowed;
+ * naming both is ambiguous, as `attentionDate` and `followUp` were in ADR 0028.
+ */
+const namesOneTaskId = Schema.makeFilter(
+  (input: { taskId?: unknown; moveId?: unknown }) =>
+    Object.hasOwn(input, "taskId") !== Object.hasOwn(input, "moveId"),
+);
+
+export const AddTaskBody = Schema.Struct({
+  taskId: Schema.optionalKey(TaskIdSchema),
+  moveId: Schema.optionalKey(TaskIdSchema),
+  text: Schema.String,
+  expectedRevision: Revision,
+}).check(namesOneTaskId);
+export const EditTaskBody = Schema.Struct({
   text: Schema.String,
   expectedRevision: Revision,
 });
-export const EditMoveBody = Schema.Struct({
-  text: Schema.String,
+/** Removing and completing name the Task in the path; the body holds only the revision. */
+export const TaskRevisionBody = Schema.Struct({ expectedRevision: Revision });
+/**
+ * `taskId: null` unfocuses, and must be spelled out: absent is not a choice.
+ * The old field name `moveId` is accepted for compatibility, never both.
+ */
+export const FocusTaskBody = Schema.Struct({
+  taskId: Schema.optionalKey(Schema.NullOr(TaskIdSchema)),
+  moveId: Schema.optionalKey(Schema.NullOr(TaskIdSchema)),
   expectedRevision: Revision,
-});
-/** Removing and completing name the Move in the path; the body holds only the revision. */
-export const MoveRevisionBody = Schema.Struct({ expectedRevision: Revision });
-/** `moveId: null` unfocuses, and must be spelled out: absent is not a choice. */
-export const FocusMoveBody = Schema.Struct({
-  moveId: Schema.NullOr(MoveIdSchema),
-  expectedRevision: Revision,
-});
+}).check(namesOneTaskId);
+
+export function normalizeAddTask(input: typeof AddTaskBody.Type): {
+  taskId: TaskId;
+  text: string;
+  expectedRevision: number;
+} {
+  // namesOneTaskId guarantees exactly one of the two spellings is present.
+  return {
+    taskId: (Object.hasOwn(input, "taskId")
+      ? input.taskId
+      : input.moveId) as TaskId,
+    text: input.text,
+    expectedRevision: input.expectedRevision,
+  };
+}
+
+export function normalizeFocusTask(input: typeof FocusTaskBody.Type): {
+  taskId: TaskId | null;
+  expectedRevision: number;
+} {
+  return {
+    taskId: (Object.hasOwn(input, "taskId")
+      ? input.taskId
+      : input.moveId) as TaskId | null,
+    expectedRevision: input.expectedRevision,
+  };
+}
 
 /** Only present clearable fields enter the domain patch; absence leaves them alone. */
 export function normalizeThreadChange(

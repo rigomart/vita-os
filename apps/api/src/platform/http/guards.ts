@@ -103,11 +103,12 @@ export function requestMiddleware(createScope: CreateScope) {
               }
             }
           }
-          // Move DELETE historically reads JSON without requiring a media type.
-          const moveDelete =
+          // Task DELETE historically reads JSON without requiring a media type.
+          // `/moves` is the compatibility spelling (ADR 0033, removal in #402).
+          const taskDelete =
             request.method === "DELETE" &&
-            /^\/v1\/threads\/[^/]+\/moves\/[^/]+$/.test(path);
-          return yield* moveDelete
+            /^\/v1\/threads\/[^/]+\/(?:tasks|moves)\/[^/]+$/.test(path);
+          return yield* taskDelete
             ? Effect.provideService(
                 httpEffect,
                 HttpServerRequest.HttpServerRequest,

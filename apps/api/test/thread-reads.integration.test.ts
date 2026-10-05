@@ -65,8 +65,8 @@ async function seedDetailFixture() {
       "Choose a clinic",
       3,
       "open",
-      '[{"id":"move-1","text":"Call clinic"},{"id":"move-2","text":"Book appointment"}]',
-      "move-2",
+      '[{"id":"task-1","text":"Call clinic"},{"id":"task-2","text":"Book appointment"}]',
+      "task-2",
       1_800_000_000_000,
       1_700_000_000_000,
       "Captured next move",
@@ -88,11 +88,11 @@ async function seedDetailFixture() {
     env.DB.prepare(
       "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, moves_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).bind(
-      "thread-empty-moves",
+      "thread-empty-tasks",
       owner.actorId,
       "area-owner",
-      "Empty Moves",
-      "empty-moves",
+      "Empty Tasks",
+      "empty-tasks",
       null,
       4,
       "open",
@@ -102,11 +102,11 @@ async function seedDetailFixture() {
     env.DB.prepare(
       "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, moves_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).bind(
-      "thread-invalid-moves",
+      "thread-invalid-tasks",
       owner.actorId,
       "area-owner",
-      "Invalid Moves",
-      "invalid-moves",
+      "Invalid Tasks",
+      "invalid-tasks",
       null,
       5,
       "open",
@@ -124,8 +124,8 @@ async function seedDetailFixture() {
       null,
       7,
       "open",
-      '[{"id":"move-1","text":"Call clinic"}]',
-      "move-9",
+      '[{"id":"task-1","text":"Call clinic"}]',
+      "task-9",
       1_600_000_000_007,
     ),
     env.DB.prepare(
@@ -183,7 +183,7 @@ async function seedActivityFixture(owner: Session, other: Session) {
       "next_move_change",
       `Captured default page entry ${index}`,
       null,
-      `Move ${index}`,
+      `Task ${index}`,
       99 - index,
     ),
   );
@@ -446,11 +446,17 @@ describe("Thread detail", () => {
         areaId: "area-owner",
         order: 3,
         state: "open",
-        moves: [
-          { _id: "move-1", text: "Call clinic" },
-          { _id: "move-2", text: "Book appointment" },
+        tasks: [
+          { _id: "task-1", text: "Call clinic" },
+          { _id: "task-2", text: "Book appointment" },
         ],
-        focusedMoveId: "move-2",
+        focusedTaskId: "task-2",
+        // Compatibility names (ADR 0033, removal in #402), same values.
+        moves: [
+          { _id: "task-1", text: "Call clinic" },
+          { _id: "task-2", text: "Book appointment" },
+        ],
+        focusedMoveId: "task-2",
         followUp: 1_800_000_000_000,
         lastActivityAt: 1_700_000_000_000,
         lastActivityContent: "Captured next move",
@@ -567,8 +573,8 @@ describe("Thread detail", () => {
     });
   });
 
-  it.each(["empty-moves", "invalid-moves", "stray-focus"])(
-    "rejects stored invalid Moves for %s without exposing them",
+  it.each(["empty-tasks", "invalid-tasks", "stray-focus"])(
+    "rejects stored invalid Tasks for %s without exposing them",
     async (slug) => {
       const response = await SELF.fetch(`http://api.test/v1/threads/${slug}`, {
         headers: { cookie: fixture.owner.cookie },
@@ -697,7 +703,7 @@ describe("Activity Log", () => {
           _id: "log-default-15",
           type: "next_move_change",
           content: "Captured default page entry 15",
-          newValue: "Move 15",
+          newValue: "Task 15",
           createdAt: 84,
         },
       ],

@@ -156,25 +156,25 @@ describe("HTTP contract compatibility", () => {
   });
 
   it.each([undefined, "text/plain"])(
-    "accepts a Move DELETE JSON body with content type %s",
+    "accepts a Task DELETE JSON body with content type %s",
     async (contentType) => {
       const session = await createSession("delete-content-type");
       const thread = await succeed<Thread>("/v1/threads", {
         method: "POST",
-        body: { title: "Remove move" },
+        body: { title: "Remove task" },
         session,
       });
-      const added = await succeed<Thread>(`/v1/threads/${thread._id}/moves`, {
+      const added = await succeed<Thread>(`/v1/threads/${thread._id}/tasks`, {
         method: "POST",
         session,
         body: {
-          moveId: "move",
+          taskId: "task",
           text: "Remove me",
           expectedRevision: thread.revision,
         },
       });
       const response = await SELF.fetch(
-        `http://api.test/v1/threads/${thread._id}/moves/move`,
+        `http://api.test/v1/threads/${thread._id}/tasks/task`,
         {
           method: "DELETE",
           headers: {
@@ -188,12 +188,12 @@ describe("HTTP contract compatibility", () => {
       );
       expect(response.status).toBe(200);
       const written = await response.json();
-      expect(written).not.toHaveProperty("moves");
+      expect(written).not.toHaveProperty("tasks");
       const reopened = await succeed<{ thread: Thread }>(
         `/v1/threads/${thread.slug}`,
         { session },
       );
-      expect(reopened.thread).not.toHaveProperty("moves");
+      expect(reopened.thread).not.toHaveProperty("tasks");
     },
   );
 

@@ -51,15 +51,15 @@ async function activityOf(session: Session, thread: Thread) {
   return [...page.entries].reverse();
 }
 
-/** Add each Move in turn, the way a person captures them, and return the Thread. */
-async function addMoves(session: Session, thread: Thread, texts: string[]) {
+/** Add each Task in turn, the way a person captures them, and return the Thread. */
+async function addTasks(session: Session, thread: Thread, texts: string[]) {
   let current = thread;
   for (const text of texts) {
-    current = await succeed<Thread>(`/v1/threads/${thread._id}/moves`, {
+    current = await succeed<Thread>(`/v1/threads/${thread._id}/tasks`, {
       method: "POST",
       session,
       body: {
-        moveId: crypto.randomUUID(),
+        taskId: crypto.randomUUID(),
         text,
         expectedRevision: current.revision,
       },
@@ -90,8 +90,8 @@ describe("Thread creation", () => {
       order: 0,
     });
     expect(first.slug).toMatch(/^book-checkup-[0-9a-f]{8}$/);
-    expect(first).not.toHaveProperty("moves");
-    expect(first).not.toHaveProperty("focusedMoveId");
+    expect(first).not.toHaveProperty("tasks");
+    expect(first).not.toHaveProperty("focusedTaskId");
     expect(second).toMatchObject({
       order: 1,
       summary: "Pharmacy closes early",
@@ -175,7 +175,7 @@ describe("Thread changes", () => {
     expect(detail.thread.lastActivityAt).toEqual(expect.any(Number));
   });
 
-  it("no longer takes a Next Move: Moves have commands of their own", async () => {
+  it("no longer takes a Next Move: Tasks have commands of their own", async () => {
     const owner = await createSession("thread-no-next-move");
     const thread = await createThread(owner, await createArea(owner));
 
@@ -403,7 +403,7 @@ describe("Area reassignment", () => {
 });
 
 describe("Thread lifecycle", () => {
-  it("resolving discards the Moves and focus, and names the discarded Moves", async () => {
+  it("resolving discards the Tasks and focus, and names the discarded Tasks", async () => {
     const owner = await createSession("thread-resolve");
     const area = await createArea(owner);
     const thread = await createThread(owner, area);
@@ -412,7 +412,7 @@ describe("Thread lifecycle", () => {
       session: owner,
       body: { followUp: Date.UTC(2026, 4, 20) },
     });
-    const withMoves = await addMoves(owner, scheduled, [
+    const withTasks = await addTasks(owner, scheduled, [
       "Call clinic",
       "Book appointment",
     ]);
@@ -420,8 +420,8 @@ describe("Thread lifecycle", () => {
       method: "PUT",
       session: owner,
       body: {
-        moveId: withMoves.moves?.[1]?._id,
-        expectedRevision: withMoves.revision,
+        taskId: withTasks.tasks?.[1]?._id,
+        expectedRevision: withTasks.revision,
       },
     });
 
@@ -432,13 +432,13 @@ describe("Thread lifecycle", () => {
     });
 
     expect(resolved.state).toBe("resolved");
-    expect(resolved).not.toHaveProperty("moves");
-    expect(resolved).not.toHaveProperty("focusedMoveId");
+    expect(resolved).not.toHaveProperty("tasks");
+    expect(resolved).not.toHaveProperty("focusedTaskId");
     expect(resolved).not.toHaveProperty("followUp");
     expect(
       (await activityOf(owner, thread)).map((entry) => entry.content),
     ).toContain(
-      'Resolved thread: Clinic confirmed — discarded moves: "Call clinic", "Book appointment"',
+      'Resolved thread: Clinic confirmed — discarded tasks: "Call clinic", "Book appointment"',
     );
   });
 
@@ -446,7 +446,7 @@ describe("Thread lifecycle", () => {
     const owner = await createSession("thread-reopen");
     const area = await createArea(owner);
     const thread = await createThread(owner, area);
-    await addMoves(owner, thread, ["Call clinic"]);
+    await addTasks(owner, thread, ["Call clinic"]);
     await succeed(`/v1/threads/${thread._id}`, {
       method: "PATCH",
       session: owner,
@@ -460,8 +460,8 @@ describe("Thread lifecycle", () => {
     });
 
     expect(reopened.state).toBe("open");
-    expect(reopened).not.toHaveProperty("moves");
-    expect(reopened).not.toHaveProperty("focusedMoveId");
+    expect(reopened).not.toHaveProperty("tasks");
+    expect(reopened).not.toHaveProperty("focusedTaskId");
     expect(
       (await activityOf(owner, thread)).map((entry) => entry.content),
     ).toContain("Reopened thread");
@@ -533,14 +533,41 @@ describe("Thread change privacy", () => {
     const owner = await createSession("thread-write-privacy-owner");
     const other = await createSession("thread-write-privacy-other");
     const theirs = await createThread(other, await createArea(other));
-    await succeed(`/v1/threads/${theirs._id}/moves`, {
+    await succeed(`/v1/threads/${theirs._id}/tasks`, {
       method: "POST",
       session: other,
-      body: { moveId: "theirs", text: "Theirs", expectedRevision: 0 },
+      body: { taskId: "theirs", text: "Theirs", expectedRevision: 0 },
     });
 
     for (const [path, method, body] of [
       [`/v1/threads/${theirs._id}`, "PATCH", { title: "Mine now" }],
+      [
+        `/v1/threads/${theirs._id}/tasks`,
+        "POST",
+        { taskId: "mine", text: "Mine", expectedRevision: 0 },
+      ],
+      [
+        `/v1/threads/${theirs._id}/tasks/theirs`,
+        "PATCH",
+        { text: "Mine", expectedRevision: 1 },
+      ],
+      [
+        `/v1/threads/${theirs._id}/tasks/theirs/complete`,
+        "POST",
+        { expectedRevision: 1 },
+      ],
+      [
+        `/v1/threads/${theirs._id}/tasks/theirs`,
+        "DELETE",
+        { expectedRevision: 1 },
+      ],
+      [
+        `/v1/threads/${theirs._id}/focus`,
+        "PUT",
+        { taskId: "theirs", expectedRevision: 1 },
+      ],
+      // The former `/moves` routes and `moveId` field are compatibility
+      // spellings (ADR 0033, removal in #402) and guard the same Thread.
       [
         `/v1/threads/${theirs._id}/moves`,
         "POST",
@@ -581,7 +608,7 @@ describe("Thread change privacy", () => {
       _id: theirs._id,
       title: "Book checkup",
       state: "open",
-      moves: [{ _id: "theirs", text: "Theirs" }],
+      tasks: [{ _id: "theirs", text: "Theirs" }],
       revision: 1,
     });
   });
