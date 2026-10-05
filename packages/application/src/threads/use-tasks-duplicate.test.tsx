@@ -289,3 +289,27 @@ describe("what a Task queue remembers", () => {
     holding.resolve(success(initial));
   });
 });
+
+describe("a dropped duplicate behind a refused command", () => {
+  it("leaves no optimistic change behind while the batch is held open", async () => {
+    const holding = deferred<OperationResult<Thread>>();
+    const { client } = fakeService({
+      conflictOnce: true,
+      updateThread: () => holding.promise,
+    });
+    const { result, update, open } = renderTasks(client);
+
+    act(() => {
+      void update.current.mutateAsync({ thread: initial, title: "Renamed" });
+    });
+    await act(async () => {
+      await Promise.all([
+        result.current.complete(alpha._id),
+        result.current.complete(alpha._id),
+      ]);
+    });
+
+    expect(open()?.tasks).toEqual([alpha, beta, gamma]);
+    holding.resolve(success(initial));
+  });
+});

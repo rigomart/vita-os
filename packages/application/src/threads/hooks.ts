@@ -182,13 +182,16 @@ export function useRemoveThread(): ApplicationMutationResult<
   });
 }
 
-/** Results standing in for a command that was dropped: nothing to fold in. */
-const droppedResults = new WeakSet<Thread>();
-
-function dropped(thread: Thread): Thread {
-  const result = { ...thread };
-  droppedResults.add(result);
-  return result;
+/**
+ * A Task command dropped at the head of the queue because the rule already
+ * refuses it. It settles as a failure so its optimistic layer is neutralised,
+ * but it is not one to report: nothing was sent and nothing went wrong.
+ */
+export class CommandDropped extends Error {
+  constructor() {
+    super("Task command dropped");
+    this.name = "CommandDropped";
+  }
 }
 
 /**
@@ -239,7 +242,7 @@ export function useTaskCommand<TInput>(
         refused.includes(signature) ||
         (basis !== undefined && !changesTasks(basis, change))
       ) {
-        return { ok: true, value: dropped(basis ?? thread) };
+        throw new CommandDropped();
       }
       const result = await command.run(
         client,
@@ -249,7 +252,7 @@ export function useTaskCommand<TInput>(
       if (result.ok) {
         memo?.set(scope, result.value);
       } else if (result.error.code === "conflict") {
-        // Sent again, it would carry the same stale basis and be refused again.
+        // Identical commands queued behind it are refused too, each with its own toast.
         memo?.set(refusedKey, [...refused, signature]);
       }
       return result;
@@ -258,9 +261,7 @@ export function useTaskCommand<TInput>(
       threadChangeKeys(cache, { threadId: thread._id }),
     optimistic: (cache, input) =>
       showTaskChange(cache, thread._id, command.change(input)),
-    reconcile: (cache, settled) => {
-      if (!droppedResults.has(settled)) settleTaskChange(cache, settled);
-    },
+    reconcile: (cache, settled) => settleTaskChange(cache, settled),
     // Completion writes an Activity Log entry, which is read separately.
     alsoInvalidate: () => [queryKeys.threads.activity(thread._id)],
   });
