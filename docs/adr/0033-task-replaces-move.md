@@ -7,11 +7,11 @@ The concept **Move** (one useful action on a **Thread**) is renamed **Task**. **
 
 "Move" was a coined word. The Naming rule in `CONTEXT.md` says to try the plain word first and keep it unless it misleads. "Task" misled once: it promised a checklist with priority, order, due dates, an overdue state and a done state. Moves had none of that, so the coined word earned its place (ADR 0010, ADR 0022).
 
-That reason is gone. Tasks have no priority and no order. Dates are soft: they resurface, never nag, never notify (ADR 0032). A missed occurrence collapses into one. The plain word no longer misleads, and the coined one costs something every day. "Move" collides with the verb in "Ready to move" and in "Move a Note to a Thread" (ADR 0030). Once Tasks gain dates and repeats, the quickest explanation is the one everyone already reaches for: it is a task.
+That reason is gone. Tasks have no priority and no order. Dates are soft: they resurface, never nag, never notify (ADR 0032). A missed occurrence collapses into one. The plain word no longer misleads, and the coined one costs something every day. The collision with the verb already forced one rename: ADR 0030 changed "Move a Note to a Thread" to "Add to thread". It still collides in "Ready to move". Once Tasks gain dates and repeats, the quickest explanation is the one everyone already reaches for: it is a task.
 
 ## Considered Options
 
-- **Keep Move.** Rejected: it needs a gloss in every conversation, and it collides with the verb.
+- **Keep Move.** Rejected: it needs a gloss in every conversation, and it collides with the verb in "Ready to move", and the same collision already forced a rename in ADR 0030.
 - **Task.** Chosen. The plain word, and it now matches the behavior.
 - **To-do.** Rejected: it implies a checklist with done states.
 - **Action.** Rejected: it reads as doing, and fails "Follow up", which is a thing to look at again.

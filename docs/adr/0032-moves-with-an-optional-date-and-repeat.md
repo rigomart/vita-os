@@ -63,7 +63,7 @@ Sub-issues of #397, in order:
 
 1. #400 Rename Move to Task. No behavior change.
 2. #401 Iteration 1: dated Tasks replace the Thread's Follow-up date. One PR in two stages: dated Tasks, then the fold of the Follow-up date.
-3. #402 Remove the Task rename and Follow-up compatibility window. Blocked until the owner ends the soak.
+3. #402 Remove the compatibility window for the Task rename and the Follow-up fold. Blocked until the owner ends the soak.
 4. #403 Iteration 2a: repeating Tasks in core and the API.
 5. #404 Iteration 2b: repeating Tasks in the UI.
 6. #405 Iteration 3: complete a Task with a note, then close out. This ADR becomes Accepted.
