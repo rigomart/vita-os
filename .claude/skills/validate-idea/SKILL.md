@@ -38,7 +38,7 @@ Never reject an idea because another tool has it. Ask whether it serves remember
 
 ## 4. Try it with the app as it is
 
-Before inventing anything, walk the situation through today's app step by step: which Thread, Moves, Follow-up date, Notes. Then list where it rubs, concretely ("five date picks a week", "sits in Now all morning"). Often the honest answer is "this works today", or "do it by hand for a while and see if the friction repeats". That is a valid verdict.
+Before inventing anything, walk the situation through today's app step by step: which Thread, Tasks, Follow-up date, Notes. Then list where it rubs, concretely ("five date picks a week", "sits in Now all morning"). Often the honest answer is "this works today", or "do it by hand for a while and see if the friction repeats". That is a valid verdict.
 
 Ask how the owner handles it now. If they stopped using, or never started using, the app for it, that is strong evidence.
 

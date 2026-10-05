@@ -37,7 +37,7 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 - [Create a thread](./create-thread.md) covers the New thread dialog and the thread pane it opens.
 - [Resolved Threads](./resolved-threads.md) covers the Resolved threads group of the palette's History chip, its search and resolution ordering, opening in place, and Reopen in the pane and drawer.
 - [Notes on the Dashboard](./notes-on-the-dashboard.md) covers the Dashboard's Notes filter and its URL, the old Notes addresses, Archive and Unarchive, and finding Archived Notes in History by searching their bodies.
-- [Moves](./moves.md) covers adding, focusing, and completing a Move in the thread pane, the drawer, and the Dashboard card.
+- [Tasks](./tasks.md) covers adding, focusing, and completing a Task in the thread pane, the drawer, and the Dashboard card.
 - [Dashboard board](./dashboard-board.md) covers the dated lanes, the No date tray, the shared Thread and Note card, and the stacked layouts.
 - [Follow-up dates](./follow-up-dates.md) covers the shared date controls on Threads and standalone Notes, their Dashboard placement, and resolve/reopen behavior.
 - [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter the board row.

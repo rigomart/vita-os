@@ -51,9 +51,9 @@ the application can reconcile with the service's own answer rather than trusting
 its optimistic guess.
 
 Every `Thread` carries the `revision` it was read at. That is what makes every
-Move command safe to repeat from any surface: commands name a Move by ID and
+Task command safe to repeat from any surface: commands name a Task by ID and
 carry the revision, and a click made against a Thread that has since moved on
-comes back as a conflict instead of acting on a different Move (ADR 0022).
+comes back as a conflict instead of acting on a different Task (ADR 0022, ADR 0033).
 
 ## Storage
 
@@ -74,7 +74,7 @@ insertion order.
 The Activity Log's old Next Move entry is stored as `next_move_change`. Convex
 stored `next_action_change` for the same thing; the importer translated that value
 at cutover. Entries of that type are still read but no longer written: completing
-a Move writes `move_completed`.
+a Task writes `move_completed` (the stored name predates Tasks, ADR 0033).
 
 Each feature's `storage.ts` is created from the request scope, so callers never
 pass the owner, and every statement is still scoped by `user_id`. A storage

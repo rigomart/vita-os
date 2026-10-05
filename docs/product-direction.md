@@ -73,7 +73,7 @@ The Dashboard is the product. Everything else exists to make the Dashboard trust
 Two kinds of thing live in Vita OS. Areas label one of them.
 
 ```text
-Thread → Summary · Moves (one optionally Focused) · Follow-up date · Thread Notes · Activity Log
+Thread → Summary · Tasks (one optionally Focused) · Follow-up date · Thread Notes · Activity Log
 Standalone Note → Follow-up date
 Area → an optional label on a Thread
 ```
@@ -85,14 +85,14 @@ An ongoing effort, concern, decision, or situation. It is **Open** or **Resolved
 A Thread may carry:
 
 - a **Summary**: what the Thread is about right now.
-- **Moves**: useful actions, as unordered peers. No dates, no done state, no order. Completing one removes it and writes it into the Activity Log.
-- a **Focused Move**: the one Move the user has singled out, if any. Focus is emphasis only.
+- **Tasks**: useful actions, as unordered peers. No dates, no done state, no order. Completing one removes it and writes it into the Activity Log.
+- a **Focused Task**: the one Task the user has singled out, if any. Focus is emphasis only.
 - a **Follow-up date**: the soft date that brings the Thread back.
 - **Thread Notes**: body-only notes that belong to this Thread and nowhere else.
 - an **Activity Log**: the automatic, read-only record of meaningful changes.
 - an **Area**.
 
-A plain Open Thread, with no Moves and no Follow-up date, is valid. It means the situation still matters and nothing is clear yet.
+A plain Open Thread, with no Tasks and no Follow-up date, is valid. It means the situation still matters and nothing is clear yet.
 
 ### Standalone Note
 
@@ -119,13 +119,13 @@ The Dashboard lays every Open Thread and every open Standalone Note on one axis 
 - **Now**: a Follow-up date today or earlier.
 - **This week**: the next six days.
 - **Later**: day seven onward.
-- **The unscheduled margin**: **Ready to move** (Threads with Moves), **Open** (plain Threads), **Notes** (undated Notes).
+- **The unscheduled margin**: **Ready to move** (Threads with Tasks), **Open** (plain Threads), **Notes** (undated Notes).
 
-Placement is derived from dates and from whether a Thread has Moves. The user never sets a status. A date outranks undated Moves, so a Thread with Moves and no Follow-up date leads the margin and never enters Now. Nothing is capped or hidden.
+Placement is derived from dates and from whether a Thread has Tasks. The user never sets a status. A date outranks undated Tasks, so a Thread with Tasks and no Follow-up date leads the margin and never enters Now. Nothing is capped or hidden.
 
 A row above the board filters it to one Area, to unlabeled Threads, or to Notes alone. Notes have no list of their own: the Notes filter is where to read them together.
 
-The board can act on what it shows. A card completes the Move it displays and sets, changes, or clears the Follow-up date; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
+The board can act on what it shows. A card completes the Task it displays and sets, changes, or clears the Follow-up date; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
 
 The intended loop takes one to two minutes:
 
@@ -137,9 +137,9 @@ Open the Dashboard → read Now → handle or reschedule what is asking → glan
 
 ## Principles
 
-1. **Capture asks nothing.** A Thread needs a title. A Note needs a body. Area, Moves, Follow-up date, and Summary are optional and can come later.
-2. **Derive, never ask.** Attention comes from dates and Moves. The user does not maintain statuses, conditions, or priorities.
-3. **The app never invents a priority.** Capture order is not rank. If several Moves exist and none is focused, the card says so rather than picking one.
+1. **Capture asks nothing.** A Thread needs a title. A Note needs a body. Area, Tasks, Follow-up date, and Summary are optional and can come later.
+2. **Derive, never ask.** Attention comes from dates and Tasks. The user does not maintain statuses, conditions, or priorities.
+3. **The app never invents a priority.** Capture order is not rank. If several Tasks exist and none is focused, the card says so rather than picking one.
 4. **Dates are soft.** A Follow-up date means "bring this back", not "due". There are no deadlines.
 5. **Colour belongs to time.** Lateness is the only thing the board colours. Areas are neutral.
 6. **Reading is not handling.** Opening a Thread never clears its Follow-up date. The user clears, reschedules, or resolves it.
@@ -167,13 +167,13 @@ Resembling another tool is not a test. Task managers have repeats, and repeats p
 
 | Idea | Verdict | Why |
 | --- | --- | --- |
-| Moves with a date and repeat (ADR 0032) | In | Brings a rhythm back with no manual reset; missed occurrences collapse. |
+| Tasks with a date and repeat (ADR 0032) | In | Brings a rhythm back with no manual reset; missed occurrences collapse. |
 | One-tap "not now, next week" on a card | In | Deferring cheaply is the product. |
 | A recap when a Thread is opened after weeks away | In | Restores context. |
 | "Last touched N months ago" on a Thread | Only if neutral | Plain information passes; a warning colour pressures. |
 | Priority levels | Out | Ranks the doing; the time columns already say what is asking. |
-| Subtasks under Moves | Out | Plans execution. |
-| "You completed 12 Moves this week" | Out | Scores doing. |
+| Subtasks under Tasks | Out | Plans execution. |
+| "You completed 12 Tasks this week" | Out | Scores doing. |
 | Push notifications | Out for now | The Dashboard is a place the user looks, not something that chases; dates are soft and never ping (ADR 0027). |
 
 ---
@@ -186,7 +186,7 @@ The product narrowed from its first direction through daily use. [`docs/product-
 
 Ordered by how directly they serve the thesis. None is committed; each needs a spec before work starts.
 
-1. **Moves with an optional date and repeat** (issue #397, ADR 0032, proposed). The evidence this direction waited for arrived: a daily check-in did not fit a single Follow-up date, and was never tracked in the app at all. A Move becomes text with an optional date and repeat, and a Thread's Follow-up date folds into its Moves. Move is renamed Task first (ADR 0033).
+1. **Tasks with an optional date and repeat** (issue #397, ADR 0032, proposed): a Task becomes text with an optional date and repeat, and a Thread's Follow-up date folds into its Tasks.
 2. **Cross-device freshness stays parked** (issue #342) until normal use shows that refresh on focus is not enough.
 
 Reaching Resolved Threads again, once an open direction, shipped as the palette's History (ADR 0029), which now holds Archived Notes too (ADR 0031).
@@ -199,7 +199,7 @@ These fail the filter above, mostly by pressuring or planning the doing. Each st
 
 - manual Thread status (active, waiting, paused)
 - priorities, deadlines, due dates
-- subtasks, checklists, done states on Moves, Move ordering
+- subtasks, checklists, done states on Tasks, Task ordering
 - multiple tags per Thread
 - Area pages, Area health, or any Area state
 - kanban or calendar views
