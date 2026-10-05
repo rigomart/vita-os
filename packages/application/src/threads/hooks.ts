@@ -19,7 +19,10 @@ import { newRecordId } from "@vita-os/core";
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
 import type { PagedResult } from "../cache/use-paged-application-query";
 
-import { useApplicationMutation } from "../cache/use-application-mutation";
+import {
+  queueMemo,
+  useApplicationMutation,
+} from "../cache/use-application-mutation";
 import {
   useApplicationQuery,
   useOptionalApplicationQuery,
@@ -28,6 +31,8 @@ import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
 import { queryKeys } from "../query-keys";
 import {
   cachedRevision,
+  cachedThread,
+  changesTasks,
   type TaskChange,
   settleTaskChange,
   settlePendingThread,
@@ -187,6 +192,13 @@ export function useRemoveThread(): ApplicationMutationResult<
  * each carries the revision the one before it brought back. A refusal — a
  * Task another device already completed, say — rolls back only its own change
  * and refetches, rather than being retried against something different.
+ *
+ * A command the core rule already refuses against the Thread the previous
+ * queued command left — the Task is gone, or nothing would change — is dropped
+ * at the head of the queue: no request, no refusal to report. Duplicate
+ * activations arrive before the first command's optimistic layer lands, so
+ * this cannot be decided when the command is issued. A change made on another
+ * device is unknown here, so that command is still sent and refused once.
  */
 export function useTaskCommand<TInput>(
   thread: Thread,
@@ -200,13 +212,33 @@ export function useTaskCommand<TInput>(
   },
 ): ApplicationMutationResult<TInput, Thread> {
   const cache = useQueryClient();
+  const scope = `thread-tasks:${thread._id}`;
 
   return useApplicationMutation<TInput, Thread>({
-    scope: `thread-tasks:${thread._id}`,
-    run: (client, input) =>
-      command.run(client, input, cachedRevision(cache, thread)),
-    affected: (_input, cache) =>
-      threadChangeKeys(cache, { threadId: thread._id }),
+    scope,
+    run: async (client, input) => {
+      const basis =
+        (queueMemo(cache)?.get(scope) as Thread | undefined) ?? thread;
+      if (!changesTasks(basis, command.change(input))) {
+        return { ok: true, value: basis };
+      }
+      const result = await command.run(
+        client,
+        input,
+        cachedRevision(cache, thread),
+      );
+      // The next queued command is decided against what this one left.
+      if (result.ok) queueMemo(cache)?.set(scope, result.value);
+      return result;
+    },
+    affected: (_input, cache) => {
+      // The first command of a burst runs this before any layer lands, so the
+      // cache still holds the Thread as last read.
+      const memo = queueMemo(cache);
+      if (memo && !memo.has(scope))
+        memo.set(scope, cachedThread(cache, thread));
+      return threadChangeKeys(cache, { threadId: thread._id });
+    },
     optimistic: (cache, input) =>
       showTaskChange(cache, thread._id, command.change(input)),
     reconcile: (cache, settled) => settleTaskChange(cache, settled),

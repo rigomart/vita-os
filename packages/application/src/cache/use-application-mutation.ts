@@ -75,6 +75,8 @@ interface MutationBatch {
   base: Map<string, [QueryKey, unknown]>;
   layers: Array<{ apply: () => void }>;
   invalidate: Map<string, QueryKey>;
+  /** What commands noted for later commands in the queue; gone once it drains. */
+  memo: Map<string, unknown>;
 }
 
 interface Snapshot<TLocal> {
@@ -86,6 +88,17 @@ interface Snapshot<TLocal> {
 // Keep successful commands in the batch until every overlapping command settles.
 // Otherwise an older failure can restore data from before a newer success.
 const batches = new WeakMap<QueryClient, MutationBatch>();
+
+/**
+ * A note a command leaves for the commands queued behind it, valid until every
+ * pending command has settled. Reads cannot refetch before then, so it cannot
+ * go stale. `undefined` outside a batch.
+ */
+export function queueMemo(
+  cache: QueryClient,
+): Map<string, unknown> | undefined {
+  return batches.get(cache)?.memo;
+}
 
 function replay(cache: QueryClient, batch: MutationBatch) {
   notifyManager.batch(() => {
@@ -123,6 +136,7 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
           base: new Map(),
           layers: [],
           invalidate: new Map(),
+          memo: new Map(),
         };
         batches.set(cache, batch);
       }

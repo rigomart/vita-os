@@ -64,29 +64,45 @@ export type TaskChange =
   | { kind: "complete"; taskId: TaskId }
   | { kind: "focus"; taskId: TaskId | null };
 
+function decideTaskChange(
+  thread: TaskFields,
+  change: TaskChange,
+): ThreadUpdateDecision | null {
+  switch (change.kind) {
+    case "add":
+      return decideAddTask(thread, change.task);
+    case "edit":
+      return decideEditTask(thread, change.taskId, change.text);
+    case "remove":
+      return decideRemoveTask(thread, change.taskId);
+    case "complete":
+      return decideCompleteTask(thread, change.taskId);
+    case "focus":
+      return decideFocusTask(thread, change.taskId);
+  }
+}
+
 export function changeTasksLocally<T extends TaskFields>(
   thread: T,
   change: TaskChange,
 ): T {
-  switch (change.kind) {
-    case "add":
-      return applyTaskDecision(thread, (t) => decideAddTask(t, change.task));
-    case "edit":
-      return applyTaskDecision(thread, (t) =>
-        decideEditTask(t, change.taskId, change.text),
-      );
-    case "remove":
-      return applyTaskDecision(thread, (t) =>
-        decideRemoveTask(t, change.taskId),
-      );
-    case "complete":
-      return applyTaskDecision(thread, (t) =>
-        decideCompleteTask(t, change.taskId),
-      );
-    case "focus":
-      return applyTaskDecision(thread, (t) =>
-        decideFocusTask(t, change.taskId),
-      );
+  return applyTaskDecision(thread, (t) => decideTaskChange(t, change));
+}
+
+/**
+ * Whether the core rule would change anything for this command against this
+ * Thread. A refusal (the Task is gone, the Thread resolved) and a no-op both
+ * answer no: the service would refuse the first and the second changes nothing.
+ */
+export function changesTasks(thread: TaskFields, change: TaskChange): boolean {
+  try {
+    const decision = decideTaskChange(thread, change);
+    return (
+      decision !== null &&
+      (Object.keys(decision.patch).length > 0 || decision.logs.length > 0)
+    );
+  } catch {
+    return false;
   }
 }
 
@@ -355,18 +371,26 @@ export function settleNoteAddedToThread(
  * one a command must carry.
  */
 export function cachedRevision(cache: QueryClient, thread: Thread): number {
-  let revision = thread.revision;
+  return cachedThread(cache, thread).revision;
+}
+
+/** The freshest copy of the Thread any read holds, or the caller's own. */
+export function cachedThread(cache: QueryClient, thread: Thread): Thread {
+  let freshest = thread;
   const open = cache
     .getQueryData<Thread[]>(queryKeys.threads.open())
     ?.find((candidate) => candidate._id === thread._id);
-  if (open) revision = Math.max(revision, open.revision);
+  if (open && open.revision > freshest.revision) freshest = open;
 
   for (const [, detail] of cache.getQueriesData<ThreadDetail | null>({
     queryKey: queryKeys.threads.details(),
   })) {
-    if (detail?.thread._id === thread._id) {
-      revision = Math.max(revision, detail.thread.revision);
+    if (
+      detail?.thread._id === thread._id &&
+      detail.thread.revision > freshest.revision
+    ) {
+      freshest = detail.thread;
     }
   }
-  return revision;
+  return freshest;
 }
