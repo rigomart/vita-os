@@ -2,6 +2,19 @@
 
 Personal life-awareness app. Holds open threads and standalone notes, lightly grouped by the part of life they concern, so the user's brain does not have to.
 
+## Naming
+
+Plain words first. A familiar thing gets its familiar word; a term is coined only when the familiar word would promise behaviour Vita OS does not have, such as a due date that nags or a project that needs a plan.
+
+The _Avoid_ line under a term lists words not to use **as names for that concept** in the interface, the code, and the rules below, so one concept keeps one name. It does not ban the word. Everyday words are fine in conversation, explanations, issues and ADRs, and a familiar comparison often explains a term faster than its definition:
+
+- a **Thread** is like a project that may never have a plan or a finish line;
+- a **Move** is like a task, with no priority and no order;
+- a **Follow-up date** is like a due date that never nags;
+- an **Area** is like a single tag.
+
+When a new concept needs a name, try the plain word first and keep it unless it misleads.
+
 ## Language
 
 **Area**:

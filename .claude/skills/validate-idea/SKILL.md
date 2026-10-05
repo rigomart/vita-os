@@ -15,8 +15,8 @@ No code in this skill. Its outputs are a verdict and, when the idea goes ahead, 
 
 Read before forming an opinion:
 
-- `CONTEXT.md`: the vocabulary and exact rules. Use its terms, and its _Avoid_ lists.
-- `docs/product-direction.md`: the thesis, Principles, Open Directions and Not Now. An idea may already be parked there, with the evidence that would unpark it.
+- `CONTEXT.md`: the vocabulary and exact rules. Use its terms for its concepts. Its _Avoid_ lists keep one name per concept; they do not ban everyday words (see Naming).
+- `docs/product-direction.md`: the thesis, Principles, the Thesis as a Filter, Open Directions and Not Now. An idea may already be parked there, with the evidence that would unpark it.
 - The ADRs the idea touches (`docs/adr/`). Note each one the idea would contradict.
 - GitHub issues, open and closed, for prior attempts at the same problem.
 
@@ -30,31 +30,38 @@ Restate in one or two sentences:
 
 Keep the owner's own phrasing. Words like "the same move every day" often name the right model before any analysis does.
 
-## 3. Try it with the app as it is
+## 3. Check it against the thesis
+
+Vita OS keeps what matters in view; it does not try to get things done. Run the problem through the filter in `docs/product-direction.md` (The Thesis as a Filter) and say which test it serves: bringing things back, restoring context, or making carrying cheaper. If it serves none, or it mainly pressures doing, needs upkeep to stay true, or plans execution, say so now: the likely verdict is Not a problem or Park it, and the owner decides whether to go on.
+
+Never reject an idea because another tool has it. Ask whether it serves remembering or doing.
+
+## 4. Try it with the app as it is
 
 Before inventing anything, walk the situation through today's app step by step: which Thread, Moves, Follow-up date, Notes. Then list where it rubs, concretely ("five date picks a week", "sits in Now all morning"). Often the honest answer is "this works today", or "do it by hand for a while and see if the friction repeats". That is a valid verdict.
 
 Ask how the owner handles it now. If they stopped using, or never started using, the app for it, that is strong evidence.
 
-## 4. Generate real cases
+## 5. Generate real cases
 
 Write 6 to 10 situations from different parts of life (health, family, money, home, work, relationships, pets), with different durations (days, weeks, forever, fading out) and intensities. Put them in a table: situation, what the idea would hold, how long. Include at least one case that stresses the idea and one where it should not apply.
 
 Then pull out what the cases show, as short bullets: plurality ("a Thread has more than one of these"), grain ("track the user's attention, not the event"), failure modes ("missing one must not pile up"), unknowns ("the end is usually unknown"). These findings drive the design; the cases are evidence, not decoration.
 
-## 5. Shape candidates, smallest first
+## 6. Shape candidates, smallest first
 
 Propose 2 or 3 shapes, starting with the smallest change that could work (a shortcut on an existing control) and ending with a model change. For each:
 
 - Show it with a small text mockup of Thread detail or a Dashboard card.
 - Walk one case through it: setup once, a normal day, a missed day, the end.
-- Check it against the Principles in `docs/product-direction.md`, one by one. The ones that usually bite: capture asks nothing; derive, never ask; the app never invents a priority; dates are soft; one board.
+- Check it against the filter and the Principles in `docs/product-direction.md`, one by one. The ones that usually bite: capture asks nothing; derive, never ask; the app never invents a priority; dates are soft; one board.
 - Name every ADR or glossary rule it contradicts. Contradicting one is allowed, but only on purpose and recorded in a new ADR.
 - Say what it costs: new concepts, migrations, surfaces.
+- Name any new concept with the plainest familiar word that does not mislead (see Naming in `CONTEXT.md`). Propose a coined term only with the reason the plain word fails.
 
 Recommend one. Prefer reusing a concept the user already knows over adding a new one, and prefer one concept with optional parts over two concepts. Watch complexity: if a shape makes every existing item heavier to serve a few, say so.
 
-## 6. Converge with the owner
+## 7. Converge with the owner
 
 Expect several rounds. Pushback like "too complex", "doesn't feel right" or "what if it were like X" is the most useful signal you get: take it seriously, find what it is reacting to, and reshape rather than defend. Be honest when a new suggestion is close to something already rejected, and explain what actually differs.
 
@@ -62,7 +69,7 @@ Ask only questions the owner alone can answer (taste, naming, what they would do
 
 When asked for a summary, give the shape in one line, a mockup, the rules, what changes in the repo, and the remaining decisions.
 
-## 7. Close with a verdict
+## 8. Close with a verdict
 
 One of:
 

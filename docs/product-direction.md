@@ -16,6 +16,14 @@ It answers one question:
 
 It is not a task manager, a calendar, a notes app, or a project tool. It borrows a little from each and refuses the rest.
 
+### What success means
+
+Vita OS succeeds when nothing that matters is forgotten, not when things get done. A check-up put off for years is held well if it comes back into view each time the Dashboard opens, whether or not this is the week it happens. Doing stays the user's business; the app keeps the thing in view.
+
+The other half is cost. A system that only stays true while it is maintained gets abandoned, and an abandoned system forgets on the user's behalf. Earlier attempts in general-purpose tools failed exactly this way. So the thesis in full:
+
+> **Keep what matters in view, at the right time, with enough context to pick it up, while costing almost nothing to keep.**
+
 ---
 
 ## Product Thesis
@@ -135,6 +143,36 @@ Open the Dashboard → read Now → handle or reschedule what is asking → glan
 6. **Reading is not handling.** Opening a Thread never clears its Follow-up date. The user clears, reschedules, or resolves it.
 7. **Keep Threads alive, not noisy.** The Activity Log records what changed without being asked and records nothing trivial.
 8. **One board.** No second schedule, no per-Area pages, no tabs.
+9. **Plain words.** A familiar thing gets its familiar word. A new term is coined only when the familiar word would promise behaviour the app does not have (see Naming in `CONTEXT.md`).
+
+---
+
+## The Thesis as a Filter
+
+Every idea is checked against the thesis before its shape is designed. An idea earns a place if it does at least one of these:
+
+1. **Brings things back.** It helps something return to view at the right time.
+2. **Restores context.** It helps the user pick a Thread up after weeks without reconstructing it.
+3. **Makes carrying cheaper.** It lowers the cost of keeping something in the app: capture, upkeep, or guilt.
+
+It stays out if it does any of these:
+
+- **Pressures doing.** Overdue counts, streaks, completion stats, badges. They turn "not done yet" into "the app is unhappy with me", which is how a tool gets abandoned.
+- **Needs upkeep to stay true.** If a skipped week leaves the app wrong, it repeats the failure Vita OS exists to avoid.
+- **Plans execution.** Subtasks, priorities, estimates, dependencies. That is the work itself; a Thread Note or a dedicated tool can hold it.
+
+Resembling another tool is not a test. Task managers have repeats, and repeats pass here: missed occurrences collapse, and a rhythm comes back without being reset by hand. The question is whether an idea serves remembering or doing.
+
+| Idea | Verdict | Why |
+| --- | --- | --- |
+| Moves with a date and repeat (ADR 0032) | In | Brings a rhythm back with no manual reset; missed occurrences collapse. |
+| One-tap "not now, next week" on a card | In | Deferring cheaply is the product. |
+| A recap when a Thread is opened after weeks away | In | Restores context. |
+| "Last touched N months ago" on a Thread | Only if neutral | Plain information passes; a warning colour pressures. |
+| Priority levels | Out | Ranks the doing; the time columns already say what is asking. |
+| Subtasks under Moves | Out | Plans execution. |
+| "You completed 12 Moves this week" | Out | Scores doing. |
+| Push notifications | Out for now | The Dashboard is a place the user looks, not something that chases; dates are soft and never ping (ADR 0027). |
 
 ---
 
@@ -168,7 +206,7 @@ Reaching Resolved Threads again, once an open direction, shipped as the palette'
 
 ## Not Now
 
-These pull the product toward task or project management. Each stays out until the simple model fails in real use.
+These fail the filter above, mostly by pressuring or planning the doing. Each stays out until the simple model fails in real use.
 
 - manual Thread status (active, waiting, paused)
 - priorities, deadlines, due dates
