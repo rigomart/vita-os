@@ -1,14 +1,14 @@
-import type { Move, MoveId, Thread } from "@vita-os/contracts";
+import type { Task, TaskId, Thread } from "@vita-os/contracts";
 
 import { isApplicationError } from "@vita-os/contracts";
 import { newRecordId } from "@vita-os/core";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
 
-import { useMoveCommand } from "./hooks";
+import { useTaskCommand } from "./hooks";
 
 /**
- * A Move command never throws at the surface that issued it. A refusal has
- * already been rolled back on screen; this names it for the person, so a Move
+ * A Task command never throws at the surface that issued it. A refusal has
+ * already been rolled back on screen; this names it for the person, so a Task
  * that reappears does not look like a glitch.
  */
 function useReportFailure() {
@@ -24,55 +24,55 @@ function useReportFailure() {
   };
 }
 
-/** Complete one of this Thread's Moves: all the Dashboard card can do. */
-export function useCompleteMove(thread: Thread) {
+/** Complete one of this Thread's Tasks: all the Dashboard card can do. */
+export function useCompleteTask(thread: Thread) {
   const report = useReportFailure();
-  const complete = useMoveCommand<MoveId>(thread, {
-    run: (client, moveId, expectedRevision) =>
-      client.completeMove({ threadId: thread._id, moveId, expectedRevision }),
-    change: (moveId) => ({ kind: "complete", moveId }),
+  const complete = useTaskCommand<TaskId>(thread, {
+    run: (client, taskId, expectedRevision) =>
+      client.completeTask({ threadId: thread._id, taskId, expectedRevision }),
+    change: (taskId) => ({ kind: "complete", taskId }),
   });
 
-  return (moveId: MoveId) =>
-    complete.mutateAsync(moveId).then(() => undefined, report);
+  return (taskId: TaskId) =>
+    complete.mutateAsync(taskId).then(() => undefined, report);
 }
 
 /**
- * Every Move action Thread detail offers. Each shows its change at once, and
- * none asks for a priority: a new Move joins the end of the list unfocused.
+ * Every Task action Thread detail offers. Each shows its change at once, and
+ * none asks for a priority: a new Task joins the end of the list unfocused.
  */
-export function useMoves(thread: Thread) {
+export function useTasks(thread: Thread) {
   const report = useReportFailure();
 
-  const add = useMoveCommand<Move>(thread, {
-    run: (client, move, expectedRevision) =>
-      client.addMove({
+  const add = useTaskCommand<Task>(thread, {
+    run: (client, task, expectedRevision) =>
+      client.addTask({
         threadId: thread._id,
-        moveId: move._id,
-        text: move.text,
+        taskId: task._id,
+        text: task.text,
         expectedRevision,
       }),
-    change: (move) => ({ kind: "add", move }),
+    change: (task) => ({ kind: "add", task }),
   });
-  const edit = useMoveCommand<{ moveId: MoveId; text: string }>(thread, {
+  const edit = useTaskCommand<{ taskId: TaskId; text: string }>(thread, {
     run: (client, input, expectedRevision) =>
-      client.editMove({ threadId: thread._id, ...input, expectedRevision }),
+      client.editTask({ threadId: thread._id, ...input, expectedRevision }),
     change: (input) => ({ kind: "edit", ...input }),
   });
-  const remove = useMoveCommand<MoveId>(thread, {
-    run: (client, moveId, expectedRevision) =>
-      client.removeMove({ threadId: thread._id, moveId, expectedRevision }),
-    change: (moveId) => ({ kind: "remove", moveId }),
+  const remove = useTaskCommand<TaskId>(thread, {
+    run: (client, taskId, expectedRevision) =>
+      client.removeTask({ threadId: thread._id, taskId, expectedRevision }),
+    change: (taskId) => ({ kind: "remove", taskId }),
   });
-  const complete = useMoveCommand<MoveId>(thread, {
-    run: (client, moveId, expectedRevision) =>
-      client.completeMove({ threadId: thread._id, moveId, expectedRevision }),
-    change: (moveId) => ({ kind: "complete", moveId }),
+  const complete = useTaskCommand<TaskId>(thread, {
+    run: (client, taskId, expectedRevision) =>
+      client.completeTask({ threadId: thread._id, taskId, expectedRevision }),
+    change: (taskId) => ({ kind: "complete", taskId }),
   });
-  const focus = useMoveCommand<MoveId | null>(thread, {
-    run: (client, moveId, expectedRevision) =>
-      client.focusMove({ threadId: thread._id, moveId, expectedRevision }),
-    change: (moveId) => ({ kind: "focus", moveId }),
+  const focus = useTaskCommand<TaskId | null>(thread, {
+    run: (client, taskId, expectedRevision) =>
+      client.focusTask({ threadId: thread._id, taskId, expectedRevision }),
+    change: (taskId) => ({ kind: "focus", taskId }),
   });
 
   const settle = (pending: Promise<unknown>) =>
@@ -83,17 +83,17 @@ export function useMoves(thread: Thread) {
       const trimmed = text.trim();
       if (!trimmed) return Promise.resolve();
       return settle(
-        add.mutateAsync({ _id: newRecordId() as MoveId, text: trimmed }),
+        add.mutateAsync({ _id: newRecordId() as TaskId, text: trimmed }),
       );
     },
-    edit: (moveId: MoveId, text: string) => {
+    edit: (taskId: TaskId, text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return Promise.resolve();
-      return settle(edit.mutateAsync({ moveId, text: trimmed }));
+      return settle(edit.mutateAsync({ taskId, text: trimmed }));
     },
-    remove: (moveId: MoveId) => settle(remove.mutateAsync(moveId)),
-    complete: (moveId: MoveId) => settle(complete.mutateAsync(moveId)),
-    /** `null` unfocuses; focusing a Move replaces any earlier focus. */
-    focus: (moveId: MoveId | null) => settle(focus.mutateAsync(moveId)),
+    remove: (taskId: TaskId) => settle(remove.mutateAsync(taskId)),
+    complete: (taskId: TaskId) => settle(complete.mutateAsync(taskId)),
+    /** `null` unfocuses; focusing a Task replaces any earlier focus. */
+    focus: (taskId: TaskId | null) => settle(focus.mutateAsync(taskId)),
   };
 }

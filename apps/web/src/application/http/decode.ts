@@ -6,8 +6,8 @@ import type {
   AreaId,
   AreaSummary,
   CommandAcknowledgement,
-  Move,
-  MoveId,
+  Task,
+  TaskId,
   Note,
   NoteAddedToThread,
   NoteId,
@@ -91,7 +91,7 @@ function isActivityLogEntryType(
   );
 }
 
-function decodeMove(value: unknown): Move | undefined {
+function decodeTask(value: unknown): Task | undefined {
   if (
     !isObject(value) ||
     typeof value._id !== "string" ||
@@ -99,7 +99,7 @@ function decodeMove(value: unknown): Move | undefined {
   ) {
     return undefined;
   }
-  return { _id: value._id as MoveId, text: value.text };
+  return { _id: value._id as TaskId, text: value.text };
 }
 
 /** Every entry decodes, or the whole list is unrecognized. */
@@ -154,16 +154,16 @@ export function decodeThread(value: unknown): Thread | undefined {
     areaId,
     order,
     state,
-    moves: rawMoves,
-    focusedMoveId,
+    tasks: rawTasks,
+    focusedTaskId,
     followUp,
     lastActivityAt,
     lastActivityContent,
     createdAt,
     revision,
   } = value;
-  const moves =
-    rawMoves === undefined ? undefined : decodeList(rawMoves, decodeMove);
+  const tasks =
+    rawTasks === undefined ? undefined : decodeList(rawTasks, decodeTask);
   if (
     typeof _id !== "string" ||
     typeof title !== "string" ||
@@ -172,8 +172,8 @@ export function decodeThread(value: unknown): Thread | undefined {
     !isOptionalString(areaId) ||
     !isSafeInteger(order) ||
     !isThreadState(state) ||
-    (rawMoves !== undefined && moves === undefined) ||
-    !isOptionalString(focusedMoveId) ||
+    (rawTasks !== undefined && tasks === undefined) ||
+    !isOptionalString(focusedTaskId) ||
     !isOptionalSafeInteger(followUp) ||
     !isOptionalSafeInteger(lastActivityAt) ||
     !isOptionalString(lastActivityContent) ||
@@ -192,10 +192,10 @@ export function decodeThread(value: unknown): Thread | undefined {
     ...(areaId === undefined ? {} : { areaId: areaId as AreaId }),
     order,
     state,
-    ...(moves === undefined ? {} : { moves }),
-    ...(focusedMoveId === undefined
+    ...(tasks === undefined ? {} : { tasks }),
+    ...(focusedTaskId === undefined
       ? {}
-      : { focusedMoveId: focusedMoveId as MoveId }),
+      : { focusedTaskId: focusedTaskId as TaskId }),
     ...(followUp === undefined ? {} : { followUp }),
     ...(lastActivityAt === undefined ? {} : { lastActivityAt }),
     ...(lastActivityContent === undefined ? {} : { lastActivityContent }),

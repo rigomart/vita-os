@@ -1,7 +1,7 @@
 import type {
   ApplicationError,
   AreaId,
-  MoveId,
+  TaskId,
   OperationResult,
   ThreadDetail,
 } from "@vita-os/contracts";
@@ -28,7 +28,7 @@ const detail: ThreadDetail = {
     areaId: "area-1" as AreaId,
     order: 1,
     state: "open",
-    moves: [{ _id: "move-1" as MoveId, text: "Call clinic" }],
+    tasks: [{ _id: "task-1" as TaskId, text: "Call clinic" }],
     revision: 0,
     createdAt: 1,
   },
@@ -60,7 +60,7 @@ function wrapperFor(result: Promise<OperationResult<ThreadDetail>>) {
 }
 
 describe("useThreadDetail", () => {
-  it("moves from loading to ready and caches the detail", async () => {
+  it("tasks from loading to ready and caches the detail", async () => {
     const pending = deferred<OperationResult<ThreadDetail>>();
     const { wrapper, queryClient } = wrapperFor(pending.promise);
     const { result } = renderHook(() => useThreadDetail("book-checkup"), {

@@ -264,10 +264,10 @@ async function seed(): Promise<void> {
         ...(spec.area ? { areaId: areaIds.get(spec.area) } : {}),
       });
       const moveIds: string[] = [];
-      for (const text of spec.moves ?? []) {
+      for (const text of spec.tasks ?? []) {
         const moveId = newRecordId();
         moveIds.push(moveId);
-        thread = await call<Thread>("POST", `/v1/threads/${thread._id}/moves`, {
+        thread = await call<Thread>("POST", `/v1/threads/${thread._id}/tasks`, {
           moveId,
           text,
           expectedRevision: thread.revision,
@@ -333,8 +333,8 @@ interface SeedThread {
   title: string;
   summary?: string;
   area?: string;
-  moves?: string[];
-  /** Index into `moves` of the Focused Move. */
+  tasks?: string[];
+  /** Index into `tasks` of the Focused Task. */
   focus?: number;
   followUpInDays?: number;
   /** The Follow-up's time of day, `HH:mm`. */
@@ -359,14 +359,14 @@ const SEED: {
       title: "Dentist follow-up",
       area: "Health",
       summary: "Crown on the lower left molar still feels high.",
-      moves: ["Call the clinic to reschedule", "Ask about a night guard"],
+      tasks: ["Call the clinic to reschedule", "Ask about a night guard"],
       focus: 0,
       followUpInDays: -3,
     },
     {
       title: "File quarterly taxes",
       area: "Money",
-      moves: ["Gather Q3 receipts", "Send the summary to the accountant"],
+      tasks: ["Gather Q3 receipts", "Send the summary to the accountant"],
       focus: 0,
       followUpInDays: 0,
       followUpAt: "10:00",
@@ -374,24 +374,24 @@ const SEED: {
     {
       title: "Quarterly review prep",
       area: "Work",
-      moves: ["Draft the wins list", "Book a 1:1 with my manager"],
+      tasks: ["Draft the wins list", "Book a 1:1 with my manager"],
       followUpInDays: 3,
     },
     {
       title: "Fix the leaking kitchen tap",
       area: "Home",
-      moves: ["Buy a replacement cartridge"],
+      tasks: ["Buy a replacement cartridge"],
       followUpInDays: 5,
     },
     {
       title: "Plan the Lisbon trip",
-      moves: ["Compare flight dates"],
+      tasks: ["Compare flight dates"],
       followUpInDays: 20,
     },
     {
       title: "Marathon training block",
       area: "Health",
-      moves: ["Pick a 16-week plan"],
+      tasks: ["Pick a 16-week plan"],
     },
     { title: "Build an emergency fund", area: "Money" },
     { title: "Learn to bake sourdough" },

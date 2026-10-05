@@ -1,4 +1,4 @@
-import type { MoveId, Note, Thread } from "@vita-os/contracts";
+import type { TaskId, Note, Thread } from "@vita-os/contracts";
 
 import { describe, expect, it } from "vitest";
 
@@ -13,7 +13,7 @@ import { DAY } from "./dashboard-model";
 
 const currentDate = new Date(2026, 6, 17, 12).getTime();
 const day = (offset: number) => currentDate + offset * DAY;
-const move = (text: string) => ({ _id: text as MoveId, text });
+const task = (text: string) => ({ _id: text as TaskId, text });
 
 function thread(id: string, fields: Partial<Thread> = {}): Thread {
   return {
@@ -105,15 +105,15 @@ describe("buildAttentionBoard", () => {
   });
 
   /**
-   * The #236 answer: a Follow-up date outranks undated Moves, so an
+   * The #236 answer: a Follow-up date outranks undated Tasks, so an
    * actionable-but-undated Thread never lands in Now — it keeps its own run in
    * the unscheduled margin instead.
    */
-  it("sends undated Moves to the unscheduled margin, not to Now", () => {
+  it("sends undated Tasks to the unscheduled margin, not to Now", () => {
     const board = buildAttentionBoard(
       [
         thread("dated", { followUp: day(0) }),
-        thread("actionable", { moves: [move("Call the clinic")] }),
+        thread("actionable", { tasks: [task("Call the clinic")] }),
       ],
       [],
       currentDate,
@@ -123,18 +123,18 @@ describe("buildAttentionBoard", () => {
     expect(board.unscheduled.moves.map(itemId)).toEqual(["actionable"]);
   });
 
-  it("makes every Thread with a Move ready to move, whether or not one is focused", () => {
-    const focused = move("Send the sheet");
+  it("makes every Thread with a Task ready to move, whether or not one is focused", () => {
+    const focused = task("Send the sheet");
     const board = buildAttentionBoard(
       [
-        thread("no-moves"),
+        thread("no-tasks"),
         thread("unfocused", {
-          moves: [move("Call"), move("Email")],
+          tasks: [task("Call"), task("Email")],
           order: 1,
         }),
         thread("focused", {
-          moves: [focused, move("Print")],
-          focusedMoveId: focused._id,
+          tasks: [focused, task("Print")],
+          focusedTaskId: focused._id,
           order: 2,
         }),
       ],
@@ -146,19 +146,19 @@ describe("buildAttentionBoard", () => {
       "unfocused",
       "focused",
     ]);
-    expect(board.unscheduled.open.map(itemId)).toEqual(["no-moves"]);
+    expect(board.unscheduled.open.map(itemId)).toEqual(["no-tasks"]);
   });
 
   it("never moves a Thread between columns for focus", () => {
-    const focused = move("Send the sheet");
-    const dated = { followUp: day(2), moves: [focused, move("Print")] };
+    const focused = task("Send the sheet");
+    const dated = { followUp: day(2), tasks: [focused, task("Print")] };
     const unfocused = buildAttentionBoard(
       [thread("dated", dated)],
       [],
       currentDate,
     );
     const withFocus = buildAttentionBoard(
-      [thread("dated", { ...dated, focusedMoveId: focused._id })],
+      [thread("dated", { ...dated, focusedTaskId: focused._id })],
       [],
       currentDate,
     );
@@ -185,7 +185,7 @@ describe("buildAttentionBoard", () => {
       thread("late", { followUp: day(-2) }),
       thread("soon", { followUp: day(2) }),
       thread("far", { followUp: day(30) }),
-      thread("move", { moves: [move("Do the thing")] }),
+      thread("task", { tasks: [task("Do the thing")] }),
       thread("idle"),
     ];
     const notes = [

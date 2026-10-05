@@ -1,4 +1,4 @@
-import type { Move, MoveId } from "@vita-os/contracts";
+import type { Task, TaskId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { addDays, subDays } from "date-fns";
@@ -11,26 +11,26 @@ const now = new Date("2026-08-13T12:00:00").getTime();
 /** Today as the picker stores a date alone: local midnight. */
 const today = new Date(2026, 7, 13).getTime();
 
-const callClinic: Move = { _id: "move-1" as MoveId, text: "Call the clinic" };
-const bookScan: Move = { _id: "move-2" as MoveId, text: "Book the scan" };
-const collect: Move = { _id: "move-3" as MoveId, text: "Collect the results" };
+const callClinic: Task = { _id: "task-1" as TaskId, text: "Call the clinic" };
+const bookScan: Task = { _id: "task-2" as TaskId, text: "Book the scan" };
+const collect: Task = { _id: "task-3" as TaskId, text: "Collect the results" };
 
 function renderAttention(
   props: Partial<Parameters<typeof ThreadAttention>[0]> = {},
 ) {
   const handlers = {
-    onAddMove: vi.fn(),
-    onEditMove: vi.fn(),
-    onRemoveMove: vi.fn(),
-    onCompleteMove: vi.fn(),
-    onFocusMove: vi.fn(),
+    onAddTask: vi.fn(),
+    onEditTask: vi.fn(),
+    onRemoveTask: vi.fn(),
+    onCompleteTask: vi.fn(),
+    onFocusTask: vi.fn(),
     onSetFollowUp: vi.fn(),
     onClearFollowUp: vi.fn(),
   };
 
   const { unmount } = render(
     <ThreadAttention
-      moves={[]}
+      tasks={[]}
       followUp={undefined}
       now={now}
       {...handlers}
@@ -41,21 +41,21 @@ function renderAttention(
   return { ...handlers, unmount };
 }
 
-function moveRows() {
-  return within(screen.getByRole("list", { name: "Moves" })).getAllByRole(
+function taskRows() {
+  return within(screen.getByRole("list", { name: "Tasks" })).getAllByRole(
     "listitem",
   );
 }
 
 describe("ThreadAttention", () => {
-  it("lists every Move in capture order, highlighting the Focused Move where it sits", () => {
+  it("lists every Task in capture order, highlighting the Focused Task where it sits", () => {
     renderAttention({
-      moves: [callClinic, bookScan, collect],
-      focusedMoveId: bookScan._id,
+      tasks: [callClinic, bookScan, collect],
+      focusedTaskId: bookScan._id,
       followUp: today,
     });
 
-    const rows = moveRows();
+    const rows = taskRows();
     expect(rows.map((row) => row.textContent)).toEqual([
       expect.stringContaining("Call the clinic"),
       expect.stringContaining("Book the scan"),
@@ -64,10 +64,10 @@ describe("ThreadAttention", () => {
     expect(rows[1]).toHaveAttribute("data-focused", "true");
     expect(rows[0]).not.toHaveAttribute("data-focused");
     expect(
-      within(rows[1]!).getByRole("button", { name: "Unfocus this move" }),
+      within(rows[1]!).getByRole("button", { name: "Unfocus this task" }),
     ).toHaveAttribute("aria-pressed", "true");
     expect(
-      within(rows[0]!).getByRole("button", { name: "Focus this move" }),
+      within(rows[0]!).getByRole("button", { name: "Focus this task" }),
     ).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByText("3")).toBeVisible();
     expect(
@@ -77,27 +77,27 @@ describe("ThreadAttention", () => {
 
   it("toggles focus from the radio: focusing another replaces it, focusing the focused one unfocuses", async () => {
     const user = userEvent.setup();
-    const { onFocusMove } = renderAttention({
-      moves: [callClinic, bookScan],
-      focusedMoveId: callClinic._id,
+    const { onFocusTask } = renderAttention({
+      tasks: [callClinic, bookScan],
+      focusedTaskId: callClinic._id,
     });
 
     await user.click(
-      within(moveRows()[1]!).getByRole("button", { name: "Focus this move" }),
+      within(taskRows()[1]!).getByRole("button", { name: "Focus this task" }),
     );
-    expect(onFocusMove).toHaveBeenLastCalledWith(bookScan._id);
+    expect(onFocusTask).toHaveBeenLastCalledWith(bookScan._id);
 
     await user.click(
-      within(moveRows()[0]!).getByRole("button", { name: "Unfocus this move" }),
+      within(taskRows()[0]!).getByRole("button", { name: "Unfocus this task" }),
     );
-    expect(onFocusMove).toHaveBeenLastCalledWith(null);
+    expect(onFocusTask).toHaveBeenLastCalledWith(null);
   });
 
   it("highlights nothing when nothing is focused", () => {
-    renderAttention({ moves: [callClinic, bookScan] });
+    renderAttention({ tasks: [callClinic, bookScan] });
 
     expect(
-      moveRows().filter((row) => row.hasAttribute("data-focused")),
+      taskRows().filter((row) => row.hasAttribute("data-focused")),
     ).toEqual([]);
     expect(
       screen.getByText(
@@ -106,67 +106,67 @@ describe("ThreadAttention", () => {
     ).toBeVisible();
   });
 
-  it("completes and removes any Move, focused or not", async () => {
+  it("completes and removes any Task, focused or not", async () => {
     const user = userEvent.setup();
-    const { onCompleteMove, onRemoveMove } = renderAttention({
-      moves: [callClinic, bookScan],
-      focusedMoveId: callClinic._id,
+    const { onCompleteTask, onRemoveTask } = renderAttention({
+      tasks: [callClinic, bookScan],
+      focusedTaskId: callClinic._id,
     });
 
     await user.click(
-      within(moveRows()[1]!).getByRole("button", { name: "Complete move" }),
+      within(taskRows()[1]!).getByRole("button", { name: "Complete task" }),
     );
-    expect(onCompleteMove).toHaveBeenCalledWith(bookScan._id);
+    expect(onCompleteTask).toHaveBeenCalledWith(bookScan._id);
 
     await user.click(
-      within(moveRows()[0]!).getByRole("button", { name: "Remove move" }),
+      within(taskRows()[0]!).getByRole("button", { name: "Remove task" }),
     );
-    expect(onRemoveMove).toHaveBeenCalledWith(callClinic._id);
+    expect(onRemoveTask).toHaveBeenCalledWith(callClinic._id);
   });
 
-  it("edits a Move in place", async () => {
+  it("edits a Task in place", async () => {
     const user = userEvent.setup();
-    const { onEditMove } = renderAttention({ moves: [callClinic] });
+    const { onEditTask } = renderAttention({ tasks: [callClinic] });
 
     await user.click(screen.getByText("Call the clinic"));
     const editor = screen.getByDisplayValue("Call the clinic");
     await user.clear(editor);
     await user.type(editor, "Book appointment{Enter}");
 
-    expect(onEditMove).toHaveBeenCalledWith(callClinic._id, "Book appointment");
+    expect(onEditTask).toHaveBeenCalledWith(callClinic._id, "Book appointment");
   });
 
-  it("captures a Move on Enter and on blur, never asking about focus", async () => {
+  it("captures a Task on Enter and on blur, never asking about focus", async () => {
     const user = userEvent.setup();
-    const { onAddMove, onFocusMove } = renderAttention();
+    const { onAddTask, onFocusTask } = renderAttention();
 
-    expect(screen.queryByRole("list", { name: "Moves" })).toBeNull();
-    const field = screen.getByRole("textbox", { name: "Add a move" });
+    expect(screen.queryByRole("list", { name: "Tasks" })).toBeNull();
+    const field = screen.getByRole("textbox", { name: "Add a task" });
     await user.type(field, "Call the clinic{Enter}");
-    expect(onAddMove).toHaveBeenCalledWith("Call the clinic");
+    expect(onAddTask).toHaveBeenCalledWith("Call the clinic");
 
     await user.type(field, "  Book the scan  ");
     await user.tab();
-    expect(onAddMove).toHaveBeenLastCalledWith("Book the scan");
-    expect(onAddMove).toHaveBeenCalledTimes(2);
-    expect(onFocusMove).not.toHaveBeenCalled();
+    expect(onAddTask).toHaveBeenLastCalledWith("Book the scan");
+    expect(onAddTask).toHaveBeenCalledTimes(2);
+    expect(onFocusTask).not.toHaveBeenCalled();
 
     await user.type(field, "   {Enter}");
-    expect(onAddMove).toHaveBeenCalledTimes(2);
+    expect(onAddTask).toHaveBeenCalledTimes(2);
   });
 
   it("keeps the row controls reachable on touch", () => {
-    renderAttention({ moves: [callClinic] });
+    renderAttention({ tasks: [callClinic] });
 
     // `xl` is THREAD_PANE_BREAKPOINT: the rail hides removal until the row is
     // hovered or focused, the drawer never does.
     expect(
-      within(moveRows()[0]!).getByRole("button", { name: "Remove move" }),
+      within(taskRows()[0]!).getByRole("button", { name: "Remove task" }),
     ).toHaveClass("xl:opacity-0");
     expect(
-      within(moveRows()[0]!).getByRole("button", { name: "Complete move" }),
+      within(taskRows()[0]!).getByRole("button", { name: "Complete task" }),
     ).toHaveClass("size-8", "xl:size-6");
-    expect(screen.getByRole("textbox", { name: "Add a move" })).toHaveClass(
+    expect(screen.getByRole("textbox", { name: "Add a task" })).toHaveClass(
       "h-9",
       "xl:h-7",
     );

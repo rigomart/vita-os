@@ -14,7 +14,7 @@ export function ThreadResolvedNote() {
         aria-hidden
         className="size-3.5 shrink-0 text-condition-healthy"
       />
-      No Moves or follow-up date while resolved — the log below is the record.
+      No Tasks or follow-up date while resolved — the log below is the record.
     </p>
   );
 }

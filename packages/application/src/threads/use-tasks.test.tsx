@@ -1,6 +1,6 @@
 import type {
   ApplicationClient,
-  MoveId,
+  TaskId,
   OperationResult,
   Thread,
   ThreadDetail,
@@ -20,13 +20,13 @@ import {
 } from "../test/fake-application-client";
 import { anArea, aThread } from "../test/fixtures";
 import { createHarness } from "../test/harness";
-import { useCompleteMove, useMoves } from "./use-moves";
+import { useCompleteTask, useTasks } from "./use-tasks";
 
-const callClinic = { _id: "move-1" as MoveId, text: "Call clinic" };
-const bookSlot = { _id: "move-2" as MoveId, text: "Book slot" };
+const callClinic = { _id: "task-1" as TaskId, text: "Call clinic" };
+const bookSlot = { _id: "task-2" as TaskId, text: "Book slot" };
 const thread = aThread({
-  moves: [callClinic, bookSlot],
-  focusedMoveId: callClinic._id,
+  tasks: [callClinic, bookSlot],
+  focusedTaskId: callClinic._id,
   revision: 4,
 });
 
@@ -62,13 +62,13 @@ function shown(cache: ReturnType<typeof render>["cache"]) {
   };
 }
 
-describe("useCompleteMove", () => {
-  it("takes the Move off every read at once, and completing the Focused Move leaves the Thread unfocused", async () => {
+describe("useCompleteTask", () => {
+  it("takes the Task off every read at once, and completing the Focused Task leaves the Thread unfocused", async () => {
     const pending = deferred<OperationResult<Thread>>();
-    const completeMove = vi.fn(() => pending.promise);
+    const completeTask = vi.fn(() => pending.promise);
     const { cache, result } = render(
-      createFakeApplicationClient({ completeMove }),
-      () => useCompleteMove(thread),
+      createFakeApplicationClient({ completeTask }),
+      () => useCompleteTask(thread),
     );
 
     act(() => {
@@ -77,14 +77,14 @@ describe("useCompleteMove", () => {
 
     await waitFor(() => {
       const { open, rail } = shown(cache);
-      expect(open?.moves).toEqual([bookSlot]);
-      expect(open).not.toHaveProperty("focusedMoveId");
-      expect(rail?.moves).toEqual([bookSlot]);
-      expect(rail).not.toHaveProperty("focusedMoveId");
+      expect(open?.tasks).toEqual([bookSlot]);
+      expect(open).not.toHaveProperty("focusedTaskId");
+      expect(rail?.tasks).toEqual([bookSlot]);
+      expect(rail).not.toHaveProperty("focusedTaskId");
     });
-    expect(completeMove).toHaveBeenCalledWith({
+    expect(completeTask).toHaveBeenCalledWith({
       threadId: thread._id,
-      moveId: callClinic._id,
+      taskId: callClinic._id,
       expectedRevision: 4,
     });
 
@@ -92,8 +92,8 @@ describe("useCompleteMove", () => {
       pending.resolve(
         success({
           ...thread,
-          moves: [bookSlot],
-          focusedMoveId: undefined,
+          tasks: [bookSlot],
+          focusedTaskId: undefined,
           revision: 5,
           lastActivityContent: 'Completed "Call clinic"',
         }),
@@ -106,70 +106,70 @@ describe("useCompleteMove", () => {
   it("rolls a refused completion back and says why", async () => {
     const { cache, feedback, result } = render(
       createFakeApplicationClient({
-        completeMove: async () =>
+        completeTask: async () =>
           failure({
             code: "conflict",
-            message: "The Thread's Moves have changed.",
+            message: "The Thread's Tasks have changed.",
             retryable: false,
           }),
         listOpenThreads: async () => success([thread]),
         getThreadDetail: async () => success({ thread, area: anArea() }),
         getThreadActivityPage: async () => success({ entries: [] }),
       }),
-      () => useCompleteMove(thread),
+      () => useCompleteTask(thread),
     );
 
     await act(async () => {
       await result.current(bookSlot._id);
     });
 
-    expect(shown(cache).open?.moves).toEqual([callClinic, bookSlot]);
-    expect(shown(cache).rail?.focusedMoveId).toBe(callClinic._id);
+    expect(shown(cache).open?.tasks).toEqual([callClinic, bookSlot]);
+    expect(shown(cache).rail?.focusedTaskId).toBe(callClinic._id);
     expect(feedback.error).toHaveBeenCalledWith(
       "This Thread changed elsewhere. It has been refreshed.",
     );
   });
 });
 
-describe("useMoves", () => {
+describe("useTasks", () => {
   it("focuses and unfocuses without reordering the list", async () => {
-    const focusMove = vi.fn(
-      async (input: { moveId: MoveId | null; expectedRevision: number }) =>
+    const focusTask = vi.fn(
+      async (input: { taskId: TaskId | null; expectedRevision: number }) =>
         success({
           ...thread,
-          ...(input.moveId === null
-            ? { focusedMoveId: undefined }
-            : { focusedMoveId: input.moveId }),
+          ...(input.taskId === null
+            ? { focusedTaskId: undefined }
+            : { focusedTaskId: input.taskId }),
           revision: input.expectedRevision + 1,
         }),
     );
     const { cache, result } = render(
-      createFakeApplicationClient({ focusMove }),
-      () => useMoves(thread),
+      createFakeApplicationClient({ focusTask }),
+      () => useTasks(thread),
     );
 
     await act(async () => {
       await result.current.focus(bookSlot._id);
     });
-    expect(shown(cache).open?.focusedMoveId).toBe(bookSlot._id);
-    expect(shown(cache).open?.moves).toEqual([callClinic, bookSlot]);
+    expect(shown(cache).open?.focusedTaskId).toBe(bookSlot._id);
+    expect(shown(cache).open?.tasks).toEqual([callClinic, bookSlot]);
 
     await act(async () => {
       await result.current.focus(null);
     });
-    expect(shown(cache).rail).not.toHaveProperty("focusedMoveId");
-    expect(focusMove).toHaveBeenLastCalledWith({
+    expect(shown(cache).rail).not.toHaveProperty("focusedTaskId");
+    expect(focusTask).toHaveBeenLastCalledWith({
       threadId: thread._id,
-      moveId: null,
+      taskId: null,
       expectedRevision: 5,
     });
   });
 
-  it("removes the Focused Move and clears the focus", async () => {
+  it("removes the Focused Task and clears the focus", async () => {
     const pending = deferred<OperationResult<Thread>>();
     const { cache, result } = render(
-      createFakeApplicationClient({ removeMove: () => pending.promise }),
-      () => useMoves(thread),
+      createFakeApplicationClient({ removeTask: () => pending.promise }),
+      () => useTasks(thread),
     );
 
     act(() => {
@@ -177,27 +177,27 @@ describe("useMoves", () => {
     });
 
     await waitFor(() => {
-      expect(shown(cache).rail?.moves).toEqual([bookSlot]);
-      expect(shown(cache).rail).not.toHaveProperty("focusedMoveId");
+      expect(shown(cache).rail?.tasks).toEqual([bookSlot]);
+      expect(shown(cache).rail).not.toHaveProperty("focusedTaskId");
     });
-    pending.resolve(success({ ...thread, moves: [bookSlot], revision: 5 }));
+    pending.resolve(success({ ...thread, tasks: [bookSlot], revision: 5 }));
   });
 
   it("queues commands for one Thread, each carrying the revision the one before brought back", async () => {
     const added = deferred<OperationResult<Thread>>();
-    const addMove = vi.fn(() => added.promise);
-    const completeMove = vi.fn(
-      async (input: { moveId: MoveId; expectedRevision: number }) =>
+    const addTask = vi.fn(() => added.promise);
+    const completeTask = vi.fn(
+      async (input: { taskId: TaskId; expectedRevision: number }) =>
         success({
           ...thread,
-          moves: [bookSlot],
-          focusedMoveId: undefined,
+          tasks: [bookSlot],
+          focusedTaskId: undefined,
           revision: input.expectedRevision + 1,
         }),
     );
     const { cache, result } = render(
-      createFakeApplicationClient({ addMove, completeMove }),
-      () => useMoves(thread),
+      createFakeApplicationClient({ addTask, completeTask }),
+      () => useTasks(thread),
     );
 
     act(() => {
@@ -207,17 +207,17 @@ describe("useMoves", () => {
 
     // Both changes show at once, but only the first has reached the service.
     await waitFor(() =>
-      expect(shown(cache).open?.moves?.map((move) => move.text)).toEqual([
+      expect(shown(cache).open?.tasks?.map((task) => task.text)).toEqual([
         "Book slot",
         "Pay the bill",
       ]),
     );
-    expect(addMove).toHaveBeenCalledTimes(1);
-    expect(completeMove).not.toHaveBeenCalled();
-    const newMove = shown(cache).open?.moves?.[1];
-    expect(addMove).toHaveBeenCalledWith({
+    expect(addTask).toHaveBeenCalledTimes(1);
+    expect(completeTask).not.toHaveBeenCalled();
+    const newTask = shown(cache).open?.tasks?.[1];
+    expect(addTask).toHaveBeenCalledWith({
       threadId: thread._id,
-      moveId: newMove?._id,
+      taskId: newTask?._id,
       text: "Pay the bill",
       expectedRevision: 4,
     });
@@ -226,7 +226,7 @@ describe("useMoves", () => {
       added.resolve(
         success({
           ...thread,
-          moves: [callClinic, bookSlot, newMove!],
+          tasks: [callClinic, bookSlot, newTask!],
           revision: 5,
         }),
       );
@@ -234,24 +234,24 @@ describe("useMoves", () => {
     });
 
     await waitFor(() =>
-      expect(completeMove).toHaveBeenCalledWith({
+      expect(completeTask).toHaveBeenCalledWith({
         threadId: thread._id,
-        moveId: callClinic._id,
+        taskId: callClinic._id,
         expectedRevision: 5,
       }),
     );
   });
 
   it("captures nothing blank", async () => {
-    const addMove = vi.fn();
-    const { result } = render(createFakeApplicationClient({ addMove }), () =>
-      useMoves(thread),
+    const addTask = vi.fn();
+    const { result } = render(createFakeApplicationClient({ addTask }), () =>
+      useTasks(thread),
     );
 
     await act(async () => {
       await result.current.add("   ");
     });
 
-    expect(addMove).not.toHaveBeenCalled();
+    expect(addTask).not.toHaveBeenCalled();
   });
 });

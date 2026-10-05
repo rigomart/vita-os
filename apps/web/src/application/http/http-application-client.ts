@@ -233,31 +233,31 @@ export function createHttpApplicationClient({
         decodeAcknowledgement,
       ),
 
-    /* Moves */
-    addMove: ({ threadId, ...move }) =>
-      send("POST", path("threads", threadId, "moves"), move, decodeThread),
-    editMove: ({ threadId, moveId, ...change }) =>
+    /* Tasks */
+    addTask: ({ threadId, ...task }) =>
+      send("POST", path("threads", threadId, "tasks"), task, decodeThread),
+    editTask: ({ threadId, taskId, ...change }) =>
       send(
         "PATCH",
-        path("threads", threadId, "moves", moveId),
+        path("threads", threadId, "tasks", taskId),
         change,
         decodeThread,
       ),
-    removeMove: ({ threadId, moveId, expectedRevision }) =>
+    removeTask: ({ threadId, taskId, expectedRevision }) =>
       send(
         "DELETE",
-        path("threads", threadId, "moves", moveId),
+        path("threads", threadId, "tasks", taskId),
         { expectedRevision },
         decodeThread,
       ),
-    completeMove: ({ threadId, moveId, expectedRevision }) =>
+    completeTask: ({ threadId, taskId, expectedRevision }) =>
       send(
         "POST",
-        path("threads", threadId, "moves", moveId, "complete"),
+        path("threads", threadId, "tasks", taskId, "complete"),
         { expectedRevision },
         decodeThread,
       ),
-    focusMove: ({ threadId, ...focus }) =>
+    focusTask: ({ threadId, ...focus }) =>
       send("PUT", path("threads", threadId, "focus"), focus, decodeThread),
 
     /* Activity Log */

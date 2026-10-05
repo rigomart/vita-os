@@ -5,7 +5,7 @@ export interface AttentionRowModel {
   actions?: ReactNode;
   area?: { icon: AreaIcon; name: string };
   detail?: string;
-  detailKind?: "move" | "summary";
+  detailKind?: "task" | "summary";
   done?: boolean;
   isSavingText?: boolean;
   multiline?: boolean;

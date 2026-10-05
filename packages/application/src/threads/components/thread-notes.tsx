@@ -43,7 +43,7 @@ export function ThreadNotes({
   onRemove,
 }: ThreadNotesProps) {
   const [composing, setComposing] = useState(false);
-  // Kept above both lists: archiving a Note can move or remove its card.
+  // Kept above both lists: archiving a Note can task or remove its card.
   const [selected, setSelected] = useState<ThreadNote | null>(null);
   const showArchived =
     archivedNotes.length > 0 ||

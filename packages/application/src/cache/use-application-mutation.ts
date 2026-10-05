@@ -27,7 +27,7 @@ import { useApplicationClient } from "../application-client-provider";
  * put the remembered values back. Related reads are invalidated afterwards either
  * way, so what is visible converges on the service.
  *
- * A command never retries by itself. Some of them — completing a Next Move —
+ * A command never retries by itself. Some of them — completing a Task —
  * would target something different the second time.
  */
 export interface ApplicationMutationOptions<TVariables, TValue, TLocal = void> {

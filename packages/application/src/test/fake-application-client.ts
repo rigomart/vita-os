@@ -36,11 +36,11 @@ export function createFakeApplicationClient(
     createThread: unconfigured,
     updateThread: unconfigured,
     removeThread: unconfigured,
-    addMove: unconfigured,
-    editMove: unconfigured,
-    removeMove: unconfigured,
-    completeMove: unconfigured,
-    focusMove: unconfigured,
+    addTask: unconfigured,
+    editTask: unconfigured,
+    removeTask: unconfigured,
+    completeTask: unconfigured,
+    focusTask: unconfigured,
 
     getThreadActivityPage: unconfigured,
 

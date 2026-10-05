@@ -108,7 +108,7 @@ export function ThreadLifecycleMenu({
           <AlertDialogHeader>
             <AlertDialogTitle>Resolve thread?</AlertDialogTitle>
             <AlertDialogDescription>
-              &ldquo;{thread.title}&rdquo; will be marked as resolved. Its Moves
+              &ldquo;{thread.title}&rdquo; will be marked as resolved. Its Tasks
               and Follow-up date will be cleared.
             </AlertDialogDescription>
           </AlertDialogHeader>

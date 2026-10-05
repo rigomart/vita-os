@@ -33,8 +33,8 @@ const mocks = vi.hoisted(() => ({
   /** Read the Thread back without an Area. */
   unlabeled: false,
   detailError: false,
-  moves: undefined as { _id: string; text: string }[] | undefined,
-  /** The revision the service is at: every Move command moves it on. */
+  tasks: undefined as { _id: string; text: string }[] | undefined,
+  /** The revision the service is at: every Task command tasks it on. */
   revision: 0,
   /** Slugs the composite resolves; null lets every slug resolve. */
   knownSlugs: null as string[] | null,
@@ -46,10 +46,10 @@ const mocks = vi.hoisted(() => ({
   activityCursors: [] as (string | undefined)[],
   activityHasMore: false,
   activityEntries: [] as ActivityLogEntry[],
-  addMove: vi.fn(),
-  removeMove: vi.fn(),
-  completeMove: vi.fn(),
-  focusMove: vi.fn(),
+  addTask: vi.fn(),
+  removeTask: vi.fn(),
+  completeTask: vi.fn(),
+  focusTask: vi.fn(),
   updateThread: vi.fn(),
   removeThread: vi.fn(),
 }));
@@ -132,9 +132,9 @@ function createApplicationClient(): ApplicationClient {
       const read = {
         ...(mocks.unlabeled ? unlabeled : thread),
         state: mocks.threadState,
-        ...(mocks.moves === undefined
+        ...(mocks.tasks === undefined
           ? {}
-          : { moves: mocks.moves as Thread["moves"] }),
+          : { tasks: mocks.tasks as Thread["tasks"] }),
         revision: mocks.revision,
       };
       return {
@@ -171,10 +171,10 @@ function createApplicationClient(): ApplicationClient {
     },
     createThreadNote: async () => ({ ok: true, value: threadNote }),
     updateThread: mocks.updateThread,
-    addMove: mocks.addMove,
-    removeMove: mocks.removeMove,
-    completeMove: mocks.completeMove,
-    focusMove: mocks.focusMove,
+    addTask: mocks.addTask,
+    removeTask: mocks.removeTask,
+    completeTask: mocks.completeTask,
+    focusTask: mocks.focusTask,
     removeThread: mocks.removeThread,
   });
 }
@@ -204,7 +204,7 @@ describe("ThreadDetailView", () => {
     mocks.threadExists = true;
     mocks.unlabeled = false;
     mocks.detailError = false;
-    mocks.moves = undefined;
+    mocks.tasks = undefined;
     mocks.revision = thread.revision;
     mocks.knownSlugs = null;
     mocks.calls = [];
@@ -213,12 +213,12 @@ describe("ThreadDetailView", () => {
     mocks.activityCursors = [];
     mocks.activityHasMore = false;
     mocks.activityEntries = [];
-    // Each Move command answers with the Thread one revision on.
+    // Each Task command answers with the Thread one revision on.
     for (const command of [
-      mocks.addMove,
-      mocks.removeMove,
-      mocks.completeMove,
-      mocks.focusMove,
+      mocks.addTask,
+      mocks.removeTask,
+      mocks.completeTask,
+      mocks.focusTask,
     ]) {
       command
         .mockReset()
@@ -518,7 +518,7 @@ describe("ThreadDetailView", () => {
       }),
     ).toBeVisible();
     expect(
-      within(attention).getByRole("textbox", { name: "Add a move" }),
+      within(attention).getByRole("textbox", { name: "Add a task" }),
     ).toBeVisible();
     expect(
       within(attention).getByRole("button", { name: "Set follow-up date" }),
@@ -538,11 +538,11 @@ describe("ThreadDetailView", () => {
     ).toBeTruthy();
   });
 
-  it("lists the Thread's Moves, and adds and removes them through the application client", async () => {
+  it("lists the Thread's Tasks, and adds and removes them through the application client", async () => {
     mocks.showDesktopPane = true;
-    mocks.moves = [
-      { _id: "move-scan", text: "Book the scan" },
-      { _id: "move-results", text: "Collect the results" },
+    mocks.tasks = [
+      { _id: "task-scan", text: "Book the scan" },
+      { _id: "task-results", text: "Collect the results" },
     ];
     renderThreadDetail();
 
@@ -550,67 +550,67 @@ describe("ThreadDetailView", () => {
       name: "Sister's front teeth",
     });
 
-    const moves = within(
-      screen.getByRole("list", { name: "Moves" }),
+    const tasks = within(
+      screen.getByRole("list", { name: "Tasks" }),
     ).getAllByRole("listitem");
     expect(
-      within(moves[0]!).getByRole("button", { name: "Book the scan" }),
+      within(tasks[0]!).getByRole("button", { name: "Book the scan" }),
     ).toBeVisible();
     expect(
-      within(moves[1]!).getByRole("button", { name: "Collect the results" }),
+      within(tasks[1]!).getByRole("button", { name: "Collect the results" }),
     ).toBeVisible();
 
     await userEvent.type(
-      screen.getByRole("textbox", { name: "Add a move" }),
+      screen.getByRole("textbox", { name: "Add a task" }),
       "Share the report{Enter}",
     );
     await userEvent.click(
-      within(moves[0]!).getByRole("button", { name: "Remove move" }),
+      within(tasks[0]!).getByRole("button", { name: "Remove task" }),
     );
 
     await waitFor(() => {
-      expect(mocks.addMove).toHaveBeenCalledWith({
+      expect(mocks.addTask).toHaveBeenCalledWith({
         threadId: thread._id,
-        moveId: expect.any(String),
+        taskId: expect.any(String),
         text: "Share the report",
         expectedRevision: thread.revision,
       });
       // Queued behind the add, it carries the revision the add brought back.
-      expect(mocks.removeMove).toHaveBeenCalledWith({
+      expect(mocks.removeTask).toHaveBeenCalledWith({
         threadId: thread._id,
-        moveId: "move-scan",
+        taskId: "task-scan",
         expectedRevision: thread.revision + 1,
       });
     });
   });
 
-  it("focuses and completes Moves through the application client", async () => {
+  it("focuses and completes Tasks through the application client", async () => {
     mocks.showDesktopPane = true;
-    mocks.moves = [
-      { _id: "move-specialist", text: "Call the specialist" },
-      { _id: "move-scan", text: "Book the scan" },
+    mocks.tasks = [
+      { _id: "task-specialist", text: "Call the specialist" },
+      { _id: "task-scan", text: "Book the scan" },
     ];
     renderThreadDetail();
 
-    const moves = within(
-      await screen.findByRole("list", { name: "Moves" }),
+    const tasks = within(
+      await screen.findByRole("list", { name: "Tasks" }),
     ).getAllByRole("listitem");
     await userEvent.click(
-      within(moves[1]!).getByRole("button", { name: "Focus this move" }),
+      within(tasks[1]!).getByRole("button", { name: "Focus this task" }),
     );
     await userEvent.click(
-      within(moves[0]!).getByRole("button", { name: "Complete move" }),
+      within(tasks[0]!).getByRole("button", { name: "Complete task" }),
     );
 
     await waitFor(() => {
-      expect(mocks.focusMove).toHaveBeenCalledWith({
+      expect(mocks.focusTask).toHaveBeenCalledWith({
         threadId: thread._id,
-        moveId: "move-scan",
+        taskId: "task-scan",
         expectedRevision: thread.revision,
       });
-      expect(mocks.completeMove).toHaveBeenCalledWith({
+      expect(mocks.completeTask).toHaveBeenCalledWith({
         threadId: thread._id,
-        moveId: "move-specialist",
+        taskId: "task-specialist",
         expectedRevision: thread.revision + 1,
       });
     });
@@ -623,7 +623,7 @@ describe("ThreadDetailView", () => {
       {
         _id: "log1" as ActivityLogEntryId,
         type: "next_move_change",
-        content: "Next move set",
+        content: "Next task set",
         newValue: "Call the specialist",
         createdAt: Date.now(),
       },
@@ -682,9 +682,9 @@ describe("ThreadDetailView", () => {
     expect(
       screen.queryByRole("region", { name: "Thread attention" }),
     ).toBeNull();
-    expect(screen.queryByRole("textbox", { name: "Add a move" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Add a task" })).toBeNull();
     expect(
-      screen.getByText(/No Moves or follow-up date while resolved/),
+      screen.getByText(/No Tasks or follow-up date while resolved/),
     ).toBeVisible();
 
     await userEvent.click(

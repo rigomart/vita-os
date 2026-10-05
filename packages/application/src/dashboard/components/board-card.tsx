@@ -144,7 +144,7 @@ export function showsBoardDate(
 }
 
 /**
- * The control that takes an item off the board: completing a Thread's Move,
+ * The control that takes an item off the board: completing a Thread's Task,
  * or archiving a Note.
  */
 export function BoardCompleteButton({
