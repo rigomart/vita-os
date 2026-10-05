@@ -15,6 +15,7 @@ Vita OS is a personal life-awareness app: open Threads and standalone Notes, opt
 - `apps/api` is the Effect HTTP API Worker over Cloudflare D1. Migrations are in `apps/api/migrations`. Background: `docs/migrations/cloudflare-application.md`.
 - `packages/contracts` (shared types and the application contract), `packages/core` (domain rules, no framework code), `packages/ui` (shadcn components). `apps/design` previews `packages/ui`.
 - Domain language is in `CONTEXT.md`, decisions in `docs/adr/`. Use the glossary's terms for its concepts; plain words are fine around them (see Naming in `CONTEXT.md`). Say so when a change contradicts an ADR.
+- `CONTEXT.md` and `docs/product-direction.md` describe the present. History goes in `docs/adr/`, delivery status in GitHub issues and PRs.
 
 ## Rules
 

@@ -2,6 +2,10 @@
 
 Personal life-awareness app. Holds open threads and standalone notes, lightly grouped by the part of life they concern, so the user's brain does not have to.
 
+## Present tense
+
+This file describes the vocabulary and rules as they are now. `docs/product-direction.md` says what the product is for and where it is going. `docs/adr/` holds decisions and their history. GitHub issues and PRs hold delivery status. History and pending work written here go stale and repeat the ADRs. One kind of history belongs here: a former name mapped to its current term, under "Former and rejected terms".
+
 ## Naming
 
 Plain words first. A familiar thing gets its familiar word; a term is coined only when the familiar word would promise behaviour Vita OS does not have, such as a due date that nags or a project that needs a plan.
@@ -188,15 +192,16 @@ _Avoid_: Archive (as a place), trash, completed list.
 > **Dev:** "Does a **Follow-up date** clear when I open the **Thread**?"
 > **Builder:** "No. Reading the **Thread** is not the same as handling it. The user must clear, reschedule, or resolve it explicitly."
 
-## Flagged Ambiguities
+## Former and rejected terms
 
-- "Project" was the old term for a multi-step effort with a defined end state. Resolved: **Thread** is canonical because these life situations may not have a clean execution plan or defined finish line.
-- "Task" and "Inbox" were the old capture vocabulary. Resolved by issue 313: **Note** is canonical; standalone Notes need no classification or processing. The **Notes** collection that replaced the Inbox was itself retired by ADR 0031: Notes live on the **Dashboard**.
-- "Action queue", then **Next Move** and **Up Next**, were the old terms for a Thread's upcoming steps. Resolved by issue 366: **Moves** are unordered peers with an optional **Focused Move**, because most situations have no known sequence and a queue ranked them by capture order. "Next moves" is retired as a list name; that group of **Threads** is **Ready to move** everywhere (ADR 0022).
-- "Project log" was the old term for the timeline on a **Thread**. Resolved: **Activity Log** is the automatic changelog; body-only manual continuity belongs in **Thread Notes**.
-- "Health status", later **Condition**, was the manual judgment on an **Area**, with a **Standard** to judge it against. Resolved by issue 371: both are removed. An Area is an optional label; a part of life that needs a periodic look gets a **Thread** with a **Follow-up date** (ADR 0021).
-- "Definition of Done" belongs to project-management language and is not a **Thread** concept. Resolved: use **Summary** or the **Activity Log** when context is needed.
-- "Move a Note to a Thread" was the first name for adding a **Standalone Note** to a **Thread**. Resolved by ADR 0030: the action is **Add to thread**, because **Move** names one useful action on a **Thread**. "Convert", "process", and "attach" stay out of the interface; a Note added to a Thread is not processed, it is one of the Thread's Notes.
-- "Done" and "completed" were the words for a finished **Note**. Resolved by ADR 0031: a Note is **archived**, because most Notes are information or thoughts, which are put away rather than finished, and archiving changes nothing but where a Note is shown. **Threads** keep **Resolve**, because resolving clears Moves, focus and the Follow-up date and writes the Activity Log, and Reopen restores none of it. Stored values keep `done`.
-- "Recurrence" on a **Thread** has no term yet. Pending issue #397 and ADR 0032 (proposed): a **Move** gains an optional date and repeat, and a **Thread**'s **Follow-up date** folds into its dated Moves. Until it ships, the rules above stand; the glossary changes are listed in ADR 0032.
-- "Stale Thread" is not part of the MVP domain language. Resolved: use the plain **Open Thread** group until there is a stronger rule.
+Old names survive in stored data, code, and older ADRs. Each line maps one to the current term.
+
+- "Project": former name for a **Thread**. A Thread may have no plan or finish line.
+- "Task", "Inbox": former capture vocabulary; use **Note** (issue 313). The **Notes** collection that replaced the Inbox was retired by ADR 0031: Notes live on the **Dashboard**.
+- "Next Move", "Up Next", "action queue", "next moves": former names; use **Moves** (ADR 0022). The group of **Threads** that was "Next moves" is **Ready to move**. **Activity Log** entries written under the old names keep their wording.
+- "Project log": former name for a **Thread**'s timeline; use **Activity Log**. Manual continuity belongs in **Thread Notes**.
+- "Health status", "Condition", "Standard": removed from **Area** (issue 371, ADR 0021). A part of life that needs a periodic look gets a **Thread** with a **Follow-up date**.
+- "Definition of Done": project-management language, not a **Thread** concept; use **Summary** or the **Activity Log**.
+- "Move a Note to a Thread": former action name; use **Add to thread** (ADR 0030). "Convert", "process", and "attach" stay out of the interface.
+- "Done", "completed" for a **Note**: former words; use **archived** (ADR 0031). **Threads** keep **Resolve**. Stored values keep `done`.
+- "Stale Thread": not part of the domain language; use the plain **Open Thread** group.

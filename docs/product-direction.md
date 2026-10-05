@@ -1,6 +1,6 @@
 # Vita OS: Product Direction
 
-> Last update: 2026/10/04. Replaces the direction of 2025/12/01.
+> Last update: 2026/10/04.
 
 This document says what Vita OS is for and where it is going. `CONTEXT.md` owns the vocabulary and the exact rules; `docs/adr/` records each decision. When this document and either of those disagree, they win and this document is stale.
 
@@ -104,6 +104,8 @@ A Note that turns out to belong to a situation can be added to an Open Thread, o
 
 An optional label naming the part of life a Thread concerns: Family Health, Career, Home. It is a name and an icon. It has no state, no page, and no effect on attention. Its one job is to filter the Dashboard to one part of life.
 
+**What was given up.** The app does not show a neglected part of life that has no Threads. A part of life that needs a periodic look gets a Thread with a Follow-up date, such as "Review finances" in two weeks.
+
 ### History
 
 Finished things leave the Dashboard but not the product. The palette's **History** holds every Resolved Thread and every Archived Note, searchable, and opens either in place, where it can be reopened or unarchived (ADR 0029, ADR 0031).
@@ -176,20 +178,7 @@ Resembling another tool is not a test. Task managers have repeats, and repeats p
 
 ---
 
-## What Changed Since the First Direction, and Why
-
-The first direction (2025/12/01) described a life-domain dashboard: Areas with a manual Condition, Threads under Areas, a single Next Move, and an Inbox of Tasks to process. Daily use pushed the product narrower. Each change below removed a structure the user was maintaining for the app's sake.
-
-| Then | Now | Why | Decision |
-| --- | --- | --- | --- |
-| Every Thread belongs to an Area; each Area has a Condition | An Area is an optional label with no state | Capture always asked "which part of life?" first. Condition was a judgment nothing prompted, so it was stale or a chore. The Dashboard took its urgency from dates anyway. | ADR 0021 |
-| Inbox Tasks: Done, Discard, Move to Thread, When | Standalone Notes that need no processing; Thread Notes on Threads | A saved body is already useful, whether information, a thought, or an action. Classifying and processing it added work before capture counted. | ADR 0015, 0016 |
-| One Next Move, then an Up Next queue | Peer Moves with an optional Focus | Most situations have no known order. The queue turned capture order into a priority the user never chose. | ADR 0022 |
-| A read-only list of status groups | Time columns with an unscheduled margin, actionable in place | One column wasted a desktop screen, and a board that cannot fix what it shows is always slightly wrong. | ADR 0017 |
-| Manual Activity Log entries | An automatic Activity Log plus Thread Notes | Prose and change history were mixed. Separating them keeps Notes editable and the changelog trustworthy. | ADR 0016 |
-| A Notes panel beside the board; Notes marked done | Notes on the Dashboard with a Notes filter; Notes archived and found in History | The panel listed the same Notes the board already showed. "Done" claimed a fact or a thought was a finished task. | ADR 0031 |
-
-**What was given up.** The app no longer shows a neglected part of life that has no Threads. A part of life that needs a periodic look gets a Thread with a Follow-up date, such as "Review finances" in two weeks.
+The product narrowed from its first direction through daily use. [`docs/product-history.md`](product-history.md) lists what changed and why.
 
 ---
 
