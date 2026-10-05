@@ -13,7 +13,7 @@ Plain words first. A familiar thing gets its familiar word; a term is coined onl
 The _Avoid_ line under a term lists words not to use **as names for that concept** in the interface, the code, and the rules below, so one concept keeps one name. It does not ban the word. Everyday words are fine in conversation, explanations, issues and ADRs, and a familiar comparison often explains a term faster than its definition:
 
 - a **Thread** is like a project that may never have a plan or a finish line;
-- a **Note** is like a sticky note: written once, kept where you will see it;
+- a **Note** is like a sticky note: no title, no type, kept where you will see it;
 - a **Follow-up date** is like a due date that never nags;
 - an **Area** is like a single tag.
 
@@ -199,7 +199,7 @@ Old names survive in stored data, code, and older ADRs. Each line maps one to th
 - "Project": former name for a **Thread**. A Thread may have no plan or finish line.
 - "Inbox": former capture name for a **Note** (issue 313). The **Notes** collection that replaced the Inbox was retired by ADR 0031: Notes live on the **Dashboard**.
 - "Task": named Inbox items before issue 313. It now names a **Thread**'s actions (ADR 0033), and a **Note** is never called a task.
-- "Move", "Moves", "Focused Move": former names; use **Task**, **Tasks**, **Focused Task** (ADR 0033). Stored names keep "move": `moves_json`, `focused_move_id`, `move_completed`.
+- "Move", "Moves", "Focused Move": former names; use **Task**, **Tasks**, **Focused Task** (ADR 0033). Stored names keep "move": `moves_json`, `focused_move_id`, `move_completed`, `next_move_change`.
 - "Next Move", "Up Next", "action queue", "next moves": former names; use **Tasks** (ADR 0022, ADR 0033). The group of **Threads** that was "Next moves" is **Ready to move**. **Activity Log** entries written under the old names keep their wording.
 - "Project log": former name for a **Thread**'s timeline; use **Activity Log**. Manual continuity belongs in **Thread Notes**.
 - "Health status", "Condition", "Standard": removed from **Area** (issue 371, ADR 0021). A part of life that needs a periodic look gets a **Thread** with a **Follow-up date**.

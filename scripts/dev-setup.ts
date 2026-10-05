@@ -263,19 +263,19 @@ async function seed(): Promise<void> {
         ...(spec.summary ? { summary: spec.summary } : {}),
         ...(spec.area ? { areaId: areaIds.get(spec.area) } : {}),
       });
-      const moveIds: string[] = [];
+      const taskIds: string[] = [];
       for (const text of spec.tasks ?? []) {
-        const moveId = newRecordId();
-        moveIds.push(moveId);
+        const taskId = newRecordId();
+        taskIds.push(taskId);
         thread = await call<Thread>("POST", `/v1/threads/${thread._id}/tasks`, {
-          moveId,
+          taskId,
           text,
           expectedRevision: thread.revision,
         });
       }
       if (spec.focus !== undefined) {
         thread = await call<Thread>("PUT", `/v1/threads/${thread._id}/focus`, {
-          moveId: moveIds[spec.focus],
+          taskId: taskIds[spec.focus],
           expectedRevision: thread.revision,
         });
       }
