@@ -28,10 +28,10 @@ import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
 import { queryKeys } from "../query-keys";
 import {
   cachedRevision,
-  type MoveChange,
-  settleMoveChange,
+  type TaskChange,
+  settleTaskChange,
   settlePendingThread,
-  showMoveChange,
+  showTaskChange,
   showPendingThread,
   showThreadChange,
   showThreadRemoval,
@@ -179,16 +179,16 @@ export function useRemoveThread(): ApplicationMutationResult<
 }
 
 /**
- * One kind of Move command, for one Thread.
+ * One kind of Task command, for one Thread.
  *
- * Every Move command carries the revision the Thread was read at, and the
+ * Every Task command carries the revision the Thread was read at, and the
  * service refuses a stale one. So the commands for one Thread share a scope:
  * each shows its change at once, but they reach the service one at a time, and
  * each carries the revision the one before it brought back. A refusal — a
- * Move another device already completed, say — rolls back only its own change
+ * Task another device already completed, say — rolls back only its own change
  * and refetches, rather than being retried against something different.
  */
-export function useMoveCommand<TInput>(
+export function useTaskCommand<TInput>(
   thread: Thread,
   command: {
     run: (
@@ -196,20 +196,20 @@ export function useMoveCommand<TInput>(
       input: TInput,
       expectedRevision: number,
     ) => Promise<OperationResult<Thread>>;
-    change: (input: TInput) => MoveChange;
+    change: (input: TInput) => TaskChange;
   },
 ): ApplicationMutationResult<TInput, Thread> {
   const cache = useQueryClient();
 
   return useApplicationMutation<TInput, Thread>({
-    scope: `thread-moves:${thread._id}`,
+    scope: `thread-tasks:${thread._id}`,
     run: (client, input) =>
       command.run(client, input, cachedRevision(cache, thread)),
     affected: (_input, cache) =>
       threadChangeKeys(cache, { threadId: thread._id }),
     optimistic: (cache, input) =>
-      showMoveChange(cache, thread._id, command.change(input)),
-    reconcile: (cache, settled) => settleMoveChange(cache, settled),
+      showTaskChange(cache, thread._id, command.change(input)),
+    reconcile: (cache, settled) => settleTaskChange(cache, settled),
     // Completion writes an Activity Log entry, which is read separately.
     alsoInvalidate: () => [queryKeys.threads.activity(thread._id)],
   });

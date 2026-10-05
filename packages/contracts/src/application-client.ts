@@ -1,5 +1,5 @@
 import type { CommandAcknowledgement, OperationResult } from "./errors";
-import type { AreaId, MoveId, NoteId, ThreadId, ThreadNoteId } from "./ids";
+import type { AreaId, TaskId, NoteId, ThreadId, ThreadNoteId } from "./ids";
 import type {
   ActivityLogPage,
   AreaIcon,
@@ -55,38 +55,38 @@ export interface UpdateThreadInput {
 }
 
 /**
- * Every Move command names one Move by its ID and carries the revision the
- * caller read the Thread at. A stale revision, or a Move that is no longer
+ * Every Task command names one Task by its ID and carries the revision the
+ * caller read the Thread at. A stale revision, or a Task that is no longer
  * there, is refused as a conflict and writes nothing — so a command can never
- * land on a different Move than the one the person saw.
+ * land on a different Task than the one the person saw.
  */
-interface MoveCommand {
+interface TaskCommand {
   threadId: ThreadId;
   expectedRevision: number;
 }
 
-export interface AddMoveInput extends MoveCommand {
-  /** Minted by the caller, so an optimistic Move keeps its name. */
-  moveId: MoveId;
+export interface AddTaskInput extends TaskCommand {
+  /** Minted by the caller, so an optimistic Task keeps its name. */
+  taskId: TaskId;
   text: string;
 }
 
-export interface EditMoveInput extends MoveCommand {
-  moveId: MoveId;
+export interface EditTaskInput extends TaskCommand {
+  taskId: TaskId;
   text: string;
 }
 
-export interface RemoveMoveInput extends MoveCommand {
-  moveId: MoveId;
+export interface RemoveTaskInput extends TaskCommand {
+  taskId: TaskId;
 }
 
-export interface CompleteMoveInput extends MoveCommand {
-  moveId: MoveId;
+export interface CompleteTaskInput extends TaskCommand {
+  taskId: TaskId;
 }
 
-export interface FocusMoveInput extends MoveCommand {
-  /** The Move to focus, replacing any earlier focus; `null` unfocuses. */
-  moveId: Clearable<MoveId>;
+export interface FocusTaskInput extends TaskCommand {
+  /** The Task to focus, replacing any earlier focus; `null` unfocuses. */
+  taskId: Clearable<TaskId>;
 }
 
 export interface AddNoteToThreadInput {
@@ -149,14 +149,14 @@ export interface ApplicationClient {
     threadId: ThreadId;
   }): Promise<OperationResult<CommandAcknowledgement>>;
 
-  /* Moves — each answers with the Thread as it now stands. */
-  addMove(input: AddMoveInput): Promise<OperationResult<Thread>>;
-  editMove(input: EditMoveInput): Promise<OperationResult<Thread>>;
-  /** Drops the Move without a trace in the Activity Log. */
-  removeMove(input: RemoveMoveInput): Promise<OperationResult<Thread>>;
-  /** Removes the Move and records it as done in the Activity Log. */
-  completeMove(input: CompleteMoveInput): Promise<OperationResult<Thread>>;
-  focusMove(input: FocusMoveInput): Promise<OperationResult<Thread>>;
+  /* Tasks — each answers with the Thread as it now stands. */
+  addTask(input: AddTaskInput): Promise<OperationResult<Thread>>;
+  editTask(input: EditTaskInput): Promise<OperationResult<Thread>>;
+  /** Drops the Task without a trace in the Activity Log. */
+  removeTask(input: RemoveTaskInput): Promise<OperationResult<Thread>>;
+  /** Removes the Task and records it as done in the Activity Log. */
+  completeTask(input: CompleteTaskInput): Promise<OperationResult<Thread>>;
+  focusTask(input: FocusTaskInput): Promise<OperationResult<Thread>>;
 
   /* Activity Log */
   getThreadActivityPage(

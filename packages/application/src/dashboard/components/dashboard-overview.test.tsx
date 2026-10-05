@@ -1,4 +1,4 @@
-import type { AreaSummary, MoveId, Note, Thread } from "@vita-os/contracts";
+import type { AreaSummary, TaskId, Note, Thread } from "@vita-os/contracts";
 import type { ComponentProps, ComponentPropsWithoutRef } from "react";
 
 import { render, screen, within } from "@testing-library/react";
@@ -43,8 +43,8 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 // The cards' writes belong to the hooks; this suite is about what lands where.
-vi.mock("../../threads/use-moves", () => ({
-  useCompleteMove: () => vi.fn(),
+vi.mock("../../threads/use-tasks", () => ({
+  useCompleteTask: () => vi.fn(),
 }));
 vi.mock("../../threads/use-update-thread", () => ({
   useUpdateThread: () => vi.fn(),
@@ -70,8 +70,8 @@ const currentDate = new Date(2026, 6, 17, 12).getTime();
 const today = new Date(2026, 6, 17).getTime();
 const DAY = 86_400_000;
 
-function moves(...texts: string[]) {
-  return texts.map((text) => ({ _id: text as MoveId, text }));
+function tasks(...texts: string[]) {
+  return texts.map((text) => ({ _id: text as TaskId, text }));
 }
 
 function thread(title: string, fields: Partial<Thread> = {}): Thread {
@@ -444,14 +444,14 @@ describe("DashboardOverview", () => {
   });
 
   /**
-   * #236, settled: a Follow-up outranks undated Moves, so an actionable
+   * #236, settled: a Follow-up outranks undated Tasks, so an actionable
    * Thread with no date keeps its own run in the margin rather than in Now.
    */
-  it("keeps undated Moves out of Now and in the No date margin", () => {
+  it("keeps undated Tasks out of Now and in the No date margin", () => {
     renderOverview({
       threads: [
         thread("Dated", { followUp: today }),
-        thread("Actionable", { moves: moves("Call the clinic"), order: 1 }),
+        thread("Actionable", { tasks: tasks("Call the clinic"), order: 1 }),
         thread("Idle", { order: 2 }),
       ],
       notes: [note("Loose thought")],
@@ -462,7 +462,7 @@ describe("DashboardOverview", () => {
     // The margin is an <aside>, so it lands as a complementary landmark.
     const margin = screen.getByRole("complementary", { name: "No date" });
     expect(within(margin).getByText("Ready to move")).toBeVisible();
-    // The Thread's name heads the card; its only Move sits under it.
+    // The Thread's name heads the card; its only Task sits under it.
     expect(within(margin).getByText("Call the clinic")).toBeVisible();
     expect(within(margin).getByText("Actionable")).toBeVisible();
     expect(within(margin).getByText("Idle")).toBeVisible();
@@ -479,7 +479,7 @@ describe("DashboardOverview", () => {
           thread("Overdue", { followUp: today - DAY }),
           thread("Distant", { followUp: today + 30 * DAY, order: 1 }),
           thread("Actionable", {
-            moves: moves("Call the clinic"),
+            tasks: tasks("Call the clinic"),
             order: 2,
           }),
         ],
@@ -517,32 +517,32 @@ describe("a Thread card", () => {
     return root;
   }
 
-  it("heads every card with the Thread's title, and never trades it for a Move", () => {
-    const focusedMoves = moves("Call the clinic", "Book the scan", "Pay");
+  it("heads every card with the Thread's title, and never trades it for a Task", () => {
+    const focusedTasks = tasks("Call the clinic", "Book the scan", "Pay");
     renderOverview({
       threads: [
         thread("Focused", {
-          moves: focusedMoves,
-          focusedMoveId: focusedMoves[1]!._id,
+          tasks: focusedTasks,
+          focusedTaskId: focusedTasks[1]!._id,
         }),
-        thread("Only move", { moves: moves("Email the landlord"), order: 1 }),
-        thread("Unfocused", { moves: moves("A", "B", "C"), order: 2 }),
-        thread("No moves", { order: 3 }),
+        thread("Only task", { tasks: tasks("Email the landlord"), order: 1 }),
+        thread("Unfocused", { tasks: tasks("A", "B", "C"), order: 2 }),
+        thread("No tasks", { order: 3 }),
       ],
     });
 
-    for (const title of ["Focused", "Only move", "Unfocused", "No moves"]) {
+    for (const title of ["Focused", "Only task", "Unfocused", "No tasks"]) {
       expect(screen.getByRole("link", { name: title })).toBeVisible();
     }
   });
 
-  it("puts the Focused Move in the move slot, with a quiet count of the others", () => {
-    const focusedMoves = moves("Call the clinic", "Book the scan", "Pay");
+  it("puts the Focused Task in the task slot, with a quiet count of the others", () => {
+    const focusedTasks = tasks("Call the clinic", "Book the scan", "Pay");
     renderOverview({
       threads: [
         thread("Checkup", {
-          moves: focusedMoves,
-          focusedMoveId: focusedMoves[1]!._id,
+          tasks: focusedTasks,
+          focusedTaskId: focusedTasks[1]!._id,
         }),
       ],
     });
@@ -551,16 +551,16 @@ describe("a Thread card", () => {
     expect(checkup.getByText("Book the scan")).toBeVisible();
     expect(checkup.queryByText("Call the clinic")).toBeNull();
     expect(
-      checkup.getByRole("img", { name: "3 moves, one focused" }),
+      checkup.getByRole("img", { name: "3 tasks, one focused" }),
     ).toBeVisible();
     expect(
       checkup.getByRole("button", { name: "Complete “Book the scan”" }),
     ).toBeInTheDocument();
   });
 
-  it("shows the only Move without asking for a focus", () => {
+  it("shows the only Task without asking for a focus", () => {
     renderOverview({
-      threads: [thread("Deposit", { moves: moves("Email the landlord") })],
+      threads: [thread("Deposit", { tasks: tasks("Email the landlord") })],
     });
 
     const deposit = within(card("Deposit"));
@@ -571,23 +571,23 @@ describe("a Thread card", () => {
     ).toBeInTheDocument();
   });
 
-  it("counts several unfocused Moves instead of inventing a headline, and offers nothing to complete", () => {
+  it("counts several unfocused Tasks instead of inventing a headline, and offers nothing to complete", () => {
     renderOverview({
-      threads: [thread("Birthday", { moves: moves("A", "B", "C") })],
+      threads: [thread("Birthday", { tasks: tasks("A", "B", "C") })],
     });
 
     const birthday = within(card("Birthday"));
-    expect(birthday.getByText("3 moves · none focused")).toBeVisible();
-    // The move slot already gives the count; pips would only repeat it.
+    expect(birthday.getByText("3 tasks · none focused")).toBeVisible();
+    // The task slot already gives the count; pips would only repeat it.
     expect(birthday.queryByRole("img")).toBeNull();
     expect(birthday.queryByRole("button", { name: /^Complete/ })).toBeNull();
   });
 
-  it("shows a Thread with no Moves as its title alone", () => {
+  it("shows a Thread with no Tasks as its title alone", () => {
     renderOverview({ threads: [thread("Garden")] });
 
     const garden = within(card("Garden"));
-    expect(garden.queryByText(/moves/)).toBeNull();
+    expect(garden.queryByText(/tasks/)).toBeNull();
     expect(garden.queryByRole("button", { name: /^Complete/ })).toBeNull();
   });
 });

@@ -1,11 +1,11 @@
 import type {
-  AddMoveInput,
+  AddTaskInput,
   CommandAcknowledgement,
-  CompleteMoveInput,
+  CompleteTaskInput,
   CreateThreadInput,
-  EditMoveInput,
-  FocusMoveInput,
-  RemoveMoveInput,
+  EditTaskInput,
+  FocusTaskInput,
+  RemoveTaskInput,
   Thread,
   ThreadDetail,
   ThreadId,
@@ -16,15 +16,15 @@ import type { ThreadPatch, ThreadUpdateDecision } from "@vita-os/core";
 import { commandAcknowledged } from "@vita-os/contracts";
 import {
   clearedToAbsent,
-  decideAddMove,
-  decideCompleteMove,
-  decideEditMove,
-  decideFocusMove,
-  decideRemoveMove,
+  decideAddTask,
+  decideCompleteTask,
+  decideEditTask,
+  decideFocusTask,
+  decideRemoveTask,
   decideThreadUpdate,
   generateSlug,
-  requireMoveId,
-  requireMoveText,
+  requireTaskId,
+  requireTaskText,
   requireNonBlankText,
 } from "@vita-os/core";
 import { Effect } from "effect";
@@ -47,9 +47,9 @@ import { isThreadSlugTaken, threadStorage } from "./storage";
  *
  * An ordinary edit should not fail because somebody else wrote first, so a lost
  * race is retried from the fresh Thread instead of surfacing a conflict. Only a
- * caller that supplied its own expectation — every Move command — is told
+ * caller that supplied its own expectation — every Task command — is told
  * about the conflict, because for that caller a retry could act on a different
- * Move.
+ * Task.
  */
 const CHANGE_ATTEMPTS = 3;
 
@@ -167,43 +167,43 @@ export function updateThread({
   });
 }
 
-/** A new Move joins the end of the Thread's Moves, unfocused. */
-export function addMove(input: AddMoveInput): Operation<Thread> {
+/** A new Task joins the end of the Thread's Tasks, unfocused. */
+export function addTask(input: AddTaskInput): Operation<Thread> {
   return Effect.gen(function* () {
-    const move = yield* attempt(() => ({
-      _id: requireMoveId(input.moveId),
-      text: requireMoveText(input.text),
+    const task = yield* attempt(() => ({
+      _id: requireTaskId(input.taskId),
+      text: requireTaskText(input.text),
     }));
-    return yield* changeMoves(input, (thread) => decideAddMove(thread, move));
+    return yield* changeTasks(input, (thread) => decideAddTask(thread, task));
   });
 }
 
-export function editMove(input: EditMoveInput): Operation<Thread> {
+export function editTask(input: EditTaskInput): Operation<Thread> {
   return Effect.gen(function* () {
-    const text = yield* attempt(() => requireMoveText(input.text));
-    return yield* changeMoves(input, (thread) =>
-      decideEditMove(thread, input.moveId, text),
+    const text = yield* attempt(() => requireTaskText(input.text));
+    return yield* changeTasks(input, (thread) =>
+      decideEditTask(thread, input.taskId, text),
     );
   });
 }
 
-export function removeMove(input: RemoveMoveInput): Operation<Thread> {
-  return changeMoves(input, (thread) => decideRemoveMove(thread, input.moveId));
+export function removeTask(input: RemoveTaskInput): Operation<Thread> {
+  return changeTasks(input, (thread) => decideRemoveTask(thread, input.taskId));
 }
 
 /**
- * Complete one Move, focused or not. Its Activity Log entry is written with the
- * change or not at all, and two competing completions of the same Move record
+ * Complete one Task, focused or not. Its Activity Log entry is written with the
+ * change or not at all, and two competing completions of the same Task record
  * one: the loser finds the revision moved on.
  */
-export function completeMove(input: CompleteMoveInput): Operation<Thread> {
-  return changeMoves(input, (thread) =>
-    decideCompleteMove(thread, input.moveId),
+export function completeTask(input: CompleteTaskInput): Operation<Thread> {
+  return changeTasks(input, (thread) =>
+    decideCompleteTask(thread, input.taskId),
   );
 }
 
-export function focusMove(input: FocusMoveInput): Operation<Thread> {
-  return changeMoves(input, (thread) => decideFocusMove(thread, input.moveId));
+export function focusTask(input: FocusTaskInput): Operation<Thread> {
+  return changeTasks(input, (thread) => decideFocusTask(thread, input.taskId));
 }
 
 export function removeThread(input: {
@@ -219,15 +219,15 @@ export function removeThread(input: {
 }
 
 /**
- * One Move command, decided against the Thread the caller read.
+ * One Task command, decided against the Thread the caller read.
  *
- * The caller's revision must be the Thread's, and the Move it names must still
+ * The caller's revision must be the Thread's, and the Task it names must still
  * be there; otherwise the command is a conflict and nothing is written. The
  * write is conditional on the same revision, so a command that loses a race
  * after the check is refused too — never retried, since a retry could land on
- * a different Move.
+ * a different Task.
  */
-function changeMoves(
+function changeTasks(
   command: { threadId: ThreadId; expectedRevision: number },
   decide: (thread: Thread) => ThreadUpdateDecision | null,
 ): Operation<Thread> {

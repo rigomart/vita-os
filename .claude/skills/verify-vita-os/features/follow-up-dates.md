@@ -18,7 +18,7 @@ Status: proven on 32224ed plus the unified Follow-up date working-tree change (N
 
 - Choose New note, then Follow-up date before Add; open a saved Note for Set/Change follow-up date.
 - Open Notes and use Set/Change follow-up date on a Note card.
-- Open a Thread and use Set follow-up date beside Moves, or Change follow-up date beside its saved date.
+- Open a Thread and use Set follow-up date beside Tasks, or Change follow-up date beside its saved date.
 - Use a Dashboard card's Set/Change follow-up date control on hover or keyboard focus.
 - Use Thread actions → Resolve; reopen the resolved Thread at its own address and choose Thread actions → Reopen.
 

@@ -37,7 +37,7 @@ The app was set up and proved before migration: fresh baseline tests, real sign-
 | Standalone Notes | Dated capture, body edit, date reschedule/clear, complete, history read, reopen, persisted delete |
 | Areas | Two creates, rename, keyboard reorder, filter-row read, confirmed delete |
 | Threads | Create, dated update, resolve, resolved-history read, reopen with cleared attention, delete with empty dependent Activity Log |
-| Moves | Add, focus, edit, unfocus, remove, completion and its persisted Activity Log entry |
+| Tasks | Add, focus, edit, unfocus, remove, completion and its persisted Activity Log entry |
 | Thread Notes | Create, edit, complete, completed-page read, reopen, delete after Undo expiry |
 
 The `effect` evidence run is `2026-10-02T23-44-52-650Z`; `effect-notes` is `2026-10-02T23-57-27-394Z`. Standalone completion/reopen toast capture was inconclusive, but each state was confirmed after reload and in D1. Thread Note lifecycle toasts were captured. Undo, alternate capture entry points, Area icon changes, and phone/drawer layouts were not re-driven; existing automated coverage remains in place. API error/alias and concurrency cases are covered by the real Worker tests rather than simulated through the UI.

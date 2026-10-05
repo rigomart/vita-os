@@ -1,9 +1,9 @@
-import type { AreaId, MoveId, NoteId, ThreadId } from "@vita-os/contracts";
+import type { AreaId, TaskId, NoteId, ThreadId } from "@vita-os/contracts";
 
 import { describe, expect, it } from "vitest";
 
 import { buildPendingArea } from "../areas/optimistic";
-import { buildPendingThread, changeMovesLocally } from "../threads/optimistic";
+import { buildPendingThread, changeTasksLocally } from "../threads/optimistic";
 import {
   insertNewestFirst,
   insertOrdered,
@@ -124,47 +124,47 @@ describe("a pending record", () => {
   });
 });
 
-describe("the Move rules applied locally", () => {
-  const callClinic = { _id: "move-1" as MoveId, text: "Call clinic" };
-  const bookSlot = { _id: "move-2" as MoveId, text: "Book slot" };
+describe("the Task rules applied locally", () => {
+  const callClinic = { _id: "task-1" as TaskId, text: "Call clinic" };
+  const bookSlot = { _id: "task-2" as TaskId, text: "Book slot" };
   const open = {
     state: "open" as const,
-    moves: [callClinic, bookSlot],
-    focusedMoveId: callClinic._id,
+    tasks: [callClinic, bookSlot],
+    focusedTaskId: callClinic._id,
   };
 
-  it("completing the Focused Move leaves the Thread unfocused, promoting nothing", () => {
+  it("completing the Focused Task leaves the Thread unfocused, promoting nothing", () => {
     expect(
-      changeMovesLocally(open, { kind: "complete", moveId: callClinic._id }),
-    ).toEqual({ state: "open", moves: [bookSlot] });
+      changeTasksLocally(open, { kind: "complete", taskId: callClinic._id }),
+    ).toEqual({ state: "open", tasks: [bookSlot] });
   });
 
-  it("completing the last Move leaves no Moves at all", () => {
+  it("completing the last Task leaves no Tasks at all", () => {
     expect(
-      changeMovesLocally(
-        { state: "open" as const, moves: [bookSlot] },
-        { kind: "complete", moveId: bookSlot._id },
+      changeTasksLocally(
+        { state: "open" as const, tasks: [bookSlot] },
+        { kind: "complete", taskId: bookSlot._id },
       ),
     ).toEqual({ state: "open" });
   });
 
   it("adding joins the end of the list, unfocused", () => {
-    const payBill = { _id: "move-3" as MoveId, text: "Pay bill" };
+    const payBill = { _id: "task-3" as TaskId, text: "Pay bill" };
 
-    expect(changeMovesLocally(open, { kind: "add", move: payBill })).toEqual({
+    expect(changeTasksLocally(open, { kind: "add", task: payBill })).toEqual({
       ...open,
-      moves: [callClinic, bookSlot, payBill],
+      tasks: [callClinic, bookSlot, payBill],
     });
   });
 
   it("a command the service would refuse changes nothing on screen", () => {
     const resolved = { state: "resolved" as const };
 
-    expect(changeMovesLocally(resolved, { kind: "focus", moveId: null })).toBe(
+    expect(changeTasksLocally(resolved, { kind: "focus", taskId: null })).toBe(
       resolved,
     );
     expect(
-      changeMovesLocally(open, { kind: "complete", moveId: "gone" as MoveId }),
+      changeTasksLocally(open, { kind: "complete", taskId: "gone" as TaskId }),
     ).toBe(open);
   });
 });

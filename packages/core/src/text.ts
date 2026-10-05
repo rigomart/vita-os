@@ -2,7 +2,7 @@ import { ValidationError } from "./errors";
 
 /**
  * Trim non-blank text, or refuse with "<label> cannot be empty". Names,
- * titles, bodies, and moves all pass through here so blanks are refused
+ * titles, bodies, and tasks all pass through here so blanks are refused
  * identically wherever they arrive from.
  */
 export function requireNonBlankText(value: string, label: string): string {

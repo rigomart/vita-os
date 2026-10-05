@@ -191,8 +191,8 @@ beforeAll(async () => {
 
   await applyD1Migrations(database, migrationsThrough(4));
 
-  mover = await signUp("moves-migration-owner");
-  await seedThreadsBeforeMoves(mover.actorId);
+  mover = await signUp("tasks-migration-owner");
+  await seedThreadsBeforeTasks(mover.actorId);
   await applyD1Migrations(database, migrationsThrough(5));
 });
 
@@ -238,11 +238,17 @@ describe("0004: Areas become optional labels", () => {
       areaId: "area-health",
       order: 3,
       state: "open",
+      tasks: [
+        { _id: expect.any(String), text: "Call clinic" },
+        { _id: expect.any(String), text: "Book appointment" },
+      ],
+      focusedTaskId: checkup.thread.tasks?.[0]?._id,
+      // Compatibility names (ADR 0033, removal in #402), same values.
       moves: [
         { _id: expect.any(String), text: "Call clinic" },
         { _id: expect.any(String), text: "Book appointment" },
       ],
-      focusedMoveId: checkup.thread.moves?.[0]?._id,
+      focusedMoveId: checkup.thread.tasks?.[0]?._id,
       followUp: 1_800_000_000_000,
       lastActivityAt: 1_700_000_000_000,
       lastActivityContent: "Next move set",
@@ -295,7 +301,7 @@ describe("0004: Areas become optional labels", () => {
 });
 
 /** Threads as they stood with a Next Move and an Up Next line. */
-async function seedThreadsBeforeMoves(actorId: string) {
+async function seedThreadsBeforeTasks(actorId: string) {
   const insert = (
     id: string,
     fields: {
@@ -350,7 +356,7 @@ async function seedThreadsBeforeMoves(actorId: string) {
   ]);
 }
 
-describe("0005: Next Move and Up Next become peer Moves", () => {
+describe("0005: Next Move and Up Next become peer Tasks", () => {
   async function threadOf(slug: string) {
     return (await read<ThreadDetail>(`/v1/threads/${slug}`, mover.cookie))
       .thread;
@@ -359,41 +365,41 @@ describe("0005: Next Move and Up Next become peer Moves", () => {
   it("focuses the Next Move and follows it with Up Next, unfocused, in queue order", async () => {
     const thread = await threadOf("queued-00000000");
 
-    expect(thread.moves?.map((move) => move.text)).toEqual([
+    expect(thread.tasks?.map((task) => task.text)).toEqual([
       "Call clinic",
       "Book slot",
       "Pay bill",
       "Collect results",
     ]);
-    expect(thread.focusedMoveId).toBe(thread.moves?.[0]?._id);
-    expect(new Set(thread.moves?.map((move) => move._id)).size).toBe(4);
+    expect(thread.focusedTaskId).toBe(thread.tasks?.[0]?._id);
+    expect(new Set(thread.tasks?.map((task) => task._id)).size).toBe(4);
     expect(thread.revision).toBe(4);
   });
 
-  it("gives a Thread with only a Next Move one focused Move", async () => {
+  it("gives a Thread with only a Next Move one focused Task", async () => {
     const thread = await threadOf("single-00000000");
 
-    expect(thread.moves).toEqual([
+    expect(thread.tasks).toEqual([
       { _id: expect.any(String), text: "Email the landlord" },
     ]);
-    expect(thread.focusedMoveId).toBe(thread.moves?.[0]?._id);
+    expect(thread.focusedTaskId).toBe(thread.tasks?.[0]?._id);
   });
 
-  it("brings a Thread with neither through with no Moves and no focus", async () => {
+  it("brings a Thread with neither through with no Tasks and no focus", async () => {
     for (const slug of ["plain-00000000", "finished-00000000"]) {
       const thread = await threadOf(slug);
-      expect(thread).not.toHaveProperty("moves");
-      expect(thread).not.toHaveProperty("focusedMoveId");
+      expect(thread).not.toHaveProperty("tasks");
+      expect(thread).not.toHaveProperty("focusedTaskId");
     }
   });
 
-  it("leaves the Activity Log as it was written, and accepts Move completions", async () => {
+  it("leaves the Activity Log as it was written, and accepts Task completions", async () => {
     const thread = await threadOf("queued-00000000");
-    const move = thread.moves?.[1];
-    if (!move) throw new Error("Migrated Thread lost its Moves");
+    const task = thread.tasks?.[1];
+    if (!task) throw new Error("Migrated Thread lost its Tasks");
 
     const response = await request(
-      `/v1/threads/queued/moves/${move._id}/complete`,
+      `/v1/threads/queued/tasks/${task._id}/complete`,
       {
         method: "POST",
         headers: { cookie: mover.cookie },

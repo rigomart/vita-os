@@ -1,6 +1,6 @@
 import type { Note, Thread } from "@vita-os/contracts";
 
-import { hasMoves } from "@vita-os/core";
+import { hasTasks } from "@vita-os/core";
 import { addDays, format } from "date-fns";
 
 import { dayDelta, startOfLocalDay } from "./dashboard-model";
@@ -11,7 +11,7 @@ import { dayDelta, startOfLocalDay } from "./dashboard-model";
  *
  * Three columns carry the dates (Now · This week · Later), and a single
  * unscheduled group carries what is not on the calendar at all: Threads with
- * Moves ready to be made, Threads simply open, and standalone Notes. Focus never
+ * Tasks ready to be made, Threads simply open, and standalone Notes. Focus never
  * moves a Thread between groups: timing belongs to Follow-ups alone.
  * Follow-up dates are the same kind of signal on Threads and Notes, so a
  * Note due tomorrow sits beside a Thread due tomorrow.
@@ -23,11 +23,11 @@ export interface AttentionBoard {
   later: BoardItem[];
   now: BoardItem[];
   unscheduled: {
-    /** Threads with at least one Move but no date: what you could do today. */
+    /** Threads with at least one Task but no date: what you could do today. */
     moves: BoardItem[];
     /** Standalone Notes with no follow-up date. */
     notes: BoardItem[];
-    /** Threads with neither a date nor a Move. */
+    /** Threads with neither a date nor a Task. */
     open: BoardItem[];
   };
   week: BoardItem[];
@@ -99,11 +99,11 @@ export function buildAttentionBoard(
     later: dated.filter((item) => inDays(item) > WEEK_HORIZON).sort(bySoonest),
     unscheduled: {
       moves: threads
-        .filter((thread) => thread.followUp == null && hasMoves(thread))
+        .filter((thread) => thread.followUp == null && hasTasks(thread))
         .sort(byThreadOrder)
         .map((thread) => ({ kind: "thread", thread })),
       open: threads
-        .filter((thread) => thread.followUp == null && !hasMoves(thread))
+        .filter((thread) => thread.followUp == null && !hasTasks(thread))
         .sort(byThreadOrder)
         .map((thread) => ({ kind: "thread", thread })),
       notes: notes

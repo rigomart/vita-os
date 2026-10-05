@@ -18,7 +18,7 @@ import {
   sqlExpression,
 } from "../../platform/d1/statements";
 import { AREA_COLUMNS, toAreaSummary } from "../areas/rows";
-import { serializeMoves, THREAD_COLUMNS, toThread } from "./rows";
+import { serializeTasks, THREAD_COLUMNS, toThread } from "./rows";
 
 /** What one Thread change writes: its patch and the Activity Log it earned. */
 export type ThreadChange = {
@@ -61,14 +61,14 @@ export function isThreadSlugTaken(error: unknown): boolean {
   return isUniqueViolation(error, "threads.user_id, threads.slug");
 }
 
-/** Where each patchable field is stored, apart from the Moves' JSON. */
+/** Where each patchable field is stored, apart from the Tasks' JSON. */
 const PATCH_COLUMNS = {
   title: "title",
   slug: "slug",
   summary: "summary",
   areaId: "area_id",
   state: "state",
-  focusedMoveId: "focused_move_id",
+  focusedTaskId: "focused_move_id",
   followUp: "follow_up",
 } as const satisfies Partial<Record<keyof ThreadPatch, string>>;
 
@@ -144,8 +144,8 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
         columns[column] = patch[field as keyof typeof PATCH_COLUMNS] ?? null;
       }
     }
-    if (Object.hasOwn(patch, "moves")) {
-      columns.moves_json = serializeMoves(patch.moves);
+    if (Object.hasOwn(patch, "tasks")) {
+      columns.moves_json = serializeTasks(patch.tasks);
     }
     if (lastLog !== undefined || input.stampActivity === true) {
       columns.last_activity_at = changedAt;

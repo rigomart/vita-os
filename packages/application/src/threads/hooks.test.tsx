@@ -1,7 +1,7 @@
 import type {
   AreaId,
   ApplicationError,
-  MoveId,
+  TaskId,
   Thread,
   ThreadDetail,
   ThreadId,
@@ -34,8 +34,8 @@ const home = anArea({
   order: 1,
 });
 const thread = aThread({
-  moves: [{ _id: "move-1" as MoveId, text: "Call clinic" }],
-  focusedMoveId: "move-1" as MoveId,
+  tasks: [{ _id: "task-1" as TaskId, text: "Call clinic" }],
+  focusedTaskId: "task-1" as TaskId,
 });
 const unavailable: ApplicationError = {
   code: "unavailable",
@@ -222,11 +222,11 @@ describe("useCreateThread without an Area", () => {
 describe("useUpdateThread", () => {
   it("resolving drops the Thread from the open list and clears its attention", async () => {
     const attentive = aThread({
-      moves: [
-        { _id: "move-1" as MoveId, text: "Call clinic" },
-        { _id: "move-2" as MoveId, text: "Book appointment" },
+      tasks: [
+        { _id: "task-1" as TaskId, text: "Call clinic" },
+        { _id: "task-2" as TaskId, text: "Book appointment" },
       ],
-      focusedMoveId: "move-1" as MoveId,
+      focusedTaskId: "task-1" as TaskId,
       followUp: 5_000,
     });
     const client = createFakeApplicationClient({
@@ -249,8 +249,8 @@ describe("useUpdateThread", () => {
         queryKeys.threads.detail(attentive.slug),
       );
       expect(rail?.thread.state).toBe("resolved");
-      expect(rail?.thread.moves).toBeUndefined();
-      expect(rail?.thread.focusedMoveId).toBeUndefined();
+      expect(rail?.thread.tasks).toBeUndefined();
+      expect(rail?.thread.focusedTaskId).toBeUndefined();
       expect(rail?.thread.followUp).toBeUndefined();
       // A Resolved Thread keeps its Area.
       expect(rail?.thread.areaId).toBe(health._id);
@@ -258,7 +258,7 @@ describe("useUpdateThread", () => {
     });
   });
 
-  it("moves the Thread to another Area and swaps the rail's Area", async () => {
+  it("tasks the Thread to another Area and swaps the rail's Area", async () => {
     const client = createFakeApplicationClient({
       updateThread: async () => success({ ...thread, areaId: home._id }),
     });

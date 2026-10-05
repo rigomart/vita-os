@@ -9,21 +9,21 @@ import { createTestApp } from "./app";
 import { call, createSession, expectError, succeed } from "./sessions";
 
 /**
- * Moves, driven through the Worker the way the browser drives them: peers in
- * capture order, one optional Focused Move, and completion as the only change
+ * Tasks, driven through the Worker the way the browser drives them: peers in
+ * capture order, one optional Focused Task, and completion as the only change
  * the Activity Log records.
  */
 
-const moveConflict = {
+const taskConflict = {
   status: 409,
   code: "conflict",
-  message: "The Thread's Moves have changed.",
+  message: "The Thread's Tasks have changed.",
 };
 
 const resolvedRefusal = {
   status: 409,
   code: "conflict",
-  message: "Cannot change the moves of a resolved thread",
+  message: "Cannot change the tasks of a resolved thread",
 };
 
 async function createThread(session: Session): Promise<Thread> {
@@ -34,52 +34,52 @@ async function createThread(session: Session): Promise<Thread> {
   });
 }
 
-function add(session: Session, thread: Thread, moveId: string, text: string) {
-  return call(`/v1/threads/${thread._id}/moves`, {
+function add(session: Session, thread: Thread, taskId: string, text: string) {
+  return call(`/v1/threads/${thread._id}/tasks`, {
     method: "POST",
     session,
-    body: { moveId, text, expectedRevision: thread.revision },
+    body: { taskId, text, expectedRevision: thread.revision },
   });
 }
 
 async function added(
   session: Session,
   thread: Thread,
-  moveId: string,
+  taskId: string,
   text: string,
 ): Promise<Thread> {
-  const answer = await add(session, thread, moveId, text);
+  const answer = await add(session, thread, taskId, text);
   expect(answer.status).toBe(200);
   return answer.body as Thread;
 }
 
-/** A Thread holding these Moves, captured in order. */
+/** A Thread holding these Tasks, captured in order. */
 async function threadWith(session: Session, texts: string[]) {
   let thread = await createThread(session);
   for (const [index, text] of texts.entries()) {
-    thread = await added(session, thread, `move-${index + 1}`, text);
+    thread = await added(session, thread, `task-${index + 1}`, text);
   }
   return thread;
 }
 
-function complete(session: Session, thread: Thread, moveId: string) {
-  return call(`/v1/threads/${thread._id}/moves/${moveId}/complete`, {
+function complete(session: Session, thread: Thread, taskId: string) {
+  return call(`/v1/threads/${thread._id}/tasks/${taskId}/complete`, {
     method: "POST",
     session,
     body: { expectedRevision: thread.revision },
   });
 }
 
-function focus(session: Session, thread: Thread, moveId: string | null) {
+function focus(session: Session, thread: Thread, taskId: string | null) {
   return call(`/v1/threads/${thread._id}/focus`, {
     method: "PUT",
     session,
-    body: { moveId, expectedRevision: thread.revision },
+    body: { taskId, expectedRevision: thread.revision },
   });
 }
 
-function remove(session: Session, thread: Thread, moveId: string) {
-  return call(`/v1/threads/${thread._id}/moves/${moveId}`, {
+function remove(session: Session, thread: Thread, taskId: string) {
+  return call(`/v1/threads/${thread._id}/tasks/${taskId}`, {
     method: "DELETE",
     session,
     body: { expectedRevision: thread.revision },
@@ -101,7 +101,7 @@ async function activityOf(session: Session, thread: Thread) {
   return page.entries;
 }
 
-async function storedMoves(thread: Thread) {
+async function storedTasks(thread: Thread) {
   return env.DB.prepare(
     "SELECT moves_json, focused_move_id FROM threads WHERE id = ?",
   )
@@ -109,39 +109,39 @@ async function storedMoves(thread: Thread) {
     .first<{ moves_json: string | null; focused_move_id: string | null }>();
 }
 
-describe("capturing Moves", () => {
-  it("keeps Moves in capture order, unfocused, and writes no Activity Log", async () => {
-    const owner = await createSession("moves-capture");
+describe("capturing Tasks", () => {
+  it("keeps Tasks in capture order, unfocused, and writes no Activity Log", async () => {
+    const owner = await createSession("tasks-capture");
     const thread = await threadWith(owner, ["  Call clinic ", "Book slot"]);
 
-    expect(thread.moves).toEqual([
-      { _id: "move-1", text: "Call clinic" },
-      { _id: "move-2", text: "Book slot" },
+    expect(thread.tasks).toEqual([
+      { _id: "task-1", text: "Call clinic" },
+      { _id: "task-2", text: "Book slot" },
     ]);
-    expect(thread).not.toHaveProperty("focusedMoveId");
+    expect(thread).not.toHaveProperty("focusedTaskId");
     expect(thread.revision).toBe(2);
     expect(await activityOf(owner, thread)).toEqual([]);
     expect(thread).not.toHaveProperty("lastActivityAt");
   });
 
-  it("refuses a blank Move and writes nothing", async () => {
-    const owner = await createSession("moves-blank");
+  it("refuses a blank Task and writes nothing", async () => {
+    const owner = await createSession("tasks-blank");
     const thread = await createThread(owner);
 
-    expectError(await add(owner, thread, "move-1", "   "), {
+    expectError(await add(owner, thread, "task-1", "   "), {
       status: 400,
       code: "validation",
-      message: "Move cannot be empty",
+      message: "Task cannot be empty",
     });
     expect(await read(owner, thread)).toEqual(thread);
   });
 
-  it("edits a Move's text in place, silently", async () => {
-    const owner = await createSession("moves-edit");
+  it("edits a Task's text in place, silently", async () => {
+    const owner = await createSession("tasks-edit");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
 
     const edited = await succeed<Thread>(
-      `/v1/threads/${thread._id}/moves/move-1`,
+      `/v1/threads/${thread._id}/tasks/task-1`,
       {
         method: "PATCH",
         session: owner,
@@ -149,23 +149,23 @@ describe("capturing Moves", () => {
       },
     );
 
-    expect(edited.moves).toEqual([
-      { _id: "move-1", text: "Call the clinic before nine" },
-      { _id: "move-2", text: "Book slot" },
+    expect(edited.tasks).toEqual([
+      { _id: "task-1", text: "Call the clinic before nine" },
+      { _id: "task-2", text: "Book slot" },
     ]);
     expect(await activityOf(owner, thread)).toEqual([]);
   });
 
   it("refuses an ID the Thread already holds", async () => {
-    const owner = await createSession("moves-duplicate");
+    const owner = await createSession("tasks-duplicate");
     const thread = await threadWith(owner, ["Call clinic"]);
 
-    expectError(await add(owner, thread, "move-1", "Again"), moveConflict);
-    expect((await read(owner, thread)).moves).toHaveLength(1);
+    expectError(await add(owner, thread, "task-1", "Again"), taskConflict);
+    expect((await read(owner, thread)).tasks).toHaveLength(1);
   });
 
   it("refuses adding, editing, and focusing on a resolved Thread", async () => {
-    const owner = await createSession("moves-resolved");
+    const owner = await createSession("tasks-resolved");
     const thread = await threadWith(owner, ["Call clinic"]);
     const resolved = await succeed<Thread>(`/v1/threads/${thread._id}`, {
       method: "PATCH",
@@ -173,9 +173,9 @@ describe("capturing Moves", () => {
       body: { state: "resolved" },
     });
 
-    expectError(await add(owner, resolved, "move-2", "More"), resolvedRefusal);
+    expectError(await add(owner, resolved, "task-2", "More"), resolvedRefusal);
     expectError(
-      await call(`/v1/threads/${thread._id}/moves/move-1`, {
+      await call(`/v1/threads/${thread._id}/tasks/task-1`, {
         method: "PATCH",
         session: owner,
         body: { text: "Edited", expectedRevision: resolved.revision },
@@ -187,48 +187,48 @@ describe("capturing Moves", () => {
 });
 
 describe("focus", () => {
-  it("focuses one Move, replaces an earlier focus, and unfocuses, all silently", async () => {
-    const owner = await createSession("moves-focus");
+  it("focuses one Task, replaces an earlier focus, and unfocuses, all silently", async () => {
+    const owner = await createSession("tasks-focus");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
 
-    const first = await focus(owner, thread, "move-1");
+    const first = await focus(owner, thread, "task-1");
     expect(first.status).toBe(200);
-    expect((first.body as Thread).focusedMoveId).toBe("move-1");
+    expect((first.body as Thread).focusedTaskId).toBe("task-1");
 
-    const second = await focus(owner, first.body as Thread, "move-2");
-    expect((second.body as Thread).focusedMoveId).toBe("move-2");
+    const second = await focus(owner, first.body as Thread, "task-2");
+    expect((second.body as Thread).focusedTaskId).toBe("task-2");
 
     const cleared = await focus(owner, second.body as Thread, null);
-    expect(cleared.body).not.toHaveProperty("focusedMoveId");
+    expect(cleared.body).not.toHaveProperty("focusedTaskId");
     // Focus never reorders the list.
-    expect((cleared.body as Thread).moves?.map((move) => move._id)).toEqual([
-      "move-1",
-      "move-2",
+    expect((cleared.body as Thread).tasks?.map((task) => task._id)).toEqual([
+      "task-1",
+      "task-2",
     ]);
     expect(await activityOf(owner, thread)).toEqual([]);
   });
 
-  it("refuses to focus a Move the Thread does not hold", async () => {
-    const owner = await createSession("moves-focus-missing");
+  it("refuses to focus a Task the Thread does not hold", async () => {
+    const owner = await createSession("tasks-focus-missing");
     const thread = await threadWith(owner, ["Call clinic"]);
 
-    expectError(await focus(owner, thread, "move-9"), moveConflict);
+    expectError(await focus(owner, thread, "task-9"), taskConflict);
     expect(await read(owner, thread)).toEqual(thread);
   });
 });
 
 describe("completing and removing", () => {
-  it("completes a Move that is not focused, logging it and stamping last activity", async () => {
-    const owner = await createSession("moves-complete-unfocused");
+  it("completes a Task that is not focused, logging it and stamping last activity", async () => {
+    const owner = await createSession("tasks-complete-unfocused");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
-    const focused = (await focus(owner, thread, "move-1")).body as Thread;
+    const focused = (await focus(owner, thread, "task-1")).body as Thread;
 
-    const answer = await complete(owner, focused, "move-2");
+    const answer = await complete(owner, focused, "task-2");
 
     expect(answer.status).toBe(200);
     const completed = answer.body as Thread;
-    expect(completed.moves).toEqual([{ _id: "move-1", text: "Call clinic" }]);
-    expect(completed.focusedMoveId).toBe("move-1");
+    expect(completed.tasks).toEqual([{ _id: "task-1", text: "Call clinic" }]);
+    expect(completed.focusedTaskId).toBe("task-1");
     const [entry] = await activityOf(owner, thread);
     expect(entry).toMatchObject({
       type: "move_completed",
@@ -240,90 +240,90 @@ describe("completing and removing", () => {
     expect(completed.lastActivityAt).toBe(entry?.createdAt);
   });
 
-  it("leaves the Thread unfocused after completing the Focused Move: nothing is promoted", async () => {
-    const owner = await createSession("moves-complete-focused");
+  it("leaves the Thread unfocused after completing the Focused Task: nothing is promoted", async () => {
+    const owner = await createSession("tasks-complete-focused");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
-    const focused = (await focus(owner, thread, "move-1")).body as Thread;
+    const focused = (await focus(owner, thread, "task-1")).body as Thread;
 
-    const completed = (await complete(owner, focused, "move-1")).body as Thread;
+    const completed = (await complete(owner, focused, "task-1")).body as Thread;
 
-    expect(completed.moves).toEqual([{ _id: "move-2", text: "Book slot" }]);
-    expect(completed).not.toHaveProperty("focusedMoveId");
+    expect(completed.tasks).toEqual([{ _id: "task-2", text: "Book slot" }]);
+    expect(completed).not.toHaveProperty("focusedTaskId");
   });
 
-  it("leaves the Thread open once every Move is complete", async () => {
-    const owner = await createSession("moves-complete-all");
+  it("leaves the Thread open once every Task is complete", async () => {
+    const owner = await createSession("tasks-complete-all");
     const thread = await threadWith(owner, ["Call clinic"]);
 
-    const completed = (await complete(owner, thread, "move-1")).body as Thread;
+    const completed = (await complete(owner, thread, "task-1")).body as Thread;
 
     expect(completed.state).toBe("open");
-    expect(completed).not.toHaveProperty("moves");
-    expect(await storedMoves(thread)).toEqual({
+    expect(completed).not.toHaveProperty("tasks");
+    expect(await storedTasks(thread)).toEqual({
       moves_json: null,
       focused_move_id: null,
     });
     expect((await read(owner, thread))._id).toBe(thread._id);
   });
 
-  it("removes a Move without a trace, and removing the Focused Move unfocuses", async () => {
-    const owner = await createSession("moves-remove");
+  it("removes a Task without a trace, and removing the Focused Task unfocuses", async () => {
+    const owner = await createSession("tasks-remove");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
-    const focused = (await focus(owner, thread, "move-2")).body as Thread;
+    const focused = (await focus(owner, thread, "task-2")).body as Thread;
 
-    const answer = await remove(owner, focused, "move-2");
+    const answer = await remove(owner, focused, "task-2");
 
     expect(answer.status).toBe(200);
-    expect((answer.body as Thread).moves).toEqual([
-      { _id: "move-1", text: "Call clinic" },
+    expect((answer.body as Thread).tasks).toEqual([
+      { _id: "task-1", text: "Call clinic" },
     ]);
-    expect(answer.body).not.toHaveProperty("focusedMoveId");
+    expect(answer.body).not.toHaveProperty("focusedTaskId");
     expect(await activityOf(owner, thread)).toEqual([]);
   });
 });
 
 describe("conflicts", () => {
   it("refuses a command made against a stale revision, writing nothing", async () => {
-    const owner = await createSession("moves-stale");
+    const owner = await createSession("tasks-stale");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
     const stale = { ...thread, revision: thread.revision - 1 };
 
-    expectError(await complete(owner, stale, "move-1"), moveConflict);
-    expectError(await add(owner, stale, "move-3", "Pay bill"), moveConflict);
+    expectError(await complete(owner, stale, "task-1"), taskConflict);
+    expectError(await add(owner, stale, "task-3", "Pay bill"), taskConflict);
     expect(await read(owner, thread)).toEqual(thread);
     expect(await activityOf(owner, thread)).toEqual([]);
   });
 
-  it("refuses to complete a Move another device already completed", async () => {
-    const owner = await createSession("moves-gone");
+  it("refuses to complete a Task another device already completed", async () => {
+    const owner = await createSession("tasks-gone");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
-    const completed = (await complete(owner, thread, "move-1")).body as Thread;
+    const completed = (await complete(owner, thread, "task-1")).body as Thread;
 
-    expectError(await complete(owner, completed, "move-1"), moveConflict);
+    expectError(await complete(owner, completed, "task-1"), taskConflict);
     expect(await activityOf(owner, thread)).toHaveLength(1);
   });
 
   it("records exactly one of two competing completions", async () => {
-    const owner = await createSession("moves-competing");
+    const owner = await createSession("tasks-competing");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
 
     const answers = await Promise.all([
-      complete(owner, thread, "move-1"),
-      complete(owner, thread, "move-1"),
+      complete(owner, thread, "task-1"),
+      complete(owner, thread, "task-1"),
     ]);
 
     expect(answers.map((answer) => answer.status).sort()).toEqual([200, 409]);
-    expect((await read(owner, thread)).moves).toEqual([
-      { _id: "move-2", text: "Book slot" },
+    expect((await read(owner, thread)).tasks).toEqual([
+      { _id: "task-2", text: "Book slot" },
     ]);
     expect(await activityOf(owner, thread)).toHaveLength(1);
   });
 
   it("answers not found for a Thread that is not there", async () => {
-    const owner = await createSession("moves-missing-thread");
+    const owner = await createSession("tasks-missing-thread");
 
     expectError(
-      await call("/v1/threads/missing-thread/moves/move-1/complete", {
+      await call("/v1/threads/missing-thread/tasks/task-1/complete", {
         method: "POST",
         session: owner,
         body: { expectedRevision: 0 },
@@ -335,7 +335,7 @@ describe("conflicts", () => {
 
 describe("rollback", () => {
   it("writes neither the completion nor its entry when the entry cannot be written", async () => {
-    const owner = await createSession("moves-rollback");
+    const owner = await createSession("tasks-rollback");
     const thread = await threadWith(owner, ["Call clinic"]);
     const duplicateId = `duplicate-activity-${crypto.randomUUID()}`;
     await env.DB.prepare(
@@ -362,7 +362,7 @@ describe("rollback", () => {
     });
 
     const response = await app.request(
-      `http://api.test/v1/threads/${thread._id}/moves/move-1/complete`,
+      `http://api.test/v1/threads/${thread._id}/tasks/task-1/complete`,
       {
         method: "POST",
         headers: { cookie: owner.cookie, "content-type": "application/json" },
@@ -379,18 +379,18 @@ describe("rollback", () => {
 
 describe("request shape", () => {
   it.each([
-    ["POST", "moves", { moveId: "m", text: "Call" }],
-    ["POST", "moves", { moveId: "", text: "Call", expectedRevision: 0 }],
-    ["POST", "moves", { moveId: "m", text: 1, expectedRevision: 0 }],
-    ["POST", "moves", { moveId: "m", text: "a", expectedRevision: -1 }],
-    ["POST", "moves", { moveId: "m", text: "a", expectedRevision: 0, x: 1 }],
-    ["PATCH", "moves/move-1", { text: "Call" }],
-    ["POST", "moves/move-1/complete", { expectedRevision: 1.5 }],
-    ["DELETE", "moves/move-1", {}],
+    ["POST", "tasks", { taskId: "m", text: "Call" }],
+    ["POST", "tasks", { taskId: "", text: "Call", expectedRevision: 0 }],
+    ["POST", "tasks", { taskId: "m", text: 1, expectedRevision: 0 }],
+    ["POST", "tasks", { taskId: "m", text: "a", expectedRevision: -1 }],
+    ["POST", "tasks", { taskId: "m", text: "a", expectedRevision: 0, x: 1 }],
+    ["PATCH", "tasks/task-1", { text: "Call" }],
+    ["POST", "tasks/task-1/complete", { expectedRevision: 1.5 }],
+    ["DELETE", "tasks/task-1", {}],
     ["PUT", "focus", { expectedRevision: 0 }],
-    ["PUT", "focus", { moveId: 3, expectedRevision: 0 }],
+    ["PUT", "focus", { taskId: 3, expectedRevision: 0 }],
   ] as const)("refuses %s %s with %j", async (method, route, body) => {
-    const owner = await createSession("moves-shape");
+    const owner = await createSession("tasks-shape");
     const thread = await threadWith(owner, ["Call clinic"]);
 
     expectError(
@@ -399,7 +399,7 @@ describe("request shape", () => {
         session: owner,
         body,
       }),
-      { status: 400, code: "validation", message: "Invalid Move change." },
+      { status: 400, code: "validation", message: "Invalid Task change." },
     );
     expect(await read(owner, thread)).toEqual(thread);
   });

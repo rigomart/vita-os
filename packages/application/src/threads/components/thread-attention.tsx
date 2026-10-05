@@ -1,4 +1,4 @@
-import type { Move, MoveId } from "@vita-os/contracts";
+import type { Task, TaskId } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
 import { cn } from "@vita-os/ui/lib/utils";
@@ -19,46 +19,46 @@ export interface ThreadAttentionPending {
 }
 
 interface ThreadAttentionProps {
-  /** Every Move, in the order it was captured. */
-  moves: readonly Move[];
-  focusedMoveId?: MoveId;
+  /** Every Task, in the order it was captured. */
+  tasks: readonly Task[];
+  focusedTaskId?: TaskId;
   followUp: number | undefined;
   /** The shared attention clock, so lateness matches every other surface. */
   now: number;
-  onAddMove: (text: string) => void;
-  onEditMove: (moveId: MoveId, text: string) => void;
-  onRemoveMove: (moveId: MoveId) => void;
-  onCompleteMove: (moveId: MoveId) => void;
-  /** `null` unfocuses; a Move replaces any earlier focus. */
-  onFocusMove: (moveId: MoveId | null) => void;
+  onAddTask: (text: string) => void;
+  onEditTask: (taskId: TaskId, text: string) => void;
+  onRemoveTask: (taskId: TaskId) => void;
+  onCompleteTask: (taskId: TaskId) => void;
+  /** `null` unfocuses; a Task replaces any earlier focus. */
+  onFocusTask: (taskId: TaskId | null) => void;
   onSetFollowUp: (date: number) => void;
   onClearFollowUp: () => void;
   pending?: ThreadAttentionPending;
 }
 
 /**
- * The Thread's live attention: its Moves as one list of peers, and the
+ * The Thread's live attention: its Tasks as one list of peers, and the
  * Follow-up riding the list's rule.
  *
  * The list keeps capture order and never reorders itself. Focus is a radio
- * down the left edge: pressing it focuses that Move, and pressing the filled
- * one unfocuses it. The Focused Move is tinted where it sits. Leaving every
- * Move unfocused is a fine answer — nothing here asks for a priority.
+ * down the left edge: pressing it focuses that Task, and pressing the filled
+ * one unfocuses it. The Focused Task is tinted where it sits. Leaving every
+ * Task unfocused is a fine answer — nothing here asks for a priority.
  *
  * `xl` is the Thread pane's breakpoint (THREAD_PANE_BREAKPOINT): from there up
  * the pane is a rail with room for hover affordances; below it the Thread is a
  * bottom drawer, so every control stays visible and finger-sized.
  */
 export function ThreadAttention({
-  moves,
-  focusedMoveId,
+  tasks,
+  focusedTaskId,
   followUp,
   now,
-  onAddMove,
-  onEditMove,
-  onRemoveMove,
-  onCompleteMove,
-  onFocusMove,
+  onAddTask,
+  onEditTask,
+  onRemoveTask,
+  onCompleteTask,
+  onFocusTask,
   onSetFollowUp,
   onClearFollowUp,
   pending,
@@ -72,11 +72,11 @@ export function ThreadAttention({
     >
       <div className="flex h-8 items-center gap-2 xl:h-7">
         <span className="shrink-0 text-2xs font-medium tracking-wide text-muted-foreground/80 uppercase">
-          Moves
+          Tasks
         </span>
-        {moves.length > 0 && (
+        {tasks.length > 0 && (
           <span className="shrink-0 text-2xs font-medium tabular-nums text-muted-foreground/60">
-            {moves.length}
+            {tasks.length}
           </span>
         )}
         <span aria-hidden className="h-px flex-1 bg-border/50" />
@@ -89,48 +89,48 @@ export function ThreadAttention({
         />
       </div>
 
-      {moves.length > 1 && (
+      {tasks.length > 1 && (
         <p className="px-0.5 pb-1 text-xs text-muted-foreground/65">
           Focus one when you know it, or leave them all unfocused.
         </p>
       )}
 
-      {moves.length > 0 && (
-        <ul aria-label="Moves" className="flex flex-col gap-0.5">
-          {moves.map((move) => (
-            <MoveRow
-              key={move._id}
-              move={move}
-              focused={move._id === focusedMoveId}
-              onEdit={(text) => onEditMove(move._id, text)}
-              onRemove={() => onRemoveMove(move._id)}
-              onComplete={() => onCompleteMove(move._id)}
+      {tasks.length > 0 && (
+        <ul aria-label="Tasks" className="flex flex-col gap-0.5">
+          {tasks.map((task) => (
+            <TaskRow
+              key={task._id}
+              task={task}
+              focused={task._id === focusedTaskId}
+              onEdit={(text) => onEditTask(task._id, text)}
+              onRemove={() => onRemoveTask(task._id)}
+              onComplete={() => onCompleteTask(task._id)}
               onToggleFocus={() =>
-                onFocusMove(move._id === focusedMoveId ? null : move._id)
+                onFocusTask(task._id === focusedTaskId ? null : task._id)
               }
             />
           ))}
         </ul>
       )}
 
-      <AddMove onAdd={onAddMove} />
+      <AddTask onAdd={onAddTask} />
     </section>
   );
 }
 
 /**
- * One Move: a line, not a card. The radio says whether it is the one; the
+ * One Task: a line, not a card. The radio says whether it is the one; the
  * focused line is tinted in place so the list never reorders to show it.
  */
-function MoveRow({
-  move,
+function TaskRow({
+  task,
   focused,
   onEdit,
   onRemove,
   onComplete,
   onToggleFocus,
 }: {
-  move: Move;
+  task: Task;
   focused: boolean;
   onEdit: (text: string) => void;
   onRemove: () => void;
@@ -141,7 +141,7 @@ function MoveRow({
     <li
       data-focused={focused || undefined}
       className={cn(
-        "group/move flex min-h-10 items-center gap-2 rounded-lg px-1.5 py-1 transition-colors motion-reduce:transition-none xl:min-h-9",
+        "group/task flex min-h-10 items-center gap-2 rounded-lg px-1.5 py-1 transition-colors motion-reduce:transition-none xl:min-h-9",
         focused
           ? "bg-brand-accent/12 font-medium"
           : "text-foreground/90 hover:bg-muted/50",
@@ -151,8 +151,8 @@ function MoveRow({
         type="button"
         onClick={onToggleFocus}
         aria-pressed={focused}
-        aria-label={focused ? "Unfocus this move" : "Focus this move"}
-        title={focused ? "Unfocus this move" : "Focus this move"}
+        aria-label={focused ? "Unfocus this task" : "Focus this task"}
+        title={focused ? "Unfocus this task" : "Focus this task"}
         className="group/radio flex size-8 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40 xl:size-6"
       >
         <span
@@ -172,11 +172,11 @@ function MoveRow({
 
       <span className="min-w-0 flex-1">
         <EditableField
-          value={move.text}
+          value={task.text}
           onSave={(text) => {
             if (text) onEdit(text);
           }}
-          inputAriaLabel="Move"
+          inputAriaLabel="Task"
           className="min-h-0 py-0.5 text-sm leading-snug"
           displayClassName="border-transparent hover:bg-transparent"
         />
@@ -189,9 +189,9 @@ function MoveRow({
           variant="ghost"
           size="icon-xs"
           onClick={onRemove}
-          aria-label="Remove move"
+          aria-label="Remove task"
           title="Remove"
-          className="size-7 text-muted-foreground/50 transition-opacity hover:text-destructive motion-reduce:transition-none xl:size-6 xl:opacity-0 xl:group-focus-within/move:opacity-100 xl:group-hover/move:opacity-100"
+          className="size-7 text-muted-foreground/50 transition-opacity hover:text-destructive motion-reduce:transition-none xl:size-6 xl:opacity-0 xl:group-focus-within/task:opacity-100 xl:group-hover/task:opacity-100"
         >
           <X />
         </Button>
@@ -199,7 +199,7 @@ function MoveRow({
           variant="ghost"
           size="icon-xs"
           onClick={onComplete}
-          aria-label="Complete move"
+          aria-label="Complete task"
           title="Complete"
           className="size-8 shrink-0 rounded-full border border-condition-healthy/40 text-transparent hover:bg-condition-healthy/10 hover:text-condition-healthy focus-visible:text-condition-healthy xl:size-6"
         >
@@ -210,8 +210,8 @@ function MoveRow({
   );
 }
 
-/** The foot of the list: capture a Move with nothing to decide. */
-function AddMove({ onAdd }: { onAdd: (text: string) => void }) {
+/** The foot of the list: capture a Task with nothing to decide. */
+function AddTask({ onAdd }: { onAdd: (text: string) => void }) {
   const [draft, setDraft] = useState("");
 
   const commit = () => {
@@ -241,8 +241,8 @@ function AddMove({ onAdd }: { onAdd: (text: string) => void }) {
           }
           if (event.key === "Escape") setDraft("");
         }}
-        aria-label="Add a move"
-        placeholder="Add a move…"
+        aria-label="Add a task"
+        placeholder="Add a task…"
         className="h-9 w-full min-w-0 rounded-md border border-transparent bg-transparent px-0 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-border/60 focus:bg-muted/30 focus:px-1.5 motion-reduce:transition-none xl:h-7"
       />
     </div>
@@ -261,7 +261,7 @@ const FOLLOW_UP_TONE = {
 
 /**
  * A satellite riding the list's rule: when this Thread should come back, not a
- * deadline on any one Move.
+ * deadline on any one Task.
  */
 function FollowUpSatellite({
   followUp,

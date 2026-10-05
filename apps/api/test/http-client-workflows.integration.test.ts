@@ -1,4 +1,4 @@
-import type { ApplicationClient, MoveId } from "@vita-os/contracts";
+import type { ApplicationClient, TaskId } from "@vita-os/contracts";
 
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -158,53 +158,53 @@ describe("Threads through the HTTP client", () => {
     );
     expect(thread).toMatchObject({ state: "open", order: 0 });
 
-    const callClinic = "move-call-clinic" as MoveId;
-    const bookSlot = "move-book-slot" as MoveId;
+    const callClinic = "task-call-clinic" as TaskId;
+    const bookSlot = "task-book-slot" as TaskId;
     const one = await value(
-      client.addMove({
+      client.addTask({
         threadId: thread._id,
-        moveId: callClinic,
+        taskId: callClinic,
         text: "Call clinic",
         expectedRevision: thread.revision,
       }),
     );
     const two = await value(
-      client.addMove({
+      client.addTask({
         threadId: thread._id,
-        moveId: bookSlot,
+        taskId: bookSlot,
         text: "Book appointment",
         expectedRevision: one.revision,
       }),
     );
     const focused = await value(
-      client.focusMove({
+      client.focusTask({
         threadId: thread._id,
-        moveId: callClinic,
+        taskId: callClinic,
         expectedRevision: two.revision,
       }),
     );
-    expect(focused.focusedMoveId).toBe(callClinic);
+    expect(focused.focusedTaskId).toBe(callClinic);
 
     const completed = await value(
-      client.completeMove({
+      client.completeTask({
         threadId: thread._id,
-        moveId: callClinic,
+        taskId: callClinic,
         expectedRevision: focused.revision,
       }),
     );
-    expect(completed.moves).toEqual([
+    expect(completed.tasks).toEqual([
       { _id: bookSlot, text: "Book appointment" },
     ]);
-    expect(completed).not.toHaveProperty("focusedMoveId");
+    expect(completed).not.toHaveProperty("focusedTaskId");
 
     const removed = await value(
-      client.removeMove({
+      client.removeTask({
         threadId: thread._id,
-        moveId: bookSlot,
+        taskId: bookSlot,
         expectedRevision: completed.revision,
       }),
     );
-    expect(removed).not.toHaveProperty("moves");
+    expect(removed).not.toHaveProperty("tasks");
 
     const activity = await value(
       client.getThreadActivityPage({ threadId: thread._id, limit: 20 }),
@@ -231,8 +231,8 @@ describe("Threads through the HTTP client", () => {
     ).resolves.toEqual({ ok: true, value: { acknowledged: true } });
   });
 
-  it("reports a Move command against a stale Thread as a conflict", async () => {
-    const client = clientFor(await createSession("client-move-conflict"));
+  it("reports a Task command against a stale Thread as a conflict", async () => {
+    const client = clientFor(await createSession("client-task-conflict"));
     const area = await value(
       client.createArea({
         name: "Health",
@@ -247,9 +247,9 @@ describe("Threads through the HTTP client", () => {
     );
 
     await expect(
-      client.addMove({
+      client.addTask({
         threadId: thread._id,
-        moveId: "move-too-late" as MoveId,
+        taskId: "task-too-late" as TaskId,
         text: "Too late",
         expectedRevision: thread.revision,
       }),
@@ -257,7 +257,7 @@ describe("Threads through the HTTP client", () => {
       ok: false,
       error: {
         code: "conflict",
-        message: "The Thread's Moves have changed.",
+        message: "The Thread's Tasks have changed.",
         retryable: false,
       },
     });

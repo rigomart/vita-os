@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type {
   ApplicationClient,
   AreaId,
-  MoveId,
+  TaskId,
   NoteId,
   ThreadId,
   ThreadNoteId,
@@ -27,8 +27,8 @@ const thread = {
   areaId: area._id,
   order: 0,
   state: "open" as const,
-  moves: [{ _id: "move-1" as MoveId, text: "Call clinic" }],
-  focusedMoveId: "move-1" as MoveId,
+  tasks: [{ _id: "task-1" as TaskId, text: "Call clinic" }],
+  focusedTaskId: "task-1" as TaskId,
   createdAt: 2,
   revision: 3,
 };
@@ -71,25 +71,25 @@ const client = {
   createThread: async () => ({ ok: true, value: thread }),
   updateThread: async () => ({ ok: true, value: thread }),
   removeThread: async () => ({ ok: true, value: commandAcknowledged }),
-  addMove: async (input) => ({
+  addTask: async (input) => ({
     ok: true,
     value: {
       ...thread,
-      moves: [...thread.moves, { _id: input.moveId, text: input.text }],
+      tasks: [...thread.tasks, { _id: input.taskId, text: input.text }],
     },
   }),
-  editMove: async () => ({ ok: true, value: thread }),
-  removeMove: async () => ({ ok: true, value: thread }),
-  completeMove: async () => ({
+  editTask: async () => ({ ok: true, value: thread }),
+  removeTask: async () => ({ ok: true, value: thread }),
+  completeTask: async () => ({
     ok: true,
-    value: { ...thread, moves: [], focusedMoveId: undefined },
+    value: { ...thread, tasks: [], focusedTaskId: undefined },
   }),
-  focusMove: async (input) => ({
+  focusTask: async (input) => ({
     ok: true,
     value:
-      input.moveId === null
-        ? { ...thread, focusedMoveId: undefined }
-        : { ...thread, focusedMoveId: input.moveId },
+      input.taskId === null
+        ? { ...thread, focusedTaskId: undefined }
+        : { ...thread, focusedTaskId: input.taskId },
   }),
 
   getThreadActivityPage: async () => ({
@@ -147,9 +147,9 @@ const contract: ApplicationClient = client;
 describe("the application contract", () => {
   it("names each workflow as one asynchronous operation", async () => {
     await expect(
-      client.addMove({
+      client.addTask({
         threadId: thread._id,
-        moveId: "move-2" as MoveId,
+        taskId: "task-2" as TaskId,
         text: "Book slot",
         expectedRevision: 3,
       }),
@@ -157,19 +157,19 @@ describe("the application contract", () => {
       ok: true,
       value: {
         ...thread,
-        moves: [...thread.moves, { _id: "move-2", text: "Book slot" }],
+        tasks: [...thread.tasks, { _id: "task-2", text: "Book slot" }],
       },
     });
 
     await expect(
-      contract.focusMove({
+      contract.focusTask({
         threadId: thread._id,
-        moveId: null,
+        taskId: null,
         expectedRevision: 3,
       }),
     ).resolves.toEqual({
       ok: true,
-      value: { ...thread, focusedMoveId: undefined },
+      value: { ...thread, focusedTaskId: undefined },
     });
   });
 

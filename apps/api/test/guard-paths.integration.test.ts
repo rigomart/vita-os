@@ -438,6 +438,71 @@ describe("record isolation across encoded record IDs", () => {
   });
 });
 
+describe("Task routes across encoded IDs and the compatibility spelling", () => {
+  it("keeps another user's Tasks unreachable on /tasks and /moves however IDs are spelled", async () => {
+    const owner = await createSession("task-isolation-owner");
+    const intruder = await createSession("task-isolation-intruder");
+    const thread = await succeed<Thread>("/v1/threads", {
+      method: "POST",
+      session: owner,
+      body: { title: "Private plan" },
+    });
+    let current = await succeed<Thread>(`/v1/threads/${thread._id}/tasks`, {
+      method: "POST",
+      session: owner,
+      body: { taskId: "private-task", text: "Private", expectedRevision: 0 },
+    });
+
+    // `moves` is the compatibility spelling (ADR 0033, removal in #402).
+    const spellings = ["tasks", "moves"].flatMap((collection) =>
+      [thread._id, encodeEvery(thread._id)].flatMap((threadId) =>
+        ["private-task", encodeEvery("private-task")].map(
+          (taskId) => `/v1/threads/${threadId}/${collection}/${taskId}`,
+        ),
+      ),
+    );
+
+    for (const path of spellings) {
+      for (const [suffix, method, body] of [
+        ["", "PATCH", { text: "Taken", expectedRevision: current.revision }],
+        ["/complete", "POST", { expectedRevision: current.revision }],
+        ["", "DELETE", { expectedRevision: current.revision }],
+      ] as const) {
+        const answer = await call(`${path}${suffix}`, {
+          method,
+          session: intruder,
+          body,
+        });
+        expect({ path, suffix, status: answer.status }).toEqual({
+          path,
+          suffix,
+          status: 404,
+        });
+        expectError(answer, { status: 404, code: "not_found" });
+      }
+    }
+    expect(await succeed<Thread[]>("/v1/threads", { session: owner })).toEqual([
+      expect.objectContaining({
+        _id: thread._id,
+        tasks: [{ _id: "private-task", text: "Private" }],
+        revision: current.revision,
+      }),
+    ]);
+
+    // The same spellings do address the Task, so the 404s come from ownership.
+    for (const [index, path] of spellings.entries()) {
+      current = await succeed<Thread>(path, {
+        method: "PATCH",
+        session: owner,
+        body: { text: `Edit ${index}`, expectedRevision: current.revision },
+      });
+      expect(current.tasks).toEqual([
+        { _id: "private-task", text: `Edit ${index}` },
+      ]);
+    }
+  });
+});
+
 describe("CORS on auth path spellings", () => {
   it.each(
     rows([

@@ -87,7 +87,7 @@ export {
 } from "./thread-notes/hooks";
 export {
   useCreateThread,
-  useMoveCommand,
+  useTaskCommand,
   useOpenThreads,
   useRemoveThread,
   useThreadActivity,
@@ -96,4 +96,4 @@ export {
   type ThreadActivityResult,
   type UpdateThreadVariables,
 } from "./threads/hooks";
-export { useCompleteMove, useMoves } from "./threads/use-moves";
+export { useCompleteTask, useTasks } from "./threads/use-tasks";

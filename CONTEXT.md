@@ -13,7 +13,7 @@ Plain words first. A familiar thing gets its familiar word; a term is coined onl
 The _Avoid_ line under a term lists words not to use **as names for that concept** in the interface, the code, and the rules below, so one concept keeps one name. It does not ban the word. Everyday words are fine in conversation, explanations, issues and ADRs, and a familiar comparison often explains a term faster than its definition:
 
 - a **Thread** is like a project that may never have a plan or a finish line;
-- a **Move** is like a task, with no priority and no order;
+- a **Note** is like a sticky note: no title, no type, kept where you will see it;
 - a **Follow-up date** is like a due date that never nags;
 - an **Area** is like a single tag.
 
@@ -45,17 +45,17 @@ _Avoid_: Completed, dropped, closed.
 An optional current-orientation note that explains what a **Thread** is about.
 _Avoid_: Definition of Done, description, brief.
 
-**Move**:
+**Task**:
 One useful action that could move a **Thread** forward: plain text, with no date and no done state.
-_Avoid_: Next Move, task, step, subtask, todo.
+_Avoid_: Move (former name), Next Move, step, subtask, todo.
 
-**Moves**:
-The unordered set of peer **Moves** a **Thread** holds. They are shown in the order they were captured, which is never a priority.
+**Tasks**:
+The unordered set of peer **Tasks** a **Thread** holds. They are shown in the order they were captured, which is never a priority.
 _Avoid_: Up Next, queue, next moves, action queue, checklist.
 
-**Focused Move**:
-The one **Move** the user has singled out on a **Thread**, when they have. Focus is emphasis only.
-_Avoid_: Next Move, priority, current move.
+**Focused Task**:
+The one **Task** the user has singled out on a **Thread**, when they have. Focus is emphasis only.
+_Avoid_: Focused Move (former name), Next Move, priority.
 
 **Follow-up date**:
 A soft resurfacing point on a **Thread** or **Standalone Note** that brings it back into awareness around a chosen time: a day, optionally with a time of day that orders it within that day (ADR 0027).
@@ -106,10 +106,10 @@ _Avoid_: Archive (as a place), trash, completed list.
 - Users can rename, re-icon, reorder, and delete **Areas**. Deleting an Area removes its label from every Thread that carries it, open or resolved, and leaves the Threads otherwise unchanged.
 - An **Area** has one **Area Icon**.
 - An **Area** never changes a **Thread**'s derived attention state.
-- A **Thread** has zero or one **Summary**, zero or more **Moves**, zero or one **Focused Move**, zero or one **Follow-up date**, zero or more **Thread Notes**, and one **Activity Log**.
-- A **Focused Move** is always one of its **Thread**'s **Moves**. Capturing a **Move** never focuses it; focusing is a separate choice, and every **Move** may stay unfocused.
-- **Moves** have no dates, no done states, no nesting, and no manual order. A step that needs a date is a **Follow-up date** or its own **Thread**.
-- A **Resolved Thread** holds no **Moves** and gains none.
+- A **Thread** has zero or one **Summary**, zero or more **Tasks**, zero or one **Focused Task**, zero or one **Follow-up date**, zero or more **Thread Notes**, and one **Activity Log**.
+- A **Focused Task** is always one of its **Thread**'s **Tasks**. Capturing a **Task** never focuses it; focusing is a separate choice, and every **Task** may stay unfocused.
+- **Tasks** have no dates, no done states, no nesting, and no manual order. A step that needs a date is a **Follow-up date** or its own **Thread**.
+- A **Resolved Thread** holds no **Tasks** and gains none.
 - A **Thread** is either **Open** or **Resolved**.
 - A **Thread**'s **Area** may be added, changed, or removed. A **Resolved Thread** keeps its Area.
 - An **Activity Log** has zero or more automatically recorded **Activity Log Entries**.
@@ -126,16 +126,16 @@ _Avoid_: Archive (as a place), trash, completed list.
 
 - **Open Threads** and open **Standalone Notes** share one axis on the **Dashboard**: three time columns — **Now**, **This week**, **Later** — beside a margin for everything unscheduled. A **Follow-up date** is the same signal on either kind of content, so a dated Note sits beside a dated Thread. The form is recorded in ADR 0017, which supersedes ADR 0014; the state language still comes from ADR 0005.
 - **Now** holds a **Follow-up date** today or earlier — overdue and due-today together. **This week** is the next six days. **Later** is day seven onward.
-- The unscheduled margin reads in three labelled runs: **Ready to move** (**Threads with Moves**), **Open** (plain **Open Threads**), then **Notes** (**Standalone Notes** with no **Follow-up date**).
-- **A date outranks undated Moves.** A **Thread with Moves** and no **Follow-up date** never appears in **Now**; it leads the unscheduled margin instead. This settles the ordering question ADR 0005 left open.
-- A **Follow-up date** takes precedence when a **Thread** also has **Moves**.
-- **Threads with Moves** have at least one **Move** and no **Follow-up date**, whether or not a Move is focused. Plain **Open Threads** have neither.
+- The unscheduled margin reads in three labelled runs: **Ready to move** (**Threads with Tasks**), **Open** (plain **Open Threads**), then **Notes** (**Standalone Notes** with no **Follow-up date**).
+- **A date outranks undated Tasks.** A **Thread with Tasks** and no **Follow-up date** never appears in **Now**; it leads the unscheduled margin instead. This settles the ordering question ADR 0005 left open.
+- A **Follow-up date** takes precedence when a **Thread** also has **Tasks**.
+- **Threads with Tasks** have at least one **Task** and no **Follow-up date**, whether or not a Task is focused. Plain **Open Threads** have neither.
 - Dated items are ordered soonest-first within a column; the user's **Thread** order breaks ties and orders the undated runs, and undated **Notes** read newest-first.
 - **A time orders; it never places.** Within a day, a date alone comes first, then timed items in time order. A time never moves an item to another day, column, or heading, never makes it late before its day ends, and never pings. A date alone is stored as local midnight, so midnight reads as no time (ADR 0027).
 - Each dated column groups its items under headings for when they come due, the grain widening with distance: **Now** reads Late then Today; **This week** gives each day with something due its own heading (Tomorrow, then the weekday and how many days out); **Later** reads in weeks, then calendar months (ADR 0026).
 - Every **Open Thread** and open **Standalone Note** appears in exactly one column or run. Nothing is capped; each column scrolls itself. **Later** starts folded on every visit, showing how many items it holds, when the next arrives, and, on a wide screen, a horizon marking when each comes due; folding hides its cards, never that they exist, and each walks into **This week** on its own once it is six days out (ADR 0026).
-- An **Open Thread** with no **Moves** and no **Follow-up date** is valid; it is not automatically overdue, stale, or broken.
-- **Focus never affects attention**: the **Dashboard** derives from whether a **Thread** has **Moves** and from its **Follow-up date**. Neither the **Focused Move** nor the number of **Moves** moves a Thread between columns or changes its place.
+- An **Open Thread** with no **Tasks** and no **Follow-up date** is valid; it is not automatically overdue, stale, or broken.
+- **Focus never affects attention**: the **Dashboard** derives from whether a **Thread** has **Tasks** and from its **Follow-up date**. Neither the **Focused Task** nor the number of **Tasks** moves a Thread between columns or changes its place.
 - Opening or reviewing a **Thread** does not clear its **Follow-up date**; the user must clear, reschedule, or resolve it explicitly.
 
 ## Dashboard Structure
@@ -143,9 +143,9 @@ _Avoid_: Archive (as a place), trash, completed list.
 - The palette's **History** chip switches to two groups: **Resolved threads**, newest resolution first, and **Archived notes**, most recently archived first, one bounded page until a search reaches every archived **Standalone Note** by body. Choosing a **Thread** opens its pane, where it can be reopened; choosing a **Note** opens the **Note view** over the current page, where it can be read, unarchived, or deleted (ADR 0029, ADR 0031).
 - The Dashboard has one attention-first view and no tabs or secondary schedule. It fills the viewport: the columns are full height and scroll independently, so a busy column never pushes the others down and a quiet one never leaves a hole.
 - One row above the board filters it: `All · each Area with its Open Thread count · No area`, in the user's Area order, then **Notes** with its open **Standalone Note** count, set apart from the Areas. Options with nothing open stay in the row, muted; **No area** is left out while there are no Areas. Choosing an Area shows only its **Open Threads** across every column and run, and any Area filter hides **Standalone Notes**; **No area** shows only unlabeled Threads; **Notes** shows only open **Standalone Notes**, laid out by the same rules. The filter lives in the URL as one of two parameters, never both: `?area=<slug>` or `?area=none`, or `?show=notes`, which no Area slug can collide with. It survives the in-place Thread pane and the **Note view**, and falls back to All for an unknown value. `1..9` select the matching Area and `0` returns to All; on a phone the row folds into one dropdown (ADR 0021, ADR 0031).
-- A **Thread** card has two fixed rows that never trade places. The first is always the **Thread** title. The second is the move slot: the **Focused Move**, else the only **Move**, else — with several **Moves** and none focused — "N moves · none focused", because the card must not invent a headline the user never chose. A quiet count of pips, the focused one filled, says how many **Moves** there are. A **Thread** with no **Moves** is its title alone. A labeled Thread shows its **Area** as a small neutral tag, icon and name; an unlabeled Thread shows none. Colour on the board belongs to time. Dates are compact tokens rather than phrases, and a card under a heading that names its day (Today, or a day of **This week**) leaves the date to the heading, showing only its time when it has one.
-- The Dashboard **can act on attention in place**: a card's rail — shown on hover or keyboard focus — completes the **Move** the card shows, and only that one, or sets, changes, and clears the **Follow-up date**; a **Standalone Note** offers Archive and its **Follow-up date**. Focusing, removing, and choosing among **Moves**, changing a **Thread**'s **Area**, editing its text, and resolving it still happen in **Thread** detail, where the Area is a chip in the header.
-- **Thread** detail lists every **Move** in capture order. Focus is a radio beside each Move: pressing it focuses that Move, and pressing the filled one unfocuses it. The **Focused Move** is tinted where it sits.
+- A **Thread** card has two fixed rows that never trade places. The first is always the **Thread** title. The second is the task slot: the **Focused Task**, else the only **Task**, else — with several **Tasks** and none focused — "N tasks · none focused", because the card must not invent a headline the user never chose. A quiet count of pips, the focused one filled, says how many **Tasks** there are. A **Thread** with no **Tasks** is its title alone. A labeled Thread shows its **Area** as a small neutral tag, icon and name; an unlabeled Thread shows none. Colour on the board belongs to time. Dates are compact tokens rather than phrases, and a card under a heading that names its day (Today, or a day of **This week**) leaves the date to the heading, showing only its time when it has one.
+- The Dashboard **can act on attention in place**: a card's rail — shown on hover or keyboard focus — completes the **Task** the card shows, and only that one, or sets, changes, and clears the **Follow-up date**; a **Standalone Note** offers Archive and its **Follow-up date**. Focusing, removing, and choosing among **Tasks**, changing a **Thread**'s **Area**, editing its text, and resolving it still happen in **Thread** detail, where the Area is a chip in the header.
+- **Thread** detail lists every **Task** in capture order. Focus is a radio beside each Task: pressing it focuses that Task, and pressing the filled one unfocuses it. The **Focused Task** is tinted where it sits.
 - Opening a card summons **Thread** detail in place; opening a **Note** opens the **Note view** over the current page.
 - When nothing is open at all the board is replaced by a single line saying nothing is asking.
 - Opening a **Thread** from any surface — the **Dashboard** or the palette — shows its detail pane in place over the current page; closing the pane returns the user to where they were. A Thread's own address is `/threads/$threadSlug`, which opens the pane over the Dashboard. The in-place behavior is recorded in ADR 0007.
@@ -171,23 +171,23 @@ _Avoid_: Archive (as a place), trash, completed list.
 - Adding a **Standalone Note** to a **Thread**, or starting a **Thread** from one, counts as capturing a **Thread Note**. It adds an **Activity Log** entry only when the Note's date changes the **Thread**'s **Follow-up date**, the same entry any Follow-up change adds.
 - Editing, archiving, unarchiving, or deleting an existing **Thread Note** changes only the Note and does not update Thread activity.
 - Setting, changing, or intentionally clearing a **Thread**'s saved **Follow-up date** adds an **Activity Log** entry.
-- Completing any **Move**, focused or not, removes it and adds an **Activity Log** entry. Completing the **Focused Move** leaves the **Thread** unfocused: nothing is promoted. Completing every **Move** leaves the **Thread** open.
-- Adding, editing, removing, focusing, and unfocusing **Moves** add no **Activity Log** entries. Removing the **Focused Move** leaves the **Thread** unfocused, as completing it does.
-- **Activity Log** entries written about a **Next Move**, before **Moves** replaced it, keep their wording and label.
+- Completing any **Task**, focused or not, removes it and adds an **Activity Log** entry. Completing the **Focused Task** leaves the **Thread** unfocused: nothing is promoted. Completing every **Task** leaves the **Thread** open.
+- Adding, editing, removing, focusing, and unfocusing **Tasks** add no **Activity Log** entries. Removing the **Focused Task** leaves the **Thread** unfocused, as completing it does.
+- **Activity Log** entries written under a former name (**Next Move**, **Move**) keep their wording and label.
 - Adding, changing, or removing a **Thread**'s **Area** adds an **Activity Log** entry. Deleting an **Area** adds none: the label disappearing is not a change the user made to each Thread.
 - Resolving a **Thread** adds an **Activity Log** entry.
 - Resolving a **Thread** may include an optional resolution note; when present, it becomes an **Activity Log** entry.
-- Resolving a **Thread** clears its **Moves**, its **Focused Move**, and its **Follow-up date**; when **Moves** are discarded this way, the resolution entry names them in capture order.
+- Resolving a **Thread** clears its **Tasks**, its **Focused Task**, and its **Follow-up date**; when **Tasks** are discarded this way, the resolution entry names them in capture order.
 - Reopening a **Resolved Thread** makes it an **Open Thread** and adds an **Activity Log** entry.
-- Reopening a **Thread** does not restore old **Follow-up dates**, discarded **Moves**, or a focus automatically.
+- Reopening a **Thread** does not restore old **Follow-up dates**, discarded **Tasks**, or a focus automatically.
 
 ## Example Dialogue
 
 > **Dev:** "Does a captured **Note** need to become an action?"
 > **Builder:** "No. Information and thoughts are valid Notes as soon as they are saved. No classification or processing is required."
 
-> **Dev:** "If a **Thread** has no **Moves** and no **Follow-up date**, is it broken?"
-> **Builder:** "No. A plain **Open Thread** is valid. It means the situation still matters, but there is no clear move or resurfacing date right now."
+> **Dev:** "If a **Thread** has no **Tasks** and no **Follow-up date**, is it broken?"
+> **Builder:** "No. A plain **Open Thread** is valid. It means the situation still matters, but there is no clear task or resurfacing date right now."
 
 > **Dev:** "Does a **Follow-up date** clear when I open the **Thread**?"
 > **Builder:** "No. Reading the **Thread** is not the same as handling it. The user must clear, reschedule, or resolve it explicitly."
@@ -197,8 +197,10 @@ _Avoid_: Archive (as a place), trash, completed list.
 Old names survive in stored data, code, and older ADRs. Each line maps one to the current term.
 
 - "Project": former name for a **Thread**. A Thread may have no plan or finish line.
-- "Task", "Inbox": former capture vocabulary; use **Note** (issue 313). The **Notes** collection that replaced the Inbox was retired by ADR 0031: Notes live on the **Dashboard**.
-- "Next Move", "Up Next", "action queue", "next moves": former names; use **Moves** (ADR 0022). The group of **Threads** that was "Next moves" is **Ready to move**. **Activity Log** entries written under the old names keep their wording.
+- "Inbox": former capture name for a **Note** (issue 313). The **Notes** collection that replaced the Inbox was retired by ADR 0031: Notes live on the **Dashboard**.
+- "Task": named Inbox items before issue 313. It now names a **Thread**'s actions (ADR 0033), and a **Note** is never called a task.
+- "Move", "Moves", "Focused Move": former names; use **Task**, **Tasks**, **Focused Task** (ADR 0033). Stored names keep "move": `moves_json`, `focused_move_id`, `move_completed`, `next_move_change`.
+- "Next Move", "Up Next", "action queue", "next moves": former names; use **Tasks** (ADR 0022, ADR 0033). The group of **Threads** that was "Next moves" is **Ready to move**. **Activity Log** entries written under the old names keep their wording.
 - "Project log": former name for a **Thread**'s timeline; use **Activity Log**. Manual continuity belongs in **Thread Notes**.
 - "Health status", "Condition", "Standard": removed from **Area** (issue 371, ADR 0021). A part of life that needs a periodic look gets a **Thread** with a **Follow-up date**.
 - "Definition of Done": project-management language, not a **Thread** concept; use **Summary** or the **Activity Log**.

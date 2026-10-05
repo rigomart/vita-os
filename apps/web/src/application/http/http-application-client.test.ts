@@ -1,4 +1,4 @@
-import type { AreaId, MoveId, NoteId, ThreadId } from "@vita-os/contracts";
+import type { AreaId, TaskId, NoteId, ThreadId } from "@vita-os/contracts";
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -13,11 +13,11 @@ const detail = {
     areaId: "area-1",
     order: 2,
     state: "open",
-    moves: [
-      { _id: "move/1", text: "Call clinic" },
-      { _id: "move-2", text: "Book appointment" },
+    tasks: [
+      { _id: "task/1", text: "Call clinic" },
+      { _id: "task-2", text: "Book appointment" },
     ],
-    focusedMoveId: "move/1",
+    focusedTaskId: "task/1",
     followUp: 1_800_000_000_000,
     lastActivityAt: 1_700_000_000_000,
     lastActivityContent: "Captured next move",
@@ -75,7 +75,7 @@ describe("createHttpApplicationClient", () => {
     await expect(client.listAreas()).resolves.toEqual({ ok: true, value: [] });
   });
 
-  it("encodes routes, queries, and Move commands while including cookies", async () => {
+  it("encodes routes, queries, and Task commands while including cookies", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse(detail))
@@ -98,16 +98,16 @@ describe("createHttpApplicationClient", () => {
       }),
     ).resolves.toEqual({ ok: true, value: activityPage });
     await expect(
-      client.completeMove({
+      client.completeTask({
         threadId: "thread/with/slashes" as ThreadId,
-        moveId: "move/1" as MoveId,
+        taskId: "task/1" as TaskId,
         expectedRevision: 0,
       }),
     ).resolves.toEqual({ ok: true, value: detail.thread });
     await expect(
-      client.focusMove({
+      client.focusTask({
         threadId: "thread/with/slashes" as ThreadId,
-        moveId: null,
+        taskId: null,
         expectedRevision: 0,
       }),
     ).resolves.toEqual({ ok: true, value: detail.thread });
@@ -124,7 +124,7 @@ describe("createHttpApplicationClient", () => {
     );
     expect(fetchImpl).toHaveBeenNthCalledWith(
       3,
-      "https://api.test/v1/threads/thread%2Fwith%2Fslashes/moves/move%2F1/complete",
+      "https://api.test/v1/threads/thread%2Fwith%2Fslashes/tasks/task%2F1/complete",
       expect.objectContaining({
         method: "POST",
         credentials: "include",
@@ -137,7 +137,7 @@ describe("createHttpApplicationClient", () => {
       expect.objectContaining({
         method: "PUT",
         credentials: "include",
-        body: JSON.stringify({ moveId: null, expectedRevision: 0 }),
+        body: JSON.stringify({ taskId: null, expectedRevision: 0 }),
       }),
     );
   });

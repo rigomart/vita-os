@@ -1,4 +1,4 @@
-import type { AreaId, Move, MoveId, ThreadState } from "@vita-os/contracts";
+import type { AreaId, Task, TaskId, ThreadState } from "@vita-os/contracts";
 
 import {
   type AutoActivityLogEntry,
@@ -12,8 +12,8 @@ export interface ThreadChangeState {
   summary?: string;
   areaId?: AreaId;
   state: ThreadState;
-  moves?: Move[];
-  focusedMoveId?: MoveId;
+  tasks?: Task[];
+  focusedTaskId?: TaskId;
   followUp?: number;
 }
 
@@ -31,8 +31,8 @@ const PATCHABLE_FIELDS = [
   "slug",
   "summary",
   "areaId",
-  "moves",
-  "focusedMoveId",
+  "tasks",
+  "focusedTaskId",
   "followUp",
   "state",
 ] as const satisfies readonly (keyof ThreadChangeState)[];
@@ -135,19 +135,19 @@ export function buildThreadPatchLogEntries(
 }
 
 /**
- * Resolving takes the Thread's Moves with it, so the entry that records the
- * resolution names the Moves being dropped, in capture order — otherwise they
+ * Resolving takes the Thread's Tasks with it, so the entry that records the
+ * resolution names the Tasks being dropped, in capture order — otherwise they
  * would vanish with nothing in the Activity Log to show for them.
  */
 function buildResolutionContent(
   note: string | undefined,
-  discardedMoves: readonly Move[],
+  discardedTasks: readonly Task[],
 ): string {
   const resolution = note ? `Resolved thread: ${note}` : "Resolved thread";
-  if (discardedMoves.length === 0) return resolution;
+  if (discardedTasks.length === 0) return resolution;
 
-  const moves = discardedMoves.map((move) => `"${move.text}"`).join(", ");
-  return `${resolution} — discarded moves: ${moves}`;
+  const tasks = discardedTasks.map((task) => `"${task.text}"`).join(", ");
+  return `${resolution} — discarded tasks: ${tasks}`;
 }
 
 /**
@@ -167,13 +167,13 @@ export function buildThreadLifecyclePatch(
     return {
       patch: {
         state: "resolved",
-        moves: undefined,
-        focusedMoveId: undefined,
+        tasks: undefined,
+        focusedTaskId: undefined,
         followUp: undefined,
       },
       log: {
         type: "state_change",
-        content: buildResolutionContent(note, thread.moves ?? []),
+        content: buildResolutionContent(note, thread.tasks ?? []),
         previousValue: thread.state,
         newValue: "resolved",
       },

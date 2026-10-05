@@ -36,18 +36,18 @@ export {
 export { newRecordId } from "./record-id";
 export { ConflictError, ValidationError } from "./errors";
 export {
-  decideAddMove,
-  decideCompleteMove,
-  decideEditMove,
-  decideFocusMove,
-  decideRemoveMove,
-  hasMoves,
-  leadMove,
-  requireMoveId,
-  requireMoveText,
-  requireOpenForMoves,
-  type MoveState,
-} from "./moves";
+  decideAddTask,
+  decideCompleteTask,
+  decideEditTask,
+  decideFocusTask,
+  decideRemoveTask,
+  hasTasks,
+  leadTask,
+  requireTaskId,
+  requireTaskText,
+  requireOpenForTasks,
+  type TaskState,
+} from "./tasks";
 export {
   generateSlug,
   RESERVED_AREA_SLUGS,

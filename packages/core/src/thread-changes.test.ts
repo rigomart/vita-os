@@ -1,4 +1,4 @@
-import type { AreaId, MoveId } from "@vita-os/contracts";
+import type { AreaId, TaskId } from "@vita-os/contracts";
 
 import { describe, expect, it } from "vitest";
 
@@ -26,34 +26,34 @@ function makeThread(
 
 const may20 = new Date("2026-05-20").getTime();
 
-const callClinic = { _id: "move-1" as MoveId, text: "Call clinic" };
-const bookSlot = { _id: "move-2" as MoveId, text: "Book slot" };
+const callClinic = { _id: "task-1" as TaskId, text: "Call clinic" };
+const bookSlot = { _id: "task-2" as TaskId, text: "Book slot" };
 const jun1 = new Date("2026-06-01").getTime();
 
 describe("sanitizeThreadPatch", () => {
   it("keeps only patchable fields, presence and all", () => {
     const patch = sanitizeThreadPatch({
       title: "New",
-      focusedMoveId: undefined,
+      focusedTaskId: undefined,
       id: "client-thread-id",
       key: "dashboard-row-key",
     } as never);
 
-    expect(Object.keys(patch).sort()).toEqual(["focusedMoveId", "title"]);
-    expect(patch).toEqual({ title: "New", focusedMoveId: undefined });
+    expect(Object.keys(patch).sort()).toEqual(["focusedTaskId", "title"]);
+    expect(patch).toEqual({ title: "New", focusedTaskId: undefined });
   });
 
   it("leaves a field absent when the caller never named it", () => {
-    expect(sanitizeThreadPatch({ title: "New" })).not.toHaveProperty("moves");
+    expect(sanitizeThreadPatch({ title: "New" })).not.toHaveProperty("tasks");
   });
 });
 
 describe("buildThreadPatchLogEntries", () => {
-  it("writes nothing for Moves changing, which are logged by their own rules", () => {
+  it("writes nothing for Tasks changing, which are logged by their own rules", () => {
     expect(
       buildThreadPatchLogEntries(makeThread(), {
-        moves: [callClinic],
-        focusedMoveId: callClinic._id,
+        tasks: [callClinic],
+        focusedTaskId: callClinic._id,
       }),
     ).toEqual([]);
   });
@@ -116,7 +116,7 @@ describe("buildThreadPatchLogEntries", () => {
     ).toEqual([]);
   });
 
-  it("records an Area move only when both Area names are known", () => {
+  it("records an Area task only when both Area names are known", () => {
     const patch = { areaId: "area2" as AreaId };
 
     expect(
@@ -177,8 +177,8 @@ describe("buildThreadLifecyclePatch", () => {
     expect(
       buildThreadLifecyclePatch(
         makeThread({
-          moves: [callClinic],
-          focusedMoveId: callClinic._id,
+          tasks: [callClinic],
+          focusedTaskId: callClinic._id,
           followUp: may20,
         }),
         {
@@ -189,32 +189,32 @@ describe("buildThreadLifecyclePatch", () => {
     ).toEqual({
       patch: {
         state: "resolved",
-        moves: undefined,
-        focusedMoveId: undefined,
+        tasks: undefined,
+        focusedTaskId: undefined,
         followUp: undefined,
       },
       log: {
         type: "state_change",
         content:
-          'Resolved thread: Clinic confirmed no further action — discarded moves: "Call clinic"',
+          'Resolved thread: Clinic confirmed no further action — discarded tasks: "Call clinic"',
         previousValue: "open",
         newValue: "resolved",
       },
     });
   });
 
-  it("names every Move a resolution discards, in capture order", () => {
+  it("names every Task a resolution discards, in capture order", () => {
     const change = buildThreadLifecyclePatch(
-      makeThread({ moves: [callClinic, bookSlot] }),
+      makeThread({ tasks: [callClinic, bookSlot] }),
       { state: "resolved" },
     );
 
     expect(change?.log.content).toBe(
-      'Resolved thread — discarded moves: "Call clinic", "Book slot"',
+      'Resolved thread — discarded tasks: "Call clinic", "Book slot"',
     );
   });
 
-  it("says nothing about Moves when the Thread held none", () => {
+  it("says nothing about Tasks when the Thread held none", () => {
     const change = buildThreadLifecyclePatch(makeThread(), {
       state: "resolved",
     });
@@ -249,8 +249,8 @@ describe("decideThreadUpdate", () => {
   it("resolves, clears the attention state, and logs every field it cleared", () => {
     const decision = decideThreadUpdate({
       thread: makeThread({
-        moves: [callClinic, bookSlot],
-        focusedMoveId: callClinic._id,
+        tasks: [callClinic, bookSlot],
+        focusedTaskId: callClinic._id,
         followUp: may20,
       }),
       patch: { state: "resolved" },
@@ -259,15 +259,15 @@ describe("decideThreadUpdate", () => {
 
     expect(decision.patch).toEqual({
       state: "resolved",
-      moves: undefined,
-      focusedMoveId: undefined,
+      tasks: undefined,
+      focusedTaskId: undefined,
       followUp: undefined,
     });
     expect(decision.logs).toEqual([
       {
         type: "state_change",
         content:
-          'Resolved thread: Done for good — discarded moves: "Call clinic", "Book slot"',
+          'Resolved thread: Done for good — discarded tasks: "Call clinic", "Book slot"',
         previousValue: "open",
         newValue: "resolved",
       },
@@ -280,7 +280,7 @@ describe("decideThreadUpdate", () => {
     ]);
   });
 
-  it("logs an Area move and a Follow-up change in order", () => {
+  it("logs an Area task and a Follow-up change in order", () => {
     const decision = decideThreadUpdate({
       thread: makeThread(),
       patch: { areaId: "area2" as AreaId, followUp: may20 },
