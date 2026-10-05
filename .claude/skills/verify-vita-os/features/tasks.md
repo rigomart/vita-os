@@ -2,7 +2,7 @@
 
 A signed-in user adds Tasks to an open thread, focuses at most one, and completes them. Tasks are peers listed in capture order. Focusing one tints its row in place. Completing a Task removes it and writes a `Task done` entry to the thread's activity log. Completing the Focused Task leaves the thread unfocused. A thread with Tasks sits under `No date` → `Ready to move` on the Dashboard, and its card can complete a Task too.
 
-Status: proven on 640e3ba (thread pane at 1440px and drawer at 1024px: `task-add`, `task-focus`, `task-complete`, `task-persist`; Dashboard card: `task-complete-card`). Editing and removing a Task, and unfocusing, are not yet driven.
+Status: proven on 7fef45b (thread pane at 1440px and drawer at 1024px: `task-add`, `task-focus`, `task-complete`, `task-persist`; Dashboard card: `task-complete-card`). Editing and removing a Task, and unfocusing, are not yet driven.
 
 ## Sub-features
 
