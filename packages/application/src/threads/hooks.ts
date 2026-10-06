@@ -280,6 +280,8 @@ export function useTaskCommand<TInput>(
       expectedRevision: number,
     ) => Promise<OperationResult<Thread>>;
     change: (input: TInput) => TaskChange;
+    /** Names the command for the mutation cache, so a surface can find it pending. */
+    mutationKey?: readonly unknown[];
   },
 ): ApplicationMutationResult<TInput, Thread> {
   const cache = useQueryClient();
@@ -288,6 +290,9 @@ export function useTaskCommand<TInput>(
 
   return useApplicationMutation<TInput, Thread>({
     scope,
+    ...(command.mutationKey === undefined
+      ? {}
+      : { mutationKey: command.mutationKey }),
     // A Note being added to the Thread locks its Tasks: a command issued
     // meanwhile would move under it. The surfaces disable their controls too;
     // this catches what reaches the command anyway.

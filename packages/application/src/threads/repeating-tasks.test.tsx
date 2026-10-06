@@ -363,6 +363,49 @@ describe("skipping a repeating Task", () => {
     expect(feedback.error).not.toHaveBeenCalled();
   });
 
+  // A real double-click: the second click lands after the first one's
+  // optimistic re-render, on a button that already shows the next occurrence.
+  it.each(["skip", "complete"] as const)(
+    "%s acts once when the second click lands on the re-rendered next occurrence, and again once answered",
+    async (command) => {
+      const service = coreService({ gated: true });
+      const { feedback, tasks, open, showing } = setup(service);
+      const sent = command === "skip" ? service.skipTask : service.completeTask;
+
+      let first: Promise<unknown> | undefined;
+      act(() => {
+        first = tasks.current[command](checkIn._id);
+      });
+      await waitFor(() =>
+        expect(task(open(), checkIn._id)?.date).toBe(tonight),
+      );
+      showing();
+      let second: Promise<unknown> | undefined;
+      act(() => {
+        second = tasks.current[command](checkIn._id);
+      });
+      await act(async () => {
+        service.flowFreely();
+        await Promise.all([first, second]);
+      });
+
+      expect(sent).toHaveBeenCalledTimes(1);
+      expect(task(service.stored(), checkIn._id)?.date).toBe(tonight);
+      await waitFor(() =>
+        expect(task(open(), checkIn._id)?.date).toBe(tonight),
+      );
+
+      // Once the first is answered, a deliberate one acts on tonight.
+      showing();
+      await act(async () => {
+        await tasks.current[command](checkIn._id);
+      });
+      expect(sent).toHaveBeenCalledTimes(2);
+      expect(task(service.stored(), checkIn._id)?.date).toBe(at(7, 21));
+      expect(feedback.error).not.toHaveBeenCalled();
+    },
+  );
+
   it("is not sent for a one-off Task", async () => {
     const service = coreService();
     const { feedback, tasks, open } = setup(service);
@@ -539,42 +582,52 @@ describe("a Thread edit between repeating-Task commands", () => {
         .current({ title: "Mom's recovery" })
         .catch(() => undefined);
     });
-    // The surface shows tonight's occurrence and completes it.
+    // The surface shows tonight's occurrence and changes its Repeat.
     showing();
-    let completing: Promise<unknown> | undefined;
+    let repeating: Promise<unknown> | undefined;
     act(() => {
-      completing = tasks.current.complete(checkIn._id);
+      repeating = tasks.current.setRepeat(checkIn._id, {
+        kind: "days",
+        every: 3,
+      });
     });
     await waitFor(() =>
-      expect(task(open(), checkIn._id)?.date).toBe(at(7, 21)),
+      expect(task(open(), checkIn._id)?.repeat).toEqual({
+        kind: "days",
+        every: 3,
+      }),
     );
 
     // Nothing reaches the service out of turn.
     expect(service.updateThread).not.toHaveBeenCalled();
-    expect(service.completeTask).not.toHaveBeenCalled();
+    expect(service.setTaskRepeat).not.toHaveBeenCalled();
 
     await act(async () => {
       service.flowFreely();
-      await Promise.all([skipping, renaming, completing]);
+      await Promise.all([skipping, renaming, repeating]);
     });
 
     expect(service.skipTask).toHaveBeenCalledWith(
       expect.objectContaining({ expectedRevision: 4 }),
     );
-    expect(service.completeTask).toHaveBeenCalledWith(
+    expect(service.setTaskRepeat).toHaveBeenCalledWith(
       expect.objectContaining({ expectedRevision: 6, timeZone: zone }),
     );
     expect(service.skipTask.mock.invocationCallOrder[0]!).toBeLessThan(
       service.updateThread.mock.invocationCallOrder[0]!,
     );
     expect(service.updateThread.mock.invocationCallOrder[0]!).toBeLessThan(
-      service.completeTask.mock.invocationCallOrder[0]!,
+      service.setTaskRepeat.mock.invocationCallOrder[0]!,
     );
     expect(service.stored()).toMatchObject({
       title: "Mom's recovery",
       revision: 7,
     });
-    expect(task(service.stored(), checkIn._id)?.date).toBe(at(7, 21));
+    expect(task(service.stored(), checkIn._id)).toEqual({
+      ...checkIn,
+      date: tonight,
+      repeat: { kind: "days", every: 3 },
+    });
     await waitFor(() =>
       expect(task(open(), checkIn._id)).toEqual(
         task(service.stored(), checkIn._id),

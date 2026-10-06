@@ -1,5 +1,6 @@
 import type { Repeat, Task, TaskId, Thread } from "@vita-os/contracts";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { isApplicationError } from "@vita-os/contracts";
 import { newRecordId } from "@vita-os/core";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
@@ -64,8 +65,26 @@ function occurrenceOf(thread: Thread, taskId: TaskId): Occurrence {
   };
 }
 
-function useCompleteCommand(thread: Thread) {
-  return useTaskCommand<Occurrence>(thread, {
+/** Marks the completes and skips of one Thread's Tasks. */
+function occurrenceKey(thread: Thread) {
+  return ["task-occurrence", thread._id] as const;
+}
+
+/**
+ * Complete and skip, acting once per activation the person meant.
+ *
+ * The first activation moves a repeating Task to its next occurrence on
+ * screen at once, so a second click of a double-click lands on a button that
+ * already shows the next occurrence and would act on it too. So while a
+ * complete or skip of a Task is pending, another one of that Task is not
+ * issued. Once the service has answered, the next one is a deliberate act on
+ * the occurrence then on screen.
+ */
+function useOccurrenceCommands(thread: Thread) {
+  const cache = useQueryClient();
+  const mutationKey = occurrenceKey(thread);
+  const complete = useTaskCommand<Occurrence>(thread, {
+    mutationKey,
     run: (client, { taskId, timeZone }, expectedRevision) =>
       client.completeTask({
         threadId: thread._id,
@@ -75,10 +94,8 @@ function useCompleteCommand(thread: Thread) {
       }),
     change: (input) => ({ kind: "complete", ...input }),
   });
-}
-
-function useSkipCommand(thread: Thread) {
-  return useTaskCommand<Occurrence>(thread, {
+  const skip = useTaskCommand<Occurrence>(thread, {
+    mutationKey,
     run: (client, { taskId, timeZone }, expectedRevision) =>
       client.skipTask({
         threadId: thread._id,
@@ -88,6 +105,28 @@ function useSkipCommand(thread: Thread) {
       }),
     change: (input) => ({ kind: "skip", ...input }),
   });
+
+  const pending = (taskId: TaskId) =>
+    cache
+      .getMutationCache()
+      .findAll({ mutationKey, status: "pending" })
+      .some(
+        (mutation) =>
+          (mutation.state.variables as Occurrence | undefined)?.taskId ===
+          taskId,
+      );
+
+  return {
+    complete: (taskId: TaskId): Promise<unknown> =>
+      pending(taskId)
+        ? Promise.resolve()
+        : complete.mutateAsync(occurrenceOf(thread, taskId)),
+    /** Skip exists only for a repeating Task. */
+    skip: (taskId: TaskId): Promise<unknown> =>
+      !repeats(thread, taskId) || pending(taskId)
+        ? Promise.resolve()
+        : skip.mutateAsync(occurrenceOf(thread, taskId)),
+  };
 }
 
 interface DateInput {
@@ -127,25 +166,17 @@ function useSetRepeatCommand(thread: Thread) {
 /** Complete one of this Thread's Tasks from a Dashboard card. */
 export function useCompleteTask(thread: Thread) {
   const report = useReportFailure();
-  const complete = useCompleteCommand(thread);
+  const { complete } = useOccurrenceCommands(thread);
 
-  return (taskId: TaskId) =>
-    complete
-      .mutateAsync(occurrenceOf(thread, taskId))
-      .then(() => undefined, report);
+  return (taskId: TaskId) => complete(taskId).then(() => undefined, report);
 }
 
 /** Skip a repeating Task to its next occurrence from a Dashboard card. */
 export function useSkipTask(thread: Thread) {
   const report = useReportFailure();
-  const skip = useSkipCommand(thread);
+  const { skip } = useOccurrenceCommands(thread);
 
-  return (taskId: TaskId) =>
-    repeats(thread, taskId)
-      ? skip
-          .mutateAsync(occurrenceOf(thread, taskId))
-          .then(() => undefined, report)
-      : Promise.resolve();
+  return (taskId: TaskId) => skip(taskId).then(() => undefined, report);
 }
 
 /** The name of the Task a card creates when a date is set and it shows no Task. */
@@ -234,8 +265,7 @@ export function useTasks(thread: Thread) {
       client.removeTask({ threadId: thread._id, taskId, expectedRevision }),
     change: (taskId) => ({ kind: "remove", taskId }),
   });
-  const complete = useCompleteCommand(thread);
-  const skip = useSkipCommand(thread);
+  const occurrences = useOccurrenceCommands(thread);
   const focus = useTaskCommand<TaskId | null>(thread, {
     run: (client, taskId, expectedRevision) =>
       client.focusTask({ threadId: thread._id, taskId, expectedRevision }),
@@ -261,13 +291,9 @@ export function useTasks(thread: Thread) {
       return settle(edit.mutateAsync({ taskId, text: trimmed }));
     },
     remove: (taskId: TaskId) => settle(remove.mutateAsync(taskId)),
-    complete: (taskId: TaskId) =>
-      settle(complete.mutateAsync(occurrenceOf(thread, taskId))),
+    complete: (taskId: TaskId) => settle(occurrences.complete(taskId)),
     /** Moves a repeating Task to its next occurrence; nothing is logged. */
-    skip: (taskId: TaskId) =>
-      repeats(thread, taskId)
-        ? settle(skip.mutateAsync(occurrenceOf(thread, taskId)))
-        : Promise.resolve(),
+    skip: (taskId: TaskId) => settle(occurrences.skip(taskId)),
     /** `null` unfocuses; focusing a Task replaces any earlier focus. */
     focus: (taskId: TaskId | null) => settle(focus.mutateAsync(taskId)),
     /** `null` clears the Task's date, and its Repeat with it. */
