@@ -1,11 +1,12 @@
 import type {
+  ActivityLogEntry,
+  ActivityLogEntryId,
   ApplicationClient,
   ApplicationError,
   OperationResult,
   Thread,
   ThreadId,
   ThreadNote,
-  ThreadNoteId,
 } from "@vita-os/contracts";
 
 import {
@@ -13,6 +14,8 @@ import {
   ValidationError,
   decideCompleteTask,
   requireNonBlankText,
+  requireTaskId,
+  newRecordId,
   requireTimeZone,
 } from "@vita-os/core";
 
@@ -20,6 +23,7 @@ import {
 export interface FakeCompletionState {
   threads: Thread[];
   threadNotes: Map<ThreadId, ThreadNote[]>;
+  activityLog?: Map<ThreadId, ActivityLogEntry[]>;
 }
 
 /**
@@ -93,7 +97,10 @@ export function createFakeApplicationClient(
 
 function completionClient(
   state: FakeCompletionState,
-): Pick<ApplicationClient, "completeTask" | "listOpenThreadNotes"> {
+): Pick<
+  ApplicationClient,
+  "completeTask" | "listOpenThreadNotes" | "getThreadActivityPage"
+> {
   return {
     async completeTask(input) {
       const index = state.threads.findIndex(
@@ -110,6 +117,15 @@ function completionClient(
           now,
         });
         if (decision === null) return taskConflict();
+        if (input.note !== undefined) {
+          requireTaskId(input.note.id);
+          if (
+            [...state.threadNotes.values()].some((notes) =>
+              notes.some((note) => note._id === input.note!.id),
+            )
+          )
+            return taskConflict();
+        }
         const body =
           input.note === undefined
             ? undefined
@@ -118,7 +134,7 @@ function completionClient(
           body === undefined
             ? undefined
             : {
-                _id: crypto.randomUUID() as ThreadNoteId,
+                _id: input.note!.id,
                 body,
                 state: "open",
                 createdAt: now,
@@ -129,11 +145,21 @@ function completionClient(
           ...decision.patch,
           revision: thread.revision + 1,
           lastActivityAt: now,
-          lastActivityContent:
-            note === undefined ? decision.logs.at(-1)?.content : undefined,
+          lastActivityContent: decision.logs.at(-1)?.content,
         };
+        if (note !== undefined) delete written.lastActivityContent;
+        const entries = decision.logs.map((log) => ({
+          ...log,
+          _id: newRecordId() as ActivityLogEntryId,
+          createdAt: now,
+        }));
         // All validation and ID creation finishes before either collection changes.
         state.threads[index] = written;
+        state.activityLog ??= new Map();
+        state.activityLog.set(input.threadId, [
+          ...entries.reverse(),
+          ...(state.activityLog.get(input.threadId) ?? []),
+        ]);
         if (note !== undefined)
           state.threadNotes.set(input.threadId, [
             note,
@@ -149,6 +175,13 @@ function completionClient(
           });
         throw error;
       }
+    },
+    async getThreadActivityPage({ threadId, limit }) {
+      if (!state.threads.some((thread) => thread._id === threadId))
+        return notFound();
+      return success({
+        entries: (state.activityLog?.get(threadId) ?? []).slice(0, limit),
+      });
     },
     async listOpenThreadNotes({ threadId }) {
       if (!state.threads.some((thread) => thread._id === threadId))

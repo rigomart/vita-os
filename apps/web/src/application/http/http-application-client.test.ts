@@ -1,4 +1,10 @@
-import type { AreaId, TaskId, NoteId, ThreadId } from "@vita-os/contracts";
+import type {
+  AreaId,
+  TaskId,
+  NoteId,
+  ThreadId,
+  ThreadNoteId,
+} from "@vita-os/contracts";
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -66,7 +72,10 @@ describe("createHttpApplicationClient", () => {
       apiBaseUrl: "https://api.test",
       fetchImpl,
     });
-    const note = { body: "Called **clinic**" };
+    const note = {
+      id: "client-note" as ThreadNoteId,
+      body: "Called **clinic**",
+    };
     expect(
       await client.completeTask({
         threadId: "thread" as ThreadId,

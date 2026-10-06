@@ -274,7 +274,7 @@ export function removeThread(input: {
 function changeTasks(
   command: { threadId: ThreadId; expectedRevision: number },
   decide: (thread: Thread) => ThreadUpdateDecision | null,
-  note?: { body: string },
+  note?: CompleteTaskInput["note"],
 ): Operation<Thread> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
@@ -287,12 +287,17 @@ function changeTasks(
 
     const decision = yield* attempt(() => decide(thread));
     if (decision === null) return yield* moveConflict();
-    const completionNoteBody =
+    const completionNote =
       note === undefined
         ? undefined
-        : yield* attempt(() =>
-            requireNonBlankText(note.body, "Thread note body"),
-          );
+        : yield* attempt(() => {
+            // Completion Note IDs follow the same opaque-ID bounds as Task IDs.
+            requireTaskId(note.id);
+            return {
+              id: note.id,
+              body: requireNonBlankText(note.body, "Thread note body"),
+            };
+          });
     if (
       Object.keys(decision.patch).length === 0 &&
       decision.logs.length === 0
@@ -305,7 +310,7 @@ function changeTasks(
         threadId: command.threadId,
         expectedRevision: command.expectedRevision,
         change: decision,
-        completionNoteBody,
+        completionNote,
       }),
     );
     return written === null ? yield* moveConflict() : written;

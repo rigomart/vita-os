@@ -29,7 +29,7 @@ export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
   function prepareInsert(
     threadId: string,
     body: string,
-    change?: { token?: string; at: number },
+    change?: { token?: string; at: number; id?: string },
   ): D1PreparedStatement {
     const now = change?.at ?? clock.now();
     return db
@@ -44,7 +44,7 @@ export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
        RETURNING ${THREAD_NOTE_COLUMNS}`,
       )
       .bind(
-        clock.newId(),
+        change?.id ?? clock.newId(),
         actorId,
         threadId,
         body,

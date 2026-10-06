@@ -9,13 +9,14 @@ import {
   MAX_TASK_DATE,
   MIN_TASK_DATE,
   requireRepeat,
+  requireTaskId,
   requireTimeZone,
 } from "@vita-os/core";
 import { Schema } from "effect";
 
 import { Revision, Timestamp } from "../../platform/http/schemas";
 import { AreaIdSchema } from "../areas/requests";
-import { ThreadNoteBody } from "../thread-notes/requests";
+import { ThreadNoteBody, ThreadNoteIdSchema } from "../thread-notes/requests";
 
 /** IDs stay opaque strings, including identifiers minted before UUIDs. */
 export const ThreadIdSchema = Schema.String.pipe(
@@ -75,7 +76,21 @@ export const TaskRevisionBody = Schema.Struct({ expectedRevision: Revision });
 export const CompleteTaskBody = Schema.Struct({
   expectedRevision: Revision,
   timeZone: Schema.optionalKey(TimeZoneSchema),
-  note: Schema.optionalKey(ThreadNoteBody),
+  note: Schema.optionalKey(
+    Schema.Struct({
+      id: ThreadNoteIdSchema.check(
+        Schema.makeFilter((value) => {
+          try {
+            requireTaskId(value);
+            return true;
+          } catch {
+            return false;
+          }
+        }),
+      ),
+      body: ThreadNoteBody.fields.body,
+    }),
+  ),
 });
 
 export const RepeatSchema = Schema.Union([

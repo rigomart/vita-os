@@ -257,7 +257,9 @@ export function createHttpApplicationClient({
         {
           expectedRevision,
           ...(timeZone === undefined ? {} : { timeZone }),
-          ...(note === undefined ? {} : { note }),
+          ...(note === undefined
+            ? {}
+            : { note: { id: note.id, body: note.body } }),
         },
         decodeThread,
       ),
