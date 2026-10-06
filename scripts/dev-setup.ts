@@ -280,8 +280,12 @@ async function seed(): Promise<void> {
         });
       }
       if (spec.followUpInDays !== undefined) {
-        thread = await call<Thread>("PATCH", `/v1/threads/${thread._id}`, {
-          followUp: dayFromToday(spec.followUpInDays, spec.followUpAt),
+        // A Thread comes back at its soonest dated Task (ADR 0032).
+        thread = await call<Thread>("POST", `/v1/threads/${thread._id}/tasks`, {
+          taskId: newRecordId(),
+          text: "Follow up",
+          date: dayFromToday(spec.followUpInDays, spec.followUpAt),
+          expectedRevision: thread.revision,
         });
       }
       if (spec.resolution !== undefined) {
