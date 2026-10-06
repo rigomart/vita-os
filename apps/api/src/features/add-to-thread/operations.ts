@@ -9,6 +9,7 @@ import {
   decideAddNoteToThread,
   generateSlug,
   requireNonBlankText,
+  requireTaskId,
 } from "@vita-os/core";
 import { Effect } from "effect";
 
@@ -24,6 +25,16 @@ import { noteStorage } from "../notes/storage";
 import { threadNotFound } from "../threads/errors";
 import { isThreadSlugTaken, threadStorage } from "../threads/storage";
 import { addToThreadStorage } from "./storage";
+
+/** The caller's Task ID, checked like every other; the service mints one when absent. */
+function taskIdFor(
+  requested: TaskId | undefined,
+  scope: { clock: { newId(): string } },
+): TaskId {
+  return requested === undefined
+    ? (scope.clock.newId() as TaskId)
+    : requireTaskId(requested);
+}
 
 /** The same limit as other revision-conditional Thread changes. */
 const CHANGE_ATTEMPTS = 3;
@@ -54,10 +65,8 @@ export function addNoteToThread(
       if (note === null || note.state !== "open") return yield* noteNotFound();
       if (thread === null || thread.state !== "open")
         return yield* threadNotFound();
-      const change = decideAddNoteToThread(
-        thread,
-        note,
-        scope.clock.newId() as TaskId,
+      const change = yield* attempt(() =>
+        decideAddNoteToThread(thread, note, taskIdFor(input.taskId, scope)),
       );
       const added = yield* database(() =>
         storage.addToThread({
@@ -92,10 +101,12 @@ export function createThreadFromNote(
       const note = yield* database(() => notes.find(input.noteId));
       if (note === null || note.state !== "open") return yield* noteNotFound();
       const slug = generateSlug(title);
-      const change = decideAddNoteToThread(
-        { title, slug, state: "open" },
-        note,
-        scope.clock.newId() as TaskId,
+      const change = yield* attempt(() =>
+        decideAddNoteToThread(
+          { title, slug, state: "open" },
+          note,
+          taskIdFor(input.taskId, scope),
+        ),
       );
       const added = yield* database(
         () =>

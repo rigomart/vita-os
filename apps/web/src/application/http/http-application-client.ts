@@ -323,7 +323,10 @@ export function createHttpApplicationClient({
       send(
         "POST",
         `${path("notes", input.noteId)}/add-to-thread`,
-        { threadId: input.threadId },
+        {
+          threadId: input.threadId,
+          ...(input.taskId === undefined ? {} : { taskId: input.taskId }),
+        },
         decodeNoteAddedToThread,
       ),
     createThreadFromNote: ({ noteId, ...thread }) =>

@@ -4,6 +4,7 @@ import {
   type AutoActivityLogEntry,
   buildAreaMoveLogEntry,
 } from "./activity-log";
+import { ConflictError } from "./errors";
 
 /** The stored Thread values every change rule reads. */
 export interface ThreadChangeState {
@@ -247,6 +248,9 @@ export function decideAddNoteToThread(
   taskId: TaskId,
 ): ThreadUpdateDecision {
   if (note.followUp === undefined) return { patch: {}, logs: [] };
+  if (thread.tasks?.some((task) => task._id === taskId)) {
+    throw new ConflictError("The Thread already holds that Task");
+  }
 
   const task: Task = {
     _id: taskId,

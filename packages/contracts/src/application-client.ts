@@ -99,12 +99,19 @@ export interface FocusTaskInput extends TaskCommand {
 export interface AddNoteToThreadInput {
   noteId: NoteId;
   threadId: ThreadId;
+  /**
+   * The ID of the Task a dated Note adds, minted by the caller so the Task it
+   * shows keeps its name. Absent, the service mints one.
+   */
+  taskId?: TaskId;
 }
 
 export interface CreateThreadFromNoteInput {
   noteId: NoteId;
   title: string;
   areaId?: AreaId;
+  /** As on `AddNoteToThreadInput`. */
+  taskId?: TaskId;
 }
 
 export interface PageRequest {

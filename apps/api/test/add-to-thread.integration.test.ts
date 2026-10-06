@@ -578,6 +578,38 @@ describe("contention", () => {
     });
   });
 
+  it("names the Task from the body that is copied when the body is edited under the decision", async () => {
+    const scope = scopeFor();
+    const thread = value(
+      await run(scope, threads.createThread({ title: "Racing body" })),
+    );
+    const note = value(
+      await run(scope, notes.createNote({ body: "Old name", followUp: jun1 })),
+    );
+    const batch = env.DB.batch.bind(env.DB);
+    vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
+      value(
+        await run(
+          scope,
+          notes.updateNoteBody({ noteId: note._id, body: "New name" }),
+        ),
+      );
+      return batch(statements);
+    });
+
+    const added = value(
+      await run(
+        scope,
+        adding.addNoteToThread({ noteId: note._id, threadId: thread._id }),
+      ),
+    );
+
+    expect(added.thread.tasks).toEqual([
+      { _id: expect.any(String), text: "New name", date: jun1 },
+    ]);
+    expect(added.threadNote.body).toBe("New name");
+  });
+
   it("mints another slug when the new Thread's slug is taken", async () => {
     const scope = scopeFor();
     const random = vi
@@ -614,5 +646,70 @@ describe("contention", () => {
       .bind(scope.actorId)
       .first<{ n: number }>();
     expect(remaining?.n).toBe(0);
+  });
+});
+
+describe("the caller's Task ID", () => {
+  it("names the Task a dated Note adds, for both routes", async () => {
+    const owner = await createSession("add-to-thread-task-id");
+    const thread = await createThread(owner);
+    const note = await createNote(owner, "Call back", jun1);
+
+    const added = (
+      await call(`/v1/notes/${note._id}/add-to-thread`, {
+        method: "POST",
+        session: owner,
+        body: { threadId: thread._id, taskId: "chosen-task" },
+      })
+    ).body as NoteAddedToThread;
+    expect(added.thread.tasks).toEqual([
+      { _id: "chosen-task", text: "Call back", date: jun1 },
+    ]);
+
+    const second = await createNote(owner, "Start here", may20);
+    const started = (
+      await call(`/v1/notes/${second._id}/new-thread`, {
+        method: "POST",
+        session: owner,
+        body: { title: "Started", taskId: "started-task" },
+      })
+    ).body as NoteAddedToThread;
+    expect(started.thread.tasks?.[0]?._id).toBe("started-task");
+  });
+
+  it("refuses an ID the Thread already holds, writing nothing", async () => {
+    const owner = await createSession("add-to-thread-task-id-clash");
+    const thread = await createThread(owner, may20);
+    const note = await createNote(owner, "Clash", jun1);
+    const before = await everything(owner);
+
+    expectError(
+      await call(`/v1/notes/${note._id}/add-to-thread`, {
+        method: "POST",
+        session: owner,
+        body: { threadId: thread._id, taskId: "existing-task" },
+      }),
+      {
+        status: 409,
+        code: "conflict",
+        message: "The Thread already holds that Task",
+      },
+    );
+    expect(await everything(owner)).toEqual(before);
+  });
+
+  it("refuses an ID no row could hold", async () => {
+    const owner = await createSession("add-to-thread-task-id-long");
+    const thread = await createThread(owner);
+    const note = await createNote(owner, "Long", jun1);
+
+    expectError(
+      await call(`/v1/notes/${note._id}/add-to-thread`, {
+        method: "POST",
+        session: owner,
+        body: { threadId: thread._id, taskId: "x".repeat(65) },
+      }),
+      { status: 400, code: "validation" },
+    );
   });
 });

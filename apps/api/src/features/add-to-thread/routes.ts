@@ -9,13 +9,18 @@ export const AddToThreadHandlers = HttpApiBuilder.group(
   (handlers) =>
     handlers
       .handle("addToThread", ({ params, payload }) =>
-        addNoteToThread({ noteId: params.noteId, threadId: payload.threadId }),
+        addNoteToThread({
+          noteId: params.noteId,
+          threadId: payload.threadId,
+          ...(payload.taskId === undefined ? {} : { taskId: payload.taskId }),
+        }),
       )
       .handle("newThread", ({ params, payload }) =>
         createThreadFromNote({
           noteId: params.noteId,
           title: payload.title,
           ...(payload.areaId === undefined ? {} : { areaId: payload.areaId }),
+          ...(payload.taskId === undefined ? {} : { taskId: payload.taskId }),
         }),
       ),
 );

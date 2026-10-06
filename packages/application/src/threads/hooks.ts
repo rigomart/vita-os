@@ -41,6 +41,7 @@ import {
   showThreadRemoval,
   threadChangeKeys,
 } from "./optimistic";
+import { afterPendingConversion } from "./pending-conversions";
 
 const ACTIVITY_PAGE_SIZE = 20;
 
@@ -231,6 +232,7 @@ export function useTaskCommand<TInput>(
   return useApplicationMutation<TInput, Thread>({
     scope,
     run: async (client, input) => {
+      await afterPendingConversion(cache, thread._id);
       const change = command.change(input);
       const signature = JSON.stringify(change);
       const memo = queueMemo(cache);

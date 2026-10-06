@@ -2,13 +2,13 @@ import type {
   AreaId,
   Note,
   NoteAddedToThread,
-  TaskId,
   Thread,
   ThreadId,
   ThreadNote,
   ThreadNoteId,
 } from "@vita-os/contracts";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { decideAddNoteToThread, newRecordId } from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../../cache/use-application-mutation";
@@ -24,6 +24,10 @@ import {
   showPendingThread,
   threadChangeKeys,
 } from "../../threads/optimistic";
+import {
+  holdTaskCommands,
+  noteTaskId,
+} from "../../threads/pending-conversions";
 import { noteKeys, showNoteLeavingOpenNotes } from "../optimistic";
 
 /** The Thread Note a Note becomes, shown before the service mints its own. */
@@ -64,15 +68,23 @@ export function useAddNoteToThread(): ApplicationMutationResult<
   NoteAddedToThread,
   ThreadNoteId
 > {
+  const cache = useQueryClient();
   return useApplicationMutation<
     AddNoteToThreadVariables,
     NoteAddedToThread,
     ThreadNoteId
   >({
-    run: async (client, { note, thread, undoWindow }) => {
-      await afterUndoWindow(undoWindow);
-      return client.addNoteToThread({ noteId: note._id, threadId: thread._id });
-    },
+    // Task commands on this Thread wait for the conversion, the Undo window
+    // included, so one made on the Task it shows lands after it exists.
+    run: (client, { note, thread, undoWindow }) =>
+      holdTaskCommands(cache, thread._id, async () => {
+        await afterUndoWindow(undoWindow);
+        return client.addNoteToThread({
+          noteId: note._id,
+          threadId: thread._id,
+          taskId: noteTaskId(note),
+        });
+      }),
     affected: ({ thread }, cache) => [
       ...noteKeys(),
       ...threadChangeKeys(cache, { threadId: thread._id }),
@@ -80,11 +92,7 @@ export function useAddNoteToThread(): ApplicationMutationResult<
     ],
     optimistic: (cache, { note, thread }, previousLocal) => {
       const pendingId = previousLocal ?? (newRecordId() as ThreadNoteId);
-      const decision = decideAddNoteToThread(
-        thread,
-        note,
-        newRecordId() as TaskId,
-      );
+      const decision = decideAddNoteToThread(thread, note, noteTaskId(note));
       showNoteLeavingOpenNotes(cache, note._id);
       showNoteAddedToThread(cache, thread._id, {
         tasks: decision.patch.tasks,
@@ -137,6 +145,7 @@ export function useCreateThreadFromNote(): ApplicationMutationResult<
     run: (client, { note, title, areaId }) =>
       client.createThreadFromNote({
         noteId: note._id,
+        taskId: noteTaskId(note),
         title,
         ...(areaId === undefined ? {} : { areaId }),
       }),
@@ -156,7 +165,7 @@ export function useCreateThreadFromNote(): ApplicationMutationResult<
       const decision = decideAddNoteToThread(
         { title, slug: "", state: "open" },
         note,
-        newRecordId() as TaskId,
+        noteTaskId(note),
       );
       showNoteAddedToThread(cache, pendingId, {
         tasks: decision.patch.tasks,

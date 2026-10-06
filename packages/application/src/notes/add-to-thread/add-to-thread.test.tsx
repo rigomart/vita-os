@@ -262,6 +262,7 @@ describe("adding a Note to a Thread", () => {
       expect(addNoteToThread).toHaveBeenCalledExactlyOnceWith({
         noteId: note._id,
         threadId: undatedThread._id,
+        taskId: "note-task-dated-note",
       }),
     );
     await act(async () => pending.resolve(commit(addedTo(undatedThread))));
@@ -380,6 +381,7 @@ describe("starting a Thread from a Note", () => {
       expect(createThreadFromNote).toHaveBeenCalledExactlyOnceWith({
         noteId: note._id,
         title: "Dentist visit",
+        taskId: "note-task-dated-note",
       }),
     );
     await waitFor(() =>
