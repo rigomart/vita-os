@@ -32,5 +32,5 @@ Preconditions: `bun run verify up --instance follow-up-date`, `bun run verify si
 
 - Date edits save quietly. Wait for enabled controls and use a reload plus D1 as confirmation; no date-change toast exists.
 - Shared names mean multiple date buttons can exist at once, and a Thread card's date button is now `Set date` / `Change date` (a Task's date). Scope by the current surface or use refs from a fresh snapshot.
-- The physical Note column remains `attention_date` for saved-data compatibility. The app model and current HTTP requests use `followUp`; the API also accepts the old field and route for already-open clients.
+- The physical Note column remains `attention_date` for saved-data compatibility. The app model and current HTTP requests use `followUp`; the former field and route were removed by #402.
 - Chrome's time input ignores `fill` and `keyboard type`. Click `Add time`, `press` each key (`3`, `3`, `0`, `p` for 3:30 PM), then click a day or press Enter. See `flows/dated-tasks.flow`.

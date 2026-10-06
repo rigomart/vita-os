@@ -82,6 +82,33 @@ async function read<T>(path: string, cookie: string): Promise<T> {
 let owner: { actorId: string; cookie: string };
 let mover: { actorId: string; cookie: string };
 let folder: { actorId: string; cookie: string };
+let retainedFollowUps: { id: string; follow_up: number | null }[];
+const cleanupTables = [
+  "areas",
+  "threads",
+  "notes",
+  "thread_notes",
+  "activity_log_entries",
+] as const;
+let beforeCleanup: Record<string, Record<string, unknown>[]>;
+let columnsBeforeCleanup: Record<string, unknown>[];
+let schemaBeforeCleanup: Record<string, unknown>[];
+
+async function cleanupSnapshot() {
+  return Object.fromEntries(
+    await Promise.all(
+      cleanupTables.map(async (table) => {
+        const rows = await database
+          .prepare(`SELECT * FROM ${table} ORDER BY id`)
+          .all<Record<string, unknown>>();
+        return [
+          table,
+          rows.results.map(({ follow_up: _retired, ...row }) => row),
+        ];
+      }),
+    ),
+  );
+}
 
 beforeAll(async () => {
   await applyD1Migrations(database, migrationsBefore(4));
@@ -200,6 +227,98 @@ beforeAll(async () => {
   folder = await signUp("follow-up-migration-owner");
   await seedThreadsBeforeFollowUpFold(folder.actorId);
   await applyD1Migrations(database, migrationsThrough(6));
+
+  // Production-shaped rows after 0006, including a Repeat from #415.
+  await database.batch([
+    database
+      .prepare(`INSERT INTO threads (id, user_id, title, slug, sort_order, state, moves_json, focused_move_id, created_at, revision, last_change_token)
+      VALUES ('cleanup-repeat', ?, 'Check in', 'cleanup-repeat', 4, 'open', ?, 'repeat', 1700000000000, 9, 'saved-token')`)
+      .bind(
+        folder.actorId,
+        JSON.stringify([
+          {
+            id: "repeat",
+            text: "Check in",
+            date: FOLLOW_UP_DAY,
+            repeat: { kind: "days", every: 2 },
+          },
+        ]),
+      ),
+    database
+      .prepare(`INSERT INTO threads (id, user_id, title, slug, sort_order, state, created_at)
+      VALUES ('cleanup-plain', ?, 'Unscheduled', 'cleanup-plain', 5, 'open', 1700000000001)`)
+      .bind(folder.actorId),
+    database
+      .prepare(`INSERT INTO notes (id, user_id, body, state, completed_at, created_at, updated_at)
+      VALUES ('cleanup-note', ?, 'Archived undated Note', 'done', 1700000000002, 1700000000001, 1700000000002)`)
+      .bind(folder.actorId),
+  ]);
+  retainedFollowUps = (
+    await database
+      .prepare(
+        "SELECT id, follow_up FROM threads WHERE user_id = ? AND id LIKE 'fold-%' ORDER BY id",
+      )
+      .bind(folder.actorId)
+      .all<{ id: string; follow_up: number | null }>()
+  ).results;
+  beforeCleanup = await cleanupSnapshot();
+  columnsBeforeCleanup = (
+    await database
+      .prepare("PRAGMA table_info(threads)")
+      .all<Record<string, unknown>>()
+  ).results;
+  schemaBeforeCleanup = (
+    await database
+      .prepare(
+        "SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY name",
+      )
+      .all<Record<string, unknown>>()
+  ).results;
+  await applyD1Migrations(database, migrationsThrough(7));
+});
+
+// Check preservation before the workflow tests below change these rows.
+describe("0007: remove the retired Thread Follow-up column", () => {
+  it("drops only follow_up and preserves every other saved value and schema object", async () => {
+    expect(beforeCleanup.threads.some((row) => row.moves_json === null)).toBe(
+      true,
+    );
+    expect(beforeCleanup.threads.some((row) => row.moves_json !== null)).toBe(
+      true,
+    );
+    expect(retainedFollowUps.some((row) => row.follow_up !== null)).toBe(true);
+    expect(beforeCleanup.notes.length).toBeGreaterThan(0);
+    expect(await cleanupSnapshot()).toEqual(beforeCleanup);
+    const columns = (
+      await database
+        .prepare("PRAGMA table_info(threads)")
+        .all<Record<string, unknown>>()
+    ).results;
+    // SQLite renumbers column positions after a drop; every other attribute stays.
+    expect(columns.map(({ cid: _position, ...column }) => column)).toEqual(
+      columnsBeforeCleanup
+        .filter((column) => column.name !== "follow_up")
+        .map(({ cid: _position, ...column }) => column),
+    );
+    const unrelated = (rows: Record<string, unknown>[]) =>
+      rows.filter((row) => row.name !== "threads");
+    expect(
+      unrelated(schemaBeforeCleanup).every(
+        (row) => !/\bfollow_up\b/.test(String(row.sql)),
+      ),
+    ).toBe(true);
+    const schema = (
+      await database
+        .prepare(
+          "SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY name",
+        )
+        .all<Record<string, unknown>>()
+    ).results;
+    expect(unrelated(schema)).toEqual(unrelated(schemaBeforeCleanup));
+    expect(
+      (await database.prepare("PRAGMA foreign_key_check").all()).results,
+    ).toEqual([]);
+  });
 });
 
 describe("0004: Areas become optional labels", () => {
@@ -250,15 +369,6 @@ describe("0004: Areas become optional labels", () => {
         { _id: expect.any(String), text: "Follow up", date: 1_800_000_000_000 },
       ],
       focusedTaskId: checkup.thread.tasks?.[0]?._id,
-      // Compatibility names (ADR 0033, removal in #402), same values.
-      moves: [
-        { _id: expect.any(String), text: "Call clinic" },
-        { _id: expect.any(String), text: "Book appointment" },
-        { _id: expect.any(String), text: "Follow up", date: 1_800_000_000_000 },
-      ],
-      focusedMoveId: checkup.thread.tasks?.[0]?._id,
-      // Compatibility (ADR 0032, removal in #402): derived from the Tasks.
-      followUp: 1_800_000_000_000,
       lastActivityAt: 1_700_000_000_000,
       lastActivityContent: "Next move set",
       createdAt: 1_600_000_000_000,
@@ -571,14 +681,8 @@ describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
     expect(thread.revision).toBe(6);
   });
 
-  it("keeps the follow_up column, no longer read, and every Activity Log entry", async () => {
-    const stored = await database
-      .prepare(
-        "SELECT id, follow_up FROM threads WHERE user_id = ? ORDER BY id",
-      )
-      .bind(folder.actorId)
-      .all<{ id: string; follow_up: number | null }>();
-    expect(stored.results).toEqual([
+  it("retains the legacy column through 0006 and every Activity Log entry", async () => {
+    expect(retainedFollowUps).toEqual([
       { id: "fold-bare-dated", follow_up: FOLLOW_UP_DAY },
       { id: "fold-finished", follow_up: FOLLOW_UP_DAY },
       { id: "fold-timed", follow_up: FOLLOW_UP_AFTERNOON },

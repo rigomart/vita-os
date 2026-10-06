@@ -55,7 +55,7 @@ async function seedDetailFixture() {
       1_500_000_000_001,
     ),
     env.DB.prepare(
-      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, moves_json, focused_move_id, follow_up, last_activity_at, last_activity_content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO threads (id, user_id, area_id, title, slug, summary, sort_order, state, moves_json, focused_move_id, last_activity_at, last_activity_content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).bind(
       "thread-owner",
       owner.actorId,
@@ -67,8 +67,6 @@ async function seedDetailFixture() {
       "open",
       '[{"id":"task-1","text":"Call clinic"},{"id":"task-2","text":"Book appointment","date":1800000000000}]',
       "task-2",
-      // The retired column is no longer read: this date must not surface.
-      1_900_000_000_000,
       1_700_000_000_000,
       "Captured next move",
       1_600_000_000_000,
@@ -452,14 +450,6 @@ describe("Thread detail", () => {
           { _id: "task-2", text: "Book appointment", date: 1_800_000_000_000 },
         ],
         focusedTaskId: "task-2",
-        // Compatibility names (ADR 0033, removal in #402), same values.
-        moves: [
-          { _id: "task-1", text: "Call clinic" },
-          { _id: "task-2", text: "Book appointment", date: 1_800_000_000_000 },
-        ],
-        focusedMoveId: "task-2",
-        // Compatibility (ADR 0032, removal in #402): the soonest dated Task.
-        followUp: 1_800_000_000_000,
         lastActivityAt: 1_700_000_000_000,
         lastActivityContent: "Captured next move",
         createdAt: 1_600_000_000_000,

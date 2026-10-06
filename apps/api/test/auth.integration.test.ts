@@ -121,81 +121,71 @@ describe("authentication and actor gate", () => {
     expect(response.headers.get("access-control-allow-origin")).toBeNull();
   });
 
-  // `moves` is the compatibility spelling (ADR 0033, removal in #402).
-  it.each(["tasks", "moves"])(
-    "rejects a credentialed /%s mutation from a disallowed origin before storage",
-    async (collection) => {
-      const signUp = await SELF.fetch(
-        "http://api.test/api/auth/sign-up/email",
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            name: "Origin Guard",
-            email: "origin-guard@example.com",
-            password: "correct horse battery staple",
-          }),
+  it("rejects a credentialed /tasks mutation from a disallowed origin before storage", async () => {
+    const signUp = await SELF.fetch("http://api.test/api/auth/sign-up/email", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: "Origin Guard",
+        email: "origin-guard@example.com",
+        password: "correct horse battery staple",
+      }),
+    });
+    const createStore = vi.fn();
+    const response = await createTestApp({
+      createScope: createStore,
+    }).request(
+      `/v1/threads/private-thread/tasks/task-1/complete`,
+      {
+        method: "POST",
+        headers: {
+          origin: "https://attacker.example",
+          "content-type": "text/plain",
+          cookie: signUp.headers.get("set-cookie") ?? "",
         },
-      );
-      const createStore = vi.fn();
-      const response = await createTestApp({
-        createScope: createStore,
-      }).request(
-        `/v1/threads/private-thread/${collection}/task-1/complete`,
-        {
-          method: "POST",
-          headers: {
-            origin: "https://attacker.example",
-            "content-type": "text/plain",
-            cookie: signUp.headers.get("set-cookie") ?? "",
-          },
-          body: JSON.stringify({ expectedRevision: 0 }),
-        },
-        env,
-      );
+        body: JSON.stringify({ expectedRevision: 0 }),
+      },
+      env,
+    );
 
-      expect(response.status).toBe(403);
-      await expect(response.json()).resolves.toEqual({
-        error: {
-          code: "unauthorized",
-          message: "Request origin is not allowed.",
-          retryable: false,
-        },
-      });
-      expect(createStore).not.toHaveBeenCalled();
-    },
-  );
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "unauthorized",
+        message: "Request origin is not allowed.",
+        retryable: false,
+      },
+    });
+    expect(createStore).not.toHaveBeenCalled();
+  });
 
-  it.each(["tasks", "moves"])(
-    "requires JSON for an allowed-origin /%s mutation before storage",
-    async (collection) => {
-      const createStore = vi.fn();
-      const response = await createTestApp({
-        createScope: createStore,
-      }).request(
-        `/v1/threads/private-thread/${collection}/task-1/complete`,
-        {
-          method: "POST",
-          headers: {
-            origin: env.BROWSER_ORIGIN,
-            "content-type": "text/plain",
-          },
-          body: JSON.stringify({ expectedRevision: 0 }),
+  it("requires JSON for an allowed-origin /tasks mutation before storage", async () => {
+    const createStore = vi.fn();
+    const response = await createTestApp({
+      createScope: createStore,
+    }).request(
+      `/v1/threads/private-thread/tasks/task-1/complete`,
+      {
+        method: "POST",
+        headers: {
+          origin: env.BROWSER_ORIGIN,
+          "content-type": "text/plain",
         },
-        env,
-      );
+        body: JSON.stringify({ expectedRevision: 0 }),
+      },
+      env,
+    );
 
-      expect(response.status).toBe(415);
-      await expect(response.json()).resolves.toEqual({
-        error: {
-          code: "validation",
-          message: "JSON request body required.",
-          retryable: false,
-        },
-      });
-      expect(createStore).not.toHaveBeenCalled();
-    },
-  );
+    expect(response.status).toBe(415);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "validation",
+        message: "JSON request body required.",
+        retryable: false,
+      },
+    });
+    expect(createStore).not.toHaveBeenCalled();
+  });
 
   it("returns a stable response when session lookup fails", async () => {
     const signUp = await SELF.fetch("http://api.test/api/auth/sign-up/email", {

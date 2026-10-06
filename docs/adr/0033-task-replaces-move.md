@@ -1,6 +1,6 @@
 # Task replaces Move
 
-**Status:** Accepted
+**Status:** Accepted. Amended by #402: compatibility window closed.
 **Date:** 2026-10-04
 
 The concept **Move** (one useful action on a **Thread**) is renamed **Task**. **Moves** becomes **Tasks** and **Focused Move** becomes **Focused Task**. The margin run **Ready to move** keeps its name: there "move" is a verb. Issue #397 raised the question; sub-issue #400 ships the rename.

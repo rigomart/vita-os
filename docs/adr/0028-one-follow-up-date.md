@@ -2,7 +2,7 @@
 
 Amended by ADR 0032: a Thread no longer has a Follow-up date; its dates live on its Tasks. Standalone Notes keep theirs.
 
-**Status:** Accepted
+**Status:** Accepted. Amended by #402: compatibility window closed.
 **Date:** 2026-10-01
 
 Threads called their resurfacing date a Follow-up, while standalone Notes called the same signal an Attention Date. Both already share the Dashboard's time columns and the date-and-time picker. Two names suggest different behavior where there is one user intention: return to this around a chosen date.

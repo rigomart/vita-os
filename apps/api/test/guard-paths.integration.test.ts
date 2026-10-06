@@ -438,8 +438,8 @@ describe("record isolation across encoded record IDs", () => {
   });
 });
 
-describe("Task routes across encoded IDs and the compatibility spelling", () => {
-  it("keeps another user's Tasks unreachable on /tasks and /moves however IDs are spelled", async () => {
+describe("Task routes across encoded IDs", () => {
+  it("keeps another user's Tasks unreachable however IDs are spelled", async () => {
     const owner = await createSession("task-isolation-owner");
     const intruder = await createSession("task-isolation-intruder");
     const thread = await succeed<Thread>("/v1/threads", {
@@ -453,13 +453,11 @@ describe("Task routes across encoded IDs and the compatibility spelling", () => 
       body: { taskId: "private-task", text: "Private", expectedRevision: 0 },
     });
 
-    // `moves` is the compatibility spelling (ADR 0033, removal in #402).
-    const spellings = ["tasks", "moves"].flatMap((collection) =>
-      [thread._id, encodeEvery(thread._id)].flatMap((threadId) =>
+    const spellings = [thread._id, encodeEvery(thread._id)].flatMap(
+      (threadId) =>
         ["private-task", encodeEvery("private-task")].map(
-          (taskId) => `/v1/threads/${threadId}/${collection}/${taskId}`,
+          (taskId) => `/v1/threads/${threadId}/tasks/${taskId}`,
         ),
-      ),
     );
 
     for (const path of spellings) {

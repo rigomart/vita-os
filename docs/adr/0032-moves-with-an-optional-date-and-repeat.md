@@ -2,7 +2,7 @@
 
 Terminology amended by ADR 0033: **Move** is renamed **Task** (Moves become Tasks, Focused Move becomes Focused Task). This ADR keeps its original wording, and the sections added below use the new terms.
 
-**Status:** Proposed. Becomes Accepted when issue #397 ships.
+**Status:** Proposed. Becomes Accepted when issue #397 ships. Amended by #402: compatibility window closed, `threads.follow_up` dropped.
 **Date:** 2026-10-04
 
 A **Move** becomes text with an optional date and an optional repeat, the way a calendar event is a title with an optional time and repeat. A **Thread**'s own **Follow-up date** is folded into its Moves: a Thread comes back on the **Dashboard** at its soonest dated Move. Issue #397 is the specification.
