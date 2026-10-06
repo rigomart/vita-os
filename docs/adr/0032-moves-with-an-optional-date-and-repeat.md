@@ -49,6 +49,7 @@ The owner settled these. They use the new terms (ADR 0033).
 
 - The migration converts each Thread's Follow-up date into a dated "Follow up" Task, time kept, not focused. It **keeps** the `threads.follow_up` column, no longer read, so a rollback loses nothing. A later cleanup drops it.
 - During the compatibility window the API returns the Thread's `followUp` derived from its soonest dated Task. It refuses a Thread `followUp` write as a non-retryable conflict, which makes an old client reload. The API deploys before the web app, as with ADR 0028.
+  *Follow-up:* The compatibility window was closed and the retired column dropped by #402.
 - Thread Follow-up changes no longer write `follow_up_change`. Existing entries keep their wording.
 
 ## Time zone

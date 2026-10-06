@@ -118,23 +118,23 @@ describe("the Open Notes inventory", () => {
 });
 
 describe("editing a Note", () => {
-  it("uses Follow-up dates while keeping older clients and saved dates working", async () => {
-    const owner = await createSession("note-follow-up-compatibility");
+  it("uses Follow-up dates while preserving the stored date column", async () => {
+    const owner = await createSession("note-follow-up-storage");
     const original = Date.UTC(2026, 4, 20, 15);
     const next = Date.UTC(2026, 4, 21, 9);
     const note = await succeed<Note>("/v1/notes", {
       method: "POST",
       session: owner,
-      body: { body: "Previously saved Note", attentionDate: original },
+      body: { body: "Previously saved Note", followUp: original },
     });
 
-    expect(note).toMatchObject({ followUp: original, attentionDate: original });
+    expect(note).toMatchObject({ followUp: original });
     const changed = await succeed(`/v1/notes/${note._id}/follow-up`, {
       method: "PATCH",
       session: owner,
       body: { followUp: next },
     });
-    expect(changed).toMatchObject({ followUp: next, attentionDate: next });
+    expect(changed).toMatchObject({ followUp: next });
     expect((await openNotes(owner))[0]).toMatchObject({ followUp: next });
     const stored = await env.DB.prepare(
       "SELECT attention_date FROM notes WHERE id = ?",
@@ -143,16 +143,16 @@ describe("editing a Note", () => {
       .first<{ attention_date: number }>();
     expect(stored?.attention_date).toBe(next);
 
-    const cleared = await succeed(`/v1/notes/${note._id}/attention-date`, {
+    const cleared = await succeed(`/v1/notes/${note._id}/follow-up`, {
       method: "PATCH",
       session: owner,
-      body: { attentionDate: null },
+      body: { followUp: null },
     });
     expect(cleared).not.toHaveProperty("followUp");
     expect(cleared).not.toHaveProperty("attentionDate");
   });
 
-  it("rejects ambiguous or invalid Follow-up dates", async () => {
+  it("rejects unknown fields or invalid Follow-up dates", async () => {
     const owner = await createSession("note-follow-up-validation");
     const note = await capture(owner, "Remember this");
     for (const body of [
@@ -173,7 +173,7 @@ describe("editing a Note", () => {
       await call("/v1/notes", {
         method: "POST",
         session: owner,
-        body: { body: "Ambiguous", followUp: 1, attentionDate: 2 },
+        body: { body: "Unknown field", followUp: 1, attentionDate: 2 },
       }),
       { status: 400, code: "validation" },
     );

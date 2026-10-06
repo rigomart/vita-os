@@ -121,8 +121,7 @@ describe("authentication and actor gate", () => {
     expect(response.headers.get("access-control-allow-origin")).toBeNull();
   });
 
-  // `moves` is the compatibility spelling (ADR 0033, removal in #402).
-  it.each(["tasks", "moves"])(
+  it.each(["tasks"])(
     "rejects a credentialed /%s mutation from a disallowed origin before storage",
     async (collection) => {
       const signUp = await SELF.fetch(
@@ -166,7 +165,7 @@ describe("authentication and actor gate", () => {
     },
   );
 
-  it.each(["tasks", "moves"])(
+  it.each(["tasks"])(
     "requires JSON for an allowed-origin /%s mutation before storage",
     async (collection) => {
       const createStore = vi.fn();

@@ -14,11 +14,7 @@ import {
   updateNoteBody,
   updateNoteFollowUp,
 } from "./operations";
-import {
-  normalizeCreateNote,
-  normalizeNoteFollowUp,
-  NOTE_PAGE_SIZE,
-} from "./requests";
+import { NOTE_PAGE_SIZE } from "./requests";
 
 /**
  * Standalone Notes: the collection, its count, its Done history, and the four
@@ -42,17 +38,12 @@ export const NotesHandlers = HttpApiBuilder.group(
           }),
         ),
       )
-      .handle("create", ({ payload }) =>
-        createNote(normalizeCreateNote(payload)),
-      )
+      .handle("create", ({ payload }) => createNote(payload))
       .handle("body", ({ params, payload }) =>
         updateNoteBody({ ...params, body: payload.body }),
       )
       .handle("followUp", ({ params, payload }) =>
-        updateNoteFollowUp({ ...params, ...normalizeNoteFollowUp(payload) }),
-      )
-      .handle("attentionDate", ({ params, payload }) =>
-        updateNoteFollowUp({ ...params, ...normalizeNoteFollowUp(payload) }),
+        updateNoteFollowUp({ ...params, ...payload }),
       )
       .handle("state", ({ params, payload }) =>
         payload.state === "done" ? markNoteDone(params) : markNoteOpen(params),

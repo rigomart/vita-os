@@ -22,15 +22,12 @@ export interface NoteRow {
   updated_at: number | null;
 }
 
-// Keep the physical column and the old response field so saved dates and
-// already-open web clients survive the terminology change.
-export function toNote(row: NoteRow): Note & { attentionDate?: number } {
+// The physical column keeps its stored name (ADR 0028).
+export function toNote(row: NoteRow): Note {
   return {
     _id: row.id as NoteId,
     body: row.body,
-    ...(row.attention_date === null
-      ? {}
-      : { followUp: row.attention_date, attentionDate: row.attention_date }),
+    ...(row.attention_date === null ? {} : { followUp: row.attention_date }),
     state: row.state,
     ...(row.completed_at === null ? {} : { completedAt: row.completed_at }),
     createdAt: row.created_at,

@@ -204,8 +204,7 @@ describe("adding a Note to a Thread", () => {
         { _id: expect.any(String), text: "Call back", date: jun1 },
       ]);
       expect(added.thread).not.toHaveProperty("focusedTaskId");
-      // Compatibility (ADR 0032): the derived Follow-up date.
-      expect((added.thread as { followUp?: number }).followUp).toBe(jun1);
+      expect(added.thread).not.toHaveProperty("followUp");
       expect(added.thread).not.toHaveProperty("lastActivityContent");
       expect(await activityOf(owner, thread._id)).toEqual([]);
       expect(
@@ -230,7 +229,7 @@ describe("adding a Note to a Thread", () => {
         { _id: "existing-task", text: "Existing", date: jun1 },
         { _id: expect.any(String), text: "Overdue", date: past },
       ]);
-      expect((added.thread as { followUp?: number }).followUp).toBe(past);
+      expect(added.thread).not.toHaveProperty("followUp");
       expect(await activityOf(owner, thread._id)).toEqual([]);
     });
 
@@ -562,7 +561,7 @@ describe("contention", () => {
       error: { code: "not_found", message: "Note not found." },
     });
     const stored = await env.DB.prepare(
-      `SELECT revision, follow_up, last_activity_at,
+      `SELECT revision, moves_json, last_activity_at,
               (SELECT COUNT(*) FROM thread_notes WHERE thread_id = threads.id) AS copies,
               (SELECT COUNT(*) FROM activity_log_entries WHERE thread_id = threads.id) AS entries
        FROM threads WHERE id = ?`,
@@ -571,7 +570,7 @@ describe("contention", () => {
       .first();
     expect(stored).toEqual({
       revision: thread.revision,
-      follow_up: null,
+      moves_json: null,
       last_activity_at: null,
       copies: 0,
       entries: 0,

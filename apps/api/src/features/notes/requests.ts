@@ -17,57 +17,19 @@ export const DoneNotesQuery = Schema.Struct({
   q: Schema.optionalKey(QueryValue),
 });
 
-/** Creation accepts no date or one alias; a present null is never a timestamp. */
+/** Creation accepts an optional date; a present null is never a timestamp. */
 export const CreateNoteBody = Schema.Struct({
   body: Schema.String,
   followUp: Schema.optionalKey(TaskDateSchema),
-  attentionDate: Schema.optionalKey(TaskDateSchema),
-}).check(
-  Schema.makeFilter(
-    (input) =>
-      !(
-        Object.hasOwn(input, "followUp") &&
-        Object.hasOwn(input, "attentionDate")
-      ),
-  ),
-);
+});
 
 export const NoteBody = Schema.Struct({ body: Schema.String });
 
-/** Setting a date requires exactly one field, including when clearing with null. */
+/** Setting a date requires the field, including when clearing with null. */
 export const NoteFollowUp = Schema.Struct({
-  followUp: Schema.optionalKey(Schema.NullOr(TaskDateSchema)),
-  attentionDate: Schema.optionalKey(Schema.NullOr(TaskDateSchema)),
-}).check(
-  Schema.makeFilter(
-    (input) =>
-      Object.hasOwn(input, "followUp") !==
-      Object.hasOwn(input, "attentionDate"),
-  ),
-);
+  followUp: Schema.NullOr(TaskDateSchema),
+});
 
 export const NoteStateBody = Schema.Struct({
   state: Schema.Literals(["open", "done"]),
 });
-
-/** Accept the old web app's field during the API-before-web deployment. */
-export function normalizeCreateNote(input: typeof CreateNoteBody.Type): {
-  body: string;
-  followUp?: number;
-} {
-  const followUp = Object.hasOwn(input, "followUp")
-    ? input.followUp
-    : input.attentionDate;
-  return { body: input.body, ...(followUp === undefined ? {} : { followUp }) };
-}
-
-export function normalizeNoteFollowUp(input: typeof NoteFollowUp.Type): {
-  followUp: number | null;
-} {
-  // NoteFollowUp's presence check guarantees exactly one nullable timestamp.
-  return {
-    followUp: (Object.hasOwn(input, "followUp")
-      ? input.followUp
-      : input.attentionDate) as number | null,
-  };
-}

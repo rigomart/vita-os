@@ -25,3 +25,4 @@ The existing D1 `notes.attention_date` column and historical migration files sta
 - Amends the terminology in ADRs 0016, 0017, and 0027; their ownership, grouping, and time behavior remain in effect.
 - Future date controls share their labels and explanation rather than choosing names per content type.
 - Removing the compatibility API names is a separate change after older clients no longer need them.
+  *Follow-up:* The compatibility window was closed by #402.

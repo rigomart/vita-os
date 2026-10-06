@@ -23,6 +23,7 @@ That reason is gone. Tasks have no priority and no order. Dates are soft: they r
 - **Terms.** Move becomes Task. Moves becomes Tasks. Focused Move becomes Focused Task. **Ready to move** is unchanged.
 - **Stored names do not change.** The D1 columns `threads.moves_json` and `threads.focused_move_id`, the Activity Log types `move_completed` and `next_move_change`, and the text of existing Activity Log entries stay. ADR 0031 kept stored `done`; ADR 0028 kept `notes.attention_date`. Mapping at the edge preserves every row without a data migration.
 - **API.** New routes `/v1/threads/:threadId/tasks...` sit beside the existing `/moves...` routes, which stay as aliases for one release. Thread responses carry both `tasks` and `focusedTaskId` and the old `moves` and `focusedMoveId`. Requests accept either name. Supplying both old and new names is rejected as ambiguous, as in ADR 0028. The API deploys before the web app, so older clients keep working until they reload. Removing the old names is a separate change (#402).
+  *Follow-up:* The compatibility window was closed by #402.
 - **Order of delivery.** The rename ships first, with no behavior change, so every later iteration is written in Task terms.
 - **Old ADRs stay as written.** ADR 0022 and ADR 0032 get a one-line terminology note at the top, as ADR 0027 carries "Terminology amended by ADR 0028".
 

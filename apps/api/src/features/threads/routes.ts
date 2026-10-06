@@ -11,19 +11,13 @@ import {
   listOpenThreads,
   listResolvedThreads,
   removeTask,
-  refuseThreadFollowUp,
   removeThread,
   setTaskDate,
   setTaskRepeat,
   skipTask,
   updateThread,
 } from "./operations";
-import {
-  normalizeAddTask,
-  normalizeFocusTask,
-  normalizeSetTaskRepeat,
-  normalizeThreadChange,
-} from "./requests";
+import { normalizeSetTaskRepeat, normalizeThreadChange } from "./requests";
 
 /** Threads and their Tasks. */
 export const ThreadsHandlers = HttpApiBuilder.group(
@@ -44,20 +38,16 @@ export const ThreadsHandlers = HttpApiBuilder.group(
       )
       .handle("detail", ({ params }) => getThreadDetail({ slug: params.slug }))
       .handle("update", ({ params, payload }) =>
-        // Compatibility (ADR 0032, removal in #402): nothing is written for a
-        // request that sets a Thread's Follow-up date.
-        Object.hasOwn(payload, "followUp")
-          ? refuseThreadFollowUp()
-          : updateThread({
-              ...normalizeThreadChange(payload),
-              threadId: params.threadId,
-            }),
+        updateThread({
+          ...normalizeThreadChange(payload),
+          threadId: params.threadId,
+        }),
       )
       .handle("remove", ({ params }) =>
         removeThread({ threadId: params.threadId }),
       )
       .handle("addTask", ({ params, payload }) =>
-        addTask({ ...normalizeAddTask(payload), threadId: params.threadId }),
+        addTask({ ...payload, threadId: params.threadId }),
       )
       .handle("editTask", ({ params, payload }) =>
         editTask({
@@ -103,34 +93,8 @@ export const ThreadsHandlers = HttpApiBuilder.group(
       )
       .handle("focusTask", ({ params, payload }) =>
         focusTask({
-          ...normalizeFocusTask(payload),
-          threadId: params.threadId,
-        }),
-      )
-      // Compatibility (ADR 0033, removal in #402): the former `/moves` routes
-      // run the same operations.
-      .handle("addMove", ({ params, payload }) =>
-        addTask({ ...normalizeAddTask(payload), threadId: params.threadId }),
-      )
-      .handle("editMove", ({ params, payload }) =>
-        editTask({
           ...payload,
           threadId: params.threadId,
-          taskId: params.moveId,
-        }),
-      )
-      .handle("removeMove", ({ params, payload }) =>
-        removeTask({
-          ...payload,
-          threadId: params.threadId,
-          taskId: params.moveId,
-        }),
-      )
-      .handle("completeMove", ({ params, payload }) =>
-        completeTask({
-          ...payload,
-          threadId: params.threadId,
-          taskId: params.moveId,
         }),
       ),
 );

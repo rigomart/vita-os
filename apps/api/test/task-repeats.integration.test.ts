@@ -362,15 +362,16 @@ describe("repeating Tasks over HTTP", () => {
     }
     expect(await read(owner, thread)).toEqual(thread);
     expect(await activity(owner, thread)).toEqual([]);
-    // An old /moves client must also be refused, never stripping Repeat.
-    expectError(
-      await call(`/v1/threads/${thread._id}/moves/a/complete`, {
-        method: "POST",
-        session: owner,
-        body: { expectedRevision: thread.revision },
-      }),
-      validation,
-    );
+    // The retired route cannot complete or strip a Repeat.
+    expect(
+      (
+        await call(`/v1/threads/${thread._id}/moves/a/complete`, {
+          method: "POST",
+          session: owner,
+          body: { expectedRevision: thread.revision },
+        })
+      ).status,
+    ).toBe(404);
   });
 
   it("refuses stale revisions, missing Tasks, and another owner for every new command", async () => {

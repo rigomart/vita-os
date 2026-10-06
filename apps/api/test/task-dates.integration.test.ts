@@ -267,7 +267,7 @@ describe("a Task's date", () => {
         expectedRevision: thread.revision,
       },
     });
-    expect(add.status).toBe(400);
+    expect(add.status).toBe(404);
     expect(await read(owner, thread)).toEqual(thread);
   });
 });

@@ -41,7 +41,7 @@ Preconditions:
 
 ## Gotchas
 
-- The time field is Chrome's native time input. `find label "Time" fill "15:00"` and `keyboard type` leave it empty. Click `Add time` (the field takes focus on its hours), then `press` each key (`3`, `0`, `0`, `p`), and confirm with `get value 'input[type=time]'` (`15:00`). Then click a day (saves the day at that time) or `press Enter` (saves the time on the day already set). One time edit writes one `follow_up_change` entry.
+- The time field is Chrome's native time input. `find label "Time" fill "15:00"` and `keyboard type` leave it empty. Click `Add time` (the field takes focus on its hours), then `press` each key (`3`, `0`, `0`, `p`), and confirm with `get value 'input[type=time]'` (`15:00`). Then click a day (saves the day at that time) or `press Enter` (saves the time on the day already set). A Task date edit writes no Activity Log entry.
 - Card controls only show on hover or focus. They still exist in the accessibility snapshot, so `find role button` reaches them without a hover.
 - A card whose footer has no date and no Area keeps an empty footer row at rest, which holds space for the hover controls.
 - `Archive note` with `--exact` matches the first note card on the board, not necessarily the one you just dated. Scope with XPath when several Notes are open: `click 'xpath=//li[.//button[starts-with(@aria-label,"Open note: <text>")]]//button[@aria-label="Archive note"]'`.

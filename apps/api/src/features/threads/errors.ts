@@ -9,17 +9,5 @@ export const threadNotFound = () =>
  * for what it is rather than as a generic change conflict, and it is not worth
  * retrying: a retry could act on a different Task.
  */
-/**
- * Compatibility (ADR 0032, removal in #402): an old client setting a Thread's
- * Follow-up date. The date now lives on the Thread's Tasks, so the request is
- * refused as a conflict that is not worth retrying, which makes the client
- * reload and learn the new shape.
- */
-export const followUpMoved = () =>
-  new RefusedByState({
-    message:
-      "A Thread no longer has a Follow-up date. Give one of its Tasks a date instead.",
-  });
-
 export const moveConflict = () =>
   new RefusedByState({ message: "The Thread's Tasks have changed." });

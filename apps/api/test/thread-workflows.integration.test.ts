@@ -13,9 +13,6 @@ import type { Session } from "./sessions";
 
 import { call, createSession, expectError, succeed } from "./sessions";
 
-/** A Thread as the API still answers it during the compatibility window (ADR 0032). */
-type CompatThread = Thread & { followUp?: number };
-
 async function createArea(session: Session, name = "Family Health") {
   return succeed<AreaSummary>("/v1/areas", {
     method: "POST",
@@ -195,7 +192,7 @@ describe("Thread changes", () => {
   });
 });
 
-describe("a Thread's Follow-up date (compatibility window, ADR 0032)", () => {
+describe("a Thread resurfaces at its dated Tasks", () => {
   const may20 = Date.UTC(2026, 4, 20);
   const jun1 = Date.UTC(2026, 5, 1);
 
@@ -217,62 +214,35 @@ describe("a Thread's Follow-up date (compatibility window, ADR 0032)", () => {
         },
       );
     }
-    return thread as CompatThread;
+    return thread;
   }
-
-  it("is derived from the soonest dated Task, and absent without one", async () => {
-    const owner = await createSession("thread-derived-follow-up");
-
-    const dated = await datedThread(owner, [jun1, null, may20]);
-    expect(dated.followUp).toBe(may20);
-    expect(
-      ((await detailOf(owner, dated)).thread as CompatThread).followUp,
-    ).toBe(may20);
-    expect(
-      (await succeed<CompatThread[]>("/v1/threads", { session: owner })).find(
-        (thread) => thread._id === dated._id,
-      )?.followUp,
-    ).toBe(may20);
-
-    const undated = await datedThread(owner, [null, null]);
-    expect(undated).not.toHaveProperty("followUp");
-  });
 
   it.each([
     ["a date", { followUp: may20 }],
     ["clearing it", { followUp: null }],
     ["a date beside another change", { followUp: may20, title: "Renamed" }],
-  ])(
-    "refuses %s as a conflict not worth retrying, writing nothing",
-    async (_case, body) => {
-      const owner = await createSession("thread-follow-up-refused");
-      const thread = await datedThread(owner, [jun1]);
+  ])("refuses %s as an unknown field, writing nothing", async (_case, body) => {
+    const owner = await createSession("thread-follow-up-refused");
+    const thread = await datedThread(owner, [jun1]);
 
-      expectError(
-        await call(`/v1/threads/${thread._id}`, {
-          method: "PATCH",
-          session: owner,
-          body,
-        }),
-        {
-          status: 409,
-          code: "conflict",
-          message:
-            "A Thread no longer has a Follow-up date. Give one of its Tasks a date instead.",
-        },
-      );
+    expectError(
+      await call(`/v1/threads/${thread._id}`, {
+        method: "PATCH",
+        session: owner,
+        body,
+      }),
+      {
+        status: 400,
+        code: "validation",
+        message: "Invalid Thread change.",
+      },
+    );
 
-      const after = (await detailOf(owner, thread)).thread;
-      expect(after).toEqual(thread);
-      expect(after.title).toBe(thread.title);
-      expect(await activityOf(owner, thread)).toEqual([]);
-      expect(
-        await env.DB.prepare("SELECT follow_up FROM threads WHERE id = ?")
-          .bind(thread._id)
-          .first(),
-      ).toEqual({ follow_up: null });
-    },
-  );
+    const after = (await detailOf(owner, thread)).thread;
+    expect(after).toEqual(thread);
+    expect(after.title).toBe(thread.title);
+    expect(await activityOf(owner, thread)).toEqual([]);
+  });
 
   it("writes no follow_up_change entry for any Thread change", async () => {
     const owner = await createSession("thread-no-follow-up-entry");
@@ -473,7 +443,7 @@ describe("Thread lifecycle", () => {
       "Book appointment",
     ]);
     // A dated Task is discarded with the rest, and named like them.
-    const withTasks = await succeed<CompatThread>(
+    const withTasks = await succeed<Thread>(
       `/v1/threads/${thread._id}/tasks/${added.tasks![0]!._id}/date`,
       {
         method: "PUT",
@@ -481,7 +451,7 @@ describe("Thread lifecycle", () => {
         body: { date: Date.UTC(2026, 4, 20), expectedRevision: added.revision },
       },
     );
-    expect(withTasks.followUp).toBe(Date.UTC(2026, 4, 20));
+    expect(withTasks.tasks?.[0]?.date).toBe(Date.UTC(2026, 4, 20));
     await succeed(`/v1/threads/${thread._id}/focus`, {
       method: "PUT",
       session: owner,
@@ -631,33 +601,6 @@ describe("Thread change privacy", () => {
         `/v1/threads/${theirs._id}/focus`,
         "PUT",
         { taskId: "theirs", expectedRevision: 1 },
-      ],
-      // The former `/moves` routes and `moveId` field are compatibility
-      // spellings (ADR 0033, removal in #402) and guard the same Thread.
-      [
-        `/v1/threads/${theirs._id}/moves`,
-        "POST",
-        { moveId: "mine", text: "Mine", expectedRevision: 0 },
-      ],
-      [
-        `/v1/threads/${theirs._id}/moves/theirs`,
-        "PATCH",
-        { text: "Mine", expectedRevision: 1 },
-      ],
-      [
-        `/v1/threads/${theirs._id}/moves/theirs/complete`,
-        "POST",
-        { expectedRevision: 1 },
-      ],
-      [
-        `/v1/threads/${theirs._id}/moves/theirs`,
-        "DELETE",
-        { expectedRevision: 1 },
-      ],
-      [
-        `/v1/threads/${theirs._id}/focus`,
-        "PUT",
-        { moveId: "theirs", expectedRevision: 1 },
       ],
       [`/v1/threads/${theirs._id}`, "DELETE", undefined],
     ] as const) {
