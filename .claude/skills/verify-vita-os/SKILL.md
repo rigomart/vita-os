@@ -115,7 +115,7 @@ The feature map is only as good as its last update, and you are the one who upda
 
 ## Gotchas
 
-- Never `press Enter` right after typing in an EditableField (a Task's text). On agent-browser 0.38.1 it starts a nonstop stream of trusted keydown events in the browser (about 20k per 500 ms), so whatever button has focus is activated over and over and floods the API. Commit with `press Tab` or a click. Every flow follows this.
+- Never `press Enter` to commit an edit of an existing Task's text (an EditableField). On agent-browser 0.38.1 it starts a nonstop stream of trusted keydown events in the browser (about 20k per 500 ms), so whatever button has focus is activated over and over and floods the API. Commit the edit with `press Tab` or a click. `press Enter` in `Add a task` is fine: it is the capture path (one line + Enter) and flows keep proving it.
 
 - On a Mac whose display is asleep or locked, Chrome stops producing frames and screenshots hang. The CLI launches every browser session with `--disable-frame-rate-limit` (via `AGENT_BROWSER_ARGS`), which avoids it. Launch args only apply when a session starts, so a session opened with plain `agent-browser` still hangs: close it, or run `bun run verify down` then `up`. Snapshots, `eval`, and `pdf` never need a frame.
 - Saved Notes are read-only preview buttons named `Open note: <plain-text preview>`. Use `wait --text` for saved text and click the button to open the Note view. Its editor is `Note body` after choosing the `Write` tab.

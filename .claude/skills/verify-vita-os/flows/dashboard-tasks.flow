@@ -1,5 +1,5 @@
 # Dashboard card task slot: one Task, several unfocused ("N tasks · none focused"), one focused; complete from the card.
-# Needs a signed-in instance (up + signin). Commit task fields with Tab, never Enter.
+# Needs a signed-in instance (up + signin). Add Tasks with Enter in "Add a task"; never press Enter to commit an edit of an existing Task (use Tab).
 open /
 
 # Thread One: a single Task, shown without asking for a focus.
@@ -9,7 +9,7 @@ browser -- find role button click --name Create --exact
 browser -- wait --text "Thread created"
 browser -- wait 'input[aria-label="Add a task"]'
 browser -- find label "Add a task" fill "Only task ${STAMP}"
-browser -- press Tab
+browser -- press Enter
 browser -- wait --text "Only task ${STAMP}"
 
 # Thread Many: three Tasks, none focused.
@@ -19,13 +19,13 @@ browser -- find role button click --name Create --exact
 browser -- wait --text "Thread created"
 browser -- wait 'input[aria-label="Add a task"]'
 browser -- find label "Add a task" fill "Many 1 ${STAMP}"
-browser -- press Tab
+browser -- press Enter
 browser -- wait --text "Many 1 ${STAMP}"
 browser -- find label "Add a task" fill "Many 2 ${STAMP}"
-browser -- press Tab
+browser -- press Enter
 browser -- wait --text "Many 2 ${STAMP}"
 browser -- find label "Add a task" fill "Many 3 ${STAMP}"
-browser -- press Tab
+browser -- press Enter
 browser -- wait --text "Many 3 ${STAMP}"
 
 # Thread Focus: two Tasks, the second focused.
@@ -35,10 +35,10 @@ browser -- find role button click --name Create --exact
 browser -- wait --text "Thread created"
 browser -- wait 'input[aria-label="Add a task"]'
 browser -- find label "Add a task" fill "Focus 1 ${STAMP}"
-browser -- press Tab
+browser -- press Enter
 browser -- wait --text "Focus 1 ${STAMP}"
 browser -- find label "Add a task" fill "Focus 2 ${STAMP}"
-browser -- press Tab
+browser -- press Enter
 browser -- wait --text "Focus 2 ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Focus 2 ${STAMP}"]]//button[@aria-label="Focus this task"]'
 browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'

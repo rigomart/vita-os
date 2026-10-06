@@ -1,5 +1,5 @@
 # Tasks in the Thread pane: add three, focus, unfocus, refocus, edit, remove, complete, Activity Log.
-# Needs a signed-in instance (up + signin). Never press Enter on an editable Task: commit with Tab.
+# Needs a signed-in instance (up + signin). Add Tasks with Enter in "Add a task"; never press Enter to commit an edit of an existing Task (use Tab).
 open /
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Flow tasks ${STAMP}"
@@ -8,17 +8,21 @@ browser -- wait --text "Thread created"
 browser -- wait 'input[aria-label="Add a task"]'
 shot tasks-before
 
-# Add three Tasks. Tab commits the field.
+# Add three Tasks: type, Enter (the capture path under test).
 browser -- find label "Add a task" fill "Task A ${STAMP}"
-browser -- press Tab
+browser -- press Enter
 browser -- wait --text "Task A ${STAMP}"
 browser -- find label "Add a task" fill "Task B ${STAMP}"
-browser -- press Tab
+browser -- press Enter
 browser -- wait --text "Task B ${STAMP}"
 browser -- find label "Add a task" fill "Task C ${STAMP}"
-browser -- press Tab
+browser -- press Enter
 browser -- wait --text "Task C ${STAMP}"
 shot tasks-added
+# No flood: exactly three Tasks persisted (a runaway Enter would add more).
+browser -- wait 1500
+d1 "SELECT json_array_length(moves_json) AS n FROM threads WHERE title = 'Flow tasks ${STAMP}'"
+expect '"n": 3'
 
 # Focus B, unfocus it, focus C instead.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task B ${STAMP}"]]//button[@aria-label="Focus this task"]'

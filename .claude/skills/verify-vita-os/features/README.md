@@ -17,7 +17,7 @@ This directory is the maintained source for verifying Vita OS's user-facing beha
 - Wait on the specific end state (`wait --text`, `wait --fn`, `wait '<selector>'`). Never use `wait --load networkidle` or bare sleeps as proof.
 
 - Prefer `bun run verify run <flow-file>` over step-by-step driving for anything longer than a few steps. Flows live in `../flows/` (`tasks`, `dashboard-tasks`, `resolve-reopen`, `thread-drawer`) and are built from the command blocks in these files; see Flows in `../SKILL.md` for the format. Add or update a flow when a feature file's recipe changes.
-- Never `press Enter` after typing in an EditableField such as a Task's text (agent-browser 0.38.1 floods the browser with keydown events). Commit with `press Tab` or a click. The `press Enter` in the recipes below applies to the `Add a task` field only where a recipe says so; prefer `press Tab` there too.
+- Never `press Enter` to commit an edit of an existing Task's text (agent-browser 0.38.1 floods the browser with keydown events); use `press Tab` or a click. `press Enter` in `Add a task` is fine and is the capture path flows must keep proving.
 - Time-limit verification. If the same step fails twice, stop that item and report it `INCONCLUSIVE` with the failing command and its output.
 
 ## Proof and skip reporting

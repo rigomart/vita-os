@@ -1,6 +1,6 @@
 # Resolve a Thread that has open Tasks, check its resolution entry names them, find it in History, reopen it.
 # The Activity Log shows only "open → resolved"; the entry's content is read from D1.
-# Needs a signed-in instance (up + signin). Commit task fields with Tab, never Enter.
+# Needs a signed-in instance (up + signin). Add Tasks with Enter in "Add a task"; never press Enter to commit an edit of an existing Task (use Tab).
 open /
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Resolve me ${STAMP}"
@@ -8,10 +8,10 @@ browser -- find role button click --name Create --exact
 browser -- wait --text "Thread created"
 browser -- wait 'input[aria-label="Add a task"]'
 browser -- find label "Add a task" fill "Discard A ${STAMP}"
-browser -- press Tab
+browser -- press Enter
 browser -- wait --text "Discard A ${STAMP}"
 browser -- find label "Add a task" fill "Discard B ${STAMP}"
-browser -- press Tab
+browser -- press Enter
 browser -- wait --text "Discard B ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Discard B ${STAMP}"]]//button[@aria-label="Focus this task"]'
 browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
