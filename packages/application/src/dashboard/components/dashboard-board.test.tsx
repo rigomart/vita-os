@@ -197,6 +197,35 @@ describe("DashboardBoard repeating Task card", () => {
     );
   });
 
+  // The note on completing is offered in Thread detail only (ADR 0032).
+  it("completes in one click with no note, and offers no note path", async () => {
+    const user = userEvent.setup();
+    const thread = aThread({ tasks: [checkIn] });
+    const completeTask = vi.fn(async () => success(thread));
+    render(
+      <DashboardBoard
+        areas={[]}
+        board={buildAttentionBoard([thread], [], currentDate)}
+        currentDate={currentDate}
+      />,
+      { applicationClient: createQuietApplicationClient({ completeTask }) },
+    );
+
+    expect(screen.queryByRole("button", { name: /with a note/i })).toBeNull();
+    await user.click(
+      screen.getByRole("button", { name: "Complete “Evening check-in”" }),
+    );
+    await waitFor(() =>
+      expect(completeTask).toHaveBeenCalledExactlyOnceWith({
+        threadId: "thread1",
+        taskId: "check-in",
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        expectedRevision: 3,
+      }),
+    );
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
   it("offers no skip and no glyph on a one-off Task", () => {
     const { repeat: _repeat, ...oneOff } = checkIn;
     const thread = aThread({ tasks: [oneOff] });
