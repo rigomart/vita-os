@@ -8,6 +8,9 @@
 -- Task gets a new ID. A Resolved Thread holds no Tasks and keeps its row as it
 -- is. Activity Log entries are left exactly as they were written.
 --
+-- Each changed Thread's revision goes up by one, so a client holding the
+-- pre-migration Thread is refused as stale and refreshes (ADR 0022).
+--
 -- The `follow_up` column STAYS, no longer read or written, so a rollback loses
 -- nothing. A later cleanup (issue 402) drops it. Notes keep their dates.
 
@@ -29,5 +32,6 @@ SET moves_json = CASE
       'date', follow_up
     )
   )
-END
+END,
+  revision = revision + 1
 WHERE state = 'open' AND follow_up IS NOT NULL;

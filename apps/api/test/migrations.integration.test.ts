@@ -262,7 +262,7 @@ describe("0004: Areas become optional labels", () => {
       lastActivityAt: 1_700_000_000_000,
       lastActivityContent: "Next move set",
       createdAt: 1_600_000_000_000,
-      revision: 7,
+      revision: 8,
     });
     expect(checkup.area?._id).toBe("area-health");
     expect(gate.thread).toMatchObject({
@@ -537,7 +537,8 @@ describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
     // Not focused: the Focused Task is the one it was.
     expect(thread.focusedTaskId).toBe("call");
     expect(thread.tasks?.[2]?._id).toMatch(/^[0-9a-f]{32}$/);
-    expect(thread.revision).toBe(6);
+    // Changed Threads move to a new revision; untouched ones keep theirs.
+    expect(thread.revision).toBe(7);
   });
 
   it("starts the Tasks of a Thread that had none, with a date-only Task", async () => {
@@ -547,6 +548,7 @@ describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
       { _id: expect.any(String), text: "Follow up", date: FOLLOW_UP_DAY },
     ]);
     expect(thread).not.toHaveProperty("focusedTaskId");
+    expect(thread.revision).toBe(7);
   });
 
   it("leaves a Thread without a Follow-up date as it was", async () => {
@@ -557,6 +559,7 @@ describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
     ]);
     expect(thread.focusedTaskId).toBe("email");
     expect(thread).not.toHaveProperty("followUp");
+    expect(thread.revision).toBe(6);
   });
 
   it("leaves a Resolved Thread as it was", async () => {
@@ -565,6 +568,7 @@ describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
     expect(thread).not.toHaveProperty("tasks");
     expect(thread).not.toHaveProperty("followUp");
     expect(thread.state).toBe("resolved");
+    expect(thread.revision).toBe(6);
   });
 
   it("keeps the follow_up column, no longer read, and every Activity Log entry", async () => {
