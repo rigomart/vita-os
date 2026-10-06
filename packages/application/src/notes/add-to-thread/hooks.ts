@@ -100,13 +100,20 @@ export function useAddNoteToThread(): ApplicationMutationResult<
       ...threadChangeKeys(cache, { threadId: thread._id }),
       queryKeys.threadNotes.open(thread._id),
     ],
-    optimistic: (cache, { note, thread }, previousLocal) => {
+    // Its Task patches a Thread already shown and is in no answer that came
+    // back before it reached the service, so it is shown above those answers.
+    pendingOnTop: true,
+    optimistic: (cache, { note, thread }, previousLocal, answered) => {
       const pendingId = previousLocal ?? (newRecordId() as ThreadNoteId);
       showNoteLeavingOpenNotes(cache, note._id);
-      showNoteAddedToThread(cache, thread._id, {
-        task: taskFromNote(note, noteTaskId(note)),
-        lastActivityAt: Date.now(),
-      });
+      // Once answered, the answer carries the Task, unless a newer answer
+      // already shows the Thread without it.
+      if (!answered) {
+        showNoteAddedToThread(cache, thread._id, {
+          task: taskFromNote(note, noteTaskId(note)),
+          lastActivityAt: Date.now(),
+        });
+      }
       patchOpenThreadNotes(cache, thread._id, (notes) =>
         insertNewestFirst(
           notes,

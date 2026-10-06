@@ -109,8 +109,33 @@ function gatedService(
       }),
     );
   });
+  const addTask = vi.fn(
+    (input: { taskId: TaskId; text: string; expectedRevision: number }) => {
+      if (input.expectedRevision !== stored.revision) {
+        refusals.push(`add ${input.text} at r${input.expectedRevision}`);
+        return answer(
+          "addTask",
+          failure<Thread>({
+            code: "conflict",
+            message: "changed",
+            retryable: false,
+          }),
+        );
+      }
+      stored = {
+        ...stored,
+        tasks: [
+          ...(stored.tasks ?? []),
+          { _id: input.taskId, text: input.text },
+        ],
+        revision: stored.revision + 1,
+      };
+      return answer("addTask", success(stored));
+    },
+  );
   const client = createFakeApplicationClient({
     completeTask,
+    addTask,
     addNoteToThread,
     listOpenThreads: async () => success([stored]),
     getThreadActivityPage: async () => success({ entries: [] }),
@@ -123,6 +148,10 @@ function gatedService(
     addNoteToThread,
     refusals,
     stored: () => stored,
+    /** A change another device makes. */
+    elsewhere: (change: (thread: Thread) => Thread) => {
+      stored = change(stored);
+    },
     /** Open the earliest waiting answer with this label, if there is one. */
     release: (label: string) => {
       const index = gates.findIndex((gate) => gate.label === label);
@@ -274,6 +303,46 @@ describe("Note conversions and the Task queue of one Thread", () => {
     expect(open()?.tasks?.map((task) => task._id)).toEqual(
       service.stored().tasks?.map((task) => task._id),
     );
+    holding.resolve(success(seed));
+  });
+
+  // Once, a settled Task add replayed its optimistic change after a newer
+  // answer, bringing back a Task another device had removed.
+  it("never replays a settled change over a newer answer", async () => {
+    const seed = aThread({ revision: 4, tasks: [] });
+    const holding = deferred<OperationResult<Thread>>();
+    const service = gatedService(seed, () => holding.promise);
+    const { add, tasks, update, open } = setup(service, seed);
+    const undo = deferred<boolean>();
+    service.flowFreely();
+
+    act(() => {
+      void update.current
+        .mutateAsync({ thread: seed, title: "Renamed" })
+        .catch(() => undefined);
+    });
+    act(() => {
+      add.current.mutate({
+        note: dentist,
+        thread: seed,
+        undoWindow: () => undo.promise,
+      });
+    });
+    await act(async () => {
+      await tasks.current.add("Alpha");
+    });
+    expect(service.stored().revision).toBe(5);
+    service.elsewhere((thread) => ({
+      ...thread,
+      tasks: [],
+      revision: thread.revision + 1,
+    }));
+    await act(async () => undo.resolve(true));
+    await waitFor(() => expect(open()?.revision).toBe(7));
+
+    expect(open()?.tasks?.map((task) => task._id)).toEqual([
+      noteTaskId(dentist),
+    ]);
     holding.resolve(success(seed));
   });
 

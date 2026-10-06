@@ -232,7 +232,8 @@ describe("converting Notes beside other Task commands", () => {
     );
   });
 
-  it("keeps the newest revision when conversions settle out of order", async () => {
+  it("keeps the newest revision when the conversion issued first lands last", async () => {
+    const undoFirst = deferred<boolean>();
     const firstConversion = deferred<OperationResult<NoteAddedToThread>>();
     const secondConversion = deferred<OperationResult<NoteAddedToThread>>();
     const completeTask = vi.fn(async (input: { expectedRevision: number }) =>
@@ -241,10 +242,11 @@ describe("converting Notes beside other Task commands", () => {
     const { wrapper, open } = setup(
       createFakeApplicationClient({
         completeTask,
-        addNoteToThread: vi
-          .fn()
-          .mockImplementationOnce(() => firstConversion.promise)
-          .mockImplementationOnce(() => secondConversion.promise),
+        addNoteToThread: vi.fn((input: { noteId: NoteId }) =>
+          input.noteId === note._id
+            ? firstConversion.promise
+            : secondConversion.promise,
+        ),
         getThreadActivityPage: async () => success({ entries: [] }),
       }),
     );
@@ -253,17 +255,19 @@ describe("converting Notes beside other Task commands", () => {
     const { result: pending } = renderHook(() => usePendingTaskIds(), {
       wrapper,
     });
+    // The second reaches the service first: the first waits out its Undo window.
     const both = [
-      { _id: noteTaskId(note), text: "Call the dentist", date },
       { _id: noteTaskId(second), text: "Pay the bill", date },
+      { _id: noteTaskId(note), text: "Call the dentist", date },
     ];
 
     act(() => {
-      add.current.mutate({ note, thread });
+      add.current.mutate({ note, thread, undoWindow: () => undoFirst.promise });
       add.current.mutate({ note: second, thread });
     });
+    await act(async () => secondConversion.resolve(added(both.slice(0, 1), 5)));
+    await act(async () => undoFirst.resolve(true));
     await act(async () => firstConversion.resolve(added(both, 6)));
-    await act(async () => secondConversion.resolve(added(both.slice(1), 5)));
     await waitFor(() => expect(pending.current.size).toBe(0));
     expect(open()?.revision).toBe(6);
     expect(open()?.tasks).toEqual(both);

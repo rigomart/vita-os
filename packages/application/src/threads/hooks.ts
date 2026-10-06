@@ -274,8 +274,11 @@ export function useTaskCommand<TInput>(
       }),
     affected: (_input, cache) =>
       threadChangeKeys(cache, { threadId: thread._id }),
-    optimistic: (cache, input) =>
-      showTaskChange(cache, thread._id, command.change(input)),
+    // Once answered, the answer carries the change (and is skipped if a newer
+    // one is already shown), so the change itself is not replayed over it.
+    optimistic: (cache, input, _local, answered) => {
+      if (!answered) showTaskChange(cache, thread._id, command.change(input));
+    },
     reconcile: (cache, settled) => settleTaskChange(cache, settled),
     // Completion writes an Activity Log entry, which is read separately.
     alsoInvalidate: () => [queryKeys.threads.activity(thread._id)],

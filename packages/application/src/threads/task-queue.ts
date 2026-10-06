@@ -23,25 +23,11 @@ export function noteTaskId(note: Pick<Note, "_id">): TaskId {
 /** Marks the commands that turn a Note into a Task, so the Task can show it is pending. */
 export const noteConversionKey = ["note-conversion"] as const;
 
-interface ThreadLine {
-  /** Settles when the last request handed to the line has been answered. */
-  tail: Promise<unknown>;
-  /** The newest revision any answer on the line brought back. */
-  revision: number;
-}
-
-const lines = new WeakMap<QueryClient, Map<ThreadId, ThreadLine>>();
-
-function lineFor(cache: QueryClient, threadId: ThreadId): ThreadLine {
-  const byThread = lines.get(cache) ?? new Map<ThreadId, ThreadLine>();
-  lines.set(cache, byThread);
-  const line = byThread.get(threadId) ?? {
-    tail: Promise.resolve(),
-    revision: 0,
-  };
-  byThread.set(threadId, line);
-  return line;
-}
+/**
+ * Per Thread, what settles once the last request handed to its line has been
+ * answered. A Thread with nothing in line (a deleted one included) has none.
+ */
+const lines = new WeakMap<QueryClient, Map<ThreadId, Promise<unknown>>>();
 
 /**
  * Hand one request for this Thread to the service once every request before
@@ -57,9 +43,18 @@ export function sendInTurn<T>(
   threadId: ThreadId,
   send: () => Promise<T>,
 ): Promise<T> {
-  const line = lineFor(cache, threadId);
-  const turn = line.tail.then(send);
-  line.tail = turn.catch(() => undefined);
+  const byThread = lines.get(cache) ?? new Map<ThreadId, Promise<unknown>>();
+  lines.set(cache, byThread);
+  const turn = (byThread.get(threadId) ?? Promise.resolve()).then(send);
+  const tail: Promise<unknown> = turn.then(
+    () => undefined,
+    () => undefined,
+  );
+  byThread.set(threadId, tail);
+  void tail.then(() => {
+    // Nothing joined the line behind this request: it is idle.
+    if (byThread.get(threadId) === tail) byThread.delete(threadId);
+  });
   return turn;
 }
 
@@ -77,11 +72,13 @@ export function noteAnswer(
   settled: Thread,
   options: { startsBasis: boolean },
 ): void {
-  const line = lineFor(cache, settled._id);
-  line.revision = Math.max(line.revision, settled.revision);
   const memo = queueMemo(cache);
   if (memo === undefined) return;
   const scope = taskScope(settled._id);
+  memo.set(
+    answeredKey(scope),
+    Math.max(answeredRevision(cache, settled._id), settled.revision),
+  );
   const basis = memo.get(scope) as Thread | undefined;
   if (
     basis === undefined
@@ -100,16 +97,20 @@ export function queueBasis(
   return queueMemo(cache)?.get(taskScope(threadId)) as Thread | undefined;
 }
 
+const answeredKey = (scope: string) => `${scope}:answered`;
+
 /**
- * The newest revision an answer for this Thread brought back. Reads are
- * patched only once a command's own success handling runs, which can be
- * after the next request in line has started.
+ * The newest revision an answer for this Thread brought back while its
+ * command is still pending. Reads are patched only once a command's own
+ * success handling runs, which can be after the next request in line has
+ * started; once it has, the reads hold the revision themselves.
  */
 export function answeredRevision(
   cache: QueryClient,
   threadId: ThreadId,
 ): number {
-  return lineFor(cache, threadId).revision;
+  const answered = queueMemo(cache)?.get(answeredKey(taskScope(threadId)));
+  return typeof answered === "number" ? answered : 0;
 }
 
 /**

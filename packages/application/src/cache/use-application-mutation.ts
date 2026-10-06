@@ -47,11 +47,15 @@ export interface ApplicationMutationOptions<TVariables, TValue, TLocal = void> {
    * The change to show immediately. Whatever it returns — the ID it minted for a
    * pending record, say — is handed back to `reconcile`. This callback must only
    * change the cache: it can be replayed when another command settles.
+   * `answered` is true once the service's answer follows it in the replay: a
+   * command whose answer carries the whole change can then show nothing of
+   * its own, so it never reapplies the change over a newer answer.
    */
   optimistic?: (
     cache: QueryClient,
     variables: TVariables,
     previousLocal: TLocal | undefined,
+    answered: boolean,
   ) => TLocal;
   /** The service's answer, folded into what is on screen. */
   reconcile?: (
@@ -70,6 +74,13 @@ export interface ApplicationMutationOptions<TVariables, TValue, TLocal = void> {
   scope?: string;
   /** Names the command for `useMutationState`, so a surface can tell it is pending. */
   mutationKey?: readonly unknown[];
+  /**
+   * While pending, this command's change is replayed after every other one,
+   * so an answer that came back meanwhile — which cannot contain it — does
+   * not wipe it from the screen. Only for a change that patches records
+   * already there, so it cannot bring back one a later command removed.
+   */
+  pendingOnTop?: boolean;
 }
 
 /**
@@ -78,7 +89,8 @@ export interface ApplicationMutationOptions<TVariables, TValue, TLocal = void> {
  */
 interface Layer {
   apply: () => void;
-  settled: boolean;
+  /** Replayed last while it waits for its answer (`pendingOnTop`). */
+  onTop: boolean;
 }
 
 interface MutationBatch {
@@ -117,17 +129,16 @@ export function queueMemo(
 }
 
 /**
- * Rebuild the reads from what they held before the batch: every settled
- * command in the order it was issued, then every pending one on top. A
- * pending change has not reached the service, so an answer that came back
- * meanwhile cannot contain it and must not wipe it from the screen.
+ * Rebuild the reads from what they held before the batch: every command in
+ * the order it was issued, except those still pending with `pendingOnTop`,
+ * which go last.
  */
 function replay(cache: QueryClient, batch: MutationBatch) {
   notifyManager.batch(() => {
     for (const [key, value] of batch.base.values())
       cache.setQueryData(key, value);
-    for (const layer of batch.layers) if (layer.settled) layer.apply();
-    for (const layer of batch.layers) if (!layer.settled) layer.apply();
+    for (const layer of batch.layers) if (!layer.onTop) layer.apply();
+    for (const layer of batch.layers) if (layer.onTop) layer.apply();
   });
 }
 
@@ -221,9 +232,10 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
               cache,
               variables,
               snapshot.local,
+              false,
             );
           },
-          settled: false,
+          onTop: options.pendingOnTop ?? false,
         },
         local: undefined,
       };
@@ -234,16 +246,20 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
     onError: (_error, _variables, snapshot) => {
       if (!snapshot) return;
       snapshot.layer.apply = () => {};
-      snapshot.layer.settled = true;
+      snapshot.layer.onTop = false;
     },
     onSuccess: (value, variables, snapshot) => {
       if (!snapshot) return;
-      const optimistic = snapshot.layer.apply;
       snapshot.layer.apply = () => {
-        optimistic();
+        snapshot.local = options.optimistic?.(
+          cache,
+          variables,
+          snapshot.local,
+          true,
+        );
         options.reconcile?.(cache, value, variables, snapshot.local);
       };
-      snapshot.layer.settled = true;
+      snapshot.layer.onTop = false;
     },
     onSettled: (_value, _error, _variables, snapshot) => {
       if (!snapshot) return;
