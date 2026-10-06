@@ -26,6 +26,21 @@ export interface TaskState {
   focusedTaskId?: TaskId;
 }
 
+/** A Task date is a sane instant: 1970-01-01 through 9999-12-31, whole milliseconds. */
+export const MIN_TASK_DATE = 0;
+export const MAX_TASK_DATE = 253_402_300_799_999;
+
+export function requireTaskDate(date: number): number {
+  if (
+    !Number.isSafeInteger(date) ||
+    date < MIN_TASK_DATE ||
+    date > MAX_TASK_DATE
+  ) {
+    throw new ValidationError("Invalid date");
+  }
+  return date;
+}
+
 /** A Task ID is opaque, but it has to be something a URL and a row can hold. */
 const MAX_TASK_ID_LENGTH = 64;
 
@@ -77,9 +92,7 @@ export function decideAddTask(
 ): ThreadUpdateDecision | null {
   requireOpenForTasks(thread);
   if (findTask(thread, task._id)) return null;
-  if (task.date !== undefined && !Number.isSafeInteger(task.date)) {
-    throw new ValidationError("Invalid date");
-  }
+  if (task.date !== undefined) requireTaskDate(task.date);
 
   return {
     patch: { tasks: [...(thread.tasks ?? []), task] },
@@ -153,9 +166,7 @@ export function decideSetTaskDate(
   date: number | null,
 ): ThreadUpdateDecision | null {
   requireOpenForTasks(thread);
-  if (date !== null && !Number.isSafeInteger(date)) {
-    throw new ValidationError("Invalid date");
-  }
+  if (date !== null) requireTaskDate(date);
   const task = findTask(thread, taskId);
   if (!task) return null;
   if ((task.date ?? null) === date) return { patch: {}, logs: [] };

@@ -5,6 +5,7 @@ import {
   buildAreaMoveLogEntry,
 } from "./activity-log";
 import { ConflictError } from "./errors";
+import { requireTaskDate } from "./tasks";
 
 /** The stored Thread values every change rule reads. */
 export interface ThreadChangeState {
@@ -248,6 +249,7 @@ export function decideAddNoteToThread(
   taskId: TaskId,
 ): ThreadUpdateDecision {
   if (note.followUp === undefined) return { patch: {}, logs: [] };
+  requireTaskDate(note.followUp);
   if (thread.tasks?.some((task) => task._id === taskId)) {
     throw new ConflictError("The Thread already holds that Task");
   }

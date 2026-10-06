@@ -1,5 +1,6 @@
 import type { TaskId, ThreadId, UpdateThreadInput } from "@vita-os/contracts";
 
+import { MAX_TASK_DATE, MIN_TASK_DATE } from "@vita-os/core";
 import { Schema } from "effect";
 
 import { Revision, Timestamp } from "../../platform/http/schemas";
@@ -41,6 +42,12 @@ const namesOneTaskId = Schema.makeFilter(
 );
 
 /** The former `/moves` add: no date, which only Tasks carry. */
+/** A Task's date: whole milliseconds, 1970 through 9999 (core's bound). */
+export const TaskDateSchema = Timestamp.check(
+  Schema.isGreaterThanOrEqualTo(MIN_TASK_DATE),
+  Schema.isLessThanOrEqualTo(MAX_TASK_DATE),
+);
+
 export const AddMoveBody = Schema.Struct({
   taskId: Schema.optionalKey(TaskIdSchema),
   moveId: Schema.optionalKey(TaskIdSchema),
@@ -52,7 +59,7 @@ export const AddTaskBody = Schema.Struct({
   taskId: Schema.optionalKey(TaskIdSchema),
   moveId: Schema.optionalKey(TaskIdSchema),
   text: Schema.String,
-  date: Schema.optionalKey(Timestamp),
+  date: Schema.optionalKey(TaskDateSchema),
   expectedRevision: Revision,
 }).check(namesOneTaskId);
 export const EditTaskBody = Schema.Struct({
@@ -61,7 +68,7 @@ export const EditTaskBody = Schema.Struct({
 });
 /** `date: null` clears the Task's date, and must be spelled out: absent is not a choice. */
 export const SetTaskDateBody = Schema.Struct({
-  date: Schema.NullOr(Timestamp),
+  date: Schema.NullOr(TaskDateSchema),
   expectedRevision: Revision,
 });
 /** Removing and completing name the Task in the path; the body holds only the revision. */

@@ -3,7 +3,6 @@ import type {
   NoteAddedToThread,
   NoteId,
   OperationResult,
-  TaskId,
   Thread,
 } from "@vita-os/contracts";
 import type { PropsWithChildren } from "react";
@@ -40,9 +39,8 @@ describe("a Task made by adding a Note to a Thread", () => {
     const conversion = deferred<OperationResult<NoteAddedToThread>>();
     const taskId = noteTaskId(note);
     const addNoteToThread = vi.fn(() => conversion.promise);
-    const completeTask = vi.fn(
-      async (input: { expectedRevision: number }) =>
-        success<Thread>({ ...thread, revision: input.expectedRevision + 1 }),
+    const completeTask = vi.fn(async (input: { expectedRevision: number }) =>
+      success<Thread>({ ...thread, revision: input.expectedRevision + 1 }),
     );
     const client = createFakeApplicationClient({
       addNoteToThread,

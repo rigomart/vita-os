@@ -3,7 +3,12 @@ import type { Task, TaskId } from "@vita-os/contracts";
 import { describe, expect, it } from "vitest";
 
 import { ConflictError, ValidationError } from "./errors";
-import { decideSetTaskDate, taskSlot } from "./tasks";
+import {
+  decideAddTask,
+  decideSetTaskDate,
+  MAX_TASK_DATE,
+  taskSlot,
+} from "./tasks";
 
 const task = (id: string, fields: Partial<Task> = {}): Task => ({
   _id: id as TaskId,
@@ -78,6 +83,40 @@ describe("setting a Task's date", () => {
         1.5,
       ),
     ).toThrow(ValidationError);
+  });
+});
+
+describe("the range of a Task's date", () => {
+  const thread = { state: "open" as const, tasks: [task("a")] };
+
+  it("accepts the first and last instants, and refuses what lies outside", () => {
+    expect(decideSetTaskDate(thread, "a" as TaskId, 0)?.patch.tasks).toEqual([
+      task("a", { date: 0 }),
+    ]);
+    expect(
+      decideSetTaskDate(thread, "a" as TaskId, MAX_TASK_DATE)?.patch.tasks,
+    ).toEqual([task("a", { date: MAX_TASK_DATE })]);
+
+    for (const bad of [
+      -1,
+      MAX_TASK_DATE + 1,
+      Number.MAX_SAFE_INTEGER,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+    ]) {
+      expect(() => decideSetTaskDate(thread, "a" as TaskId, bad)).toThrow(
+        new ValidationError("Invalid date"),
+      );
+    }
+  });
+
+  it("holds an added Task's date to the same range", () => {
+    expect(() =>
+      decideAddTask(thread, task("b", { date: MAX_TASK_DATE + 1 })),
+    ).toThrow(ValidationError);
+    expect(
+      decideAddTask(thread, task("b", { date: MAX_TASK_DATE }))?.patch.tasks,
+    ).toHaveLength(2);
   });
 });
 

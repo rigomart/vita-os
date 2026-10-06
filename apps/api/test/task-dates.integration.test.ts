@@ -213,6 +213,39 @@ describe("a Task's date", () => {
     expect(await read(owner, thread)).toEqual(thread);
   });
 
+  it("is bounded to 1970 through 9999, at the boundary", async () => {
+    const owner = await createSession("task-dates-range");
+    const thread = await threadWith(owner, ["Call clinic"]);
+    const last = 253_402_300_799_999;
+
+    const first = (await setDate(owner, thread, "task-1", 0)).body as Thread;
+    expect(first.tasks?.[0]?.date).toBe(0);
+    const edge = (await setDate(owner, first, "task-1", last)).body as Thread;
+    expect(edge.tasks?.[0]?.date).toBe(last);
+
+    for (const bad of [-1, last + 1, Number.MAX_SAFE_INTEGER]) {
+      expectError(await setDate(owner, edge, "task-1", bad), {
+        status: 400,
+        code: "validation",
+        message: "Invalid Task change.",
+      });
+    }
+    expectError(
+      await call(`/v1/threads/${thread._id}/tasks`, {
+        method: "POST",
+        session: owner,
+        body: {
+          taskId: "task-2",
+          text: "Too far",
+          date: last + 1,
+          expectedRevision: edge.revision,
+        },
+      }),
+      { status: 400, code: "validation", message: "Invalid Task change." },
+    );
+    expect(await read(owner, edge)).toEqual(edge);
+  });
+
   it("is not offered on the former /moves routes", async () => {
     const owner = await createSession("task-dates-moves");
     const thread = await threadWith(owner, ["Call clinic"]);
