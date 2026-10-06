@@ -14,11 +14,14 @@ import {
   refuseThreadFollowUp,
   removeThread,
   setTaskDate,
+  setTaskRepeat,
+  skipTask,
   updateThread,
 } from "./operations";
 import {
   normalizeAddTask,
   normalizeFocusTask,
+  normalizeSetTaskRepeat,
   normalizeThreadChange,
 } from "./requests";
 
@@ -79,6 +82,20 @@ export const ThreadsHandlers = HttpApiBuilder.group(
       )
       .handle("setTaskDate", ({ params, payload }) =>
         setTaskDate({
+          ...payload,
+          threadId: params.threadId,
+          taskId: params.taskId,
+        }),
+      )
+      .handle("setTaskRepeat", ({ params, payload }) =>
+        setTaskRepeat({
+          ...normalizeSetTaskRepeat(payload),
+          threadId: params.threadId,
+          taskId: params.taskId,
+        }),
+      )
+      .handle("skipTask", ({ params, payload }) =>
+        skipTask({
           ...payload,
           threadId: params.threadId,
           taskId: params.taskId,

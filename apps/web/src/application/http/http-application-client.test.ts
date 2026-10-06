@@ -58,6 +58,82 @@ function applicationError(code: string, message: string, retryable: boolean) {
 }
 
 describe("createHttpApplicationClient", () => {
+  it("transports repeating Task commands and preserves Repeat in decoded responses", async () => {
+    const repeat = { kind: "weekly" as const, weekdays: [2, 4] };
+    const thread = {
+      ...detail.thread,
+      tasks: [
+        { _id: "task/1", text: "Check", date: 1_700_000_000_000, repeat },
+      ],
+    };
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => jsonResponse(thread));
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      fetchImpl,
+    });
+    const command = {
+      threadId: "thread/with/slashes" as ThreadId,
+      taskId: "task/1" as TaskId,
+      timeZone: "America/New_York",
+      expectedRevision: 0,
+    };
+    await expect(client.setTaskRepeat({ ...command, repeat })).resolves.toEqual(
+      { ok: true, value: thread },
+    );
+    await expect(client.skipTask(command)).resolves.toEqual({
+      ok: true,
+      value: thread,
+    });
+    await expect(client.completeTask(command)).resolves.toEqual({
+      ok: true,
+      value: thread,
+    });
+    await expect(
+      client.setTaskDate({ ...command, date: thread.tasks[0]!.date }),
+    ).resolves.toEqual({ ok: true, value: thread });
+    for (const [index, action, method, fields] of [
+      [1, "repeat", "PUT", { repeat }],
+      [2, "skip", "POST", {}],
+      [3, "complete", "POST", {}],
+      [4, "date", "PUT", { date: thread.tasks[0]!.date }],
+    ] as const) {
+      expect(fetchImpl).toHaveBeenNthCalledWith(
+        index,
+        `https://api.test/v1/threads/thread%2Fwith%2Fslashes/tasks/task%2F1/${action}`,
+        expect.objectContaining({ method, credentials: "include" }),
+      );
+      expect(
+        JSON.parse(fetchImpl.mock.calls[index - 1]![1]!.body as string),
+      ).toEqual({ ...fields, timeZone: command.timeZone, expectedRevision: 0 });
+    }
+  });
+
+  it.each([
+    { kind: "days", every: 0 },
+    { kind: "weekly", weekdays: [2, 2] },
+    null,
+  ])("refuses malformed Repeat in a server response %j", async (repeat) => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () =>
+      jsonResponse({
+        ...detail.thread,
+        tasks: [{ _id: "task/1", text: "Check", date: 1, repeat }],
+      }),
+    );
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      fetchImpl,
+    });
+    await expect(
+      client.completeTask({
+        threadId: "thread" as ThreadId,
+        taskId: "a" as TaskId,
+        expectedRevision: 0,
+      }),
+    ).resolves.toMatchObject({ ok: false });
+  });
+
   it("calls fetch the way a browser requires, without an object as its receiver", async () => {
     // Browsers reject fetch called with any `this` other than the window.
     const fetchImpl = vi.fn(function (this: unknown) {

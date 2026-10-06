@@ -42,6 +42,8 @@ export function createFakeApplicationClient(
     completeTask: unconfigured,
     focusTask: unconfigured,
     setTaskDate: unconfigured,
+    setTaskRepeat: unconfigured,
+    skipTask: unconfigured,
 
     getThreadActivityPage: unconfigured,
 

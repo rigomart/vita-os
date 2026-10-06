@@ -20,6 +20,8 @@ import type {
   ThreadNotePage,
 } from "@vita-os/contracts";
 
+import { requireRepeat } from "@vita-os/core";
+
 /**
  * Reading the service's answers.
  *
@@ -100,10 +102,20 @@ function decodeTask(value: unknown): Task | undefined {
   ) {
     return undefined;
   }
+  let repeat: Task["repeat"];
+  if (Object.hasOwn(value, "repeat")) {
+    if (value.date === undefined) return undefined;
+    try {
+      repeat = requireRepeat(value.repeat);
+    } catch {
+      return undefined;
+    }
+  }
   return {
     _id: value._id as TaskId,
     text: value.text,
     ...(value.date === undefined ? {} : { date: value.date }),
+    ...(repeat === undefined ? {} : { repeat }),
   };
 }
 

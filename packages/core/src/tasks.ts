@@ -1,10 +1,18 @@
-import type { Task, TaskId, ThreadState } from "@vita-os/contracts";
+import type { Repeat, Task, TaskId, ThreadState } from "@vita-os/contracts";
 
 import type { ThreadUpdateDecision } from "./thread-changes";
 
 import { soonestTaskDate, startOfLocalDay } from "./attention";
 import { ConflictError, ValidationError } from "./errors";
+import {
+  nextTaskDate,
+  requireRepeat,
+  requireTimeZone,
+  snapTaskDate,
+} from "./task-repeat";
 import { requireNonBlankText } from "./text";
+
+export { requireRepeat, requireTimeZone } from "./task-repeat";
 
 /**
  * Tasks: the useful actions a Thread holds, as peers. They are kept in the
@@ -99,6 +107,11 @@ export function decideAddTask(
   requireOpenForTasks(thread);
   if (findTask(thread, task._id)) return null;
   if (task.date !== undefined) requireTaskDate(task.date);
+  if (task.repeat !== undefined) {
+    if (task.date === undefined)
+      throw new ValidationError("A Repeat requires a date");
+    task = { ...task, repeat: requireRepeat(task.repeat) };
+  }
 
   return {
     patch: { tasks: [...(thread.tasks ?? []), task] },
@@ -137,20 +150,22 @@ export function decideRemoveTask(
 }
 
 /**
- * Completing any Task — focused or not — takes it off the Thread and records
- * it. Completing the Focused Task leaves the Thread unfocused: nothing is
- * promoted, so the app never picks the next focus. Completing the last Task
- * leaves the Thread open; the situation may still need attention.
+ * Completing a one-off Task removes it and clears its focus; a repeating Task
+ * advances while keeping its identity and focus. Either records one completion.
  */
 export function decideCompleteTask(
   thread: TaskState,
   taskId: TaskId,
+  options?: { timeZone?: string; now: number },
 ): ThreadUpdateDecision | null {
   const task = findTask(thread, taskId);
   if (!task) return null;
 
   return {
-    patch: without(thread, taskId),
+    patch:
+      task.repeat === undefined
+        ? without(thread, taskId)
+        : advancedTask(thread, task, options).patch,
     logs: [
       {
         type: "move_completed",
@@ -170,23 +185,111 @@ export function decideSetTaskDate(
   thread: TaskState,
   taskId: TaskId,
   date: number | null,
+  timeZone?: string,
 ): ThreadUpdateDecision | null {
   requireOpenForTasks(thread);
   if (date !== null) requireTaskDate(date);
   const task = findTask(thread, taskId);
   if (!task) return null;
-  if ((task.date ?? null) === date) return { patch: {}, logs: [] };
+  if (task.repeat !== undefined || timeZone !== undefined) {
+    requireTimeZone(timeZone);
+  }
+  if (date !== null && task.repeat !== undefined) {
+    date = requireTaskDate(
+      snapTaskDate(date, requireRepeat(task.repeat), timeZone),
+    );
+  }
+  if (
+    (task.date ?? null) === date &&
+    (date !== null || task.repeat === undefined)
+  )
+    return { patch: {}, logs: [] };
 
-  const { date: _previous, ...undated } = task;
-  const changed: Task = date === null ? undated : { ...undated, date };
+  const { date: _previous, repeat, ...undated } = task;
+  const changed: Task =
+    date === null
+      ? undated
+      : { ...undated, date, ...(repeat === undefined ? {} : { repeat }) };
+  return replaceTask(thread, changed);
+}
+
+function replaceTask(thread: TaskState, task: Task): ThreadUpdateDecision {
   return {
     patch: {
       tasks: (thread.tasks ?? []).map((existing) =>
-        existing._id === taskId ? changed : existing,
+        existing._id === task._id ? task : existing,
       ),
     },
     logs: [],
   };
+}
+
+function advancedTask(
+  thread: TaskState,
+  task: Task,
+  options?: { timeZone?: string; now: number },
+): ThreadUpdateDecision {
+  if (task.repeat === undefined)
+    throw new ValidationError("Only a repeating Task can be skipped");
+  if (task.date === undefined)
+    throw new ValidationError("A Repeat requires a date");
+  if (options === undefined)
+    throw new ValidationError(
+      "A repeating Task requires a time zone and current time",
+    );
+  const date = requireTaskDate(
+    nextTaskDate(
+      requireTaskDate(task.date),
+      requireRepeat(task.repeat),
+      options.timeZone,
+      options.now,
+    ),
+  );
+  return replaceTask(thread, { ...task, date });
+}
+
+/** Skip collapses missed occurrences just like complete, without any activity. */
+export function decideSkipTask(
+  thread: TaskState,
+  taskId: TaskId,
+  options: { timeZone?: string; now: number },
+): ThreadUpdateDecision | null {
+  requireOpenForTasks(thread);
+  const task = findTask(thread, taskId);
+  return task === undefined ? null : advancedTask(thread, task, options);
+}
+
+/** A Repeat needs a date; weekly choices snap forward, keeping the wall time. */
+export function decideSetTaskRepeat(
+  thread: TaskState,
+  taskId: TaskId,
+  repeat: Repeat | null,
+  timeZone?: string,
+): ThreadUpdateDecision | null {
+  requireOpenForTasks(thread);
+  const task = findTask(thread, taskId);
+  if (task === undefined) return null;
+  requireTimeZone(timeZone);
+  const { repeat: previous, ...oneOff } = task;
+  let changed: Task = oneOff;
+  if (repeat !== null) {
+    repeat = requireRepeat(repeat);
+    if (task.date === undefined)
+      throw new ValidationError("A Repeat requires a date");
+    changed = {
+      ...oneOff,
+      repeat,
+      date: requireTaskDate(
+        snapTaskDate(requireTaskDate(task.date), repeat, timeZone),
+      ),
+    };
+  }
+  if (
+    task.date === changed.date &&
+    JSON.stringify(previous) === JSON.stringify(changed.repeat)
+  )
+    return { patch: {}, logs: [] };
+  return replaceTask(thread, changed);
 }
 
 /**
