@@ -577,6 +577,47 @@ describe("ThreadAttention repeating Tasks", () => {
     });
   });
 
+  it("saves a changed Repeat when the surface goes away with the picker open, once", async () => {
+    const user = userEvent.setup();
+    const { onSetTaskRepeat, unmount } = renderAttention({ tasks: [oneOff] });
+
+    await user.click(screen.getByRole("button", { name: /^Change date/ }));
+    await user.click(
+      within(await screen.findByRole("group", { name: "Repeat" })).getByRole(
+        "button",
+        { name: "Daily" },
+      ),
+    );
+    unmount();
+
+    expect(onSetTaskRepeat).toHaveBeenCalledExactlyOnceWith(oneOff._id, {
+      kind: "days",
+      every: 1,
+    });
+  });
+
+  it("sends nothing on unmount when the picker was closed or nothing changed", async () => {
+    const user = userEvent.setup();
+    const closed = renderAttention({ tasks: [oneOff] });
+    await user.click(screen.getByRole("button", { name: /^Change date/ }));
+    await user.click(
+      within(await screen.findByRole("group", { name: "Repeat" })).getByRole(
+        "button",
+        { name: "Daily" },
+      ),
+    );
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    closed.unmount();
+    expect(closed.onSetTaskRepeat).toHaveBeenCalledTimes(1);
+
+    const untouched = renderAttention({ tasks: [checkIn] });
+    await user.click(screen.getByRole("button", { name: /^Change date/ }));
+    await screen.findByRole("group", { name: "Repeat" });
+    untouched.unmount();
+    expect(untouched.onSetTaskRepeat).not.toHaveBeenCalled();
+    expect(untouched.onSetTaskDate).not.toHaveBeenCalled();
+  });
+
   it("never asks for a Repeat when a Task is captured", async () => {
     const user = userEvent.setup();
     const { onAddTask } = renderAttention();

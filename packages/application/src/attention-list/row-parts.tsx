@@ -33,7 +33,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { ProductSearch } from "../navigation/search-params";
 import type { AttentionRowModel } from "./attention-row-model";
@@ -189,17 +189,41 @@ export function WhenPopover({
     }
   }
 
+  /** What closing saves: the Repeat choice, then a time typed for the day. */
+  function saveDrafts() {
+    commitRepeat();
+    if (when !== undefined && time !== savedTime && !busy) {
+      onSetWhen?.(withTimeOfDay(when, time));
+    }
+  }
+
+  // A picker that goes away while open — the surface navigates away or
+  // unmounts — saves its drafts as closing it would. `openNow` is cleared the
+  // moment the picker closes, so a close and an unmount never both save.
+  const openNow = useRef(false);
+  const saveOnUnmount = useRef(saveDrafts);
+  useEffect(() => {
+    saveOnUnmount.current = saveDrafts;
+  });
+  useEffect(
+    () => () => {
+      if (openNow.current) {
+        openNow.current = false;
+        saveOnUnmount.current();
+      }
+    },
+    [],
+  );
+
   function handleOpenChange(next: boolean) {
     if (next) {
       setTime(savedTime);
       setAddingTime(savedTime !== "");
       setDraft(repeatDraft(repeat?.value));
-    } else {
-      commitRepeat();
-      if (when !== undefined && time !== savedTime && !busy) {
-        onSetWhen?.(withTimeOfDay(when, time));
-      }
+    } else if (openNow.current) {
+      saveDrafts();
     }
+    openNow.current = next;
     setOpen(next);
   }
 
@@ -221,7 +245,10 @@ export function WhenPopover({
             if (!date || busy) return;
             commitRepeat();
             onSetWhen?.(withTimeOfDay(date.getTime(), time));
-            if (!keepOpenOnPick) setOpen(false);
+            if (!keepOpenOnPick) {
+              openNow.current = false;
+              setOpen(false);
+            }
           }}
         />
         <div className="border-t border-border/60 p-2">
@@ -291,6 +318,7 @@ export function WhenPopover({
                 onClick={() => {
                   if (busy) return;
                   onSetWhen?.(undefined);
+                  openNow.current = false;
                   setOpen(false);
                 }}
               >
