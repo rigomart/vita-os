@@ -49,7 +49,7 @@ bun run verify browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[no
 
 ## Gotchas
 
-- Chrome's time input ignores `fill` and `keyboard type`: click `Add time`, `press 3`, `press 3`, `press 0`, `press p` (3:30 PM), then click a day. Day cells are `td[data-day]` (today has `data-today`, the picked day `data-selected`), so `xpath=(//td[@data-today]/following::button[@data-day])[2]` is two days from today on any run date.
+- Chrome's time input ignores `fill` and `keyboard type`: click `Add time`, `press 3`, `press 3`, `press 0`, `press p` (3:30 PM), then click a day. Day cells are `td[data-day]` (today has `data-today`, the picked day `data-selected`), (the `button`s inside carry `M/D/YYYY`). `flows/dated-tasks.flow` picks `td[data-day='<ISO date>'] button` for today plus N days, clicking `Go to the Next Month` first when that day is not in the month shown, so it runs on any date.
 - `Set date` exists twice while a thread is open: once on the pane's rows and once on the card behind it. Scope by XPath (`//ul[@aria-label="Tasks"]/li[...]` for rows, `//li[.//a[normalize-space()="<title>"]]` for the card).
 - The `No date` divider is drawn in capitals, so read it with `innerText.toLowerCase()`.
 - Task commands show no success toast. Only a failure toasts (`This Thread changed elsewhere. It has been refreshed.` or `Could not save that change. Please try again.`). The server confirmation is the reload plus `verify d1`, and for completion the `Task done` activity entry.

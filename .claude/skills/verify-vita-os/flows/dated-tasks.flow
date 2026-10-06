@@ -1,9 +1,9 @@
 # Dated Tasks (ADR 0032): set a date with a time from a Task row, placement and the card's lead, reschedule from the
 # card token, two Tasks on one day, a card with no single Task, Thread detail order, and a dated Note added to a Thread.
 # Needs a signed-in instance (up + signin). Add Tasks with Enter in "Add a task"; never press Enter to commit an edit of an existing Task (use Tab).
-# Dates are picked relative to today with the calendar's data-day cells (today is data-today, the picked one data-selected), so the flow
-# runs on any day. The time field is typed key by key (find ... fill leaves Chrome's time input empty). It needs the days it picks to
-# stay in the month the picker opens on: run it away from the last days of a month.
+# Dates are picked relative to today by the calendar's data-day cells. When a day is not in the month the picker shows, the flow steps
+# to the next month first, so it runs on any day of the month. The time field is typed key by key (find ... fill leaves Chrome's
+# time input empty).
 open /
 
 # A: a Thread with one Task; give the Task a date two days out and 3:30 PM from its row.
@@ -23,7 +23,9 @@ browser -- press 3
 browser -- press 0
 browser -- press p
 browser -- wait --fn "document.querySelector('input[type=time]').value === '15:30'"
-browser -- click 'xpath=(//td[@data-today]/following::button[@data-day])[2]'
+browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() + 2); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click(); })()"
+browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 2); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"']\")"
+browser -- eval "document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 2); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"'] button\").click()"
 
 # The Thread leaves the No date tray for This week, under that day's heading, and its card leads with A1 and its time.
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2); const day = d.toLocaleDateString('en-US', { weekday: 'long' }); return [...document.querySelectorAll(\"section[aria-label='This week'] section[aria-label='\" + day + \"'] li\")].some(li => li.textContent.includes('Dated A ${STAMP}') && li.textContent.includes('A1 ${STAMP}') && li.textContent.includes('3:30 PM')); })()"
@@ -32,7 +34,9 @@ shot dated-a-placed
 
 # Reschedule from the card's own token: one day later, the time kept.
 browser -- click 'xpath=//li[.//a[normalize-space()="Dated A ${STAMP}"]]//button[@aria-label="Change date"]'
-browser -- click 'xpath=(//td[@data-selected]/following::button[@data-day])[1]'
+browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() + 3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click(); })()"
+browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"']\")"
+browser -- eval "document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"'] button\").click()"
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 3); const day = d.toLocaleDateString('en-US', { weekday: 'long' }); return [...document.querySelectorAll(\"section[aria-label='This week'] section[aria-label='\" + day + \"'] li\")].some(li => li.textContent.includes('Dated A ${STAMP}') && li.textContent.includes('3:30 PM')); })()"
 shot dated-a-rescheduled
 
@@ -80,7 +84,9 @@ open /
 browser -- wait --text "2 tasks · none focused"
 shot dated-b-before
 browser -- click 'xpath=//li[.//a[normalize-space()="Dated B ${STAMP}"]]//button[@aria-label="Set date"]'
-browser -- click 'xpath=(//td[@data-today]/following::button[@data-day])[4]'
+browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() + 4); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click(); })()"
+browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 4); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"']\")"
+browser -- eval "document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 4); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"'] button\").click()"
 browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='This week'] li\")].some(li => li.textContent.includes('Dated B ${STAMP}') && li.textContent.includes('Follow up'))"
 shot dated-b-after
 
@@ -102,7 +108,9 @@ browser -- wait --text "Thread created"
 browser -- find role button click --name "New note" --exact
 browser -- find label "Note body" fill "## Note task ${STAMP}"
 browser -- find role button click --name "Follow-up date" --exact
-browser -- click 'xpath=(//td[@data-today]/following::button[@data-day])[5]'
+browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() + 5); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click(); })()"
+browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 5); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"']\")"
+browser -- eval "document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 5); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"'] button\").click()"
 browser -- find role button click --name "Add" --exact
 browser -- wait --text "Note added"
 browser -- find role button click --name "Open note: Note task ${STAMP}"

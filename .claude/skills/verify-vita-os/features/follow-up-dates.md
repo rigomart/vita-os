@@ -19,7 +19,7 @@ Status: Notes proven on 32224ed (Note compose, saved Note view, Notes card, Dash
 
 ## Driving it with agent-browser
 
-Preconditions: `bun run verify up --instance follow-up-date`, `bun run verify signin --instance follow-up-date`, and `bun run verify doctor --instance follow-up-date` succeed. Every command below uses that isolated instance. Calendar day buttons are named like `Friday, October 2nd, 2026`; choose a current date from a fresh snapshot, or by `xpath=(//td[@data-today]/following::button[@data-day])[1]` for the day after today.
+Preconditions: `bun run verify up --instance follow-up-date`, `bun run verify signin --instance follow-up-date`, and `bun run verify doctor --instance follow-up-date` succeed. Every command below uses that isolated instance. Calendar day buttons are named like `Friday, October 2nd, 2026`; choose a current date from a fresh snapshot, or by `td[data-day='<YYYY-MM-DD>'] button` (see `flows/dated-tasks.flow`).
 
 - **Capture.** Run `bun run verify browser --instance follow-up-date -- find role button click --name "New note" --exact`, then `find label "Note body" fill "Verify follow-up note"`, then `find role button click --name "Follow-up date" --exact`. Capture `follow-up-note-before`. Click a day, click Add, and `wait --text "Note added"`. Reload, then capture `follow-up-note-saved`. The card is in This week. `bun run verify d1 "SELECT body, attention_date, state FROM notes" --instance follow-up-date` confirms the saved date.
 - **Note view.** Open `Open note: Verify follow-up note`, click `Change follow-up date`, and choose another day. Wait for the date button to be enabled, close the view, and confirm the new date with D1.
