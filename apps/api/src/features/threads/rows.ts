@@ -41,7 +41,7 @@ export interface ThreadRow {
 
 /**
  * Tasks as the Thread stores them: SQL NULL, or a non-empty JSON array of
- * `{id, text}` in capture order. An empty array is never stored, so reading one
+ * `{id, text, date?}` in capture order. An empty array is never stored, so reading one
  * back means the row was written by something that does not honor the rule.
  */
 export function parseTasks(value: string | null): Task[] | undefined {
@@ -62,15 +62,17 @@ export function parseTasks(value: string | null): Task[] | undefined {
         typeof item === "object" &&
         item !== null &&
         typeof item.id === "string" &&
-        typeof item.text === "string",
+        typeof item.text === "string" &&
+        (item.date === undefined || Number.isSafeInteger(item.date)),
     )
   ) {
     throw new Error("Stored Tasks must be a non-empty array of Tasks");
   }
 
-  return parsed.map((item: { id: string; text: string }) => ({
+  return parsed.map((item: { id: string; text: string; date?: number }) => ({
     _id: item.id as TaskId,
     text: item.text,
+    ...(item.date === undefined ? {} : { date: item.date }),
   }));
 }
 
@@ -79,7 +81,13 @@ export function serializeTasks(
 ): string | null {
   return tasks === undefined || tasks.length === 0
     ? null
-    : JSON.stringify(tasks.map((task) => ({ id: task._id, text: task.text })));
+    : JSON.stringify(
+        tasks.map((task) => ({
+          id: task._id,
+          text: task.text,
+          ...(task.date === undefined ? {} : { date: task.date }),
+        })),
+      );
 }
 
 /**

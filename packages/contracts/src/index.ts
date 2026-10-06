@@ -12,6 +12,7 @@ export type {
   FocusTaskInput,
   PageRequest,
   RemoveTaskInput,
+  SetTaskDateInput,
   UpdateAreaInput,
   UpdateThreadInput,
 } from "./application-client";

@@ -2,6 +2,7 @@ import type { Task, TaskId, ThreadState } from "@vita-os/contracts";
 
 import type { ThreadUpdateDecision } from "./thread-changes";
 
+import { soonestTaskDate, startOfLocalDay } from "./attention";
 import { ConflictError, ValidationError } from "./errors";
 import { requireNonBlankText } from "./text";
 
@@ -76,6 +77,9 @@ export function decideAddTask(
 ): ThreadUpdateDecision | null {
   requireOpenForTasks(thread);
   if (findTask(thread, task._id)) return null;
+  if (task.date !== undefined && !Number.isSafeInteger(task.date)) {
+    throw new ValidationError("Invalid date");
+  }
 
   return {
     patch: { tasks: [...(thread.tasks ?? []), task] },
@@ -139,6 +143,36 @@ export function decideCompleteTask(
 }
 
 /**
+ * Set, change or (with `null`) clear one Task's date. A date resurfaces the
+ * Thread and is never a deadline, so the change writes nothing to the Activity
+ * Log. Setting the date a Task already has changes nothing.
+ */
+export function decideSetTaskDate(
+  thread: TaskState,
+  taskId: TaskId,
+  date: number | null,
+): ThreadUpdateDecision | null {
+  requireOpenForTasks(thread);
+  if (date !== null && !Number.isSafeInteger(date)) {
+    throw new ValidationError("Invalid date");
+  }
+  const task = findTask(thread, taskId);
+  if (!task) return null;
+  if ((task.date ?? null) === date) return { patch: {}, logs: [] };
+
+  const { date: _previous, ...undated } = task;
+  const changed: Task = date === null ? undated : { ...undated, date };
+  return {
+    patch: {
+      tasks: (thread.tasks ?? []).map((existing) =>
+        existing._id === taskId ? changed : existing,
+      ),
+    },
+    logs: [],
+  };
+}
+
+/**
  * Focus one Task, replacing any earlier focus, or (with `null`) none. The
  * toggle a surface offers — focusing the focused Task unfocuses it — is the
  * surface's to compute; this rule only sets what it is told.
@@ -173,4 +207,53 @@ export function leadTask(thread: {
 
 export function hasTasks(thread: { tasks?: readonly Task[] }): boolean {
   return (thread.tasks?.length ?? 0) > 0;
+}
+
+/**
+ * What a Thread's card shows in its Task slot.
+ *
+ * With dated Tasks the one that placed the Thread leads, even when another is
+ * focused; two on the soonest day lead with no single Task, because the card
+ * must not pick between them. Without a dated Task the slot is today's rule:
+ * the Focused Task, else the only Task, else a count. `placedBy` is the date
+ * that placed the Thread, so a Thread brought back by its own earlier
+ * Follow-up date (until the fold, ADR 0032) leads like an undated one.
+ */
+export type TaskSlot =
+  | { kind: "none" }
+  | { kind: "task"; task: Task; focused: boolean }
+  | { kind: "sameDay"; count: number; date: number }
+  | { kind: "unfocused"; count: number };
+
+export function taskSlot(
+  thread: { tasks?: readonly Task[]; focusedTaskId?: TaskId },
+  placedBy?: number,
+): TaskSlot {
+  const tasks = thread.tasks ?? [];
+  if (tasks.length === 0) return { kind: "none" };
+
+  const soonest = soonestTaskDate(tasks);
+  if (
+    soonest !== undefined &&
+    (placedBy === undefined || soonest <= placedBy)
+  ) {
+    const day = startOfLocalDay(soonest);
+    const sameDay = tasks.filter(
+      (task) => task.date !== undefined && startOfLocalDay(task.date) === day,
+    );
+    if (sameDay.length > 1) {
+      return { kind: "sameDay", count: sameDay.length, date: soonest };
+    }
+    const lead = sameDay[0]!;
+    return {
+      kind: "task",
+      task: lead,
+      focused: lead._id === thread.focusedTaskId,
+    };
+  }
+
+  const lead = leadTask(thread);
+  return lead === undefined
+    ? { kind: "unfocused", count: tasks.length }
+    : { kind: "task", task: lead, focused: lead._id === thread.focusedTaskId };
 }

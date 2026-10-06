@@ -8,6 +8,7 @@ import { useState } from "react";
 
 import {
   followUpDateLabels,
+  taskDateLabels,
   WhenPopover,
   whenTone,
   withTimeToken,
@@ -31,6 +32,8 @@ interface ThreadAttentionProps {
   onCompleteTask: (taskId: TaskId) => void;
   /** `null` unfocuses; a Task replaces any earlier focus. */
   onFocusTask: (taskId: TaskId | null) => void;
+  /** Sets, changes or (with `null`) clears one Task's date. */
+  onSetTaskDate: (taskId: TaskId, date: number | null) => void;
   onSetFollowUp: (date: number) => void;
   onClearFollowUp: () => void;
   pending?: ThreadAttentionPending;
@@ -40,7 +43,9 @@ interface ThreadAttentionProps {
  * The Thread's live attention: its Tasks as one list of peers, and the
  * Follow-up riding the list's rule.
  *
- * The list keeps capture order and never reorders itself. Focus is a radio
+ * Dated Tasks come first, soonest first (a date alone before the timed ones
+ * of its day), then a quiet "No date" divider, then undated Tasks in capture
+ * order. The divider shows only when both groups exist. Focus is a radio
  * down the left edge: pressing it focuses that Task, and pressing the filled
  * one unfocuses it. The Focused Task is tinted where it sits. Leaving every
  * Task unfocused is a fine answer — nothing here asks for a priority.
@@ -59,10 +64,31 @@ export function ThreadAttention({
   onRemoveTask,
   onCompleteTask,
   onFocusTask,
+  onSetTaskDate,
   onSetFollowUp,
   onClearFollowUp,
   pending,
 }: ThreadAttentionProps) {
+  const dated = tasks
+    .filter((task) => task.date !== undefined)
+    .sort((a, b) => a.date! - b.date!);
+  const undated = tasks.filter((task) => task.date === undefined);
+  const renderTask = (task: Task) => (
+    <TaskRow
+      key={task._id}
+      task={task}
+      now={now}
+      focused={task._id === focusedTaskId}
+      onEdit={(text) => onEditTask(task._id, text)}
+      onRemove={() => onRemoveTask(task._id)}
+      onComplete={() => onCompleteTask(task._id)}
+      onSetDate={(date) => onSetTaskDate(task._id, date)}
+      onToggleFocus={() =>
+        onFocusTask(task._id === focusedTaskId ? null : task._id)
+      }
+    />
+  );
+
   return (
     <section
       role="region"
@@ -97,19 +123,19 @@ export function ThreadAttention({
 
       {tasks.length > 0 && (
         <ul aria-label="Tasks" className="flex flex-col gap-0.5">
-          {tasks.map((task) => (
-            <TaskRow
-              key={task._id}
-              task={task}
-              focused={task._id === focusedTaskId}
-              onEdit={(text) => onEditTask(task._id, text)}
-              onRemove={() => onRemoveTask(task._id)}
-              onComplete={() => onCompleteTask(task._id)}
-              onToggleFocus={() =>
-                onFocusTask(task._id === focusedTaskId ? null : task._id)
-              }
-            />
-          ))}
+          {dated.map(renderTask)}
+          {dated.length > 0 && undated.length > 0 && (
+            <li
+              role="presentation"
+              className="flex items-center gap-2 px-1.5 pt-1.5 pb-0.5"
+            >
+              <span className="text-2xs font-medium tracking-wide text-muted-foreground/60 uppercase">
+                No date
+              </span>
+              <span aria-hidden className="h-px flex-1 bg-border/40" />
+            </li>
+          )}
+          {undated.map(renderTask)}
         </ul>
       )}
 
@@ -124,19 +150,29 @@ export function ThreadAttention({
  */
 function TaskRow({
   task,
+  now,
   focused,
   onEdit,
   onRemove,
   onComplete,
+  onSetDate,
   onToggleFocus,
 }: {
   task: Task;
+  now: number;
   focused: boolean;
   onEdit: (text: string) => void;
   onRemove: () => void;
   onComplete: () => void;
+  onSetDate: (date: number | null) => void;
   onToggleFocus: () => void;
 }) {
+  const dateLabel =
+    task.date === undefined
+      ? undefined
+      : withTimeToken(format(task.date, "MMM d"), task.date);
+  const tone = whenTone(task.date, now);
+
   return (
     <li
       data-focused={focused || undefined}
@@ -185,6 +221,45 @@ function TaskRow({
       {/* Always reachable on touch; on the wide rail the row stays clean until
           it is hovered or focused. */}
       <span className="flex shrink-0 items-center gap-0.5">
+        <WhenPopover
+          when={task.date}
+          clearLabel={taskDateLabels.clear}
+          onSetWhen={(when) => onSetDate(when ?? null)}
+          trigger={
+            dateLabel === undefined ? (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label={taskDateLabels.set}
+                title={taskDateLabels.set}
+                className="size-7 text-muted-foreground/50 transition-opacity hover:text-foreground motion-reduce:transition-none xl:size-6 xl:opacity-0 xl:group-focus-within/task:opacity-100 xl:group-hover/task:opacity-100"
+              >
+                <CalendarClock />
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="xs"
+                aria-label={`${taskDateLabels.change}: ${dateLabel}`}
+                title={taskDateLabels.change}
+                className="h-7 gap-1 px-1.5 font-normal xl:h-6"
+              >
+                <CalendarClock
+                  aria-hidden
+                  className="size-3 text-muted-foreground/70"
+                />
+                <span
+                  className={cn(
+                    "tabular-nums",
+                    tone ? FOLLOW_UP_TONE[tone] : "text-muted-foreground",
+                  )}
+                >
+                  {dateLabel}
+                </span>
+              </Button>
+            )
+          }
+        />
         <Button
           variant="ghost"
           size="icon-xs"

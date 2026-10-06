@@ -18,7 +18,9 @@ export {
  */
 export type { AreaIcon } from "@vita-os/contracts";
 export {
+  attentionDate,
   groupThreadsByAttention,
+  soonestTaskDate,
   startOfLocalDay,
   timeOfDay,
   withTimeOfDay,
@@ -41,11 +43,14 @@ export {
   decideEditTask,
   decideFocusTask,
   decideRemoveTask,
+  decideSetTaskDate,
   hasTasks,
   leadTask,
   requireTaskId,
   requireTaskText,
   requireOpenForTasks,
+  taskSlot,
+  type TaskSlot,
   type TaskState,
 } from "./tasks";
 export {

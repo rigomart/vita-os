@@ -95,11 +95,16 @@ function decodeTask(value: unknown): Task | undefined {
   if (
     !isObject(value) ||
     typeof value._id !== "string" ||
-    typeof value.text !== "string"
+    typeof value.text !== "string" ||
+    !isOptionalSafeInteger(value.date)
   ) {
     return undefined;
   }
-  return { _id: value._id as TaskId, text: value.text };
+  return {
+    _id: value._id as TaskId,
+    text: value.text,
+    ...(value.date === undefined ? {} : { date: value.date }),
+  };
 }
 
 /** Every entry decodes, or the whole list is unrecognized. */

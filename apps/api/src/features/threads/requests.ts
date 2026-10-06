@@ -35,14 +35,28 @@ const namesOneTaskId = Schema.makeFilter(
     Object.hasOwn(input, "taskId") !== Object.hasOwn(input, "moveId"),
 );
 
-export const AddTaskBody = Schema.Struct({
+/** The former `/moves` add: no date, which only Tasks carry. */
+export const AddMoveBody = Schema.Struct({
   taskId: Schema.optionalKey(TaskIdSchema),
   moveId: Schema.optionalKey(TaskIdSchema),
   text: Schema.String,
   expectedRevision: Revision,
 }).check(namesOneTaskId);
+/** A new Task may arrive already dated: the card's "Follow up" is one action. */
+export const AddTaskBody = Schema.Struct({
+  taskId: Schema.optionalKey(TaskIdSchema),
+  moveId: Schema.optionalKey(TaskIdSchema),
+  text: Schema.String,
+  date: Schema.optionalKey(Timestamp),
+  expectedRevision: Revision,
+}).check(namesOneTaskId);
 export const EditTaskBody = Schema.Struct({
   text: Schema.String,
+  expectedRevision: Revision,
+});
+/** `date: null` clears the Task's date, and must be spelled out: absent is not a choice. */
+export const SetTaskDateBody = Schema.Struct({
+  date: Schema.NullOr(Timestamp),
   expectedRevision: Revision,
 });
 /** Removing and completing name the Task in the path; the body holds only the revision. */
@@ -57,9 +71,12 @@ export const FocusTaskBody = Schema.Struct({
   expectedRevision: Revision,
 }).check(namesOneTaskId);
 
-export function normalizeAddTask(input: typeof AddTaskBody.Type): {
+export function normalizeAddTask(
+  input: typeof AddTaskBody.Type | typeof AddMoveBody.Type,
+): {
   taskId: TaskId;
   text: string;
+  date?: number;
   expectedRevision: number;
 } {
   // namesOneTaskId guarantees exactly one of the two spellings is present.
@@ -68,6 +85,9 @@ export function normalizeAddTask(input: typeof AddTaskBody.Type): {
       ? input.taskId
       : input.moveId) as TaskId,
     text: input.text,
+    ...("date" in input && input.date !== undefined
+      ? { date: input.date }
+      : {}),
     expectedRevision: input.expectedRevision,
   };
 }

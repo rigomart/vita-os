@@ -18,6 +18,7 @@ import {
   decideEditTask,
   decideFocusTask,
   decideRemoveTask,
+  decideSetTaskDate,
   generateSlug,
 } from "@vita-os/core";
 
@@ -62,7 +63,8 @@ export type TaskChange =
   | { kind: "edit"; taskId: TaskId; text: string }
   | { kind: "remove"; taskId: TaskId }
   | { kind: "complete"; taskId: TaskId }
-  | { kind: "focus"; taskId: TaskId | null };
+  | { kind: "focus"; taskId: TaskId | null }
+  | { kind: "setDate"; taskId: TaskId; date: number | null };
 
 function decideTaskChange(
   thread: TaskFields,
@@ -79,6 +81,8 @@ function decideTaskChange(
       return decideCompleteTask(thread, change.taskId);
     case "focus":
       return decideFocusTask(thread, change.taskId);
+    case "setDate":
+      return decideSetTaskDate(thread, change.taskId, change.date);
   }
 }
 

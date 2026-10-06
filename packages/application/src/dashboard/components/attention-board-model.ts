@@ -1,6 +1,6 @@
 import type { Note, Thread } from "@vita-os/contracts";
 
-import { hasTasks } from "@vita-os/core";
+import { attentionDate, hasTasks } from "@vita-os/core";
 import { addDays, format } from "date-fns";
 
 import { dayDelta, startOfLocalDay } from "./dashboard-model";
@@ -10,10 +10,10 @@ import { dayDelta, startOfLocalDay } from "./dashboard-model";
  * that has no place on it.
  *
  * Three columns carry the dates (Now · This week · Later), and a single
- * unscheduled group carries what is not on the calendar at all: Threads with
- * Tasks ready to be made, Threads simply open, and standalone Notes. Focus never
- * moves a Thread between groups: timing belongs to Follow-ups alone.
- * Follow-up dates are the same kind of signal on Threads and Notes, so a
+ * unscheduled group carries what is not on the calendar at all: Threads whose
+ * Tasks are all undated (ready to move), Threads simply open, and standalone
+ * Notes. A Thread sits at its soonest dated Task, and focus never moves it
+ * between groups. A Note's Follow-up date is the same kind of signal, so a
  * Note due tomorrow sits beside a Thread due tomorrow.
  *
  * A dated item never appears in the unscheduled group and vice versa, so every
@@ -23,11 +23,11 @@ export interface AttentionBoard {
   later: BoardItem[];
   now: BoardItem[];
   unscheduled: {
-    /** Threads with at least one Task but no date: what you could do today. */
+    /** Threads with Tasks, none of them dated: what you could do today. */
     moves: BoardItem[];
     /** Standalone Notes with no follow-up date. */
     notes: BoardItem[];
-    /** Threads with neither a date nor a Task. */
+    /** Threads with no Tasks. */
     open: BoardItem[];
   };
   week: BoardItem[];
@@ -76,7 +76,7 @@ export function buildAttentionBoard(
       (thread): BoardItem => ({
         kind: "thread",
         thread,
-        when: thread.followUp ?? undefined,
+        when: attentionDate(thread),
       }),
     ),
     ...notes.map(
@@ -99,11 +99,15 @@ export function buildAttentionBoard(
     later: dated.filter((item) => inDays(item) > WEEK_HORIZON).sort(bySoonest),
     unscheduled: {
       moves: threads
-        .filter((thread) => thread.followUp == null && hasTasks(thread))
+        .filter(
+          (thread) => attentionDate(thread) === undefined && hasTasks(thread),
+        )
         .sort(byThreadOrder)
         .map((thread) => ({ kind: "thread", thread })),
       open: threads
-        .filter((thread) => thread.followUp == null && !hasTasks(thread))
+        .filter(
+          (thread) => attentionDate(thread) === undefined && !hasTasks(thread),
+        )
         .sort(byThreadOrder)
         .map((thread) => ({ kind: "thread", thread })),
       notes: notes

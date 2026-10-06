@@ -2,13 +2,14 @@ import type { AreaSummary, Task, TaskId, Thread } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import { Link } from "@tanstack/react-router";
-import { leadTask } from "@vita-os/core";
+import { attentionDate, taskSlot } from "@vita-os/core";
 import { cn } from "@vita-os/ui/lib/utils";
-import { ListTodo } from "lucide-react";
+import { CalendarClock, ListTodo } from "lucide-react";
 
 import type { ProductSearch } from "../../navigation/search-params";
 
 import { AreaIcon } from "../../areas/components/area-icon";
+import { taskDateLabels, timeToken, withTimeToken } from "../../attention-list";
 import {
   BoardCard,
   BoardCompleteButton,
@@ -19,8 +20,12 @@ import {
   revealed,
   showsBoardDate,
 } from "../../dashboard/components/board-card";
-import { useCompleteTask } from "../use-tasks";
-import { useUpdateThread } from "../use-update-thread";
+import {
+  dateToken,
+  dateToneClassName,
+  dayDelta,
+} from "../../dashboard/components/dashboard-model";
+import { useCompleteTask, useTaskDates } from "../use-tasks";
 
 /** Past this many Tasks the pips stop growing and a count takes over. */
 const MAX_PIPS = 6;
@@ -29,12 +34,15 @@ const MAX_PIPS = 6;
  * One Thread on the board, in the three rows every `BoardCard` keeps.
  *
  * The first is always the Thread's title, so a card reads the same whether or
- * not a Task is focused. The second is the task slot: the Focused Task, else
- * the only Task, else — with several Tasks and none focused — just how many
+ * not a Task is focused. The second is the task slot (`taskSlot`): the dated
+ * Task that placed the Thread, or two dated Tasks on one day as a count, or
+ * without a dated Task the Focused Task, else the only Task, else how many
  * there are, because the card must not invent a headline the person never
- * chose. A Thread with no Tasks has no second row. The footer holds the
- * Follow-up and Area, so neither crowds the words above it.
+ * chose. A Thread with no Tasks has no second row. The footer holds the date
+ * and Area, so neither crowds the words above it.
  *
+ * The date control sets the date of the Task the slot shows. On a card that
+ * shows no single Task, setting a date adds a Task named "Follow up" with it.
  * The footer completes only the Task the slot shows. Focusing, removing, and
  * choosing among Tasks happen in Thread detail, where every Task is in view.
  */
@@ -43,8 +51,9 @@ export function ThreadAttentionCard({
   area,
   currentDate,
   dateInHeading = false,
+  onAddFollowUp,
   onCompleteTask,
-  onSetFollowUp,
+  onSetTaskDate,
   onTray,
   thread,
 }: {
@@ -53,32 +62,52 @@ export function ThreadAttentionCard({
   currentDate: number;
   /** The group heading above already names this Thread's day. */
   dateInHeading?: boolean;
+  /** Adds a Task named "Follow up" carrying the date. */
+  onAddFollowUp: (when: number) => void;
   onCompleteTask: (taskId: TaskId) => void;
-  onSetFollowUp: (when: number | undefined) => void;
+  /** Sets, changes or (with `null`) clears one Task's date. */
+  onSetTaskDate: (taskId: TaskId, date: number | null) => void;
   onTray?: boolean;
   thread: Thread;
 }) {
   const tasks = thread.tasks ?? [];
-  const lead = leadTask(thread);
-  const focused = lead !== undefined && lead._id === thread.focusedTaskId;
-  const followUp = thread.followUp ?? undefined;
-  const showsDate = showsBoardDate(followUp, dateInHeading);
-  const followUpDate = (
+  const placedBy = attentionDate(thread);
+  const slot = taskSlot(thread, placedBy);
+  const lead = slot.kind === "task" ? slot.task : undefined;
+  const focused = slot.kind === "task" && slot.focused;
+  // What the picker holds: the shown Task's own date. A card with no single
+  // Task opens it empty, and a date set there adds a Task.
+  const taskDate = lead?.date;
+  const showsDate = showsBoardDate(taskDate, dateInHeading);
+  const showsPlacedDate =
+    taskDate === undefined && showsBoardDate(placedBy, dateInHeading);
+  const dateControl = (
     <BoardDate
       currentDate={currentDate}
       inHeading={dateInHeading}
-      onSetWhen={onSetFollowUp}
-      when={followUp}
+      labels={taskDateLabels}
+      onSetWhen={(when) => {
+        if (lead !== undefined) onSetTaskDate(lead._id, when ?? null);
+        else if (when !== undefined) onAddFollowUp(when);
+      }}
+      when={taskDate}
     />
   );
 
   return (
     <BoardCard
-      late={isLate(followUp, currentDate)}
+      late={isLate(placedBy, currentDate)}
       onTray={onTray}
       footer={
         <>
-          {showsDate && followUpDate}
+          {showsDate && dateControl}
+          {showsPlacedDate && (
+            <PlacedDate
+              currentDate={currentDate}
+              inHeading={dateInHeading}
+              when={placedBy!}
+            />
+          )}
           {area && (
             <BoardTag
               icon={<AreaIcon icon={area.icon} className="size-3 shrink-0" />}
@@ -92,7 +121,7 @@ export function ThreadAttentionCard({
               Task the card shows; with none focused, the task slot already
               says how many there are. */}
           <span className="ml-auto grid shrink-0 justify-items-end pl-1 *:col-start-1 *:row-start-1">
-            {tasks.length > 1 && focused && (
+            {tasks.length > 1 && lead !== undefined && focused && (
               <TaskPips
                 className={cn("self-center", concealed)}
                 tasks={tasks}
@@ -100,7 +129,7 @@ export function ThreadAttentionCard({
               />
             )}
             <span className="flex items-center gap-1.5">
-              {!showsDate && followUpDate}
+              {!showsDate && dateControl}
               {lead !== undefined && (
                 <BoardCompleteButton
                   label={`Complete “${lead.text}”`}
@@ -141,7 +170,12 @@ export function ThreadAttentionCard({
             )}
           </span>
 
-          {lead === undefined ? (
+          {slot.kind === "sameDay" ? (
+            <span className="min-w-0 flex-1 text-muted-foreground/80">
+              {slot.count} tasks{" "}
+              {dayDelta(slot.date, currentDate) === 0 ? "today" : "that day"}
+            </span>
+          ) : lead === undefined ? (
             <span className="min-w-0 flex-1 text-muted-foreground/80">
               {tasks.length} tasks · none focused
             </span>
@@ -173,7 +207,7 @@ export function ConnectedThreadAttentionCard({
   thread: Thread;
 }) {
   const completeTask = useCompleteTask(thread);
-  const updateThread = useUpdateThread(thread);
+  const taskDates = useTaskDates(thread);
 
   return (
     <ThreadAttentionCard
@@ -182,9 +216,39 @@ export function ConnectedThreadAttentionCard({
       dateInHeading={dateInHeading}
       onTray={onTray}
       thread={thread}
+      onAddFollowUp={(when) => void taskDates.addFollowUp(when)}
       onCompleteTask={(taskId) => void completeTask(taskId)}
-      onSetFollowUp={(when) => void updateThread({ followUp: when ?? null })}
+      onSetTaskDate={(taskId, date) => void taskDates.setDate(taskId, date)}
     />
+  );
+}
+
+/**
+ * The date that placed a Thread whose card shows no single Task, as a token
+ * in the footer. It is read-only: the card's date control beside it adds a
+ * Task rather than change a date no one Task owns.
+ */
+function PlacedDate({
+  currentDate,
+  inHeading,
+  when,
+}: {
+  currentDate: number;
+  inHeading: boolean;
+  when: number;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 tabular-nums",
+        dateToneClassName(when, currentDate),
+      )}
+    >
+      <CalendarClock aria-hidden className="size-3" />
+      {inHeading
+        ? timeToken(when)
+        : withTimeToken(dateToken(when, currentDate), when)}
+    </span>
   );
 }
 

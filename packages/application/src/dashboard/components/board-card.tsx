@@ -87,34 +87,34 @@ export function BoardTag({ icon, label }: { icon: ReactNode; label: string }) {
 export function BoardDate({
   currentDate,
   inHeading = false,
+  labels = followUpDateLabels,
   onSetWhen,
   when,
 }: {
   currentDate: number;
   inHeading?: boolean;
+  /** What the control is called: a Note's Follow-up date, or a Task's date. */
+  labels?: { set: string; change: string; clear: string };
   onSetWhen: (when: number | undefined) => void;
   when?: number;
 }) {
   return (
     <WhenPopover
       when={when}
+      clearLabel={labels.clear}
       onSetWhen={onSetWhen}
       trigger={
         when === undefined || !showsBoardDate(when, inHeading) ? (
           <BoardControl
             className={revealed}
-            label={
-              when === undefined
-                ? followUpDateLabels.set
-                : followUpDateLabels.change
-            }
+            label={when === undefined ? labels.set : labels.change}
           >
             <CalendarClock className="size-3.5" />
           </BoardControl>
         ) : (
           <button
             type="button"
-            aria-label={followUpDateLabels.change}
+            aria-label={labels.change}
             className={cn(
               "relative z-10 -mx-1 -my-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-1 py-0.5 tabular-nums transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40",
               dateToneClassName(when, currentDate),

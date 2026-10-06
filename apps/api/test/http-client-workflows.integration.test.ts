@@ -185,15 +185,29 @@ describe("Threads through the HTTP client", () => {
     );
     expect(focused.focusedTaskId).toBe(callClinic);
 
+    const dated = await value(
+      client.setTaskDate({
+        threadId: thread._id,
+        taskId: bookSlot,
+        date: 1_800_000_000_000,
+        expectedRevision: focused.revision,
+      }),
+    );
+    expect(dated.tasks?.[1]).toEqual({
+      _id: bookSlot,
+      text: "Book appointment",
+      date: 1_800_000_000_000,
+    });
+
     const completed = await value(
       client.completeTask({
         threadId: thread._id,
         taskId: callClinic,
-        expectedRevision: focused.revision,
+        expectedRevision: dated.revision,
       }),
     );
     expect(completed.tasks).toEqual([
-      { _id: bookSlot, text: "Book appointment" },
+      { _id: bookSlot, text: "Book appointment", date: 1_800_000_000_000 },
     ]);
     expect(completed).not.toHaveProperty("focusedTaskId");
 

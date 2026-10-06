@@ -6,6 +6,7 @@ import type {
   EditTaskInput,
   FocusTaskInput,
   RemoveTaskInput,
+  SetTaskDateInput,
   Thread,
   ThreadDetail,
   ThreadId,
@@ -21,6 +22,7 @@ import {
   decideEditTask,
   decideFocusTask,
   decideRemoveTask,
+  decideSetTaskDate,
   decideThreadUpdate,
   generateSlug,
   requireTaskId,
@@ -173,6 +175,7 @@ export function addTask(input: AddTaskInput): Operation<Thread> {
     const task = yield* attempt(() => ({
       _id: requireTaskId(input.taskId),
       text: requireTaskText(input.text),
+      ...(input.date === undefined ? {} : { date: input.date }),
     }));
     return yield* changeTasks(input, (thread) => decideAddTask(thread, task));
   });
@@ -204,6 +207,13 @@ export function completeTask(input: CompleteTaskInput): Operation<Thread> {
 
 export function focusTask(input: FocusTaskInput): Operation<Thread> {
   return changeTasks(input, (thread) => decideFocusTask(thread, input.taskId));
+}
+
+/** Set, change or clear one Task's date. It writes no Activity Log entry. */
+export function setTaskDate(input: SetTaskDateInput): Operation<Thread> {
+  return changeTasks(input, (thread) =>
+    decideSetTaskDate(thread, input.taskId, input.date),
+  );
 }
 
 export function removeThread(input: {

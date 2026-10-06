@@ -24,6 +24,7 @@ function renderAttention(
     onRemoveTask: vi.fn(),
     onCompleteTask: vi.fn(),
     onFocusTask: vi.fn(),
+    onSetTaskDate: vi.fn(),
     onSetFollowUp: vi.fn(),
     onClearFollowUp: vi.fn(),
   };
@@ -46,6 +47,111 @@ function taskRows() {
     "listitem",
   );
 }
+
+describe("ThreadAttention dated Tasks", () => {
+  const afternoon: Task = {
+    ...bookScan,
+    date: new Date(2026, 7, 20, 15).getTime(),
+  };
+  const dateOnly: Task = {
+    ...collect,
+    date: new Date(2026, 7, 20).getTime(),
+  };
+  const sooner: Task = { ...callClinic, date: new Date(2026, 7, 14).getTime() };
+  const loose: Task = { _id: "task-4" as TaskId, text: "Think about it" };
+
+  it("lists dated Tasks soonest first, then a No date divider, then undated Tasks in capture order", () => {
+    renderAttention({ tasks: [loose, afternoon, sooner, dateOnly] });
+
+    const rows = taskRows();
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Call the clinic"),
+      expect.stringContaining("Collect the results"),
+      expect.stringContaining("Book the scan"),
+      expect.stringContaining("Think about it"),
+    ]);
+    const divider = screen.getByText("No date");
+    expect(screen.getAllByText("No date")).toHaveLength(1);
+    expect(
+      rows[2]!.compareDocumentPosition(divider) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      divider.compareDocumentPosition(rows[3]!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("shows the divider only when both groups exist", () => {
+    const { unmount } = renderAttention({ tasks: [sooner, afternoon] });
+    expect(screen.queryByText("No date")).toBeNull();
+    unmount();
+
+    renderAttention({ tasks: [loose, { ...loose, _id: "task-5" as TaskId }] });
+    expect(screen.queryByText("No date")).toBeNull();
+  });
+
+  it("shows each dated row's date and time, and an undated row only a Set date button", () => {
+    renderAttention({ tasks: [afternoon, loose] });
+
+    expect(
+      within(taskRows()[0]!).getByRole("button", {
+        name: "Change date: Aug 20 · 3 PM",
+      }),
+    ).toBeVisible();
+    expect(
+      within(taskRows().at(-1)!).getByRole("button", { name: "Set date" }),
+    ).toBeInTheDocument();
+  });
+
+  it("sets a Task's date from its row without touching the others", async () => {
+    const user = userEvent.setup();
+    const { onSetTaskDate, onSetFollowUp } = renderAttention({
+      tasks: [loose, afternoon],
+    });
+
+    await user.click(
+      within(taskRows().at(-1)!).getByRole("button", { name: "Set date" }),
+    );
+    // The picker keeps its explanation.
+    expect(
+      screen.getByText("Bring this back into view around this date."),
+    ).toBeVisible();
+    // An empty picker opens on the real current month.
+    const month = new Date().toLocaleString("en-US", { month: "long" });
+    await user.click(
+      screen.getByRole("button", { name: new RegExp(`${month} 28`) }),
+    );
+
+    const real = new Date();
+    expect(onSetTaskDate).toHaveBeenCalledExactlyOnceWith(
+      loose._id,
+      new Date(real.getFullYear(), real.getMonth(), 28).getTime(),
+    );
+    expect(onSetFollowUp).not.toHaveBeenCalled();
+  });
+
+  it("clears a Task's date with Clear date", async () => {
+    const user = userEvent.setup();
+    const { onSetTaskDate } = renderAttention({ tasks: [afternoon] });
+
+    await user.click(
+      within(taskRows()[0]!).getByRole("button", { name: /^Change date/ }),
+    );
+    await user.click(screen.getByRole("button", { name: "Clear date" }));
+
+    expect(onSetTaskDate).toHaveBeenCalledExactlyOnceWith(afternoon._id, null);
+  });
+
+  it("lets a dated Task be the Focused Task", () => {
+    renderAttention({
+      tasks: [afternoon, loose],
+      focusedTaskId: afternoon._id,
+    });
+
+    expect(taskRows()[0]).toHaveAttribute("data-focused", "true");
+  });
+});
 
 describe("ThreadAttention", () => {
   it("lists every Task in capture order, highlighting the Focused Task where it sits", () => {

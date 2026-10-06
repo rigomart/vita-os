@@ -257,6 +257,13 @@ export function createHttpApplicationClient({
         { expectedRevision },
         decodeThread,
       ),
+    setTaskDate: ({ threadId, taskId, date, expectedRevision }) =>
+      send(
+        "PUT",
+        path("threads", threadId, "tasks", taskId, "date"),
+        { date, expectedRevision },
+        decodeThread,
+      ),
     focusTask: ({ threadId, ...focus }) =>
       send("PUT", path("threads", threadId, "focus"), focus, decodeThread),
 

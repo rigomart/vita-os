@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { groupThreadsByAttention, timeOfDay, withTimeOfDay } from "./attention";
+import {
+  attentionDate,
+  groupThreadsByAttention,
+  soonestTaskDate,
+  timeOfDay,
+  withTimeOfDay,
+} from "./attention";
 
 const today = new Date(2026, 6, 17).getTime();
 
@@ -8,12 +14,14 @@ function thread(
   id: string,
   fields: {
     followUp?: number;
-    tasks?: string[];
+    tasks?: { text: string; date?: number }[];
     order?: number;
   } = {},
 ) {
   return { id, order: fields.order ?? 0, ...fields };
 }
+
+const DAY = 86_400_000;
 
 describe("Thread attention ordering", () => {
   it("groups Threads by attention and preserves user order for equal states", () => {
@@ -21,11 +29,14 @@ describe("Thread attention ordering", () => {
       [
         thread("open-later", { order: 2 }),
         thread("upcoming-later", { followUp: today + 2 * 86_400_000 }),
-        thread("next-later", { tasks: ["Call"], order: 3 }),
+        thread("next-later", { tasks: [{ text: "Call" }], order: 3 }),
         thread("overdue-recent", { followUp: today - 86_400_000 }),
         thread("upcoming-sooner", { followUp: today + 86_400_000 }),
         thread("overdue-old", { followUp: today - 3 * 86_400_000 }),
-        thread("next-sooner", { tasks: ["Email", "Book"], order: 1 }),
+        thread("next-sooner", {
+          tasks: [{ text: "Email" }, { text: "Book" }],
+          order: 1,
+        }),
         thread("open-sooner", { order: 0 }),
         thread("emptied", { tasks: [], order: 4 }),
       ],
@@ -49,6 +60,103 @@ describe("Thread attention ordering", () => {
       "open-later",
       "emptied",
     ]);
+  });
+});
+
+describe("Thread attention by dated Task", () => {
+  it("places a Thread by its soonest dated Task", () => {
+    const groups = groupThreadsByAttention(
+      [
+        thread("later", {
+          tasks: [{ text: "A", date: today + 5 * DAY }, { text: "B" }],
+        }),
+        thread("soonest", {
+          tasks: [
+            { text: "A", date: today + 5 * DAY },
+            { text: "B", date: today - DAY },
+          ],
+          order: 1,
+        }),
+        thread("tomorrow", { tasks: [{ text: "A", date: today + DAY }] }),
+      ],
+      today,
+    );
+
+    expect(groups.overdue.map((item) => item.id)).toEqual(["soonest"]);
+    expect(groups.upcoming.map((item) => item.id)).toEqual([
+      "tomorrow",
+      "later",
+    ]);
+  });
+
+  it("is ready to move only with undated Tasks, and open with none", () => {
+    const groups = groupThreadsByAttention(
+      [
+        thread("undated", { tasks: [{ text: "A" }, { text: "B" }] }),
+        thread("none", { order: 1 }),
+      ],
+      today,
+    );
+
+    expect(groups.withTasks.map((item) => item.id)).toEqual(["undated"]);
+    expect(groups.open.map((item) => item.id)).toEqual(["none"]);
+    expect(groups.upcoming).toEqual([]);
+  });
+
+  it("puts every Thread in exactly one group", () => {
+    const threads = [
+      thread("a", { tasks: [{ text: "x", date: today }] }),
+      thread("b", { tasks: [{ text: "x" }] }),
+      thread("c"),
+      thread("d", { followUp: today + DAY }),
+    ];
+    const groups = groupThreadsByAttention(threads, today);
+
+    expect(
+      [
+        ...groups.overdue,
+        ...groups.upcoming,
+        ...groups.withTasks,
+        ...groups.open,
+      ]
+        .map((item) => item.id)
+        .sort(),
+    ).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("orders a day's date-only Task before its timed ones", () => {
+    const groups = groupThreadsByAttention(
+      [
+        thread("timed", {
+          tasks: [{ text: "x", date: today + DAY + 15 * 3_600_000 }],
+        }),
+        thread("date-only", { tasks: [{ text: "x", date: today + DAY }] }),
+        thread("morning", {
+          tasks: [{ text: "x", date: today + DAY + 9 * 3_600_000 }],
+        }),
+      ],
+      today,
+    );
+
+    expect(groups.upcoming.map((item) => item.id)).toEqual([
+      "date-only",
+      "morning",
+      "timed",
+    ]);
+  });
+
+  it("uses the earlier of the Thread's own date and its soonest Task", () => {
+    const date = today + 3 * DAY;
+    expect(soonestTaskDate([{ date }, { date: date + DAY }, {}])).toBe(date);
+    expect(soonestTaskDate([{}])).toBeUndefined();
+    expect(attentionDate({ followUp: date - DAY, tasks: [{ date }] })).toBe(
+      date - DAY,
+    );
+    expect(attentionDate({ followUp: date + DAY, tasks: [{ date }] })).toBe(
+      date,
+    );
+    expect(attentionDate({ followUp: date })).toBe(date);
+    expect(attentionDate({})).toBeUndefined();
   });
 });
 

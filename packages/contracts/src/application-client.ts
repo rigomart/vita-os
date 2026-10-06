@@ -69,6 +69,8 @@ export interface AddTaskInput extends TaskCommand {
   /** Minted by the caller, so an optimistic Task keeps its name. */
   taskId: TaskId;
   text: string;
+  /** A Task may be added already dated; capture itself never asks for one. */
+  date?: number;
 }
 
 export interface EditTaskInput extends TaskCommand {
@@ -82,6 +84,12 @@ export interface RemoveTaskInput extends TaskCommand {
 
 export interface CompleteTaskInput extends TaskCommand {
   taskId: TaskId;
+}
+
+export interface SetTaskDateInput extends TaskCommand {
+  taskId: TaskId;
+  /** Sets or changes the Task's date; `null` clears it. */
+  date: Clearable<number>;
 }
 
 export interface FocusTaskInput extends TaskCommand {
@@ -157,6 +165,8 @@ export interface ApplicationClient {
   /** Removes the Task and records it as done in the Activity Log. */
   completeTask(input: CompleteTaskInput): Promise<OperationResult<Thread>>;
   focusTask(input: FocusTaskInput): Promise<OperationResult<Thread>>;
+  /** Sets, changes or clears one Task's date. Writes nothing to the Activity Log. */
+  setTaskDate(input: SetTaskDateInput): Promise<OperationResult<Thread>>;
 
   /* Activity Log */
   getThreadActivityPage(

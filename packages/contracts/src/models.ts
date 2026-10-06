@@ -77,10 +77,16 @@ export interface Thread {
   revision: number;
 }
 
-/** One useful action a Thread holds: plain text, no date, no done state. */
+/**
+ * One useful action a Thread holds: text, and optionally a date. The date is
+ * the same kind of value as a Follow-up date (ADR 0027): a local day, with a
+ * time of day when it carries one; local midnight means a date alone. It
+ * resurfaces the Thread and is never a deadline.
+ */
 export interface Task {
   _id: TaskId;
   text: string;
+  date?: number;
 }
 
 export interface ThreadDetail {

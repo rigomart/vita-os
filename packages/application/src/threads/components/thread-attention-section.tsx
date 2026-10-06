@@ -41,6 +41,7 @@ export function ThreadAttentionSection({
       onRemoveTask={(taskId) => void tasks.remove(taskId)}
       onCompleteTask={(taskId) => void tasks.complete(taskId)}
       onFocusTask={(taskId) => void tasks.focus(taskId)}
+      onSetTaskDate={(taskId, date) => void tasks.setDate(taskId, date)}
       onSetFollowUp={(date) => void saveFollowUp(date)}
       onClearFollowUp={() => void saveFollowUp(null)}
       pending={{ followUp: isFollowUpPending }}

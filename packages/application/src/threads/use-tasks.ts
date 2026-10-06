@@ -38,6 +38,54 @@ export function useCompleteTask(thread: Thread) {
     complete.mutateAsync(taskId).then(() => undefined, report);
 }
 
+/** The name of the Task a card creates when a date is set and it shows no Task. */
+export const FOLLOW_UP_TASK_TEXT = "Follow up";
+
+/**
+ * The date control of a Dashboard card. On a card that shows a Task it sets,
+ * changes or clears that Task's date; on a card that shows none it adds a Task
+ * named "Follow up" with the date, in one action.
+ */
+export function useTaskDates(thread: Thread) {
+  const report = useReportFailure();
+  const setDate = useTaskCommand<{ taskId: TaskId; date: number | null }>(
+    thread,
+    {
+      run: (client, input, expectedRevision) =>
+        client.setTaskDate({
+          threadId: thread._id,
+          ...input,
+          expectedRevision,
+        }),
+      change: (input) => ({ kind: "setDate", ...input }),
+    },
+  );
+  const addDated = useTaskCommand<Task>(thread, {
+    run: (client, task, expectedRevision) =>
+      client.addTask({
+        threadId: thread._id,
+        taskId: task._id,
+        text: task.text,
+        ...(task.date === undefined ? {} : { date: task.date }),
+        expectedRevision,
+      }),
+    change: (task) => ({ kind: "add", task }),
+  });
+
+  return {
+    setDate: (taskId: TaskId, date: number | null) =>
+      setDate.mutateAsync({ taskId, date }).then(() => undefined, report),
+    addFollowUp: (date: number) =>
+      addDated
+        .mutateAsync({
+          _id: newRecordId() as TaskId,
+          text: FOLLOW_UP_TASK_TEXT,
+          date,
+        })
+        .then(() => undefined, report),
+  };
+}
+
 /**
  * Every Task action Thread detail offers. Each shows its change at once, and
  * none asks for a priority: a new Task joins the end of the list unfocused.
@@ -75,6 +123,18 @@ export function useTasks(thread: Thread) {
       client.focusTask({ threadId: thread._id, taskId, expectedRevision }),
     change: (taskId) => ({ kind: "focus", taskId }),
   });
+  const setDate = useTaskCommand<{ taskId: TaskId; date: number | null }>(
+    thread,
+    {
+      run: (client, input, expectedRevision) =>
+        client.setTaskDate({
+          threadId: thread._id,
+          ...input,
+          expectedRevision,
+        }),
+      change: (input) => ({ kind: "setDate", ...input }),
+    },
+  );
 
   const settle = (pending: Promise<unknown>) =>
     pending.then(() => undefined, report);
@@ -96,5 +156,8 @@ export function useTasks(thread: Thread) {
     complete: (taskId: TaskId) => settle(complete.mutateAsync(taskId)),
     /** `null` unfocuses; focusing a Task replaces any earlier focus. */
     focus: (taskId: TaskId | null) => settle(focus.mutateAsync(taskId)),
+    /** `null` clears the Task's date. */
+    setDate: (taskId: TaskId, date: number | null) =>
+      settle(setDate.mutateAsync({ taskId, date })),
   };
 }

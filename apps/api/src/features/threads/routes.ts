@@ -12,6 +12,7 @@ import {
   listResolvedThreads,
   removeTask,
   removeThread,
+  setTaskDate,
   updateThread,
 } from "./operations";
 import {
@@ -66,6 +67,13 @@ export const ThreadsHandlers = HttpApiBuilder.group(
       )
       .handle("completeTask", ({ params, payload }) =>
         completeTask({
+          ...payload,
+          threadId: params.threadId,
+          taskId: params.taskId,
+        }),
+      )
+      .handle("setTaskDate", ({ params, payload }) =>
+        setTaskDate({
           ...payload,
           threadId: params.threadId,
           taskId: params.taskId,
