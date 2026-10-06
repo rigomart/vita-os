@@ -1,0 +1,64 @@
+# Thread edits beside the Task queue (#413): complete a Task and rename the Thread
+# right away, then focus another Task; then rename and complete a Task right away.
+# Neither order may end in "This Thread changed elsewhere", and everything sticks.
+# Needs a signed-in instance (up + signin). Add Tasks with Enter in "Add a task";
+# commit a title edit with Tab, never Enter.
+open /
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Edit race ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+browser -- wait 'input[aria-label="Add a task"]'
+browser -- find label "Add a task" fill "Task A ${STAMP}"
+browser -- press Enter
+browser -- wait --text "Task A ${STAMP}"
+browser -- find label "Add a task" fill "Task B ${STAMP}"
+browser -- press Enter
+browser -- wait --text "Task B ${STAMP}"
+browser -- find label "Add a task" fill "Task C ${STAMP}"
+browser -- press Enter
+browser -- wait --text "Task C ${STAMP}"
+# Let the queued adds land, then watch for any refusal toast from here on.
+browser -- wait 1500
+browser -- eval "window.__refused = false; new MutationObserver(() => { const text = document.body.textContent; if (text.includes('changed elsewhere') || text.includes('Could not save')) window.__refused = true; }).observe(document.body, { childList: true, subtree: true, characterData: true }); 'watching'"
+expect watching
+shot edit-race-before
+
+# Order 1: complete A, then rename and focus B in one gesture: clicking Focus
+# blurs the title field, which saves the rename, and the click focuses B, so
+# the rename and the focus are issued together (A may still be in flight).
+# The rename's new slug re-renders the pane; waits are on what it shows.
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task A ${STAMP}"]]//button[@aria-label="Complete task"]'
+browser -- find role button click --name "Edit race ${STAMP}" --exact
+browser -- find role textbox fill "Edited race ${STAMP}" --name "Click to edit..." --exact
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task B ${STAMP}"]]//button[@aria-label="Focus this task"]'
+browser -- wait --fn "location.search.includes('edited-race')"
+browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
+browser -- wait 1500
+shot edit-race-order-1
+d1 "SELECT title || ' | ' || json_array_length(moves_json) || ' | ' || COALESCE((SELECT json_extract(value, '$.text') FROM json_each(moves_json) WHERE json_extract(value, '$.id') = focused_move_id), 'none') AS r FROM threads WHERE title LIKE '%race ${STAMP}'"
+expect Edited race ${STAMP} | 2 | Task B ${STAMP}
+
+# Order 2: rename, and complete C in the same gesture, while the rename is in flight.
+browser -- find role button click --name "Edited race ${STAMP}" --exact
+browser -- find role textbox fill "Final race ${STAMP}" --name "Click to edit..." --exact
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task C ${STAMP}"]]//button[@aria-label="Complete task"]'
+browser -- wait --fn "location.search.includes('final-race')"
+browser -- wait --fn "!document.querySelector('ul[aria-label=\"Tasks\"]').textContent.includes('Task C ${STAMP}')"
+browser -- wait 1500
+shot edit-race-order-2
+
+# No refusal was shown at any point.
+browser -- eval "window.__refused === false ? 'no-refusal' : 'refused'"
+expect no-refusal
+d1 "SELECT title || ' | ' || json_array_length(moves_json) || ' | ' || COALESCE((SELECT json_extract(value, '$.text') FROM json_each(moves_json) WHERE json_extract(value, '$.id') = focused_move_id), 'none') AS r FROM threads WHERE title LIKE '%race ${STAMP}'"
+expect Final race ${STAMP} | 1 | Task B ${STAMP}
+d1 "SELECT count(*) AS completed FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Final race ${STAMP}' AND l.type LIKE '%completed'"
+expect '"completed": 2'
+
+# After a reload the pane shows the final title, B alone and focused.
+browser -- reload
+browser -- wait --text "Final race ${STAMP}"
+browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
+browser -- wait --fn "(() => { const tasks = document.querySelector('ul[aria-label=\"Tasks\"]').textContent; return tasks.includes('Task B ${STAMP}') && !tasks.includes('Task A ${STAMP}') && !tasks.includes('Task C ${STAMP}'); })()"
+shot edit-race-after-reload
