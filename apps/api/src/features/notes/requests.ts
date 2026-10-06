@@ -2,7 +2,8 @@ import { Schema } from "effect";
 
 import type { PageSize } from "../../platform/http/decode";
 
-import { PageQuery, QueryValue, Timestamp } from "../../platform/http/schemas";
+import { PageQuery, QueryValue } from "../../platform/http/schemas";
+import { TaskDateSchema } from "../threads/requests";
 
 /** Done Notes only grow, so both kinds of Note page them at this size. */
 export const NOTE_PAGE_SIZE: PageSize = { fallback: 20, maximum: 50 };
@@ -19,8 +20,8 @@ export const DoneNotesQuery = Schema.Struct({
 /** Creation accepts no date or one alias; a present null is never a timestamp. */
 export const CreateNoteBody = Schema.Struct({
   body: Schema.String,
-  followUp: Schema.optionalKey(Timestamp),
-  attentionDate: Schema.optionalKey(Timestamp),
+  followUp: Schema.optionalKey(TaskDateSchema),
+  attentionDate: Schema.optionalKey(TaskDateSchema),
 }).check(
   Schema.makeFilter(
     (input) =>
@@ -35,8 +36,8 @@ export const NoteBody = Schema.Struct({ body: Schema.String });
 
 /** Setting a date requires exactly one field, including when clearing with null. */
 export const NoteFollowUp = Schema.Struct({
-  followUp: Schema.optionalKey(Schema.NullOr(Timestamp)),
-  attentionDate: Schema.optionalKey(Schema.NullOr(Timestamp)),
+  followUp: Schema.optionalKey(Schema.NullOr(TaskDateSchema)),
+  attentionDate: Schema.optionalKey(Schema.NullOr(TaskDateSchema)),
 }).check(
   Schema.makeFilter(
     (input) =>

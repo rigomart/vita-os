@@ -30,6 +30,12 @@ export interface TaskState {
 export const MIN_TASK_DATE = 0;
 export const MAX_TASK_DATE = 253_402_300_799_999;
 
+export function isTaskDate(date: number): boolean {
+  return (
+    Number.isSafeInteger(date) && date >= MIN_TASK_DATE && date <= MAX_TASK_DATE
+  );
+}
+
 export function requireTaskDate(date: number): number {
   if (
     !Number.isSafeInteger(date) ||

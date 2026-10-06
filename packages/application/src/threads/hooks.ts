@@ -41,7 +41,7 @@ import {
   showThreadRemoval,
   threadChangeKeys,
 } from "./optimistic";
-import { afterPendingConversion } from "./pending-conversions";
+import { afterPendingConversion, taskScope } from "./pending-conversions";
 
 const ACTIVITY_PAGE_SIZE = 20;
 
@@ -226,7 +226,7 @@ export function useTaskCommand<TInput>(
   },
 ): ApplicationMutationResult<TInput, Thread> {
   const cache = useQueryClient();
-  const scope = `thread-tasks:${thread._id}`;
+  const scope = taskScope(thread._id);
   const refusedKey = `${scope}:refused`;
 
   return useApplicationMutation<TInput, Thread>({

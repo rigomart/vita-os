@@ -296,3 +296,39 @@ describe("adding a Task already dated", () => {
     expect(await activityOf(owner, thread)).toEqual([]);
   });
 });
+
+describe("a Note's Follow-up date range", () => {
+  const last = 253_402_300_799_999;
+
+  it("holds a Note's date to the same range as a Task's", async () => {
+    const owner = await createSession("note-date-range");
+    const created = await call("/v1/notes", {
+      method: "POST",
+      session: owner,
+      body: { body: "Edge", followUp: last },
+    });
+    expect(created.status).toBe(201);
+    const note = created.body as { _id: string };
+
+    for (const bad of [-1, last + 1]) {
+      expect(
+        (
+          await call("/v1/notes", {
+            method: "POST",
+            session: owner,
+            body: { body: "Bad", followUp: bad },
+          })
+        ).status,
+      ).toBe(400);
+      expect(
+        (
+          await call(`/v1/notes/${note._id}/follow-up`, {
+            method: "PATCH",
+            session: owner,
+            body: { followUp: bad },
+          })
+        ).status,
+      ).toBe(400);
+    }
+  });
+});

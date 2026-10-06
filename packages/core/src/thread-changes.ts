@@ -5,7 +5,7 @@ import {
   buildAreaMoveLogEntry,
 } from "./activity-log";
 import { ConflictError } from "./errors";
-import { requireTaskDate } from "./tasks";
+import { isTaskDate } from "./tasks";
 
 /** The stored Thread values every change rule reads. */
 export interface ThreadChangeState {
@@ -236,6 +236,23 @@ const MARKDOWN_MARKER = /^(?:>|(?:#{1,6}|[-*]|\d+[.)])(?:\s+|$))/;
 export const FOLLOW_UP_TASK_TEXT = "Follow up";
 
 /**
+ * The Task a Note becomes when it joins a Thread, or `undefined` for an undated
+ * Note. A Note date outside the range a Task date may take (it was stored
+ * before the range existed) gives an undated Task, and the Note is unchanged.
+ */
+export function taskFromNote(
+  note: { body: string; followUp?: number },
+  taskId: TaskId,
+): Task | undefined {
+  if (note.followUp === undefined) return undefined;
+  return {
+    _id: taskId,
+    text: taskTextFromNote(note.body),
+    ...(isTaskDate(note.followUp) ? { date: note.followUp } : {}),
+  };
+}
+
+/**
  * What adding a Standalone Note to a Thread does to the Thread's Tasks. A dated
  * Note adds a Task named by its first line and carrying its date, time of day
  * included and even when that date has already passed, appended to the end
@@ -248,16 +265,10 @@ export function decideAddNoteToThread(
   note: { body: string; followUp?: number },
   taskId: TaskId,
 ): ThreadUpdateDecision {
-  if (note.followUp === undefined) return { patch: {}, logs: [] };
-  requireTaskDate(note.followUp);
-  if (thread.tasks?.some((task) => task._id === taskId)) {
+  const task = taskFromNote(note, taskId);
+  if (task === undefined) return { patch: {}, logs: [] };
+  if (thread.tasks?.some((existing) => existing._id === taskId)) {
     throw new ConflictError("The Thread already holds that Task");
   }
-
-  const task: Task = {
-    _id: taskId,
-    text: taskTextFromNote(note.body),
-    date: note.followUp,
-  };
   return { patch: { tasks: [...(thread.tasks ?? []), task] }, logs: [] };
 }

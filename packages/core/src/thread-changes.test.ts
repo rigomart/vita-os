@@ -331,6 +331,20 @@ describe("decideAddNoteToThread", () => {
   });
 });
 
+describe("a Note dated outside the range a Task date may take", () => {
+  it("becomes an undated Task, and the Note is unchanged", () => {
+    for (const followUp of [-1, 253_402_300_800_000, Number.MAX_SAFE_INTEGER]) {
+      expect(
+        decideAddNoteToThread(
+          makeThread(),
+          { body: "Old", followUp },
+          "t" as TaskId,
+        ).patch.tasks,
+      ).toEqual([{ _id: "t", text: "Old" }]);
+    }
+  });
+});
+
 describe("taskTextFromNote", () => {
   it.each([
     ["Call the clinic", "Call the clinic"],

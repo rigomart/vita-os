@@ -1,6 +1,13 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { Note, TaskId, ThreadId } from "@vita-os/contracts";
 
+import { queueMemo } from "../cache/use-application-mutation";
+
+/** The queue every Task command of one Thread shares. */
+export function taskScope(threadId: ThreadId): string {
+  return `thread-tasks:${threadId}`;
+}
+
 /**
  * The ID of the Task a dated Note becomes. The caller mints Task IDs (ADR 0022),
  * and a Note converts once, so the Note's own ID names it: the same ID is shown
@@ -35,6 +42,10 @@ export async function holdTaskCommands<T>(
   } finally {
     // After the mutation's own success handling has patched the cache.
     setTimeout(() => {
+      // The queue's saved basis predates the conversion and lacks its Task, so
+      // the next Task command starts from the cache, as the head of a fresh
+      // queue does.
+      queueMemo(cache)?.delete(taskScope(threadId));
       const rest = (byThread.get(threadId) ?? []).filter((p) => p !== held);
       if (rest.length === 0) byThread.delete(threadId);
       else byThread.set(threadId, rest);

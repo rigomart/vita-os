@@ -323,7 +323,7 @@ export function settleTaskChange(cache: QueryClient, settled: Thread): void {
       ...thread,
       tasks: settled.tasks,
       focusedTaskId: settled.focusedTaskId,
-      revision: settled.revision,
+      revision: Math.max(thread.revision, settled.revision),
       lastActivityAt: settled.lastActivityAt,
       lastActivityContent: settled.lastActivityContent,
     }),
@@ -338,12 +338,18 @@ export function settleTaskChange(cache: QueryClient, settled: Thread): void {
 export function showNoteAddedToThread(
   cache: QueryClient,
   threadId: ThreadId,
-  change: Pick<Thread, "tasks" | "lastActivityAt" | "lastActivityContent">,
+  change: Pick<Thread, "lastActivityAt" | "lastActivityContent"> & {
+    /** The one Task this conversion adds, appended to the Tasks as they are now. */
+    task?: Task | undefined;
+  },
 ): void {
   patchThreadEverywhere(cache, threadId, (thread) =>
     withoutAbsent({
       ...thread,
-      ...(change.tasks === undefined ? {} : { tasks: change.tasks }),
+      ...(change.task === undefined ||
+      thread.tasks?.some((task) => task._id === change.task?._id)
+        ? {}
+        : { tasks: [...(thread.tasks ?? []), change.task] }),
       lastActivityAt: change.lastActivityAt,
       lastActivityContent: change.lastActivityContent,
     }),
@@ -362,7 +368,7 @@ export function settleNoteAddedToThread(
     withoutAbsent({
       ...thread,
       tasks: settled.tasks,
-      revision: settled.revision,
+      revision: Math.max(thread.revision, settled.revision),
       lastActivityAt: settled.lastActivityAt,
       lastActivityContent: settled.lastActivityContent,
     }),

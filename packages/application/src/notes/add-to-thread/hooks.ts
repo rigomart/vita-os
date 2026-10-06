@@ -9,7 +9,7 @@ import type {
 } from "@vita-os/contracts";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { decideAddNoteToThread, newRecordId } from "@vita-os/core";
+import { newRecordId, taskFromNote } from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../../cache/use-application-mutation";
 
@@ -92,12 +92,10 @@ export function useAddNoteToThread(): ApplicationMutationResult<
     ],
     optimistic: (cache, { note, thread }, previousLocal) => {
       const pendingId = previousLocal ?? (newRecordId() as ThreadNoteId);
-      const decision = decideAddNoteToThread(thread, note, noteTaskId(note));
       showNoteLeavingOpenNotes(cache, note._id);
       showNoteAddedToThread(cache, thread._id, {
-        tasks: decision.patch.tasks,
+        task: taskFromNote(note, noteTaskId(note)),
         lastActivityAt: Date.now(),
-        lastActivityContent: decision.logs.at(-1)?.content,
       });
       patchOpenThreadNotes(cache, thread._id, (notes) =>
         insertNewestFirst(
@@ -162,15 +160,9 @@ export function useCreateThreadFromNote(): ApplicationMutationResult<
         { title, ...(areaId === undefined ? {} : { areaId }) },
         { id: pendingId, now },
       );
-      const decision = decideAddNoteToThread(
-        { title, slug: "", state: "open" },
-        note,
-        noteTaskId(note),
-      );
       showNoteAddedToThread(cache, pendingId, {
-        tasks: decision.patch.tasks,
+        task: taskFromNote(note, noteTaskId(note)),
         lastActivityAt: now,
-        lastActivityContent: decision.logs.at(-1)?.content,
       });
       return pendingId;
     },
