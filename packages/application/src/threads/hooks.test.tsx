@@ -111,7 +111,7 @@ describe("useResolvedThreads", () => {
     const { result } = renderHook(
       () => ({
         resolved: useResolvedThreads(),
-        update: useUpdateThread(),
+        update: useUpdateThread(thread._id),
         remove: useRemoveThread(),
       }),
       { wrapper },
@@ -228,15 +228,22 @@ describe("useUpdateThread", () => {
       ],
       focusedTaskId: "task-1" as TaskId,
     });
+    const { tasks: _tasks, focusedTaskId: _focus, ...settled } = attentive;
     const client = createFakeApplicationClient({
       updateThread: async () =>
-        success({ ...attentive, state: "resolved" as const }),
+        success({
+          ...settled,
+          state: "resolved" as const,
+          revision: attentive.revision + 1,
+        }),
     });
     const { wrapper, cache } = createHarness(
       client,
       seedThreadReads({ thread: attentive }),
     );
-    const { result } = renderHook(() => useUpdateThread(), { wrapper });
+    const { result } = renderHook(() => useUpdateThread(thread._id), {
+      wrapper,
+    });
 
     act(() => {
       result.current.mutate({ thread: attentive, state: "resolved" });
@@ -261,7 +268,9 @@ describe("useUpdateThread", () => {
       updateThread: async () => success({ ...thread, areaId: home._id }),
     });
     const { wrapper, cache } = createHarness(client, seedThreadReads());
-    const { result } = renderHook(() => useUpdateThread(), { wrapper });
+    const { result } = renderHook(() => useUpdateThread(thread._id), {
+      wrapper,
+    });
 
     act(() => {
       result.current.mutate({
@@ -287,7 +296,9 @@ describe("useUpdateThread", () => {
       updateThread: async () => success(unlabeled),
     });
     const { wrapper, cache } = createHarness(client, seedThreadReads());
-    const { result } = renderHook(() => useUpdateThread(), { wrapper });
+    const { result } = renderHook(() => useUpdateThread(thread._id), {
+      wrapper,
+    });
 
     act(() => {
       result.current.mutate({ thread, areaId: null });
@@ -314,7 +325,9 @@ describe("useUpdateThread", () => {
         thread: unlabeled,
       });
     });
-    const { result } = renderHook(() => useUpdateThread(), { wrapper });
+    const { result } = renderHook(() => useUpdateThread(thread._id), {
+      wrapper,
+    });
 
     act(() => {
       result.current.mutate({
@@ -342,7 +355,9 @@ describe("useUpdateThread", () => {
       open: cache.getQueryData(queryKeys.threads.open()),
       rail: cache.getQueryData(queryKeys.threads.detail(thread.slug)),
     };
-    const { result } = renderHook(() => useUpdateThread(), { wrapper });
+    const { result } = renderHook(() => useUpdateThread(thread._id), {
+      wrapper,
+    });
 
     await act(async () => {
       await result.current

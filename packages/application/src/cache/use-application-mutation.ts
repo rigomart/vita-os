@@ -152,12 +152,19 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
     }
   }
 
+  // A hook re-rendered with new options rewrites the options of its pending
+  // command, scope and `run` included, unless its key changed. The scope is
+  // part of the key, so a surface that moves to another Thread starts afresh
+  // and its queued commands keep the queue and the Thread they were issued in.
+  const mutationKey =
+    options.scope === undefined
+      ? options.mutationKey
+      : [...(options.mutationKey ?? []), options.scope];
+
   return useMutation<TValue, ApplicationError, TVariables, Snapshot<TLocal>>({
     retry: false,
     ...(options.scope === undefined ? {} : { scope: { id: options.scope } }),
-    ...(options.mutationKey === undefined
-      ? {}
-      : { mutationKey: options.mutationKey }),
+    ...(mutationKey === undefined ? {} : { mutationKey }),
     mutationFn: async (variables) => {
       const result = await options.run(client, variables);
       if (!result.ok) throw result.error;

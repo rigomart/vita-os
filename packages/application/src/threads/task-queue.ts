@@ -4,7 +4,7 @@ import type { Note, TaskId, Thread, ThreadId } from "@vita-os/contracts";
 import { useMutationState } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-/** The queue every Task command of one Thread shares. */
+/** The queue every Task command and every edit of one Thread shares. */
 export function taskScope(threadId: ThreadId): string {
   return `thread-tasks:${threadId}`;
 }
@@ -42,28 +42,62 @@ export function conversionPending(
   thread: Pick<Thread, "_id" | "tasks">,
   except?: unknown,
 ): boolean {
+  return pendingConversions(cache, thread).some(
+    (variables) => variables !== except,
+  );
+}
+
+// Conversions the service has answered (or that were undone before reaching
+// it), keyed by their variables. Their callbacks may still be running.
+const answeredConversions = new WeakSet<object>();
+
+/** Marks a conversion as answered: see `conversionAwaitingAnswer`. */
+export function conversionAnswered(variables: object): void {
+  answeredConversions.add(variables);
+}
+
+/**
+ * Whether a conversion into this Thread is still waiting for the service's
+ * answer. Until then its Task shows only as its optimistic change, which an
+ * answer to a command issued after it (a Thread edit) replays over; that
+ * answer may predate the conversion and lack the Task.
+ */
+export function conversionAwaitingAnswer(
+  cache: QueryClient,
+  thread: Pick<Thread, "_id" | "tasks">,
+): boolean {
+  return pendingConversions(cache, thread).some(
+    (variables) => !answeredConversions.has(variables),
+  );
+}
+
+function pendingConversions(
+  cache: QueryClient,
+  thread: Pick<Thread, "_id" | "tasks">,
+): object[] {
   const taskIds = new Set((thread.tasks ?? []).map((task) => task._id));
   return cache
     .getMutationCache()
     .findAll({ mutationKey: noteConversionKey, status: "pending" })
-    .some((mutation) => {
+    .flatMap((mutation) => {
       const variables = mutation.state.variables as
         | { note?: Pick<Note, "_id">; thread?: Pick<Thread, "_id"> }
         | undefined;
-      if (variables === undefined || variables === except) return false;
-      return (
+      if (variables === undefined) return [];
+      const into =
         variables.thread?._id === thread._id ||
         (variables.note !== undefined &&
-          taskIds.has(noteTaskId(variables.note)))
-      );
+          taskIds.has(noteTaskId(variables.note)));
+      return into ? [variables] : [];
     });
 }
 
 /**
- * Settles once no Task command of this Thread is pending. A conversion carries
- * no revision but moves the Thread's, so it is sent only after the Task
- * commands queued before it; while it is pending the Thread takes no new
- * Task command (`useConversionLock`), so none can follow it in.
+ * Settles once nothing in this Thread's queue is pending: no Task command and
+ * no edit. A conversion carries no revision but moves the Thread's, so it is
+ * sent only after the Task commands queued before it; while it is pending the
+ * Thread takes no new Task command (`useConversionLock`), so none can follow
+ * it in. An edit can, and is answered at whichever revision it lands.
  */
 export function afterTaskCommands(
   cache: QueryClient,

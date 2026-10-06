@@ -36,7 +36,7 @@ describe("replaying the reads while commands overlap", () => {
         );
       },
     );
-    const { result: update } = renderHook(() => useUpdateThread(), {
+    const { result: update } = renderHook(() => useUpdateThread(resolved._id), {
       wrapper,
     });
     const { result: remove } = renderHook(() => useRemoveThread(), {
