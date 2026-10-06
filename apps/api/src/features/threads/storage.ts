@@ -18,6 +18,7 @@ import {
   sqlExpression,
 } from "../../platform/d1/statements";
 import { AREA_COLUMNS, toAreaSummary } from "../areas/rows";
+import { threadNoteStorage } from "../thread-notes/storage";
 import { serializeTasks, THREAD_COLUMNS, toThread } from "./rows";
 
 /** What one Thread change writes: its patch and the Activity Log it earned. */
@@ -39,6 +40,8 @@ export type ThreadChangeInput = {
   change: ThreadChange;
   guard?: SqlCondition;
   stampActivity?: boolean;
+  /** A completion's Thread Note body, already validated by the operation. */
+  completionNoteBody?: string;
 };
 
 /**
@@ -52,6 +55,7 @@ export interface PreparedThreadChange {
    * statement in the same batch can make itself conditional on the change.
    */
   changeToken: string;
+  changedAt: number;
   /** The Thread as written, from these statements' results; `null` if the race was lost. */
   settle(results: D1Result<ThreadRow>[]): Thread | null;
 }
@@ -148,7 +152,10 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
     }
     if (lastLog !== undefined || input.stampActivity === true) {
       columns.last_activity_at = changedAt;
-      columns.last_activity_content = lastLog?.content ?? null;
+      columns.last_activity_content =
+        input.completionNoteBody === undefined
+          ? (lastLog?.content ?? null)
+          : null;
     }
     columns.revision = sqlExpression("revision + 1");
     columns.last_change_token = changeToken;
@@ -208,6 +215,7 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
     return {
       statements,
       changeToken,
+      changedAt,
       settle([update, ...inserts]) {
         const written = update?.results.at(0);
         if (written === undefined) return null;
@@ -329,7 +337,36 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
      */
     async writeChange(input: ThreadChangeInput): Promise<Thread | null> {
       const prepared = prepareChange(input);
-      return prepared.settle(await db.batch<ThreadRow>(prepared.statements));
+      const statements = [...prepared.statements];
+      if (input.completionNoteBody !== undefined) {
+        statements.push(
+          threadNoteStorage({ db, clock, actorId }).prepareInsert(
+            input.threadId,
+            input.completionNoteBody,
+            {
+              token: prepared.changeToken,
+              at: prepared.changedAt,
+            },
+          ),
+        );
+      }
+      // D1 rolls back the entire batch on any statement failure. The capture
+      // depends on the revision-checked Thread write's fresh token, exactly
+      // as the log entries do, so a lost race writes none of them.
+      const results = await db.batch<ThreadRow>(statements);
+      const written = prepared.settle(
+        results.slice(0, prepared.statements.length),
+      );
+      if (
+        written !== null &&
+        input.completionNoteBody !== undefined &&
+        results.at(-1)?.meta.changes !== 1
+      ) {
+        throw new Error(
+          "Task completion wrote an unexpected number of Thread Notes",
+        );
+      }
+      return written;
     },
 
     prepareChange,

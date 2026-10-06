@@ -207,13 +207,17 @@ export function removeTask(input: RemoveTaskInput): Operation<Thread> {
 export function completeTask(input: CompleteTaskInput): Operation<Thread> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
-    return yield* changeTasks(input, (thread) => {
-      if (input.timeZone !== undefined) requireTimeZone(input.timeZone);
-      return decideCompleteTask(thread, input.taskId, {
-        timeZone: input.timeZone,
-        now: scope.clock.now(),
-      });
-    });
+    return yield* changeTasks(
+      input,
+      (thread) => {
+        if (input.timeZone !== undefined) requireTimeZone(input.timeZone);
+        return decideCompleteTask(thread, input.taskId, {
+          timeZone: input.timeZone,
+          now: scope.clock.now(),
+        });
+      },
+      input.note,
+    );
   });
 }
 
@@ -270,6 +274,7 @@ export function removeThread(input: {
 function changeTasks(
   command: { threadId: ThreadId; expectedRevision: number },
   decide: (thread: Thread) => ThreadUpdateDecision | null,
+  note?: { body: string },
 ): Operation<Thread> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
@@ -282,6 +287,12 @@ function changeTasks(
 
     const decision = yield* attempt(() => decide(thread));
     if (decision === null) return yield* moveConflict();
+    const completionNoteBody =
+      note === undefined
+        ? undefined
+        : yield* attempt(() =>
+            requireNonBlankText(note.body, "Thread note body"),
+          );
     if (
       Object.keys(decision.patch).length === 0 &&
       decision.logs.length === 0
@@ -294,6 +305,7 @@ function changeTasks(
         threadId: command.threadId,
         expectedRevision: command.expectedRevision,
         change: decision,
+        completionNoteBody,
       }),
     );
     return written === null ? yield* moveConflict() : written;

@@ -15,6 +15,7 @@ import { Schema } from "effect";
 
 import { Revision, Timestamp } from "../../platform/http/schemas";
 import { AreaIdSchema } from "../areas/requests";
+import { ThreadNoteBody } from "../thread-notes/requests";
 
 /** IDs stay opaque strings, including identifiers minted before UUIDs. */
 export const ThreadIdSchema = Schema.String.pipe(
@@ -74,6 +75,7 @@ export const TaskRevisionBody = Schema.Struct({ expectedRevision: Revision });
 export const CompleteTaskBody = Schema.Struct({
   expectedRevision: Revision,
   timeZone: Schema.optionalKey(TimeZoneSchema),
+  note: Schema.optionalKey(ThreadNoteBody),
 });
 
 export const RepeatSchema = Schema.Union([

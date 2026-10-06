@@ -250,11 +250,15 @@ export function createHttpApplicationClient({
         { expectedRevision },
         decodeThread,
       ),
-    completeTask: ({ threadId, taskId, ...change }) =>
+    completeTask: ({ threadId, taskId, expectedRevision, timeZone, note }) =>
       send(
         "POST",
         path("threads", threadId, "tasks", taskId, "complete"),
-        change,
+        {
+          expectedRevision,
+          ...(timeZone === undefined ? {} : { timeZone }),
+          ...(note === undefined ? {} : { note }),
+        },
         decodeThread,
       ),
     setTaskDate: ({ threadId, taskId, ...change }) =>

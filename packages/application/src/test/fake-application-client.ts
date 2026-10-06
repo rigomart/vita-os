@@ -2,7 +2,25 @@ import type {
   ApplicationClient,
   ApplicationError,
   OperationResult,
+  Thread,
+  ThreadId,
+  ThreadNote,
+  ThreadNoteId,
 } from "@vita-os/contracts";
+
+import {
+  ConflictError,
+  ValidationError,
+  decideCompleteTask,
+  requireNonBlankText,
+  requireTimeZone,
+} from "@vita-os/core";
+
+/** Optional stored records for tests of completion and subsequent Note reads. */
+export interface FakeCompletionState {
+  threads: Thread[];
+  threadNotes: Map<ThreadId, ThreadNote[]>;
+}
 
 /**
  * A client that does nothing until a test says what it does.
@@ -19,6 +37,7 @@ const unconfiguredError: ApplicationError = {
 
 export function createFakeApplicationClient(
   overrides: Partial<ApplicationClient> = {},
+  state?: FakeCompletionState,
 ): ApplicationClient {
   const unconfigured = async () =>
     ({ ok: false, error: unconfiguredError }) as const;
@@ -67,8 +86,88 @@ export function createFakeApplicationClient(
     markThreadNoteOpen: unconfigured,
     removeThreadNote: unconfigured,
 
+    ...(state === undefined ? {} : completionClient(state)),
     ...overrides,
   };
+}
+
+function completionClient(
+  state: FakeCompletionState,
+): Pick<ApplicationClient, "completeTask" | "listOpenThreadNotes"> {
+  return {
+    async completeTask(input) {
+      const index = state.threads.findIndex(
+        (thread) => thread._id === input.threadId,
+      );
+      const thread = state.threads[index];
+      if (thread === undefined) return notFound();
+      if (thread.revision !== input.expectedRevision) return taskConflict();
+      try {
+        if (input.timeZone !== undefined) requireTimeZone(input.timeZone);
+        const now = Date.now();
+        const decision = decideCompleteTask(thread, input.taskId, {
+          timeZone: input.timeZone,
+          now,
+        });
+        if (decision === null) return taskConflict();
+        const body =
+          input.note === undefined
+            ? undefined
+            : requireNonBlankText(input.note.body, "Thread note body");
+        const note: ThreadNote | undefined =
+          body === undefined
+            ? undefined
+            : {
+                _id: crypto.randomUUID() as ThreadNoteId,
+                body,
+                state: "open",
+                createdAt: now,
+                updatedAt: now,
+              };
+        const written = {
+          ...thread,
+          ...decision.patch,
+          revision: thread.revision + 1,
+          lastActivityAt: now,
+          lastActivityContent:
+            note === undefined ? decision.logs.at(-1)?.content : undefined,
+        };
+        // All validation and ID creation finishes before either collection changes.
+        state.threads[index] = written;
+        if (note !== undefined)
+          state.threadNotes.set(input.threadId, [
+            note,
+            ...(state.threadNotes.get(input.threadId) ?? []),
+          ]);
+        return success(written);
+      } catch (error) {
+        if (error instanceof ValidationError || error instanceof ConflictError)
+          return failure({
+            code: error instanceof ValidationError ? "validation" : "conflict",
+            message: error.message,
+            retryable: false,
+          });
+        throw error;
+      }
+    },
+    async listOpenThreadNotes({ threadId }) {
+      if (!state.threads.some((thread) => thread._id === threadId))
+        return notFound();
+      return success(
+        (state.threadNotes.get(threadId) ?? []).filter(
+          (note) => note.state === "open",
+        ),
+      );
+    },
+  };
+}
+
+function taskConflict<T>(): OperationResult<T> {
+  return failure({
+    code: "conflict",
+    message: "The Task or Thread changed.",
+    retryable: false,
+  });
 }
 
 /** A promise a test resolves when it wants the operation to answer. */
