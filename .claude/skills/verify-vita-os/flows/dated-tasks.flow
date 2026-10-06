@@ -118,12 +118,12 @@ browser -- find role button click --name "More actions" --exact
 browser -- find role menuitem click --name "Add to thread…" --exact
 browser -- find role option click --name "Dated D ${STAMP}"
 browser -- wait --text "Note added to thread"
-# Until the conversion reaches the service (the Undo window plus the request), its Task shows but is pending: busy, every control disabled.
+# Until the conversion settles (the Undo window plus the request), the whole Thread takes no Task command: its Task reads Adding… and is busy, and every control, Add a task included, is disabled.
 browser -- find role link click --name "Dated D ${STAMP}"
-browser -- wait --fn "[...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('Note task ${STAMP}') && li.getAttribute('aria-busy') === 'true' && li.textContent.includes('Adding…') && li.querySelector('button[aria-label=\"Complete task\"]').disabled && li.querySelector('button[aria-label=\"Remove task\"]').disabled)"
+browser -- wait --fn "[...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('Note task ${STAMP}') && li.getAttribute('aria-busy') === 'true' && li.textContent.includes('Adding…') && li.querySelector('button[aria-label=\"Complete task\"]').disabled && li.querySelector('button[aria-label=\"Remove task\"]').disabled) && document.querySelector('input[aria-label=\"Add a task\"]').disabled"
 shot dated-d-pending
 # Then it is usable.
-browser -- wait --fn "[...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('Note task ${STAMP}') && !li.hasAttribute('aria-busy') && !li.querySelector('button[aria-label=\"Complete task\"]').disabled)"
+browser -- wait --fn "[...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('Note task ${STAMP}') && !li.hasAttribute('aria-busy') && !li.querySelector('button[aria-label=\"Complete task\"]').disabled) && !document.querySelector('input[aria-label=\"Add a task\"]').disabled"
 shot dated-d-usable
 # The write lands after the five-second Undo window.
 browser -- wait 2000

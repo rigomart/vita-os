@@ -46,7 +46,7 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("../../threads/use-tasks", () => ({
   useCompleteTask: () => vi.fn(),
   useTaskDates: () => ({ setDate: vi.fn(), addFollowUp: vi.fn() }),
-  usePendingTaskIds: () => new Set(),
+  useConversionLock: () => ({ locked: false, pendingTaskIds: new Set() }),
 }));
 vi.mock("../../threads/use-update-thread", () => ({
   useUpdateThread: () => vi.fn(),

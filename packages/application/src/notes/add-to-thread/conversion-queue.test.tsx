@@ -109,6 +109,28 @@ function gatedService(
       }),
     );
   });
+  const focusTask = vi.fn(
+    (input: { taskId: TaskId | null; expectedRevision: number }) => {
+      if (input.expectedRevision !== stored.revision) {
+        refusals.push(`focus at r${input.expectedRevision}`);
+        return answer(
+          "focusTask",
+          failure<Thread>({
+            code: "conflict",
+            message: "changed",
+            retryable: false,
+          }),
+        );
+      }
+      const { focusedTaskId: _focus, ...unfocused } = stored;
+      stored = {
+        ...unfocused,
+        ...(input.taskId === null ? {} : { focusedTaskId: input.taskId }),
+        revision: stored.revision + 1,
+      };
+      return answer("focusTask", success(stored));
+    },
+  );
   const addTask = vi.fn(
     (input: { taskId: TaskId; text: string; expectedRevision: number }) => {
       if (input.expectedRevision !== stored.revision) {
@@ -136,6 +158,7 @@ function gatedService(
   const client = createFakeApplicationClient({
     completeTask,
     addTask,
+    focusTask,
     addNoteToThread,
     listOpenThreads: async () => success([stored]),
     getThreadActivityPage: async () => success({ entries: [] }),
@@ -145,6 +168,8 @@ function gatedService(
   return {
     client,
     completeTask,
+    addTask,
+    focusTask,
     addNoteToThread,
     refusals,
     stored: () => stored,
@@ -195,76 +220,75 @@ function setup(service: ReturnType<typeof gatedService>, seed: Thread) {
 }
 
 describe("Note conversions and the Task queue of one Thread", () => {
-  // Once, the conversion answered at r6 before an earlier completion
-  // answered at r5, and the late r5 became the basis, so completing the
-  // converted Task was silently dropped.
-  it("does not let a late Task answer replace a newer basis", async () => {
-    const seed = aThread({ revision: 4, tasks: [alpha] });
+  it("sends a conversion only after the Task commands queued before it, and the next command carries the revision it left", async () => {
+    const seed = aThread({ revision: 4, tasks: [alpha, beta] });
     const service = gatedService(seed);
     const { feedback, add, tasks } = setup(service, seed);
-    const converted = noteTaskId(dentist);
 
+    let completing: Promise<unknown> | undefined;
     await act(async () => {
-      void tasks.current.complete(alpha._id);
+      // A duplicate activation rides along: the queue still drops it.
+      completing = Promise.all([
+        tasks.current.complete(alpha._id),
+        tasks.current.complete(alpha._id),
+      ]);
     });
     await waitFor(() => expect(service.completeTask).toHaveBeenCalledTimes(1));
     act(() => {
       add.current.mutate({ note: dentist, thread: seed });
     });
     await settle();
-    if (service.release("addNoteToThread")) {
-      await waitFor(() => expect(add.current.isSuccess).toBe(true));
-    }
-    let completing: Promise<void> | undefined;
+    expect(service.addNoteToThread).not.toHaveBeenCalled();
+
+    service.flowFreely();
     await act(async () => {
-      completing = tasks.current.complete(converted);
-    });
-    await act(async () => {
-      service.flowFreely();
       await completing;
     });
+    await waitFor(() => expect(add.current.isSuccess).toBe(true));
+    expect(service.completeTask).toHaveBeenCalledTimes(1);
+    expect(service.completeTask.mock.invocationCallOrder[0]!).toBeLessThan(
+      service.addNoteToThread.mock.invocationCallOrder[0]!,
+    );
 
+    await act(async () => {
+      await tasks.current.complete(noteTaskId(dentist));
+    });
     expect(service.completeTask).toHaveBeenLastCalledWith(
-      expect.objectContaining({ taskId: converted }),
+      expect.objectContaining({
+        taskId: noteTaskId(dentist),
+        expectedRevision: 6,
+      }),
     );
     expect(service.refusals).toEqual([]);
-    expect(service.stored().tasks).toEqual([]);
+    expect(service.stored().tasks).toEqual([beta]);
     expect(feedback.error).not.toHaveBeenCalled();
   });
 
-  // Once, clearing the basis when the conversion settled let a duplicate
-  // completion through to the service, which refused it with a false toast.
-  it("still drops a duplicate completion queued across a conversion", async () => {
-    const seed = aThread({ revision: 4, tasks: [alpha, beta] });
+  it("takes the Thread's whole Task state from a conversion's answer, focus included", async () => {
+    const seed = aThread({
+      revision: 4,
+      tasks: [alpha],
+      focusedTaskId: alpha._id,
+    });
     const service = gatedService(seed);
-    const { feedback, add, tasks } = setup(service, seed);
-    const undo = deferred<boolean>();
-
-    await act(async () => {
-      void tasks.current.complete(alpha._id);
-    });
-    await waitFor(() => expect(service.completeTask).toHaveBeenCalledTimes(1));
-    act(() => {
-      add.current.mutate({
-        note: dentist,
-        thread: seed,
-        undoWindow: () => undo.promise,
-      });
-    });
-    let duplicate: Promise<void> | undefined;
-    await act(async () => {
-      duplicate = tasks.current.complete(alpha._id);
-    });
+    const { add, open } = setup(service, seed);
     service.flowFreely();
-    await act(async () => undo.resolve(true));
-    await waitFor(() => expect(add.current.isSuccess).toBe(true));
+    // Another device unfocuses it; this one has not read that yet.
+    service.elsewhere(({ focusedTaskId: _focus, ...thread }) => ({
+      ...thread,
+      revision: thread.revision + 1,
+    }));
+
     await act(async () => {
-      await duplicate;
+      await add.current.mutateAsync({ note: dentist, thread: seed });
     });
 
-    expect(service.completeTask).toHaveBeenCalledTimes(1);
-    expect(service.refusals).toEqual([]);
-    expect(feedback.error).not.toHaveBeenCalled();
+    expect(open()?.revision).toBe(6);
+    expect(open()?.focusedTaskId).toBeUndefined();
+    expect(open()?.tasks?.map((task) => task._id)).toEqual([
+      alpha._id,
+      noteTaskId(dentist),
+    ]);
   });
 
   // Once, two conversions replayed r6 then r5 while another command held
@@ -345,57 +369,16 @@ describe("Note conversions and the Task queue of one Thread", () => {
     ]);
     holding.resolve(success(seed));
   });
-
-  // Once, a Task command waited on conversion A only; B committed r6
-  // meanwhile, A released it at r5, and it was refused as stale.
-  it("sends a Task command with the revision a later conversion left", async () => {
-    const seed = aThread({ revision: 4, tasks: [alpha] });
-    const service = gatedService(seed);
-    const { feedback, add, tasks } = setup(service, seed);
-
-    act(() => {
-      add.current.mutate({ note: dentist, thread: seed });
-    });
-    await waitFor(() =>
-      expect(service.addNoteToThread).toHaveBeenCalledTimes(1),
-    );
-    let completing: Promise<void> | undefined;
-    await act(async () => {
-      completing = tasks.current.complete(alpha._id);
-    });
-    act(() => {
-      add.current.mutate({ note: bill, thread: seed });
-    });
-    await settle();
-    await act(async () => {
-      service.release("addNoteToThread");
-    });
-    await act(async () => {
-      service.flowFreely();
-      await completing;
-    });
-
-    expect(service.completeTask).toHaveBeenCalledTimes(1);
-    expect(service.refusals).toEqual([]);
-    expect(service.stored().tasks?.map((task) => task._id)).toEqual([
-      noteTaskId(dentist),
-      noteTaskId(bill),
-    ]);
-    expect(feedback.error).not.toHaveBeenCalled();
-  });
 });
 
-describe("the Task a pending conversion shows", () => {
+describe("a Thread while a Note is being added to it", () => {
   function Pane() {
     const thread = useOpenThreads().data?.[0];
     return thread ? <ThreadAttentionSection thread={thread} /> : null;
   }
 
-  it("is pending and takes no command until the conversion commits, while the Thread's other Tasks stay usable", async () => {
-    const user = userEvent.setup();
-    const seed = aThread({ revision: 4, tasks: [alpha] });
+  function renderPane(seed: Thread) {
     const service = gatedService(seed);
-    service.flowFreely();
     const queryClient = createTestQueryClient();
     queryClient.setQueryData(queryKeys.threads.open(), [seed]);
     queryClient.setQueryData(queryKeys.notes.open(), [dentist]);
@@ -405,10 +388,25 @@ describe("the Task a pending conversion shows", () => {
       () => useAddNoteToThread(),
       providers,
     );
-    const undo = deferred<boolean>();
     const row = (text: string) => screen.getByText(text).closest("li")!;
     const button = (text: string, name: RegExp) =>
       within(row(text)).getByRole("button", { name }) as HTMLButtonElement;
+    const addInput = () =>
+      screen.getByRole("textbox", { name: "Add a task" }) as HTMLInputElement;
+    const locked = () =>
+      addInput().disabled &&
+      [...screen.getAllByRole("button")].every(
+        (control) => (control as HTMLButtonElement).disabled,
+      );
+    return { service, add, row, button, addInput, locked, queryClient };
+  }
+
+  it("takes no Task command until the conversion settles, and shows its Task as pending", async () => {
+    const user = userEvent.setup();
+    const seed = aThread({ revision: 4, tasks: [alpha] });
+    const { service, add, row, button, locked } = renderPane(seed);
+    service.flowFreely();
+    const undo = deferred<boolean>();
 
     act(() => {
       add.current.mutate({
@@ -417,34 +415,110 @@ describe("the Task a pending conversion shows", () => {
         undoWindow: () => undo.promise,
       });
     });
-
     await screen.findByText("Call the dentist");
     expect(within(row("Call the dentist")).getByText("Adding…")).toBeTruthy();
     expect(row("Call the dentist").getAttribute("aria-busy")).toBe("true");
-    for (const name of [/complete task/i, /remove task/i, /focus this task/i]) {
-      expect(button("Call the dentist", name).disabled).toBe(true);
-    }
-
-    // Another Task completes during the Undo window. Its answer cannot hold
-    // the converted Task, which stays on screen all the same.
+    expect(row("Alpha").getAttribute("aria-busy")).toBeNull();
+    expect(locked()).toBe(true);
     await user.click(button("Alpha", /complete task/i));
-    await waitFor(() => expect(service.completeTask).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.queryByText("Alpha")).toBeNull());
-    expect(screen.getByText("Call the dentist")).toBeTruthy();
+    expect(service.completeTask).not.toHaveBeenCalled();
 
     await act(async () => undo.resolve(true));
-    await waitFor(() =>
-      expect(button("Call the dentist", /complete task/i).disabled).toBe(false),
-    );
+    await waitFor(() => expect(locked()).toBe(false));
     expect(within(row("Call the dentist")).queryByText("Adding…")).toBeNull();
 
     await user.click(button("Call the dentist", /complete task/i));
-    await waitFor(() => expect(service.completeTask).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(service.completeTask).toHaveBeenCalledTimes(1));
     expect(service.completeTask).toHaveBeenLastCalledWith(
       expect.objectContaining({
         taskId: noteTaskId(dentist),
-        expectedRevision: 6,
+        expectedRevision: 5,
       }),
+    );
+    expect(service.refusals).toEqual([]);
+  });
+
+  // Once, with a completion held, a Task added behind it and a Note
+  // converted after both, the added Task vanished until its own answer.
+  it("keeps Tasks queued before the conversion in view while each goes out ahead of it", async () => {
+    const user = userEvent.setup();
+    const seed = aThread({ revision: 4, tasks: [alpha] });
+    const { service, add, button, addInput, locked } = renderPane(seed);
+
+    await user.click(button("Alpha", /complete task/i));
+    await waitFor(() => expect(service.completeTask).toHaveBeenCalledTimes(1));
+    await user.type(addInput(), "Beta{Enter}");
+    await screen.findByText("Beta");
+    act(() => {
+      add.current.mutate({ note: dentist, thread: seed });
+    });
+    await screen.findByText("Call the dentist");
+    expect(locked()).toBe(true);
+
+    await act(async () => {
+      service.release("completeTask");
+    });
+    await waitFor(() => expect(service.addTask).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("Beta")).toBeTruthy();
+    expect(service.addNoteToThread).not.toHaveBeenCalled();
+
+    await act(async () => {
+      service.release("addTask");
+    });
+    await waitFor(() =>
+      expect(service.addNoteToThread).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByText("Beta")).toBeTruthy();
+    expect(screen.getByText("Call the dentist")).toBeTruthy();
+
+    await act(async () => {
+      service.release("addNoteToThread");
+    });
+    await waitFor(() => expect(locked()).toBe(false));
+    expect(screen.queryByText("Alpha")).toBeNull();
+    expect(screen.getByText("Beta")).toBeTruthy();
+    expect(screen.getByText("Call the dentist")).toBeTruthy();
+    expect(service.stored().revision).toBe(7);
+    expect(service.refusals).toEqual([]);
+  });
+
+  // Once, a focus made during the Undo window was lost: the conversion's
+  // newer answer left focus out, and the focus answer was older.
+  it("takes no focus during the Undo window, and keeps one made after it", async () => {
+    const user = userEvent.setup();
+    const seed = aThread({ revision: 4, tasks: [alpha] });
+    const { service, add, button, locked, queryClient } = renderPane(seed);
+    service.flowFreely();
+    const undo = deferred<boolean>();
+
+    act(() => {
+      add.current.mutate({
+        note: dentist,
+        thread: seed,
+        undoWindow: () => undo.promise,
+      });
+    });
+    await screen.findByText("Call the dentist");
+    expect(button("Alpha", /focus this task/i).disabled).toBe(true);
+    await user.click(button("Alpha", /focus this task/i));
+    expect(service.focusTask).not.toHaveBeenCalled();
+
+    await act(async () => undo.resolve(true));
+    await waitFor(() => expect(locked()).toBe(false));
+    await user.click(button("Alpha", /focus this task/i));
+    await waitFor(() =>
+      expect(
+        button("Alpha", /unfocus this task/i).getAttribute("aria-pressed"),
+      ).toBe("true"),
+    );
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<Thread[]>(queryKeys.threads.open())?.[0]
+          ?.focusedTaskId,
+      ).toBe(alpha._id),
+    );
+    expect(service.focusTask).toHaveBeenCalledWith(
+      expect.objectContaining({ taskId: alpha._id, expectedRevision: 5 }),
     );
     expect(service.refusals).toEqual([]);
   });

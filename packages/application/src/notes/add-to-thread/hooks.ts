@@ -18,17 +18,16 @@ import { afterUndoWindow } from "../../cache/undo-window";
 import { useApplicationMutation } from "../../cache/use-application-mutation";
 import { queryKeys } from "../../query-keys";
 import {
-  settleNoteAddedToThread,
+  settleTaskChange,
   settlePendingThread,
   showNoteAddedToThread,
   showPendingThread,
   threadChangeKeys,
 } from "../../threads/optimistic";
 import {
-  noteAnswer,
+  afterTaskCommands,
   noteConversionKey,
   noteTaskId,
-  sendInTurn,
 } from "../../threads/task-queue";
 import { noteKeys, showNoteLeavingOpenNotes } from "../optimistic";
 
@@ -63,8 +62,8 @@ export interface AddNoteToThreadVariables {
  * Dashboard at once; the Thread shows the dated Task it may gain and the
  * activity stamp, and the Thread Note appears where its creation time puts it. With an
  * `undoWindow` the command waits out the Undo offer, so an undone add never
- * reaches the service. Until it has, the Task it shows is pending
- * (`usePendingTaskIds`) and takes no command.
+ * reaches the service. Until the add settles, the Thread takes no Task
+ * command and the Task it shows reads as pending (`useConversionLock`).
  */
 export function useAddNoteToThread(): ApplicationMutationResult<
   AddNoteToThreadVariables,
@@ -77,22 +76,16 @@ export function useAddNoteToThread(): ApplicationMutationResult<
     NoteAddedToThread,
     ThreadNoteId
   >({
+    // While pending it locks the Thread's Tasks (`useConversionLock`).
     mutationKey: noteConversionKey,
-    // The Undo window passes outside the Thread's line, so its other Tasks
-    // stay usable; the request then takes its turn beside the Task commands,
-    // and its answer advances what they decide against and carry.
     run: async (client, { note, thread, undoWindow }) => {
       await afterUndoWindow(undoWindow);
-      return sendInTurn(cache, thread._id, async () => {
-        const result = await client.addNoteToThread({
-          noteId: note._id,
-          threadId: thread._id,
-          taskId: noteTaskId(note),
-        });
-        if (result.ok) {
-          noteAnswer(cache, result.value.thread, { startsBasis: false });
-        }
-        return result;
+      // The Task commands queued before it reach the service first.
+      await afterTaskCommands(cache, thread._id);
+      return client.addNoteToThread({
+        noteId: note._id,
+        threadId: thread._id,
+        taskId: noteTaskId(note),
       });
     },
     affected: ({ thread }, cache) => [
@@ -100,9 +93,6 @@ export function useAddNoteToThread(): ApplicationMutationResult<
       ...threadChangeKeys(cache, { threadId: thread._id }),
       queryKeys.threadNotes.open(thread._id),
     ],
-    // Its Task patches a Thread already shown and is in no answer that came
-    // back before it reached the service, so it is shown above those answers.
-    pendingOnTop: true,
     optimistic: (cache, { note, thread }, previousLocal, answered) => {
       const pendingId = previousLocal ?? (newRecordId() as ThreadNoteId);
       showNoteLeavingOpenNotes(cache, note._id);
@@ -124,7 +114,7 @@ export function useAddNoteToThread(): ApplicationMutationResult<
       return pendingId;
     },
     reconcile: (cache, added, { thread }, pendingId) => {
-      settleNoteAddedToThread(cache, added.thread);
+      settleTaskChange(cache, added.thread);
       patchOpenThreadNotes(cache, thread._id, (notes) =>
         notes.map((existing) =>
           existing._id === pendingId ? added.threadNote : existing,

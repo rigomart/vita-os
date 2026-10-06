@@ -4,7 +4,6 @@ import type {
   NoteAddedToThread,
   NoteId,
   OperationResult,
-  TaskId,
   Thread,
 } from "@vita-os/contracts";
 import type { PropsWithChildren } from "react";
@@ -21,7 +20,7 @@ import {
 } from "../../test/fake-application-client";
 import { aThread, aThreadNote } from "../../test/fixtures";
 import { createHarness } from "../../test/harness";
-import { noteTaskId, usePendingTaskIds } from "../../threads/task-queue";
+import { noteTaskId, useConversionLock } from "../../threads/task-queue";
 import { useTasks } from "../../threads/use-tasks";
 import { useAddNoteToThread, useCreateThreadFromNote } from "./hooks";
 
@@ -64,7 +63,7 @@ describe("a Task made by adding a Note to a Thread", () => {
     );
     const { result: add } = renderHook(() => useAddNoteToThread(), { wrapper });
     const { result: tasks } = renderHook(() => useTasks(thread), { wrapper });
-    const { result: pending } = renderHook(() => usePendingTaskIds(), {
+    const { result: pending } = renderHook(() => useConversionLock(thread), {
       wrapper,
     });
 
@@ -73,7 +72,9 @@ describe("a Task made by adding a Note to a Thread", () => {
     });
     // Nothing reaches the service while the Undo window is open, and the
     // Task it shows is pending.
-    await waitFor(() => expect(pending.current.has(taskId)).toBe(true));
+    await waitFor(() =>
+      expect(pending.current.pendingTaskIds.has(taskId)).toBe(true),
+    );
     expect(addNoteToThread).not.toHaveBeenCalled();
 
     await act(async () => undo.resolve(true));
@@ -84,7 +85,7 @@ describe("a Task made by adding a Note to a Thread", () => {
         taskId,
       }),
     );
-    expect(pending.current.has(taskId)).toBe(true);
+    expect(pending.current.pendingTaskIds.has(taskId)).toBe(true);
 
     await act(async () =>
       conversion.resolve(
@@ -98,7 +99,7 @@ describe("a Task made by adding a Note to a Thread", () => {
         }),
       ),
     );
-    await waitFor(() => expect(pending.current.size).toBe(0));
+    await waitFor(() => expect(pending.current.pendingTaskIds.size).toBe(0));
 
     await act(async () => {
       await tasks.current.complete(taskId);
@@ -143,61 +144,6 @@ const added = (tasks: NonNullable<Thread["tasks"]>, revision: number) =>
   });
 
 describe("converting Notes beside other Task commands", () => {
-  it("lets a Task the conversion added be completed after an earlier Task command settled", async () => {
-    const old = { _id: "old" as TaskId, text: "Old task" };
-    const seeded = aThread({ revision: 4, tasks: [old] });
-    const converted = noteTaskId(note);
-    const firstComplete = deferred<OperationResult<Thread>>();
-    const conversion = deferred<OperationResult<NoteAddedToThread>>();
-    const completeTask = vi
-      .fn()
-      .mockImplementationOnce(() => firstComplete.promise)
-      .mockImplementation(async (input: { expectedRevision: number }) =>
-        success<Thread>({
-          ...seeded,
-          tasks: [],
-          revision: input.expectedRevision + 1,
-        }),
-      );
-    const { wrapper } = setup(
-      createFakeApplicationClient({
-        completeTask,
-        addNoteToThread: () => conversion.promise,
-        getThreadActivityPage: async () => success({ entries: [] }),
-      }),
-      seeded,
-    );
-    const { result: add } = renderHook(() => useAddNoteToThread(), { wrapper });
-    const { result: tasks } = renderHook(() => useTasks(seeded), { wrapper });
-
-    await act(async () => {
-      void tasks.current.complete(old._id);
-    });
-    act(() => {
-      add.current.mutate({ note, thread: seeded });
-    });
-    await act(async () => {
-      void tasks.current.complete(converted);
-    });
-    await act(async () =>
-      firstComplete.resolve(
-        success<Thread>({ ...seeded, tasks: [], revision: 5 }),
-      ),
-    );
-    await act(async () =>
-      conversion.resolve(
-        added([{ _id: converted, text: "Call the dentist", date }], 6),
-      ),
-    );
-
-    await waitFor(() => expect(completeTask).toHaveBeenCalledTimes(2));
-    expect(completeTask).toHaveBeenLastCalledWith({
-      threadId: seeded._id,
-      taskId: converted,
-      expectedRevision: 6,
-    });
-  });
-
   it("brings back no Task whose conversion was undone when another replays", async () => {
     const undoFirst = deferred<boolean>();
     const undoSecond = deferred<boolean>();
@@ -252,7 +198,7 @@ describe("converting Notes beside other Task commands", () => {
     );
     const { result: add } = renderHook(() => useAddNoteToThread(), { wrapper });
     const { result: tasks } = renderHook(() => useTasks(thread), { wrapper });
-    const { result: pending } = renderHook(() => usePendingTaskIds(), {
+    const { result: pending } = renderHook(() => useConversionLock(thread), {
       wrapper,
     });
     // The second reaches the service first: the first waits out its Undo window.
@@ -268,7 +214,7 @@ describe("converting Notes beside other Task commands", () => {
     await act(async () => secondConversion.resolve(added(both.slice(0, 1), 5)));
     await act(async () => undoFirst.resolve(true));
     await act(async () => firstConversion.resolve(added(both, 6)));
-    await waitFor(() => expect(pending.current.size).toBe(0));
+    await waitFor(() => expect(pending.current.pendingTaskIds.size).toBe(0));
     expect(open()?.revision).toBe(6);
     expect(open()?.tasks).toEqual(both);
 

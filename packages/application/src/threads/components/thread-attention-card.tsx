@@ -25,7 +25,7 @@ import {
   dateToneClassName,
   dayDelta,
 } from "../../dashboard/components/dashboard-model";
-import { useCompleteTask, usePendingTaskIds, useTaskDates } from "../use-tasks";
+import { useCompleteTask, useConversionLock, useTaskDates } from "../use-tasks";
 
 /** Past this many Tasks the pips stop growing and a count takes over. */
 const MAX_PIPS = 6;
@@ -58,6 +58,7 @@ export function ThreadAttentionCard({
   onSetTaskDate,
   onTray,
   pendingTaskIds = noPendingTasks,
+  locked = false,
   thread,
 }: {
   actions?: ReactNode;
@@ -73,6 +74,8 @@ export function ThreadAttentionCard({
   onTray?: boolean;
   /** Tasks shown but not yet at the service. */
   pendingTaskIds?: ReadonlySet<TaskId>;
+  /** A Note is being added to the Thread: no Task command until it settles. */
+  locked?: boolean;
   thread: Thread;
 }) {
   const tasks = thread.tasks ?? [];
@@ -83,13 +86,13 @@ export function ThreadAttentionCard({
   // What the picker holds: the shown Task's own date. A card with no single
   // Task opens it empty, and a date set there adds a Task.
   const taskDate = lead?.date;
-  // A Task still on its way to the service (a Note being added) takes no
-  // command yet: its date reads but does not open, and it cannot be completed.
+  // While a Note is being added to the Thread, the card takes no Task
+  // command: its date reads but does not open, and nothing can be completed.
   const leadPending = lead !== undefined && pendingTaskIds.has(lead._id);
   const showsDate = showsBoardDate(taskDate, dateInHeading);
   const showsPlacedDate =
     taskDate === undefined && showsBoardDate(placedBy, dateInHeading);
-  const dateControl = leadPending ? (
+  const dateControl = locked ? (
     taskDate !== undefined && (
       <PlacedDate
         currentDate={currentDate}
@@ -145,8 +148,8 @@ export function ThreadAttentionCard({
               />
             )}
             <span className="flex items-center gap-1.5">
-              {!showsDate && !leadPending && dateControl}
-              {lead !== undefined && !leadPending && (
+              {!showsDate && !locked && dateControl}
+              {lead !== undefined && !locked && (
                 <BoardCompleteButton
                   label={`Complete “${lead.text}”`}
                   onClick={() => onCompleteTask(lead._id)}
@@ -233,10 +236,11 @@ export function ConnectedThreadAttentionCard({
 }) {
   const completeTask = useCompleteTask(thread);
   const taskDates = useTaskDates(thread);
-  const pendingTaskIds = usePendingTaskIds();
+  const { locked, pendingTaskIds } = useConversionLock(thread);
 
   return (
     <ThreadAttentionCard
+      locked={locked}
       pendingTaskIds={pendingTaskIds}
       area={area}
       currentDate={currentDate}

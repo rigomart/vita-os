@@ -18,11 +18,13 @@ interface ThreadAttentionProps {
   /** Every Task, in the order it was captured. */
   tasks: readonly Task[];
   focusedTaskId?: TaskId;
-  /**
-   * Tasks shown but not yet at the service — a Note being added to the
-   * Thread. They read as pending and take no command until they get there.
-   */
+  /** Tasks shown but not yet at the service — a Note being added — read as pending. */
   pendingTaskIds?: ReadonlySet<TaskId>;
+  /**
+   * While a Note is being added to the Thread, nothing on its Tasks can be
+   * changed: every control is disabled, Add a task included.
+   */
+  locked?: boolean;
   /** The shared attention clock, so lateness matches every other surface. */
   now: number;
   onAddTask: (text: string) => void;
@@ -54,6 +56,7 @@ export function ThreadAttention({
   tasks,
   focusedTaskId,
   pendingTaskIds,
+  locked = false,
   now,
   onAddTask,
   onEditTask,
@@ -73,6 +76,7 @@ export function ThreadAttention({
       now={now}
       focused={task._id === focusedTaskId}
       pending={pendingTaskIds?.has(task._id) ?? false}
+      disabled={locked}
       onEdit={(text) => onEditTask(task._id, text)}
       onRemove={() => onRemoveTask(task._id)}
       onComplete={() => onCompleteTask(task._id)}
@@ -126,7 +130,7 @@ export function ThreadAttention({
         </ul>
       )}
 
-      <AddTask onAdd={onAddTask} />
+      <AddTask onAdd={onAddTask} disabled={locked} />
     </section>
   );
 }
@@ -134,13 +138,14 @@ export function ThreadAttention({
 /**
  * One Task: a line, not a card. The radio says whether it is the one; the
  * focused line is tinted in place so the list never reorders to show it. A
- * pending Task is dimmed and says so, with every control disabled.
+ * pending Task is dimmed and says so; a disabled one takes no command.
  */
 function TaskRow({
   task,
   now,
   focused,
   pending,
+  disabled,
   onEdit,
   onRemove,
   onComplete,
@@ -151,6 +156,7 @@ function TaskRow({
   now: number;
   focused: boolean;
   pending: boolean;
+  disabled: boolean;
   onEdit: (text: string) => void;
   onRemove: () => void;
   onComplete: () => void;
@@ -178,7 +184,7 @@ function TaskRow({
     >
       <button
         type="button"
-        disabled={pending}
+        disabled={disabled}
         onClick={onToggleFocus}
         aria-pressed={focused}
         aria-label={focused ? "Unfocus this task" : "Focus this task"}
@@ -207,7 +213,7 @@ function TaskRow({
             if (text) onEdit(text);
           }}
           inputAriaLabel="Task"
-          disabled={pending}
+          disabled={disabled}
           className="min-h-0 py-0.5 text-sm leading-snug"
           displayClassName="border-transparent hover:bg-transparent"
         />
@@ -227,7 +233,7 @@ function TaskRow({
             dateLabel === undefined ? (
               <Button
                 variant="ghost"
-                disabled={pending}
+                disabled={disabled}
                 size="icon-xs"
                 aria-label={taskDateLabels.set}
                 title={taskDateLabels.set}
@@ -238,7 +244,7 @@ function TaskRow({
             ) : (
               <Button
                 variant="ghost"
-                disabled={pending}
+                disabled={disabled}
                 size="xs"
                 aria-label={`${taskDateLabels.change}: ${dateLabel}`}
                 title={taskDateLabels.change}
@@ -262,7 +268,7 @@ function TaskRow({
         />
         <Button
           variant="ghost"
-          disabled={pending}
+          disabled={disabled}
           size="icon-xs"
           onClick={onRemove}
           aria-label="Remove task"
@@ -273,7 +279,7 @@ function TaskRow({
         </Button>
         <Button
           variant="ghost"
-          disabled={pending}
+          disabled={disabled}
           size="icon-xs"
           onClick={onComplete}
           aria-label="Complete task"
@@ -288,12 +294,18 @@ function TaskRow({
 }
 
 /** The foot of the list: capture a Task with nothing to decide. */
-function AddTask({ onAdd }: { onAdd: (text: string) => void }) {
+function AddTask({
+  onAdd,
+  disabled,
+}: {
+  onAdd: (text: string) => void;
+  disabled: boolean;
+}) {
   const [draft, setDraft] = useState("");
 
   const commit = () => {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || disabled) return;
     setDraft("");
     onAdd(text);
   };
@@ -308,6 +320,7 @@ function AddTask({ onAdd }: { onAdd: (text: string) => void }) {
       </span>
       <input
         type="text"
+        disabled={disabled}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}

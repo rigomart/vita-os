@@ -312,9 +312,10 @@ export function showTaskChange(
 }
 
 /**
- * The service's answer to a Task command. Only what that command can change is
- * taken from it — the Tasks, the focus, the revision, and the last activity a
- * completion stamps — so an unrelated change still in flight keeps showing.
+ * The service's answer to a Task command or to adding a Note: the Thread's
+ * whole Task state at that revision — the Tasks, the focus, the revision, and
+ * the last activity — and nothing else, so an unrelated change still in
+ * flight keeps showing.
  * An answer older than what the read already shows changes nothing
  * (`newerAnswer`).
  */
@@ -367,28 +368,6 @@ export function showNoteAddedToThread(
       lastActivityAt: change.lastActivityAt,
       lastActivityContent: change.lastActivityContent,
     }),
-  );
-}
-
-/**
- * The service's answer to adding a Note: only what that command changes — the
- * Tasks, the activity stamp, and the revision — unless the read already
- * shows a newer one.
- */
-export function settleNoteAddedToThread(
-  cache: QueryClient,
-  settled: Thread,
-): void {
-  patchThreadEverywhere(cache, settled._id, (thread) =>
-    newerAnswer(thread, settled)
-      ? withoutAbsent({
-          ...thread,
-          tasks: settled.tasks,
-          revision: settled.revision,
-          lastActivityAt: settled.lastActivityAt,
-          lastActivityContent: settled.lastActivityContent,
-        })
-      : thread,
   );
 }
 

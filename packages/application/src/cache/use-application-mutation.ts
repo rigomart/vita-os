@@ -74,29 +74,12 @@ export interface ApplicationMutationOptions<TVariables, TValue, TLocal = void> {
   scope?: string;
   /** Names the command for `useMutationState`, so a surface can tell it is pending. */
   mutationKey?: readonly unknown[];
-  /**
-   * While pending, this command's change is replayed after every other one,
-   * so an answer that came back meanwhile — which cannot contain it — does
-   * not wipe it from the screen. Only for a change that patches records
-   * already there, so it cannot bring back one a later command removed.
-   */
-  pendingOnTop?: boolean;
-}
-
-/**
- * One command's change to the reads: its optimistic change, followed by the
- * service's answer once it has one, or nothing once the command has failed.
- */
-interface Layer {
-  apply: () => void;
-  /** Replayed last while it waits for its answer (`pendingOnTop`). */
-  onTop: boolean;
 }
 
 interface MutationBatch {
   pending: number;
   base: Map<string, [QueryKey, unknown]>;
-  layers: Layer[];
+  layers: Array<{ apply: () => void }>;
   invalidate: Map<string, QueryKey>;
   /** Pending commands per scope; a scope's memo goes when its count reaches 0. */
   scopes: Map<string, number>;
@@ -109,7 +92,7 @@ interface MutationBatch {
 
 interface Snapshot<TLocal> {
   batch: MutationBatch;
-  layer: Layer;
+  layer: { apply: () => void };
   local: TLocal | undefined;
 }
 
@@ -128,17 +111,11 @@ export function queueMemo(
   return batches.get(cache)?.memo;
 }
 
-/**
- * Rebuild the reads from what they held before the batch: every command in
- * the order it was issued, except those still pending with `pendingOnTop`,
- * which go last.
- */
 function replay(cache: QueryClient, batch: MutationBatch) {
   notifyManager.batch(() => {
     for (const [key, value] of batch.base.values())
       cache.setQueryData(key, value);
-    for (const layer of batch.layers) if (!layer.onTop) layer.apply();
-    for (const layer of batch.layers) if (layer.onTop) layer.apply();
+    for (const layer of batch.layers) layer.apply();
   });
 }
 
@@ -235,7 +212,6 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
               false,
             );
           },
-          onTop: options.pendingOnTop ?? false,
         },
         local: undefined,
       };
@@ -244,9 +220,7 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
       return snapshot;
     },
     onError: (_error, _variables, snapshot) => {
-      if (!snapshot) return;
-      snapshot.layer.apply = () => {};
-      snapshot.layer.onTop = false;
+      if (snapshot) snapshot.layer.apply = () => {};
     },
     onSuccess: (value, variables, snapshot) => {
       if (!snapshot) return;
@@ -259,7 +233,6 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
         );
         options.reconcile?.(cache, value, variables, snapshot.local);
       };
-      snapshot.layer.onTop = false;
     },
     onSettled: (_value, _error, _variables, snapshot) => {
       if (!snapshot) return;

@@ -41,13 +41,7 @@ import {
   showThreadRemoval,
   threadChangeKeys,
 } from "./optimistic";
-import {
-  answeredRevision,
-  noteAnswer,
-  queueBasis,
-  sendInTurn,
-  taskScope,
-} from "./task-queue";
+import { taskScope } from "./task-queue";
 
 const ACTIVITY_PAGE_SIZE = 20;
 
@@ -216,12 +210,12 @@ export class CommandDropped extends Error {
  * at the head of the queue: no request, no refusal to report. Duplicate
  * activations arrive before the first command's optimistic layer lands, so
  * this cannot be decided when the command is issued. The basis is the newest
- * Thread this Thread's own requests got back — Note conversions included, so
- * a command on the Task a conversion added is decided against a Thread that
- * holds it — and the command carries that basis's revision. A change made on
- * another device is unknown here: that command is still sent and refused
- * once, and identical commands queued behind a refusal are dropped rather
- * than refused again.
+ * Thread this Thread's own queue got back, and the command carries its
+ * revision. A Note conversion never runs beside the queue: it waits for the
+ * commands queued before it, and none can be issued while it is pending
+ * (`useConversionLock`). A change made on another device is unknown here:
+ * that command is still sent and refused once, and identical commands queued
+ * behind a refusal are dropped rather than refused again.
  */
 export function useTaskCommand<TInput>(
   thread: Thread,
@@ -240,38 +234,36 @@ export function useTaskCommand<TInput>(
 
   return useApplicationMutation<TInput, Thread>({
     scope,
-    run: (client, input) =>
-      sendInTurn(cache, thread._id, async () => {
-        const change = command.change(input);
-        const signature = JSON.stringify(change);
-        const memo = queueMemo(cache);
-        // What this Thread's own queue got back from the service. Without it
-        // (the head of a fresh queue) there is nothing to decide against.
-        const basis = queueBasis(cache, thread._id);
-        const refused = (memo?.get(refusedKey) as string[] | undefined) ?? [];
-        if (
-          refused.includes(signature) ||
-          (basis !== undefined && !changesTasks(basis, change))
-        ) {
-          throw new CommandDropped();
+    run: async (client, input) => {
+      const change = command.change(input);
+      const signature = JSON.stringify(change);
+      const memo = queueMemo(cache);
+      // What this Thread's own queue got back from the service. Without it
+      // (the head of a fresh queue) there is nothing to decide against.
+      const basis = memo?.get(scope) as Thread | undefined;
+      const refused = (memo?.get(refusedKey) as string[] | undefined) ?? [];
+      if (
+        refused.includes(signature) ||
+        (basis !== undefined && !changesTasks(basis, change))
+      ) {
+        throw new CommandDropped();
+      }
+      const result = await command.run(
+        client,
+        input,
+        basis?.revision ?? cachedRevision(cache, thread),
+      );
+      if (result.ok) {
+        // The basis only moves forward: an older answer never replaces it.
+        if (basis === undefined || result.value.revision > basis.revision) {
+          memo?.set(scope, result.value);
         }
-        const result = await command.run(
-          client,
-          input,
-          basis?.revision ??
-            Math.max(
-              cachedRevision(cache, thread),
-              answeredRevision(cache, thread._id),
-            ),
-        );
-        if (result.ok) {
-          noteAnswer(cache, result.value, { startsBasis: true });
-        } else if (result.error.code === "conflict") {
-          // Identical commands queued behind it are refused too, each with its own toast.
-          memo?.set(refusedKey, [...refused, signature]);
-        }
-        return result;
-      }),
+      } else if (result.error.code === "conflict") {
+        // Identical commands queued behind it are refused too, each with its own toast.
+        memo?.set(refusedKey, [...refused, signature]);
+      }
+      return result;
+    },
     affected: (_input, cache) =>
       threadChangeKeys(cache, { threadId: thread._id }),
     // Once answered, the answer carries the change (and is skipped if a newer

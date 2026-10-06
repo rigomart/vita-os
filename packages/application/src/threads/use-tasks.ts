@@ -6,7 +6,7 @@ import { useFeedback } from "@vita-os/ui/lib/feedback";
 
 import { CommandDropped, useTaskCommand } from "./hooks";
 
-export { usePendingTaskIds } from "./task-queue";
+export { useConversionLock } from "./task-queue";
 
 /**
  * A Task command never throws at the surface that issued it. A refusal has
