@@ -17,6 +17,7 @@ const ROOT = resolve(import.meta.dir, "../../../..");
 const VERIFY_DIR = join(ROOT, ".verify");
 const API_DIR = join(ROOT, "apps/api");
 const WEB_DIR = join(ROOT, "apps/web");
+const SCRIPT = import.meta.path;
 
 const HELP = `vita: launch, drive, and prove a local Vita OS instance.
 
@@ -36,6 +37,11 @@ Commands:
   open <path>                        Open a web path (e.g. / or /threads/x) and wait for the app shell.
   shot <label>                       Save <label>.png (screenshot) and <label>.aria.txt (snapshot) as evidence.
   d1 "<SELECT ...>"                  Read-only SQL against this instance's local D1 (SELECT only).
+  run <flow-file> [--step-timeout S] Run a flow file with no model in the loop: one command per line as you
+                                     would type it after "bun run verify", # comments, \${STAMP} replaced by
+                                     one timestamp per run, "expect <text>" asserts the previous output
+                                     contains <text>. Stops at the first failing step, prints it as JSON, exits
+                                     1. Default step timeout 20s. Flows live in flows/.
   env                                Print URLs, credentials, session name, and evidence dir.
   down [--dry-run] [--purge]         Stop only the processes this instance started, close its browser
                                      session. --purge also deletes its local D1. Evidence is kept.
@@ -94,7 +100,7 @@ function parseArgs(argv: string[]) {
       if (
         next !== undefined &&
         !next.startsWith("--") &&
-        ["instance", "web-port", "api-port"].includes(key)
+        ["instance", "web-port", "api-port", "step-timeout"].includes(key)
       ) {
         flags[key] = next;
         i++;
@@ -619,6 +625,141 @@ async function down(
   return { ok: true, stopped: true, plan };
 }
 
+// ---- flows: scripted runs with no model in the loop ----
+
+const FLOW_COMMANDS = ["open", "signin", "browser", "shot", "d1", "doctor"];
+const DEFAULT_STEP_TIMEOUT_SEC = 20;
+
+/** Split a flow line into words, honouring '...' and "..." (backslash escapes inside double quotes). */
+function tokenize(line: string): string[] {
+  const words: string[] = [];
+  let cur = "";
+  let inWord = false;
+  let quote: string | undefined;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quote) {
+      if (c === quote) quote = undefined;
+      else if (quote === '"' && c === "\\" && /["\\]/.test(line[i + 1] ?? ""))
+        cur += line[++i];
+      else cur += c;
+    } else if (c === "'" || c === '"') {
+      quote = c;
+      inWord = true;
+    } else if (/\s/.test(c)) {
+      if (inWord) words.push(cur);
+      cur = "";
+      inWord = false;
+    } else {
+      cur += c;
+      inWord = true;
+    }
+  }
+  if (quote)
+    throw new VitaError(`unterminated ${quote} in: ${line}`, "fix the quotes");
+  if (inWord) words.push(cur);
+  return words;
+}
+
+type FlowStep = { line: number; text: string; words: string[] };
+
+function parseFlow(source: string, stamp: string): FlowStep[] {
+  const steps: FlowStep[] = [];
+  source.split("\n").forEach((raw, index) => {
+    const text = raw.trim().replaceAll("${STAMP}", stamp);
+    if (!text || text.startsWith("#")) return;
+    const words = tokenize(text);
+    if (words[0] !== "expect" && !FLOW_COMMANDS.includes(words[0]))
+      throw new VitaError(
+        `flow line ${index + 1}: unknown command "${words[0]}"`,
+        `use one of: ${[...FLOW_COMMANDS, "expect"].join(", ")}`,
+      );
+    steps.push({ line: index + 1, text, words });
+  });
+  return steps;
+}
+
+async function runFlow(
+  instance: string,
+  file: string | undefined,
+  opts: { timeoutSec?: number },
+) {
+  if (!file)
+    throw new VitaError("missing flow file", "usage: vita run <flow-file>");
+  if (!existsSync(file))
+    throw new VitaError(`flow file not found: ${file}`, "pass a path");
+  const state = requireState(instance);
+  const timeoutSec = opts.timeoutSec ?? DEFAULT_STEP_TIMEOUT_SEC;
+  const stamp = String(Math.floor(Date.now() / 1000));
+  const steps = parseFlow(readFileSync(file, "utf8"), stamp);
+  const started = Date.now();
+  const checkpoints: string[] = [];
+  let previous = "";
+  for (const step of steps) {
+    const t0 = Date.now();
+    let output: string;
+    let failure: string | undefined;
+    if (step.words[0] === "expect") {
+      const wanted = step.words.slice(1).join(" ");
+      output = previous;
+      if (!previous.includes(wanted))
+        failure = `previous output does not contain "${wanted}"`;
+    } else {
+      const proc = Bun.spawn(["bun", SCRIPT, ...step.words], {
+        env: { ...process.env, VITA_INSTANCE: instance },
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        proc.kill("SIGKILL");
+      }, timeoutSec * 1000);
+      const drained = Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+        proc.exited,
+      ]);
+      // A killed step can leave a grandchild holding the pipes, so don't wait on them for long.
+      const [stdout = "", stderr = ""] = await Promise.race([
+        drained,
+        proc.exited.then(() => Bun.sleep(1000)).then(() => []),
+      ]);
+      clearTimeout(timer);
+      output = `${stdout}${stderr}`.trim();
+      if (timedOut)
+        failure = `timed out after ${timeoutSec}s (see --step-timeout)`;
+      else if (proc.exitCode !== 0) failure = `exit code ${proc.exitCode}`;
+      if (!failure && step.words[0] === "shot") checkpoints.push(step.words[1]);
+    }
+    previous = output;
+    process.stderr.write(
+      `${failure ? "FAIL" : "ok"} line ${step.line} (${Date.now() - t0}ms): ${step.text.slice(0, 100)}\n`,
+    );
+    if (failure)
+      return {
+        ok: false,
+        flow: file,
+        failedLine: step.line,
+        command: step.text,
+        error: failure,
+        output: output.slice(-2000),
+        checkpoints,
+        evidenceDir: state.evidenceDir,
+        ms: Date.now() - started,
+      };
+  }
+  return {
+    ok: true,
+    flow: file,
+    stamp,
+    steps: steps.length,
+    checkpoints,
+    evidenceDir: state.evidenceDir,
+    ms: Date.now() - started,
+  };
+}
+
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
   const { flags, positional, passthrough } = parseArgs(rest);
@@ -643,6 +784,17 @@ async function main() {
       return out(await shot(instance, positional[0]));
     case "d1":
       return out(await d1(instance, positional[0]));
+    case "run": {
+      const result = await runFlow(instance, positional[0], {
+        timeoutSec:
+          typeof flags["step-timeout"] === "string"
+            ? Number(flags["step-timeout"])
+            : undefined,
+      });
+      out(result);
+      if (!result.ok) process.exit(1);
+      return;
+    }
     case "env":
       return out({ ok: true, ...publicEnv(requireState(instance)) });
     case "down":
