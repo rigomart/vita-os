@@ -42,6 +42,20 @@ export function useCompleteTask(thread: Thread) {
 export const FOLLOW_UP_TASK_TEXT = "Follow up";
 
 /**
+ * The ID of the "Follow up" Task one card activation adds. It comes from the
+ * Thread and the revision the card read, so a rapid duplicate activation
+ * carries the same ID: the add rule refuses an ID the Thread already holds and
+ * the duplicate is dropped instead of adding a second Task.
+ */
+export function followUpTaskId(thread: Thread): TaskId {
+  let hash = 2_166_136_261;
+  for (const char of `${thread._id}:${thread.revision}`) {
+    hash = Math.imul(hash ^ char.charCodeAt(0), 16_777_619);
+  }
+  return `follow-up-${(hash >>> 0).toString(16)}-${thread.revision}` as TaskId;
+}
+
+/**
  * The date control of a Dashboard card. On a card that shows a Task it sets,
  * changes or clears that Task's date; on a card that shows none it adds a Task
  * named "Follow up" with the date, in one action.
@@ -78,7 +92,7 @@ export function useTaskDates(thread: Thread) {
     addFollowUp: (date: number) =>
       addDated
         .mutateAsync({
-          _id: newRecordId() as TaskId,
+          _id: followUpTaskId(thread),
           text: FOLLOW_UP_TASK_TEXT,
           date,
         })
