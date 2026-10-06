@@ -33,7 +33,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import type { ProductSearch } from "../navigation/search-params";
 import type { AttentionRowModel } from "./attention-row-model";
@@ -151,7 +151,6 @@ export function WhenPopover({
   keepOpenOnPick = false,
   onSetWhen,
   repeat,
-  stillShown,
   trigger,
   when,
 }: {
@@ -169,12 +168,6 @@ export function WhenPopover({
   onSetWhen?: (when: number | undefined) => void;
   /** A Task's Repeat; without it the picker holds a date alone. */
   repeat?: RepeatControl;
-  /**
-   * Whether the item still has the date and Repeat the picker shows, read
-   * from the current state when the picker unmounts open. Only then are its
-   * unsaved choices saved; without it they are dropped.
-   */
-  stillShown?: (shown: { when?: number; repeat?: Repeat }) => boolean;
   trigger: ReactElement;
   when?: number;
 }) {
@@ -196,47 +189,17 @@ export function WhenPopover({
     }
   }
 
-  /** What closing saves: the Repeat choice, then a time typed for the day. */
-  function saveDrafts() {
-    commitRepeat();
-    if (when !== undefined && time !== savedTime && !busy) {
-      onSetWhen?.(withTimeOfDay(when, time));
-    }
-  }
-
-  // A picker that goes away while open — the surface navigates away or
-  // unmounts — saves its drafts as closing it would, but only while what it
-  // shows is still so (`stillShown`): a refresh that moved or removed the
-  // item unmounts it with a stale date, and saving then would undo the change
-  // that came in. Otherwise, and without `stillShown`, the drafts are dropped.
-  // `openNow` is cleared the moment the picker closes, so a close and an
-  // unmount never both save.
-  const openNow = useRef(false);
-  const saveOnUnmount = useRef(() => {});
-  useEffect(() => {
-    saveOnUnmount.current = () => {
-      if (stillShown?.({ when, repeat: repeat?.value })) saveDrafts();
-    };
-  });
-  useEffect(
-    () => () => {
-      if (openNow.current) {
-        openNow.current = false;
-        saveOnUnmount.current();
-      }
-    },
-    [],
-  );
-
   function handleOpenChange(next: boolean) {
     if (next) {
       setTime(savedTime);
       setAddingTime(savedTime !== "");
       setDraft(repeatDraft(repeat?.value));
-    } else if (openNow.current) {
-      saveDrafts();
+    } else {
+      commitRepeat();
+      if (when !== undefined && time !== savedTime && !busy) {
+        onSetWhen?.(withTimeOfDay(when, time));
+      }
     }
-    openNow.current = next;
     setOpen(next);
   }
 
@@ -258,10 +221,7 @@ export function WhenPopover({
             if (!date || busy) return;
             commitRepeat();
             onSetWhen?.(withTimeOfDay(date.getTime(), time));
-            if (!keepOpenOnPick) {
-              openNow.current = false;
-              setOpen(false);
-            }
+            if (!keepOpenOnPick) setOpen(false);
           }}
         />
         <div className="border-t border-border/60 p-2">
@@ -331,7 +291,6 @@ export function WhenPopover({
                 onClick={() => {
                   if (busy) return;
                   onSetWhen?.(undefined);
-                  openNow.current = false;
                   setOpen(false);
                 }}
               >

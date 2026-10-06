@@ -46,7 +46,6 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("../../threads/use-tasks", () => ({
   useCompleteTask: () => vi.fn(),
   useSkipTask: () => vi.fn(),
-  useTaskStillShown: () => () => false,
   useTaskDates: () => ({
     setDate: vi.fn(),
     setRepeat: vi.fn(),

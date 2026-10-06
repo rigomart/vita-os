@@ -48,7 +48,6 @@ import {
   useConversionLock,
   useSkipTask,
   useTaskDates,
-  useTaskStillShown,
 } from "../use-tasks";
 
 /** Past this many Tasks the pips stop growing and a count takes over. */
@@ -84,7 +83,6 @@ export function ThreadAttentionCard({
   onSetTaskDate,
   onSetTaskRepeat,
   onSkipTask,
-  taskStillShown,
   onTray,
   pendingTaskIds = noPendingTasks,
   locked = false,
@@ -104,11 +102,6 @@ export function ThreadAttentionCard({
   onSetTaskRepeat: (taskId: TaskId, repeat: Repeat | null) => void;
   /** Moves a repeating Task to its next occurrence. */
   onSkipTask: (taskId: TaskId) => void;
-  /** Whether a Task still has the date and Repeat its open picker shows. */
-  taskStillShown?: (
-    taskId: TaskId,
-    shown: { when?: number; repeat?: Repeat },
-  ) => boolean;
   onTray?: boolean;
   /** Tasks shown but not yet at the service. */
   pendingTaskIds?: ReadonlySet<TaskId>;
@@ -155,12 +148,6 @@ export function ThreadAttentionCard({
               onChange: (repeat: Repeat | null) =>
                 onSetTaskRepeat(lead._id, repeat),
             },
-            ...(taskStillShown === undefined
-              ? {}
-              : {
-                  stillShown: (shown: { when?: number; repeat?: Repeat }) =>
-                    taskStillShown(lead._id, shown),
-                }),
           })}
       when={taskDate}
     />
@@ -313,7 +300,6 @@ export function ConnectedThreadAttentionCard({
 }) {
   const completeTask = useCompleteTask(thread);
   const skipTask = useSkipTask(thread);
-  const taskStillShown = useTaskStillShown(thread);
   const taskDates = useTaskDates(thread);
   const { locked, pendingTaskIds } = useConversionLock(thread);
 
@@ -333,7 +319,6 @@ export function ConnectedThreadAttentionCard({
         void taskDates.setRepeat(taskId, repeat)
       }
       onSkipTask={(taskId) => void skipTask(taskId)}
-      taskStillShown={taskStillShown}
     />
   );
 }
