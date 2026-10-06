@@ -41,7 +41,12 @@ import {
   showThreadRemoval,
   threadChangeKeys,
 } from "./optimistic";
-import { conversionPending, taskScope, ThreadBusy } from "./task-queue";
+import {
+  conversionAwaitingAnswer,
+  conversionPending,
+  taskScope,
+  ThreadBusy,
+} from "./task-queue";
 
 const ACTIVITY_PAGE_SIZE = 20;
 
@@ -149,7 +154,9 @@ export interface UpdateThreadVariables extends Omit<
  * Task command, it can run beside a Note conversion, so its answer may
  * predate the conversion's. A fresh queue takes the revision from the reads,
  * which keep the newest answer either one brought back.
- * `threadId` must name the Thread every edit through this hook carries.
+ * `threadId` names the Thread the edits issued now carry; a surface that
+ * moves to another Thread leaves the edits already queued in the first one's
+ * queue (`useApplicationMutation`'s `scope`).
  */
 export function useUpdateThread(
   threadId: ThreadId,
@@ -191,7 +198,14 @@ export function useUpdateThread(
       ),
     // The edit itself stays shown; the answer brings the revision it moved
     // to, with the Tasks at that revision, for the next Task command to carry.
-    reconcile: (cache, settled) => settleTaskChange(cache, settled),
+    // While a conversion into the Thread awaits its answer, this answer may
+    // predate it and would replace its pending Task, so it waits: the
+    // conversion's answer replays it, before the lock lets a Task command in.
+    reconcile: (cache, settled, { thread }) => {
+      if (!conversionAwaitingAnswer(cache, thread)) {
+        settleTaskChange(cache, settled);
+      }
+    },
     // A Thread change can write Activity Log entries, which are read separately.
     alsoInvalidate: ({ thread }) => [
       queryKeys.threads.activity(thread._id),

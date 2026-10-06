@@ -347,6 +347,58 @@ describe("Note conversions and the Task queue of one Thread", () => {
     expect(feedback.error).not.toHaveBeenCalled();
   });
 
+  it("keeps a pending conversion's Task in view when a Thread edit issued after it answers first", async () => {
+    const seed = aThread({ revision: 4, tasks: [alpha, beta] });
+    const service = gatedService(seed);
+    const { feedback, add, tasks, update, open } = setup(service, seed);
+    const undo = deferred<boolean>();
+
+    act(() => {
+      add.current.mutate({
+        note: dentist,
+        thread: seed,
+        undoWindow: () => undo.promise,
+      });
+    });
+    await waitFor(() =>
+      expect(open()?.tasks?.map((task) => task._id)).toContain(
+        noteTaskId(dentist),
+      ),
+    );
+    let renaming: Promise<unknown> | undefined;
+    act(() => {
+      renaming = update.current.mutateAsync({ thread: seed, title: "Renamed" });
+    });
+    await settle();
+    service.release("updateThread");
+    await act(async () => {
+      await renaming;
+    });
+
+    // The edit's answer predates the conversion: its Task is still pending.
+    expect(open()?.tasks?.map((task) => task._id)).toEqual([
+      alpha._id,
+      beta._id,
+      noteTaskId(dentist),
+    ]);
+    expect(open()?.title).toBe("Renamed");
+
+    service.flowFreely();
+    await act(async () => {
+      undo.resolve(true);
+    });
+    await waitFor(() => expect(add.current.isSuccess).toBe(true));
+    expect(open()?.revision).toBe(6);
+    await act(async () => {
+      await tasks.current.complete(alpha._id);
+    });
+    expect(service.completeTask).toHaveBeenLastCalledWith(
+      expect.objectContaining({ taskId: alpha._id, expectedRevision: 6 }),
+    );
+    expect(service.refusals).toEqual([]);
+    expect(feedback.error).not.toHaveBeenCalled();
+  });
+
   it("never takes an older answer's Tasks, focus or revision over a newer read", () => {
     const newer = aThread({ revision: 7, tasks: [beta] });
     const { cache } = createHarness(createFakeApplicationClient(), (cache) =>

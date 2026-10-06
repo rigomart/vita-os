@@ -26,6 +26,7 @@ import {
 } from "../../threads/optimistic";
 import {
   afterTaskCommands,
+  conversionAnswered,
   conversionPending,
   noteConversionKey,
   noteTaskId,
@@ -85,15 +86,21 @@ export function useAddNoteToThread(): ApplicationMutationResult<
       conversionPending(cache, variables.thread, variables)
         ? new ThreadBusy()
         : undefined,
-    run: async (client, { note, thread, undoWindow }) => {
-      await afterUndoWindow(undoWindow);
-      // The Task commands queued before it reach the service first.
-      await afterTaskCommands(cache, thread._id);
-      return client.addNoteToThread({
-        noteId: note._id,
-        threadId: thread._id,
-        taskId: noteTaskId(note),
-      });
+    run: async (client, variables) => {
+      const { note, thread, undoWindow } = variables;
+      try {
+        await afterUndoWindow(undoWindow);
+        // The Task commands queued before it reach the service first.
+        await afterTaskCommands(cache, thread._id);
+        return await client.addNoteToThread({
+          noteId: note._id,
+          threadId: thread._id,
+          taskId: noteTaskId(note),
+        });
+      } finally {
+        // From here its answer, or its rollback, is in the replay.
+        conversionAnswered(variables);
+      }
     },
     affected: ({ thread }, cache) => [
       ...noteKeys(),
