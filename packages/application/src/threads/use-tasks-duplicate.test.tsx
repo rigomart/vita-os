@@ -87,6 +87,22 @@ function fakeService(
         focusedTaskId: input.taskId ?? undefined,
       })),
   );
+  const setTaskDate = vi.fn(
+    async (input: {
+      taskId: TaskId;
+      date: number | null;
+      expectedRevision: number;
+    }) =>
+      write(input.expectedRevision, input.taskId, (t) => ({
+        tasks: t.tasks?.map((task) => {
+          if (task._id !== input.taskId) return task;
+          const { date: _date, ...undated } = task;
+          return input.date === null
+            ? undated
+            : { ...undated, date: input.date };
+        }),
+      })),
+  );
   const client: ApplicationClient = createFakeApplicationClient({
     listOpenThreads: async () => success([stored]),
     getThreadDetail: async () => success({ thread: stored, area: anArea() }),
@@ -95,9 +111,17 @@ function fakeService(
     completeTask,
     editTask,
     focusTask,
+    setTaskDate,
     ...(options.updateThread ? { updateThread: options.updateThread } : {}),
   });
-  return { client, removeTask, completeTask, editTask, focusTask };
+  return {
+    client,
+    removeTask,
+    completeTask,
+    editTask,
+    focusTask,
+    setTaskDate,
+  };
 }
 
 function renderTasks(client: ApplicationClient) {
@@ -188,6 +212,52 @@ describe("a Task command the local rule already refuses", () => {
     expect(editTask).toHaveBeenCalledTimes(1);
     expect(feedback.error).not.toHaveBeenCalled();
     await waitFor(() => expect(open()?.tasks?.[1]?.text).toBe("Beta two"));
+  });
+});
+
+describe("a Task's date through the same queue", () => {
+  const date = new Date(2026, 6, 20, 15).getTime();
+
+  it("shows at once, goes out once however often it is activated, and clears again", async () => {
+    const { client, setTaskDate } = fakeService();
+    const { feedback, result, open } = renderTasks(client);
+
+    await act(async () => {
+      await Promise.all([
+        result.current.setDate(beta._id, date),
+        result.current.setDate(beta._id, date),
+        result.current.setDate(beta._id, date),
+      ]);
+    });
+
+    expect(setTaskDate).toHaveBeenCalledTimes(1);
+    expect(setTaskDate).toHaveBeenCalledWith(
+      expect.objectContaining({ taskId: beta._id, date, expectedRevision: 4 }),
+    );
+    expect(feedback.error).not.toHaveBeenCalled();
+    await waitFor(() => expect(open()?.tasks?.[1]).toEqual({ ...beta, date }));
+
+    await act(async () => {
+      await result.current.setDate(beta._id, null);
+    });
+    await waitFor(() => expect(open()?.tasks?.[1]).toEqual(beta));
+    expect(open()?.tasks?.[1]).not.toHaveProperty("date");
+    expect(setTaskDate).toHaveBeenCalledTimes(2);
+  });
+
+  it("is refused quietly when the Task was removed behind it", async () => {
+    const { client, removeTask, setTaskDate } = fakeService();
+    const { result } = renderTasks(client);
+
+    await act(async () => {
+      await Promise.all([
+        result.current.remove(beta._id),
+        result.current.setDate(beta._id, date),
+      ]);
+    });
+
+    expect(removeTask).toHaveBeenCalledTimes(1);
+    expect(setTaskDate).not.toHaveBeenCalled();
   });
 });
 

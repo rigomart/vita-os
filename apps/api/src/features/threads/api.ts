@@ -16,17 +16,23 @@ import {
 import { AreaSummarySchema } from "../areas/api";
 import { AreaIdSchema } from "../areas/requests";
 import {
+  AddMoveBody,
   AddTaskBody,
   CreateThreadBody,
   EditTaskBody,
   FocusTaskBody,
+  SetTaskDateBody,
   TaskRevisionBody,
   UpdateThreadBody,
   ThreadIdSchema,
   TaskIdSchema,
 } from "./requests";
 
-const TaskSchema = Schema.Struct({ _id: TaskIdSchema, text: Schema.String });
+const TaskSchema = Schema.Struct({
+  _id: TaskIdSchema,
+  text: Schema.String,
+  date: Schema.optionalKey(Timestamp),
+});
 
 export const ThreadSchema = Schema.Struct({
   _id: ThreadIdSchema,
@@ -42,6 +48,8 @@ export const ThreadSchema = Schema.Struct({
   // fields above, with the same values.
   moves: Schema.optionalKey(Schema.Array(TaskSchema)),
   focusedMoveId: Schema.optionalKey(TaskIdSchema),
+  // Compatibility (ADR 0032, removal in #402): derived from the soonest dated
+  // Task; never stored.
   followUp: Schema.optionalKey(Timestamp),
   lastActivityAt: Schema.optionalKey(Timestamp),
   lastActivityContent: Schema.optionalKey(Schema.String),
@@ -111,6 +119,15 @@ export const ThreadsApi = HttpApiGroup.make("threads")
         success: ThreadSchema,
       },
     ).annotate(ValidationMessage, "Invalid Task change."),
+    HttpApiEndpoint.put(
+      "setTaskDate",
+      "/v1/threads/:threadId/tasks/:taskId/date",
+      {
+        params: TaskParams,
+        payload: SetTaskDateBody,
+        success: ThreadSchema,
+      },
+    ).annotate(ValidationMessage, "Invalid Task change."),
     // Focus has no Task in its path, so one route serves both spellings of the
     // body field.
     HttpApiEndpoint.put("focusTask", "/v1/threads/:threadId/focus", {
@@ -121,7 +138,7 @@ export const ThreadsApi = HttpApiGroup.make("threads")
     // Compatibility (ADR 0033, removal in #402): the former `/moves` routes.
     HttpApiEndpoint.post("addMove", "/v1/threads/:threadId/moves", {
       params: ThreadParams,
-      payload: AddTaskBody,
+      payload: AddMoveBody,
       success: ThreadSchema,
     }).annotate(ValidationMessage, "Invalid Task change."),
     HttpApiEndpoint.patch("editMove", "/v1/threads/:threadId/moves/:moveId", {

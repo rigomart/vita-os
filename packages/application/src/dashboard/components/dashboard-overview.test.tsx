@@ -45,6 +45,8 @@ vi.mock("@tanstack/react-router", () => ({
 // The cards' writes belong to the hooks; this suite is about what lands where.
 vi.mock("../../threads/use-tasks", () => ({
   useCompleteTask: () => vi.fn(),
+  useTaskDates: () => ({ setDate: vi.fn(), addFollowUp: vi.fn() }),
+  useConversionLock: () => ({ locked: false, pendingTaskIds: new Set() }),
 }));
 vi.mock("../../threads/use-update-thread", () => ({
   useUpdateThread: () => vi.fn(),
@@ -74,7 +76,18 @@ function tasks(...texts: string[]) {
   return texts.map((text) => ({ _id: text as TaskId, text }));
 }
 
-function thread(title: string, fields: Partial<Thread> = {}): Thread {
+function dated(text: string, date: number) {
+  return { _id: text as TaskId, text, date };
+}
+
+/**
+ * `followUp` reads as "the date this Thread comes back": the Thread holds a
+ * Task with that date, which is all that places a Thread.
+ */
+function thread(
+  title: string,
+  { followUp, ...fields }: Partial<Thread> & { followUp?: number } = {},
+): Thread {
   return {
     _id: title as Thread["_id"],
     title,
@@ -85,6 +98,18 @@ function thread(title: string, fields: Partial<Thread> = {}): Thread {
     revision: 0,
     createdAt: currentDate,
     ...fields,
+    ...(followUp === undefined
+      ? {}
+      : {
+          tasks: [
+            ...(fields.tasks ?? []),
+            {
+              _id: `due-${title}` as TaskId,
+              text: "Follow up",
+              date: followUp,
+            },
+          ],
+        }),
   } as Thread;
 }
 
@@ -134,6 +159,13 @@ function renderOverview(overrides: Partial<OverviewProps> = {}) {
     ),
     props,
   };
+}
+
+function card(title: string) {
+  const link = screen.getByRole("link", { name: title });
+  const root = link.closest("li");
+  if (!(root instanceof HTMLElement)) throw new Error("No card");
+  return root;
 }
 
 function columnText(name: string) {
@@ -409,7 +441,7 @@ describe("DashboardOverview", () => {
     expect(within(tomorrow).queryByText("Sat")).not.toBeInTheDocument();
     // The date still opens from the card, as a control rather than a token.
     expect(
-      within(tomorrow).getByRole("button", { name: "Change follow-up date" }),
+      within(tomorrow).getByRole("button", { name: "Change date" }),
     ).toBeInTheDocument();
 
     const sunday = group("This week", "Sunday");
@@ -471,6 +503,98 @@ describe("DashboardOverview", () => {
     ).toBeVisible();
   });
 
+  it("places a Thread by its soonest dated Task, and only undated Tasks make it Ready to move", () => {
+    renderOverview({
+      threads: [
+        thread("Soon", {
+          tasks: [dated("Far", today + 30 * DAY), dated("Near", today + DAY)],
+        }),
+        thread("Far only", {
+          tasks: [dated("Far", today + 30 * DAY)],
+          order: 1,
+        }),
+        thread("Mixed", {
+          tasks: [...tasks("Undated"), dated("Today", today)],
+          order: 2,
+        }),
+        thread("Undated only", { tasks: tasks("A", "B"), order: 3 }),
+        thread("Bare", { order: 4 }),
+      ],
+    });
+
+    expect(columnText("Now")).toEqual([expect.stringContaining("Mixed")]);
+    expect(columnText("This week")).toEqual([expect.stringContaining("Soon")]);
+    const later = screen.getByRole("region", { name: "Later" });
+    expect(later).toHaveTextContent("1");
+    const margin = screen.getByRole("complementary", { name: "No date" });
+    const ready = within(margin).getByRole("region", { name: "Ready to move" });
+    expect(ready).toHaveTextContent("Undated only");
+    expect(ready).not.toHaveTextContent("Mixed");
+    expect(
+      within(within(margin).getByRole("region", { name: "Open" })).getByText(
+        "Bare",
+      ),
+    ).toBeVisible();
+  });
+
+  it("leads a time column's card with the dated Task that placed it, even beside a focused one", () => {
+    renderOverview({
+      threads: [
+        thread("Checkup", {
+          tasks: [
+            ...tasks("Pick a clinic"),
+            dated("Book the scan", today + 2 * DAY),
+          ],
+          focusedTaskId: "Pick a clinic" as TaskId,
+        }),
+      ],
+    });
+
+    const checkup = within(card("Checkup"));
+    expect(checkup.getByText("Book the scan")).toBeVisible();
+    expect(checkup.queryByText("Pick a clinic")).toBeNull();
+    expect(
+      within(screen.getByRole("region", { name: "Sunday" })).getByText(
+        "Checkup",
+      ),
+    ).toBeVisible();
+    expect(
+      checkup.getByRole("button", { name: "Complete “Book the scan”" }),
+    ).toBeInTheDocument();
+  });
+
+  it("reads two dated Tasks on one day as a count and never picks one", () => {
+    renderOverview({
+      threads: [
+        thread("Recovery", {
+          tasks: [
+            dated("Morning check", today),
+            dated("Evening check", today + 20 * 3_600_000),
+            dated("Next week", today + 7 * DAY),
+          ],
+        }),
+      ],
+    });
+
+    const recovery = within(card("Recovery"));
+    expect(recovery.getByText("2 tasks today")).toBeVisible();
+    expect(recovery.queryByText("Morning check")).toBeNull();
+    expect(recovery.queryByRole("button", { name: /^Complete/ })).toBeNull();
+  });
+
+  it("keeps the No date tray's slot rule when a card has undated Tasks only", () => {
+    const [a, b] = tasks("A", "B");
+    renderOverview({
+      threads: [thread("Tray", { tasks: [a!, b!], focusedTaskId: b!._id })],
+    });
+
+    const tray = within(card("Tray"));
+    expect(tray.getByText("B")).toBeVisible();
+    expect(
+      tray.getByRole("img", { name: "2 tasks, one focused" }),
+    ).toBeVisible();
+  });
+
   it("folds Later and the No date margin on a phone", async () => {
     isMobile.value = true;
     try {
@@ -510,13 +634,6 @@ describe("DashboardOverview", () => {
 });
 
 describe("a Thread card", () => {
-  function card(title: string) {
-    const link = screen.getByRole("link", { name: title });
-    const root = link.closest("li");
-    if (!(root instanceof HTMLElement)) throw new Error("No card");
-    return root;
-  }
-
   it("heads every card with the Thread's title, and never trades it for a Task", () => {
     const focusedTasks = tasks("Call the clinic", "Book the scan", "Pay");
     renderOverview({

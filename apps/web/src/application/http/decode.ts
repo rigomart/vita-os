@@ -95,11 +95,16 @@ function decodeTask(value: unknown): Task | undefined {
   if (
     !isObject(value) ||
     typeof value._id !== "string" ||
-    typeof value.text !== "string"
+    typeof value.text !== "string" ||
+    !isOptionalSafeInteger(value.date)
   ) {
     return undefined;
   }
-  return { _id: value._id as TaskId, text: value.text };
+  return {
+    _id: value._id as TaskId,
+    text: value.text,
+    ...(value.date === undefined ? {} : { date: value.date }),
+  };
 }
 
 /** Every entry decodes, or the whole list is unrecognized. */
@@ -156,7 +161,6 @@ export function decodeThread(value: unknown): Thread | undefined {
     state,
     tasks: rawTasks,
     focusedTaskId,
-    followUp,
     lastActivityAt,
     lastActivityContent,
     createdAt,
@@ -174,7 +178,6 @@ export function decodeThread(value: unknown): Thread | undefined {
     !isThreadState(state) ||
     (rawTasks !== undefined && tasks === undefined) ||
     !isOptionalString(focusedTaskId) ||
-    !isOptionalSafeInteger(followUp) ||
     !isOptionalSafeInteger(lastActivityAt) ||
     !isOptionalString(lastActivityContent) ||
     !isSafeInteger(createdAt) ||
@@ -196,7 +199,6 @@ export function decodeThread(value: unknown): Thread | undefined {
     ...(focusedTaskId === undefined
       ? {}
       : { focusedTaskId: focusedTaskId as TaskId }),
-    ...(followUp === undefined ? {} : { followUp }),
     ...(lastActivityAt === undefined ? {} : { lastActivityAt }),
     ...(lastActivityContent === undefined ? {} : { lastActivityContent }),
     createdAt,

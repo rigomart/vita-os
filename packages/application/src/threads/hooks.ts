@@ -41,6 +41,7 @@ import {
   showThreadRemoval,
   threadChangeKeys,
 } from "./optimistic";
+import { conversionPending, taskScope, ThreadBusy } from "./task-queue";
 
 const ACTIVITY_PAGE_SIZE = 20;
 
@@ -208,10 +209,13 @@ export class CommandDropped extends Error {
  * queued command left — the Task is gone, or nothing would change — is dropped
  * at the head of the queue: no request, no refusal to report. Duplicate
  * activations arrive before the first command's optimistic layer lands, so
- * this cannot be decided when the command is issued. The basis is only what
- * this Thread's own queue got back, so a change made on another device is
- * unknown here: that command is still sent and refused once, and identical
- * commands queued behind a refusal are dropped rather than refused again.
+ * this cannot be decided when the command is issued. The basis is the newest
+ * Thread this Thread's own queue got back, and the command carries its
+ * revision. A Note conversion never runs beside the queue: it waits for the
+ * commands queued before it, and none can be issued while it is pending
+ * (`useConversionLock`). A change made on another device is unknown here:
+ * that command is still sent and refused once, and identical commands queued
+ * behind a refusal are dropped rather than refused again.
  */
 export function useTaskCommand<TInput>(
   thread: Thread,
@@ -225,11 +229,16 @@ export function useTaskCommand<TInput>(
   },
 ): ApplicationMutationResult<TInput, Thread> {
   const cache = useQueryClient();
-  const scope = `thread-tasks:${thread._id}`;
+  const scope = taskScope(thread._id);
   const refusedKey = `${scope}:refused`;
 
   return useApplicationMutation<TInput, Thread>({
     scope,
+    // A Note being added to the Thread locks its Tasks: a command issued
+    // meanwhile would move under it. The surfaces disable their controls too;
+    // this catches what reaches the command anyway.
+    refuse: (_input, cache) =>
+      conversionPending(cache, thread) ? new ThreadBusy() : undefined,
     run: async (client, input) => {
       const change = command.change(input);
       const signature = JSON.stringify(change);
@@ -247,10 +256,13 @@ export function useTaskCommand<TInput>(
       const result = await command.run(
         client,
         input,
-        cachedRevision(cache, thread),
+        basis?.revision ?? cachedRevision(cache, thread),
       );
       if (result.ok) {
-        memo?.set(scope, result.value);
+        // The basis only moves forward: an older answer never replaces it.
+        if (basis === undefined || result.value.revision > basis.revision) {
+          memo?.set(scope, result.value);
+        }
       } else if (result.error.code === "conflict") {
         // Identical commands queued behind it are refused too, each with its own toast.
         memo?.set(refusedKey, [...refused, signature]);
@@ -259,8 +271,11 @@ export function useTaskCommand<TInput>(
     },
     affected: (_input, cache) =>
       threadChangeKeys(cache, { threadId: thread._id }),
-    optimistic: (cache, input) =>
-      showTaskChange(cache, thread._id, command.change(input)),
+    // Once answered, the answer carries the change (and is skipped if a newer
+    // one is already shown), so the change itself is not replayed over it.
+    optimistic: (cache, input, _local, answered) => {
+      if (!answered) showTaskChange(cache, thread._id, command.change(input));
+    },
     reconcile: (cache, settled) => settleTaskChange(cache, settled),
     // Completion writes an Activity Log entry, which is read separately.
     alsoInvalidate: () => [queryKeys.threads.activity(thread._id)],

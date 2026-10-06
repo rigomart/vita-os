@@ -1,5 +1,6 @@
 import type { TaskId, ThreadId, UpdateThreadInput } from "@vita-os/contracts";
 
+import { MAX_TASK_DATE, MIN_TASK_DATE } from "@vita-os/core";
 import { Schema } from "effect";
 
 import { Revision, Timestamp } from "../../platform/http/schemas";
@@ -17,6 +18,11 @@ export const CreateThreadBody = Schema.Struct({
   summary: Schema.optional(Schema.String),
   areaId: Schema.optional(AreaIdSchema),
 });
+/**
+ * Compatibility (ADR 0032, removal in #402): `followUp` is still accepted by
+ * the schema so an old client's request reaches the refusal that tells it to
+ * reload; it is never written.
+ */
 export const UpdateThreadBody = Schema.Struct({
   title: Schema.optional(Schema.String),
   summary: Schema.optionalKey(Schema.NullOr(Schema.String)),
@@ -35,14 +41,34 @@ const namesOneTaskId = Schema.makeFilter(
     Object.hasOwn(input, "taskId") !== Object.hasOwn(input, "moveId"),
 );
 
-export const AddTaskBody = Schema.Struct({
+/** The former `/moves` add: no date, which only Tasks carry. */
+/** A Task's date: whole milliseconds, 1970 through 9999 (core's bound). */
+export const TaskDateSchema = Timestamp.check(
+  Schema.isGreaterThanOrEqualTo(MIN_TASK_DATE),
+  Schema.isLessThanOrEqualTo(MAX_TASK_DATE),
+);
+
+export const AddMoveBody = Schema.Struct({
   taskId: Schema.optionalKey(TaskIdSchema),
   moveId: Schema.optionalKey(TaskIdSchema),
   text: Schema.String,
   expectedRevision: Revision,
 }).check(namesOneTaskId);
+/** A new Task may arrive already dated: the card's "Follow up" is one action. */
+export const AddTaskBody = Schema.Struct({
+  taskId: Schema.optionalKey(TaskIdSchema),
+  moveId: Schema.optionalKey(TaskIdSchema),
+  text: Schema.String,
+  date: Schema.optionalKey(TaskDateSchema),
+  expectedRevision: Revision,
+}).check(namesOneTaskId);
 export const EditTaskBody = Schema.Struct({
   text: Schema.String,
+  expectedRevision: Revision,
+});
+/** `date: null` clears the Task's date, and must be spelled out: absent is not a choice. */
+export const SetTaskDateBody = Schema.Struct({
+  date: Schema.NullOr(TaskDateSchema),
   expectedRevision: Revision,
 });
 /** Removing and completing name the Task in the path; the body holds only the revision. */
@@ -57,9 +83,12 @@ export const FocusTaskBody = Schema.Struct({
   expectedRevision: Revision,
 }).check(namesOneTaskId);
 
-export function normalizeAddTask(input: typeof AddTaskBody.Type): {
+export function normalizeAddTask(
+  input: typeof AddTaskBody.Type | typeof AddMoveBody.Type,
+): {
   taskId: TaskId;
   text: string;
+  date?: number;
   expectedRevision: number;
 } {
   // namesOneTaskId guarantees exactly one of the two spellings is present.
@@ -68,6 +97,9 @@ export function normalizeAddTask(input: typeof AddTaskBody.Type): {
       ? input.taskId
       : input.moveId) as TaskId,
     text: input.text,
+    ...("date" in input && input.date !== undefined
+      ? { date: input.date }
+      : {}),
     expectedRevision: input.expectedRevision,
   };
 }
@@ -92,7 +124,6 @@ export function normalizeThreadChange(
     ...(input.title === undefined ? {} : { title: input.title }),
     ...(Object.hasOwn(input, "summary") ? { summary: input.summary } : {}),
     ...(Object.hasOwn(input, "areaId") ? { areaId: input.areaId } : {}),
-    ...(Object.hasOwn(input, "followUp") ? { followUp: input.followUp } : {}),
     ...(input.state === undefined ? {} : { state: input.state }),
     ...(input.resolutionNote === undefined
       ? {}

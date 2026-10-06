@@ -11,7 +11,8 @@ import { suggestThreadTitle } from "./thread-title";
  * The New thread dialog, started from a Note: the title is suggested from the
  * Note's first line, and the Area follows the usual rule — the one the
  * Dashboard is filtered to. Saving creates the Thread with the Note as its
- * first Thread Note and its Follow-up date.
+ * first Thread Note and, when it is dated, a dated Task named by its first
+ * line.
  */
 export function NewThreadFromNoteDialog({
   note,

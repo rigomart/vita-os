@@ -7,22 +7,24 @@ import { CalendarClock, Check, Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import {
-  followUpDateLabels,
+  taskDateLabels,
   WhenPopover,
   whenTone,
   withTimeToken,
 } from "../../attention-list";
 import { EditableField } from "../../ui/editable-field";
 
-export interface ThreadAttentionPending {
-  followUp?: boolean;
-}
-
 interface ThreadAttentionProps {
   /** Every Task, in the order it was captured. */
   tasks: readonly Task[];
   focusedTaskId?: TaskId;
-  followUp: number | undefined;
+  /** Tasks shown but not yet at the service — a Note being added — read as pending. */
+  pendingTaskIds?: ReadonlySet<TaskId>;
+  /**
+   * While a Note is being added to the Thread, nothing on its Tasks can be
+   * changed: every control is disabled, Add a task included.
+   */
+  locked?: boolean;
   /** The shared attention clock, so lateness matches every other surface. */
   now: number;
   onAddTask: (text: string) => void;
@@ -31,16 +33,17 @@ interface ThreadAttentionProps {
   onCompleteTask: (taskId: TaskId) => void;
   /** `null` unfocuses; a Task replaces any earlier focus. */
   onFocusTask: (taskId: TaskId | null) => void;
-  onSetFollowUp: (date: number) => void;
-  onClearFollowUp: () => void;
-  pending?: ThreadAttentionPending;
+  /** Sets, changes or (with `null`) clears one Task's date. */
+  onSetTaskDate: (taskId: TaskId, date: number | null) => void;
 }
 
 /**
- * The Thread's live attention: its Tasks as one list of peers, and the
- * Follow-up riding the list's rule.
+ * The Thread's live attention: its Tasks as one list of peers, each of which
+ * may carry a date.
  *
- * The list keeps capture order and never reorders itself. Focus is a radio
+ * Dated Tasks come first, soonest first (a date alone before the timed ones
+ * of its day), then a quiet "No date" divider, then undated Tasks in capture
+ * order. The divider shows only when both groups exist. Focus is a radio
  * down the left edge: pressing it focuses that Task, and pressing the filled
  * one unfocuses it. The Focused Task is tinted where it sits. Leaving every
  * Task unfocused is a fine answer — nothing here asks for a priority.
@@ -52,17 +55,40 @@ interface ThreadAttentionProps {
 export function ThreadAttention({
   tasks,
   focusedTaskId,
-  followUp,
+  pendingTaskIds,
+  locked = false,
   now,
   onAddTask,
   onEditTask,
   onRemoveTask,
   onCompleteTask,
   onFocusTask,
-  onSetFollowUp,
-  onClearFollowUp,
-  pending,
+  onSetTaskDate,
 }: ThreadAttentionProps) {
+  const dated = tasks
+    .filter((task) => task.date !== undefined)
+    .sort((a, b) => a.date! - b.date!);
+  const undated = tasks.filter((task) => task.date === undefined);
+  const renderTask = (task: Task) => (
+    <TaskRow
+      // Remounted when the lock starts or ends, which closes an open date
+      // picker or text editor on the row.
+      key={`${task._id}${locked ? ":locked" : ""}`}
+      task={task}
+      now={now}
+      focused={task._id === focusedTaskId}
+      pending={pendingTaskIds?.has(task._id) ?? false}
+      disabled={locked}
+      onEdit={(text) => onEditTask(task._id, text)}
+      onRemove={() => onRemoveTask(task._id)}
+      onComplete={() => onCompleteTask(task._id)}
+      onSetDate={(date) => onSetTaskDate(task._id, date)}
+      onToggleFocus={() =>
+        onFocusTask(task._id === focusedTaskId ? null : task._id)
+      }
+    />
+  );
+
   return (
     <section
       role="region"
@@ -80,13 +106,6 @@ export function ThreadAttention({
           </span>
         )}
         <span aria-hidden className="h-px flex-1 bg-border/50" />
-        <FollowUpSatellite
-          followUp={followUp}
-          now={now}
-          onSet={onSetFollowUp}
-          onClear={onClearFollowUp}
-          isPending={pending?.followUp}
-        />
       </div>
 
       {tasks.length > 1 && (
@@ -97,63 +116,82 @@ export function ThreadAttention({
 
       {tasks.length > 0 && (
         <ul aria-label="Tasks" className="flex flex-col gap-0.5">
-          {tasks.map((task) => (
-            <TaskRow
-              key={task._id}
-              task={task}
-              focused={task._id === focusedTaskId}
-              onEdit={(text) => onEditTask(task._id, text)}
-              onRemove={() => onRemoveTask(task._id)}
-              onComplete={() => onCompleteTask(task._id)}
-              onToggleFocus={() =>
-                onFocusTask(task._id === focusedTaskId ? null : task._id)
-              }
-            />
-          ))}
+          {dated.map(renderTask)}
+          {dated.length > 0 && undated.length > 0 && (
+            <li
+              role="presentation"
+              className="flex items-center gap-2 px-1.5 pt-1.5 pb-0.5"
+            >
+              <span className="text-2xs font-medium tracking-wide text-muted-foreground/60 uppercase">
+                No date
+              </span>
+              <span aria-hidden className="h-px flex-1 bg-border/40" />
+            </li>
+          )}
+          {undated.map(renderTask)}
         </ul>
       )}
 
-      <AddTask onAdd={onAddTask} />
+      <AddTask onAdd={onAddTask} disabled={locked} />
     </section>
   );
 }
 
 /**
  * One Task: a line, not a card. The radio says whether it is the one; the
- * focused line is tinted in place so the list never reorders to show it.
+ * focused line is tinted in place so the list never reorders to show it. A
+ * pending Task is dimmed and says so; a disabled one takes no command.
  */
 function TaskRow({
   task,
+  now,
   focused,
+  pending,
+  disabled,
   onEdit,
   onRemove,
   onComplete,
+  onSetDate,
   onToggleFocus,
 }: {
   task: Task;
+  now: number;
   focused: boolean;
+  pending: boolean;
+  disabled: boolean;
   onEdit: (text: string) => void;
   onRemove: () => void;
   onComplete: () => void;
+  onSetDate: (date: number | null) => void;
   onToggleFocus: () => void;
 }) {
+  const dateLabel =
+    task.date === undefined
+      ? undefined
+      : withTimeToken(format(task.date, "MMM d"), task.date);
+  const tone = whenTone(task.date, now);
+
   return (
     <li
       data-focused={focused || undefined}
+      data-pending={pending || undefined}
+      aria-busy={pending || undefined}
       className={cn(
         "group/task flex min-h-10 items-center gap-2 rounded-lg px-1.5 py-1 transition-colors motion-reduce:transition-none xl:min-h-9",
         focused
           ? "bg-brand-accent/12 font-medium"
           : "text-foreground/90 hover:bg-muted/50",
+        pending && "opacity-60",
       )}
     >
       <button
         type="button"
+        disabled={disabled}
         onClick={onToggleFocus}
         aria-pressed={focused}
         aria-label={focused ? "Unfocus this task" : "Focus this task"}
         title={focused ? "Unfocus this task" : "Focus this task"}
-        className="group/radio flex size-8 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40 xl:size-6"
+        className="group/radio flex size-8 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none xl:size-6"
       >
         <span
           aria-hidden
@@ -177,6 +215,7 @@ function TaskRow({
             if (text) onEdit(text);
           }}
           inputAriaLabel="Task"
+          disabled={disabled}
           className="min-h-0 py-0.5 text-sm leading-snug"
           displayClassName="border-transparent hover:bg-transparent"
         />
@@ -185,8 +224,54 @@ function TaskRow({
       {/* Always reachable on touch; on the wide rail the row stays clean until
           it is hovered or focused. */}
       <span className="flex shrink-0 items-center gap-0.5">
+        {pending && (
+          <span className="px-1 text-2xs text-muted-foreground">Adding…</span>
+        )}
+        <WhenPopover
+          busy={disabled}
+          when={task.date}
+          clearLabel={taskDateLabels.clear}
+          onSetWhen={(when) => onSetDate(when ?? null)}
+          trigger={
+            dateLabel === undefined ? (
+              <Button
+                variant="ghost"
+                disabled={disabled}
+                size="icon-xs"
+                aria-label={taskDateLabels.set}
+                title={taskDateLabels.set}
+                className="size-7 text-muted-foreground/50 transition-opacity hover:text-foreground motion-reduce:transition-none xl:size-6 xl:opacity-0 xl:group-focus-within/task:opacity-100 xl:group-hover/task:opacity-100"
+              >
+                <CalendarClock />
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                disabled={disabled}
+                size="xs"
+                aria-label={`${taskDateLabels.change}: ${dateLabel}`}
+                title={taskDateLabels.change}
+                className="h-7 gap-1 px-1.5 font-normal xl:h-6"
+              >
+                <CalendarClock
+                  aria-hidden
+                  className="size-3 text-muted-foreground/70"
+                />
+                <span
+                  className={cn(
+                    "tabular-nums",
+                    tone ? DATE_TONE[tone] : "text-muted-foreground",
+                  )}
+                >
+                  {dateLabel}
+                </span>
+              </Button>
+            )
+          }
+        />
         <Button
           variant="ghost"
+          disabled={disabled}
           size="icon-xs"
           onClick={onRemove}
           aria-label="Remove task"
@@ -197,6 +282,7 @@ function TaskRow({
         </Button>
         <Button
           variant="ghost"
+          disabled={disabled}
           size="icon-xs"
           onClick={onComplete}
           aria-label="Complete task"
@@ -211,12 +297,18 @@ function TaskRow({
 }
 
 /** The foot of the list: capture a Task with nothing to decide. */
-function AddTask({ onAdd }: { onAdd: (text: string) => void }) {
+function AddTask({
+  onAdd,
+  disabled,
+}: {
+  onAdd: (text: string) => void;
+  disabled: boolean;
+}) {
   const [draft, setDraft] = useState("");
 
   const commit = () => {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || disabled) return;
     setDraft("");
     onAdd(text);
   };
@@ -231,6 +323,7 @@ function AddTask({ onAdd }: { onAdd: (text: string) => void }) {
       </span>
       <input
         type="text"
+        disabled={disabled}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
@@ -250,91 +343,11 @@ function AddTask({ onAdd }: { onAdd: (text: string) => void }) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Follow-up                                                                  */
+/* Dates                                                                      */
 /* -------------------------------------------------------------------------- */
 
 /** Lateness reads in the tone the rest of the app uses for a slipping date. */
-const FOLLOW_UP_TONE = {
+const DATE_TONE = {
   overdue: "text-condition-attention",
   due: "text-brand-accent-text",
 } as const;
-
-/**
- * A satellite riding the list's rule: when this Thread should come back, not a
- * deadline on any one Task.
- */
-function FollowUpSatellite({
-  followUp,
-  now,
-  onSet,
-  onClear,
-  isPending,
-}: {
-  followUp: number | undefined;
-  now: number;
-  onSet: (date: number) => void;
-  onClear: () => void;
-  isPending?: boolean;
-}) {
-  const label =
-    followUp === undefined
-      ? undefined
-      : withTimeToken(format(followUp, "MMM d"), followUp);
-  const tone = whenTone(followUp, now);
-
-  return (
-    <span className="flex shrink-0 items-center">
-      <WhenPopover
-        when={followUp}
-        busy={isPending}
-        onSetWhen={(when) => (when === undefined ? onClear() : onSet(when))}
-        trigger={
-          <Button
-            variant="ghost"
-            size="xs"
-            disabled={isPending}
-            aria-label={
-              label
-                ? `${followUpDateLabels.change}: ${label}`
-                : followUpDateLabels.set
-            }
-            className="h-8 gap-1.5 px-1.5 font-normal xl:h-6"
-          >
-            <CalendarClock
-              aria-hidden
-              className="size-3 text-muted-foreground/70"
-            />
-            {label ? (
-              <span
-                className={cn(
-                  "tabular-nums",
-                  tone ? FOLLOW_UP_TONE[tone] : "text-muted-foreground",
-                )}
-              >
-                {label}
-              </span>
-            ) : (
-              <span className="text-muted-foreground">
-                {followUpDateLabels.set}
-              </span>
-            )}
-          </Button>
-        }
-      />
-
-      {followUp !== undefined && (
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          onClick={onClear}
-          disabled={isPending}
-          aria-busy={isPending}
-          aria-label={followUpDateLabels.clear}
-          className="size-7 shrink-0 text-muted-foreground/50 hover:text-destructive xl:size-5"
-        >
-          <X />
-        </Button>
-      )}
-    </span>
-  );
-}

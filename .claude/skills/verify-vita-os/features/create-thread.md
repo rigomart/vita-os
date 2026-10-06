@@ -1,6 +1,6 @@
 # Create a thread
 
-A signed-in user creates a thread with a title and an optional area. After the server confirms, a `Thread created` toast shows and the thread opens in place at `?thread=<slug>`, with a pane for its summary, Tasks, follow-up, notes, and activity log. Adding and completing Tasks is its own feature, [Tasks](./tasks.md).
+A signed-in user creates a thread with a title and an optional area. After the server confirms, a `Thread created` toast shows and the thread opens in place at `?thread=<slug>`, with a pane for its summary, Tasks, notes, and activity log. Adding and completing Tasks is its own feature, [Tasks](./tasks.md).
 
 Status: proven on a6805f5 plus the framed New thread dialog change (dock entry point with an area, Enter to submit, and the command palette entry point: `thread-open`, `thread-create`, `thread-area`, `thread-persist`).
 
@@ -38,4 +38,4 @@ Preconditions:
 - Choosing `Create “…”` in the area picker writes the `areas` row right away, before `Create` is clicked. Cancelling the dialog afterwards leaves the area behind.
 - The area picker's combobox has no accessible name. Reach it with `find role combobox`, which works because the dialog has only one.
 - Pressing `Escape` with the area picker open closes the picker, not the dialog.
-- On the Dashboard the new thread's row under `No date` → `Open` is `link "<title>"` and `Set follow-up date`. `wait --text "<title>"` after a reload can match that row before the pane renders, so the pane proof is `complementary "<title>"` in the after snapshot.
+- On the Dashboard the new thread's row under `No date` → `Open` is `link "<title>"` and, once it has a Task, `Set date`. `wait --text "<title>"` after a reload can match that row before the pane renders, so the pane proof is `complementary "<title>"` in the after snapshot.

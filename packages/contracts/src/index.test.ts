@@ -92,6 +92,8 @@ const client = {
         : { ...thread, focusedTaskId: input.taskId },
   }),
 
+  setTaskDate: async () => ({ ok: true, value: thread }),
+
   getThreadActivityPage: async () => ({
     ok: true,
     value: { entries: [], nextCursor: "cursor-2" },

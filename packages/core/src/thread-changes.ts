@@ -4,6 +4,8 @@ import {
   type AutoActivityLogEntry,
   buildAreaMoveLogEntry,
 } from "./activity-log";
+import { ConflictError } from "./errors";
+import { isTaskDate } from "./tasks";
 
 /** The stored Thread values every change rule reads. */
 export interface ThreadChangeState {
@@ -14,7 +16,6 @@ export interface ThreadChangeState {
   state: ThreadState;
   tasks?: Task[];
   focusedTaskId?: TaskId;
-  followUp?: number;
 }
 
 /**
@@ -33,7 +34,6 @@ const PATCHABLE_FIELDS = [
   "areaId",
   "tasks",
   "focusedTaskId",
-  "followUp",
   "state",
 ] as const satisfies readonly (keyof ThreadChangeState)[];
 
@@ -55,31 +55,6 @@ export function sanitizeThreadPatch(patch: ThreadPatch): ThreadPatch {
     }
   }
   return safe;
-}
-
-/**
- * A Follow-up change keeps the raw timestamps rather than a written date: the
- * API that records the entry has no idea of the user's time zone, so the date
- * — and the time, when the Follow-up has one — is written where the Activity
- * Log is read.
- */
-function buildFollowUpLogEntry(
-  oldFollowUp: number | undefined,
-  newFollowUp: number | undefined,
-): AutoActivityLogEntry | null {
-  if (oldFollowUp === newFollowUp) return null;
-
-  return {
-    type: "follow_up_change",
-    content:
-      newFollowUp === undefined
-        ? "Follow-up cleared"
-        : oldFollowUp === undefined
-          ? "Follow-up set"
-          : "Follow-up changed",
-    previousValue: oldFollowUp === undefined ? undefined : String(oldFollowUp),
-    newValue: newFollowUp === undefined ? undefined : String(newFollowUp),
-  };
 }
 
 /** The Activity Log a patch earns, in the order the entries are written. */
@@ -123,14 +98,6 @@ export function buildThreadPatchLogEntries(
     );
   }
 
-  if (hasOwn(safePatch, "followUp")) {
-    const entry = buildFollowUpLogEntry(
-      thread.followUp ?? undefined,
-      safePatch.followUp ?? undefined,
-    );
-    if (entry) logs.push(entry);
-  }
-
   return logs;
 }
 
@@ -169,7 +136,6 @@ export function buildThreadLifecyclePatch(
         state: "resolved",
         tasks: undefined,
         focusedTaskId: undefined,
-        followUp: undefined,
       },
       log: {
         type: "state_change",
@@ -248,21 +214,61 @@ export function decideThreadUpdate(input: {
 }
 
 /**
- * What adding a Standalone Note to a Thread does to the Thread's Follow-up
- * date: the earlier date wins. A Note dated before the Thread's date, or a
- * dated Note on an undated Thread, brings the Thread back at the Note's date —
- * time of day included, and even when that date has already passed — and earns
- * the same entry as any Follow-up change. Otherwise the Note's date is dropped
- * and the Thread's date is left alone, so nothing comes back later than the
- * person asked for.
+ * A Task's text from a Note's body: its first non-blank line, with the leading
+ * Markdown markers (`#`, `-`, `*`, `>`, a numbered-list prefix) taken off. A
+ * line that is nothing but markers falls back to "Follow up".
+ */
+export function taskTextFromNote(body: string): string {
+  const line = body.split(/\r?\n/).find((candidate) => candidate.trim() !== "");
+  let text = line?.trim() ?? "";
+  for (;;) {
+    const stripped = text.replace(MARKDOWN_MARKER, "").trim();
+    if (stripped === text) break;
+    text = stripped;
+  }
+  return text === "" ? FOLLOW_UP_TASK_TEXT : text;
+}
+
+/** A heading, bullet or numbered item needs a space after it; a quote does not. */
+const MARKDOWN_MARKER = /^(?:>|(?:#{1,6}|[-*]|\d+[.)])(?:\s+|$))/;
+
+/** The name of the Task a date is given when nothing else can name it. */
+export const FOLLOW_UP_TASK_TEXT = "Follow up";
+
+/**
+ * The Task a Note becomes when it joins a Thread, or `undefined` for an undated
+ * Note. A Note date outside the range a Task date may take (it was stored
+ * before the range existed) gives an undated Task, and the Note is unchanged.
+ */
+export function taskFromNote(
+  note: { body: string; followUp?: number },
+  taskId: TaskId,
+): Task | undefined {
+  if (note.followUp === undefined) return undefined;
+  return {
+    _id: taskId,
+    text: taskTextFromNote(note.body),
+    ...(isTaskDate(note.followUp) ? { date: note.followUp } : {}),
+  };
+}
+
+/**
+ * What adding a Standalone Note to a Thread does to the Thread's Tasks. A dated
+ * Note adds a Task named by its first line and carrying its date, time of day
+ * included and even when that date has already passed, appended to the end
+ * unfocused; the whole Note joins the Thread's Notes as well, so nothing is
+ * dropped. An undated Note adds no Task. Neither writes an Activity Log entry.
+ * `taskId` names the Task that may be added.
  */
 export function decideAddNoteToThread(
   thread: ThreadChangeState,
-  note: { followUp?: number },
+  note: { body: string; followUp?: number },
+  taskId: TaskId,
 ): ThreadUpdateDecision {
-  const earlier =
-    note.followUp !== undefined &&
-    (thread.followUp === undefined || note.followUp < thread.followUp);
-  const patch: ThreadPatch = earlier ? { followUp: note.followUp } : {};
-  return { patch, logs: buildThreadPatchLogEntries(thread, patch) };
+  const task = taskFromNote(note, taskId);
+  if (task === undefined) return { patch: {}, logs: [] };
+  if (thread.tasks?.some((existing) => existing._id === taskId)) {
+    throw new ConflictError("The Thread already holds that Task");
+  }
+  return { patch: { tasks: [...(thread.tasks ?? []), task] }, logs: [] };
 }

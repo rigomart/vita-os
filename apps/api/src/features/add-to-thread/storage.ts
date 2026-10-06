@@ -35,15 +35,18 @@ export function addToThreadStorage(scope: RequestScope) {
   const { db, clock, actorId } = scope;
   const threads = threadStorage(scope);
 
-  /** The Note as the decision read it: still open, still carrying that date. */
+  /**
+   * The Note as the decision read it: still open, with the same date and body,
+   * so the Task named from its first line matches the body that is copied.
+   */
   function noteUnchanged(note: Note): SqlCondition {
     return {
       sql: `EXISTS (
               SELECT 1 FROM notes
               WHERE id = ? AND user_id = ? AND state = 'open'
-                AND attention_date IS ?
+                AND attention_date IS ? AND body = ?
             )`,
-      binds: [note._id, actorId, note.followUp ?? null],
+      binds: [note._id, actorId, note.followUp ?? null, note.body],
     };
   }
 

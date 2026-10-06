@@ -48,7 +48,6 @@ export interface UpdateThreadInput {
   summary?: Clearable<string>;
   /** Sets, changes, or (with `null`) removes the Thread's Area. */
   areaId?: Clearable<AreaId>;
-  followUp?: Clearable<number>;
   state?: ThreadState;
   /** Carried into the Activity Log entry a resolution writes. */
   resolutionNote?: string;
@@ -69,6 +68,8 @@ export interface AddTaskInput extends TaskCommand {
   /** Minted by the caller, so an optimistic Task keeps its name. */
   taskId: TaskId;
   text: string;
+  /** A Task may be added already dated; capture itself never asks for one. */
+  date?: number;
 }
 
 export interface EditTaskInput extends TaskCommand {
@@ -84,6 +85,12 @@ export interface CompleteTaskInput extends TaskCommand {
   taskId: TaskId;
 }
 
+export interface SetTaskDateInput extends TaskCommand {
+  taskId: TaskId;
+  /** Sets or changes the Task's date; `null` clears it. */
+  date: Clearable<number>;
+}
+
 export interface FocusTaskInput extends TaskCommand {
   /** The Task to focus, replacing any earlier focus; `null` unfocuses. */
   taskId: Clearable<TaskId>;
@@ -92,12 +99,19 @@ export interface FocusTaskInput extends TaskCommand {
 export interface AddNoteToThreadInput {
   noteId: NoteId;
   threadId: ThreadId;
+  /**
+   * The ID of the Task a dated Note adds, minted by the caller so the Task it
+   * shows keeps its name. Absent, the service mints one.
+   */
+  taskId?: TaskId;
 }
 
 export interface CreateThreadFromNoteInput {
   noteId: NoteId;
   title: string;
   areaId?: AreaId;
+  /** As on `AddNoteToThreadInput`. */
+  taskId?: TaskId;
 }
 
 export interface PageRequest {
@@ -157,6 +171,8 @@ export interface ApplicationClient {
   /** Removes the Task and records it as done in the Activity Log. */
   completeTask(input: CompleteTaskInput): Promise<OperationResult<Thread>>;
   focusTask(input: FocusTaskInput): Promise<OperationResult<Thread>>;
+  /** Sets, changes or clears one Task's date. Writes nothing to the Activity Log. */
+  setTaskDate(input: SetTaskDateInput): Promise<OperationResult<Thread>>;
 
   /* Activity Log */
   getThreadActivityPage(
@@ -188,12 +204,16 @@ export interface ApplicationClient {
   }): Promise<OperationResult<CommandAcknowledgement>>;
   /**
    * Makes an Open Standalone Note a Thread Note on an Open Thread, keeping its
-   * body and creation time. The earlier Follow-up date wins.
+   * body and creation time. A dated Note also adds a dated Task named by its
+   * first line.
    */
   addNoteToThread(
     input: AddNoteToThreadInput,
   ): Promise<OperationResult<NoteAddedToThread>>;
-  /** Starts a Thread whose first Thread Note is the Note, with its date. */
+  /**
+   * Starts a Thread whose first Thread Note is the Note; a dated Note also
+   * adds a dated Task named by its first line.
+   */
   createThreadFromNote(
     input: CreateThreadFromNoteInput,
   ): Promise<OperationResult<NoteAddedToThread>>;

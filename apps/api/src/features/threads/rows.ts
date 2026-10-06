@@ -6,6 +6,8 @@ import type {
   ThreadId,
 } from "@vita-os/contracts";
 
+import { soonestTaskDate } from "@vita-os/core";
+
 /**
  * Where a stored Thread becomes a Vita OS value.
  *
@@ -19,7 +21,7 @@ import type {
 // Tasks and `focused_move_id` the Focused Task. They are mapped here, at the edge.
 export const THREAD_COLUMNS =
   "id, title, slug, summary, area_id, sort_order, state, moves_json, " +
-  "focused_move_id, follow_up, last_activity_at, last_activity_content, " +
+  "focused_move_id, last_activity_at, last_activity_content, " +
   "created_at, revision";
 
 export interface ThreadRow {
@@ -32,7 +34,6 @@ export interface ThreadRow {
   state: Thread["state"];
   moves_json: string | null;
   focused_move_id: string | null;
-  follow_up: number | null;
   last_activity_at: number | null;
   last_activity_content: string | null;
   created_at: number;
@@ -41,7 +42,7 @@ export interface ThreadRow {
 
 /**
  * Tasks as the Thread stores them: SQL NULL, or a non-empty JSON array of
- * `{id, text}` in capture order. An empty array is never stored, so reading one
+ * `{id, text, date?}` in capture order. An empty array is never stored, so reading one
  * back means the row was written by something that does not honor the rule.
  */
 export function parseTasks(value: string | null): Task[] | undefined {
@@ -62,15 +63,17 @@ export function parseTasks(value: string | null): Task[] | undefined {
         typeof item === "object" &&
         item !== null &&
         typeof item.id === "string" &&
-        typeof item.text === "string",
+        typeof item.text === "string" &&
+        (item.date === undefined || Number.isSafeInteger(item.date)),
     )
   ) {
     throw new Error("Stored Tasks must be a non-empty array of Tasks");
   }
 
-  return parsed.map((item: { id: string; text: string }) => ({
+  return parsed.map((item: { id: string; text: string; date?: number }) => ({
     _id: item.id as TaskId,
     text: item.text,
+    ...(item.date === undefined ? {} : { date: item.date }),
   }));
 }
 
@@ -79,7 +82,13 @@ export function serializeTasks(
 ): string | null {
   return tasks === undefined || tasks.length === 0
     ? null
-    : JSON.stringify(tasks.map((task) => ({ id: task._id, text: task.text })));
+    : JSON.stringify(
+        tasks.map((task) => ({
+          id: task._id,
+          text: task.text,
+          ...(task.date === undefined ? {} : { date: task.date }),
+        })),
+      );
 }
 
 /**
@@ -89,6 +98,12 @@ export function serializeTasks(
 export type ThreadWithOldNames = Thread & {
   moves?: Task[];
   focusedMoveId?: TaskId;
+  /**
+   * Compatibility (ADR 0032, removal in #402): the Thread's former Follow-up
+   * date, derived from its soonest dated Task, until older clients have
+   * reloaded. The `threads.follow_up` column is no longer read or written.
+   */
+  followUp?: number;
 };
 
 /** Storage keeps `moves_json` and `focused_move_id`; the domain says Tasks. */
@@ -100,6 +115,8 @@ export function toThread(row: ThreadRow): ThreadWithOldNames {
   ) {
     throw new Error("A stored Focused Task must be one of the Thread's Tasks");
   }
+
+  const soonestDate = soonestTaskDate(tasks);
 
   return {
     _id: row.id as ThreadId,
@@ -116,7 +133,8 @@ export function toThread(row: ThreadRow): ThreadWithOldNames {
           focusedTaskId: row.focused_move_id as TaskId,
           focusedMoveId: row.focused_move_id as TaskId,
         }),
-    ...(row.follow_up === null ? {} : { followUp: row.follow_up }),
+    // Compatibility (ADR 0032, removal in #402).
+    ...(soonestDate === undefined ? {} : { followUp: soonestDate }),
     ...(row.last_activity_at === null
       ? {}
       : { lastActivityAt: row.last_activity_at }),

@@ -49,7 +49,7 @@ Task managers handle the "act" step. They fail the "wait" step: an item with not
 Vita OS does three things for a slow situation:
 
 1. **Holds it** as a **Thread**, open until the user resolves it, valid even with nothing to do.
-2. **Brings it back** through a **Follow-up date**: a soft date, never a deadline.
+2. **Brings it back** at its soonest dated **Task**: a soft date, never a deadline.
 3. **Keeps its history** in an automatic **Activity Log** and in **Thread Notes**, so returning after weeks needs no reconstruction.
 
 ---
@@ -73,7 +73,7 @@ The Dashboard is the product. Everything else exists to make the Dashboard trust
 Two kinds of thing live in Vita OS. Areas label one of them.
 
 ```text
-Thread → Summary · Tasks (one optionally Focused) · Follow-up date · Thread Notes · Activity Log
+Thread → Summary · Tasks (each optionally dated, one optionally Focused) · Thread Notes · Activity Log
 Standalone Note → Follow-up date
 Area → an optional label on a Thread
 ```
@@ -85,26 +85,25 @@ An ongoing effort, concern, decision, or situation. It is **Open** or **Resolved
 A Thread may carry:
 
 - a **Summary**: what the Thread is about right now.
-- **Tasks**: useful actions, as unordered peers. No dates, no done state, no order. Completing one removes it and writes it into the Activity Log.
-- a **Focused Task**: the one Task the user has singled out, if any. Focus is emphasis only.
-- a **Follow-up date**: the soft date that brings the Thread back.
+- **Tasks**: useful actions, as unordered peers, each with an optional date. No done state, no order. Completing one removes it and writes it into the Activity Log. A date is a soft resurfacing point, a day with an optional time of day; "look at this again in two weeks" is a dated Task.
+- a **Focused Task**: the one Task the user has singled out, if any. Focus is emphasis only, and it may sit on a dated Task.
 - **Thread Notes**: body-only notes that belong to this Thread and nowhere else.
 - an **Activity Log**: the automatic, read-only record of meaningful changes.
 - an **Area**.
 
-A plain Open Thread, with no Tasks and no Follow-up date, is valid. It means the situation still matters and nothing is clear yet.
+A plain Open Thread, with no Tasks, is valid. It means the situation still matters and nothing is clear yet.
 
 ### Standalone Note
 
 A body-only capture, valid the moment it is saved: a fact, a thought, or an action. It needs no classification and no processing. It lives on the Dashboard, and it may carry a **Follow-up date**, which places it in a time column instead of the margin. A Note is Open or **Archived**: archiving puts it away unchanged, and it stays findable by its words in the palette's **History**. Notes are archived rather than "done" because most of them are information or thoughts, which are put away, not finished (ADR 0031).
 
-A Note that turns out to belong to a situation can be added to an Open Thread, or start a new one, from its Note view. It keeps its body and creation time, and the earlier Follow-up date wins. Nothing prompts it: a Note with no Thread is complete (ADR 0030).
+A Note that turns out to belong to a situation can be added to an Open Thread, or start a new one, from its Note view. It keeps its body and creation time, and a dated Note also adds a dated Task, named by its first line. Nothing prompts it: a Note with no Thread is complete (ADR 0030).
 
 ### Area
 
 An optional label naming the part of life a Thread concerns: Family Health, Career, Home. It is a name and an icon. It has no state, no page, and no effect on attention. Its one job is to filter the Dashboard to one part of life.
 
-**What was given up.** The app does not show a neglected part of life that has no Threads. A part of life that needs a periodic look gets a Thread with a Follow-up date, such as "Review finances" in two weeks.
+**What was given up.** The app does not show a neglected part of life that has no Threads. A part of life that needs a periodic look gets a Thread with a dated Task, such as "Review finances" in two weeks.
 
 ### History
 
@@ -116,16 +115,16 @@ Finished things leave the Dashboard but not the product. The palette's **History
 
 The Dashboard lays every Open Thread and every open Standalone Note on one axis of time:
 
-- **Now**: a Follow-up date today or earlier.
+- **Now**: a date today or earlier.
 - **This week**: the next six days.
 - **Later**: day seven onward.
-- **The unscheduled margin**: **Ready to move** (Threads with Tasks), **Open** (plain Threads), **Notes** (undated Notes).
+- **The unscheduled margin**: **Ready to move** (Threads whose Tasks are all undated), **Open** (Threads with no Tasks), **Notes** (undated Notes).
 
-Placement is derived from dates and from whether a Thread has Tasks. The user never sets a status. A date outranks undated Tasks, so a Thread with Tasks and no Follow-up date leads the margin and never enters Now. Nothing is capped or hidden.
+Placement is derived from dates and from whether a Thread has Tasks. A Thread sits at its soonest dated Task; a Standalone Note sits at its Follow-up date. The user never sets a status. A date outranks undated Tasks, so a Thread whose Tasks are all undated leads the margin and never enters Now. Nothing is capped or hidden.
 
 A row above the board filters it to one Area, to unlabeled Threads, or to Notes alone. Notes have no list of their own: the Notes filter is where to read them together.
 
-The board can act on what it shows. A card completes the Task it displays and sets, changes, or clears the Follow-up date; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
+The board can act on what it shows. A card completes the Task it displays and sets, changes, or clears that Task's date, or adds a "Follow up" Task when it shows no single Task; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
 
 The intended loop takes one to two minutes:
 
@@ -137,12 +136,12 @@ Open the Dashboard → read Now → handle or reschedule what is asking → glan
 
 ## Principles
 
-1. **Capture asks nothing.** A Thread needs a title. A Note needs a body. Area, Tasks, Follow-up date, and Summary are optional and can come later.
+1. **Capture asks nothing.** A Thread needs a title. A Note needs a body. Area, Tasks, dates, and Summary are optional and can come later.
 2. **Derive, never ask.** Attention comes from dates and Tasks. The user does not maintain statuses, conditions, or priorities.
 3. **The app never invents a priority.** Capture order is not rank. If several Tasks exist and none is focused, the card says so rather than picking one.
-4. **Dates are soft.** A Follow-up date means "bring this back", not "due". There are no deadlines.
+4. **Dates are soft.** A date means "bring this back", not "due". There are no deadlines.
 5. **Colour belongs to time.** Lateness is the only thing the board colours. Areas are neutral.
-6. **Reading is not handling.** Opening a Thread never clears its Follow-up date. The user clears, reschedules, or resolves it.
+6. **Reading is not handling.** Opening a Thread never clears a Task's date. The user clears, reschedules, completes, or resolves.
 7. **Keep Threads alive, not noisy.** The Activity Log records what changed without being asked and records nothing trivial.
 8. **One board.** No second schedule, no per-Area pages, no tabs.
 9. **Plain words.** A familiar thing gets its familiar word. A new term is coined only when the familiar word would promise behaviour the app does not have (see Naming in `CONTEXT.md`).

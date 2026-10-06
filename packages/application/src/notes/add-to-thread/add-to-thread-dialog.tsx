@@ -1,6 +1,6 @@
-import type { Note, Thread } from "@vita-os/contracts";
+import type { Note, TaskId, Thread } from "@vita-os/contracts";
 
-import { decideAddNoteToThread } from "@vita-os/core";
+import { decideAddNoteToThread, soonestTaskDate } from "@vita-os/core";
 import { format } from "date-fns";
 import { MessageSquare } from "lucide-react";
 import { useMemo } from "react";
@@ -18,11 +18,14 @@ import {
 } from "../../ui/command";
 
 /**
- * The Follow-up date adding this Note would bring the Thread back at, if it
- * changes: the earlier date wins.
+ * The date adding this Note would bring the Thread back at, if it changes: a
+ * dated Note adds a dated Task, and the Thread comes back at its soonest.
  */
 export function broughtBackAt(thread: Thread, note: Note): number | undefined {
-  return decideAddNoteToThread(thread, note).patch.followUp;
+  const tasks = decideAddNoteToThread(thread, note, "preview" as TaskId).patch
+    .tasks;
+  const after = soonestTaskDate(tasks);
+  return after === soonestTaskDate(thread.tasks) ? undefined : after;
 }
 
 /**

@@ -65,9 +65,10 @@ async function seedDetailFixture() {
       "Choose a clinic",
       3,
       "open",
-      '[{"id":"task-1","text":"Call clinic"},{"id":"task-2","text":"Book appointment"}]',
+      '[{"id":"task-1","text":"Call clinic"},{"id":"task-2","text":"Book appointment","date":1800000000000}]',
       "task-2",
-      1_800_000_000_000,
+      // The retired column is no longer read: this date must not surface.
+      1_900_000_000_000,
       1_700_000_000_000,
       "Captured next move",
       1_600_000_000_000,
@@ -448,15 +449,16 @@ describe("Thread detail", () => {
         state: "open",
         tasks: [
           { _id: "task-1", text: "Call clinic" },
-          { _id: "task-2", text: "Book appointment" },
+          { _id: "task-2", text: "Book appointment", date: 1_800_000_000_000 },
         ],
         focusedTaskId: "task-2",
         // Compatibility names (ADR 0033, removal in #402), same values.
         moves: [
           { _id: "task-1", text: "Call clinic" },
-          { _id: "task-2", text: "Book appointment" },
+          { _id: "task-2", text: "Book appointment", date: 1_800_000_000_000 },
         ],
         focusedMoveId: "task-2",
+        // Compatibility (ADR 0032, removal in #402): the soonest dated Task.
         followUp: 1_800_000_000_000,
         lastActivityAt: 1_700_000_000_000,
         lastActivityContent: "Captured next move",

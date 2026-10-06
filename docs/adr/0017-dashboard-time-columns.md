@@ -1,5 +1,7 @@
 # Dashboard time columns with an unscheduled margin
 
+Amended by ADR 0032: a Thread is placed by its soonest dated Task, not by a Follow-up date of its own. The columns and their meanings are unchanged.
+
 Terminology amended by ADR 0028: Follow-up and Attention Date are one **Follow-up date** on Threads and standalone Notes. Existing behavior is retained.
 
 Status: Amended by ADR 0021 — the row of Area Conditions becomes an Area filter row (All · each Area · No area), and a card's Area is a neutral icon-and-name tag instead of a Condition-coloured glyph. Amended by ADR 0022 — a card's title always heads it, with the Focused Move, the only Move, or a Move count in a fixed second row; **Ready to move** holds every undated Thread with at least one Move. Amended by ADR 0026 — **Later** starts folded at every size, a rail at `xl` stating its count and next date over a horizon of when each item comes due; each dated column groups its cards by when they come due (Late · Today, each day, then weeks and months), and a card under a heading that names its day drops its date token.

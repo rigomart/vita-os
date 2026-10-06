@@ -5,6 +5,9 @@ import { newRecordId } from "@vita-os/core";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
 
 import { CommandDropped, useTaskCommand } from "./hooks";
+import { ThreadBusy } from "./task-queue";
+
+export { useConversionLock } from "./task-queue";
 
 /**
  * A Task command never throws at the surface that issued it. A refusal has
@@ -16,6 +19,10 @@ function useReportFailure() {
 
   return (error: unknown) => {
     if (error instanceof CommandDropped) return;
+    if (error instanceof ThreadBusy) {
+      feedback.error(error.message);
+      return;
+    }
     const conflict = isApplicationError(error) && error.code === "conflict";
     feedback.error(
       conflict
@@ -36,6 +43,68 @@ export function useCompleteTask(thread: Thread) {
 
   return (taskId: TaskId) =>
     complete.mutateAsync(taskId).then(() => undefined, report);
+}
+
+/** The name of the Task a card creates when a date is set and it shows no Task. */
+export const FOLLOW_UP_TASK_TEXT = "Follow up";
+
+/**
+ * The ID of the "Follow up" Task one card activation adds. It comes from the
+ * Thread and the revision the card read, so a rapid duplicate activation
+ * carries the same ID: the add rule refuses an ID the Thread already holds and
+ * the duplicate is dropped instead of adding a second Task.
+ */
+export function followUpTaskId(thread: Thread): TaskId {
+  let hash = 2_166_136_261;
+  for (const char of `${thread._id}:${thread.revision}`) {
+    hash = Math.imul(hash ^ char.charCodeAt(0), 16_777_619);
+  }
+  return `follow-up-${(hash >>> 0).toString(16)}-${thread.revision}` as TaskId;
+}
+
+/**
+ * The date control of a Dashboard card. On a card that shows a Task it sets,
+ * changes or clears that Task's date; on a card that shows none it adds a Task
+ * named "Follow up" with the date, in one action.
+ */
+export function useTaskDates(thread: Thread) {
+  const report = useReportFailure();
+  const setDate = useTaskCommand<{ taskId: TaskId; date: number | null }>(
+    thread,
+    {
+      run: (client, input, expectedRevision) =>
+        client.setTaskDate({
+          threadId: thread._id,
+          ...input,
+          expectedRevision,
+        }),
+      change: (input) => ({ kind: "setDate", ...input }),
+    },
+  );
+  const addDated = useTaskCommand<Task>(thread, {
+    run: (client, task, expectedRevision) =>
+      client.addTask({
+        threadId: thread._id,
+        taskId: task._id,
+        text: task.text,
+        ...(task.date === undefined ? {} : { date: task.date }),
+        expectedRevision,
+      }),
+    change: (task) => ({ kind: "add", task }),
+  });
+
+  return {
+    setDate: (taskId: TaskId, date: number | null) =>
+      setDate.mutateAsync({ taskId, date }).then(() => undefined, report),
+    addFollowUp: (date: number) =>
+      addDated
+        .mutateAsync({
+          _id: followUpTaskId(thread),
+          text: FOLLOW_UP_TASK_TEXT,
+          date,
+        })
+        .then(() => undefined, report),
+  };
 }
 
 /**
@@ -75,6 +144,18 @@ export function useTasks(thread: Thread) {
       client.focusTask({ threadId: thread._id, taskId, expectedRevision }),
     change: (taskId) => ({ kind: "focus", taskId }),
   });
+  const setDate = useTaskCommand<{ taskId: TaskId; date: number | null }>(
+    thread,
+    {
+      run: (client, input, expectedRevision) =>
+        client.setTaskDate({
+          threadId: thread._id,
+          ...input,
+          expectedRevision,
+        }),
+      change: (input) => ({ kind: "setDate", ...input }),
+    },
+  );
 
   const settle = (pending: Promise<unknown>) =>
     pending.then(() => undefined, report);
@@ -96,5 +177,8 @@ export function useTasks(thread: Thread) {
     complete: (taskId: TaskId) => settle(complete.mutateAsync(taskId)),
     /** `null` unfocuses; focusing a Task replaces any earlier focus. */
     focus: (taskId: TaskId | null) => settle(focus.mutateAsync(taskId)),
+    /** `null` clears the Task's date. */
+    setDate: (taskId: TaskId, date: number | null) =>
+      settle(setDate.mutateAsync({ taskId, date })),
   };
 }

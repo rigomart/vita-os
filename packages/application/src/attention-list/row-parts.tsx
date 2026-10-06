@@ -114,12 +114,15 @@ export function AreaTag({
  */
 export function WhenPopover({
   busy,
+  clearLabel = followUpDateLabels.clear,
   hint = followUpDateLabels.hint,
   onSetWhen,
   trigger,
   when,
 }: {
   busy?: boolean;
+  /** What the button that removes the date says. */
+  clearLabel?: string;
   /** A line above the calendar saying what the date means. */
   hint?: string;
   onSetWhen?: (when: number | undefined) => void;
@@ -223,7 +226,7 @@ export function WhenPopover({
                 setOpen(false);
               }}
             >
-              {followUpDateLabels.clear}
+              {clearLabel}
             </Button>
           </div>
         )}

@@ -18,7 +18,6 @@ const detail = {
       { _id: "task-2", text: "Book appointment" },
     ],
     focusedTaskId: "task/1",
-    followUp: 1_800_000_000_000,
     lastActivityAt: 1_700_000_000_000,
     lastActivityContent: "Captured next move",
     revision: 0,
@@ -81,6 +80,7 @@ describe("createHttpApplicationClient", () => {
       .mockResolvedValueOnce(jsonResponse(detail))
       .mockResolvedValueOnce(jsonResponse(activityPage))
       .mockResolvedValueOnce(jsonResponse(detail.thread))
+      .mockResolvedValueOnce(jsonResponse(detail.thread))
       .mockResolvedValueOnce(jsonResponse(detail.thread));
     const client = createHttpApplicationClient({
       apiBaseUrl: "https://api.test/",
@@ -108,6 +108,14 @@ describe("createHttpApplicationClient", () => {
       client.focusTask({
         threadId: "thread/with/slashes" as ThreadId,
         taskId: null,
+        expectedRevision: 0,
+      }),
+    ).resolves.toEqual({ ok: true, value: detail.thread });
+    await expect(
+      client.setTaskDate({
+        threadId: "thread/with/slashes" as ThreadId,
+        taskId: "task/1" as TaskId,
+        date: 1_700_000_000_000,
         expectedRevision: 0,
       }),
     ).resolves.toEqual({ ok: true, value: detail.thread });
@@ -140,6 +148,40 @@ describe("createHttpApplicationClient", () => {
         body: JSON.stringify({ taskId: null, expectedRevision: 0 }),
       }),
     );
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      5,
+      "https://api.test/v1/threads/thread%2Fwith%2Fslashes/tasks/task%2F1/date",
+      expect.objectContaining({
+        method: "PUT",
+        credentials: "include",
+        body: JSON.stringify({ date: 1_700_000_000_000, expectedRevision: 0 }),
+      }),
+    );
+  });
+
+  it("ignores the Follow-up date the API still derives for older clients", async () => {
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(
+        jsonResponse({
+          ...detail,
+          thread: {
+            ...detail.thread,
+            tasks: [
+              { _id: "task/1", text: "Call clinic", date: 1_800_000_000_000 },
+            ],
+            followUp: 1_800_000_000_000,
+          },
+        }),
+      ),
+    });
+
+    const result = await client.getThreadDetail({ slug: "book-checkup" });
+
+    expect(result.ok && result.value.thread).not.toHaveProperty("followUp");
+    expect(result.ok && result.value.thread.tasks).toEqual([
+      { _id: "task/1", text: "Call clinic", date: 1_800_000_000_000 },
+    ]);
   });
 
   it.each([

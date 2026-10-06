@@ -20,7 +20,7 @@ import {
 } from "../test/fake-application-client";
 import { anArea, aThread } from "../test/fixtures";
 import { createHarness } from "../test/harness";
-import { useCompleteTask, useTasks } from "./use-tasks";
+import { useCompleteTask, useTaskDates, useTasks } from "./use-tasks";
 
 const callClinic = { _id: "task-1" as TaskId, text: "Call clinic" };
 const bookSlot = { _id: "task-2" as TaskId, text: "Book slot" };
@@ -128,6 +128,46 @@ describe("useCompleteTask", () => {
     expect(feedback.error).toHaveBeenCalledWith(
       "This Thread changed elsewhere. It has been refreshed.",
     );
+  });
+});
+
+describe("useTaskDates", () => {
+  it("adds one Follow up Task however often a card is activated at once", async () => {
+    const date = new Date(2026, 6, 20).getTime();
+    const addTask = vi.fn(
+      async (input: {
+        taskId: TaskId;
+        text: string;
+        date?: number;
+        expectedRevision: number;
+      }) =>
+        success({
+          ...thread,
+          tasks: [
+            ...(thread.tasks ?? []),
+            { _id: input.taskId, text: input.text, date },
+          ],
+          revision: input.expectedRevision + 1,
+        }),
+    );
+    const { cache, feedback, result } = render(
+      createFakeApplicationClient({ addTask }),
+      () => useTaskDates(thread),
+    );
+
+    await act(async () => {
+      await Promise.all([
+        result.current.addFollowUp(date),
+        result.current.addFollowUp(date),
+        result.current.addFollowUp(date),
+      ]);
+    });
+
+    expect(addTask).toHaveBeenCalledTimes(1);
+    expect(feedback.error).not.toHaveBeenCalled();
+    expect(
+      shown(cache).open?.tasks?.filter((task) => task.text === "Follow up"),
+    ).toHaveLength(1);
   });
 });
 

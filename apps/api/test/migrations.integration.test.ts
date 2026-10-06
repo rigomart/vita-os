@@ -1,6 +1,7 @@
 import type {
   ActivityLogPage,
   AreaSummary,
+  Note,
   ThreadDetail,
   ThreadNote,
 } from "@vita-os/contracts";
@@ -80,6 +81,7 @@ async function read<T>(path: string, cookie: string): Promise<T> {
  */
 let owner: { actorId: string; cookie: string };
 let mover: { actorId: string; cookie: string };
+let folder: { actorId: string; cookie: string };
 
 beforeAll(async () => {
   await applyD1Migrations(database, migrationsBefore(4));
@@ -194,6 +196,10 @@ beforeAll(async () => {
   mover = await signUp("tasks-migration-owner");
   await seedThreadsBeforeTasks(mover.actorId);
   await applyD1Migrations(database, migrationsThrough(5));
+
+  folder = await signUp("follow-up-migration-owner");
+  await seedThreadsBeforeFollowUpFold(folder.actorId);
+  await applyD1Migrations(database, migrationsThrough(6));
 });
 
 describe("0004: Areas become optional labels", () => {
@@ -241,19 +247,22 @@ describe("0004: Areas become optional labels", () => {
       tasks: [
         { _id: expect.any(String), text: "Call clinic" },
         { _id: expect.any(String), text: "Book appointment" },
+        { _id: expect.any(String), text: "Follow up", date: 1_800_000_000_000 },
       ],
       focusedTaskId: checkup.thread.tasks?.[0]?._id,
       // Compatibility names (ADR 0033, removal in #402), same values.
       moves: [
         { _id: expect.any(String), text: "Call clinic" },
         { _id: expect.any(String), text: "Book appointment" },
+        { _id: expect.any(String), text: "Follow up", date: 1_800_000_000_000 },
       ],
       focusedMoveId: checkup.thread.tasks?.[0]?._id,
+      // Compatibility (ADR 0032, removal in #402): derived from the Tasks.
       followUp: 1_800_000_000_000,
       lastActivityAt: 1_700_000_000_000,
       lastActivityContent: "Next move set",
       createdAt: 1_600_000_000_000,
-      revision: 7,
+      revision: 8,
     });
     expect(checkup.area?._id).toBe("area-health");
     expect(gate.thread).toMatchObject({
@@ -417,6 +426,182 @@ describe("0005: Next Move and Up Next become peer Tasks", () => {
     ).toEqual([
       ["move_completed", 'Completed "Book slot"'],
       ["next_move_change", 'Next move set to "Call clinic"'],
+    ]);
+  });
+});
+
+const FOLLOW_UP_DAY = new Date(2026, 9, 12).getTime();
+const FOLLOW_UP_AFTERNOON = new Date(2026, 9, 12, 15, 30).getTime();
+
+/** Threads as they stood with their own Follow-up date, on the Tasks schema. */
+async function seedThreadsBeforeFollowUpFold(actorId: string) {
+  const insert = (
+    id: string,
+    fields: {
+      state?: "open" | "resolved";
+      tasks?: { id: string; text: string }[];
+      focused?: string;
+      followUp?: number;
+      order: number;
+    },
+  ) =>
+    database
+      .prepare(
+        `INSERT INTO threads (id, user_id, title, slug, sort_order, state, moves_json, focused_move_id, follow_up, created_at, revision)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        id,
+        actorId,
+        id,
+        `${id}-00000000`,
+        fields.order,
+        fields.state ?? "open",
+        fields.tasks === undefined ? null : JSON.stringify(fields.tasks),
+        fields.focused ?? null,
+        fields.followUp ?? null,
+        1_600_000_000_000 + fields.order,
+        6,
+      );
+
+  await database.batch([
+    insert("fold-timed", {
+      tasks: [
+        { id: "call", text: "Call clinic" },
+        { id: "book", text: "Book slot" },
+      ],
+      focused: "call",
+      followUp: FOLLOW_UP_AFTERNOON,
+      order: 0,
+    }),
+    insert("fold-bare-dated", { followUp: FOLLOW_UP_DAY, order: 1 }),
+    insert("fold-undated", {
+      tasks: [{ id: "email", text: "Email the landlord" }],
+      focused: "email",
+      order: 2,
+    }),
+    insert("fold-finished", {
+      state: "resolved",
+      followUp: FOLLOW_UP_DAY,
+      order: 3,
+    }),
+    database
+      .prepare(
+        `INSERT INTO notes (id, user_id, body, attention_date, state, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        "note-dated",
+        actorId,
+        "Water the plants",
+        FOLLOW_UP_AFTERNOON,
+        "open",
+        1_700_000_000_000,
+      ),
+    database
+      .prepare(
+        `INSERT INTO activity_log_entries (id, user_id, thread_id, type, content, previous_value, new_value, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        "log-follow-up",
+        actorId,
+        "fold-timed",
+        "follow_up_change",
+        "Follow-up set",
+        null,
+        String(FOLLOW_UP_AFTERNOON),
+        1_700_000_000_000,
+      ),
+  ]);
+}
+
+describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
+  async function threadOf(slug: string) {
+    return (await read<ThreadDetail>(`/v1/threads/${slug}`, folder.cookie))
+      .thread;
+  }
+
+  it("appends a dated Follow up Task at the same instant, time kept, after the existing Tasks", async () => {
+    const thread = await threadOf("fold-timed-00000000");
+
+    expect(thread.tasks).toEqual([
+      { _id: "call", text: "Call clinic" },
+      { _id: "book", text: "Book slot" },
+      {
+        _id: expect.any(String),
+        text: "Follow up",
+        date: FOLLOW_UP_AFTERNOON,
+      },
+    ]);
+    // Not focused: the Focused Task is the one it was.
+    expect(thread.focusedTaskId).toBe("call");
+    expect(thread.tasks?.[2]?._id).toMatch(/^[0-9a-f]{32}$/);
+    // Changed Threads move to a new revision; untouched ones keep theirs.
+    expect(thread.revision).toBe(7);
+  });
+
+  it("starts the Tasks of a Thread that had none, with a date-only Task", async () => {
+    const thread = await threadOf("fold-bare-dated-00000000");
+
+    expect(thread.tasks).toEqual([
+      { _id: expect.any(String), text: "Follow up", date: FOLLOW_UP_DAY },
+    ]);
+    expect(thread).not.toHaveProperty("focusedTaskId");
+    expect(thread.revision).toBe(7);
+  });
+
+  it("leaves a Thread without a Follow-up date as it was", async () => {
+    const thread = await threadOf("fold-undated-00000000");
+
+    expect(thread.tasks).toEqual([
+      { _id: "email", text: "Email the landlord" },
+    ]);
+    expect(thread.focusedTaskId).toBe("email");
+    expect(thread).not.toHaveProperty("followUp");
+    expect(thread.revision).toBe(6);
+  });
+
+  it("leaves a Resolved Thread as it was", async () => {
+    const thread = await threadOf("fold-finished-00000000");
+
+    expect(thread).not.toHaveProperty("tasks");
+    expect(thread).not.toHaveProperty("followUp");
+    expect(thread.state).toBe("resolved");
+    expect(thread.revision).toBe(6);
+  });
+
+  it("keeps the follow_up column, no longer read, and every Activity Log entry", async () => {
+    const stored = await database
+      .prepare(
+        "SELECT id, follow_up FROM threads WHERE user_id = ? ORDER BY id",
+      )
+      .bind(folder.actorId)
+      .all<{ id: string; follow_up: number | null }>();
+    expect(stored.results).toEqual([
+      { id: "fold-bare-dated", follow_up: FOLLOW_UP_DAY },
+      { id: "fold-finished", follow_up: FOLLOW_UP_DAY },
+      { id: "fold-timed", follow_up: FOLLOW_UP_AFTERNOON },
+      { id: "fold-undated", follow_up: null },
+    ]);
+
+    const activity = await read<ActivityLogPage>(
+      "/v1/threads/fold-timed/activity",
+      folder.cookie,
+    );
+    expect(
+      activity.entries.map((entry) => [entry.type, entry.content]),
+    ).toEqual([["follow_up_change", "Follow-up set"]]);
+  });
+
+  it("keeps every Standalone Note's Follow-up date", async () => {
+    const notes = await read<Note[]>("/v1/notes", folder.cookie);
+
+    expect(notes).toEqual([
+      expect.objectContaining({
+        body: "Water the plants",
+        followUp: FOLLOW_UP_AFTERNOON,
+      }),
     ]);
   });
 });

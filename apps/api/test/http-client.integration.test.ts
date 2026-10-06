@@ -119,10 +119,13 @@ describe("HTTP ApplicationClient against the Worker", () => {
       apiBaseUrl: "http://api.test",
       fetchImpl: authenticatedWorkerFetch(owner.cookie),
     });
-    await client.updateThread({
+    const dated = await client.setTaskDate({
       threadId: thread.id,
-      followUp: 1_800_000_000_000,
+      taskId: "task-1" as TaskId,
+      date: 1_800_000_000_000,
+      expectedRevision: 0,
     });
+    expect(dated.ok).toBe(true);
     await expect(client.listResolvedThreads()).resolves.toEqual({
       ok: true,
       value: [],

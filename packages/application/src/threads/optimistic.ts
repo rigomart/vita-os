@@ -18,6 +18,7 @@ import {
   decideEditTask,
   decideFocusTask,
   decideRemoveTask,
+  decideSetTaskDate,
   generateSlug,
 } from "@vita-os/core";
 
@@ -62,7 +63,8 @@ export type TaskChange =
   | { kind: "edit"; taskId: TaskId; text: string }
   | { kind: "remove"; taskId: TaskId }
   | { kind: "complete"; taskId: TaskId }
-  | { kind: "focus"; taskId: TaskId | null };
+  | { kind: "focus"; taskId: TaskId | null }
+  | { kind: "setDate"; taskId: TaskId; date: number | null };
 
 function decideTaskChange(
   thread: TaskFields,
@@ -79,6 +81,8 @@ function decideTaskChange(
       return decideCompleteTask(thread, change.taskId);
     case "focus":
       return decideFocusTask(thread, change.taskId);
+    case "setDate":
+      return decideSetTaskDate(thread, change.taskId, change.date);
   }
 }
 
@@ -208,12 +212,12 @@ export function showThreadChange(
 ): void {
   const { threadId, resolutionNote: _resolutionNote, ...requested } = input;
   const patch = clearedToAbsent(requested);
-  // Resolving takes the whole attention state with it: the Tasks, the focus,
-  // and the Follow-up. It has to travel in the patch, because reads are patched
-  // field by field, not replaced with the Thread the caller handed us.
+  // Resolving takes the whole attention state with it: the Tasks, dated ones
+  // included, and the focus. It has to travel in the patch, because reads are
+  // patched field by field, not replaced with the Thread the caller handed us.
   const attentionPatch: Partial<Thread> =
     patch.state === "resolved"
-      ? { tasks: undefined, focusedTaskId: undefined, followUp: undefined }
+      ? { tasks: undefined, focusedTaskId: undefined }
       : {};
   const threadPatch: Partial<Thread> = { ...patch, ...attentionPatch };
   const next = withoutAbsent({ ...context.thread, ...threadPatch });
@@ -308,59 +312,61 @@ export function showTaskChange(
 }
 
 /**
- * The service's answer to a Task command. Only what that command can change is
- * taken from it — the Tasks, the focus, the revision, and the last activity a
- * completion stamps — so an unrelated change still in flight keeps showing.
- * The revision is what the next queued command carries.
+ * The service's answer to a Task command or to adding a Note: the Thread's
+ * whole Task state at that revision — the Tasks, the focus, the revision, and
+ * the last activity — and nothing else, so an unrelated change still in
+ * flight keeps showing.
+ * An answer older than what the read already shows changes nothing
+ * (`newerAnswer`).
  */
 export function settleTaskChange(cache: QueryClient, settled: Thread): void {
   patchThreadEverywhere(cache, settled._id, (thread) =>
-    withoutAbsent({
-      ...thread,
-      tasks: settled.tasks,
-      focusedTaskId: settled.focusedTaskId,
-      revision: settled.revision,
-      lastActivityAt: settled.lastActivityAt,
-      lastActivityContent: settled.lastActivityContent,
-    }),
+    newerAnswer(thread, settled)
+      ? withoutAbsent({
+          ...thread,
+          tasks: settled.tasks,
+          focusedTaskId: settled.focusedTaskId,
+          revision: settled.revision,
+          lastActivityAt: settled.lastActivityAt,
+          lastActivityContent: settled.lastActivityContent,
+        })
+      : thread,
   );
 }
 
 /**
- * A Note added to the Thread, shown before the service answers: the Follow-up
- * date it may bring forward and the activity stamp. A cleared field stays
- * absent; nothing else on the Thread changes.
+ * Whether an answer may replace what a read shows of the Thread. Answers are
+ * replayed in the order their commands were issued, not the order the
+ * service applied them, so an older one can come after a newer one: taking
+ * its Tasks would show old Tasks under the newer revision. A read's Tasks
+ * and its revision always move together, and never backwards.
+ */
+function newerAnswer(thread: Thread, settled: Thread): boolean {
+  return settled.revision >= thread.revision;
+}
+
+/**
+ * A Note added to the Thread, shown before the service answers: the dated Task
+ * it may add and the activity stamp. A cleared field stays absent; nothing
+ * else on the Thread changes.
  */
 export function showNoteAddedToThread(
   cache: QueryClient,
   threadId: ThreadId,
-  change: Pick<Thread, "followUp" | "lastActivityAt" | "lastActivityContent">,
+  change: Pick<Thread, "lastActivityAt" | "lastActivityContent"> & {
+    /** The one Task this conversion adds, appended to the Tasks as they are now. */
+    task?: Task | undefined;
+  },
 ): void {
   patchThreadEverywhere(cache, threadId, (thread) =>
     withoutAbsent({
       ...thread,
-      ...(change.followUp === undefined ? {} : { followUp: change.followUp }),
+      ...(change.task === undefined ||
+      thread.tasks?.some((task) => task._id === change.task?._id)
+        ? {}
+        : { tasks: [...(thread.tasks ?? []), change.task] }),
       lastActivityAt: change.lastActivityAt,
       lastActivityContent: change.lastActivityContent,
-    }),
-  );
-}
-
-/**
- * The service's answer to adding a Note: only what that command changes — the
- * date, the activity stamp, and the revision the next command carries.
- */
-export function settleNoteAddedToThread(
-  cache: QueryClient,
-  settled: Thread,
-): void {
-  patchThreadEverywhere(cache, settled._id, (thread) =>
-    withoutAbsent({
-      ...thread,
-      followUp: settled.followUp,
-      revision: settled.revision,
-      lastActivityAt: settled.lastActivityAt,
-      lastActivityContent: settled.lastActivityContent,
     }),
   );
 }

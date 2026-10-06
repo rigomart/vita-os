@@ -11,7 +11,9 @@ import {
   listOpenThreads,
   listResolvedThreads,
   removeTask,
+  refuseThreadFollowUp,
   removeThread,
+  setTaskDate,
   updateThread,
 } from "./operations";
 import {
@@ -39,10 +41,14 @@ export const ThreadsHandlers = HttpApiBuilder.group(
       )
       .handle("detail", ({ params }) => getThreadDetail({ slug: params.slug }))
       .handle("update", ({ params, payload }) =>
-        updateThread({
-          ...normalizeThreadChange(payload),
-          threadId: params.threadId,
-        }),
+        // Compatibility (ADR 0032, removal in #402): nothing is written for a
+        // request that sets a Thread's Follow-up date.
+        Object.hasOwn(payload, "followUp")
+          ? refuseThreadFollowUp()
+          : updateThread({
+              ...normalizeThreadChange(payload),
+              threadId: params.threadId,
+            }),
       )
       .handle("remove", ({ params }) =>
         removeThread({ threadId: params.threadId }),
@@ -66,6 +72,13 @@ export const ThreadsHandlers = HttpApiBuilder.group(
       )
       .handle("completeTask", ({ params, payload }) =>
         completeTask({
+          ...payload,
+          threadId: params.threadId,
+          taskId: params.taskId,
+        }),
+      )
+      .handle("setTaskDate", ({ params, payload }) =>
+        setTaskDate({
           ...payload,
           threadId: params.threadId,
           taskId: params.taskId,

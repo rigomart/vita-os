@@ -8,11 +8,11 @@ Status: proven on ba85712 (lanes, tray groups, card rows and footer, late tint, 
 
 - `board-empty` shows `Nothing is asking for you.` when no Thread or Note is open.
 - `board-lanes` sorts dated items into `Now` (late or due today), `This week` (the next six days), and `Later`, each with a count and a hint. An empty lane shows a dashed `Nothing here.` placeholder.
-- `board-tray` groups undated items in the `No date` tray under `Ready to move` (Threads with Tasks), `Open` (Threads without), and `Notes`.
-- `board-card` renders Threads and Notes with the same three rows. A Thread card shows `link "<title>"`, the Focused Task, `Set follow-up date`, and `Complete “<task>”`. A Note card shows `button "Open note: <plain-text preview>"`, `Set follow-up date`, and `Archive note`.
+- `board-tray` groups undated items in the `No date` tray under `Ready to move` (Threads whose Tasks are all undated), `Open` (Threads with no Tasks), and `Notes`.
+- `board-card` renders Threads and Notes with the same three rows. A Thread card shows `link "<title>"`, the Task that leads it (the dated Task that placed it, else the Focused Task, else the only Task, else `N tasks · none focused`), `Set date` / `Change date`, and `Complete “<task>”`. A Note card shows `button "Open note: <plain-text preview>"`, `Set follow-up date`, and `Archive note`.
 - `board-card-actions` completes a Task, dates a Note, and archives a Note from the card (`Note archived`).
 - `board-filter-notes` filters the board to Notes alone; see [Notes on the Dashboard](./notes-on-the-dashboard.md).
-- `board-groups` heads each dated lane's runs: `Late` and `Today` in `Now`; `Tomorrow` (hint the weekday) and then each weekday (hint `3d`) in `This week`; `In 1 week` (hint `Oct 8–14`), `In 2 weeks`, `In 3 weeks`, then month names in `Later`. Cards under `Today` or a weekday show no date token; their date is `button "Change follow-up date"` or `button "Change follow-up date"`, revealed on hover. Cards under `Late` and Later's groups keep their token.
+- `board-groups` heads each dated lane's runs: `Late` and `Today` in `Now`; `Tomorrow` (hint the weekday) and then each weekday (hint `3d`) in `This week`; `In 1 week` (hint `Oct 8–14`), `In 2 weeks`, `In 3 weeks`, then month names in `Later`. Cards under `Today` or a weekday show no date token; a Thread card's date is `button "Change date"` and a Note card's `button "Change follow-up date"`, revealed on hover. Cards under `Late` and Later's groups keep their token.
 - `board-time` (ADR 0027): a Follow-up or Follow-up date may carry a time, set from `button "Add time"` under every date picker's calendar, which opens a focused, type-only `InputTime "Time"` with `button "Remove time"` beside it. A date that already has a time opens with the field showing. Within a day, untimed items come first, then timed ones in time order. A timed card under `Today` or a weekday shows the time alone (`3 PM`, `9:30 AM`); elsewhere it follows the date token (`−2d · 9:30 AM`). The thread pane's button reads `Follow up Oct 1 · 3 PM`, and the Activity tab reads `Oct 1, 2026 → Oct 1, 2026 · 3 PM`.
 - `board-later-fold` starts `Later` folded at every size: at 1440 a narrow rail between `This week` and `No date`, below `xl` one ruled heading spanning the row. Its trigger is `button "Later <n> next <token>"` with `expanded=false`. At 1440 the rail draws a horizon under `next`: bands `1w`, `2w`, `3w`, then month abbreviations, one mark per item (outlined for a Note, the soonest in the accent), and `+<n> later` at the foot for items past the end of the month nine weeks out. The horizon is `aria-hidden`; each mark carries `data-label="<title> · <token>"`, shown as a tooltip on hover (`hover 'xpath=//span[starts-with(@data-label,"<title>")]'`). Clicking it unfolds the lane; clicking its heading again folds it. A card dated into a folded Later bumps the count.
 - `board-stack` stacks the lanes two per row at `md` and in one column on a phone. `Later` and the `No date` tray span the row at `md`; on a phone both start folded.
@@ -20,7 +20,7 @@ Status: proven on ba85712 (lanes, tray groups, card rows and footer, late tint, 
 ## How to get to it (user POV)
 
 - Sign in. The Dashboard at `/` is the landing page.
-- Create Threads per [Create a thread](./create-thread.md), give them Tasks per [Tasks](./tasks.md), and capture Notes per [Capture a note](./capture-note.md). Set a date with `Set follow-up date` in the thread pane or `Follow-up date` in the `New note` dialog.
+- Create Threads per [Create a thread](./create-thread.md), give them Tasks per [Tasks](./tasks.md), and capture Notes per [Capture a note](./capture-note.md). Date a Thread by giving one of its Tasks a date (`Set date` on the Task row in the thread pane, or on the card) and a Note with `Follow-up date` in the `New note` dialog. `flows/dated-tasks.flow` drives this end to end.
 
 ## Driving it with agent-browser
 
@@ -28,9 +28,9 @@ Preconditions:
 
 - Signed in at 1440×900 with an empty D1. `bun run verify shot board-empty` shows `Nothing is asking for you.`
 - Seed through the UI so every lane and tray group has an item. The date pickers list days as buttons named like `Today, Monday, September 28th, 2026`, and past days are allowed, which gives a late item:
-  - A Thread with an Area, a long Focused Task, and a past follow-up lands in `Now` with the tint and `-3d`.
-  - A Thread with a follow-up two to six days out lands in `This week`.
-  - A Thread with a Task and no date lands in `No date` → `Ready to move`. One with no Tasks lands in `Open`.
+  - A Thread with an Area, a long Task, and a past Task date lands in `Now` with the tint and `-3d`.
+  - A Thread with a Task dated two to six days out lands in `This week`.
+  - A Thread with only undated Tasks lands in `No date` → `Ready to move`. One with no Tasks lands in `Open`.
   - A Note with an `Follow-up date` lands in its dated lane with a margin rule and no tag. A Note without one lands in `No date` → `Notes`.
 
 - **Lanes and tray.** Run `bun run verify open /`, `bun run verify browser -- wait --text "Ready to move"`, then `bun run verify shot board-desktop`. The snapshot has headings `Now <n> Late or due today`, `This week <n> The next six days`, a folded `Later <n> next <token>`, `No date <n> Not on the calendar` (level 2), the date groups (`Late <n>`, `Today <n>`, `Tomorrow <n> <weekday>`, `<weekday> <n> <d>d`), and the tray groups `Ready to move <n>`, `Open <n>`, `Notes <n>` (level 3).

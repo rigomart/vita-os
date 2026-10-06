@@ -3,6 +3,7 @@ import type {
   NoteAddedToThread,
   NoteId,
   OperationResult,
+  TaskId,
   Thread,
   ThreadNote,
   ThreadNoteId,
@@ -55,7 +56,7 @@ const laterThread = aThread({
   _id: "later" as Thread["_id"],
   title: "Insurance",
   slug: "insurance-1",
-  followUp: aug1,
+  tasks: [{ _id: "renew" as TaskId, text: "Renew policy", date: aug1 }],
   areaId: undefined,
   order: 1,
 });
@@ -63,7 +64,13 @@ const earlierThread = aThread({
   _id: "earlier" as Thread["_id"],
   title: "Clinic",
   slug: "clinic-1",
-  followUp: new Date(2026, 6, 20).getTime(),
+  tasks: [
+    {
+      _id: "confirm" as TaskId,
+      text: "Confirm the visit",
+      date: new Date(2026, 6, 20).getTime(),
+    },
+  ],
   areaId: undefined,
   order: 2,
 });
@@ -150,9 +157,11 @@ function addedTo(thread: Thread, revision = thread.revision + 1) {
   return {
     thread: {
       ...thread,
-      followUp: jul23,
+      tasks: [
+        ...(thread.tasks ?? []),
+        { _id: "from-note-task" as TaskId, text: "Dentist", date: jul23 },
+      ],
       lastActivityAt: 9_000,
-      lastActivityContent: "Follow-up set",
       revision,
     },
     threadNote: aThreadNote({
@@ -231,10 +240,10 @@ describe("adding a Note to a Thread", () => {
     const shown = queryClient
       .getQueryData<Thread[]>(queryKeys.threads.open())
       ?.find((thread) => thread._id === undatedThread._id);
-    expect(shown).toMatchObject({
-      followUp: jul23,
-      lastActivityContent: "Follow-up set",
-    });
+    expect(shown?.tasks).toEqual([
+      { _id: expect.any(String), text: "Dentist", date: jul23 },
+    ]);
+    expect(shown).not.toHaveProperty("lastActivityContent");
     expect(
       queryClient
         .getQueryData<ThreadNote[]>(
@@ -253,6 +262,7 @@ describe("adding a Note to a Thread", () => {
       expect(addNoteToThread).toHaveBeenCalledExactlyOnceWith({
         noteId: note._id,
         threadId: undatedThread._id,
+        taskId: "note-task-dated-note",
       }),
     );
     await act(async () => pending.resolve(commit(addedTo(undatedThread))));
@@ -275,8 +285,9 @@ describe("adding a Note to a Thread", () => {
     expect(
       queryClient
         .getQueryData<Thread[]>(queryKeys.threads.open())
-        ?.find((thread) => thread._id === laterThread._id)?.followUp,
-    ).toBe(jul23);
+        ?.find((thread) => thread._id === laterThread._id)
+        ?.tasks?.map((task) => task.text),
+    ).toEqual(["Renew policy", "Dentist"]);
     await act(async () => offer.resolve(false));
 
     expect(
@@ -346,7 +357,9 @@ describe("starting a Thread from a Note", () => {
         title: "Dentist visit",
         slug: "dentist-visit-1",
         areaId: undefined,
-        followUp: jul23,
+        tasks: [
+          { _id: "from-note-task" as TaskId, text: "Dentist", date: jul23 },
+        ],
         revision: 1,
       }),
       threadNote: aThreadNote({ _id: "from-note" as ThreadNoteId }),
@@ -368,6 +381,7 @@ describe("starting a Thread from a Note", () => {
       expect(createThreadFromNote).toHaveBeenCalledExactlyOnceWith({
         noteId: note._id,
         title: "Dentist visit",
+        taskId: "note-task-dated-note",
       }),
     );
     await waitFor(() =>

@@ -10,6 +10,7 @@ import {
   decideAddNoteToThread,
   decideThreadUpdate,
   sanitizeThreadPatch,
+  taskTextFromNote,
 } from "./thread-changes";
 
 function makeThread(
@@ -71,48 +72,9 @@ describe("buildThreadPatchLogEntries", () => {
     ]);
   });
 
-  it("keeps Follow-up timestamps for the reader's time zone to write", () => {
+  it("writes no Follow-up entry: a Thread has no Follow-up date to change", () => {
     expect(
-      buildThreadPatchLogEntries(makeThread(), { followUp: may20 }),
-    ).toEqual([
-      {
-        type: "follow_up_change",
-        content: "Follow-up set",
-        previousValue: undefined,
-        newValue: String(may20),
-      },
-    ]);
-
-    expect(
-      buildThreadPatchLogEntries(makeThread({ followUp: may20 }), {
-        followUp: jun1,
-      }),
-    ).toEqual([
-      {
-        type: "follow_up_change",
-        content: "Follow-up changed",
-        previousValue: String(may20),
-        newValue: String(jun1),
-      },
-    ]);
-
-    expect(
-      buildThreadPatchLogEntries(makeThread({ followUp: may20 }), {
-        followUp: undefined,
-      }),
-    ).toEqual([
-      {
-        type: "follow_up_change",
-        content: "Follow-up cleared",
-        previousValue: String(may20),
-        newValue: undefined,
-      },
-    ]);
-
-    expect(
-      buildThreadPatchLogEntries(makeThread({ followUp: may20 }), {
-        followUp: may20,
-      }),
+      buildThreadPatchLogEntries(makeThread(), { followUp: may20 } as never),
     ).toEqual([]);
   });
 
@@ -179,7 +141,6 @@ describe("buildThreadLifecyclePatch", () => {
         makeThread({
           tasks: [callClinic],
           focusedTaskId: callClinic._id,
-          followUp: may20,
         }),
         {
           state: "resolved",
@@ -191,7 +152,6 @@ describe("buildThreadLifecyclePatch", () => {
         state: "resolved",
         tasks: undefined,
         focusedTaskId: undefined,
-        followUp: undefined,
       },
       log: {
         type: "state_change",
@@ -251,7 +211,6 @@ describe("decideThreadUpdate", () => {
       thread: makeThread({
         tasks: [callClinic, bookSlot],
         focusedTaskId: callClinic._id,
-        followUp: may20,
       }),
       patch: { state: "resolved" },
       resolutionNote: "Done for good",
@@ -261,7 +220,6 @@ describe("decideThreadUpdate", () => {
       state: "resolved",
       tasks: undefined,
       focusedTaskId: undefined,
-      followUp: undefined,
     });
     expect(decision.logs).toEqual([
       {
@@ -271,26 +229,29 @@ describe("decideThreadUpdate", () => {
         previousValue: "open",
         newValue: "resolved",
       },
-      {
-        type: "follow_up_change",
-        content: "Follow-up cleared",
-        previousValue: String(may20),
-        newValue: undefined,
-      },
     ]);
   });
 
-  it("logs an Area task and a Follow-up change in order", () => {
+  it("names the dated Tasks a resolution discards, and logs nothing else", () => {
     const decision = decideThreadUpdate({
-      thread: makeThread(),
-      patch: { areaId: "area2" as AreaId, followUp: may20 },
-      areaNames: { from: "Health", to: "Home" },
+      thread: makeThread({
+        tasks: [{ ...callClinic, date: may20 }, bookSlot],
+      }),
+      patch: { state: "resolved" },
     });
 
-    expect(decision.logs.map((log) => log.type)).toEqual([
-      "area_move",
-      "follow_up_change",
+    expect(decision.logs.map((log) => log.content)).toEqual([
+      'Resolved thread — discarded tasks: "Call clinic", "Book slot"',
     ]);
+  });
+
+  it("drops a Follow-up date from a Thread patch instead of writing it", () => {
+    const decision = decideThreadUpdate({
+      thread: makeThread(),
+      patch: { followUp: may20 } as never,
+    });
+
+    expect(decision).toEqual({ patch: {}, logs: [] });
   });
 
   it("writes and logs nothing for a patch that names no change", () => {
@@ -313,55 +274,97 @@ describe("decideThreadUpdate", () => {
 });
 
 describe("decideAddNoteToThread", () => {
-  const thread = makeThread();
+  const thread = makeThread({ tasks: [callClinic] });
+  const newId = "task-new" as TaskId;
 
-  it("leaves the Thread alone for an undated Note", () => {
-    expect(decideAddNoteToThread(thread, {})).toEqual({ patch: {}, logs: [] });
-    expect(decideAddNoteToThread(makeThread({ followUp: may20 }), {})).toEqual({
-      patch: {},
-      logs: [],
-    });
+  it("adds no Task for an undated Note", () => {
+    expect(
+      decideAddNoteToThread(thread, { body: "Ask about parking" }, newId),
+    ).toEqual({ patch: {}, logs: [] });
   });
 
-  it("brings an undated Thread back at the Note's date", () => {
-    expect(decideAddNoteToThread(thread, { followUp: may20 })).toEqual({
-      patch: { followUp: may20 },
-      logs: [
-        {
-          type: "follow_up_change",
-          content: "Follow-up set",
-          newValue: String(may20),
-        },
+  it("appends a dated Task from the Note's first line, time included, unfocused", () => {
+    const afternoon = new Date("2026-05-20T15:30:00").getTime();
+    const decision = decideAddNoteToThread(
+      makeThread({
+        tasks: [callClinic, bookSlot],
+        focusedTaskId: bookSlot._id,
+      }),
+      { body: "\n  Bring the referral\nand the scan", followUp: afternoon },
+      newId,
+    );
+
+    expect(decision.patch).toEqual({
+      tasks: [
+        callClinic,
+        bookSlot,
+        { _id: newId, text: "Bring the referral", date: afternoon },
       ],
     });
+    expect(decision.patch).not.toHaveProperty("focusedTaskId");
+    expect(decision.logs).toEqual([]);
   });
 
-  it("lets an earlier Note date win, past dates included", () => {
+  it("starts a Task list on a Thread that held none, even for a date already past", () => {
     const past = new Date("2020-01-01T15:30:00").getTime();
     expect(
-      decideAddNoteToThread(makeThread({ followUp: jun1 }), { followUp: past }),
-    ).toEqual({
-      patch: { followUp: past },
-      logs: [
-        {
-          type: "follow_up_change",
-          content: "Follow-up changed",
-          previousValue: String(jun1),
-          newValue: String(past),
-        },
-      ],
-    });
+      decideAddNoteToThread(
+        makeThread(),
+        { body: "Old", followUp: past },
+        newId,
+      ).patch,
+    ).toEqual({ tasks: [{ _id: newId, text: "Old", date: past }] });
   });
 
-  it("drops a Note date that is later than or equal to the Thread's", () => {
-    const dated = makeThread({ followUp: may20 });
-    expect(decideAddNoteToThread(dated, { followUp: jun1 })).toEqual({
-      patch: {},
-      logs: [],
-    });
-    expect(decideAddNoteToThread(dated, { followUp: may20 })).toEqual({
-      patch: {},
-      logs: [],
-    });
+  it("keeps the Thread's own dated Tasks beside the new one", () => {
+    const dated = { ...callClinic, date: may20 };
+    const decision = decideAddNoteToThread(
+      makeThread({ tasks: [dated] }),
+      { body: "Later one", followUp: jun1 },
+      newId,
+    );
+
+    expect(decision.patch.tasks).toEqual([
+      dated,
+      { _id: newId, text: "Later one", date: jun1 },
+    ]);
+  });
+});
+
+describe("a Note dated outside the range a Task date may take", () => {
+  it("becomes an undated Task, and the Note is unchanged", () => {
+    for (const followUp of [-1, 253_402_300_800_000, Number.MAX_SAFE_INTEGER]) {
+      expect(
+        decideAddNoteToThread(
+          makeThread(),
+          { body: "Old", followUp },
+          "t" as TaskId,
+        ).patch.tasks,
+      ).toEqual([{ _id: "t", text: "Old" }]);
+    }
+  });
+});
+
+describe("taskTextFromNote", () => {
+  it.each([
+    ["Call the clinic", "Call the clinic"],
+    ["  \n\n  Call the clinic  \nsecond line", "Call the clinic"],
+    ["# Consultation\n[Clinic](https://example.com)", "Consultation"],
+    ["## Plan", "Plan"],
+    ["- Bring the scan", "Bring the scan"],
+    ["* Bring the scan", "Bring the scan"],
+    ["> A quote", "A quote"],
+    [">tight quote", "tight quote"],
+    ["1. First step", "First step"],
+    ["12) Twelfth", "Twelfth"],
+    ["> - nested item", "nested item"],
+    ["**Bold** start", "**Bold** start"],
+    ["#hashtag stays", "#hashtag stays"],
+    ["3 pills a day", "3 pills a day"],
+    ["#", "Follow up"],
+    ["- ", "Follow up"],
+    ["\n  \n", "Follow up"],
+  ])("reads %j as %j", (body, expected) => {
+    expect(taskTextFromNote(body)).toBe(expected);
   });
 });

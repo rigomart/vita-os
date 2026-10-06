@@ -2,12 +2,14 @@ import type {
   AddNoteToThreadInput,
   CreateThreadFromNoteInput,
   NoteAddedToThread,
+  TaskId,
 } from "@vita-os/contracts";
 
 import {
   decideAddNoteToThread,
   generateSlug,
   requireNonBlankText,
+  requireTaskId,
 } from "@vita-os/core";
 import { Effect } from "effect";
 
@@ -24,13 +26,23 @@ import { threadNotFound } from "../threads/errors";
 import { isThreadSlugTaken, threadStorage } from "../threads/storage";
 import { addToThreadStorage } from "./storage";
 
+/** The caller's Task ID, checked like every other; the service mints one when absent. */
+function taskIdFor(
+  requested: TaskId | undefined,
+  scope: { clock: { newId(): string } },
+): TaskId {
+  return requested === undefined
+    ? (scope.clock.newId() as TaskId)
+    : requireTaskId(requested);
+}
+
 /** The same limit as other revision-conditional Thread changes. */
 const CHANGE_ATTEMPTS = 3;
 
 /**
  * Turn an Open Standalone Note into a Thread Note on an Open Thread.
  *
- * The decision reads both records — the earlier Follow-up date wins — so the
+ * The decision reads both records — a dated Note adds a dated Task — so the
  * write is conditional on the Note still carrying the date it read and on the
  * Thread's revision. A lost race re-reads and decides again.
  */
@@ -53,7 +65,9 @@ export function addNoteToThread(
       if (note === null || note.state !== "open") return yield* noteNotFound();
       if (thread === null || thread.state !== "open")
         return yield* threadNotFound();
-      const change = decideAddNoteToThread(thread, note);
+      const change = yield* attempt(() =>
+        decideAddNoteToThread(thread, note, taskIdFor(input.taskId, scope)),
+      );
       const added = yield* database(() =>
         storage.addToThread({
           note,
@@ -70,7 +84,7 @@ export function addNoteToThread(
 
 /**
  * Start a Thread whose first Thread Note is the Note. The Thread takes the
- * Note's Follow-up date. A taken slug is minted again, as creating a Thread
+ * Note's dated Task, when it has a date. A taken slug is minted again, as creating a Thread
  * does; a Note that changed under the decision is read again.
  */
 export function createThreadFromNote(
@@ -87,9 +101,12 @@ export function createThreadFromNote(
       const note = yield* database(() => notes.find(input.noteId));
       if (note === null || note.state !== "open") return yield* noteNotFound();
       const slug = generateSlug(title);
-      const change = decideAddNoteToThread(
-        { title, slug, state: "open" },
-        note,
+      const change = yield* attempt(() =>
+        decideAddNoteToThread(
+          { title, slug, state: "open" },
+          note,
+          taskIdFor(input.taskId, scope),
+        ),
       );
       const added = yield* database(
         () =>

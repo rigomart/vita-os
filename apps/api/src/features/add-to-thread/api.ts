@@ -12,7 +12,7 @@ import { AreaIdSchema } from "../areas/requests";
 import { NoteIdSchema } from "../notes/api";
 import { ThreadNoteSchema } from "../thread-notes/api";
 import { ThreadSchema } from "../threads/api";
-import { ThreadIdSchema } from "../threads/requests";
+import { TaskIdSchema, ThreadIdSchema } from "../threads/requests";
 
 const NoteAddedToThreadSchema = Schema.Struct({
   thread: ThreadSchema,
@@ -24,7 +24,10 @@ export const AddToThreadApi = HttpApiGroup.make("addToThread")
   .add(
     HttpApiEndpoint.post("addToThread", "/v1/notes/:noteId/add-to-thread", {
       params: NoteParams,
-      payload: Schema.Struct({ threadId: ThreadIdSchema }),
+      payload: Schema.Struct({
+        threadId: ThreadIdSchema,
+        taskId: Schema.optionalKey(TaskIdSchema),
+      }),
       success: NoteAddedToThreadSchema,
     }).annotate(ValidationMessage, "Invalid Thread."),
     HttpApiEndpoint.post("newThread", "/v1/notes/:noteId/new-thread", {
@@ -32,6 +35,7 @@ export const AddToThreadApi = HttpApiGroup.make("addToThread")
       payload: Schema.Struct({
         title: Schema.String,
         areaId: Schema.optional(AreaIdSchema),
+        taskId: Schema.optionalKey(TaskIdSchema),
       }),
       success: NoteAddedToThreadSchema.pipe(HttpApiSchema.status(201)),
     }).annotate(ValidationMessage, "Invalid Thread."),

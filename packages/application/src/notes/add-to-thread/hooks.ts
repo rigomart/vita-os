@@ -8,7 +8,8 @@ import type {
   ThreadNoteId,
 } from "@vita-os/contracts";
 
-import { decideAddNoteToThread, newRecordId } from "@vita-os/core";
+import { useQueryClient } from "@tanstack/react-query";
+import { newRecordId, taskFromNote } from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../../cache/use-application-mutation";
 
@@ -17,12 +18,19 @@ import { afterUndoWindow } from "../../cache/undo-window";
 import { useApplicationMutation } from "../../cache/use-application-mutation";
 import { queryKeys } from "../../query-keys";
 import {
-  settleNoteAddedToThread,
+  settleTaskChange,
   settlePendingThread,
   showNoteAddedToThread,
   showPendingThread,
   threadChangeKeys,
 } from "../../threads/optimistic";
+import {
+  afterTaskCommands,
+  conversionPending,
+  noteConversionKey,
+  noteTaskId,
+  ThreadBusy,
+} from "../../threads/task-queue";
 import { noteKeys, showNoteLeavingOpenNotes } from "../optimistic";
 
 /** The Thread Note a Note becomes, shown before the service mints its own. */
@@ -46,46 +54,63 @@ function patchOpenThreadNotes(
 
 export interface AddNoteToThreadVariables {
   note: Note;
-  /** The Thread as the person chose it; the earlier date is decided from it. */
+  /** The Thread as the person chose it; the Task the Note adds is decided from it. */
   thread: Thread;
   undoWindow?: () => Promise<boolean>;
 }
 
 /**
  * Add an Open Standalone Note to an Open Thread. The Note leaves Notes and the
- * Dashboard at once; the Thread shows the date it may take and the activity
- * stamp, and the Thread Note appears where its creation time puts it. With an
+ * Dashboard at once; the Thread shows the dated Task it may gain and the
+ * activity stamp, and the Thread Note appears where its creation time puts it. With an
  * `undoWindow` the command waits out the Undo offer, so an undone add never
- * reaches the service.
+ * reaches the service. Until the add settles, the Thread takes no Task
+ * command and the Task it shows reads as pending (`useConversionLock`).
  */
 export function useAddNoteToThread(): ApplicationMutationResult<
   AddNoteToThreadVariables,
   NoteAddedToThread,
   ThreadNoteId
 > {
+  const cache = useQueryClient();
   return useApplicationMutation<
     AddNoteToThreadVariables,
     NoteAddedToThread,
     ThreadNoteId
   >({
+    // While pending it locks the Thread's Tasks (`useConversionLock`), and a
+    // second Note into the same Thread is refused until it settles.
+    mutationKey: noteConversionKey,
+    refuse: (variables, cache) =>
+      conversionPending(cache, variables.thread, variables)
+        ? new ThreadBusy()
+        : undefined,
     run: async (client, { note, thread, undoWindow }) => {
       await afterUndoWindow(undoWindow);
-      return client.addNoteToThread({ noteId: note._id, threadId: thread._id });
+      // The Task commands queued before it reach the service first.
+      await afterTaskCommands(cache, thread._id);
+      return client.addNoteToThread({
+        noteId: note._id,
+        threadId: thread._id,
+        taskId: noteTaskId(note),
+      });
     },
     affected: ({ thread }, cache) => [
       ...noteKeys(),
       ...threadChangeKeys(cache, { threadId: thread._id }),
       queryKeys.threadNotes.open(thread._id),
     ],
-    optimistic: (cache, { note, thread }, previousLocal) => {
+    optimistic: (cache, { note, thread }, previousLocal, answered) => {
       const pendingId = previousLocal ?? (newRecordId() as ThreadNoteId);
-      const decision = decideAddNoteToThread(thread, note);
       showNoteLeavingOpenNotes(cache, note._id);
-      showNoteAddedToThread(cache, thread._id, {
-        followUp: decision.patch.followUp,
-        lastActivityAt: Date.now(),
-        lastActivityContent: decision.logs.at(-1)?.content,
-      });
+      // Once answered, the answer carries the Task, unless a newer answer
+      // already shows the Thread without it.
+      if (!answered) {
+        showNoteAddedToThread(cache, thread._id, {
+          task: taskFromNote(note, noteTaskId(note)),
+          lastActivityAt: Date.now(),
+        });
+      }
       patchOpenThreadNotes(cache, thread._id, (notes) =>
         insertNewestFirst(
           notes,
@@ -96,14 +121,14 @@ export function useAddNoteToThread(): ApplicationMutationResult<
       return pendingId;
     },
     reconcile: (cache, added, { thread }, pendingId) => {
-      settleNoteAddedToThread(cache, added.thread);
+      settleTaskChange(cache, added.thread);
       patchOpenThreadNotes(cache, thread._id, (notes) =>
         notes.map((existing) =>
           existing._id === pendingId ? added.threadNote : existing,
         ),
       );
     },
-    // A changed date writes an Activity Log entry, which is read separately.
+    // The Thread's activity is read separately.
     alsoInvalidate: ({ thread }) => [queryKeys.threads.activity(thread._id)],
   });
 }
@@ -115,7 +140,7 @@ export interface CreateThreadFromNoteVariables {
 }
 
 /**
- * Start a Thread from a Note: the Thread appears with the Note's date, the Note
+ * Start a Thread from a Note: the Thread appears with the Note's dated Task, the Note
  * leaves Notes, and the new Thread's Notes are seeded with the Thread Note so
  * its pane opens with the Note inside.
  */
@@ -129,9 +154,11 @@ export function useCreateThreadFromNote(): ApplicationMutationResult<
     NoteAddedToThread,
     ThreadId
   >({
+    mutationKey: noteConversionKey,
     run: (client, { note, title, areaId }) =>
       client.createThreadFromNote({
         noteId: note._id,
+        taskId: noteTaskId(note),
         title,
         ...(areaId === undefined ? {} : { areaId }),
       }),
@@ -148,14 +175,9 @@ export function useCreateThreadFromNote(): ApplicationMutationResult<
         { title, ...(areaId === undefined ? {} : { areaId }) },
         { id: pendingId, now },
       );
-      const decision = decideAddNoteToThread(
-        { title, slug: "", state: "open" },
-        note,
-      );
       showNoteAddedToThread(cache, pendingId, {
-        followUp: decision.patch.followUp,
+        task: taskFromNote(note, noteTaskId(note)),
         lastActivityAt: now,
-        lastActivityContent: decision.logs.at(-1)?.content,
       });
       return pendingId;
     },

@@ -108,8 +108,8 @@ export function ThreadLifecycleMenu({
           <AlertDialogHeader>
             <AlertDialogTitle>Resolve thread?</AlertDialogTitle>
             <AlertDialogDescription>
-              &ldquo;{thread.title}&rdquo; will be marked as resolved. Its Tasks
-              and Follow-up date will be cleared.
+              &ldquo;{thread.title}&rdquo; will be marked as resolved. Its
+              Tasks, dated ones included, will be cleared.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex flex-col gap-2">

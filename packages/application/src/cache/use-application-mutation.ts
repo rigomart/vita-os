@@ -47,11 +47,15 @@ export interface ApplicationMutationOptions<TVariables, TValue, TLocal = void> {
    * The change to show immediately. Whatever it returns — the ID it minted for a
    * pending record, say — is handed back to `reconcile`. This callback must only
    * change the cache: it can be replayed when another command settles.
+   * `answered` is true once the service's answer follows it in the replay: a
+   * command whose answer carries the whole change can then show nothing of
+   * its own, so it never reapplies the change over a newer answer.
    */
   optimistic?: (
     cache: QueryClient,
     variables: TVariables,
     previousLocal: TLocal | undefined,
+    answered: boolean,
   ) => TLocal;
   /** The service's answer, folded into what is on screen. */
   reconcile?: (
@@ -68,6 +72,13 @@ export interface ApplicationMutationOptions<TVariables, TValue, TLocal = void> {
    * reads what the previous one wrote — the revision it must carry — needs it.
    */
   scope?: string;
+  /** Names the command for `useMutationState`, so a surface can tell it is pending. */
+  mutationKey?: readonly unknown[];
+  /**
+   * A reason to refuse the command outright, decided when it is issued and
+   * before anything shows: the command fails with it and reaches nothing.
+   */
+  refuse?: (variables: TVariables, cache: QueryClient) => Error | undefined;
 }
 
 interface MutationBatch {
@@ -144,12 +155,17 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
   return useMutation<TValue, ApplicationError, TVariables, Snapshot<TLocal>>({
     retry: false,
     ...(options.scope === undefined ? {} : { scope: { id: options.scope } }),
+    ...(options.mutationKey === undefined
+      ? {}
+      : { mutationKey: options.mutationKey }),
     mutationFn: async (variables) => {
       const result = await options.run(client, variables);
       if (!result.ok) throw result.error;
       return result.value;
     },
     onMutate: async (variables) => {
+      const refusal = options.refuse?.(variables, cache);
+      if (refusal !== undefined) throw refusal;
       let batch = batches.get(cache);
       if (!batch) {
         batch = {
@@ -200,6 +216,7 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
               cache,
               variables,
               snapshot.local,
+              false,
             );
           },
         },
@@ -214,9 +231,13 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
     },
     onSuccess: (value, variables, snapshot) => {
       if (!snapshot) return;
-      const optimistic = snapshot.layer.apply;
       snapshot.layer.apply = () => {
-        optimistic();
+        snapshot.local = options.optimistic?.(
+          cache,
+          variables,
+          snapshot.local,
+          true,
+        );
         options.reconcile?.(cache, value, variables, snapshot.local);
       };
     },

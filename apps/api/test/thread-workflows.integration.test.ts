@@ -13,6 +13,9 @@ import type { Session } from "./sessions";
 
 import { call, createSession, expectError, succeed } from "./sessions";
 
+/** A Thread as the API still answers it during the compatibility window (ADR 0032). */
+type CompatThread = Thread & { followUp?: number };
+
 async function createArea(session: Session, name = "Family Health") {
   return succeed<AreaSummary>("/v1/areas", {
     method: "POST",
@@ -161,17 +164,18 @@ describe("Thread creation", () => {
 describe("Thread changes", () => {
   it("stamps the Thread's denormalized last activity with the newest entry", async () => {
     const owner = await createSession("thread-last-activity");
-    const area = await createArea(owner);
-    const thread = await createThread(owner, area);
+    const from = await createArea(owner, "Health");
+    const to = await createArea(owner, "Home");
+    const thread = await createThread(owner, from);
 
     await succeed(`/v1/threads/${thread._id}`, {
       method: "PATCH",
       session: owner,
-      body: { followUp: Date.UTC(2026, 4, 20) },
+      body: { areaId: to._id },
     });
     const detail = await detailOf(owner, thread);
 
-    expect(detail.thread.lastActivityContent).toBe("Follow-up set");
+    expect(detail.thread.lastActivityContent).toMatch(/^Moved from /);
     expect(detail.thread.lastActivityAt).toEqual(expect.any(Number));
   });
 
@@ -191,46 +195,103 @@ describe("Thread changes", () => {
   });
 });
 
-describe("Follow-up changes", () => {
-  it("records a Follow-up's timestamp for the reader to write, and clearing it", async () => {
-    const owner = await createSession("thread-follow-up");
-    const area = await createArea(owner);
-    const thread = await createThread(owner, area);
-    const may20 = Date.UTC(2026, 4, 20);
+describe("a Thread's Follow-up date (compatibility window, ADR 0032)", () => {
+  const may20 = Date.UTC(2026, 4, 20);
+  const jun1 = Date.UTC(2026, 5, 1);
 
-    const scheduled = await succeed<Thread>(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { followUp: may20 },
-    });
-    const cleared = await succeed<Thread>(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { followUp: null },
-    });
+  async function datedThread(session: Session, dates: (number | null)[]) {
+    const area = await createArea(session);
+    let thread = await addTasks(
+      session,
+      await createThread(session, area),
+      dates.map((_date, index) => `Task ${index + 1}`),
+    );
+    for (const [index, date] of dates.entries()) {
+      if (date === null) continue;
+      thread = await succeed<Thread>(
+        `/v1/threads/${thread._id}/tasks/${thread.tasks![index]!._id}/date`,
+        {
+          method: "PUT",
+          session,
+          body: { date, expectedRevision: thread.revision },
+        },
+      );
+    }
+    return thread as CompatThread;
+  }
 
-    expect(scheduled.followUp).toBe(may20);
-    expect(cleared).not.toHaveProperty("followUp");
+  it("is derived from the soonest dated Task, and absent without one", async () => {
+    const owner = await createSession("thread-derived-follow-up");
+
+    const dated = await datedThread(owner, [jun1, null, may20]);
+    expect(dated.followUp).toBe(may20);
     expect(
-      (await activityOf(owner, thread)).map(
-        ({ content, previousValue, newValue }) => ({
-          content,
-          previousValue,
-          newValue,
+      ((await detailOf(owner, dated)).thread as CompatThread).followUp,
+    ).toBe(may20);
+    expect(
+      (await succeed<CompatThread[]>("/v1/threads", { session: owner })).find(
+        (thread) => thread._id === dated._id,
+      )?.followUp,
+    ).toBe(may20);
+
+    const undated = await datedThread(owner, [null, null]);
+    expect(undated).not.toHaveProperty("followUp");
+  });
+
+  it.each([
+    ["a date", { followUp: may20 }],
+    ["clearing it", { followUp: null }],
+    ["a date beside another change", { followUp: may20, title: "Renamed" }],
+  ])(
+    "refuses %s as a conflict not worth retrying, writing nothing",
+    async (_case, body) => {
+      const owner = await createSession("thread-follow-up-refused");
+      const thread = await datedThread(owner, [jun1]);
+
+      expectError(
+        await call(`/v1/threads/${thread._id}`, {
+          method: "PATCH",
+          session: owner,
+          body,
         }),
-      ),
-    ).toEqual([
-      {
-        content: "Follow-up set",
-        previousValue: undefined,
-        newValue: `${may20}`,
-      },
-      {
-        content: "Follow-up cleared",
-        previousValue: `${may20}`,
-        newValue: undefined,
-      },
-    ]);
+        {
+          status: 409,
+          code: "conflict",
+          message:
+            "A Thread no longer has a Follow-up date. Give one of its Tasks a date instead.",
+        },
+      );
+
+      const after = (await detailOf(owner, thread)).thread;
+      expect(after).toEqual(thread);
+      expect(after.title).toBe(thread.title);
+      expect(await activityOf(owner, thread)).toEqual([]);
+      expect(
+        await env.DB.prepare("SELECT follow_up FROM threads WHERE id = ?")
+          .bind(thread._id)
+          .first(),
+      ).toEqual({ follow_up: null });
+    },
+  );
+
+  it("writes no follow_up_change entry for any Thread change", async () => {
+    const owner = await createSession("thread-no-follow-up-entry");
+    const thread = await datedThread(owner, [may20]);
+
+    await succeed(`/v1/threads/${thread._id}`, {
+      method: "PATCH",
+      session: owner,
+      body: { title: "Renamed" },
+    });
+    await succeed(`/v1/threads/${thread._id}`, {
+      method: "PATCH",
+      session: owner,
+      body: { state: "resolved" },
+    });
+
+    expect(
+      (await activityOf(owner, thread)).map((entry) => entry.type),
+    ).toEqual(["state_change"]);
   });
 });
 
@@ -241,17 +302,17 @@ describe("entries written by one change", () => {
     const to = await createArea(owner, "Home");
     const thread = await createThread(owner, from);
 
-    // One change that earns two entries: the Area move and the date.
+    // One change that earns two entries: the Area move and the resolution.
     await succeed(`/v1/threads/${thread._id}`, {
       method: "PATCH",
       session: owner,
-      body: { areaId: to._id, followUp: Date.UTC(2026, 4, 20) },
+      body: { areaId: to._id, state: "resolved" },
     });
 
     const fromOneChange = await activityOf(owner, thread);
     expect(fromOneChange.map((entry) => entry.type)).toEqual([
       "area_move",
-      "follow_up_change",
+      "state_change",
     ]);
     // They share the instant, so the order can only come from their IDs.
     expect(new Set(fromOneChange.map((entry) => entry.createdAt)).size).toBe(1);
@@ -407,15 +468,20 @@ describe("Thread lifecycle", () => {
     const owner = await createSession("thread-resolve");
     const area = await createArea(owner);
     const thread = await createThread(owner, area);
-    const scheduled = await succeed<Thread>(`/v1/threads/${thread._id}`, {
-      method: "PATCH",
-      session: owner,
-      body: { followUp: Date.UTC(2026, 4, 20) },
-    });
-    const withTasks = await addTasks(owner, scheduled, [
+    const added = await addTasks(owner, thread, [
       "Call clinic",
       "Book appointment",
     ]);
+    // A dated Task is discarded with the rest, and named like them.
+    const withTasks = await succeed<CompatThread>(
+      `/v1/threads/${thread._id}/tasks/${added.tasks![0]!._id}/date`,
+      {
+        method: "PUT",
+        session: owner,
+        body: { date: Date.UTC(2026, 4, 20), expectedRevision: added.revision },
+      },
+    );
+    expect(withTasks.followUp).toBe(Date.UTC(2026, 4, 20));
     await succeed(`/v1/threads/${thread._id}/focus`, {
       method: "PUT",
       session: owner,
@@ -476,7 +542,7 @@ describe("Thread deletion", () => {
     await succeed(`/v1/threads/${thread._id}`, {
       method: "PATCH",
       session: owner,
-      body: { followUp: Date.UTC(2026, 4, 20) },
+      body: { state: "resolved" },
     });
     await succeed<ThreadNote>(`/v1/threads/${thread._id}/notes`, {
       method: "POST",

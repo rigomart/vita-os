@@ -7,14 +7,13 @@
  */
 
 export interface ThreadAttentionInput {
-  followUp?: number | null;
-  tasks?: readonly unknown[];
+  tasks?: readonly { date?: number }[];
   order: number;
 }
 
 /**
- * A Thread with at least one Task and no Follow-up is ready to move. Focus and
- * the number of Tasks never decide a group: timing belongs to Follow-ups.
+ * A Thread with Tasks and no dated one is ready to move. Focus and the number
+ * of Tasks never decide a group: timing belongs to dated Tasks.
  */
 export interface ThreadAttentionGroups<TThread> {
   open: TThread[];
@@ -24,6 +23,29 @@ export interface ThreadAttentionGroups<TThread> {
 }
 
 const DAY = 86_400_000;
+
+/** The earliest date any of the Tasks carries, or `undefined` when none is dated. */
+export function soonestTaskDate(
+  tasks: readonly { date?: number }[] | undefined,
+): number | undefined {
+  let soonest: number | undefined;
+  for (const task of tasks ?? []) {
+    if (
+      task.date !== undefined &&
+      (soonest === undefined || task.date < soonest)
+    ) {
+      soonest = task.date;
+    }
+  }
+  return soonest;
+}
+
+/** When a Thread comes back: its soonest dated Task. */
+export function attentionDate(thread: {
+  tasks?: readonly { date?: number }[];
+}): number | undefined {
+  return soonestTaskDate(thread.tasks);
+}
 
 export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(
   threads: TThread[],
@@ -39,8 +61,9 @@ export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(
   };
 
   for (const thread of threads) {
-    if (thread.followUp != null) {
-      if (getDayKey(thread.followUp, timezoneOffsetMinutes) < today) {
+    const date = attentionDate(thread);
+    if (date !== undefined) {
+      if (getDayKey(date, timezoneOffsetMinutes) < today) {
         groups.overdue.push(thread);
       } else {
         groups.upcoming.push(thread);
@@ -52,8 +75,8 @@ export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(
     }
   }
 
-  groups.overdue.sort(compareFollowUps);
-  groups.upcoming.sort(compareFollowUps);
+  groups.overdue.sort(compareDates);
+  groups.upcoming.sort(compareDates);
   groups.withTasks.sort(compareThreadOrder);
   groups.open.sort(compareThreadOrder);
 
@@ -105,11 +128,14 @@ function getDayKey(timestamp: number, timezoneOffsetMinutes?: number) {
   return Math.floor((timestamp - timezoneOffsetMinutes * 60_000) / DAY);
 }
 
-function compareFollowUps<TThread extends ThreadAttentionInput>(
+function compareDates<TThread extends ThreadAttentionInput>(
   a: TThread,
   b: TThread,
 ) {
-  return (a.followUp ?? 0) - (b.followUp ?? 0) || compareThreadOrder(a, b);
+  return (
+    (attentionDate(a) ?? 0) - (attentionDate(b) ?? 0) ||
+    compareThreadOrder(a, b)
+  );
 }
 
 function compareThreadOrder<TThread extends ThreadAttentionInput>(

@@ -6,6 +6,7 @@ import type {
   EditTaskInput,
   FocusTaskInput,
   RemoveTaskInput,
+  SetTaskDateInput,
   Thread,
   ThreadDetail,
   ThreadId,
@@ -21,6 +22,7 @@ import {
   decideEditTask,
   decideFocusTask,
   decideRemoveTask,
+  decideSetTaskDate,
   decideThreadUpdate,
   generateSlug,
   requireTaskId,
@@ -38,7 +40,7 @@ import { attempt, database } from "../../platform/operation";
 import { RequestContext } from "../../platform/request-scope";
 import { areaNotFound } from "../areas/errors";
 import { areaStorage } from "../areas/storage";
-import { moveConflict, threadNotFound } from "./errors";
+import { followUpMoved, moveConflict, threadNotFound } from "./errors";
 import { isThreadSlugTaken, threadStorage } from "./storage";
 
 /**
@@ -108,7 +110,7 @@ export function createThread(input: CreateThreadInput): Operation<Thread> {
 }
 
 /**
- * One Thread edit: title, Summary, Area, Follow-up, or lifecycle.
+ * One Thread edit: title, Summary, Area, or lifecycle.
  * The Activity Log the change earns is written with it or not at all.
  */
 export function updateThread({
@@ -167,12 +169,22 @@ export function updateThread({
   });
 }
 
+/**
+ * Compatibility (ADR 0032, removal in #402): a Thread has no Follow-up date
+ * any more, so an old client's request to set one is refused and writes
+ * nothing.
+ */
+export function refuseThreadFollowUp(): Operation<Thread> {
+  return Effect.fail(followUpMoved());
+}
+
 /** A new Task joins the end of the Thread's Tasks, unfocused. */
 export function addTask(input: AddTaskInput): Operation<Thread> {
   return Effect.gen(function* () {
     const task = yield* attempt(() => ({
       _id: requireTaskId(input.taskId),
       text: requireTaskText(input.text),
+      ...(input.date === undefined ? {} : { date: input.date }),
     }));
     return yield* changeTasks(input, (thread) => decideAddTask(thread, task));
   });
@@ -204,6 +216,13 @@ export function completeTask(input: CompleteTaskInput): Operation<Thread> {
 
 export function focusTask(input: FocusTaskInput): Operation<Thread> {
   return changeTasks(input, (thread) => decideFocusTask(thread, input.taskId));
+}
+
+/** Set, change or clear one Task's date. It writes no Activity Log entry. */
+export function setTaskDate(input: SetTaskDateInput): Operation<Thread> {
+  return changeTasks(input, (thread) =>
+    decideSetTaskDate(thread, input.taskId, input.date),
+  );
 }
 
 export function removeThread(input: {

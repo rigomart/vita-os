@@ -15,7 +15,14 @@ const currentDate = new Date(2026, 6, 17, 12).getTime();
 const day = (offset: number) => currentDate + offset * DAY;
 const task = (text: string) => ({ _id: text as TaskId, text });
 
-function thread(id: string, fields: Partial<Thread> = {}): Thread {
+/**
+ * `followUp` reads as "the date this Thread comes back": the Thread holds a
+ * Task with that date, which is all that places a Thread.
+ */
+function thread(
+  id: string,
+  { followUp, ...fields }: Partial<Thread> & { followUp?: number } = {},
+): Thread {
   return {
     _id: id as Thread["_id"],
     title: id,
@@ -26,6 +33,14 @@ function thread(id: string, fields: Partial<Thread> = {}): Thread {
     revision: 0,
     createdAt: currentDate,
     ...fields,
+    ...(followUp === undefined
+      ? {}
+      : {
+          tasks: [
+            ...(fields.tasks ?? []),
+            { _id: `due-${id}` as TaskId, text: "Follow up", date: followUp },
+          ],
+        }),
   } as Thread;
 }
 
@@ -198,22 +213,6 @@ describe("buildAttentionBoard", () => {
     expect(ids).toHaveLength(threads.length + notes.length);
     expect(new Set(ids).size).toBe(ids.length);
     expect(unscheduledCount(board)).toBe(3);
-  });
-
-  it("treats a null Follow-up as unscheduled", () => {
-    const board = buildAttentionBoard(
-      [
-        {
-          ...thread("cleared"),
-          // Cleared optional fields arrive as null.
-          followUp: null,
-        } as unknown as Thread,
-      ],
-      [],
-      currentDate,
-    );
-
-    expect(board.unscheduled.open.map(itemId)).toEqual(["cleared"]);
   });
 });
 
