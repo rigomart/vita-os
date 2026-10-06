@@ -21,7 +21,7 @@ import {
 } from "../../test/fake-application-client";
 import { aThread, aThreadNote } from "../../test/fixtures";
 import { createHarness } from "../../test/harness";
-import { noteTaskId } from "../../threads/pending-conversions";
+import { noteTaskId, usePendingTaskIds } from "../../threads/task-queue";
 import { useTasks } from "../../threads/use-tasks";
 import { useAddNoteToThread, useCreateThreadFromNote } from "./hooks";
 
@@ -36,7 +36,7 @@ const note: Note = {
 const thread = aThread({ revision: 4 });
 
 describe("a Task made by adding a Note to a Thread", () => {
-  it("is named once, sent, and can be completed during the Undo window: the command lands after the conversion", async () => {
+  it("is named once, pending through the Undo window and the request, then completed against the revision the conversion left", async () => {
     const undo = deferred<boolean>();
     const conversion = deferred<OperationResult<NoteAddedToThread>>();
     const taskId = noteTaskId(note);
@@ -64,16 +64,17 @@ describe("a Task made by adding a Note to a Thread", () => {
     );
     const { result: add } = renderHook(() => useAddNoteToThread(), { wrapper });
     const { result: tasks } = renderHook(() => useTasks(thread), { wrapper });
+    const { result: pending } = renderHook(() => usePendingTaskIds(), {
+      wrapper,
+    });
 
     act(() => {
       add.current.mutate({ note, thread, undoWindow: () => undo.promise });
     });
-    await act(async () => {
-      void tasks.current.complete(taskId);
-    });
-    // Nothing reaches the service while the Undo window is open.
+    // Nothing reaches the service while the Undo window is open, and the
+    // Task it shows is pending.
+    await waitFor(() => expect(pending.current.has(taskId)).toBe(true));
     expect(addNoteToThread).not.toHaveBeenCalled();
-    expect(completeTask).not.toHaveBeenCalled();
 
     await act(async () => undo.resolve(true));
     await waitFor(() =>
@@ -83,7 +84,7 @@ describe("a Task made by adding a Note to a Thread", () => {
         taskId,
       }),
     );
-    expect(completeTask).not.toHaveBeenCalled();
+    expect(pending.current.has(taskId)).toBe(true);
 
     await act(async () =>
       conversion.resolve(
@@ -97,14 +98,16 @@ describe("a Task made by adding a Note to a Thread", () => {
         }),
       ),
     );
+    await waitFor(() => expect(pending.current.size).toBe(0));
 
-    await waitFor(() =>
-      expect(completeTask).toHaveBeenCalledExactlyOnceWith({
-        threadId: thread._id,
-        taskId,
-        expectedRevision: 5,
-      }),
-    );
+    await act(async () => {
+      await tasks.current.complete(taskId);
+    });
+    expect(completeTask).toHaveBeenCalledExactlyOnceWith({
+      threadId: thread._id,
+      taskId,
+      expectedRevision: 5,
+    });
   });
 });
 
@@ -235,7 +238,7 @@ describe("converting Notes beside other Task commands", () => {
     const completeTask = vi.fn(async (input: { expectedRevision: number }) =>
       success<Thread>({ ...thread, revision: input.expectedRevision + 1 }),
     );
-    const { wrapper } = setup(
+    const { wrapper, open } = setup(
       createFakeApplicationClient({
         completeTask,
         addNoteToThread: vi
@@ -247,6 +250,9 @@ describe("converting Notes beside other Task commands", () => {
     );
     const { result: add } = renderHook(() => useAddNoteToThread(), { wrapper });
     const { result: tasks } = renderHook(() => useTasks(thread), { wrapper });
+    const { result: pending } = renderHook(() => usePendingTaskIds(), {
+      wrapper,
+    });
     const both = [
       { _id: noteTaskId(note), text: "Call the dentist", date },
       { _id: noteTaskId(second), text: "Pay the bill", date },
@@ -256,13 +262,16 @@ describe("converting Notes beside other Task commands", () => {
       add.current.mutate({ note, thread });
       add.current.mutate({ note: second, thread });
     });
-    await act(async () => {
-      void tasks.current.complete(noteTaskId(note));
-    });
     await act(async () => firstConversion.resolve(added(both, 6)));
     await act(async () => secondConversion.resolve(added(both.slice(1), 5)));
+    await waitFor(() => expect(pending.current.size).toBe(0));
+    expect(open()?.revision).toBe(6);
+    expect(open()?.tasks).toEqual(both);
 
-    await waitFor(() => expect(completeTask).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await tasks.current.complete(noteTaskId(note));
+    });
+    expect(completeTask).toHaveBeenCalledTimes(1);
     expect(completeTask).toHaveBeenCalledWith(
       expect.objectContaining({ expectedRevision: 6 }),
     );

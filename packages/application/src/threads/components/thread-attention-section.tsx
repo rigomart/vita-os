@@ -1,6 +1,7 @@
 import type { Thread } from "@vita-os/contracts";
 
 import { useAttentionClock } from "../../hooks/use-attention-clock";
+import { usePendingTaskIds } from "../task-queue";
 import { useTasks } from "../use-tasks";
 import { ThreadAttention } from "./thread-attention";
 
@@ -15,10 +16,12 @@ export function ThreadAttentionSection({
   // Not single-flighted: Task commands queue per Thread and each shows its
   // change at once, so quick successive edits compose instead of racing.
   const tasks = useTasks(thread);
+  const pendingTaskIds = usePendingTaskIds();
 
   return (
     <ThreadAttention
       tasks={thread.tasks ?? []}
+      pendingTaskIds={pendingTaskIds}
       {...(thread.focusedTaskId === undefined
         ? {}
         : { focusedTaskId: thread.focusedTaskId })}

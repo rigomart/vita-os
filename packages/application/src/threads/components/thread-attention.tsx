@@ -18,6 +18,11 @@ interface ThreadAttentionProps {
   /** Every Task, in the order it was captured. */
   tasks: readonly Task[];
   focusedTaskId?: TaskId;
+  /**
+   * Tasks shown but not yet at the service — a Note being added to the
+   * Thread. They read as pending and take no command until they get there.
+   */
+  pendingTaskIds?: ReadonlySet<TaskId>;
   /** The shared attention clock, so lateness matches every other surface. */
   now: number;
   onAddTask: (text: string) => void;
@@ -48,6 +53,7 @@ interface ThreadAttentionProps {
 export function ThreadAttention({
   tasks,
   focusedTaskId,
+  pendingTaskIds,
   now,
   onAddTask,
   onEditTask,
@@ -66,6 +72,7 @@ export function ThreadAttention({
       task={task}
       now={now}
       focused={task._id === focusedTaskId}
+      pending={pendingTaskIds?.has(task._id) ?? false}
       onEdit={(text) => onEditTask(task._id, text)}
       onRemove={() => onRemoveTask(task._id)}
       onComplete={() => onCompleteTask(task._id)}
@@ -126,12 +133,14 @@ export function ThreadAttention({
 
 /**
  * One Task: a line, not a card. The radio says whether it is the one; the
- * focused line is tinted in place so the list never reorders to show it.
+ * focused line is tinted in place so the list never reorders to show it. A
+ * pending Task is dimmed and says so, with every control disabled.
  */
 function TaskRow({
   task,
   now,
   focused,
+  pending,
   onEdit,
   onRemove,
   onComplete,
@@ -141,6 +150,7 @@ function TaskRow({
   task: Task;
   now: number;
   focused: boolean;
+  pending: boolean;
   onEdit: (text: string) => void;
   onRemove: () => void;
   onComplete: () => void;
@@ -156,20 +166,24 @@ function TaskRow({
   return (
     <li
       data-focused={focused || undefined}
+      data-pending={pending || undefined}
+      aria-busy={pending || undefined}
       className={cn(
         "group/task flex min-h-10 items-center gap-2 rounded-lg px-1.5 py-1 transition-colors motion-reduce:transition-none xl:min-h-9",
         focused
           ? "bg-brand-accent/12 font-medium"
           : "text-foreground/90 hover:bg-muted/50",
+        pending && "opacity-60",
       )}
     >
       <button
         type="button"
+        disabled={pending}
         onClick={onToggleFocus}
         aria-pressed={focused}
         aria-label={focused ? "Unfocus this task" : "Focus this task"}
         title={focused ? "Unfocus this task" : "Focus this task"}
-        className="group/radio flex size-8 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40 xl:size-6"
+        className="group/radio flex size-8 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none xl:size-6"
       >
         <span
           aria-hidden
@@ -193,6 +207,7 @@ function TaskRow({
             if (text) onEdit(text);
           }}
           inputAriaLabel="Task"
+          disabled={pending}
           className="min-h-0 py-0.5 text-sm leading-snug"
           displayClassName="border-transparent hover:bg-transparent"
         />
@@ -201,6 +216,9 @@ function TaskRow({
       {/* Always reachable on touch; on the wide rail the row stays clean until
           it is hovered or focused. */}
       <span className="flex shrink-0 items-center gap-0.5">
+        {pending && (
+          <span className="px-1 text-2xs text-muted-foreground">Adding…</span>
+        )}
         <WhenPopover
           when={task.date}
           clearLabel={taskDateLabels.clear}
@@ -209,6 +227,7 @@ function TaskRow({
             dateLabel === undefined ? (
               <Button
                 variant="ghost"
+                disabled={pending}
                 size="icon-xs"
                 aria-label={taskDateLabels.set}
                 title={taskDateLabels.set}
@@ -219,6 +238,7 @@ function TaskRow({
             ) : (
               <Button
                 variant="ghost"
+                disabled={pending}
                 size="xs"
                 aria-label={`${taskDateLabels.change}: ${dateLabel}`}
                 title={taskDateLabels.change}
@@ -242,6 +262,7 @@ function TaskRow({
         />
         <Button
           variant="ghost"
+          disabled={pending}
           size="icon-xs"
           onClick={onRemove}
           aria-label="Remove task"
@@ -252,6 +273,7 @@ function TaskRow({
         </Button>
         <Button
           variant="ghost"
+          disabled={pending}
           size="icon-xs"
           onClick={onComplete}
           aria-label="Complete task"

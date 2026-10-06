@@ -68,12 +68,23 @@ export interface ApplicationMutationOptions<TVariables, TValue, TLocal = void> {
    * reads what the previous one wrote — the revision it must carry — needs it.
    */
   scope?: string;
+  /** Names the command for `useMutationState`, so a surface can tell it is pending. */
+  mutationKey?: readonly unknown[];
+}
+
+/**
+ * One command's change to the reads: its optimistic change, followed by the
+ * service's answer once it has one, or nothing once the command has failed.
+ */
+interface Layer {
+  apply: () => void;
+  settled: boolean;
 }
 
 interface MutationBatch {
   pending: number;
   base: Map<string, [QueryKey, unknown]>;
-  layers: Array<{ apply: () => void }>;
+  layers: Layer[];
   invalidate: Map<string, QueryKey>;
   /** Pending commands per scope; a scope's memo goes when its count reaches 0. */
   scopes: Map<string, number>;
@@ -86,7 +97,7 @@ interface MutationBatch {
 
 interface Snapshot<TLocal> {
   batch: MutationBatch;
-  layer: { apply: () => void };
+  layer: Layer;
   local: TLocal | undefined;
 }
 
@@ -105,11 +116,18 @@ export function queueMemo(
   return batches.get(cache)?.memo;
 }
 
+/**
+ * Rebuild the reads from what they held before the batch: every settled
+ * command in the order it was issued, then every pending one on top. A
+ * pending change has not reached the service, so an answer that came back
+ * meanwhile cannot contain it and must not wipe it from the screen.
+ */
 function replay(cache: QueryClient, batch: MutationBatch) {
   notifyManager.batch(() => {
     for (const [key, value] of batch.base.values())
       cache.setQueryData(key, value);
-    for (const layer of batch.layers) layer.apply();
+    for (const layer of batch.layers) if (layer.settled) layer.apply();
+    for (const layer of batch.layers) if (!layer.settled) layer.apply();
   });
 }
 
@@ -144,6 +162,9 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
   return useMutation<TValue, ApplicationError, TVariables, Snapshot<TLocal>>({
     retry: false,
     ...(options.scope === undefined ? {} : { scope: { id: options.scope } }),
+    ...(options.mutationKey === undefined
+      ? {}
+      : { mutationKey: options.mutationKey }),
     mutationFn: async (variables) => {
       const result = await options.run(client, variables);
       if (!result.ok) throw result.error;
@@ -202,6 +223,7 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
               snapshot.local,
             );
           },
+          settled: false,
         },
         local: undefined,
       };
@@ -210,7 +232,9 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
       return snapshot;
     },
     onError: (_error, _variables, snapshot) => {
-      if (snapshot) snapshot.layer.apply = () => {};
+      if (!snapshot) return;
+      snapshot.layer.apply = () => {};
+      snapshot.layer.settled = true;
     },
     onSuccess: (value, variables, snapshot) => {
       if (!snapshot) return;
@@ -219,6 +243,7 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
         optimistic();
         options.reconcile?.(cache, value, variables, snapshot.local);
       };
+      snapshot.layer.settled = true;
     },
     onSettled: (_value, _error, _variables, snapshot) => {
       if (!snapshot) return;

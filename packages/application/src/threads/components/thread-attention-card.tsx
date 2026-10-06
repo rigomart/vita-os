@@ -25,10 +25,12 @@ import {
   dateToneClassName,
   dayDelta,
 } from "../../dashboard/components/dashboard-model";
-import { useCompleteTask, useTaskDates } from "../use-tasks";
+import { useCompleteTask, usePendingTaskIds, useTaskDates } from "../use-tasks";
 
 /** Past this many Tasks the pips stop growing and a count takes over. */
 const MAX_PIPS = 6;
+
+const noPendingTasks: ReadonlySet<TaskId> = new Set();
 
 /**
  * One Thread on the board, in the three rows every `BoardCard` keeps.
@@ -55,6 +57,7 @@ export function ThreadAttentionCard({
   onCompleteTask,
   onSetTaskDate,
   onTray,
+  pendingTaskIds = noPendingTasks,
   thread,
 }: {
   actions?: ReactNode;
@@ -68,6 +71,8 @@ export function ThreadAttentionCard({
   /** Sets, changes or (with `null`) clears one Task's date. */
   onSetTaskDate: (taskId: TaskId, date: number | null) => void;
   onTray?: boolean;
+  /** Tasks shown but not yet at the service. */
+  pendingTaskIds?: ReadonlySet<TaskId>;
   thread: Thread;
 }) {
   const tasks = thread.tasks ?? [];
@@ -78,10 +83,21 @@ export function ThreadAttentionCard({
   // What the picker holds: the shown Task's own date. A card with no single
   // Task opens it empty, and a date set there adds a Task.
   const taskDate = lead?.date;
+  // A Task still on its way to the service (a Note being added) takes no
+  // command yet: its date reads but does not open, and it cannot be completed.
+  const leadPending = lead !== undefined && pendingTaskIds.has(lead._id);
   const showsDate = showsBoardDate(taskDate, dateInHeading);
   const showsPlacedDate =
     taskDate === undefined && showsBoardDate(placedBy, dateInHeading);
-  const dateControl = (
+  const dateControl = leadPending ? (
+    taskDate !== undefined && (
+      <PlacedDate
+        currentDate={currentDate}
+        inHeading={dateInHeading}
+        when={taskDate}
+      />
+    )
+  ) : (
     <BoardDate
       currentDate={currentDate}
       inHeading={dateInHeading}
@@ -129,8 +145,8 @@ export function ThreadAttentionCard({
               />
             )}
             <span className="flex items-center gap-1.5">
-              {!showsDate && dateControl}
-              {lead !== undefined && (
+              {!showsDate && !leadPending && dateControl}
+              {lead !== undefined && !leadPending && (
                 <BoardCompleteButton
                   label={`Complete “${lead.text}”`}
                   onClick={() => onCompleteTask(lead._id)}
@@ -180,11 +196,20 @@ export function ThreadAttentionCard({
               {tasks.length} tasks · none focused
             </span>
           ) : (
-            <span className="line-clamp-3 min-w-0 flex-1 text-foreground/75">
+            <span
+              aria-busy={leadPending || undefined}
+              className={cn(
+                "line-clamp-3 min-w-0 flex-1 text-foreground/75",
+                leadPending && "opacity-60",
+              )}
+            >
               <span className="sr-only">
                 {focused ? "Focused Task: " : "Task: "}
               </span>
               {lead.text}
+              {leadPending && (
+                <span className="text-muted-foreground"> · adding…</span>
+              )}
             </span>
           )}
         </div>
@@ -208,9 +233,11 @@ export function ConnectedThreadAttentionCard({
 }) {
   const completeTask = useCompleteTask(thread);
   const taskDates = useTaskDates(thread);
+  const pendingTaskIds = usePendingTaskIds();
 
   return (
     <ThreadAttentionCard
+      pendingTaskIds={pendingTaskIds}
       area={area}
       currentDate={currentDate}
       dateInHeading={dateInHeading}

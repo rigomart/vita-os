@@ -6,6 +6,8 @@ import { useFeedback } from "@vita-os/ui/lib/feedback";
 
 import { CommandDropped, useTaskCommand } from "./hooks";
 
+export { usePendingTaskIds } from "./task-queue";
+
 /**
  * A Task command never throws at the surface that issued it. A refusal has
  * already been rolled back on screen; this names it for the person, so a Task

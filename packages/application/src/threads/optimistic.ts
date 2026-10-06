@@ -315,19 +315,33 @@ export function showTaskChange(
  * The service's answer to a Task command. Only what that command can change is
  * taken from it — the Tasks, the focus, the revision, and the last activity a
  * completion stamps — so an unrelated change still in flight keeps showing.
- * The revision is what the next queued command carries.
+ * An answer older than what the read already shows changes nothing
+ * (`newerAnswer`).
  */
 export function settleTaskChange(cache: QueryClient, settled: Thread): void {
   patchThreadEverywhere(cache, settled._id, (thread) =>
-    withoutAbsent({
-      ...thread,
-      tasks: settled.tasks,
-      focusedTaskId: settled.focusedTaskId,
-      revision: Math.max(thread.revision, settled.revision),
-      lastActivityAt: settled.lastActivityAt,
-      lastActivityContent: settled.lastActivityContent,
-    }),
+    newerAnswer(thread, settled)
+      ? withoutAbsent({
+          ...thread,
+          tasks: settled.tasks,
+          focusedTaskId: settled.focusedTaskId,
+          revision: settled.revision,
+          lastActivityAt: settled.lastActivityAt,
+          lastActivityContent: settled.lastActivityContent,
+        })
+      : thread,
   );
+}
+
+/**
+ * Whether an answer may replace what a read shows of the Thread. Answers are
+ * replayed in the order their commands were issued, not the order the
+ * service applied them, so an older one can come after a newer one: taking
+ * its Tasks would show old Tasks under the newer revision. A read's Tasks
+ * and its revision always move together, and never backwards.
+ */
+function newerAnswer(thread: Thread, settled: Thread): boolean {
+  return settled.revision >= thread.revision;
 }
 
 /**
@@ -358,20 +372,23 @@ export function showNoteAddedToThread(
 
 /**
  * The service's answer to adding a Note: only what that command changes — the
- * Tasks, the activity stamp, and the revision the next command carries.
+ * Tasks, the activity stamp, and the revision — unless the read already
+ * shows a newer one.
  */
 export function settleNoteAddedToThread(
   cache: QueryClient,
   settled: Thread,
 ): void {
   patchThreadEverywhere(cache, settled._id, (thread) =>
-    withoutAbsent({
-      ...thread,
-      tasks: settled.tasks,
-      revision: Math.max(thread.revision, settled.revision),
-      lastActivityAt: settled.lastActivityAt,
-      lastActivityContent: settled.lastActivityContent,
-    }),
+    newerAnswer(thread, settled)
+      ? withoutAbsent({
+          ...thread,
+          tasks: settled.tasks,
+          revision: settled.revision,
+          lastActivityAt: settled.lastActivityAt,
+          lastActivityContent: settled.lastActivityContent,
+        })
+      : thread,
   );
 }
 

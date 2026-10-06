@@ -25,9 +25,11 @@ import {
   threadChangeKeys,
 } from "../../threads/optimistic";
 import {
-  holdTaskCommands,
+  noteAnswer,
+  noteConversionKey,
   noteTaskId,
-} from "../../threads/pending-conversions";
+  sendInTurn,
+} from "../../threads/task-queue";
 import { noteKeys, showNoteLeavingOpenNotes } from "../optimistic";
 
 /** The Thread Note a Note becomes, shown before the service mints its own. */
@@ -61,7 +63,8 @@ export interface AddNoteToThreadVariables {
  * Dashboard at once; the Thread shows the dated Task it may gain and the
  * activity stamp, and the Thread Note appears where its creation time puts it. With an
  * `undoWindow` the command waits out the Undo offer, so an undone add never
- * reaches the service.
+ * reaches the service. Until it has, the Task it shows is pending
+ * (`usePendingTaskIds`) and takes no command.
  */
 export function useAddNoteToThread(): ApplicationMutationResult<
   AddNoteToThreadVariables,
@@ -74,17 +77,24 @@ export function useAddNoteToThread(): ApplicationMutationResult<
     NoteAddedToThread,
     ThreadNoteId
   >({
-    // Task commands on this Thread wait for the conversion, the Undo window
-    // included, so one made on the Task it shows lands after it exists.
-    run: (client, { note, thread, undoWindow }) =>
-      holdTaskCommands(cache, thread._id, async () => {
-        await afterUndoWindow(undoWindow);
-        return client.addNoteToThread({
+    mutationKey: noteConversionKey,
+    // The Undo window passes outside the Thread's line, so its other Tasks
+    // stay usable; the request then takes its turn beside the Task commands,
+    // and its answer advances what they decide against and carry.
+    run: async (client, { note, thread, undoWindow }) => {
+      await afterUndoWindow(undoWindow);
+      return sendInTurn(cache, thread._id, async () => {
+        const result = await client.addNoteToThread({
           noteId: note._id,
           threadId: thread._id,
           taskId: noteTaskId(note),
         });
-      }),
+        if (result.ok) {
+          noteAnswer(cache, result.value.thread, { startsBasis: false });
+        }
+        return result;
+      });
+    },
     affected: ({ thread }, cache) => [
       ...noteKeys(),
       ...threadChangeKeys(cache, { threadId: thread._id }),
@@ -140,6 +150,7 @@ export function useCreateThreadFromNote(): ApplicationMutationResult<
     NoteAddedToThread,
     ThreadId
   >({
+    mutationKey: noteConversionKey,
     run: (client, { note, title, areaId }) =>
       client.createThreadFromNote({
         noteId: note._id,
