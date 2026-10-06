@@ -41,7 +41,12 @@ import {
   showThreadRemoval,
   threadChangeKeys,
 } from "./optimistic";
-import { conversionPending, taskScope, ThreadBusy } from "./task-queue";
+import {
+  conversionAwaitingAnswer,
+  conversionPending,
+  taskScope,
+  ThreadBusy,
+} from "./task-queue";
 
 const ACTIVITY_PAGE_SIZE = 20;
 
@@ -125,11 +130,10 @@ export function useCreateThread(): ApplicationMutationResult<
 /**
  * One Thread edit.
  *
- * Every command carries the Thread as the caller sees it, rather than being bound
- * to one at render: the optimistic change needs the Thread's current values, and a
- * surface that lists many Threads has one command for all of them. A change that
- * labels the Thread carries the destination Area too, so the rail's embedded
- * Area keeps up without reading it back.
+ * Every command carries the Thread as the caller sees it, rather than reading
+ * it at render: the optimistic change needs the Thread's current values. A
+ * change that labels the Thread carries the destination Area too, so the
+ * rail's embedded Area keeps up without reading it back.
  */
 export interface UpdateThreadVariables extends Omit<
   UpdateThreadInput,
@@ -139,13 +143,48 @@ export interface UpdateThreadVariables extends Omit<
   destinationArea?: AreaSummary;
 }
 
-export function useUpdateThread(): ApplicationMutationResult<
-  UpdateThreadVariables,
-  Thread
-> {
+/**
+ * Edits to one Thread: title, Summary, Area, resolve and reopen.
+ *
+ * An edit carries no revision, but it moves the Thread's, which every Task
+ * command must carry. So the edits join the Thread's Task queue: they go out
+ * in turn with its Task commands, and an answer newer than the queue's basis
+ * moves the basis forward, so the Task command behind it carries the edit's
+ * revision. An edit only advances a basis a Task command started: unlike a
+ * Task command, it can run beside a Note conversion, so its answer may
+ * predate the conversion's. A fresh queue takes the revision from the reads,
+ * which keep the newest answer either one brought back.
+ * `threadId` names the Thread the edits issued now carry; a surface that
+ * moves to another Thread leaves the edits already queued in the first one's
+ * queue (`useApplicationMutation`'s `scope`).
+ */
+export function useUpdateThread(
+  threadId: ThreadId,
+): ApplicationMutationResult<UpdateThreadVariables, Thread> {
+  const cache = useQueryClient();
+  const scope = taskScope(threadId);
+
   return useApplicationMutation<UpdateThreadVariables, Thread>({
-    run: (client, { thread, destinationArea: _destination, ...change }) =>
-      client.updateThread({ threadId: thread._id, ...change }),
+    scope,
+    run: async (
+      client,
+      { thread, destinationArea: _destination, ...change },
+    ) => {
+      const result = await client.updateThread({
+        threadId: thread._id,
+        ...change,
+      });
+      const memo = queueMemo(cache);
+      const basis = memo?.get(scope) as Thread | undefined;
+      if (
+        result.ok &&
+        basis !== undefined &&
+        result.value.revision > basis.revision
+      ) {
+        memo?.set(scope, result.value);
+      }
+      return result;
+    },
     affected: ({ thread }, cache) =>
       threadChangeKeys(cache, { threadId: thread._id }),
     optimistic: (cache, { thread, destinationArea, ...change }) =>
@@ -157,6 +196,16 @@ export function useUpdateThread(): ApplicationMutationResult<
           ...(destinationArea === undefined ? {} : { destinationArea }),
         },
       ),
+    // The edit itself stays shown; the answer brings the revision it moved
+    // to, with the Tasks at that revision, for the next Task command to carry.
+    // While a conversion into the Thread awaits its answer, this answer may
+    // predate it and would replace its pending Task, so it waits: the
+    // conversion's answer replays it, before the lock lets a Task command in.
+    reconcile: (cache, settled, { thread }) => {
+      if (!conversionAwaitingAnswer(cache, thread)) {
+        settleTaskChange(cache, settled);
+      }
+    },
     // A Thread change can write Activity Log entries, which are read separately.
     alsoInvalidate: ({ thread }) => [
       queryKeys.threads.activity(thread._id),
@@ -211,7 +260,9 @@ export class CommandDropped extends Error {
  * activations arrive before the first command's optimistic layer lands, so
  * this cannot be decided when the command is issued. The basis is the newest
  * Thread this Thread's own queue got back, and the command carries its
- * revision. A Note conversion never runs beside the queue: it waits for the
+ * revision. The Thread's edits share the queue (`useUpdateThread`), so one
+ * made meanwhile goes out in turn and its answer moves the basis forward. A
+ * Note conversion never runs beside the Task commands: it waits for the
  * commands queued before it, and none can be issued while it is pending
  * (`useConversionLock`). A change made on another device is unknown here:
  * that command is still sent and refused once, and identical commands queued

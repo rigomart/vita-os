@@ -312,7 +312,7 @@ export function showTaskChange(
 }
 
 /**
- * The service's answer to a Task command or to adding a Note: the Thread's
+ * The service's answer to a Task command, a Thread edit or adding a Note: the Thread's
  * whole Task state at that revision — the Tasks, the focus, the revision, and
  * the last activity — and nothing else, so an unrelated change still in
  * flight keeps showing.
