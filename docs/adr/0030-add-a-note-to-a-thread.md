@@ -1,5 +1,7 @@
 # Add a Note to a Thread
 
+Amended by ADR 0032: a dated Note added to a Thread becomes a dated Task on it, replacing the earlier-date-wins rule.
+
 **Status:** Accepted
 **Date:** 2026-10-02
 

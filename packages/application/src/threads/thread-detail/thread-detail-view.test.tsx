@@ -521,8 +521,8 @@ describe("ThreadDetailView", () => {
       within(attention).getByRole("textbox", { name: "Add a task" }),
     ).toBeVisible();
     expect(
-      within(attention).getByRole("button", { name: "Set follow-up date" }),
-    ).toBeVisible();
+      within(attention).queryByRole("button", { name: /follow-up date/ }),
+    ).toBeNull();
     expect(attention).not.toHaveAttribute("data-slot", "card");
     expect(
       summary.compareDocumentPosition(attention) &
@@ -683,9 +683,7 @@ describe("ThreadDetailView", () => {
       screen.queryByRole("region", { name: "Thread attention" }),
     ).toBeNull();
     expect(screen.queryByRole("textbox", { name: "Add a task" })).toBeNull();
-    expect(
-      screen.getByText(/No Tasks or follow-up date while resolved/),
-    ).toBeVisible();
+    expect(screen.getByText(/No Tasks while resolved/)).toBeVisible();
 
     await userEvent.click(
       screen.getByRole("button", { name: "Thread actions" }),

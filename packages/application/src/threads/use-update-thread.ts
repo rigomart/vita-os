@@ -7,7 +7,6 @@ export type UpdateThreadValue = {
   summary?: string | null;
   /** `null` removes the Thread's Area. */
   areaId?: string | null;
-  followUp?: number | null;
   state?: "open" | "resolved";
   resolutionNote?: string;
 };

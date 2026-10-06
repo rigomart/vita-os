@@ -7,8 +7,6 @@
  */
 
 export interface ThreadAttentionInput {
-  /** Until the Thread's own Follow-up date is folded into its Tasks (ADR 0032). */
-  followUp?: number | null;
   tasks?: readonly { date?: number }[];
   order: number;
 }
@@ -42,19 +40,11 @@ export function soonestTaskDate(
   return soonest;
 }
 
-/**
- * When a Thread comes back: its soonest dated Task. While the Thread's own
- * Follow-up date still exists (ADR 0032), the earlier of the two.
- */
+/** When a Thread comes back: its soonest dated Task. */
 export function attentionDate(thread: {
-  followUp?: number | null;
   tasks?: readonly { date?: number }[];
 }): number | undefined {
-  const task = soonestTaskDate(thread.tasks);
-  const followUp = thread.followUp ?? undefined;
-  if (task === undefined) return followUp;
-  if (followUp === undefined) return task;
-  return Math.min(task, followUp);
+  return soonestTaskDate(thread.tasks);
 }
 
 export function groupThreadsByAttention<TThread extends ThreadAttentionInput>(

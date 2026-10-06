@@ -17,6 +17,11 @@ export const CreateThreadBody = Schema.Struct({
   summary: Schema.optional(Schema.String),
   areaId: Schema.optional(AreaIdSchema),
 });
+/**
+ * Compatibility (ADR 0032, removal in #402): `followUp` is still accepted by
+ * the schema so an old client's request reaches the refusal that tells it to
+ * reload; it is never written.
+ */
 export const UpdateThreadBody = Schema.Struct({
   title: Schema.optional(Schema.String),
   summary: Schema.optionalKey(Schema.NullOr(Schema.String)),
@@ -112,7 +117,6 @@ export function normalizeThreadChange(
     ...(input.title === undefined ? {} : { title: input.title }),
     ...(Object.hasOwn(input, "summary") ? { summary: input.summary } : {}),
     ...(Object.hasOwn(input, "areaId") ? { areaId: input.areaId } : {}),
-    ...(Object.hasOwn(input, "followUp") ? { followUp: input.followUp } : {}),
     ...(input.state === undefined ? {} : { state: input.state }),
     ...(input.resolutionNote === undefined
       ? {}

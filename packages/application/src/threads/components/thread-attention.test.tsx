@@ -25,18 +25,10 @@ function renderAttention(
     onCompleteTask: vi.fn(),
     onFocusTask: vi.fn(),
     onSetTaskDate: vi.fn(),
-    onSetFollowUp: vi.fn(),
-    onClearFollowUp: vi.fn(),
   };
 
   const { unmount } = render(
-    <ThreadAttention
-      tasks={[]}
-      followUp={undefined}
-      now={now}
-      {...handlers}
-      {...props}
-    />,
+    <ThreadAttention tasks={[]} now={now} {...handlers} {...props} />,
   );
 
   return { ...handlers, unmount };
@@ -106,7 +98,7 @@ describe("ThreadAttention dated Tasks", () => {
 
   it("sets a Task's date from its row without touching the others", async () => {
     const user = userEvent.setup();
-    const { onSetTaskDate, onSetFollowUp } = renderAttention({
+    const { onSetTaskDate } = renderAttention({
       tasks: [loose, afternoon],
     });
 
@@ -128,7 +120,6 @@ describe("ThreadAttention dated Tasks", () => {
       loose._id,
       new Date(real.getFullYear(), real.getMonth(), 28).getTime(),
     );
-    expect(onSetFollowUp).not.toHaveBeenCalled();
   });
 
   it("clears a Task's date with Clear date", async () => {
@@ -158,7 +149,6 @@ describe("ThreadAttention", () => {
     renderAttention({
       tasks: [callClinic, bookScan, collect],
       focusedTaskId: bookScan._id,
-      followUp: today,
     });
 
     const rows = taskRows();
@@ -176,9 +166,6 @@ describe("ThreadAttention", () => {
       within(rows[0]!).getByRole("button", { name: "Focus this task" }),
     ).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByText("3")).toBeVisible();
-    expect(
-      screen.getByRole("button", { name: "Change follow-up date: Aug 13" }),
-    ).toBeVisible();
   });
 
   it("toggles focus from the radio: focusing another replaces it, focusing the focused one unfocuses", async () => {
@@ -278,76 +265,93 @@ describe("ThreadAttention", () => {
     );
   });
 
-  it("picks a follow-up date from the calendar and clears it", async () => {
+  it("picks a Task's date from the calendar and clears it", async () => {
     const user = userEvent.setup();
-    const { onSetFollowUp, onClearFollowUp } = renderAttention({
-      followUp: today,
+    const { onSetTaskDate } = renderAttention({
+      tasks: [{ ...callClinic, date: today }],
     });
 
     await user.click(
-      screen.getByRole("button", { name: "Change follow-up date: Aug 13" }),
+      screen.getByRole("button", { name: "Change date: Aug 13" }),
     );
     expect(
       await screen.findByText("Bring this back into view around this date."),
     ).toBeVisible();
     // The time waits behind its button until asked for.
     expect(screen.queryByLabelText("Time")).not.toBeInTheDocument();
-    // The calendar opens on the Follow-up's month.
+    // The calendar opens on the date's month.
     await user.click(within(await screen.findByRole("grid")).getByText("20"));
-    expect(onSetFollowUp).toHaveBeenCalledWith(new Date(2026, 7, 20).getTime());
-
-    await user.click(
-      screen.getByRole("button", { name: "Clear follow-up date" }),
+    expect(onSetTaskDate).toHaveBeenCalledWith(
+      callClinic._id,
+      new Date(2026, 7, 20).getTime(),
     );
-    expect(onClearFollowUp).toHaveBeenCalled();
+
+    // Picking a day closes the picker; the row still holds its date.
+    await user.click(
+      screen.getByRole("button", { name: "Change date: Aug 13" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Clear date" }));
+    expect(onSetTaskDate).toHaveBeenLastCalledWith(callClinic._id, null);
   });
 
-  it("adds a time to the follow-up once, when the picker closes", async () => {
+  it("adds a time to a Task's date once, when the picker closes", async () => {
     const user = userEvent.setup();
-    const { onSetFollowUp } = renderAttention({ followUp: today });
+    const { onSetTaskDate } = renderAttention({
+      tasks: [{ ...callClinic, date: today }],
+    });
 
     await user.click(
-      screen.getByRole("button", { name: "Change follow-up date: Aug 13" }),
+      screen.getByRole("button", { name: "Change date: Aug 13" }),
     );
     await user.click(await screen.findByRole("button", { name: "Add time" }));
     const time = screen.getByLabelText("Time");
     expect(time).toHaveFocus();
     await user.type(time, "15:30");
-    expect(onSetFollowUp).not.toHaveBeenCalled();
+    expect(onSetTaskDate).not.toHaveBeenCalled();
 
     await user.keyboard("{Enter}");
-    expect(onSetFollowUp).toHaveBeenCalledExactlyOnceWith(
+    expect(onSetTaskDate).toHaveBeenCalledExactlyOnceWith(
+      callClinic._id,
       new Date(2026, 7, 13, 15, 30).getTime(),
     );
   });
 
-  it("shows a follow-up's time beside its date, and removes it", async () => {
+  it("shows a Task's time beside its date, and removes it", async () => {
     const user = userEvent.setup();
-    const { onSetFollowUp } = renderAttention({
-      followUp: new Date(2026, 7, 13, 9).getTime(),
+    const { onSetTaskDate } = renderAttention({
+      tasks: [{ ...callClinic, date: new Date(2026, 7, 13, 9).getTime() }],
     });
 
     await user.click(
-      screen.getByRole("button", {
-        name: "Change follow-up date: Aug 13 · 9 AM",
-      }),
+      screen.getByRole("button", { name: "Change date: Aug 13 · 9 AM" }),
     );
     await user.click(
       await screen.findByRole("button", { name: "Remove time" }),
     );
     expect(screen.getByRole("button", { name: "Add time" })).toBeVisible();
     await user.keyboard("{Escape}");
-    expect(onSetFollowUp).toHaveBeenCalledExactlyOnceWith(today);
+    expect(onSetTaskDate).toHaveBeenCalledExactlyOnceWith(
+      callClinic._id,
+      today,
+    );
   });
 
-  it("tones a late follow-up the way the rest of the app does", () => {
+  it("tones a late date the way the rest of the app does", () => {
     const { unmount } = renderAttention({
-      followUp: subDays(new Date(today), 2).getTime(),
+      tasks: [{ ...callClinic, date: subDays(new Date(today), 2).getTime() }],
     });
     expect(screen.getByText("Aug 11")).toHaveClass("text-condition-attention");
     unmount();
 
-    renderAttention({ followUp: addDays(new Date(today), 9).getTime() });
+    renderAttention({
+      tasks: [{ ...callClinic, date: addDays(new Date(today), 9).getTime() }],
+    });
     expect(screen.getByText("Aug 22")).toHaveClass("text-muted-foreground");
+  });
+
+  it("has no Thread-level Follow-up control any more", () => {
+    renderAttention({ tasks: [callClinic] });
+
+    expect(screen.queryByRole("button", { name: /follow-up/i })).toBeNull();
   });
 });

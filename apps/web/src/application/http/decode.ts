@@ -161,7 +161,6 @@ export function decodeThread(value: unknown): Thread | undefined {
     state,
     tasks: rawTasks,
     focusedTaskId,
-    followUp,
     lastActivityAt,
     lastActivityContent,
     createdAt,
@@ -179,7 +178,6 @@ export function decodeThread(value: unknown): Thread | undefined {
     !isThreadState(state) ||
     (rawTasks !== undefined && tasks === undefined) ||
     !isOptionalString(focusedTaskId) ||
-    !isOptionalSafeInteger(followUp) ||
     !isOptionalSafeInteger(lastActivityAt) ||
     !isOptionalString(lastActivityContent) ||
     !isSafeInteger(createdAt) ||
@@ -201,7 +199,6 @@ export function decodeThread(value: unknown): Thread | undefined {
     ...(focusedTaskId === undefined
       ? {}
       : { focusedTaskId: focusedTaskId as TaskId }),
-    ...(followUp === undefined ? {} : { followUp }),
     ...(lastActivityAt === undefined ? {} : { lastActivityAt }),
     ...(lastActivityContent === undefined ? {} : { lastActivityContent }),
     createdAt,

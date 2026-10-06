@@ -2,6 +2,7 @@ import type {
   AreaId,
   Note,
   NoteAddedToThread,
+  TaskId,
   Thread,
   ThreadId,
   ThreadNote,
@@ -46,15 +47,15 @@ function patchOpenThreadNotes(
 
 export interface AddNoteToThreadVariables {
   note: Note;
-  /** The Thread as the person chose it; the earlier date is decided from it. */
+  /** The Thread as the person chose it; the Task the Note adds is decided from it. */
   thread: Thread;
   undoWindow?: () => Promise<boolean>;
 }
 
 /**
  * Add an Open Standalone Note to an Open Thread. The Note leaves Notes and the
- * Dashboard at once; the Thread shows the date it may take and the activity
- * stamp, and the Thread Note appears where its creation time puts it. With an
+ * Dashboard at once; the Thread shows the dated Task it may gain and the
+ * activity stamp, and the Thread Note appears where its creation time puts it. With an
  * `undoWindow` the command waits out the Undo offer, so an undone add never
  * reaches the service.
  */
@@ -79,10 +80,14 @@ export function useAddNoteToThread(): ApplicationMutationResult<
     ],
     optimistic: (cache, { note, thread }, previousLocal) => {
       const pendingId = previousLocal ?? (newRecordId() as ThreadNoteId);
-      const decision = decideAddNoteToThread(thread, note);
+      const decision = decideAddNoteToThread(
+        thread,
+        note,
+        newRecordId() as TaskId,
+      );
       showNoteLeavingOpenNotes(cache, note._id);
       showNoteAddedToThread(cache, thread._id, {
-        followUp: decision.patch.followUp,
+        tasks: decision.patch.tasks,
         lastActivityAt: Date.now(),
         lastActivityContent: decision.logs.at(-1)?.content,
       });
@@ -103,7 +108,7 @@ export function useAddNoteToThread(): ApplicationMutationResult<
         ),
       );
     },
-    // A changed date writes an Activity Log entry, which is read separately.
+    // The Thread's activity is read separately.
     alsoInvalidate: ({ thread }) => [queryKeys.threads.activity(thread._id)],
   });
 }
@@ -115,7 +120,7 @@ export interface CreateThreadFromNoteVariables {
 }
 
 /**
- * Start a Thread from a Note: the Thread appears with the Note's date, the Note
+ * Start a Thread from a Note: the Thread appears with the Note's dated Task, the Note
  * leaves Notes, and the new Thread's Notes are seeded with the Thread Note so
  * its pane opens with the Note inside.
  */
@@ -151,9 +156,10 @@ export function useCreateThreadFromNote(): ApplicationMutationResult<
       const decision = decideAddNoteToThread(
         { title, slug: "", state: "open" },
         note,
+        newRecordId() as TaskId,
       );
       showNoteAddedToThread(cache, pendingId, {
-        followUp: decision.patch.followUp,
+        tasks: decision.patch.tasks,
         lastActivityAt: now,
         lastActivityContent: decision.logs.at(-1)?.content,
       });

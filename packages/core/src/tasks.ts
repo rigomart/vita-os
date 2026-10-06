@@ -215,9 +215,7 @@ export function hasTasks(thread: { tasks?: readonly Task[] }): boolean {
  * With dated Tasks the one that placed the Thread leads, even when another is
  * focused; two on the soonest day lead with no single Task, because the card
  * must not pick between them. Without a dated Task the slot is today's rule:
- * the Focused Task, else the only Task, else a count. `placedBy` is the date
- * that placed the Thread, so a Thread brought back by its own earlier
- * Follow-up date (until the fold, ADR 0032) leads like an undated one.
+ * the Focused Task, else the only Task, else a count.
  */
 export type TaskSlot =
   | { kind: "none" }
@@ -225,18 +223,15 @@ export type TaskSlot =
   | { kind: "sameDay"; count: number; date: number }
   | { kind: "unfocused"; count: number };
 
-export function taskSlot(
-  thread: { tasks?: readonly Task[]; focusedTaskId?: TaskId },
-  placedBy?: number,
-): TaskSlot {
+export function taskSlot(thread: {
+  tasks?: readonly Task[];
+  focusedTaskId?: TaskId;
+}): TaskSlot {
   const tasks = thread.tasks ?? [];
   if (tasks.length === 0) return { kind: "none" };
 
   const soonest = soonestTaskDate(tasks);
-  if (
-    soonest !== undefined &&
-    (placedBy === undefined || soonest <= placedBy)
-  ) {
+  if (soonest !== undefined) {
     const day = startOfLocalDay(soonest);
     const sameDay = tasks.filter(
       (task) => task.date !== undefined && startOfLocalDay(task.date) === day,

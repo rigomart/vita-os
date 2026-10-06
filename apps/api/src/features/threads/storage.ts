@@ -69,7 +69,6 @@ const PATCH_COLUMNS = {
   areaId: "area_id",
   state: "state",
   focusedTaskId: "focused_move_id",
-  followUp: "follow_up",
 } as const satisfies Partial<Record<keyof ThreadPatch, string>>;
 
 /**

@@ -72,7 +72,7 @@ export function ThreadAttentionCard({
 }) {
   const tasks = thread.tasks ?? [];
   const placedBy = attentionDate(thread);
-  const slot = taskSlot(thread, placedBy);
+  const slot = taskSlot(thread);
   const lead = slot.kind === "task" ? slot.task : undefined;
   const focused = slot.kind === "task" && slot.focused;
   // What the picker holds: the shown Task's own date. A card with no single

@@ -2,6 +2,7 @@ import type {
   AddNoteToThreadInput,
   CreateThreadFromNoteInput,
   NoteAddedToThread,
+  TaskId,
 } from "@vita-os/contracts";
 
 import {
@@ -30,7 +31,7 @@ const CHANGE_ATTEMPTS = 3;
 /**
  * Turn an Open Standalone Note into a Thread Note on an Open Thread.
  *
- * The decision reads both records — the earlier Follow-up date wins — so the
+ * The decision reads both records — a dated Note adds a dated Task — so the
  * write is conditional on the Note still carrying the date it read and on the
  * Thread's revision. A lost race re-reads and decides again.
  */
@@ -53,7 +54,11 @@ export function addNoteToThread(
       if (note === null || note.state !== "open") return yield* noteNotFound();
       if (thread === null || thread.state !== "open")
         return yield* threadNotFound();
-      const change = decideAddNoteToThread(thread, note);
+      const change = decideAddNoteToThread(
+        thread,
+        note,
+        scope.clock.newId() as TaskId,
+      );
       const added = yield* database(() =>
         storage.addToThread({
           note,
@@ -70,7 +75,7 @@ export function addNoteToThread(
 
 /**
  * Start a Thread whose first Thread Note is the Note. The Thread takes the
- * Note's Follow-up date. A taken slug is minted again, as creating a Thread
+ * Note's dated Task, when it has a date. A taken slug is minted again, as creating a Thread
  * does; a Note that changed under the decision is read again.
  */
 export function createThreadFromNote(
@@ -90,6 +95,7 @@ export function createThreadFromNote(
       const change = decideAddNoteToThread(
         { title, slug, state: "open" },
         note,
+        scope.clock.newId() as TaskId,
       );
       const added = yield* database(
         () =>

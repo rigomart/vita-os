@@ -48,6 +48,8 @@ export const ThreadSchema = Schema.Struct({
   // fields above, with the same values.
   moves: Schema.optionalKey(Schema.Array(TaskSchema)),
   focusedMoveId: Schema.optionalKey(TaskIdSchema),
+  // Compatibility (ADR 0032, removal in #402): derived from the soonest dated
+  // Task; never stored.
   followUp: Schema.optionalKey(Timestamp),
   lastActivityAt: Schema.optionalKey(Timestamp),
   lastActivityContent: Schema.optionalKey(Schema.String),

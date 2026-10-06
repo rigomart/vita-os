@@ -48,7 +48,6 @@ export interface UpdateThreadInput {
   summary?: Clearable<string>;
   /** Sets, changes, or (with `null`) removes the Thread's Area. */
   areaId?: Clearable<AreaId>;
-  followUp?: Clearable<number>;
   state?: ThreadState;
   /** Carried into the Activity Log entry a resolution writes. */
   resolutionNote?: string;
@@ -198,12 +197,16 @@ export interface ApplicationClient {
   }): Promise<OperationResult<CommandAcknowledgement>>;
   /**
    * Makes an Open Standalone Note a Thread Note on an Open Thread, keeping its
-   * body and creation time. The earlier Follow-up date wins.
+   * body and creation time. A dated Note also adds a dated Task named by its
+   * first line.
    */
   addNoteToThread(
     input: AddNoteToThreadInput,
   ): Promise<OperationResult<NoteAddedToThread>>;
-  /** Starts a Thread whose first Thread Note is the Note, with its date. */
+  /**
+   * Starts a Thread whose first Thread Note is the Note; a dated Note also
+   * adds a dated Task named by its first line.
+   */
   createThreadFromNote(
     input: CreateThreadFromNoteInput,
   ): Promise<OperationResult<NoteAddedToThread>>;

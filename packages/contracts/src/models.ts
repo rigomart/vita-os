@@ -63,7 +63,6 @@ export interface Thread {
    * `tasks`. Focus is emphasis only: it never changes when the Thread surfaces.
    */
   focusedTaskId?: TaskId;
-  followUp?: number;
   lastActivityAt?: number;
   lastActivityContent?: string;
   createdAt: number;
@@ -121,7 +120,7 @@ export interface ThreadNote {
 
 /**
  * A Standalone Note added to a Thread: the Thread as it now stands — its
- * Follow-up date, activity, and revision — and the Thread Note the Note became.
+ * Tasks, activity, and revision — and the Thread Note the Note became.
  */
 export interface NoteAddedToThread {
   thread: Thread;

@@ -79,7 +79,14 @@ function dated(text: string, date: number) {
   return { _id: text as TaskId, text, date };
 }
 
-function thread(title: string, fields: Partial<Thread> = {}): Thread {
+/**
+ * `followUp` reads as "the date this Thread comes back": the Thread holds a
+ * Task with that date, which is all that places a Thread.
+ */
+function thread(
+  title: string,
+  { followUp, ...fields }: Partial<Thread> & { followUp?: number } = {},
+): Thread {
   return {
     _id: title as Thread["_id"],
     title,
@@ -90,6 +97,18 @@ function thread(title: string, fields: Partial<Thread> = {}): Thread {
     revision: 0,
     createdAt: currentDate,
     ...fields,
+    ...(followUp === undefined
+      ? {}
+      : {
+          tasks: [
+            ...(fields.tasks ?? []),
+            {
+              _id: `due-${title}` as TaskId,
+              text: "Follow up",
+              date: followUp,
+            },
+          ],
+        }),
   } as Thread;
 }
 
@@ -421,7 +440,7 @@ describe("DashboardOverview", () => {
     expect(within(tomorrow).queryByText("Sat")).not.toBeInTheDocument();
     // The date still opens from the card, as a control rather than a token.
     expect(
-      within(tomorrow).getByRole("button", { name: "Set date" }),
+      within(tomorrow).getByRole("button", { name: "Change date" }),
     ).toBeInTheDocument();
 
     const sunday = group("This week", "Sunday");

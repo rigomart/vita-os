@@ -1,5 +1,7 @@
 # One Follow-up date for Threads and standalone Notes
 
+Amended by ADR 0032: a Thread no longer has a Follow-up date; its dates live on its Tasks. Standalone Notes keep theirs.
+
 **Status:** Accepted
 **Date:** 2026-10-01
 

@@ -224,10 +224,9 @@ describe("useUpdateThread", () => {
     const attentive = aThread({
       tasks: [
         { _id: "task-1" as TaskId, text: "Call clinic" },
-        { _id: "task-2" as TaskId, text: "Book appointment" },
+        { _id: "task-2" as TaskId, text: "Book appointment", date: 5_000 },
       ],
       focusedTaskId: "task-1" as TaskId,
-      followUp: 5_000,
     });
     const client = createFakeApplicationClient({
       updateThread: async () =>
@@ -251,7 +250,6 @@ describe("useUpdateThread", () => {
       expect(rail?.thread.state).toBe("resolved");
       expect(rail?.thread.tasks).toBeUndefined();
       expect(rail?.thread.focusedTaskId).toBeUndefined();
-      expect(rail?.thread.followUp).toBeUndefined();
       // A Resolved Thread keeps its Area.
       expect(rail?.thread.areaId).toBe(health._id);
       expect(rail?.area).toEqual(health);

@@ -212,12 +212,12 @@ export function showThreadChange(
 ): void {
   const { threadId, resolutionNote: _resolutionNote, ...requested } = input;
   const patch = clearedToAbsent(requested);
-  // Resolving takes the whole attention state with it: the Tasks, the focus,
-  // and the Follow-up. It has to travel in the patch, because reads are patched
-  // field by field, not replaced with the Thread the caller handed us.
+  // Resolving takes the whole attention state with it: the Tasks, dated ones
+  // included, and the focus. It has to travel in the patch, because reads are
+  // patched field by field, not replaced with the Thread the caller handed us.
   const attentionPatch: Partial<Thread> =
     patch.state === "resolved"
-      ? { tasks: undefined, focusedTaskId: undefined, followUp: undefined }
+      ? { tasks: undefined, focusedTaskId: undefined }
       : {};
   const threadPatch: Partial<Thread> = { ...patch, ...attentionPatch };
   const next = withoutAbsent({ ...context.thread, ...threadPatch });
@@ -331,19 +331,19 @@ export function settleTaskChange(cache: QueryClient, settled: Thread): void {
 }
 
 /**
- * A Note added to the Thread, shown before the service answers: the Follow-up
- * date it may bring forward and the activity stamp. A cleared field stays
- * absent; nothing else on the Thread changes.
+ * A Note added to the Thread, shown before the service answers: the dated Task
+ * it may add and the activity stamp. A cleared field stays absent; nothing
+ * else on the Thread changes.
  */
 export function showNoteAddedToThread(
   cache: QueryClient,
   threadId: ThreadId,
-  change: Pick<Thread, "followUp" | "lastActivityAt" | "lastActivityContent">,
+  change: Pick<Thread, "tasks" | "lastActivityAt" | "lastActivityContent">,
 ): void {
   patchThreadEverywhere(cache, threadId, (thread) =>
     withoutAbsent({
       ...thread,
-      ...(change.followUp === undefined ? {} : { followUp: change.followUp }),
+      ...(change.tasks === undefined ? {} : { tasks: change.tasks }),
       lastActivityAt: change.lastActivityAt,
       lastActivityContent: change.lastActivityContent,
     }),
@@ -352,7 +352,7 @@ export function showNoteAddedToThread(
 
 /**
  * The service's answer to adding a Note: only what that command changes — the
- * date, the activity stamp, and the revision the next command carries.
+ * Tasks, the activity stamp, and the revision the next command carries.
  */
 export function settleNoteAddedToThread(
   cache: QueryClient,
@@ -361,7 +361,7 @@ export function settleNoteAddedToThread(
   patchThreadEverywhere(cache, settled._id, (thread) =>
     withoutAbsent({
       ...thread,
-      followUp: settled.followUp,
+      tasks: settled.tasks,
       revision: settled.revision,
       lastActivityAt: settled.lastActivityAt,
       lastActivityContent: settled.lastActivityContent,

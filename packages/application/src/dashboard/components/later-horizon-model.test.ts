@@ -19,7 +19,7 @@ function thread(id: string, followUp: number, order = 0): Thread {
     state: "open",
     revision: 0,
     createdAt: currentDate,
-    followUp,
+    tasks: [{ _id: `due-${id}`, text: "Follow up", date: followUp }],
   } as Thread;
 }
 

@@ -128,10 +128,4 @@ describe("the Task slot of a card", () => {
       count: 2,
     });
   });
-
-  it("uses today's rule when an earlier date than any Task's placed the Thread", () => {
-    expect(
-      taskSlot({ tasks: [task("a", { date: day(10) }), task("b")] }, day(8)),
-    ).toEqual({ kind: "unfocused", count: 2 });
-  });
 });

@@ -26,8 +26,8 @@ import { call, createSession, expectError, succeed } from "./sessions";
 
 /**
  * Adding a Standalone Note to a Thread, through the Worker the way the browser
- * does it: the Note becomes a Thread Note with its creation time, the earlier
- * Follow-up date wins, and a refused request writes nothing anywhere.
+ * does it: the Note becomes a Thread Note with its creation time, a dated Note
+ * also adds a dated Task, and a refused request writes nothing anywhere.
  */
 
 const may20 = new Date("2030-05-20T00:00:00").getTime();
@@ -60,18 +60,24 @@ async function createNote(
 
 async function createThread(
   session: Session,
-  followUp?: number,
+  /** A dated Task the Thread already holds. */
+  taskDate?: number,
 ): Promise<Thread> {
   const thread = await succeed<Thread>("/v1/threads", {
     method: "POST",
     session,
     body: { title: `Dentist ${crypto.randomUUID()}` },
   });
-  if (followUp === undefined) return thread;
-  return succeed<Thread>(`/v1/threads/${thread._id}`, {
-    method: "PATCH",
+  if (taskDate === undefined) return thread;
+  return succeed<Thread>(`/v1/threads/${thread._id}/tasks`, {
+    method: "POST",
     session,
-    body: { followUp },
+    body: {
+      taskId: "existing-task",
+      text: "Existing",
+      date: taskDate,
+      expectedRevision: thread.revision,
+    },
   });
 }
 
@@ -185,27 +191,33 @@ describe("adding a Note to a Thread", () => {
     expect(detail.thread).toEqual(added.thread);
   });
 
-  describe("the earlier Follow-up date wins", () => {
-    it("brings an undated Thread back at the Note's date and logs it", async () => {
+  describe("a dated Note adds a dated Task", () => {
+    it("appends a Task named by the Note's first line, dated as the Note, with no Activity Log entry", async () => {
       const owner = await createSession("add-to-thread-undated");
       const thread = await createThread(owner);
-      const note = await createNote(owner, "Call back", jun1);
+      const note = await createNote(owner, "Call back\nabout the scan", jun1);
 
       const added = (await addToThread(owner, note, thread._id))
         .body as NoteAddedToThread;
 
-      expect(added.thread.followUp).toBe(jun1);
-      expect(added.thread.lastActivityContent).toBe("Follow-up set");
-      expect(await activityOf(owner, thread._id)).toEqual([
-        expect.objectContaining({
-          type: "follow_up_change",
-          content: "Follow-up set",
-          newValue: String(jun1),
-        }),
+      expect(added.thread.tasks).toEqual([
+        { _id: expect.any(String), text: "Call back", date: jun1 },
       ]);
+      expect(added.thread).not.toHaveProperty("focusedTaskId");
+      // Compatibility (ADR 0032): the derived Follow-up date.
+      expect((added.thread as { followUp?: number }).followUp).toBe(jun1);
+      expect(added.thread).not.toHaveProperty("lastActivityContent");
+      expect(await activityOf(owner, thread._id)).toEqual([]);
+      expect(
+        (
+          await succeed<ThreadNote[]>(`/v1/threads/${thread._id}/notes`, {
+            session: owner,
+          })
+        ).map((threadNote) => threadNote.body),
+      ).toEqual(["Call back\nabout the scan"]);
     });
 
-    it("brings a later Thread date forward to the Note.s", async () => {
+    it("keeps the Thread's own Tasks first and appends the new one unfocused", async () => {
       const owner = await createSession("add-to-thread-earlier");
       const thread = await createThread(owner, jun1);
       const past = new Date("2020-01-02T09:15:00").getTime();
@@ -214,38 +226,46 @@ describe("adding a Note to a Thread", () => {
       const added = (await addToThread(owner, note, thread._id))
         .body as NoteAddedToThread;
 
-      expect(added.thread.followUp).toBe(past);
-      const [latest] = await activityOf(owner, thread._id);
-      expect(latest).toMatchObject({
-        type: "follow_up_change",
-        content: "Follow-up changed",
-        previousValue: String(jun1),
-        newValue: String(past),
-      });
-      expect(await activityOf(owner, thread._id)).toHaveLength(2);
+      expect(added.thread.tasks).toEqual([
+        { _id: "existing-task", text: "Existing", date: jun1 },
+        { _id: expect.any(String), text: "Overdue", date: past },
+      ]);
+      expect((added.thread as { followUp?: number }).followUp).toBe(past);
+      expect(await activityOf(owner, thread._id)).toEqual([]);
     });
 
     it.each([
-      ["earlier", jun1, may20],
-      ["equal", may20, may20],
-    ])(
-      "drops the Note's date when the Thread's is %s",
-      async (_case, noteDate, threadDate) => {
-        const owner = await createSession("add-to-thread-later-note");
-        const thread = await createThread(owner, threadDate);
-        const note = await createNote(owner, "Later", noteDate);
+      ["# Dentist\nCall Monday", "Dentist"],
+      ["- Bring the referral", "Bring the referral"],
+      ["> 1. Quoted step", "Quoted step"],
+      ["\n\n   Third line first   ", "Third line first"],
+      ["###", "Follow up"],
+    ])("names the Task from %j as %j", async (body, expected) => {
+      const owner = await createSession("add-to-thread-first-line");
+      const thread = await createThread(owner);
+      const note = await createNote(owner, body, may20);
 
-        const added = (await addToThread(owner, note, thread._id))
-          .body as NoteAddedToThread;
+      const added = (await addToThread(owner, note, thread._id))
+        .body as NoteAddedToThread;
 
-        expect(added.thread.followUp).toBe(threadDate);
-        expect(added.thread).not.toHaveProperty("lastActivityContent");
-        // Only the entry that dated the Thread in the first place.
-        expect(await activityOf(owner, thread._id)).toHaveLength(1);
-      },
-    );
+      expect(added.thread.tasks).toEqual([
+        { _id: expect.any(String), text: expected, date: may20 },
+      ]);
+    });
 
-    it("leaves a dated Thread's date alone for an undated Note", async () => {
+    it("keeps the time of day on the Task", async () => {
+      const owner = await createSession("add-to-thread-time");
+      const thread = await createThread(owner);
+      const note = await createNote(owner, "Call back", jun1);
+
+      const added = (await addToThread(owner, note, thread._id))
+        .body as NoteAddedToThread;
+
+      expect(new Date(added.thread.tasks![0]!.date!).getHours()).toBe(15);
+      expect(new Date(added.thread.tasks![0]!.date!).getMinutes()).toBe(30);
+    });
+
+    it("adds no Task for an undated Note, and still counts as Thread activity", async () => {
       const owner = await createSession("add-to-thread-undated-note");
       const thread = await createThread(owner, may20);
       const note = await createNote(owner, "Undated");
@@ -253,8 +273,9 @@ describe("adding a Note to a Thread", () => {
       const added = (await addToThread(owner, note, thread._id))
         .body as NoteAddedToThread;
 
-      expect(added.thread.followUp).toBe(may20);
-      expect(await activityOf(owner, thread._id)).toHaveLength(1);
+      expect(added.thread.tasks).toEqual(thread.tasks);
+      expect(added.thread.lastActivityAt).toEqual(expect.any(Number));
+      expect(await activityOf(owner, thread._id)).toEqual([]);
     });
   });
 
@@ -357,7 +378,7 @@ describe("starting a Thread from a Note", () => {
     });
   }
 
-  it("creates the Thread with the Note as its first Thread Note and its date", async () => {
+  it("creates the Thread with the Note as its first Thread Note and a dated Task", async () => {
     const owner = await createSession("new-thread-from-note");
     const area = await succeed<AreaSummary>("/v1/areas", {
       method: "POST",
@@ -377,7 +398,7 @@ describe("starting a Thread from a Note", () => {
       title: "Dentist",
       areaId: area._id,
       state: "open",
-      followUp: jun1,
+      tasks: [{ _id: expect.any(String), text: "Dentist", date: jun1 }],
       lastActivityAt: expect.any(Number),
     });
     expect(added.threadNote).toMatchObject({
@@ -390,14 +411,20 @@ describe("starting a Thread from a Note", () => {
       { session: owner },
     );
     expect(detail.thread).toEqual(added.thread);
-    expect(await activityOf(owner, added.thread._id)).toEqual([
-      expect.objectContaining({
-        type: "follow_up_change",
-        content: "Follow-up set",
-        newValue: String(jun1),
-      }),
-    ]);
+    expect(await activityOf(owner, added.thread._id)).toEqual([]);
     expect(await succeed<Note[]>("/v1/notes", { session: owner })).toEqual([]);
+  });
+
+  it("names the Task Follow up when the Note's first line is only markers", async () => {
+    const owner = await createSession("new-thread-fallback");
+    const note = await createNote(owner, "## \n- ", may20);
+
+    const added = (await newThread(owner, note, { title: "Markers" }))
+      .body as NoteAddedToThread;
+
+    expect(added.thread.tasks).toEqual([
+      { _id: expect.any(String), text: "Follow up", date: may20 },
+    ]);
   });
 
   it("starts an undated Thread from an undated Note with no Activity Log", async () => {
@@ -407,6 +434,7 @@ describe("starting a Thread from a Note", () => {
     const added = (await newThread(owner, note, { title: "Thought" }))
       .body as NoteAddedToThread;
 
+    expect(added.thread).not.toHaveProperty("tasks");
     expect(added.thread).not.toHaveProperty("followUp");
     expect(added.thread).not.toHaveProperty("areaId");
     expect(await activityOf(owner, added.thread._id)).toEqual([]);
@@ -470,7 +498,7 @@ describe("contention", () => {
     actorId: crypto.randomUUID(),
   });
 
-  it("decides again when the Thread's date changes under the decision", async () => {
+  it("decides again when the Thread changes under the decision", async () => {
     const scope = scopeFor();
     const thread = value(
       await run(scope, threads.createThread({ title: "Racing" })),
@@ -480,11 +508,11 @@ describe("contention", () => {
     );
     const batch = env.DB.batch.bind(env.DB);
     vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
-      // Another device dates the Thread earlier while this request decides.
+      // Another device changes the Thread while this request decides.
       value(
         await run(
           scope,
-          threads.updateThread({ threadId: thread._id, followUp: may20 }),
+          threads.updateThread({ threadId: thread._id, summary: "Moved on" }),
         ),
       );
       return batch(statements);
@@ -497,14 +525,11 @@ describe("contention", () => {
       ),
     );
 
-    // The lost batch wrote no orphan entry; the retry kept the earlier date.
-    expect(added.thread.followUp).toBe(may20);
-    const entries = await env.DB.prepare(
-      "SELECT content FROM activity_log_entries WHERE thread_id = ?",
-    )
-      .bind(thread._id)
-      .all();
-    expect(entries.results).toEqual([{ content: "Follow-up set" }]);
+    // The lost batch wrote nothing; the retry added the Task exactly once.
+    expect(added.thread.tasks).toEqual([
+      { _id: expect.any(String), text: "Dated", date: jun1 },
+    ]);
+    expect(added.thread.summary).toBe("Moved on");
     const copies = await env.DB.prepare(
       "SELECT COUNT(*) AS n FROM thread_notes WHERE thread_id = ?",
     )

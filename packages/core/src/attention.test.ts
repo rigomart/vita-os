@@ -13,7 +13,6 @@ const today = new Date(2026, 6, 17).getTime();
 function thread(
   id: string,
   fields: {
-    followUp?: number;
     tasks?: { text: string; date?: number }[];
     order?: number;
   } = {},
@@ -28,11 +27,19 @@ describe("Thread attention ordering", () => {
     const groups = groupThreadsByAttention(
       [
         thread("open-later", { order: 2 }),
-        thread("upcoming-later", { followUp: today + 2 * 86_400_000 }),
+        thread("upcoming-later", {
+          tasks: [{ text: "x", date: today + 2 * 86_400_000 }],
+        }),
         thread("next-later", { tasks: [{ text: "Call" }], order: 3 }),
-        thread("overdue-recent", { followUp: today - 86_400_000 }),
-        thread("upcoming-sooner", { followUp: today + 86_400_000 }),
-        thread("overdue-old", { followUp: today - 3 * 86_400_000 }),
+        thread("overdue-recent", {
+          tasks: [{ text: "x", date: today - 86_400_000 }],
+        }),
+        thread("upcoming-sooner", {
+          tasks: [{ text: "x", date: today + 86_400_000 }],
+        }),
+        thread("overdue-old", {
+          tasks: [{ text: "x", date: today - 3 * 86_400_000 }],
+        }),
         thread("next-sooner", {
           tasks: [{ text: "Email" }, { text: "Book" }],
           order: 1,
@@ -108,7 +115,7 @@ describe("Thread attention by dated Task", () => {
       thread("a", { tasks: [{ text: "x", date: today }] }),
       thread("b", { tasks: [{ text: "x" }] }),
       thread("c"),
-      thread("d", { followUp: today + DAY }),
+      thread("d", { tasks: [{ text: "x", date: today + DAY }] }),
     ];
     const groups = groupThreadsByAttention(threads, today);
 
@@ -145,17 +152,14 @@ describe("Thread attention by dated Task", () => {
     ]);
   });
 
-  it("uses the earlier of the Thread's own date and its soonest Task", () => {
+  it("brings a Thread back at the soonest date among its Tasks", () => {
     const date = today + 3 * DAY;
     expect(soonestTaskDate([{ date }, { date: date + DAY }, {}])).toBe(date);
     expect(soonestTaskDate([{}])).toBeUndefined();
-    expect(attentionDate({ followUp: date - DAY, tasks: [{ date }] })).toBe(
-      date - DAY,
-    );
-    expect(attentionDate({ followUp: date + DAY, tasks: [{ date }] })).toBe(
+    expect(attentionDate({ tasks: [{ date: date + DAY }, { date }] })).toBe(
       date,
     );
-    expect(attentionDate({ followUp: date })).toBe(date);
+    expect(attentionDate({ tasks: [{}] })).toBeUndefined();
     expect(attentionDate({})).toBeUndefined();
   });
 });

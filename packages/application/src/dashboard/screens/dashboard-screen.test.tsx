@@ -155,7 +155,13 @@ describe("DashboardScreen", () => {
         order: 0,
         state: "open",
         revision: 0,
-        followUp: new Date(2026, 6, 18, 9).getTime(),
+        tasks: [
+          {
+            _id: "task1",
+            text: "Call the dentist",
+            date: new Date(2026, 6, 18, 9).getTime(),
+          },
+        ],
         createdAt: 0,
       },
     ];

@@ -40,7 +40,7 @@ import { attempt, database } from "../../platform/operation";
 import { RequestContext } from "../../platform/request-scope";
 import { areaNotFound } from "../areas/errors";
 import { areaStorage } from "../areas/storage";
-import { moveConflict, threadNotFound } from "./errors";
+import { followUpMoved, moveConflict, threadNotFound } from "./errors";
 import { isThreadSlugTaken, threadStorage } from "./storage";
 
 /**
@@ -110,7 +110,7 @@ export function createThread(input: CreateThreadInput): Operation<Thread> {
 }
 
 /**
- * One Thread edit: title, Summary, Area, Follow-up, or lifecycle.
+ * One Thread edit: title, Summary, Area, or lifecycle.
  * The Activity Log the change earns is written with it or not at all.
  */
 export function updateThread({
@@ -167,6 +167,15 @@ export function updateThread({
       }),
     );
   });
+}
+
+/**
+ * Compatibility (ADR 0032, removal in #402): a Thread has no Follow-up date
+ * any more, so an old client's request to set one is refused and writes
+ * nothing.
+ */
+export function refuseThreadFollowUp(): Operation<Thread> {
+  return Effect.fail(followUpMoved());
 }
 
 /** A new Task joins the end of the Thread's Tasks, unfocused. */

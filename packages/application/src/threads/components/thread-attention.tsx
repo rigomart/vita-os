@@ -7,7 +7,6 @@ import { CalendarClock, Check, Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import {
-  followUpDateLabels,
   taskDateLabels,
   WhenPopover,
   whenTone,
@@ -15,15 +14,10 @@ import {
 } from "../../attention-list";
 import { EditableField } from "../../ui/editable-field";
 
-export interface ThreadAttentionPending {
-  followUp?: boolean;
-}
-
 interface ThreadAttentionProps {
   /** Every Task, in the order it was captured. */
   tasks: readonly Task[];
   focusedTaskId?: TaskId;
-  followUp: number | undefined;
   /** The shared attention clock, so lateness matches every other surface. */
   now: number;
   onAddTask: (text: string) => void;
@@ -34,14 +28,11 @@ interface ThreadAttentionProps {
   onFocusTask: (taskId: TaskId | null) => void;
   /** Sets, changes or (with `null`) clears one Task's date. */
   onSetTaskDate: (taskId: TaskId, date: number | null) => void;
-  onSetFollowUp: (date: number) => void;
-  onClearFollowUp: () => void;
-  pending?: ThreadAttentionPending;
 }
 
 /**
- * The Thread's live attention: its Tasks as one list of peers, and the
- * Follow-up riding the list's rule.
+ * The Thread's live attention: its Tasks as one list of peers, each of which
+ * may carry a date.
  *
  * Dated Tasks come first, soonest first (a date alone before the timed ones
  * of its day), then a quiet "No date" divider, then undated Tasks in capture
@@ -57,7 +48,6 @@ interface ThreadAttentionProps {
 export function ThreadAttention({
   tasks,
   focusedTaskId,
-  followUp,
   now,
   onAddTask,
   onEditTask,
@@ -65,9 +55,6 @@ export function ThreadAttention({
   onCompleteTask,
   onFocusTask,
   onSetTaskDate,
-  onSetFollowUp,
-  onClearFollowUp,
-  pending,
 }: ThreadAttentionProps) {
   const dated = tasks
     .filter((task) => task.date !== undefined)
@@ -106,13 +93,6 @@ export function ThreadAttention({
           </span>
         )}
         <span aria-hidden className="h-px flex-1 bg-border/50" />
-        <FollowUpSatellite
-          followUp={followUp}
-          now={now}
-          onSet={onSetFollowUp}
-          onClear={onClearFollowUp}
-          isPending={pending?.followUp}
-        />
       </div>
 
       {tasks.length > 1 && (
@@ -251,7 +231,7 @@ function TaskRow({
                 <span
                   className={cn(
                     "tabular-nums",
-                    tone ? FOLLOW_UP_TONE[tone] : "text-muted-foreground",
+                    tone ? DATE_TONE[tone] : "text-muted-foreground",
                   )}
                 >
                   {dateLabel}
@@ -325,91 +305,11 @@ function AddTask({ onAdd }: { onAdd: (text: string) => void }) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Follow-up                                                                  */
+/* Dates                                                                      */
 /* -------------------------------------------------------------------------- */
 
 /** Lateness reads in the tone the rest of the app uses for a slipping date. */
-const FOLLOW_UP_TONE = {
+const DATE_TONE = {
   overdue: "text-condition-attention",
   due: "text-brand-accent-text",
 } as const;
-
-/**
- * A satellite riding the list's rule: when this Thread should come back, not a
- * deadline on any one Task.
- */
-function FollowUpSatellite({
-  followUp,
-  now,
-  onSet,
-  onClear,
-  isPending,
-}: {
-  followUp: number | undefined;
-  now: number;
-  onSet: (date: number) => void;
-  onClear: () => void;
-  isPending?: boolean;
-}) {
-  const label =
-    followUp === undefined
-      ? undefined
-      : withTimeToken(format(followUp, "MMM d"), followUp);
-  const tone = whenTone(followUp, now);
-
-  return (
-    <span className="flex shrink-0 items-center">
-      <WhenPopover
-        when={followUp}
-        busy={isPending}
-        onSetWhen={(when) => (when === undefined ? onClear() : onSet(when))}
-        trigger={
-          <Button
-            variant="ghost"
-            size="xs"
-            disabled={isPending}
-            aria-label={
-              label
-                ? `${followUpDateLabels.change}: ${label}`
-                : followUpDateLabels.set
-            }
-            className="h-8 gap-1.5 px-1.5 font-normal xl:h-6"
-          >
-            <CalendarClock
-              aria-hidden
-              className="size-3 text-muted-foreground/70"
-            />
-            {label ? (
-              <span
-                className={cn(
-                  "tabular-nums",
-                  tone ? FOLLOW_UP_TONE[tone] : "text-muted-foreground",
-                )}
-              >
-                {label}
-              </span>
-            ) : (
-              <span className="text-muted-foreground">
-                {followUpDateLabels.set}
-              </span>
-            )}
-          </Button>
-        }
-      />
-
-      {followUp !== undefined && (
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          onClick={onClear}
-          disabled={isPending}
-          aria-busy={isPending}
-          aria-label={followUpDateLabels.clear}
-          className="size-7 shrink-0 text-muted-foreground/50 hover:text-destructive xl:size-5"
-        >
-          <X />
-        </Button>
-      )}
-    </span>
-  );
-}
