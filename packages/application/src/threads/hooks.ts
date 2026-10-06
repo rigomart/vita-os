@@ -19,7 +19,10 @@ import { newRecordId } from "@vita-os/core";
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
 import type { PagedResult } from "../cache/use-paged-application-query";
 
-import { useApplicationMutation } from "../cache/use-application-mutation";
+import {
+  queueMemo,
+  useApplicationMutation,
+} from "../cache/use-application-mutation";
 import {
   useApplicationQuery,
   useOptionalApplicationQuery,
@@ -28,6 +31,7 @@ import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
 import { queryKeys } from "../query-keys";
 import {
   cachedRevision,
+  changesTasks,
   type TaskChange,
   settleTaskChange,
   settlePendingThread,
@@ -179,6 +183,18 @@ export function useRemoveThread(): ApplicationMutationResult<
 }
 
 /**
+ * A Task command dropped at the head of the queue because the rule already
+ * refuses it. It settles as a failure so its optimistic layer is neutralised,
+ * but it is not one to report: nothing was sent and nothing went wrong.
+ */
+export class CommandDropped extends Error {
+  constructor() {
+    super("Task command dropped");
+    this.name = "CommandDropped";
+  }
+}
+
+/**
  * One kind of Task command, for one Thread.
  *
  * Every Task command carries the revision the Thread was read at, and the
@@ -187,6 +203,15 @@ export function useRemoveThread(): ApplicationMutationResult<
  * each carries the revision the one before it brought back. A refusal — a
  * Task another device already completed, say — rolls back only its own change
  * and refetches, rather than being retried against something different.
+ *
+ * A command the core rule already refuses against the Thread the previous
+ * queued command left — the Task is gone, or nothing would change — is dropped
+ * at the head of the queue: no request, no refusal to report. Duplicate
+ * activations arrive before the first command's optimistic layer lands, so
+ * this cannot be decided when the command is issued. The basis is only what
+ * this Thread's own queue got back, so a change made on another device is
+ * unknown here: that command is still sent and refused once, and identical
+ * commands queued behind a refusal are dropped rather than refused again.
  */
 export function useTaskCommand<TInput>(
   thread: Thread,
@@ -200,11 +225,38 @@ export function useTaskCommand<TInput>(
   },
 ): ApplicationMutationResult<TInput, Thread> {
   const cache = useQueryClient();
+  const scope = `thread-tasks:${thread._id}`;
+  const refusedKey = `${scope}:refused`;
 
   return useApplicationMutation<TInput, Thread>({
-    scope: `thread-tasks:${thread._id}`,
-    run: (client, input) =>
-      command.run(client, input, cachedRevision(cache, thread)),
+    scope,
+    run: async (client, input) => {
+      const change = command.change(input);
+      const signature = JSON.stringify(change);
+      const memo = queueMemo(cache);
+      // What this Thread's own queue got back from the service. Without it
+      // (the head of a fresh queue) there is nothing to decide against.
+      const basis = memo?.get(scope) as Thread | undefined;
+      const refused = (memo?.get(refusedKey) as string[] | undefined) ?? [];
+      if (
+        refused.includes(signature) ||
+        (basis !== undefined && !changesTasks(basis, change))
+      ) {
+        throw new CommandDropped();
+      }
+      const result = await command.run(
+        client,
+        input,
+        cachedRevision(cache, thread),
+      );
+      if (result.ok) {
+        memo?.set(scope, result.value);
+      } else if (result.error.code === "conflict") {
+        // Identical commands queued behind it are refused too, each with its own toast.
+        memo?.set(refusedKey, [...refused, signature]);
+      }
+      return result;
+    },
     affected: (_input, cache) =>
       threadChangeKeys(cache, { threadId: thread._id }),
     optimistic: (cache, input) =>

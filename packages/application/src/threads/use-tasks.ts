@@ -4,7 +4,7 @@ import { isApplicationError } from "@vita-os/contracts";
 import { newRecordId } from "@vita-os/core";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
 
-import { useTaskCommand } from "./hooks";
+import { CommandDropped, useTaskCommand } from "./hooks";
 
 /**
  * A Task command never throws at the surface that issued it. A refusal has
@@ -15,6 +15,7 @@ function useReportFailure() {
   const feedback = useFeedback();
 
   return (error: unknown) => {
+    if (error instanceof CommandDropped) return;
     const conflict = isApplicationError(error) && error.code === "conflict";
     feedback.error(
       conflict
