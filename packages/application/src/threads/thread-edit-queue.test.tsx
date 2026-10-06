@@ -267,3 +267,150 @@ describe("a Thread edit beside the Thread's Task queue", () => {
     service.flowFreely();
   });
 });
+
+describe("a surface that switches to another Thread while commands are queued", () => {
+  const first = aThread({ revision: 4, tasks: [alpha, beta] });
+  const second = aThread({
+    _id: "thread-2" as ThreadId,
+    slug: "second-thread",
+    revision: 9,
+    tasks: [gamma],
+  });
+
+  /** Answers each Task command only when the test lets it; edits at once. */
+  function heldService() {
+    const held: Array<() => void> = [];
+    const answer = (
+      input: { threadId: ThreadId; expectedRevision: number },
+      change: (thread: Thread) => Thread,
+    ) => {
+      const thread = input.threadId === first._id ? first : second;
+      const value = success(
+        change({ ...thread, revision: input.expectedRevision + 1 }),
+      );
+      return new Promise<OperationResult<Thread>>((resolve) =>
+        held.push(() => resolve(value)),
+      );
+    };
+    const completeTask = vi.fn(
+      (input: {
+        threadId: ThreadId;
+        taskId: TaskId;
+        expectedRevision: number;
+      }) =>
+        answer(input, (thread) => ({
+          ...thread,
+          tasks: thread.tasks?.filter((task) => task._id !== input.taskId),
+        })),
+    );
+    const focusTask = vi.fn(
+      (input: {
+        threadId: ThreadId;
+        taskId: TaskId | null;
+        expectedRevision: number;
+      }) =>
+        answer(input, (thread) => ({
+          ...thread,
+          ...(input.taskId === null ? {} : { focusedTaskId: input.taskId }),
+        })),
+    );
+    const updateThread = vi.fn(
+      async ({ threadId, ...change }: UpdateThreadInput) =>
+        success({
+          ...(threadId === first._id ? first : second),
+          ...(change.title === undefined ? {} : { title: change.title }),
+          revision: 20,
+        } as Thread),
+    );
+    return {
+      client: createFakeApplicationClient({
+        completeTask,
+        focusTask,
+        updateThread,
+        listOpenThreads: async () => success([first, second]),
+        getThreadActivityPage: async () => success({ entries: [] }),
+      }),
+      completeTask,
+      focusTask,
+      updateThread,
+      /** Answer the earliest held Task command. */
+      answerNext: () => held.shift()?.(),
+    };
+  }
+
+  function renderSurface(service: ReturnType<typeof heldService>) {
+    const feedback = { success: vi.fn(), error: vi.fn(), undoable: vi.fn() };
+    const { wrapper: Application } = createHarness(service.client, (cache) =>
+      cache.setQueryData(queryKeys.threads.open(), [first, second]),
+    );
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <Application>
+        <FeedbackProvider feedback={feedback}>{children}</FeedbackProvider>
+      </Application>
+    );
+    return renderHook(
+      ({ thread }: { thread: Thread }) => ({
+        tasks: useTasks(thread),
+        edit: useUpdateThread(thread),
+      }),
+      { wrapper, initialProps: { thread: first } },
+    );
+  }
+
+  it("still sends the first Thread's queued edit, to that Thread", async () => {
+    const service = heldService();
+    const { result, rerender } = renderSurface(service);
+
+    act(() => {
+      void result.current.tasks.complete(alpha._id);
+      void result.current.edit({ title: "Renamed" });
+    });
+    await settle();
+    expect(service.updateThread).not.toHaveBeenCalled();
+
+    rerender({ thread: second });
+    act(() => {
+      void result.current.tasks.complete(gamma._id);
+    });
+    await settle();
+    service.answerNext();
+
+    await waitFor(() =>
+      expect(service.updateThread).toHaveBeenCalledWith(
+        expect.objectContaining({ threadId: first._id, title: "Renamed" }),
+      ),
+    );
+    service.answerNext();
+  });
+
+  it("still sends the first Thread's queued Task command, to that Thread, at its revision", async () => {
+    const service = heldService();
+    const { result, rerender } = renderSurface(service);
+
+    act(() => {
+      void result.current.tasks.complete(alpha._id);
+      void result.current.tasks.focus(beta._id);
+    });
+    await settle();
+    expect(service.focusTask).not.toHaveBeenCalled();
+
+    rerender({ thread: second });
+    act(() => {
+      void result.current.tasks.complete(gamma._id);
+    });
+    await settle();
+    service.answerNext();
+
+    await waitFor(() =>
+      expect(service.focusTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          threadId: first._id,
+          taskId: beta._id,
+          expectedRevision: 5,
+        }),
+      ),
+    );
+    service.answerNext();
+    service.answerNext();
+  });
+});
