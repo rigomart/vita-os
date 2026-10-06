@@ -22,7 +22,7 @@ export function useUpdateThread(
   thread: Thread,
   options: { areas?: AreaSummary[] } = {},
 ) {
-  const updateThread = useUpdateThreadCommand();
+  const updateThread = useUpdateThreadCommand(thread._id);
 
   return ({ areaId: requestedAreaId, ...value }: UpdateThreadValue) => {
     const areaId = requestedAreaId as AreaId | null | undefined;
