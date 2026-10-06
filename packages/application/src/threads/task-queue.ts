@@ -4,7 +4,7 @@ import type { Note, TaskId, Thread, ThreadId } from "@vita-os/contracts";
 import { useMutationState } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-/** The queue every Task command of one Thread shares. */
+/** The queue every Task command and every edit of one Thread shares. */
 export function taskScope(threadId: ThreadId): string {
   return `thread-tasks:${threadId}`;
 }
@@ -60,10 +60,11 @@ export function conversionPending(
 }
 
 /**
- * Settles once no Task command of this Thread is pending. A conversion carries
- * no revision but moves the Thread's, so it is sent only after the Task
- * commands queued before it; while it is pending the Thread takes no new
- * Task command (`useConversionLock`), so none can follow it in.
+ * Settles once nothing in this Thread's queue is pending: no Task command and
+ * no edit. A conversion carries no revision but moves the Thread's, so it is
+ * sent only after the Task commands queued before it; while it is pending the
+ * Thread takes no new Task command (`useConversionLock`), so none can follow
+ * it in. An edit can, and is answered at whichever revision it lands.
  */
 export function afterTaskCommands(
   cache: QueryClient,

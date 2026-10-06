@@ -3,9 +3,9 @@ import type {
   Note,
   NoteAddedToThread,
   NoteId,
-  OperationResult,
   TaskId,
   Thread,
+  UpdateThreadInput,
 } from "@vita-os/contracts";
 import type { PropsWithChildren } from "react";
 
@@ -57,10 +57,7 @@ const beta = { _id: "beta" as TaskId, text: "Beta" };
  * and refuses a stale revision or a missing Task, but answers only when the
  * test opens that answer's gate: a reply can be late although the write landed.
  */
-function gatedService(
-  seed: Thread,
-  updateThread?: () => Promise<OperationResult<Thread>>,
-) {
+function gatedService(seed: Thread) {
   let stored = seed;
   let flowing = false;
   const gates: Array<{ label: string; open: () => void }> = [];
@@ -162,6 +159,15 @@ function gatedService(
     stored = { ...stored, revision: stored.revision + 1 };
     return success(stored);
   });
+  // A Thread edit carries no revision: it always lands and moves it on.
+  const updateThread = vi.fn((input: UpdateThreadInput) => {
+    stored = {
+      ...stored,
+      ...(input.title === undefined ? {} : { title: input.title }),
+      revision: stored.revision + 1,
+    };
+    return answer("updateThread", success(stored));
+  });
   const client = createFakeApplicationClient({
     setTaskDate,
     completeTask,
@@ -170,7 +176,7 @@ function gatedService(
     addNoteToThread,
     listOpenThreads: async () => success([stored]),
     getThreadActivityPage: async () => success({ entries: [] }),
-    ...(updateThread === undefined ? {} : { updateThread }),
+    updateThread,
   });
 
   return {
@@ -222,7 +228,9 @@ function setup(service: ReturnType<typeof gatedService>, seed: Thread) {
   );
   const { result: add } = renderHook(() => useAddNoteToThread(), { wrapper });
   const { result: tasks } = renderHook(() => useTasks(seed), { wrapper });
-  const { result: update } = renderHook(() => useUpdateThread(), { wrapper });
+  const { result: update } = renderHook(() => useUpdateThread(seed._id), {
+    wrapper,
+  });
   const open = () =>
     cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0];
   return { feedback, add, tasks, update, open };
@@ -298,6 +306,45 @@ describe("Note conversions and the Task queue of one Thread", () => {
       alpha._id,
       noteTaskId(dentist),
     ]);
+  });
+
+  it("lets a Thread edit run beside a conversion, and the Task command behind the edit carries the newest revision", async () => {
+    const seed = aThread({ revision: 4, tasks: [alpha, beta] });
+    const service = gatedService(seed);
+    const { feedback, add, tasks, update } = setup(service, seed);
+
+    act(() => {
+      add.current.mutate({ note: dentist, thread: seed });
+    });
+    await waitFor(() =>
+      expect(service.addNoteToThread).toHaveBeenCalledTimes(1),
+    );
+    let renaming: Promise<unknown> | undefined;
+    act(() => {
+      renaming = update.current.mutateAsync({ thread: seed, title: "Renamed" });
+    });
+    await settle();
+    expect(service.stored().revision).toBe(6);
+
+    // The conversion answers first; the edit's answer is still on its way.
+    service.release("addNoteToThread");
+    await waitFor(() => expect(add.current.isSuccess).toBe(true));
+    let completing: Promise<unknown> | undefined;
+    act(() => {
+      completing = tasks.current.complete(alpha._id);
+    });
+    await settle();
+    expect(service.completeTask).not.toHaveBeenCalled();
+
+    service.flowFreely();
+    await act(async () => {
+      await Promise.all([renaming, completing]);
+    });
+    expect(service.completeTask).toHaveBeenCalledWith(
+      expect.objectContaining({ taskId: alpha._id, expectedRevision: 6 }),
+    );
+    expect(service.refusals).toEqual([]);
+    expect(feedback.error).not.toHaveBeenCalled();
   });
 
   it("never takes an older answer's Tasks, focus or revision over a newer read", () => {

@@ -4,6 +4,7 @@ import type {
   TaskId,
   Thread,
   ThreadDetail,
+  ThreadId,
 } from "@vita-os/contracts";
 import type { PropsWithChildren } from "react";
 
@@ -27,6 +28,7 @@ const alpha = { _id: "task-a" as TaskId, text: "Alpha" };
 const beta = { _id: "task-b" as TaskId, text: "Beta" };
 const gamma = { _id: "task-c" as TaskId, text: "Gamma" };
 const initial = aThread({ tasks: [alpha, beta, gamma], revision: 4 });
+const other = aThread({ _id: "thread-2" as ThreadId, slug: "other-thread" });
 
 /** A service that holds one Thread and refuses a stale revision or a missing Task. */
 function fakeService(
@@ -139,10 +141,17 @@ function renderTasks(client: ApplicationClient) {
     </Application>
   );
   const { result } = renderHook(() => useTasks(initial), { wrapper });
-  const { result: update } = renderHook(() => useUpdateThread(), { wrapper });
+  const { result: update } = renderHook(() => useUpdateThread(initial._id), {
+    wrapper,
+  });
+  // An edit to another Thread shares no queue with this one, but holds the
+  // batch open while it is pending.
+  const { result: updateOther } = renderHook(() => useUpdateThread(other._id), {
+    wrapper,
+  });
   const open = () =>
     cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0];
-  return { feedback, result, update, open };
+  return { feedback, result, update, updateOther, open };
 }
 
 describe("a Task command the local rule already refuses", () => {
@@ -304,7 +313,7 @@ describe("a Task queue in which a command is refused", () => {
 });
 
 describe("a Task command issued beside another pending change to the Thread", () => {
-  it("is still sent, and lands, when that change is refused", async () => {
+  it("is sent after it, and lands, when that change is refused", async () => {
     const resolving = deferred<OperationResult<Thread>>();
     const { client, completeTask } = fakeService({
       updateThread: () => resolving.promise,
@@ -318,17 +327,20 @@ describe("a Task command issued beside another pending change to the Thread", ()
     });
     await waitFor(() => expect(open()).toBeUndefined());
 
-    await act(async () => {
-      await result.current.complete(alpha._id);
+    let completing: Promise<unknown> | undefined;
+    act(() => {
+      completing = result.current.complete(alpha._id);
     });
-    expect(completeTask).toHaveBeenCalledTimes(1);
+    // The edit moves the Thread's revision, so the Task command waits for it.
+    expect(completeTask).not.toHaveBeenCalled();
 
     await act(async () => {
       resolving.resolve(
         failure({ code: "conflict", message: "changed", retryable: false }),
       );
-      await resolving.promise;
+      await completing;
     });
+    expect(completeTask).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(open()?.tasks).toEqual([beta, gamma]));
     expect(feedback.error).not.toHaveBeenCalled();
   });
@@ -340,10 +352,10 @@ describe("what a Task queue remembers", () => {
     const { client, focusTask } = fakeService({
       updateThread: () => holding.promise,
     });
-    const { result, update } = renderTasks(client);
+    const { result, updateOther } = renderTasks(client);
 
     act(() => {
-      void update.current.mutateAsync({ thread: initial, title: "Renamed" });
+      void updateOther.current.mutateAsync({ thread: other, title: "Renamed" });
     });
     await act(async () => {
       await result.current.focus(beta._id);
@@ -367,10 +379,10 @@ describe("a dropped duplicate behind a refused command", () => {
       conflictOnce: true,
       updateThread: () => holding.promise,
     });
-    const { result, update, open } = renderTasks(client);
+    const { result, updateOther, open } = renderTasks(client);
 
     act(() => {
-      void update.current.mutateAsync({ thread: initial, title: "Renamed" });
+      void updateOther.current.mutateAsync({ thread: other, title: "Renamed" });
     });
     await act(async () => {
       await Promise.all([
