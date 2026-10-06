@@ -33,6 +33,8 @@ export function ThreadAttentionSection({
       onCompleteTask={(taskId) => void tasks.complete(taskId)}
       onFocusTask={(taskId) => void tasks.focus(taskId)}
       onSetTaskDate={(taskId, date) => void tasks.setDate(taskId, date)}
+      onSetTaskRepeat={(taskId, repeat) => void tasks.setRepeat(taskId, repeat)}
+      onSkipTask={(taskId) => void tasks.skip(taskId)}
     />
   );
 }

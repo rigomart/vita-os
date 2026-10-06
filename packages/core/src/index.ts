@@ -50,6 +50,7 @@ export {
   isTaskDate,
   MAX_TASK_DATE,
   MIN_TASK_DATE,
+  nextTaskDate,
   requireTaskDate,
   requireRepeat,
   requireTimeZone,
@@ -57,7 +58,9 @@ export {
   requireTaskId,
   requireTaskText,
   requireOpenForTasks,
+  snapTaskDate,
   taskSlot,
+  type TaskClock,
   type TaskSlot,
   type TaskState,
 } from "./tasks";

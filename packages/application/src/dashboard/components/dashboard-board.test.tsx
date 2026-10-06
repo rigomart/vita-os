@@ -83,6 +83,7 @@ describe("DashboardBoard card date control", () => {
         taskId: "task1",
         date: dayOfThisMonth(28),
         expectedRevision: 3,
+        timeZone: expect.any(String),
       }),
     );
   });
@@ -114,6 +115,7 @@ describe("DashboardBoard card date control", () => {
         taskId: "task1",
         date: new Date(2026, 6, 22).getTime(),
         expectedRevision: 3,
+        timeZone: expect.any(String),
       }),
     );
   });
@@ -146,6 +148,72 @@ describe("DashboardBoard card date control", () => {
       date: dayOfThisMonth(28),
       expectedRevision: 3,
     });
+  });
+});
+
+describe("DashboardBoard repeating Task card", () => {
+  const checkIn = {
+    _id: "check-in" as TaskId,
+    text: "Evening check-in",
+    // Two evenings ago: a missed run.
+    date: new Date(2026, 6, 15, 21).getTime(),
+    repeat: { kind: "days" as const, every: 1 },
+  };
+
+  it("shows one Late card with the repeat glyph, and skips from the card in the browser's zone", async () => {
+    const user = userEvent.setup();
+    const thread = aThread({ tasks: [checkIn] });
+    const skipTask = vi.fn(async () => success(thread));
+    render(
+      <DashboardBoard
+        areas={[]}
+        board={buildAttentionBoard([thread], [], currentDate)}
+        currentDate={currentDate}
+      />,
+      { applicationClient: createQuietApplicationClient({ skipTask }) },
+    );
+
+    const late = screen.getByRole("region", { name: "Late" });
+    expect(within(late).getAllByText("Evening check-in")).toHaveLength(1);
+    expect(
+      within(late).getByText(/repeats daily/i, { selector: ".sr-only" }),
+    ).toBeInTheDocument();
+    expect(
+      late.querySelector('[data-slot="repeat-glyph"]'),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Skip “Evening check-in” to its next date",
+      }),
+    );
+    await waitFor(() =>
+      expect(skipTask).toHaveBeenCalledExactlyOnceWith({
+        threadId: "thread1",
+        taskId: "check-in",
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        expectedRevision: 3,
+      }),
+    );
+  });
+
+  it("offers no skip and no glyph on a one-off Task", () => {
+    const { repeat: _repeat, ...oneOff } = checkIn;
+    const thread = aThread({ tasks: [oneOff] });
+    render(
+      <DashboardBoard
+        areas={[]}
+        board={buildAttentionBoard([thread], [], currentDate)}
+        currentDate={currentDate}
+      />,
+      { applicationClient: createQuietApplicationClient() },
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Complete “Evening check-in”" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Skip/ })).toBeNull();
+    expect(document.querySelector('[data-slot="repeat-glyph"]')).toBeNull();
   });
 });
 

@@ -173,7 +173,10 @@ describe("repeating Tasks", () => {
       ),
     ).toThrow(ValidationError);
     expect(() =>
-      rules.decideCompleteTask(thread("2026-10-06T15:30Z"), id),
+      rules.decideCompleteTask(thread("2026-10-06T15:30Z"), id, {
+        timeZone: undefined,
+        now: ms("2026-10-06"),
+      }),
     ).toThrow(ValidationError);
     expect(() =>
       rules.decideCompleteTask(thread("2026-10-06T15:30Z"), id, {
@@ -265,7 +268,12 @@ describe("repeating Tasks", () => {
       weekdays: [0],
     });
     expect(() =>
-      rules.decideSetTaskDate(original, id, ms("2026-03-07T15:30-05:00")),
+      rules.decideSetTaskDate(
+        original,
+        id,
+        ms("2026-03-07T15:30-05:00"),
+        undefined,
+      ),
     ).toThrow(ValidationError);
     expect(
       rules.decideSetTaskDate(
@@ -275,9 +283,9 @@ describe("repeating Tasks", () => {
         "America/New_York",
       )?.patch.tasks?.[0]?.date,
     ).toBe(ms("2026-03-08T15:30-04:00"));
-    expect(rules.decideSetTaskDate(original, id, null)?.patch.tasks).toEqual([
-      { _id: id, text: "Check" },
-    ]);
+    expect(
+      rules.decideSetTaskDate(original, id, null, undefined)?.patch.tasks,
+    ).toEqual([{ _id: id, text: "Check" }]);
     expect(
       rules.decideSetTaskRepeat(original, id, null, "UTC")?.patch.tasks?.[0],
     ).toEqual({ _id: id, text: "Check", date: original.tasks[0]?.date });
@@ -295,7 +303,10 @@ describe("repeating Tasks", () => {
         now: ms("2026-10-06"),
       }),
     ).toThrow(ValidationError);
-    expect(rules.decideCompleteTask(original, id)?.patch).toEqual({
+    expect(
+      rules.decideCompleteTask(original, id, { timeZone: undefined, now: 0 })
+        ?.patch,
+    ).toEqual({
       tasks: undefined,
       focusedTaskId: undefined,
     });
@@ -322,7 +333,12 @@ describe("repeating Tasks", () => {
   it("needs no zone for an unchanged daily date", () => {
     const original = thread("2026-10-06T15:30Z");
     expect(
-      rules.decideSetTaskDate(original, id, original.tasks[0]!.date!),
+      rules.decideSetTaskDate(
+        original,
+        id,
+        original.tasks[0]!.date!,
+        undefined,
+      ),
     ).toEqual({ patch: {}, logs: [] });
     expect(
       rules.decideSetTaskDate(original, id, original.tasks[0]!.date!, "UTC"),
@@ -334,7 +350,12 @@ describe("repeating Tasks", () => {
     (repeat) => {
       const original = thread("2026-10-06T15:30Z", repeat);
       expect(
-        rules.decideSetTaskDate(original, id, ms("2026-10-08T09:15Z")),
+        rules.decideSetTaskDate(
+          original,
+          id,
+          ms("2026-10-08T09:15Z"),
+          undefined,
+        ),
       ).toEqual({
         patch: {
           tasks: [{ ...original.tasks[0], date: ms("2026-10-08T09:15Z") }],
@@ -348,7 +369,12 @@ describe("repeating Tasks", () => {
     "clears a %j Task's date and repeat without a zone",
     (repeat) => {
       expect(
-        rules.decideSetTaskDate(thread("2026-10-06T15:30Z", repeat), id, null),
+        rules.decideSetTaskDate(
+          thread("2026-10-06T15:30Z", repeat),
+          id,
+          null,
+          undefined,
+        ),
       ).toEqual({ patch: { tasks: [{ _id: id, text: "Check" }] }, logs: [] });
     },
   );
@@ -372,16 +398,21 @@ describe("repeating Tasks", () => {
 
   it("still requires a zone to set a weekly repeat and to complete or skip repeats", () => {
     const original = thread("2026-10-06T15:30Z");
+    // A caller without a zone does not compile; a request without one is
+    // still refused at run time.
+    const noZone = undefined as unknown as string;
     expect(() =>
-      rules.decideSetTaskRepeat(original, id, {
-        kind: "weekly",
-        weekdays: [2],
-      }),
+      rules.decideSetTaskRepeat(
+        original,
+        id,
+        { kind: "weekly", weekdays: [2] },
+        noZone,
+      ),
     ).toThrow(ValidationError);
     for (const command of [rules.decideCompleteTask, rules.decideSkipTask]) {
-      expect(() => command(original, id, { now: ms("2026-10-06") })).toThrow(
-        ValidationError,
-      );
+      expect(() =>
+        command(original, id, { timeZone: noZone, now: ms("2026-10-06") }),
+      ).toThrow(ValidationError);
     }
   });
 

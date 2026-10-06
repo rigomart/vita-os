@@ -612,6 +612,7 @@ describe("ThreadDetailView", () => {
         threadId: thread._id,
         taskId: "task-specialist",
         expectedRevision: thread.revision + 1,
+        timeZone: expect.any(String),
       });
     });
   });

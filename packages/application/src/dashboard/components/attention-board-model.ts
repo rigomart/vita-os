@@ -1,6 +1,7 @@
-import type { Note, Thread } from "@vita-os/contracts";
+import type { Note, Task, Thread } from "@vita-os/contracts";
+import type { TaskSlot } from "@vita-os/core";
 
-import { attentionDate, hasTasks } from "@vita-os/core";
+import { attentionDate, hasTasks, taskSlot } from "@vita-os/core";
 import { addDays, format } from "date-fns";
 
 import { dayDelta, startOfLocalDay } from "./dashboard-model";
@@ -210,6 +211,44 @@ function span(start: Date, end: Date) {
   return start.getMonth() === end.getMonth()
     ? `${format(start, "MMM d")}–${format(end, "d")}`
     : `${format(start, "MMM d")}–${format(end, "MMM d")}`;
+}
+
+/**
+ * What a Thread card's second row shows and what its rail offers on it.
+ *
+ * `task` is the one Task the card acts on, when the slot shows one. The
+ * marker before its text is the repeat glyph when that Task repeats — focused
+ * or not — else a dot, filled for the Focused Task; a count has its own
+ * marker. Skip is offered only on a repeating Task: a one-off has no next
+ * occurrence to move to. A missed repeating Task is still one Task with one
+ * date, so it shows once, under Late.
+ */
+export interface CardTask {
+  slot: TaskSlot;
+  task?: Task;
+  focused: boolean;
+  marker: "count" | "focused" | "none" | "repeat" | "task";
+  canSkip: boolean;
+}
+
+export function cardTask(thread: Thread): CardTask {
+  const slot = taskSlot(thread);
+  if (slot.kind !== "task") {
+    return {
+      slot,
+      focused: false,
+      marker: slot.kind === "none" ? "none" : "count",
+      canSkip: false,
+    };
+  }
+  const repeats = slot.task.repeat !== undefined;
+  return {
+    slot,
+    task: slot.task,
+    focused: slot.focused,
+    marker: repeats ? "repeat" : slot.focused ? "focused" : "task",
+    canSkip: repeats,
+  };
 }
 
 /** The Thread or Note behind an item, whichever it is. */

@@ -25,6 +25,7 @@ describe("setting a Task's date", () => {
       { state: "open", tasks: [task("a"), task("b")] },
       "b" as TaskId,
       day(8, 15, 30),
+      undefined,
     );
 
     expect(decision?.patch.tasks).toEqual([
@@ -40,11 +41,11 @@ describe("setting a Task's date", () => {
       tasks: [task("a", { date: day(8) })],
     };
 
-    const changed = decideSetTaskDate(thread, "a" as TaskId, day(9));
+    const changed = decideSetTaskDate(thread, "a" as TaskId, day(9), undefined);
     expect(changed?.patch.tasks).toEqual([task("a", { date: day(9) })]);
     expect(changed?.logs).toEqual([]);
 
-    const cleared = decideSetTaskDate(thread, "a" as TaskId, null);
+    const cleared = decideSetTaskDate(thread, "a" as TaskId, null, undefined);
     expect(cleared?.patch.tasks).toEqual([task("a")]);
     expect(cleared?.patch.tasks?.[0]).not.toHaveProperty("date");
     expect(cleared?.logs).toEqual([]);
@@ -56,11 +57,13 @@ describe("setting a Task's date", () => {
       tasks: [task("a", { date: day(8) }), task("b")],
     };
 
-    expect(decideSetTaskDate(thread, "a" as TaskId, day(8))).toEqual({
-      patch: {},
-      logs: [],
-    });
-    expect(decideSetTaskDate(thread, "b" as TaskId, null)).toEqual({
+    expect(decideSetTaskDate(thread, "a" as TaskId, day(8), undefined)).toEqual(
+      {
+        patch: {},
+        logs: [],
+      },
+    );
+    expect(decideSetTaskDate(thread, "b" as TaskId, null, undefined)).toEqual({
       patch: {},
       logs: [],
     });
@@ -68,19 +71,25 @@ describe("setting a Task's date", () => {
 
   it("answers null for a Task the Thread does not hold", () => {
     expect(
-      decideSetTaskDate({ state: "open" }, "a" as TaskId, day(8)),
+      decideSetTaskDate({ state: "open" }, "a" as TaskId, day(8), undefined),
     ).toBeNull();
   });
 
   it("refuses a resolved Thread and a date no row could hold", () => {
     expect(() =>
-      decideSetTaskDate({ state: "resolved" }, "a" as TaskId, day(8)),
+      decideSetTaskDate(
+        { state: "resolved" },
+        "a" as TaskId,
+        day(8),
+        undefined,
+      ),
     ).toThrow(ConflictError);
     expect(() =>
       decideSetTaskDate(
         { state: "open", tasks: [task("a")] },
         "a" as TaskId,
         1.5,
+        undefined,
       ),
     ).toThrow(ValidationError);
   });
@@ -90,11 +99,12 @@ describe("the range of a Task's date", () => {
   const thread = { state: "open" as const, tasks: [task("a")] };
 
   it("accepts the first and last instants, and refuses what lies outside", () => {
-    expect(decideSetTaskDate(thread, "a" as TaskId, 0)?.patch.tasks).toEqual([
-      task("a", { date: 0 }),
-    ]);
     expect(
-      decideSetTaskDate(thread, "a" as TaskId, MAX_TASK_DATE)?.patch.tasks,
+      decideSetTaskDate(thread, "a" as TaskId, 0, undefined)?.patch.tasks,
+    ).toEqual([task("a", { date: 0 })]);
+    expect(
+      decideSetTaskDate(thread, "a" as TaskId, MAX_TASK_DATE, undefined)?.patch
+        .tasks,
     ).toEqual([task("a", { date: MAX_TASK_DATE })]);
 
     for (const bad of [
@@ -104,9 +114,9 @@ describe("the range of a Task's date", () => {
       Number.NaN,
       Number.POSITIVE_INFINITY,
     ]) {
-      expect(() => decideSetTaskDate(thread, "a" as TaskId, bad)).toThrow(
-        new ValidationError("Invalid date"),
-      );
+      expect(() =>
+        decideSetTaskDate(thread, "a" as TaskId, bad, undefined),
+      ).toThrow(new ValidationError("Invalid date"));
     }
   });
 

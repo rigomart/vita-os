@@ -2,6 +2,7 @@ import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type {
   AreaSummary,
   CreateThreadInput,
+  Repeat,
   Task,
   TaskId,
   Thread,
@@ -19,6 +20,8 @@ import {
   decideFocusTask,
   decideRemoveTask,
   decideSetTaskDate,
+  decideSetTaskRepeat,
+  decideSkipTask,
   generateSlug,
 } from "@vita-os/core";
 
@@ -58,13 +61,45 @@ function applyTaskDecision<T extends TaskFields>(
   return withoutAbsent({ ...thread, ...decision.patch } as T);
 }
 
+/**
+ * Completing or skipping names the occurrence the person acted on: the date
+ * the Task showed then. A repeating Task that has moved on since — a duplicate
+ * activation behind the first, or a change from elsewhere — is not completed
+ * or skipped again. The zone and the current time are taken once, when the
+ * command is issued, so every replay of it computes the same next date, the
+ * one the service computes in that zone.
+ */
+interface OccurrenceCommand {
+  taskId: TaskId;
+  occurrence: number | undefined;
+  timeZone: string;
+  now: number;
+}
+
 export type TaskChange =
   | { kind: "add"; task: Task }
   | { kind: "edit"; taskId: TaskId; text: string }
   | { kind: "remove"; taskId: TaskId }
-  | { kind: "complete"; taskId: TaskId }
+  | ({ kind: "complete" } & OccurrenceCommand)
+  | ({ kind: "skip" } & OccurrenceCommand)
   | { kind: "focus"; taskId: TaskId | null }
-  | { kind: "setDate"; taskId: TaskId; date: number | null };
+  | { kind: "setDate"; taskId: TaskId; date: number | null; timeZone: string }
+  | {
+      kind: "setRepeat";
+      taskId: TaskId;
+      repeat: Repeat | null;
+      timeZone: string;
+    };
+
+/** Whether the Task still shows the occurrence the command was aimed at. */
+function atOccurrence(thread: TaskFields, command: OccurrenceCommand) {
+  const task = thread.tasks?.find((task) => task._id === command.taskId);
+  return (
+    task === undefined ||
+    task.repeat === undefined ||
+    task.date === command.occurrence
+  );
+}
 
 function decideTaskChange(
   thread: TaskFields,
@@ -78,11 +113,29 @@ function decideTaskChange(
     case "remove":
       return decideRemoveTask(thread, change.taskId);
     case "complete":
-      return decideCompleteTask(thread, change.taskId);
+      return atOccurrence(thread, change)
+        ? decideCompleteTask(thread, change.taskId, change)
+        : null;
+    case "skip":
+      return atOccurrence(thread, change)
+        ? decideSkipTask(thread, change.taskId, change)
+        : null;
     case "focus":
       return decideFocusTask(thread, change.taskId);
     case "setDate":
-      return decideSetTaskDate(thread, change.taskId, change.date);
+      return decideSetTaskDate(
+        thread,
+        change.taskId,
+        change.date,
+        change.timeZone,
+      );
+    case "setRepeat":
+      return decideSetTaskRepeat(
+        thread,
+        change.taskId,
+        change.repeat,
+        change.timeZone,
+      );
   }
 }
 

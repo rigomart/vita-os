@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   boardItems,
   buildAttentionBoard,
+  cardTask,
   groupByWhen,
   itemId,
   unscheduledCount,
@@ -293,5 +294,94 @@ describe("groupByWhen", () => {
       { label: "August", exact: false, tone: "far", items: ["d28"] },
       { label: "February 2027", exact: false, tone: "far", items: ["d200"] },
     ]);
+  });
+});
+
+describe("a repeating Task on the board", () => {
+  const daily = {
+    _id: "check-in" as TaskId,
+    text: "Evening check-in",
+    repeat: { kind: "days" as const, every: 1 },
+  };
+
+  it("shows a missed run as one Late card, never one per missed day", () => {
+    // Three evenings missed: still one Task with one date.
+    const recovery = thread("recovery", {
+      tasks: [{ ...daily, date: day(-3) + 9 * 3_600_000 }],
+    });
+    const board = buildAttentionBoard([recovery], [], currentDate);
+
+    expect(board.now.map(itemId)).toEqual(["recovery"]);
+    expect(boardItems(board)).toHaveLength(1);
+    expect(
+      groupByWhen(board.now, currentDate).map((group) => ({
+        key: group.key,
+        items: group.items.map(itemId),
+      })),
+    ).toEqual([{ key: "late", items: ["recovery"] }]);
+  });
+
+  it("marks the Task the card shows with the repeat glyph and offers skip", () => {
+    const recovery = thread("recovery", {
+      tasks: [{ ...daily, date: day(0) }, task("Call the nurse")],
+    });
+
+    expect(cardTask(recovery)).toMatchObject({
+      task: { _id: daily._id },
+      marker: "repeat",
+      canSkip: true,
+    });
+  });
+
+  it("keeps the glyph on a focused repeating Task", () => {
+    const recovery = thread("recovery", {
+      tasks: [{ ...daily, date: day(0) }],
+      focusedTaskId: daily._id,
+    });
+
+    expect(cardTask(recovery)).toMatchObject({
+      marker: "repeat",
+      focused: true,
+      canSkip: true,
+    });
+  });
+
+  it("offers no skip on a one-off Task, dated or not", () => {
+    const dated = thread("dated", {
+      tasks: [{ _id: "book" as TaskId, text: "Book", date: day(2) }],
+    });
+    const undated = thread("undated", { tasks: [task("Call")] });
+    const focused = thread("focused", {
+      tasks: [task("A"), task("B")],
+      focusedTaskId: "A" as TaskId,
+    });
+
+    expect(cardTask(dated)).toMatchObject({ marker: "task", canSkip: false });
+    expect(cardTask(undated)).toMatchObject({ marker: "task", canSkip: false });
+    expect(cardTask(focused)).toMatchObject({
+      marker: "focused",
+      canSkip: false,
+    });
+  });
+
+  it("offers no skip where the card shows no single Task", () => {
+    const sameDay = thread("same-day", {
+      tasks: [
+        { ...daily, date: day(0) },
+        { _id: "other" as TaskId, text: "Other", date: day(0) + 3_600_000 },
+      ],
+    });
+    const none = thread("none", { tasks: [task("A"), task("B")] });
+
+    expect(cardTask(sameDay)).toMatchObject({
+      marker: "count",
+      canSkip: false,
+    });
+    expect(cardTask(sameDay).task).toBeUndefined();
+    expect(cardTask(none)).toMatchObject({ marker: "count", canSkip: false });
+    expect(cardTask(thread("empty"))).toMatchObject({
+      marker: "none",
+      canSkip: false,
+    });
   });
 });

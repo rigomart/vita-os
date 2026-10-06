@@ -5,6 +5,7 @@ import { CalendarClock, Check } from "lucide-react";
 
 import {
   followUpDateLabels,
+  type RepeatControl,
   timeToken,
   WhenPopover,
   withTimeToken,
@@ -89,6 +90,7 @@ export function BoardDate({
   inHeading = false,
   labels = followUpDateLabels,
   onSetWhen,
+  repeat,
   when,
 }: {
   currentDate: number;
@@ -96,11 +98,14 @@ export function BoardDate({
   /** What the control is called: a Note's Follow-up date, or a Task's date. */
   labels?: { set: string; change: string; clear: string };
   onSetWhen: (when: number | undefined) => void;
+  /** A Task's Repeat, held in the same picker. */
+  repeat?: RepeatControl;
   when?: number;
 }) {
   return (
     <WhenPopover
       when={when}
+      {...(repeat === undefined ? {} : { repeat })}
       clearLabel={labels.clear}
       onSetWhen={onSetWhen}
       trigger={

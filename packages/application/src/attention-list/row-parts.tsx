@@ -1,3 +1,4 @@
+import type { Repeat } from "@vita-os/contracts";
 import type { LucideIcon } from "lucide-react";
 import type { ReactElement, ReactNode } from "react";
 
@@ -24,14 +25,31 @@ import {
   PopoverTrigger,
 } from "@vita-os/ui/components/popover";
 import { cn } from "@vita-os/ui/lib/utils";
-import { Clock, Trash2, X } from "lucide-react";
+import {
+  Clock,
+  Minus,
+  Plus,
+  Repeat as RepeatIcon,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 
 import type { ProductSearch } from "../navigation/search-params";
 import type { AttentionRowModel } from "./attention-row-model";
+import type { RepeatDraft } from "./repeat";
 
 import { AreaIcon } from "../areas/components/area-icon";
+import { browserTimeZone } from "../lib/time-zone";
 import { followUpDateLabels } from "./follow-up-date";
+import {
+  draftRepeat,
+  MAX_REPEAT_DAYS,
+  repeatDraft,
+  repeatSummary,
+  sameRepeat,
+  WEEKDAYS,
+} from "./repeat";
 
 export function RowShell({
   children,
@@ -103,6 +121,14 @@ export function AreaTag({
 }
 
 /**
+ * A Task's Repeat, edited in its date picker. `onChange(null)` clears it.
+ */
+export interface RepeatControl {
+  value: Repeat | undefined;
+  onChange: (repeat: Repeat | null) => void;
+}
+
+/**
  * The picker every When shares: a day, and optionally a time on it.
  *
  * The time stays behind an Add time button until asked for, then is typed
@@ -111,12 +137,20 @@ export function AreaTag({
  * for a day already chosen waits until the popover closes — Enter closes it —
  * so editing it writes one change, not one per keystroke. The time only
  * orders a day's items; it never moves one to another day or column.
+ *
+ * A Task's picker (`repeat`) also holds its Repeat, under the time. It stays
+ * open when a day is picked, so a Repeat can follow the day, and closes with
+ * Done. The Repeat choice is saved when the picker closes, like the time,
+ * and before a newly picked day, so the day is judged by the rhythm on
+ * screen: a weekly one moves it to the first chosen day. With no day the
+ * choices are disabled; clearing the date clears the Repeat too.
  */
 export function WhenPopover({
   busy,
   clearLabel = followUpDateLabels.clear,
   hint = followUpDateLabels.hint,
   onSetWhen,
+  repeat,
   trigger,
   when,
 }: {
@@ -126,21 +160,39 @@ export function WhenPopover({
   /** A line above the calendar saying what the date means. */
   hint?: string;
   onSetWhen?: (when: number | undefined) => void;
+  /** A Task's Repeat; without it the picker holds a date alone. */
+  repeat?: RepeatControl;
   trigger: ReactElement;
   when?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [time, setTime] = useState("");
   const [addingTime, setAddingTime] = useState(false);
+  const [draft, setDraft] = useState<RepeatDraft>(() =>
+    repeatDraft(repeat?.value),
+  );
   const selected = when === undefined ? undefined : new Date(when);
   const savedTime = when === undefined ? "" : (timeOfDay(when) ?? "");
+
+  /** Saves the Repeat choice, if it is a whole one and differs from the Task's. */
+  function commitRepeat() {
+    if (repeat === undefined || when === undefined || busy) return;
+    const chosen = draftRepeat(draft);
+    if (chosen !== undefined && !sameRepeat(chosen, repeat.value)) {
+      repeat.onChange(chosen);
+    }
+  }
 
   function handleOpenChange(next: boolean) {
     if (next) {
       setTime(savedTime);
       setAddingTime(savedTime !== "");
-    } else if (when !== undefined && time !== savedTime && !busy) {
-      onSetWhen?.(withTimeOfDay(when, time));
+      setDraft(repeatDraft(repeat?.value));
+    } else {
+      commitRepeat();
+      if (when !== undefined && time !== savedTime && !busy) {
+        onSetWhen?.(withTimeOfDay(when, time));
+      }
     }
     setOpen(next);
   }
@@ -161,8 +213,9 @@ export function WhenPopover({
           disabled={busy}
           onSelect={(date) => {
             if (!date || busy) return;
+            commitRepeat();
             onSetWhen?.(withTimeOfDay(date.getTime(), time));
-            setOpen(false);
+            if (repeat === undefined) setOpen(false);
           }}
         />
         <div className="border-t border-border/60 p-2">
@@ -212,26 +265,191 @@ export function WhenPopover({
             </Button>
           )}
         </div>
-        {selected && (
-          <div className="border-t border-border/60 p-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-muted-foreground"
-              disabled={busy}
-              onClick={() => {
-                if (busy) return;
-                onSetWhen?.(undefined);
-                setOpen(false);
-              }}
-            >
-              {clearLabel}
-            </Button>
+        {repeat !== undefined && (
+          <RepeatSection
+            disabled={busy || when === undefined}
+            draft={draft}
+            onDraftChange={setDraft}
+            when={when}
+          />
+        )}
+        {(selected || repeat !== undefined) && (
+          <div className="flex items-center gap-1 border-t border-border/60 p-2">
+            {selected && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="flex-1 justify-start text-muted-foreground"
+                disabled={busy}
+                onClick={() => {
+                  if (busy) return;
+                  onSetWhen?.(undefined);
+                  setOpen(false);
+                }}
+              >
+                {clearLabel}
+              </Button>
+            )}
+            {repeat !== undefined && (
+              <Button
+                type="button"
+                size="sm"
+                className="ml-auto"
+                onClick={() => handleOpenChange(false)}
+              >
+                Done
+              </Button>
+            )}
           </div>
         )}
       </PopoverContent>
     </Popover>
+  );
+}
+
+const REPEAT_MODES = [
+  { mode: "never", label: "Never" },
+  { mode: "daily", label: "Daily" },
+  { mode: "everyN", label: "Every N days" },
+  { mode: "weekly", label: "Weekly" },
+] as const;
+
+/**
+ * The Repeat choices under a Task's date: Never, Daily, Every N days with a
+ * stepper, or Weekly with a toggle per weekday, and one line saying what the
+ * Task will do. Choosing Weekly starts from the date's own weekday, so the
+ * date stays where it is until another day is chosen.
+ */
+function RepeatSection({
+  disabled,
+  draft,
+  onDraftChange,
+  when,
+}: {
+  disabled: boolean;
+  draft: RepeatDraft;
+  onDraftChange: (draft: RepeatDraft) => void;
+  when?: number;
+}) {
+  const choose = (mode: RepeatDraft["mode"]) => {
+    if (mode === draft.mode) return;
+    if (mode === "everyN") onDraftChange({ mode, every: 2 });
+    else if (mode === "weekly") {
+      onDraftChange({
+        mode,
+        weekdays: when === undefined ? [] : [new Date(when).getDay()],
+      });
+    } else onDraftChange({ mode });
+  };
+
+  return (
+    <div
+      role="group"
+      aria-label="Repeat"
+      aria-disabled={disabled || undefined}
+      // Takes the calendar's width rather than widening the picker.
+      className="flex w-0 min-w-full flex-col gap-2 border-t border-border/60 p-2"
+    >
+      <div className="flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground">
+        <RepeatIcon aria-hidden className="size-3.5" />
+        Repeat
+      </div>
+      <div className="grid grid-cols-2 gap-0.5 rounded-lg bg-muted p-0.5">
+        {REPEAT_MODES.map(({ mode, label }) => {
+          const pressed = !disabled && draft.mode === mode;
+          return (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={pressed}
+              disabled={disabled}
+              onClick={() => choose(mode)}
+              className={cn(
+                "h-7 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50",
+                pressed && "bg-background text-foreground shadow-xs",
+              )}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {!disabled && draft.mode === "everyN" && (
+        <div className="flex items-center gap-2 px-1 text-xs">
+          Every
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-xs"
+            aria-label="Fewer days"
+            disabled={draft.every <= 1}
+            onClick={() =>
+              onDraftChange({ mode: "everyN", every: draft.every - 1 })
+            }
+          >
+            <Minus />
+          </Button>
+          <span className="min-w-6 text-center font-medium tabular-nums">
+            {draft.every}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-xs"
+            aria-label="More days"
+            disabled={draft.every >= MAX_REPEAT_DAYS}
+            onClick={() =>
+              onDraftChange({ mode: "everyN", every: draft.every + 1 })
+            }
+          >
+            <Plus />
+          </Button>
+          days
+        </div>
+      )}
+
+      {!disabled && draft.mode === "weekly" && (
+        <div className="flex items-center justify-between px-0.5">
+          {WEEKDAYS.map(({ day, name, letter }) => {
+            const chosen = draft.weekdays.includes(day);
+            return (
+              <button
+                key={day}
+                type="button"
+                aria-pressed={chosen}
+                aria-label={name}
+                title={name}
+                onClick={() =>
+                  onDraftChange({
+                    mode: "weekly",
+                    weekdays: chosen
+                      ? draft.weekdays.filter((other) => other !== day)
+                      : [...draft.weekdays, day],
+                  })
+                }
+                className={cn(
+                  "flex size-7 items-center justify-center rounded-full border text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+                  chosen
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {letter}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <p
+        aria-live="polite"
+        className="px-1 text-xs leading-snug text-muted-foreground"
+      >
+        {repeatSummary(when, draft, browserTimeZone())}
+      </p>
+    </div>
   );
 }
 

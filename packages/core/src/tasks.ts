@@ -12,7 +12,24 @@ import {
 } from "./task-repeat";
 import { requireNonBlankText } from "./text";
 
-export { requireRepeat, requireTimeZone } from "./task-repeat";
+export {
+  nextTaskDate,
+  requireRepeat,
+  requireTimeZone,
+  snapTaskDate,
+} from "./task-repeat";
+
+/**
+ * What a command that may compute a calendar date carries: the caller's IANA
+ * zone and the current time. Both keys are required, so a caller that forgets
+ * them does not compile. The zone may be absent only where the command turns
+ * out to compute nothing (completing a one-off Task); the rule refuses its
+ * absence where it would.
+ */
+export interface TaskClock {
+  timeZone: string | undefined;
+  now: number;
+}
 
 /**
  * Tasks: the useful actions a Thread holds, as peers. They are kept in the
@@ -154,7 +171,7 @@ export function decideRemoveTask(
 export function decideCompleteTask(
   thread: TaskState,
   taskId: TaskId,
-  options?: { timeZone?: string; now: number },
+  clock: TaskClock,
 ): ThreadUpdateDecision | null {
   const task = findTask(thread, taskId);
   if (!task) return null;
@@ -163,7 +180,7 @@ export function decideCompleteTask(
     patch:
       task.repeat === undefined
         ? without(thread, taskId)
-        : advancedTask(thread, task, options).patch,
+        : advancedTask(thread, task, clock).patch,
     logs: [
       {
         type: "move_completed",
@@ -178,12 +195,16 @@ export function decideCompleteTask(
  * Set, change or (with `null`) clear one Task's date. A date resurfaces the
  * Thread and is never a deadline, so the change writes nothing to the Activity
  * Log. Setting the date a Task already has changes nothing.
+ *
+ * Every caller passes the zone, which may be absent where no calendar date is
+ * computed: clearing a date, or dating a Task that does not repeat weekly. A
+ * weekly Task's new date snaps to a chosen weekday in the zone.
  */
 export function decideSetTaskDate(
   thread: TaskState,
   taskId: TaskId,
   date: number | null,
-  timeZone?: string,
+  timeZone: string | undefined,
 ): ThreadUpdateDecision | null {
   requireOpenForTasks(thread);
   if (date !== null) requireTaskDate(date);
@@ -194,7 +215,7 @@ export function decideSetTaskDate(
   }
   if (date !== null && task.repeat?.kind === "weekly") {
     date = requireTaskDate(
-      snapTaskDate(date, requireRepeat(task.repeat), timeZone),
+      snapTaskDate(date, requireRepeat(task.repeat), requireTimeZone(timeZone)),
     );
   }
   if (
@@ -225,22 +246,18 @@ function replaceTask(thread: TaskState, task: Task): ThreadUpdateDecision {
 function advancedTask(
   thread: TaskState,
   task: Task,
-  options?: { timeZone?: string; now: number },
+  clock: TaskClock,
 ): ThreadUpdateDecision {
   if (task.repeat === undefined)
     throw new ValidationError("Only a repeating Task can be skipped");
   if (task.date === undefined)
     throw new ValidationError("A Repeat requires a date");
-  if (options === undefined)
-    throw new ValidationError(
-      "A repeating Task requires a time zone and current time",
-    );
   const date = requireTaskDate(
     nextTaskDate(
       requireTaskDate(task.date),
       requireRepeat(task.repeat),
-      options.timeZone,
-      options.now,
+      requireTimeZone(clock.timeZone),
+      clock.now,
     ),
   );
   return replaceTask(thread, { ...task, date });
@@ -250,11 +267,11 @@ function advancedTask(
 export function decideSkipTask(
   thread: TaskState,
   taskId: TaskId,
-  options: { timeZone?: string; now: number },
+  clock: { timeZone: string; now: number },
 ): ThreadUpdateDecision | null {
   requireOpenForTasks(thread);
   const task = findTask(thread, taskId);
-  return task === undefined ? null : advancedTask(thread, task, options);
+  return task === undefined ? null : advancedTask(thread, task, clock);
 }
 
 /** A Repeat needs a date; weekly choices snap forward, keeping the wall time. */
@@ -262,7 +279,7 @@ export function decideSetTaskRepeat(
   thread: TaskState,
   taskId: TaskId,
   repeat: Repeat | null,
-  timeZone?: string,
+  timeZone: string,
 ): ThreadUpdateDecision | null {
   requireOpenForTasks(thread);
   const task = findTask(thread, taskId);
