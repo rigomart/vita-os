@@ -4,6 +4,7 @@ import type {
   NoteAddedToThread,
   NoteId,
   OperationResult,
+  TaskId,
   Thread,
 } from "@vita-os/contracts";
 import type { PropsWithChildren } from "react";
@@ -137,94 +138,45 @@ function setup(client: ApplicationClient, seed: Thread = thread) {
   return { cache, wrapper, open };
 }
 
-const added = (tasks: NonNullable<Thread["tasks"]>, revision: number) =>
-  success<NoteAddedToThread>({
-    thread: { ...thread, tasks, revision },
-    threadNote: aThreadNote(),
-  });
-
 describe("converting Notes beside other Task commands", () => {
-  it("brings back no Task whose conversion was undone when another replays", async () => {
-    const undoFirst = deferred<boolean>();
-    const undoSecond = deferred<boolean>();
+  it("takes back only its own Task when undone, keeping one added before it", async () => {
+    const undo = deferred<boolean>();
+    const addTask = vi.fn(
+      async (input: {
+        taskId: TaskId;
+        text: string;
+        expectedRevision: number;
+      }) =>
+        success<Thread>({
+          ...thread,
+          tasks: [{ _id: input.taskId, text: input.text }],
+          revision: input.expectedRevision + 1,
+        }),
+    );
     const { wrapper, open } = setup(
       createFakeApplicationClient({
+        addTask,
         addNoteToThread: () => new Promise(() => undefined),
       }),
     );
     const { result: add } = renderHook(() => useAddNoteToThread(), { wrapper });
-
-    act(() => {
-      add.current.mutate({ note, thread, undoWindow: () => undoFirst.promise });
-      add.current.mutate({
-        note: second,
-        thread,
-        undoWindow: () => undoSecond.promise,
-      });
-    });
-    await waitFor(() =>
-      expect(open()?.tasks?.map((task) => task._id)).toEqual([
-        noteTaskId(note),
-        noteTaskId(second),
-      ]),
-    );
-
-    await act(async () => undoFirst.resolve(false));
-
-    await waitFor(() =>
-      expect(open()?.tasks?.map((task) => task._id)).toEqual([
-        noteTaskId(second),
-      ]),
-    );
-  });
-
-  it("keeps the newest revision when the conversion issued first lands last", async () => {
-    const undoFirst = deferred<boolean>();
-    const firstConversion = deferred<OperationResult<NoteAddedToThread>>();
-    const secondConversion = deferred<OperationResult<NoteAddedToThread>>();
-    const completeTask = vi.fn(async (input: { expectedRevision: number }) =>
-      success<Thread>({ ...thread, revision: input.expectedRevision + 1 }),
-    );
-    const { wrapper, open } = setup(
-      createFakeApplicationClient({
-        completeTask,
-        addNoteToThread: vi.fn((input: { noteId: NoteId }) =>
-          input.noteId === note._id
-            ? firstConversion.promise
-            : secondConversion.promise,
-        ),
-        getThreadActivityPage: async () => success({ entries: [] }),
-      }),
-    );
-    const { result: add } = renderHook(() => useAddNoteToThread(), { wrapper });
     const { result: tasks } = renderHook(() => useTasks(thread), { wrapper });
-    const { result: pending } = renderHook(() => useConversionLock(thread), {
-      wrapper,
-    });
-    // The second reaches the service first: the first waits out its Undo window.
-    const both = [
-      { _id: noteTaskId(second), text: "Pay the bill", date },
-      { _id: noteTaskId(note), text: "Call the dentist", date },
-    ];
-
-    act(() => {
-      add.current.mutate({ note, thread, undoWindow: () => undoFirst.promise });
-      add.current.mutate({ note: second, thread });
-    });
-    await act(async () => secondConversion.resolve(added(both.slice(0, 1), 5)));
-    await act(async () => undoFirst.resolve(true));
-    await act(async () => firstConversion.resolve(added(both, 6)));
-    await waitFor(() => expect(pending.current.pendingTaskIds.size).toBe(0));
-    expect(open()?.revision).toBe(6);
-    expect(open()?.tasks).toEqual(both);
+    const texts = () => open()?.tasks?.map((task) => task.text);
 
     await act(async () => {
-      await tasks.current.complete(noteTaskId(note));
+      await tasks.current.add("Book the room");
     });
-    expect(completeTask).toHaveBeenCalledTimes(1);
-    expect(completeTask).toHaveBeenCalledWith(
-      expect.objectContaining({ expectedRevision: 6 }),
+    act(() => {
+      add.current.mutate({ note, thread, undoWindow: () => undo.promise });
+    });
+    await waitFor(() =>
+      expect(texts()).toEqual(["Book the room", "Call the dentist"]),
     );
+
+    await act(async () => undo.resolve(false));
+
+    await waitFor(() => expect(texts()).toEqual(["Book the room"]));
+    expect(open()?.revision).toBe(5);
   });
 
   it("starts a Thread from a Note dated outside the range with an undated Task, before any optimistic write can throw", async () => {

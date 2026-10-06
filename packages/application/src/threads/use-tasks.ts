@@ -5,6 +5,7 @@ import { newRecordId } from "@vita-os/core";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
 
 import { CommandDropped, useTaskCommand } from "./hooks";
+import { ThreadBusy } from "./task-queue";
 
 export { useConversionLock } from "./task-queue";
 
@@ -18,6 +19,10 @@ function useReportFailure() {
 
   return (error: unknown) => {
     if (error instanceof CommandDropped) return;
+    if (error instanceof ThreadBusy) {
+      feedback.error(error.message);
+      return;
+    }
     const conflict = isApplicationError(error) && error.code === "conflict";
     feedback.error(
       conflict

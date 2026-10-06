@@ -41,7 +41,7 @@ import {
   showThreadRemoval,
   threadChangeKeys,
 } from "./optimistic";
-import { taskScope } from "./task-queue";
+import { conversionPending, taskScope, ThreadBusy } from "./task-queue";
 
 const ACTIVITY_PAGE_SIZE = 20;
 
@@ -234,6 +234,11 @@ export function useTaskCommand<TInput>(
 
   return useApplicationMutation<TInput, Thread>({
     scope,
+    // A Note being added to the Thread locks its Tasks: a command issued
+    // meanwhile would move under it. The surfaces disable their controls too;
+    // this catches what reaches the command anyway.
+    refuse: (_input, cache) =>
+      conversionPending(cache, thread) ? new ThreadBusy() : undefined,
     run: async (client, input) => {
       const change = command.change(input);
       const signature = JSON.stringify(change);

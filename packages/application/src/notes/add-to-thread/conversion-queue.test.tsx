@@ -25,6 +25,7 @@ import {
 import { aThread, aThreadNote } from "../../test/fixtures";
 import { createHarness } from "../../test/harness";
 import {
+  createFeedbackMock,
   createTestQueryClient,
   render,
   renderHook as renderWithProviders,
@@ -33,9 +34,11 @@ import {
 } from "../../test/render-with-providers";
 import { ThreadAttentionSection } from "../../threads/components/thread-attention-section";
 import { useOpenThreads, useUpdateThread } from "../../threads/hooks";
+import { settleTaskChange } from "../../threads/optimistic";
 import { noteTaskId } from "../../threads/task-queue";
 import { useTasks } from "../../threads/use-tasks";
 import { useAddNoteToThread } from "./hooks";
+import { useAddNoteToThreadWithUndo } from "./use-add-note-to-thread-with-undo";
 
 const date = new Date(2026, 6, 23, 15).getTime();
 const dentist: Note = {
@@ -155,7 +158,12 @@ function gatedService(
       return answer("addTask", success(stored));
     },
   );
+  const setTaskDate = vi.fn(async () => {
+    stored = { ...stored, revision: stored.revision + 1 };
+    return success(stored);
+  });
   const client = createFakeApplicationClient({
+    setTaskDate,
     completeTask,
     addTask,
     focusTask,
@@ -167,6 +175,7 @@ function gatedService(
 
   return {
     client,
+    setTaskDate,
     completeTask,
     addTask,
     focusTask,
@@ -291,83 +300,18 @@ describe("Note conversions and the Task queue of one Thread", () => {
     ]);
   });
 
-  // Once, two conversions replayed r6 then r5 while another command held
-  // the batch open, so the Tasks reverted to r5 under revision r6.
-  it("never shows older Tasks under a newer revision", async () => {
-    const seed = aThread({ revision: 4, tasks: [] });
-    const holding = deferred<OperationResult<Thread>>();
-    const service = gatedService(seed, () => holding.promise);
-    const { add, update, open } = setup(service, seed);
-    const undo = deferred<boolean>();
-    service.flowFreely();
-
-    act(() => {
-      void update.current
-        .mutateAsync({ thread: seed, title: "Renamed" })
-        .catch(() => undefined);
-    });
-    // Issued first, but held by its Undo window: it lands second.
-    act(() => {
-      add.current.mutate({
-        note: dentist,
-        thread: seed,
-        undoWindow: () => undo.promise,
-      });
-    });
-    await act(async () => {
-      await add.current.mutateAsync({ note: bill, thread: seed });
-    });
-    await act(async () => undo.resolve(true));
-    await waitFor(() =>
-      expect(service.addNoteToThread).toHaveBeenCalledTimes(2),
+  it("never takes an older answer's Tasks, focus or revision over a newer read", () => {
+    const newer = aThread({ revision: 7, tasks: [beta] });
+    const { cache } = createHarness(createFakeApplicationClient(), (cache) =>
+      cache.setQueryData(queryKeys.threads.open(), [newer]),
     );
-    await waitFor(() => expect(open()?.revision).toBe(6));
 
-    expect(service.stored().revision).toBe(6);
-    expect(open()?.tasks?.map((task) => task._id)).toEqual(
-      service.stored().tasks?.map((task) => task._id),
+    settleTaskChange(
+      cache,
+      aThread({ revision: 5, tasks: [alpha], focusedTaskId: alpha._id }),
     );
-    holding.resolve(success(seed));
-  });
 
-  // Once, a settled Task add replayed its optimistic change after a newer
-  // answer, bringing back a Task another device had removed.
-  it("never replays a settled change over a newer answer", async () => {
-    const seed = aThread({ revision: 4, tasks: [] });
-    const holding = deferred<OperationResult<Thread>>();
-    const service = gatedService(seed, () => holding.promise);
-    const { add, tasks, update, open } = setup(service, seed);
-    const undo = deferred<boolean>();
-    service.flowFreely();
-
-    act(() => {
-      void update.current
-        .mutateAsync({ thread: seed, title: "Renamed" })
-        .catch(() => undefined);
-    });
-    act(() => {
-      add.current.mutate({
-        note: dentist,
-        thread: seed,
-        undoWindow: () => undo.promise,
-      });
-    });
-    await act(async () => {
-      await tasks.current.add("Alpha");
-    });
-    expect(service.stored().revision).toBe(5);
-    service.elsewhere((thread) => ({
-      ...thread,
-      tasks: [],
-      revision: thread.revision + 1,
-    }));
-    await act(async () => undo.resolve(true));
-    await waitFor(() => expect(open()?.revision).toBe(7));
-
-    expect(open()?.tasks?.map((task) => task._id)).toEqual([
-      noteTaskId(dentist),
-    ]);
-    holding.resolve(success(seed));
+    expect(cache.getQueryData(queryKeys.threads.open())).toEqual([newer]);
   });
 });
 
@@ -381,11 +325,20 @@ describe("a Thread while a Note is being added to it", () => {
     const service = gatedService(seed);
     const queryClient = createTestQueryClient();
     queryClient.setQueryData(queryKeys.threads.open(), [seed]);
-    queryClient.setQueryData(queryKeys.notes.open(), [dentist]);
-    const providers = { applicationClient: service.client, queryClient };
+    queryClient.setQueryData(queryKeys.notes.open(), [dentist, bill]);
+    const feedback = createFeedbackMock();
+    const providers = {
+      applicationClient: service.client,
+      queryClient,
+      feedback,
+    };
     render(<Pane />, providers);
     const { result: add } = renderWithProviders(
       () => useAddNoteToThread(),
+      providers,
+    );
+    const { result: addWithUndo } = renderWithProviders(
+      () => useAddNoteToThreadWithUndo(() => undefined),
       providers,
     );
     const row = (text: string) => screen.getByText(text).closest("li")!;
@@ -398,8 +351,111 @@ describe("a Thread while a Note is being added to it", () => {
       [...screen.getAllByRole("button")].every(
         (control) => (control as HTMLButtonElement).disabled,
       );
-    return { service, add, row, button, addInput, locked, queryClient };
+    return {
+      service,
+      add,
+      addWithUndo,
+      feedback,
+      row,
+      button,
+      addInput,
+      locked,
+      queryClient,
+    };
   }
+
+  const busy = "A note is being added to this thread. Try again in a moment.";
+
+  it("refuses a Task command that reaches a locked Thread anyway, with one toast and no request", async () => {
+    const seed = aThread({ revision: 4, tasks: [alpha] });
+    const service = gatedService(seed);
+    const { feedback, add, tasks, open } = setup(service, seed);
+    service.flowFreely();
+    const undo = deferred<boolean>();
+
+    act(() => {
+      add.current.mutate({
+        note: dentist,
+        thread: seed,
+        undoWindow: () => undo.promise,
+      });
+    });
+    await waitFor(() =>
+      expect(open()?.tasks?.map((task) => task._id)).toContain(
+        noteTaskId(dentist),
+      ),
+    );
+    await act(async () => {
+      await tasks.current.complete(alpha._id);
+    });
+
+    expect(service.completeTask).not.toHaveBeenCalled();
+    expect(feedback.error).toHaveBeenCalledExactlyOnceWith(busy);
+    expect(open()?.tasks?.map((task) => task._id)).toEqual([
+      alpha._id,
+      noteTaskId(dentist),
+    ]);
+    await act(async () => undo.resolve(true));
+  });
+
+  it("closes a date picker left open when the lock starts, so it cannot save", async () => {
+    const user = userEvent.setup();
+    const seed = aThread({ revision: 4, tasks: [alpha] });
+    const { service, add, button } = renderPane(seed);
+    service.flowFreely();
+    const undo = deferred<boolean>();
+
+    await user.click(button("Alpha", /set date/i));
+    await waitFor(() =>
+      expect(document.querySelector("td[data-today] button")).not.toBeNull(),
+    );
+    act(() => {
+      add.current.mutate({
+        note: dentist,
+        thread: seed,
+        undoWindow: () => undo.promise,
+      });
+    });
+    await screen.findByText("Call the dentist");
+    const day = document.querySelector<HTMLButtonElement>(
+      "td[data-today] button",
+    );
+    if (day) await user.click(day);
+
+    expect(day).toBeNull();
+    expect(service.setTaskDate).not.toHaveBeenCalled();
+    await act(async () => undo.resolve(true));
+  });
+
+  it("refuses a second Note into a Thread a Note is being added to, and keeps the first one pending", async () => {
+    const seed = aThread({ revision: 4, tasks: [alpha] });
+    const { service, addWithUndo, feedback, row } = renderPane(seed);
+    service.flowFreely();
+    const undo = deferred<boolean>();
+    vi.mocked(feedback.undoable).mockImplementationOnce(() => undo.promise);
+
+    act(() => {
+      void addWithUndo.current(dentist, seed);
+    });
+    await screen.findByText("Call the dentist");
+    await act(async () => {
+      await addWithUndo.current(bill, seed);
+    });
+
+    expect(feedback.error).toHaveBeenCalledExactlyOnceWith(busy);
+    expect(service.addNoteToThread).not.toHaveBeenCalled();
+    expect(screen.queryByText("Pay the bill")).toBeNull();
+    expect(within(row("Call the dentist")).getByText("Adding…")).toBeTruthy();
+
+    await act(async () => undo.resolve(true));
+    await waitFor(() =>
+      expect(within(row("Call the dentist")).queryByText("Adding…")).toBeNull(),
+    );
+    expect(service.addNoteToThread).toHaveBeenCalledTimes(1);
+    expect(service.addNoteToThread).toHaveBeenCalledWith(
+      expect.objectContaining({ noteId: dentist._id }),
+    );
+  });
 
   it("takes no Task command until the conversion settles, and shows its Task as pending", async () => {
     const user = userEvent.setup();

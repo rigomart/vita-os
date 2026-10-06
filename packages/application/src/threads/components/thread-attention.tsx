@@ -71,7 +71,9 @@ export function ThreadAttention({
   const undated = tasks.filter((task) => task.date === undefined);
   const renderTask = (task: Task) => (
     <TaskRow
-      key={task._id}
+      // Remounted when the lock starts or ends, which closes an open date
+      // picker or text editor on the row.
+      key={`${task._id}${locked ? ":locked" : ""}`}
       task={task}
       now={now}
       focused={task._id === focusedTaskId}
@@ -226,6 +228,7 @@ function TaskRow({
           <span className="px-1 text-2xs text-muted-foreground">Adding…</span>
         )}
         <WhenPopover
+          busy={disabled}
           when={task.date}
           clearLabel={taskDateLabels.clear}
           onSetWhen={(when) => onSetDate(when ?? null)}

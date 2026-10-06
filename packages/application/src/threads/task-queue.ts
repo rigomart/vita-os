@@ -22,6 +22,44 @@ export function noteTaskId(note: Pick<Note, "_id">): TaskId {
 export const noteConversionKey = ["note-conversion"] as const;
 
 /**
+ * A Task command or a second Note conversion refused because a Note is being
+ * added to the Thread. Refused before anything shows, so nothing rolls back.
+ */
+export class ThreadBusy extends Error {
+  constructor() {
+    super("A note is being added to this thread. Try again in a moment.");
+    this.name = "ThreadBusy";
+  }
+}
+
+/**
+ * Whether a Note conversion is pending for this Thread: one adding a Note to
+ * it, or the one starting it whose Task it holds. `except` names a
+ * conversion's own variables, so it does not count itself.
+ */
+export function conversionPending(
+  cache: QueryClient,
+  thread: Pick<Thread, "_id" | "tasks">,
+  except?: unknown,
+): boolean {
+  const taskIds = new Set((thread.tasks ?? []).map((task) => task._id));
+  return cache
+    .getMutationCache()
+    .findAll({ mutationKey: noteConversionKey, status: "pending" })
+    .some((mutation) => {
+      const variables = mutation.state.variables as
+        | { note?: Pick<Note, "_id">; thread?: Pick<Thread, "_id"> }
+        | undefined;
+      if (variables === undefined || variables === except) return false;
+      return (
+        variables.thread?._id === thread._id ||
+        (variables.note !== undefined &&
+          taskIds.has(noteTaskId(variables.note)))
+      );
+    });
+}
+
+/**
  * Settles once no Task command of this Thread is pending. A conversion carries
  * no revision but moves the Thread's, so it is sent only after the Task
  * commands queued before it; while it is pending the Thread takes no new

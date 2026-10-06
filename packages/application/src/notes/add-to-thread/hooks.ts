@@ -26,8 +26,10 @@ import {
 } from "../../threads/optimistic";
 import {
   afterTaskCommands,
+  conversionPending,
   noteConversionKey,
   noteTaskId,
+  ThreadBusy,
 } from "../../threads/task-queue";
 import { noteKeys, showNoteLeavingOpenNotes } from "../optimistic";
 
@@ -76,8 +78,13 @@ export function useAddNoteToThread(): ApplicationMutationResult<
     NoteAddedToThread,
     ThreadNoteId
   >({
-    // While pending it locks the Thread's Tasks (`useConversionLock`).
+    // While pending it locks the Thread's Tasks (`useConversionLock`), and a
+    // second Note into the same Thread is refused until it settles.
     mutationKey: noteConversionKey,
+    refuse: (variables, cache) =>
+      conversionPending(cache, variables.thread, variables)
+        ? new ThreadBusy()
+        : undefined,
     run: async (client, { note, thread, undoWindow }) => {
       await afterUndoWindow(undoWindow);
       // The Task commands queued before it reach the service first.

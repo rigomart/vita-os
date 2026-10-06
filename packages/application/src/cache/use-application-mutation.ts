@@ -74,6 +74,11 @@ export interface ApplicationMutationOptions<TVariables, TValue, TLocal = void> {
   scope?: string;
   /** Names the command for `useMutationState`, so a surface can tell it is pending. */
   mutationKey?: readonly unknown[];
+  /**
+   * A reason to refuse the command outright, decided when it is issued and
+   * before anything shows: the command fails with it and reaches nothing.
+   */
+  refuse?: (variables: TVariables, cache: QueryClient) => Error | undefined;
 }
 
 interface MutationBatch {
@@ -159,6 +164,8 @@ export function useApplicationMutation<TVariables, TValue, TLocal = void>(
       return result.value;
     },
     onMutate: async (variables) => {
+      const refusal = options.refuse?.(variables, cache);
+      if (refusal !== undefined) throw refusal;
       let batch = batches.get(cache);
       if (!batch) {
         batch = {
