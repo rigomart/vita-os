@@ -1,0 +1,48 @@
+# Resolve a Thread that has open Tasks, check its resolution entry names them, find it in History, reopen it.
+# The Activity Log shows only "open → resolved"; the entry's content is read from D1.
+# Needs a signed-in instance (up + signin). Commit task fields with Tab, never Enter.
+open /
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Resolve me ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+browser -- wait 'input[aria-label="Add a task"]'
+browser -- find label "Add a task" fill "Discard A ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Discard A ${STAMP}"
+browser -- find label "Add a task" fill "Discard B ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Discard B ${STAMP}"
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Discard B ${STAMP}"]]//button[@aria-label="Focus this task"]'
+browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
+# Let the queued Task commands land before resolving.
+browser -- wait 1500
+shot resolve-before
+
+browser -- find role button click --name "Thread actions" --exact
+browser -- find role menuitem click --name Resolve --exact
+browser -- find role button click --name "Resolve thread" --exact
+browser -- wait --text "Thread resolved"
+d1 "SELECT content, previous_value, new_value FROM activity_log_entries WHERE content LIKE 'Resolved thread%' AND content LIKE '%${STAMP}%'"
+expect 'discarded tasks: \"Discard A ${STAMP}\", \"Discard B ${STAMP}\"'
+d1 "SELECT state, moves_json, focused_move_id FROM threads WHERE title = 'Resolve me ${STAMP}'"
+expect resolved
+
+# Find it in History and open it: no Tasks while resolved, the log is the record.
+browser -- press Meta+k
+browser -- find role button click --name History --exact
+browser -- wait --text "Resolve me ${STAMP}"
+browser -- find role option click --name "Resolve me ${STAMP}"
+browser -- wait --text "while resolved"
+browser -- find role tab click --name "Activity" --exact
+browser -- wait --text "open → resolved"
+shot resolve-history
+
+# Reopen from Thread actions: open again, Tasks and focus stay discarded.
+browser -- find role button click --name "Thread actions" --exact
+browser -- find role menuitem click --name Reopen --exact
+browser -- wait --text "Thread reopened"
+browser -- wait 'input[aria-label="Add a task"]'
+shot resolve-reopened
+d1 "SELECT state, moves_json, focused_move_id FROM threads WHERE title = 'Resolve me ${STAMP}'"
+expect open

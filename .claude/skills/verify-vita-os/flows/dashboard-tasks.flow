@@ -1,0 +1,66 @@
+# Dashboard card task slot: one Task, several unfocused ("N tasks · none focused"), one focused; complete from the card.
+# Needs a signed-in instance (up + signin). Commit task fields with Tab, never Enter.
+open /
+
+# Thread One: a single Task, shown without asking for a focus.
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Card one ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+browser -- wait 'input[aria-label="Add a task"]'
+browser -- find label "Add a task" fill "Only task ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Only task ${STAMP}"
+
+# Thread Many: three Tasks, none focused.
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Card many ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+browser -- wait 'input[aria-label="Add a task"]'
+browser -- find label "Add a task" fill "Many 1 ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Many 1 ${STAMP}"
+browser -- find label "Add a task" fill "Many 2 ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Many 2 ${STAMP}"
+browser -- find label "Add a task" fill "Many 3 ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Many 3 ${STAMP}"
+
+# Thread Focus: two Tasks, the second focused.
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Card focus ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+browser -- wait 'input[aria-label="Add a task"]'
+browser -- find label "Add a task" fill "Focus 1 ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Focus 1 ${STAMP}"
+browser -- find label "Add a task" fill "Focus 2 ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Focus 2 ${STAMP}"
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Focus 2 ${STAMP}"]]//button[@aria-label="Focus this task"]'
+browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
+
+# Let the queued Task commands land, then open / afresh (no pane) so the cards show server state.
+browser -- wait 1500
+open /
+browser -- wait --text "Ready to move"
+browser -- wait --text "Card focus ${STAMP}"
+browser -- wait --text "3 tasks · none focused"
+shot dash-task-slots
+
+# Complete from the card: the focused Task, then the only Task.
+browser -- find role button click --name "Complete “Focus 2 ${STAMP}”" --exact
+browser -- wait --fn "!document.body.innerText.includes('Focus 2 ${STAMP}')"
+browser -- find role button click --name "Complete “Only task ${STAMP}”" --exact
+browser -- wait --fn "!document.body.innerText.includes('Only task ${STAMP}')"
+shot dash-task-completed
+
+browser -- wait 1500
+open /
+browser -- wait --text "Card many ${STAMP}"
+shot dash-task-after-reload
+d1 "SELECT title, moves_json FROM threads WHERE title LIKE 'Card % ${STAMP}' ORDER BY title"
+expect Many 1 ${STAMP}

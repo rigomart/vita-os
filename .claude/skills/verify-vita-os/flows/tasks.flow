@@ -1,0 +1,54 @@
+# Tasks in the Thread pane: add three, focus, unfocus, refocus, edit, remove, complete, Activity Log.
+# Needs a signed-in instance (up + signin). Never press Enter on an editable Task: commit with Tab.
+open /
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Flow tasks ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+browser -- wait 'input[aria-label="Add a task"]'
+shot tasks-before
+
+# Add three Tasks. Tab commits the field.
+browser -- find label "Add a task" fill "Task A ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Task A ${STAMP}"
+browser -- find label "Add a task" fill "Task B ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Task B ${STAMP}"
+browser -- find label "Add a task" fill "Task C ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Task C ${STAMP}"
+shot tasks-added
+
+# Focus B, unfocus it, focus C instead.
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task B ${STAMP}"]]//button[@aria-label="Focus this task"]'
+browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
+shot tasks-focused
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task B ${STAMP}"]]//button[@aria-label="Unfocus this task"]'
+browser -- wait --fn "document.querySelectorAll('ul[aria-label=\"Tasks\"] > li[data-focused]').length === 0"
+shot tasks-unfocused
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task C ${STAMP}"]]//button[@aria-label="Focus this task"]'
+browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
+
+# Edit C: click its text, replace it, commit with Tab.
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task C ${STAMP}"]]//button[normalize-space()="Task C ${STAMP}"]'
+browser -- fill 'xpath=//ul[@aria-label="Tasks"]//input' "Task C edited ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Task C edited ${STAMP}"
+shot tasks-edited
+
+# Remove A (no Activity Log entry), complete B (unfocused; C keeps the focus).
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task A ${STAMP}"]]//button[@aria-label="Remove task"]'
+browser -- wait --fn "!document.querySelector('ul[aria-label=\"Tasks\"]').textContent.includes('Task A ${STAMP}')"
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task B ${STAMP}"]]//button[@aria-label="Complete task"]'
+browser -- wait --fn "!document.querySelector('ul[aria-label=\"Tasks\"]').textContent.includes('Task B ${STAMP}')"
+shot tasks-completed
+
+# Activity Log shows the completion, and only that.
+browser -- find role tab click --name "Activity" --exact
+browser -- wait --text "Completed Task B ${STAMP}"
+shot tasks-activity
+d1 "SELECT l.type, l.content FROM threads t JOIN activity_log_entries l ON l.thread_id = t.id WHERE t.title = 'Flow tasks ${STAMP}' AND l.type LIKE '%completed'"
+expect Completed
+d1 "SELECT moves_json, focused_move_id FROM threads WHERE title = 'Flow tasks ${STAMP}'"
+expect Task C edited ${STAMP}

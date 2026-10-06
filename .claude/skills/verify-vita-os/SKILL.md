@@ -59,6 +59,20 @@ Read persisted state without touching the UI:
 bun run verify d1 "SELECT body, state FROM notes"      # SELECT only, this instance's D1
 ```
 
+## Flows
+
+For anything longer than a few steps, write or reuse a flow and run it with `bun run verify run <flow-file>` instead of driving step by step. A flow runs against the current instance with no model in the loop and takes seconds.
+
+```bash
+bun run verify run .claude/skills/verify-vita-os/flows/tasks.flow
+```
+
+A flow is plain text in `flows/<name>.flow`, started after `up` and `signin`. One `verify` subcommand per line, exactly as typed after `bun run verify` (`open /`, `browser -- find role button click --name "Add" --exact`, `shot <label>`, `d1 "SELECT ..."`). `#` comments and blank lines are ignored. `${STAMP}` becomes one timestamp per run, for unique text. `expect <text>` fails the flow unless the previous step's output contains `<text>`, which is how a `d1` row is asserted. Quote with `'...'` or `"..."`.
+
+Each step has a 20 s timeout (`--step-timeout <seconds>`). The run stops at the first failing step and prints one JSON object with `failedLine`, `command`, `output`, and `evidenceDir`, then exits 1. On success it prints the `shot` labels and the wall time in `ms`.
+
+Existing flows: `tasks`, `dashboard-tasks`, `resolve-reopen`, `thread-drawer`. A flow proves what its lines assert. Mutations follow the same rule as below: a reload or a `d1` SELECT, not the optimistic UI alone.
+
 ## Evidence
 
 ```bash
@@ -73,6 +87,7 @@ Files land in `.verify/evidence/<instance>/<run>/` (printed by `up` and `env`). 
 - Toasts are transient and may not appear in the `.aria.txt` snapshot. The proof of a toast is the `wait --text "<toast>"` output. For an image, run `shot` immediately after that wait.
 - Vita updates optimistically. A new note or thread appears before the server confirms it. Prove a mutation with the server confirmation toast plus a reload and a read-only second view: the UI after reload and `verify d1`.
 - A check you could not run is `INCONCLUSIVE`, never a pass.
+- Time-limit verification. If the same step fails twice, stop that item, report it `INCONCLUSIVE` with the failing command and its output, and move on. Do not retry in a loop.
 
 ## Cleanup
 
@@ -99,6 +114,8 @@ The feature map is only as good as its last update, and you are the one who upda
 - `bun run verify env` prints the instance's URLs, credentials, session name, and evidence directory.
 
 ## Gotchas
+
+- Never `press Enter` right after typing in an EditableField (a Task's text). On agent-browser 0.38.1 it starts a nonstop stream of trusted keydown events in the browser (about 20k per 500 ms), so whatever button has focus is activated over and over and floods the API. Commit with `press Tab` or a click. Every flow follows this.
 
 - On a Mac whose display is asleep or locked, Chrome stops producing frames and screenshots hang. The CLI launches every browser session with `--disable-frame-rate-limit` (via `AGENT_BROWSER_ARGS`), which avoids it. Launch args only apply when a session starts, so a session opened with plain `agent-browser` still hangs: close it, or run `bun run verify down` then `up`. Snapshots, `eval`, and `pdf` never need a frame.
 - Saved Notes are read-only preview buttons named `Open note: <plain-text preview>`. Use `wait --text` for saved text and click the button to open the Note view. Its editor is `Note body` after choosing the `Write` tab.

@@ -1,0 +1,36 @@
+# Thread detail as a drawer (1024x768): Tasks, focus, completion, Activity, reload, close.
+# Not driven: Thread Notes. In the drawer "Write a note…" opens an editor that cannot be clicked (pointer-events: none).
+# Below 1280px the pane is dialog "<title>"; the 1440px side pane is complementary. Restores 1440x900 at the end.
+# Needs a signed-in instance (up + signin). Commit task fields with Tab, never Enter.
+browser -- set viewport 1024 768
+open /
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Drawer ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+browser -- wait 'input[aria-label="Add a task"]'
+shot drawer-before
+
+browser -- find label "Add a task" fill "Drawer A ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Drawer A ${STAMP}"
+browser -- find label "Add a task" fill "Drawer B ${STAMP}"
+browser -- press Tab
+browser -- wait --text "Drawer B ${STAMP}"
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Drawer B ${STAMP}"]]//button[@aria-label="Focus this task"]'
+browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
+shot drawer-tasks
+
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Drawer B ${STAMP}"]]//button[@aria-label="Complete task"]'
+browser -- wait --fn "!document.querySelector('ul[aria-label=\"Tasks\"]').textContent.includes('Drawer B ${STAMP}')"
+browser -- find role tab click --name "Activity" --exact
+browser -- wait --text "Completed Drawer B ${STAMP}"
+shot drawer-activity
+
+# Reload keeps the drawer open on the same Thread.
+browser -- reload
+browser -- wait 'ul[aria-label="Tasks"]'
+shot drawer-reloaded
+browser -- find role button click --name "Close thread" --exact
+browser -- wait --fn "!document.querySelector('[role=dialog]')"
+browser -- set viewport 1440 900
