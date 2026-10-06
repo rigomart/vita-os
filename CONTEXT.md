@@ -113,7 +113,7 @@ _Avoid_: Archive (as a place), trash, completed list.
 - A **Thread** has zero or one **Summary**, zero or more **Tasks**, zero or one **Focused Task**, zero or more **Thread Notes**, and one **Activity Log**.
 - A **Focused Task** is always one of its **Thread**'s **Tasks**. Capturing a **Task** never focuses it; focusing is a separate choice, and every **Task** may stay unfocused.
 - A **Task** may have a date and a **Repeat**; a Repeat requires a date, and clearing the date clears the Repeat. It has no done state, no nesting, and no manual order. "Look at this again in two weeks" is a dated **Task**. A **Thread**'s resurfacing is its soonest dated **Task**, and it has no **Follow-up date** of its own.
-- A weekly **Repeat** snaps a Task's date to the first chosen weekday on or after it. Repeats count calendar days in the caller's time zone and keep the local time of day across daylight-saving changes. Completing or skipping advances to the first occurrence after the current date that is not before today; missed occurrences collapse into one Task.
+- A weekly **Repeat** snaps a Task's date to the first chosen weekday on or after it. Repeats count calendar days in the caller's time zone and keep the local time of day, except that a time skipped by a daylight-saving change moves to the first valid time and stays there. Completing or skipping advances to the first occurrence after the current date that is not before today; missed occurrences collapse into one Task.
 - A **Resolved Thread** holds no **Tasks** and gains none.
 - A **Thread** is either **Open** or **Resolved**.
 - A **Thread**'s **Area** may be added, changed, or removed. A **Resolved Thread** keeps its Area.

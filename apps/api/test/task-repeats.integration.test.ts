@@ -156,12 +156,11 @@ describe("repeating Tasks over HTTP", () => {
     );
   });
 
-  it("clearing a date also clears its Repeat, with a valid zone", async () => {
+  it("clearing a date also clears its Repeat without a zone", async () => {
     const owner = await createSession("repeat-clear-date");
     const thread = await repeating(owner);
     const cleared = await command(owner, thread, "date", {
       date: null,
-      timeZone: "UTC",
     });
     expect(cleared.status).toBe(200);
     expect((cleared.body as Thread).tasks).toEqual([
@@ -170,6 +169,79 @@ describe("repeating Tasks over HTTP", () => {
     expect((cleared.body as Thread).revision).toBe(thread.revision + 1);
     expect(await activity(owner, thread)).toEqual([]);
   });
+
+  it("clears a weekly Task's date without a zone", async () => {
+    const owner = await createSession("repeat-clear-weekly");
+    const thread = await repeating(owner, { kind: "weekly", weekdays: [2] });
+    const cleared = await command(owner, thread, "date", { date: null });
+    expect(cleared.status).toBe(200);
+    expect((cleared.body as Thread).tasks).toEqual([
+      { _id: "a", text: "Check" },
+    ]);
+    expect((cleared.body as Thread).revision).toBe(thread.revision + 1);
+    expect(await activity(owner, thread)).toEqual([]);
+  });
+
+  it("changes an every-N-days date without a zone, preserving the repeat", async () => {
+    const owner = await createSession("repeat-redate-days");
+    const thread = await repeating(owner, { kind: "days", every: 3 });
+    const next = Date.parse("2026-10-08T09:15Z");
+    const changed = await command(owner, thread, "date", { date: next });
+    expect(changed.status).toBe(200);
+    expect((changed.body as Thread).tasks).toEqual([
+      { ...thread.tasks![0], date: next },
+    ]);
+    expect((changed.body as Thread).revision).toBe(thread.revision + 1);
+    const unchanged = await command(owner, changed.body as Thread, "date", {
+      date: next,
+    });
+    expect(unchanged.body).toEqual(changed.body);
+    expect(await activity(owner, thread)).toEqual([]);
+  });
+
+  it("refuses a repeat on the add route", async () => {
+    const owner = await createSession("repeat-capture");
+    const thread = await dated(owner);
+    expectError(
+      await call(`/v1/threads/${thread._id}/tasks`, {
+        method: "POST",
+        session: owner,
+        body: {
+          taskId: "b",
+          text: "Check",
+          date,
+          repeat: daily,
+          expectedRevision: thread.revision,
+        },
+      }),
+      validation,
+    );
+    expect(await read(owner, thread)).toEqual(thread);
+  });
+
+  it.each(["complete", "date"])(
+    "validates invalid zones before stale revisions on %s",
+    async (action) => {
+      const owner = await createSession("repeat-zone-stale");
+      const thread = await repeating(owner);
+      for (const timeZone of ["Invalid/Zone", "+02:00", ""]) {
+        expectError(
+          await command(
+            owner,
+            { ...thread, revision: thread.revision - 1 },
+            action,
+            {
+              ...(action === "date" ? { date: null } : {}),
+              timeZone,
+            },
+          ),
+          { ...validation, message: "Invalid Task change." },
+        );
+      }
+      expect(await read(owner, thread)).toEqual(thread);
+      expect(await activity(owner, thread)).toEqual([]);
+    },
+  );
 
   it("completion keeps the Task and focus, collapses missed dates using the service clock, and writes one entry", async () => {
     const owner = await createSession("repeat-complete");
@@ -272,14 +344,19 @@ describe("repeating Tasks over HTTP", () => {
     const thread = await repeating(owner);
     for (const timeZone of [undefined, "Invalid/Zone", "+02:00", ""]) {
       const zone = timeZone === undefined ? {} : { timeZone };
-      for (const [action, body] of [
+      const changes = [
         ["complete", zone],
         ["skip", zone],
         ["repeat", { repeat: daily, ...zone }],
-        ["date", { date, ...zone }],
-        ["date", { date: null, ...zone }],
         ["repeat", { repeat: null, ...zone }],
-      ] as const) {
+        ...(timeZone === undefined
+          ? []
+          : ([
+              ["date", { date, ...zone }],
+              ["date", { date: null, ...zone }],
+            ] as const)),
+      ] as const;
+      for (const [action, body] of changes) {
         expectError(await command(owner, thread, action, body), validation);
       }
     }
@@ -369,6 +446,19 @@ describe("repeating Tasks over HTTP", () => {
 });
 
 describe("stored Repeats", () => {
+  it.each([-1, 253_402_300_800_000, Number.MAX_SAFE_INTEGER])(
+    "reads a legacy stored safe-integer date outside write bounds: %s",
+    (date) => {
+      const tasks = [{ _id: "a", text: "Follow up", date }];
+      expect(
+        parseTasks(JSON.stringify([{ id: "a", text: "Follow up", date }])),
+      ).toEqual(tasks);
+      expect(parseTasks(serializeTasks(tasks as Thread["tasks"]))).toEqual(
+        tasks,
+      );
+    },
+  );
+
   it("round-trips and sorts a valid Repeat", () => {
     const stored =
       '[{"id":"a","text":"Check","date":1,"repeat":{"kind":"weekly","weekdays":[4,2]}}]';

@@ -92,7 +92,7 @@ export interface SetTaskDateInput extends TaskCommand {
   taskId: TaskId;
   /** Sets or changes the Task's date; `null` clears it. */
   date: Clearable<number>;
-  /** Required when the Task repeats, including when clearing its date. */
+  /** Required only when setting a weekly-repeating Task's date, to snap it. */
   timeZone?: string;
 }
 

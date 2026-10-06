@@ -108,9 +108,7 @@ export function decideAddTask(
   if (findTask(thread, task._id)) return null;
   if (task.date !== undefined) requireTaskDate(task.date);
   if (task.repeat !== undefined) {
-    if (task.date === undefined)
-      throw new ValidationError("A Repeat requires a date");
-    task = { ...task, repeat: requireRepeat(task.repeat) };
+    throw new ValidationError("Set a Repeat after adding the Task");
   }
 
   return {
@@ -191,10 +189,10 @@ export function decideSetTaskDate(
   if (date !== null) requireTaskDate(date);
   const task = findTask(thread, taskId);
   if (!task) return null;
-  if (task.repeat !== undefined || timeZone !== undefined) {
+  if (timeZone !== undefined) {
     requireTimeZone(timeZone);
   }
-  if (date !== null && task.repeat !== undefined) {
+  if (date !== null && task.repeat?.kind === "weekly") {
     date = requireTaskDate(
       snapTaskDate(date, requireRepeat(task.repeat), timeZone),
     );

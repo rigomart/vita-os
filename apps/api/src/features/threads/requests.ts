@@ -58,6 +58,17 @@ export const TaskDateSchema = Timestamp.check(
   Schema.isLessThanOrEqualTo(MAX_TASK_DATE),
 );
 
+const TimeZoneSchema = Schema.String.check(
+  Schema.makeFilter((value) => {
+    try {
+      requireTimeZone(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }),
+);
+
 export const AddMoveBody = Schema.Struct({
   taskId: Schema.optionalKey(TaskIdSchema),
   moveId: Schema.optionalKey(TaskIdSchema),
@@ -79,14 +90,14 @@ export const EditTaskBody = Schema.Struct({
 /** `date: null` clears the Task's date, and must be spelled out: absent is not a choice. */
 export const SetTaskDateBody = Schema.Struct({
   date: Schema.NullOr(TaskDateSchema),
-  timeZone: Schema.optionalKey(Schema.String),
+  timeZone: Schema.optionalKey(TimeZoneSchema),
   expectedRevision: Revision,
 });
 /** Removing and completing name the Task in the path; the body holds only the revision. */
 export const TaskRevisionBody = Schema.Struct({ expectedRevision: Revision });
 export const CompleteTaskBody = Schema.Struct({
   expectedRevision: Revision,
-  timeZone: Schema.optionalKey(Schema.String),
+  timeZone: Schema.optionalKey(TimeZoneSchema),
 });
 
 export const RepeatSchema = Schema.Union([
@@ -106,16 +117,6 @@ export const RepeatSchema = Schema.Union([
   }),
 );
 
-const TimeZoneSchema = Schema.String.check(
-  Schema.makeFilter((value) => {
-    try {
-      requireTimeZone(value);
-      return true;
-    } catch {
-      return false;
-    }
-  }),
-);
 export const SetTaskRepeatBody = Schema.Struct({
   repeat: Schema.NullOr(RepeatSchema),
   timeZone: TimeZoneSchema,

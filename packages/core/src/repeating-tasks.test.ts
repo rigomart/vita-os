@@ -101,6 +101,68 @@ describe("repeating Tasks", () => {
     expect(decision?.patch.tasks?.[0]?.date).toBe(ms("2026-10-06T23:55+13:00"));
   });
 
+  it.each([daily, { kind: "weekly", weekdays: [0, 1, 2] }] satisfies Repeat[])(
+    "keeps Santiago date-only %j at each day's start across a midnight gap",
+    (repeat) => {
+      for (const command of [rules.decideCompleteTask, rules.decideSkipTask]) {
+        let current: rules.TaskState = thread("2026-09-05T00:00-04:00", repeat);
+        for (const next of [
+          "2026-09-06T01:00-03:00",
+          "2026-09-07T00:00-03:00",
+          "2026-09-08T00:00-03:00",
+        ]) {
+          const decision = command(current, id, {
+            timeZone: "America/Santiago",
+            now: current.tasks![0]!.date!,
+          });
+          expect(decision?.patch.tasks?.[0]?.date).toBe(ms(next));
+          current = { ...current, ...decision!.patch };
+        }
+      }
+    },
+  );
+
+  it("snaps a date-only weekly Task from Santiago's gap day back to midnight", () => {
+    expect(
+      rules.decideSetTaskRepeat(
+        thread("2026-09-06T01:00-03:00"),
+        id,
+        { kind: "weekly", weekdays: [1] },
+        "America/Santiago",
+      )?.patch.tasks?.[0]?.date,
+    ).toBe(ms("2026-09-07T00:00-03:00"));
+  });
+
+  it("keeps a timed Task's shifted New York wall time after a DST gap", () => {
+    for (const command of [rules.decideCompleteTask, rules.decideSkipTask]) {
+      let current: rules.TaskState = thread("2026-03-07T02:30-05:00");
+      for (const next of [
+        "2026-03-08T03:30-04:00",
+        "2026-03-09T03:30-04:00",
+        "2026-03-10T03:30-04:00",
+      ]) {
+        const decision = command(current, id, {
+          timeZone: "America/New_York",
+          now: current.tasks![0]!.date!,
+        });
+        expect(decision?.patch.tasks?.[0]?.date).toBe(ms(next));
+        current = { ...current, ...decision!.patch };
+      }
+    }
+  });
+
+  it.each([daily, { kind: "weekly", weekdays: [2] }] satisfies Repeat[])(
+    "refuses a valid %j Repeat at capture even with a date",
+    (repeat) => {
+      expect(() =>
+        rules.decideAddTask(
+          { state: "open" },
+          thread("2026-10-06T15:30Z", repeat).tasks[0]!,
+        ),
+      ).toThrow(ValidationError);
+    },
+  );
+
   it("requires a date and a valid zone, never silently removing a repeating Task", () => {
     expect(() =>
       rules.decideSetTaskRepeat(
@@ -213,12 +275,9 @@ describe("repeating Tasks", () => {
         "America/New_York",
       )?.patch.tasks?.[0]?.date,
     ).toBe(ms("2026-03-08T15:30-04:00"));
-    expect(() => rules.decideSetTaskDate(original, id, null)).toThrow(
-      ValidationError,
-    );
-    expect(
-      rules.decideSetTaskDate(original, id, null, "UTC")?.patch.tasks,
-    ).toEqual([{ _id: id, text: "Check" }]);
+    expect(rules.decideSetTaskDate(original, id, null)?.patch.tasks).toEqual([
+      { _id: id, text: "Check" },
+    ]);
     expect(
       rules.decideSetTaskRepeat(original, id, null, "UTC")?.patch.tasks?.[0],
     ).toEqual({ _id: id, text: "Check", date: original.tasks[0]?.date });
@@ -260,14 +319,70 @@ describe("repeating Tasks", () => {
     ).toThrow(ValidationError);
   });
 
-  it("requires a zone even for an unchanged daily date", () => {
+  it("needs no zone for an unchanged daily date", () => {
     const original = thread("2026-10-06T15:30Z");
-    expect(() =>
+    expect(
       rules.decideSetTaskDate(original, id, original.tasks[0]!.date!),
-    ).toThrow(ValidationError);
+    ).toEqual({ patch: {}, logs: [] });
     expect(
       rules.decideSetTaskDate(original, id, original.tasks[0]!.date!, "UTC"),
     ).toEqual({ patch: {}, logs: [] });
+  });
+
+  it.each([daily, { kind: "days", every: 3 }] satisfies Repeat[])(
+    "changes an every-N-days date without a zone: %j",
+    (repeat) => {
+      const original = thread("2026-10-06T15:30Z", repeat);
+      expect(
+        rules.decideSetTaskDate(original, id, ms("2026-10-08T09:15Z")),
+      ).toEqual({
+        patch: {
+          tasks: [{ ...original.tasks[0], date: ms("2026-10-08T09:15Z") }],
+        },
+        logs: [],
+      });
+    },
+  );
+
+  it.each([daily, { kind: "weekly", weekdays: [2] }] satisfies Repeat[])(
+    "clears a %j Task's date and repeat without a zone",
+    (repeat) => {
+      expect(
+        rules.decideSetTaskDate(thread("2026-10-06T15:30Z", repeat), id, null),
+      ).toEqual({ patch: { tasks: [{ _id: id, text: "Check" }] }, logs: [] });
+    },
+  );
+
+  it("validates a supplied zone even when changing the date needs none", () => {
+    for (const date of [
+      null,
+      ms("2026-10-08T09:15Z"),
+      ms("2026-10-06T15:30Z"),
+    ]) {
+      expect(() =>
+        rules.decideSetTaskDate(
+          thread("2026-10-06T15:30Z"),
+          id,
+          date,
+          "Invalid/Zone",
+        ),
+      ).toThrow(ValidationError);
+    }
+  });
+
+  it("still requires a zone to set a weekly repeat and to complete or skip repeats", () => {
+    const original = thread("2026-10-06T15:30Z");
+    expect(() =>
+      rules.decideSetTaskRepeat(original, id, {
+        kind: "weekly",
+        weekdays: [2],
+      }),
+    ).toThrow(ValidationError);
+    for (const command of [rules.decideCompleteTask, rules.decideSkipTask]) {
+      expect(() => command(original, id, { now: ms("2026-10-06") })).toThrow(
+        ValidationError,
+      );
+    }
   });
 
   it.each([

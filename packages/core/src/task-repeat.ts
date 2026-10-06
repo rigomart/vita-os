@@ -122,6 +122,36 @@ function instant(fields: number, zone: Intl.DateTimeFormat): number {
   return exact.length > 0 ? Math.min(...exact) : Math.max(...candidates);
 }
 
+/** Midnight, or the first instant of the day when midnight is skipped. */
+function startOfDay(day: number, zone: Intl.DateTimeFormat): number {
+  const midnight = day * DAY;
+  const candidate = instant(midnight, zone);
+  if (localFields(candidate, zone) === midnight) return candidate;
+
+  // A gap may begin before midnight, so its compatible result can be later
+  // than the day's first instant. Find the actual start, to the millisecond.
+  let before = candidate - DAY;
+  let after = candidate;
+  while (after - before > 1) {
+    const middle = Math.floor((before + after) / 2);
+    if (dayOf(localFields(middle, zone)) < day) before = middle;
+    else after = middle;
+  }
+  return after;
+}
+
+function repeatedDate(
+  date: number,
+  day: number,
+  targetDay: number,
+  fields: number,
+  zone: Intl.DateTimeFormat,
+): number {
+  return date === startOfDay(day, zone)
+    ? startOfDay(targetDay, zone)
+    : instant(fields + (targetDay - day) * DAY, zone);
+}
+
 function chosenDay(day: number, weekdays: readonly number[]): number {
   // 1970-01-01 (day zero) was Thursday, weekday 4.
   const weekday = (((day + 4) % 7) + 7) % 7;
@@ -141,7 +171,9 @@ export function snapTaskDate(
   const day = dayOf(fields);
   const snapped = chosenDay(day, repeat.weekdays);
   // Keep an existing instant on a chosen day, even in a fall-back overlap.
-  return snapped === day ? date : instant(fields + (snapped - day) * DAY, zone);
+  return snapped === day
+    ? date
+    : repeatedDate(date, day, snapped, fields, zone);
 }
 
 export function nextTaskDate(
@@ -154,6 +186,8 @@ export function nextTaskDate(
   if (!Number.isSafeInteger(now) || !Number.isFinite(new Date(now).getTime())) {
     throw new ValidationError("Invalid current time");
   }
+  // Timed Tasks read the stored wall time: after a DST gap shifts it forward,
+  // later occurrences keep that shifted time (an accepted limitation).
   const fields = localFields(date, zone);
   const current = dayOf(fields);
   const today = dayOf(localFields(now, zone));
@@ -162,5 +196,5 @@ export function nextTaskDate(
       ? current +
         Math.max(1, Math.ceil((today - current) / repeat.every)) * repeat.every
       : chosenDay(Math.max(current + 1, today), repeat.weekdays);
-  return instant(fields + (next - current) * DAY, zone);
+  return repeatedDate(date, current, next, fields, zone);
 }

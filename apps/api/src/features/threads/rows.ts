@@ -6,7 +6,7 @@ import type {
   ThreadId,
 } from "@vita-os/contracts";
 
-import { requireRepeat, requireTaskDate, soonestTaskDate } from "@vita-os/core";
+import { requireRepeat, soonestTaskDate } from "@vita-os/core";
 
 /**
  * Where a stored Thread becomes a Vita OS value.
@@ -78,9 +78,7 @@ export function parseTasks(value: string | null): Task[] | undefined {
       return {
         _id: item.id as TaskId,
         text: item.text,
-        ...(item.date === undefined
-          ? {}
-          : { date: requireTaskDate(item.date) }),
+        ...(item.date === undefined ? {} : { date: item.date }),
         ...(Object.hasOwn(item, "repeat")
           ? { repeat: requireRepeat(item.repeat) }
           : {}),
