@@ -7,6 +7,7 @@ import type {
   Note,
   NoteAddedToThread,
   NotePage,
+  Repeat,
   Thread,
   ThreadDetail,
   ThreadNote,
@@ -83,12 +84,27 @@ export interface RemoveTaskInput extends TaskCommand {
 
 export interface CompleteTaskInput extends TaskCommand {
   taskId: TaskId;
+  /** Required when the Task repeats. */
+  timeZone?: string;
 }
 
 export interface SetTaskDateInput extends TaskCommand {
   taskId: TaskId;
   /** Sets or changes the Task's date; `null` clears it. */
   date: Clearable<number>;
+  /** Required only when setting a weekly-repeating Task's date, to snap it. */
+  timeZone?: string;
+}
+
+export interface SetTaskRepeatInput extends TaskCommand {
+  taskId: TaskId;
+  repeat: Clearable<Repeat>;
+  timeZone: string;
+}
+
+export interface SkipTaskInput extends TaskCommand {
+  taskId: TaskId;
+  timeZone: string;
 }
 
 export interface FocusTaskInput extends TaskCommand {
@@ -168,11 +184,14 @@ export interface ApplicationClient {
   editTask(input: EditTaskInput): Promise<OperationResult<Thread>>;
   /** Drops the Task without a trace in the Activity Log. */
   removeTask(input: RemoveTaskInput): Promise<OperationResult<Thread>>;
-  /** Removes the Task and records it as done in the Activity Log. */
+  /** Records completion; a repeating Task advances, a one-off Task is removed. */
   completeTask(input: CompleteTaskInput): Promise<OperationResult<Thread>>;
   focusTask(input: FocusTaskInput): Promise<OperationResult<Thread>>;
   /** Sets, changes or clears one Task's date. Writes nothing to the Activity Log. */
   setTaskDate(input: SetTaskDateInput): Promise<OperationResult<Thread>>;
+  setTaskRepeat(input: SetTaskRepeatInput): Promise<OperationResult<Thread>>;
+  /** Advances a repeating Task without writing to the Activity Log. */
+  skipTask(input: SkipTaskInput): Promise<OperationResult<Thread>>;
 
   /* Activity Log */
   getThreadActivityPage(

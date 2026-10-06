@@ -7,6 +7,8 @@ import type {
   FocusTaskInput,
   RemoveTaskInput,
   SetTaskDateInput,
+  SetTaskRepeatInput,
+  SkipTaskInput,
   Thread,
   ThreadDetail,
   ThreadId,
@@ -23,11 +25,14 @@ import {
   decideFocusTask,
   decideRemoveTask,
   decideSetTaskDate,
+  decideSetTaskRepeat,
+  decideSkipTask,
   decideThreadUpdate,
   generateSlug,
   requireTaskId,
   requireTaskText,
   requireNonBlankText,
+  requireTimeZone,
 } from "@vita-os/core";
 import { Effect } from "effect";
 
@@ -209,9 +214,16 @@ export function removeTask(input: RemoveTaskInput): Operation<Thread> {
  * one: the loser finds the revision moved on.
  */
 export function completeTask(input: CompleteTaskInput): Operation<Thread> {
-  return changeTasks(input, (thread) =>
-    decideCompleteTask(thread, input.taskId),
-  );
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    return yield* changeTasks(input, (thread) => {
+      if (input.timeZone !== undefined) requireTimeZone(input.timeZone);
+      return decideCompleteTask(thread, input.taskId, {
+        timeZone: input.timeZone,
+        now: scope.clock.now(),
+      });
+    });
+  });
 }
 
 export function focusTask(input: FocusTaskInput): Operation<Thread> {
@@ -221,8 +233,26 @@ export function focusTask(input: FocusTaskInput): Operation<Thread> {
 /** Set, change or clear one Task's date. It writes no Activity Log entry. */
 export function setTaskDate(input: SetTaskDateInput): Operation<Thread> {
   return changeTasks(input, (thread) =>
-    decideSetTaskDate(thread, input.taskId, input.date),
+    decideSetTaskDate(thread, input.taskId, input.date, input.timeZone),
   );
+}
+
+export function setTaskRepeat(input: SetTaskRepeatInput): Operation<Thread> {
+  return changeTasks(input, (thread) =>
+    decideSetTaskRepeat(thread, input.taskId, input.repeat, input.timeZone),
+  );
+}
+
+export function skipTask(input: SkipTaskInput): Operation<Thread> {
+  return Effect.gen(function* () {
+    const scope = yield* RequestContext;
+    return yield* changeTasks(input, (thread) =>
+      decideSkipTask(thread, input.taskId, {
+        timeZone: input.timeZone,
+        now: scope.clock.now(),
+      }),
+    );
+  });
 }
 
 export function removeThread(input: {

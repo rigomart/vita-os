@@ -13,6 +13,8 @@ export type {
   PageRequest,
   RemoveTaskInput,
   SetTaskDateInput,
+  SetTaskRepeatInput,
+  SkipTaskInput,
   UpdateAreaInput,
   UpdateThreadInput,
 } from "./application-client";
@@ -38,6 +40,7 @@ export type {
   AreaIcon,
   AreaSummary,
   Task,
+  Repeat,
   Note,
   NoteAddedToThread,
   NotePage,

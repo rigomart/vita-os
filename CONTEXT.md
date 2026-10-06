@@ -46,12 +46,16 @@ An optional current-orientation note that explains what a **Thread** is about.
 _Avoid_: Definition of Done, description, brief.
 
 **Task**:
-One useful action that could move a **Thread** forward: text, with an optional date. A **Task** has no done state; completing it removes it. The date is a **Follow-up date**'s kind of value, a day with an optional time of day (ADR 0027), and it resurfaces the **Thread** without ever being a deadline.
+One useful action that could move a **Thread** forward: text, with an optional date and an optional **Repeat**. A **Task** has no done state; completing it removes it unless it repeats, in which case it moves to its next occurrence. The date is a **Follow-up date**'s kind of value, a day with an optional time of day (ADR 0027), and it resurfaces the **Thread** without ever being a deadline.
 _Avoid_: Move (former name), Next Move, step, subtask, todo.
 
 **Tasks**:
 The unordered set of peer **Tasks** a **Thread** holds. They are shown in the order they were captured, which is never a priority.
 _Avoid_: Up Next, queue, next moves, action queue, checklist.
+
+**Repeat**:
+An optional rhythm on a dated **Task**: every N days or weekly on chosen weekdays. Completing a repeating Task moves it to its next occurrence instead of removing it (ADR 0032).
+_Avoid_: Recurrence, routine, habit.
 
 **Focused Task**:
 The one **Task** the user has singled out on a **Thread**, when they have. Focus is emphasis only.
@@ -108,7 +112,8 @@ _Avoid_: Archive (as a place), trash, completed list.
 - An **Area** never changes a **Thread**'s derived attention state.
 - A **Thread** has zero or one **Summary**, zero or more **Tasks**, zero or one **Focused Task**, zero or more **Thread Notes**, and one **Activity Log**.
 - A **Focused Task** is always one of its **Thread**'s **Tasks**. Capturing a **Task** never focuses it; focusing is a separate choice, and every **Task** may stay unfocused.
-- A **Task** may have a date; it has no done state, no nesting, and no manual order. "Look at this again in two weeks" is a dated **Task**. A **Thread**'s resurfacing is its soonest dated **Task**, and it has no **Follow-up date** of its own.
+- A **Task** may have a date and a **Repeat**; a Repeat requires a date, and clearing the date clears the Repeat. It has no done state, no nesting, and no manual order. "Look at this again in two weeks" is a dated **Task**. A **Thread**'s resurfacing is its soonest dated **Task**, and it has no **Follow-up date** of its own.
+- A weekly **Repeat** snaps a Task's date to the first chosen weekday on or after it. Repeats count calendar days in the caller's time zone and keep the local time of day, except that a time skipped by a daylight-saving change moves to the first valid time and stays there. Completing or skipping advances to the first occurrence after the current date that is not before today; missed occurrences collapse into one Task.
 - A **Resolved Thread** holds no **Tasks** and gains none.
 - A **Thread** is either **Open** or **Resolved**.
 - A **Thread**'s **Area** may be added, changed, or removed. A **Resolved Thread** keeps its Area.
@@ -171,8 +176,9 @@ _Avoid_: Archive (as a place), trash, completed list.
 - Adding a **Standalone Note** to a **Thread**, or starting a **Thread** from one, counts as capturing a **Thread Note**. It adds no **Activity Log** entry, even when the Note's date adds a dated **Task**.
 - Editing, archiving, unarchiving, or deleting an existing **Thread Note** changes only the Note and does not update Thread activity.
 - Setting, changing, or clearing a **Task**'s date adds no **Activity Log** entry. Entries an earlier **Follow-up date** change wrote keep their wording.
-- Completing any **Task**, focused or not, removes it and adds an **Activity Log** entry. Completing the **Focused Task** leaves the **Thread** unfocused: nothing is promoted. Completing every **Task** leaves the **Thread** open.
-- Adding, editing, dating, removing, focusing, and unfocusing **Tasks** add no **Activity Log** entries. Removing the **Focused Task** leaves the **Thread** unfocused, as completing it does.
+- Completing any **Task**, focused or not, adds one **Activity Log** entry. A repeating Task keeps its identity, text, and focus and moves to its next occurrence; a one-off Task is removed. Completing a one-off **Focused Task** leaves the **Thread** unfocused: nothing is promoted. Completing every one-off **Task** leaves the **Thread** open.
+- Skipping a repeating **Task** moves it to its next occurrence without an **Activity Log** entry. Setting or clearing a **Repeat** also adds none.
+- Adding, editing, dating, removing, focusing, and unfocusing **Tasks** add no **Activity Log** entries. Removing the **Focused Task** leaves the **Thread** unfocused.
 - **Activity Log** entries written under a former name (**Next Move**, **Move**) keep their wording and label.
 - Adding, changing, or removing a **Thread**'s **Area** adds an **Activity Log** entry. Deleting an **Area** adds none: the label disappearing is not a change the user made to each Thread.
 - Resolving a **Thread** adds an **Activity Log** entry.

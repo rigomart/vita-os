@@ -22,6 +22,10 @@ import {
   EditTaskBody,
   FocusTaskBody,
   SetTaskDateBody,
+  SetTaskRepeatBody,
+  SkipTaskBody,
+  CompleteTaskBody,
+  RepeatSchema,
   TaskRevisionBody,
   UpdateThreadBody,
   ThreadIdSchema,
@@ -32,6 +36,7 @@ const TaskSchema = Schema.Struct({
   _id: TaskIdSchema,
   text: Schema.String,
   date: Schema.optionalKey(Timestamp),
+  repeat: Schema.optionalKey(RepeatSchema),
 });
 
 export const ThreadSchema = Schema.Struct({
@@ -115,7 +120,25 @@ export const ThreadsApi = HttpApiGroup.make("threads")
       "/v1/threads/:threadId/tasks/:taskId/complete",
       {
         params: TaskParams,
-        payload: TaskRevisionBody,
+        payload: CompleteTaskBody,
+        success: ThreadSchema,
+      },
+    ).annotate(ValidationMessage, "Invalid Task change."),
+    HttpApiEndpoint.put(
+      "setTaskRepeat",
+      "/v1/threads/:threadId/tasks/:taskId/repeat",
+      {
+        params: TaskParams,
+        payload: SetTaskRepeatBody,
+        success: ThreadSchema,
+      },
+    ).annotate(ValidationMessage, "Invalid Task change."),
+    HttpApiEndpoint.post(
+      "skipTask",
+      "/v1/threads/:threadId/tasks/:taskId/skip",
+      {
+        params: TaskParams,
+        payload: SkipTaskBody,
         success: ThreadSchema,
       },
     ).annotate(ValidationMessage, "Invalid Task change."),
@@ -160,7 +183,7 @@ export const ThreadsApi = HttpApiGroup.make("threads")
       "/v1/threads/:threadId/moves/:moveId/complete",
       {
         params: MoveParams,
-        payload: TaskRevisionBody,
+        payload: CompleteTaskBody,
         success: ThreadSchema,
       },
     ).annotate(ValidationMessage, "Invalid Task change."),

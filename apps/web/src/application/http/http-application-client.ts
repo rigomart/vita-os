@@ -250,18 +250,32 @@ export function createHttpApplicationClient({
         { expectedRevision },
         decodeThread,
       ),
-    completeTask: ({ threadId, taskId, expectedRevision }) =>
+    completeTask: ({ threadId, taskId, ...change }) =>
       send(
         "POST",
         path("threads", threadId, "tasks", taskId, "complete"),
-        { expectedRevision },
+        change,
         decodeThread,
       ),
-    setTaskDate: ({ threadId, taskId, date, expectedRevision }) =>
+    setTaskDate: ({ threadId, taskId, ...change }) =>
       send(
         "PUT",
         path("threads", threadId, "tasks", taskId, "date"),
-        { date, expectedRevision },
+        change,
+        decodeThread,
+      ),
+    setTaskRepeat: ({ threadId, taskId, ...change }) =>
+      send(
+        "PUT",
+        path("threads", threadId, "tasks", taskId, "repeat"),
+        change,
+        decodeThread,
+      ),
+    skipTask: ({ threadId, taskId, ...change }) =>
+      send(
+        "POST",
+        path("threads", threadId, "tasks", taskId, "skip"),
+        change,
         decodeThread,
       ),
     focusTask: ({ threadId, ...focus }) =>

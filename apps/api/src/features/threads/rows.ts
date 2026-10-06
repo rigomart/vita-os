@@ -6,7 +6,7 @@ import type {
   ThreadId,
 } from "@vita-os/contracts";
 
-import { soonestTaskDate } from "@vita-os/core";
+import { requireRepeat, soonestTaskDate } from "@vita-os/core";
 
 /**
  * Where a stored Thread becomes a Vita OS value.
@@ -42,7 +42,7 @@ export interface ThreadRow {
 
 /**
  * Tasks as the Thread stores them: SQL NULL, or a non-empty JSON array of
- * `{id, text, date?}` in capture order. An empty array is never stored, so reading one
+ * `{id, text, date?, repeat?}` in capture order. An empty array is never stored, so reading one
  * back means the row was written by something that does not honor the rule.
  */
 export function parseTasks(value: string | null): Task[] | undefined {
@@ -70,11 +70,21 @@ export function parseTasks(value: string | null): Task[] | undefined {
     throw new Error("Stored Tasks must be a non-empty array of Tasks");
   }
 
-  return parsed.map((item: { id: string; text: string; date?: number }) => ({
-    _id: item.id as TaskId,
-    text: item.text,
-    ...(item.date === undefined ? {} : { date: item.date }),
-  }));
+  return parsed.map(
+    (item: { id: string; text: string; date?: number; repeat?: unknown }) => {
+      if (Object.hasOwn(item, "repeat") && item.date === undefined) {
+        throw new Error("A stored Repeat requires a date");
+      }
+      return {
+        _id: item.id as TaskId,
+        text: item.text,
+        ...(item.date === undefined ? {} : { date: item.date }),
+        ...(Object.hasOwn(item, "repeat")
+          ? { repeat: requireRepeat(item.repeat) }
+          : {}),
+      };
+    },
+  );
 }
 
 export function serializeTasks(
@@ -87,6 +97,9 @@ export function serializeTasks(
           id: task._id,
           text: task.text,
           ...(task.date === undefined ? {} : { date: task.date }),
+          ...(task.repeat === undefined
+            ? {}
+            : { repeat: requireRepeat(task.repeat) }),
         })),
       );
 }

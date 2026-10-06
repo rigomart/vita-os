@@ -86,7 +86,13 @@ export interface Task {
   _id: TaskId;
   text: string;
   date?: number;
+  repeat?: Repeat;
 }
+
+/** A calendar rhythm on a dated Task; Sunday is weekday 0. */
+export type Repeat =
+  | { kind: "days"; every: number }
+  | { kind: "weekly"; weekdays: number[] };
 
 export interface ThreadDetail {
   thread: Thread;
