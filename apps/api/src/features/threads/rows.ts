@@ -6,7 +6,7 @@ import type {
   ThreadId,
 } from "@vita-os/contracts";
 
-import { requireRepeat, soonestTaskDate } from "@vita-os/core";
+import { requireRepeat } from "@vita-os/core";
 
 /**
  * Where a stored Thread becomes a Vita OS value.
@@ -104,23 +104,8 @@ export function serializeTasks(
       );
 }
 
-/**
- * Compatibility (ADR 0033, removal in #402): a Thread read also carries the old
- * names for its Tasks, with the same values, until older clients have reloaded.
- */
-export type ThreadWithOldNames = Thread & {
-  moves?: Task[];
-  focusedMoveId?: TaskId;
-  /**
-   * Compatibility (ADR 0032, removal in #402): the Thread's former Follow-up
-   * date, derived from its soonest dated Task, until older clients have
-   * reloaded. The `threads.follow_up` column is no longer read or written.
-   */
-  followUp?: number;
-};
-
 /** Storage keeps `moves_json` and `focused_move_id`; the domain says Tasks. */
-export function toThread(row: ThreadRow): ThreadWithOldNames {
+export function toThread(row: ThreadRow): Thread {
   const tasks = parseTasks(row.moves_json);
   if (
     row.focused_move_id !== null &&
@@ -128,8 +113,6 @@ export function toThread(row: ThreadRow): ThreadWithOldNames {
   ) {
     throw new Error("A stored Focused Task must be one of the Thread's Tasks");
   }
-
-  const soonestDate = soonestTaskDate(tasks);
 
   return {
     _id: row.id as ThreadId,
@@ -139,15 +122,12 @@ export function toThread(row: ThreadRow): ThreadWithOldNames {
     ...(row.area_id === null ? {} : { areaId: row.area_id as AreaId }),
     order: row.sort_order,
     state: row.state,
-    ...(tasks === undefined ? {} : { tasks, moves: tasks }),
+    ...(tasks === undefined ? {} : { tasks }),
     ...(row.focused_move_id === null
       ? {}
       : {
           focusedTaskId: row.focused_move_id as TaskId,
-          focusedMoveId: row.focused_move_id as TaskId,
         }),
-    // Compatibility (ADR 0032, removal in #402).
-    ...(soonestDate === undefined ? {} : { followUp: soonestDate }),
     ...(row.last_activity_at === null
       ? {}
       : { lastActivityAt: row.last_activity_at }),

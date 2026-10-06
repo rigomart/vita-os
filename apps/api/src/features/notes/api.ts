@@ -29,8 +29,6 @@ export const NoteSchema = Schema.Struct({
   _id: NoteIdSchema,
   body: Schema.String,
   followUp: Schema.optionalKey(Timestamp),
-  // Older browser clients still read this alias from every dated Note.
-  attentionDate: Schema.optionalKey(Timestamp),
   state: Schema.Literals(["open", "done"]),
   completedAt: Schema.optionalKey(Timestamp),
   createdAt: Timestamp,
@@ -64,11 +62,6 @@ export const NotesApi = HttpApiGroup.make("notes")
       success: NoteSchema,
     }).annotate(ValidationMessage, "Invalid Note."),
     HttpApiEndpoint.patch("followUp", "/v1/notes/:noteId/follow-up", {
-      params: NoteParams,
-      payload: NoteFollowUp,
-      success: NoteSchema,
-    }).annotate(ValidationMessage, "Invalid Follow-up date."),
-    HttpApiEndpoint.patch("attentionDate", "/v1/notes/:noteId/attention-date", {
       params: NoteParams,
       payload: NoteFollowUp,
       success: NoteSchema,
