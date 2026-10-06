@@ -138,17 +138,17 @@ export interface RepeatControl {
  * so editing it writes one change, not one per keystroke. The time only
  * orders a day's items; it never moves one to another day or column.
  *
- * A Task's picker (`repeat`) also holds its Repeat, under the time. It stays
- * open when a day is picked, so a Repeat can follow the day, and closes with
- * Done. The Repeat choice is saved when the picker closes, like the time,
- * and before a newly picked day, so the day is judged by the rhythm on
- * screen: a weekly one moves it to the first chosen day. With no day the
+ * A Task's picker (`repeat`) also holds its Repeat, under the time, and
+ * closes with Done. The Repeat choice is saved when the picker closes, like
+ * the time, and before a newly picked day, so the day is judged by the rhythm
+ * on screen: a weekly one moves it to the first chosen day. With no day the
  * choices are disabled; clearing the date clears the Repeat too.
  */
 export function WhenPopover({
   busy,
   clearLabel = followUpDateLabels.clear,
   hint = followUpDateLabels.hint,
+  keepOpenOnPick = false,
   onSetWhen,
   repeat,
   trigger,
@@ -159,6 +159,12 @@ export function WhenPopover({
   clearLabel?: string;
   /** A line above the calendar saying what the date means. */
   hint?: string;
+  /**
+   * Picking a day saves it and leaves the picker open, so a Repeat can follow
+   * it. Only where the trigger stays put when the date changes: a card moves
+   * to its new day's heading, and its picker closes as it always has.
+   */
+  keepOpenOnPick?: boolean;
   onSetWhen?: (when: number | undefined) => void;
   /** A Task's Repeat; without it the picker holds a date alone. */
   repeat?: RepeatControl;
@@ -215,7 +221,7 @@ export function WhenPopover({
             if (!date || busy) return;
             commitRepeat();
             onSetWhen?.(withTimeOfDay(date.getTime(), time));
-            if (repeat === undefined) setOpen(false);
+            if (!keepOpenOnPick) setOpen(false);
           }}
         />
         <div className="border-t border-border/60 p-2">

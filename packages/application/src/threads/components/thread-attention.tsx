@@ -132,19 +132,26 @@ export function ThreadAttention({
 
       {tasks.length > 0 && (
         <ul aria-label="Tasks" className="flex flex-col gap-0.5">
-          {dated.map(renderTask)}
-          {dated.length > 0 && undated.length > 0 && (
-            <li
-              role="presentation"
-              className="flex items-center gap-2 px-1.5 pt-1.5 pb-0.5"
-            >
-              <span className="text-2xs font-medium tracking-wide text-muted-foreground/60 uppercase">
-                No date
-              </span>
-              <span aria-hidden className="h-px flex-1 bg-border/40" />
-            </li>
-          )}
-          {undated.map(renderTask)}
+          {/* One keyed list, so a row that gains or loses its date moves
+              rather than remounts, and its open date picker stays open. */}
+          {[
+            ...dated.map(renderTask),
+            ...(dated.length > 0 && undated.length > 0
+              ? [
+                  <li
+                    key="no-date"
+                    role="presentation"
+                    className="flex items-center gap-2 px-1.5 pt-1.5 pb-0.5"
+                  >
+                    <span className="text-2xs font-medium tracking-wide text-muted-foreground/60 uppercase">
+                      No date
+                    </span>
+                    <span aria-hidden className="h-px flex-1 bg-border/40" />
+                  </li>,
+                ]
+              : []),
+            ...undated.map(renderTask),
+          ]}
         </ul>
       )}
 
@@ -268,6 +275,7 @@ function TaskRow({
           busy={disabled}
           when={task.date}
           clearLabel={taskDateLabels.clear}
+          keepOpenOnPick
           onSetWhen={(when) => onSetDate(when ?? null)}
           repeat={{ value: task.repeat, onChange: onSetRepeat }}
           trigger={

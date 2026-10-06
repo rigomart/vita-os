@@ -2,6 +2,7 @@ import type { Task, TaskId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { addDays, subDays } from "date-fns";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { render, screen, within } from "../../test/render-with-providers";
@@ -527,6 +528,53 @@ describe("ThreadAttention repeating Tasks", () => {
     expect(onSetTaskRepeat.mock.invocationCallOrder[0]!).toBeLessThan(
       onSetTaskDate.mock.invocationCallOrder[0]!,
     );
+  });
+
+  it("keeps the picker open when an undated Task gets its day, so a Repeat can follow", async () => {
+    const user = userEvent.setup();
+    const onSetTaskRepeat = vi.fn();
+    function Stateful() {
+      const [tasks, setTasks] = useState<Task[]>([callClinic, bookScan]);
+      return (
+        <ThreadAttention
+          tasks={tasks}
+          now={now}
+          onAddTask={vi.fn()}
+          onEditTask={vi.fn()}
+          onRemoveTask={vi.fn()}
+          onCompleteTask={vi.fn()}
+          onFocusTask={vi.fn()}
+          onSkipTask={vi.fn()}
+          onSetTaskRepeat={onSetTaskRepeat}
+          onSetTaskDate={(taskId, date) =>
+            setTasks((current) =>
+              current.map((task) =>
+                task._id === taskId && date !== null ? { ...task, date } : task,
+              ),
+            )
+          }
+        />
+      );
+    }
+    render(<Stateful />);
+
+    // The second Task moves above the first once dated.
+    await user.click(
+      within(taskRows()[1]!).getByRole("button", { name: "Set date" }),
+    );
+    const month = new Date().toLocaleString("en-US", { month: "long" });
+    await user.click(
+      screen.getByRole("button", { name: new RegExp(`${month} 28`) }),
+    );
+
+    const repeat = await screen.findByRole("group", { name: "Repeat" });
+    expect(within(repeat).getByRole("button", { name: "Daily" })).toBeEnabled();
+    await user.click(within(repeat).getByRole("button", { name: "Daily" }));
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(onSetTaskRepeat).toHaveBeenCalledExactlyOnceWith(bookScan._id, {
+      kind: "days",
+      every: 1,
+    });
   });
 
   it("never asks for a Repeat when a Task is captured", async () => {
