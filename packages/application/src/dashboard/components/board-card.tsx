@@ -1,3 +1,4 @@
+import type { Repeat } from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import { cn } from "@vita-os/ui/lib/utils";
@@ -91,6 +92,7 @@ export function BoardDate({
   labels = followUpDateLabels,
   onSetWhen,
   repeat,
+  stillShown,
   when,
 }: {
   currentDate: number;
@@ -100,12 +102,15 @@ export function BoardDate({
   onSetWhen: (when: number | undefined) => void;
   /** A Task's Repeat, held in the same picker. */
   repeat?: RepeatControl;
+  /** See `WhenPopover`: whether an unsaved choice may be saved on unmount. */
+  stillShown?: (shown: { when?: number; repeat?: Repeat }) => boolean;
   when?: number;
 }) {
   return (
     <WhenPopover
       when={when}
       {...(repeat === undefined ? {} : { repeat })}
+      {...(stillShown === undefined ? {} : { stillShown })}
       clearLabel={labels.clear}
       onSetWhen={onSetWhen}
       trigger={

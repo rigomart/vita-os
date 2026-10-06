@@ -579,7 +579,10 @@ describe("ThreadAttention repeating Tasks", () => {
 
   it("saves a changed Repeat when the surface goes away with the picker open, once", async () => {
     const user = userEvent.setup();
-    const { onSetTaskRepeat, unmount } = renderAttention({ tasks: [oneOff] });
+    const { onSetTaskRepeat, unmount } = renderAttention({
+      tasks: [oneOff],
+      taskStillShown: () => true,
+    });
 
     await user.click(screen.getByRole("button", { name: /^Change date/ }));
     await user.click(
@@ -598,7 +601,10 @@ describe("ThreadAttention repeating Tasks", () => {
 
   it("sends nothing on unmount when the picker was closed or nothing changed", async () => {
     const user = userEvent.setup();
-    const closed = renderAttention({ tasks: [oneOff] });
+    const closed = renderAttention({
+      tasks: [oneOff],
+      taskStillShown: () => true,
+    });
     await user.click(screen.getByRole("button", { name: /^Change date/ }));
     await user.click(
       within(await screen.findByRole("group", { name: "Repeat" })).getByRole(
@@ -610,7 +616,10 @@ describe("ThreadAttention repeating Tasks", () => {
     closed.unmount();
     expect(closed.onSetTaskRepeat).toHaveBeenCalledTimes(1);
 
-    const untouched = renderAttention({ tasks: [checkIn] });
+    const untouched = renderAttention({
+      tasks: [checkIn],
+      taskStillShown: () => true,
+    });
     await user.click(screen.getByRole("button", { name: /^Change date/ }));
     await screen.findByRole("group", { name: "Repeat" });
     untouched.unmount();

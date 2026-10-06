@@ -1,4 +1,10 @@
-import type { Repeat, Task, TaskId, Thread } from "@vita-os/contracts";
+import type {
+  Repeat,
+  Task,
+  TaskId,
+  Thread,
+  ThreadDetail,
+} from "@vita-os/contracts";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { isApplicationError } from "@vita-os/contracts";
@@ -6,6 +12,7 @@ import { newRecordId } from "@vita-os/core";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
 
 import { browserTimeZone } from "../lib/time-zone";
+import { queryKeys } from "../query-keys";
 import { CommandDropped, useTaskCommand } from "./hooks";
 import { ThreadBusy } from "./task-queue";
 
@@ -177,6 +184,41 @@ export function useSkipTask(thread: Thread) {
   const { skip } = useOccurrenceCommands(thread);
 
   return (taskId: TaskId) => skip(taskId).then(() => undefined, report);
+}
+
+/**
+ * Whether a Task still has the date and Repeat a picker shows, in what the
+ * cache holds now: the Thread still open, the Task still in it. A picker that
+ * unmounts open saves its unsaved choices only then (`WhenPopover`), so a
+ * refresh that brought a change from elsewhere is never undone by a stale
+ * save, and nothing is sent for a Task that is gone.
+ */
+export function useTaskStillShown(thread: Thread) {
+  const cache = useQueryClient();
+
+  return (
+    taskId: TaskId,
+    shown: { when?: number; repeat?: Repeat },
+  ): boolean => {
+    const current =
+      cache
+        .getQueryData<Thread[]>(queryKeys.threads.open())
+        ?.find((candidate) => candidate._id === thread._id) ??
+      cache
+        .getQueriesData<ThreadDetail | null>({
+          queryKey: queryKeys.threads.details(),
+        })
+        .map(([, detail]) => detail?.thread)
+        .find((candidate) => candidate?._id === thread._id);
+    if (current === undefined || current.state !== "open") return false;
+    const task = current.tasks?.find((candidate) => candidate._id === taskId);
+    return (
+      task !== undefined &&
+      task.date === shown.when &&
+      JSON.stringify(task.repeat ?? null) ===
+        JSON.stringify(shown.repeat ?? null)
+    );
+  };
 }
 
 /** The name of the Task a card creates when a date is set and it shows no Task. */

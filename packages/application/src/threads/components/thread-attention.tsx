@@ -47,6 +47,11 @@ interface ThreadAttentionProps {
   onSetTaskRepeat: (taskId: TaskId, repeat: Repeat | null) => void;
   /** Moves a repeating Task to its next occurrence. */
   onSkipTask: (taskId: TaskId) => void;
+  /** Whether a Task still has the date and Repeat its open picker shows. */
+  taskStillShown?: (
+    taskId: TaskId,
+    shown: { when?: number; repeat?: Repeat },
+  ) => boolean;
 }
 
 /**
@@ -78,6 +83,7 @@ export function ThreadAttention({
   onSetTaskDate,
   onSetTaskRepeat,
   onSkipTask,
+  taskStillShown,
 }: ThreadAttentionProps) {
   const dated = tasks
     .filter((task) => task.date !== undefined)
@@ -99,6 +105,12 @@ export function ThreadAttention({
       onSetDate={(date) => onSetTaskDate(task._id, date)}
       onSetRepeat={(repeat) => onSetTaskRepeat(task._id, repeat)}
       onSkip={() => onSkipTask(task._id)}
+      {...(taskStillShown === undefined
+        ? {}
+        : {
+            stillShown: (shown: { when?: number; repeat?: Repeat }) =>
+              taskStillShown(task._id, shown),
+          })}
       onToggleFocus={() =>
         onFocusTask(task._id === focusedTaskId ? null : task._id)
       }
@@ -178,6 +190,7 @@ function TaskRow({
   onSetRepeat,
   onSkip,
   onToggleFocus,
+  stillShown,
 }: {
   task: Task;
   now: number;
@@ -191,6 +204,7 @@ function TaskRow({
   onSetRepeat: (repeat: Repeat | null) => void;
   onSkip: () => void;
   onToggleFocus: () => void;
+  stillShown?: (shown: { when?: number; repeat?: Repeat }) => boolean;
 }) {
   const dateLabel =
     task.date === undefined
@@ -278,6 +292,7 @@ function TaskRow({
           keepOpenOnPick
           onSetWhen={(when) => onSetDate(when ?? null)}
           repeat={{ value: task.repeat, onChange: onSetRepeat }}
+          {...(stillShown === undefined ? {} : { stillShown })}
           trigger={
             dateLabel === undefined ? (
               <Button

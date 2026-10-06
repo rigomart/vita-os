@@ -151,6 +151,7 @@ export function WhenPopover({
   keepOpenOnPick = false,
   onSetWhen,
   repeat,
+  stillShown,
   trigger,
   when,
 }: {
@@ -168,6 +169,12 @@ export function WhenPopover({
   onSetWhen?: (when: number | undefined) => void;
   /** A Task's Repeat; without it the picker holds a date alone. */
   repeat?: RepeatControl;
+  /**
+   * Whether the item still has the date and Repeat the picker shows, read
+   * from the current state when the picker unmounts open. Only then are its
+   * unsaved choices saved; without it they are dropped.
+   */
+  stillShown?: (shown: { when?: number; repeat?: Repeat }) => boolean;
   trigger: ReactElement;
   when?: number;
 }) {
@@ -198,12 +205,18 @@ export function WhenPopover({
   }
 
   // A picker that goes away while open — the surface navigates away or
-  // unmounts — saves its drafts as closing it would. `openNow` is cleared the
-  // moment the picker closes, so a close and an unmount never both save.
+  // unmounts — saves its drafts as closing it would, but only while what it
+  // shows is still so (`stillShown`): a refresh that moved or removed the
+  // item unmounts it with a stale date, and saving then would undo the change
+  // that came in. Otherwise, and without `stillShown`, the drafts are dropped.
+  // `openNow` is cleared the moment the picker closes, so a close and an
+  // unmount never both save.
   const openNow = useRef(false);
-  const saveOnUnmount = useRef(saveDrafts);
+  const saveOnUnmount = useRef(() => {});
   useEffect(() => {
-    saveOnUnmount.current = saveDrafts;
+    saveOnUnmount.current = () => {
+      if (stillShown?.({ when, repeat: repeat?.value })) saveDrafts();
+    };
   });
   useEffect(
     () => () => {
