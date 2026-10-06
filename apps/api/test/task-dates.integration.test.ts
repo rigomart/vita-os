@@ -245,31 +245,6 @@ describe("a Task's date", () => {
     );
     expect(await read(owner, edge)).toEqual(edge);
   });
-
-  it("is not offered on the former /moves routes", async () => {
-    const owner = await createSession("task-dates-moves");
-    const thread = await threadWith(owner, ["Call clinic"]);
-
-    const route = await call(`/v1/threads/${thread._id}/moves/task-1/date`, {
-      method: "PUT",
-      session: owner,
-      body: { date: day, expectedRevision: thread.revision },
-    });
-    expect(route.status).toBe(404);
-
-    const add = await call(`/v1/threads/${thread._id}/moves`, {
-      method: "POST",
-      session: owner,
-      body: {
-        moveId: "move-2",
-        text: "Dated",
-        date: day,
-        expectedRevision: thread.revision,
-      },
-    });
-    expect(add.status).toBe(404);
-    expect(await read(owner, thread)).toEqual(thread);
-  });
 });
 
 describe("adding a Task already dated", () => {

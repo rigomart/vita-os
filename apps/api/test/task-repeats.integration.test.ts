@@ -425,25 +425,6 @@ describe("repeating Tasks over HTTP", () => {
     );
     expect(await read(owner, thread)).toEqual(thread);
   });
-
-  it("offers no new commands on /moves", async () => {
-    const owner = await createSession("repeat-moves");
-    const thread = await dated(owner);
-    for (const [action, method, body] of [
-      ["repeat", "PUT", { repeat: daily, timeZone: "UTC" }],
-      ["skip", "POST", { timeZone: "UTC" }],
-    ] as const) {
-      expect(
-        (
-          await call(`/v1/threads/${thread._id}/moves/a/${action}`, {
-            method,
-            session: owner,
-            body: { ...body, expectedRevision: thread.revision },
-          })
-        ).status,
-      ).toBe(404);
-    }
-  });
 });
 
 describe("stored Repeats", () => {

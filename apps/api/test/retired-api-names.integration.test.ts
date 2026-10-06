@@ -10,6 +10,9 @@ describe("retired API names", () => {
     ["PATCH", "moves/a"],
     ["DELETE", "moves/a"],
     ["POST", "moves/a/complete"],
+    ["PUT", "moves/a/date"],
+    ["PUT", "moves/a/repeat"],
+    ["POST", "moves/a/skip"],
   ] as const)("returns 404 for %s /%s", async (method, path) => {
     const owner = await createSession("retired-moves-route");
     const thread = await succeed<Thread>("/v1/threads", {

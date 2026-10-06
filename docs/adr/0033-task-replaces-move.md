@@ -1,6 +1,6 @@
 # Task replaces Move
 
-**Status:** Accepted
+**Status:** Accepted. Amended by #402: compatibility window closed.
 **Date:** 2026-10-04
 
 The concept **Move** (one useful action on a **Thread**) is renamed **Task**. **Moves** becomes **Tasks** and **Focused Move** becomes **Focused Task**. The margin run **Ready to move** keeps its name: there "move" is a verb. Issue #397 raised the question; sub-issue #400 ships the rename.
@@ -23,7 +23,6 @@ That reason is gone. Tasks have no priority and no order. Dates are soft: they r
 - **Terms.** Move becomes Task. Moves becomes Tasks. Focused Move becomes Focused Task. **Ready to move** is unchanged.
 - **Stored names do not change.** The D1 columns `threads.moves_json` and `threads.focused_move_id`, the Activity Log types `move_completed` and `next_move_change`, and the text of existing Activity Log entries stay. ADR 0031 kept stored `done`; ADR 0028 kept `notes.attention_date`. Mapping at the edge preserves every row without a data migration.
 - **API.** New routes `/v1/threads/:threadId/tasks...` sit beside the existing `/moves...` routes, which stay as aliases for one release. Thread responses carry both `tasks` and `focusedTaskId` and the old `moves` and `focusedMoveId`. Requests accept either name. Supplying both old and new names is rejected as ambiguous, as in ADR 0028. The API deploys before the web app, so older clients keep working until they reload. Removing the old names is a separate change (#402).
-  *Follow-up:* The compatibility window was closed by #402.
 - **Order of delivery.** The rename ships first, with no behavior change, so every later iteration is written in Task terms.
 - **Old ADRs stay as written.** ADR 0022 and ADR 0032 get a one-line terminology note at the top, as ADR 0027 carries "Terminology amended by ADR 0028".
 

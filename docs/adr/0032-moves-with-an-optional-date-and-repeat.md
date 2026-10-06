@@ -2,7 +2,7 @@
 
 Terminology amended by ADR 0033: **Move** is renamed **Task** (Moves become Tasks, Focused Move becomes Focused Task). This ADR keeps its original wording, and the sections added below use the new terms.
 
-**Status:** Proposed. Becomes Accepted when issue #397 ships.
+**Status:** Proposed. Becomes Accepted when issue #397 ships. Amended by #402: compatibility window closed, `threads.follow_up` dropped.
 **Date:** 2026-10-04
 
 A **Move** becomes text with an optional date and an optional repeat, the way a calendar event is a title with an optional time and repeat. A **Thread**'s own **Follow-up date** is folded into its Moves: a Thread comes back on the **Dashboard** at its soonest dated Move. Issue #397 is the specification.
@@ -49,7 +49,6 @@ The owner settled these. They use the new terms (ADR 0033).
 
 - The migration converts each Thread's Follow-up date into a dated "Follow up" Task, time kept, not focused. It **keeps** the `threads.follow_up` column, no longer read, so a rollback loses nothing. A later cleanup drops it.
 - During the compatibility window the API returns the Thread's `followUp` derived from its soonest dated Task. It refuses a Thread `followUp` write as a non-retryable conflict, which makes an old client reload. The API deploys before the web app, as with ADR 0028.
-  *Follow-up:* The compatibility window was closed and the retired column dropped by #402.
 - Thread Follow-up changes no longer write `follow_up_change`. Existing entries keep their wording.
 
 ## Time zone

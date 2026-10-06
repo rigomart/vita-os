@@ -453,12 +453,11 @@ describe("Task routes across encoded IDs", () => {
       body: { taskId: "private-task", text: "Private", expectedRevision: 0 },
     });
 
-    const spellings = ["tasks"].flatMap((collection) =>
-      [thread._id, encodeEvery(thread._id)].flatMap((threadId) =>
+    const spellings = [thread._id, encodeEvery(thread._id)].flatMap(
+      (threadId) =>
         ["private-task", encodeEvery("private-task")].map(
-          (taskId) => `/v1/threads/${threadId}/${collection}/${taskId}`,
+          (taskId) => `/v1/threads/${threadId}/tasks/${taskId}`,
         ),
-      ),
     );
 
     for (const path of spellings) {
