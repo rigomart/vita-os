@@ -126,7 +126,8 @@ browser -- find role menuitem click --name "Add to thread…" --exact
 browser -- find role option click --name "Dated D ${STAMP}"
 browser -- wait --text "Note added to thread"
 # During Undo the destination is not published, and ordinary Task capture remains usable.
-browser -- find role link click --name "Dated D ${STAMP}"
+# D is already open from creation; its empty Dashboard card may be behind the pane.
+browser -- wait --fn "!!document.querySelector('[aria-label=\"Dated D ${STAMP}\"]')"
 browser -- wait --fn "![...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('Note task ${STAMP}')) && !document.querySelector('input[aria-label=\"Add a task\"]').disabled"
 browser -- find label "Add a task" fill "During conversion ${STAMP}"
 browser -- press Enter
