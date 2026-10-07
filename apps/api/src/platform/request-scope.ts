@@ -1,5 +1,4 @@
 import { newRecordId } from "@vita-os/core";
-import { Context } from "effect";
 
 import type { WorkerEnv } from "./env";
 
@@ -43,9 +42,3 @@ export const createRequestScope: CreateScope = (authenticated) => ({
   ...authenticated,
   clock: systemClock,
 });
-
-/** Authenticated dependencies, supplied independently for each request. */
-export class RequestContext extends Context.Service<
-  RequestContext,
-  RequestScope
->()("vita/RequestContext") {}

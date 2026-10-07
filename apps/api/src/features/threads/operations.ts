@@ -34,15 +34,14 @@ import {
   requireNonBlankText,
   requireTimeZone,
 } from "@vita-os/core";
-import { Effect } from "effect";
+import { Result } from "better-result";
 
-import type { OperationFailure } from "../../platform/failures";
 import type { Operation } from "../../platform/operation";
+import type { RequestScope } from "../../platform/request-scope";
 import type { ThreadChange } from "./storage";
 
 import { ChangeConflict } from "../../platform/failures";
 import { attempt, database } from "../../platform/operation";
-import { RequestContext } from "../../platform/request-scope";
 import { areaNotFound } from "../areas/errors";
 import { areaStorage } from "../areas/storage";
 import { moveConflict, threadNotFound } from "./errors";
@@ -54,29 +53,25 @@ const CHANGE_ATTEMPTS = 3;
 /** How many times a create re-mints a colliding slug. */
 const SLUG_ATTEMPTS = 3;
 
-export function listOpenThreads(): Operation<Thread[]> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
-    return yield* database(() => threadStorage(scope).listOpen());
-  });
+export function listOpenThreads(scope: RequestScope): Operation<Thread[]> {
+  return database(() => threadStorage(scope).listOpen());
 }
 
-export function listResolvedThreads(): Operation<Thread[]> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
-    return yield* database(() => threadStorage(scope).listResolved());
-  });
+export function listResolvedThreads(scope: RequestScope): Operation<Thread[]> {
+  return database(() => threadStorage(scope).listResolved());
 }
 
-export function getThreadDetail(input: {
-  slug: string;
-}): Operation<ThreadDetail> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
-    const detail = yield* database(() =>
-      threadStorage(scope).findDetail(input.slug),
+export function getThreadDetail(
+  scope: RequestScope,
+  input: {
+    slug: string;
+  },
+): Operation<ThreadDetail> {
+  return Result.gen(async function* () {
+    const detail = yield* Result.await(
+      database(() => threadStorage(scope).findDetail(input.slug)),
     );
-    return detail === null ? yield* threadNotFound() : detail;
+    return detail === null ? Result.err(threadNotFound()) : Result.ok(detail);
   });
 }
 
@@ -84,9 +79,11 @@ export function getThreadDetail(input: {
  * A Thread needs only a title. When it is labeled at creation, the Area must be
  * one the owner holds, so the failure names the Area when it is not theirs.
  */
-export function createThread(input: CreateThreadInput): Operation<Thread> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
+export function createThread(
+  scope: RequestScope,
+  input: CreateThreadInput,
+): Operation<Thread> {
+  return Result.gen(async function* () {
     const threads = threadStorage(scope);
     const title = yield* attempt(() =>
       requireNonBlankText(input.title, "Thread title"),
@@ -94,14 +91,18 @@ export function createThread(input: CreateThreadInput): Operation<Thread> {
 
     for (let execution = 0; execution < SLUG_ATTEMPTS; execution += 1) {
       const slug = generateSlug(title);
-      const thread = yield* database(
+      const inserted = await database(
         () => threads.insert({ ...input, title, slug }),
         isThreadSlugTaken,
-      ).pipe(Effect.catchTag("SlugTaken", () => Effect.succeed(undefined)));
-      if (thread === undefined) continue;
-      return thread === null ? yield* areaNotFound() : thread;
+      );
+      if (Result.isError(inserted)) {
+        if (inserted.error._tag === "SlugTaken") continue;
+        return Result.err(inserted.error);
+      }
+      const thread = inserted.value;
+      return thread === null ? Result.err(areaNotFound()) : Result.ok(thread);
     }
-    return yield* new ChangeConflict();
+    return Result.err(new ChangeConflict());
   });
 }
 
@@ -109,13 +110,11 @@ export function createThread(input: CreateThreadInput): Operation<Thread> {
  * One Thread edit: title, Summary, Area, or lifecycle.
  * The Activity Log the change earns is written with it or not at all.
  */
-export function updateThread({
-  threadId,
-  resolutionNote,
-  ...requested
-}: UpdateThreadInput): Operation<Thread> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
+export function updateThread(
+  scope: RequestScope,
+  { threadId, resolutionNote, ...requested }: UpdateThreadInput,
+): Operation<Thread> {
+  return Result.gen(async function* () {
     const areas = areaStorage(scope);
     const title =
       requested.title === undefined
@@ -124,8 +123,8 @@ export function updateThread({
             requireNonBlankText(requested.title!, "Thread title"),
           );
 
-    return yield* changeThread(threadId, (thread) =>
-      Effect.gen(function* () {
+    return await changeThread(scope, threadId, (thread) =>
+      Result.gen(async function* () {
         const patch: ThreadPatch = clearedToAbsent({
           ...requested,
           ...(title === undefined ? {} : { title }),
@@ -142,52 +141,69 @@ export function updateThread({
         const areaNames: { from?: string; to?: string } = {};
         if (Object.hasOwn(patch, "areaId") && patch.areaId !== thread.areaId) {
           if (patch.areaId !== undefined) {
-            const destination = yield* database(() =>
-              areas.find(patch.areaId!),
+            const destination = yield* Result.await(
+              database(() => areas.find(patch.areaId!)),
             );
-            if (destination === null) return yield* areaNotFound();
+            if (destination === null) return Result.err(areaNotFound());
             areaNames.to = destination.name;
           }
           if (thread.areaId !== undefined) {
-            const origin = yield* database(() => areas.find(thread.areaId!));
+            const origin = yield* Result.await(
+              database(() => areas.find(thread.areaId!)),
+            );
             if (origin !== null) areaNames.from = origin.name;
           }
         }
 
-        return decideThreadUpdate({
-          thread,
-          patch: { ...patch, ...rename },
-          ...(resolutionNote === undefined ? {} : { resolutionNote }),
-          areaNames,
-        });
+        return attempt(() =>
+          decideThreadUpdate({
+            thread,
+            patch: { ...patch, ...rename },
+            ...(resolutionNote === undefined ? {} : { resolutionNote }),
+            areaNames,
+          }),
+        );
       }),
     );
   });
 }
 
 /** A new Task joins the end of the Thread's Tasks, unfocused. */
-export function addTask(input: AddTaskInput): Operation<Thread> {
-  return Effect.gen(function* () {
+export function addTask(
+  scope: RequestScope,
+  input: AddTaskInput,
+): Operation<Thread> {
+  return Result.gen(async function* () {
     const task = yield* attempt(() => ({
       _id: requireTaskId(input.taskId),
       text: requireTaskText(input.text),
       ...(input.date === undefined ? {} : { date: input.date }),
     }));
-    return yield* changeTasks(input, (thread) => decideAddTask(thread, task));
+    return await changeTasks(scope, input, (thread) =>
+      decideAddTask(thread, task),
+    );
   });
 }
 
-export function editTask(input: EditTaskInput): Operation<Thread> {
-  return Effect.gen(function* () {
+export function editTask(
+  scope: RequestScope,
+  input: EditTaskInput,
+): Operation<Thread> {
+  return Result.gen(async function* () {
     const text = yield* attempt(() => requireTaskText(input.text));
-    return yield* changeTasks(input, (thread) =>
+    return await changeTasks(scope, input, (thread) =>
       decideEditTask(thread, input.taskId, text),
     );
   });
 }
 
-export function removeTask(input: RemoveTaskInput): Operation<Thread> {
-  return changeTasks(input, (thread) => decideRemoveTask(thread, input.taskId));
+export function removeTask(
+  scope: RequestScope,
+  input: RemoveTaskInput,
+): Operation<Thread> {
+  return changeTasks(scope, input, (thread) =>
+    decideRemoveTask(thread, input.taskId),
+  );
 }
 
 /**
@@ -195,83 +211,100 @@ export function removeTask(input: RemoveTaskInput): Operation<Thread> {
  * change or not at all, and two competing completions of the same Task record
  * one: the loser finds the occurrence changed.
  */
-export function completeTask(input: CompleteTaskInput): Operation<Thread> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
-    return yield* changeTasks(
-      input,
-      (thread) => {
-        const task = thread.tasks?.find((task) => task._id === input.taskId);
-        if (
-          task === undefined ||
-          (task.date ?? null) !== input.expectedOccurrence
-        )
-          return null;
-        if (input.timeZone !== undefined) requireTimeZone(input.timeZone);
-        return decideCompleteTask(thread, input.taskId, {
-          timeZone: input.timeZone,
-          now: scope.clock.now(),
-        });
-      },
-      input.note,
-    );
-  });
+export function completeTask(
+  scope: RequestScope,
+  input: CompleteTaskInput,
+): Operation<Thread> {
+  return changeTasks(
+    scope,
+    input,
+    (thread) => {
+      const task = thread.tasks?.find((task) => task._id === input.taskId);
+      if (
+        task === undefined ||
+        (task.date ?? null) !== input.expectedOccurrence
+      )
+        return null;
+      if (input.timeZone !== undefined) requireTimeZone(input.timeZone);
+      return decideCompleteTask(thread, input.taskId, {
+        timeZone: input.timeZone,
+        now: scope.clock.now(),
+      });
+    },
+    input.note,
+  );
 }
 
-export function focusTask(input: FocusTaskInput): Operation<Thread> {
-  return changeTasks(input, (thread) => decideFocusTask(thread, input.taskId));
+export function focusTask(
+  scope: RequestScope,
+  input: FocusTaskInput,
+): Operation<Thread> {
+  return changeTasks(scope, input, (thread) =>
+    decideFocusTask(thread, input.taskId),
+  );
 }
 
 /** Set, change or clear one Task's date. It writes no Activity Log entry. */
-export function setTaskDate(input: SetTaskDateInput): Operation<Thread> {
-  return changeTasks(input, (thread) =>
+export function setTaskDate(
+  scope: RequestScope,
+  input: SetTaskDateInput,
+): Operation<Thread> {
+  return changeTasks(scope, input, (thread) =>
     decideSetTaskDate(thread, input.taskId, input.date, input.timeZone),
   );
 }
 
-export function setTaskRepeat(input: SetTaskRepeatInput): Operation<Thread> {
-  return changeTasks(input, (thread) =>
+export function setTaskRepeat(
+  scope: RequestScope,
+  input: SetTaskRepeatInput,
+): Operation<Thread> {
+  return changeTasks(scope, input, (thread) =>
     decideSetTaskRepeat(thread, input.taskId, input.repeat, input.timeZone),
   );
 }
 
-export function skipTask(input: SkipTaskInput): Operation<Thread> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
-    return yield* changeTasks(input, (thread) => {
-      const task = thread.tasks?.find((task) => task._id === input.taskId);
-      if (task === undefined || task.date !== input.expectedOccurrence)
-        return null;
-      return decideSkipTask(thread, input.taskId, {
-        timeZone: input.timeZone,
-        now: scope.clock.now(),
-      });
+export function skipTask(
+  scope: RequestScope,
+  input: SkipTaskInput,
+): Operation<Thread> {
+  return changeTasks(scope, input, (thread) => {
+    const task = thread.tasks?.find((task) => task._id === input.taskId);
+    if (task === undefined || task.date !== input.expectedOccurrence)
+      return null;
+    return decideSkipTask(thread, input.taskId, {
+      timeZone: input.timeZone,
+      now: scope.clock.now(),
     });
   });
 }
 
-export function removeThread(input: {
-  threadId: ThreadId;
-}): Operation<CommandAcknowledgement> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
-    const removed = yield* database(() =>
-      threadStorage(scope).remove(input.threadId),
+export function removeThread(
+  scope: RequestScope,
+  input: {
+    threadId: ThreadId;
+  },
+): Operation<CommandAcknowledgement> {
+  return Result.gen(async function* () {
+    const removed = yield* Result.await(
+      database(() => threadStorage(scope).remove(input.threadId)),
     );
-    return removed ? commandAcknowledged : yield* threadNotFound();
+    return removed
+      ? Result.ok(commandAcknowledged)
+      : Result.err(threadNotFound());
   });
 }
 
 /** Apply a Task command to the current Thread, rechecking its rule on every retry. */
 function changeTasks(
+  scope: RequestScope,
   command: { threadId: ThreadId },
   decide: (thread: Thread) => ThreadUpdateDecision | null,
   note?: CompleteTaskInput["note"],
 ): Operation<Thread> {
-  return changeThread(command.threadId, (thread) =>
-    Effect.gen(function* () {
+  return changeThread(scope, command.threadId, (thread) =>
+    Result.gen(async function* () {
       const decision = yield* attempt(() => decide(thread));
-      if (decision === null) return yield* moveConflict();
+      if (decision === null) return Result.err(moveConflict());
       const completionNote =
         note === undefined
           ? undefined
@@ -282,7 +315,7 @@ function changeTasks(
                 body: requireNonBlankText(note.body, "Thread note body"),
               };
             });
-      return { ...decision, completionNote };
+      return Result.ok({ ...decision, completionNote });
     }),
   );
 }
@@ -295,29 +328,28 @@ function changeTasks(
  * than overwritten with a stale conclusion.
  */
 function changeThread(
+  scope: RequestScope,
   threadId: ThreadId,
   decide: (
     thread: Thread,
-  ) => Effect.Effect<
-    ThreadChange & { completionNote?: CompleteTaskInput["note"] },
-    OperationFailure
-  >,
+  ) => Operation<ThreadChange & { completionNote?: CompleteTaskInput["note"] }>,
 ): Operation<Thread> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
+  return Result.gen(async function* () {
     const threads = threadStorage(scope);
 
     for (let execution = 0; execution < CHANGE_ATTEMPTS; execution += 1) {
-      const current = yield* database(() => threads.findForChange(threadId));
-      if (current === null) return yield* threadNotFound();
+      const current = yield* Result.await(
+        database(() => threads.findForChange(threadId)),
+      );
+      if (current === null) return Result.err(threadNotFound());
       const { thread, revision } = current;
 
-      const change = yield* decide(thread);
+      const change = yield* Result.await(decide(thread));
       if (Object.keys(change.patch).length === 0 && change.logs.length === 0) {
-        return thread;
+        return Result.ok(thread);
       }
 
-      const written = yield* database(
+      const saved = await database(
         () =>
           threads.writeChange({
             threadId,
@@ -326,9 +358,14 @@ function changeThread(
             completionNote: change.completionNote,
           }),
         isThreadSlugTaken,
-      ).pipe(Effect.catchTag("SlugTaken", () => Effect.succeed(null)));
-      if (written !== null) return written;
+      );
+      if (Result.isError(saved)) {
+        if (saved.error._tag === "SlugTaken") continue;
+        return Result.err(saved.error);
+      }
+      const written = saved.value;
+      if (written !== null) return Result.ok(written);
     }
-    return yield* new ChangeConflict();
+    return Result.err(new ChangeConflict());
   });
 }

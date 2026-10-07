@@ -1,26 +1,41 @@
-import { HttpApiBuilder } from "effect/http-api";
+import {
+  AddNoteToThreadBody,
+  CreateThreadFromNoteBody,
+  NoteIdSchema,
+} from "@vita-os/contracts";
+import { Hono } from "hono";
+import * as v from "valibot";
 
-import { ApplicationApi } from "../../platform/http/api";
+import type { ApiEnv } from "../../platform/env";
+
+import { validate } from "../../platform/http/decode";
+import { respond } from "../../platform/http/errors";
 import { addNoteToThread, createThreadFromNote } from "./operations";
 
-export const AddToThreadHandlers = HttpApiBuilder.group(
-  ApplicationApi,
-  "addToThread",
-  (handlers) =>
-    handlers
-      .handle("addToThread", ({ params, payload }) =>
-        addNoteToThread({
-          noteId: params.noteId,
-          threadId: payload.threadId,
-          ...(payload.taskId === undefined ? {} : { taskId: payload.taskId }),
-        }),
-      )
-      .handle("newThread", ({ params, payload }) =>
-        createThreadFromNote({
-          noteId: params.noteId,
-          title: payload.title,
-          ...(payload.areaId === undefined ? {} : { areaId: payload.areaId }),
-          ...(payload.taskId === undefined ? {} : { taskId: payload.taskId }),
+const NoteParams = v.object({ noteId: NoteIdSchema });
+export const addToThreadRoutes = new Hono<ApiEnv>()
+  .post(
+    "/notes/:noteId/add-to-thread",
+    validate("param", NoteParams, "Invalid Thread."),
+    validate("json", AddNoteToThreadBody, "Invalid Thread."),
+    async (c) =>
+      respond(
+        await addNoteToThread(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...c.req.valid("json"),
         }),
       ),
-);
+  )
+  .post(
+    "/notes/:noteId/new-thread",
+    validate("param", NoteParams, "Invalid Thread."),
+    validate("json", CreateThreadFromNoteBody, "Invalid Thread."),
+    async (c) =>
+      respond(
+        await createThreadFromNote(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...c.req.valid("json"),
+        }),
+        201,
+      ),
+  );

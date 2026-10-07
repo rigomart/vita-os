@@ -5,47 +5,45 @@ import type {
   Thread,
 } from "@vita-os/contracts";
 
+import { Result } from "better-result";
 import { env } from "cloudflare:test";
-import { Effect } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { OperationFailure } from "../src/platform/failures";
+import type { Operation } from "../src/platform/operation";
 import type { RequestScope } from "../src/platform/request-scope";
 
 import { createNote } from "../src/features/notes/operations";
 import * as threads from "../src/features/threads/operations";
 import { threadStorage } from "../src/features/threads/storage";
 import { toRefusal } from "../src/platform/http/errors";
-import { RequestContext } from "../src/platform/request-scope";
 
-describe("Effect operations", () => {
-  it("defers a write until execution and uses the executing request's owner", async () => {
+describe("explicit-scope operations", () => {
+  it("uses each call's owner and clock through one operation implementation", async () => {
     const firstActor = crypto.randomUUID();
     const secondActor = crypto.randomUUID();
-    const create = createNote({ body: "Lazy note" });
-    const before = await env.DB.prepare(
-      "SELECT COUNT(*) AS count FROM notes WHERE body = ?",
-    )
-      .bind("Lazy note")
-      .first<{ count: number }>();
-    expect(before?.count).toBe(0);
-
-    const first = await Effect.runPromise(
-      create.pipe(
-        Effect.provideService(RequestContext, {
-          db: env.DB,
-          actorId: firstActor,
-          clock: { now: () => 100, newId: () => crypto.randomUUID() },
-        }),
+    const create = createNote;
+    const first = value(
+      await run(
+        create(
+          {
+            db: env.DB,
+            actorId: firstActor,
+            clock: { now: () => 100, newId: () => crypto.randomUUID() },
+          },
+          { body: "Scoped note" },
+        ),
       ),
     );
-    const second = await Effect.runPromise(
-      create.pipe(
-        Effect.provideService(RequestContext, {
-          db: env.DB,
-          actorId: secondActor,
-          clock: { now: () => 200, newId: () => crypto.randomUUID() },
-        }),
+    const second = value(
+      await run(
+        create(
+          {
+            db: env.DB,
+            actorId: secondActor,
+            clock: { now: () => 200, newId: () => crypto.randomUUID() },
+          },
+          { body: "Scoped note" },
+        ),
       ),
     );
     expect(first.createdAt).toBe(100);
@@ -54,33 +52,29 @@ describe("Effect operations", () => {
     const rows = await env.DB.prepare(
       "SELECT user_id FROM notes WHERE body = ? ORDER BY created_at",
     )
-      .bind("Lazy note")
+      .bind("Scoped note")
       .all<{ user_id: string }>();
     expect(rows.results.map((row) => row.user_id)).toEqual([
       firstActor,
       secondActor,
     ]);
   });
-
   it("puts a domain refusal in the typed failure channel without writing", async () => {
     const actorId = crypto.randomUUID();
-    const outcome = await Effect.runPromise(
-      createNote({ body: "   " }).pipe(
-        Effect.provideService(RequestContext, {
-          db: env.DB,
-          actorId,
-          clock: { now: () => 100, newId: () => crypto.randomUUID() },
-        }),
-        Effect.match({
-          onSuccess: () => null,
-          onFailure: (failure) => ({
-            tag: failure._tag,
-            error: toRefusal(failure).error,
-          }),
-        }),
-      ),
+    const result = await createNote(
+      {
+        db: env.DB,
+        actorId,
+        clock: { now: () => 100, newId: () => crypto.randomUUID() },
+      },
+      { body: "   " },
     );
-    expect(outcome).toEqual({
+    expect(Result.isError(result)).toBe(true);
+    if (Result.isOk(result)) throw new Error("Expected domain refusal");
+    expect({
+      tag: result.error._tag,
+      error: toRefusal(result.error).error,
+    }).toEqual({
       tag: "InvalidInput",
       error: {
         code: "validation",
@@ -97,22 +91,11 @@ describe("Effect operations", () => {
   });
 });
 
-function run<T>(
-  scope: RequestScope,
-  operation: Effect.Effect<T, OperationFailure, RequestContext>,
-): Promise<OperationResult<T>> {
-  return Effect.runPromise(
-    operation.pipe(
-      Effect.provideService(RequestContext, scope),
-      Effect.match({
-        onSuccess: (value): OperationResult<T> => ({ ok: true, value }),
-        onFailure: (failure): OperationResult<T> => ({
-          ok: false,
-          error: toRefusal(failure).error,
-        }),
-      }),
-    ),
-  );
+async function run<T>(operation: Operation<T>): Promise<OperationResult<T>> {
+  const result = await operation;
+  return Result.isOk(result)
+    ? { ok: true, value: result.value }
+    : { ok: false, error: toRefusal(result.error).error };
 }
 function value<T>(result: OperationResult<T>): T {
   if (!result.ok) throw new Error(result.error.message);
@@ -128,13 +111,12 @@ async function tasksScope(repeats = false) {
     },
   };
   let thread = value(
-    await run(scope, threads.createThread({ title: "Current state" })),
+    await run(threads.createThread(scope, { title: "Current state" })),
   );
   for (const taskId of ["a", "b"])
     thread = value(
       await run(
-        scope,
-        threads.addTask({
+        threads.addTask(scope, {
           threadId: thread._id,
           taskId: taskId as TaskId,
           text: taskId,
@@ -145,8 +127,7 @@ async function tasksScope(repeats = false) {
   if (repeats)
     thread = value(
       await run(
-        scope,
-        threads.setTaskRepeat({
+        threads.setTaskRepeat(scope, {
           threadId: thread._id,
           taskId: "a" as TaskId,
           repeat: { kind: "days", every: 1 },
@@ -171,14 +152,15 @@ describe("current-state Task commands", () => {
     const { scope, thread } = await tasksScope();
     value(
       await run(
-        scope,
-        threads.updateThread({ threadId: thread._id, summary: "New summary" }),
+        threads.updateThread(scope, {
+          threadId: thread._id,
+          summary: "New summary",
+        }),
       ),
     );
     const edited = value(
       await run(
-        scope,
-        threads.editTask({
+        threads.editTask(scope, {
           threadId: thread._id,
           taskId: "a" as TaskId,
           text: "Edited",
@@ -196,8 +178,7 @@ describe("current-state Task commands", () => {
     vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
       value(
         await run(
-          scope,
-          threads.editTask({
+          threads.editTask(scope, {
             threadId: thread._id,
             taskId: "b" as TaskId,
             text: "Second device",
@@ -208,8 +189,7 @@ describe("current-state Task commands", () => {
     });
     value(
       await run(
-        scope,
-        threads.editTask({
+        threads.editTask(scope, {
           threadId: thread._id,
           taskId: "a" as TaskId,
           text: "First device",
@@ -230,8 +210,7 @@ describe("current-state Task commands", () => {
     vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
       value(
         await run(
-          scope,
-          threads.skipTask({
+          threads.skipTask(scope, {
             threadId: thread._id,
             taskId: "a" as TaskId,
             timeZone: "UTC",
@@ -242,8 +221,7 @@ describe("current-state Task commands", () => {
       return batch(statements);
     });
     const answer = await run(
-      scope,
-      threads.completeTask({
+      threads.completeTask(scope, {
         threadId: thread._id,
         taskId: "a" as TaskId,
         timeZone: "UTC",
@@ -274,13 +252,13 @@ describe("current-state Task commands", () => {
       await batch(statements);
       throw new Error("Response lost after commit");
     });
-    expect(await run(scope, threads.completeTask(input))).toMatchObject({
+    expect(await run(threads.completeTask(scope, input))).toMatchObject({
       ok: false,
       error: { code: "unexpected" },
     });
     const landed = await stored(scope, thread);
     expect(landed).toMatchObject({ notes: 1, logs: 1 });
-    expect(await run(scope, threads.completeTask(input))).toMatchObject({
+    expect(await run(threads.completeTask(scope, input))).toMatchObject({
       ok: false,
       error: { code: "conflict" },
     });
@@ -295,8 +273,7 @@ describe("current-state Task commands", () => {
     ).run();
     try {
       const answer = await run(
-        scope,
-        threads.completeTask({
+        threads.completeTask(scope, {
           threadId: thread._id,
           taskId: "a" as TaskId,
           timeZone: "UTC",

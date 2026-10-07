@@ -11,13 +11,13 @@ import {
   requireNonBlankText,
   requireTaskId,
 } from "@vita-os/core";
-import { Effect } from "effect";
+import { Result } from "better-result";
 
 import type { Operation } from "../../platform/operation";
+import type { RequestScope } from "../../platform/request-scope";
 
 import { ChangeConflict } from "../../platform/failures";
 import { attempt, database } from "../../platform/operation";
-import { RequestContext } from "../../platform/request-scope";
 import { areaNotFound } from "../areas/errors";
 import { areaStorage } from "../areas/storage";
 import { noteNotFound } from "../notes/errors";
@@ -47,39 +47,41 @@ const CHANGE_ATTEMPTS = 3;
  * Thread's revision. A lost race re-reads and decides again.
  */
 export function addNoteToThread(
+  scope: RequestScope,
   input: AddNoteToThreadInput,
 ): Operation<NoteAddedToThread> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
+  return Result.gen(async function* () {
     const notes = noteStorage(scope);
     const threads = threadStorage(scope);
     const storage = addToThreadStorage(scope);
     for (let execution = 0; execution < CHANGE_ATTEMPTS; execution += 1) {
-      const [note, current] = yield* Effect.all(
-        [
-          database(() => notes.find(input.noteId)),
-          database(() => threads.findForChange(input.threadId)),
-        ],
-        { concurrency: "unbounded" },
-      );
-      if (note === null || note.state !== "open") return yield* noteNotFound();
+      const [noteResult, currentResult] = await Promise.all([
+        database(() => notes.find(input.noteId)),
+        database(() => threads.findForChange(input.threadId)),
+      ]);
+      const note = yield* noteResult;
+      const current = yield* currentResult;
+      if (note === null || note.state !== "open")
+        return Result.err(noteNotFound());
       if (current === null || current.thread.state !== "open")
-        return yield* threadNotFound();
+        return Result.err(threadNotFound());
       const { thread, revision } = current;
       const change = yield* attempt(() =>
         decideAddNoteToThread(thread, note, taskIdFor(input.taskId, scope)),
       );
-      const added = yield* database(() =>
-        storage.addToThread({
-          note,
-          threadId: thread._id,
-          expectedRevision: revision,
-          change,
-        }),
+      const added = yield* Result.await(
+        database(() =>
+          storage.addToThread({
+            note,
+            threadId: thread._id,
+            expectedRevision: revision,
+            change,
+          }),
+        ),
       );
-      if (added !== null) return added;
+      if (added !== null) return Result.ok(added);
     }
-    return yield* new ChangeConflict();
+    return Result.err(new ChangeConflict());
   });
 }
 
@@ -89,18 +91,21 @@ export function addNoteToThread(
  * does; a Note that changed under the decision is read again.
  */
 export function createThreadFromNote(
+  scope: RequestScope,
   input: CreateThreadFromNoteInput,
 ): Operation<NoteAddedToThread> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
+  return Result.gen(async function* () {
     const notes = noteStorage(scope);
     const storage = addToThreadStorage(scope);
     const title = yield* attempt(() =>
       requireNonBlankText(input.title, "Thread title"),
     );
     for (let execution = 0; execution < CHANGE_ATTEMPTS; execution += 1) {
-      const note = yield* database(() => notes.find(input.noteId));
-      if (note === null || note.state !== "open") return yield* noteNotFound();
+      const note = yield* Result.await(
+        database(() => notes.find(input.noteId)),
+      );
+      if (note === null || note.state !== "open")
+        return Result.err(noteNotFound());
       const slug = generateSlug(title);
       const change = yield* attempt(() =>
         decideAddNoteToThread(
@@ -109,7 +114,7 @@ export function createThreadFromNote(
           taskIdFor(input.taskId, scope),
         ),
       );
-      const added = yield* database(
+      const started = await database(
         () =>
           storage.startThread({
             note,
@@ -121,18 +126,22 @@ export function createThreadFromNote(
             change,
           }),
         isThreadSlugTaken,
-      ).pipe(Effect.catchTag("SlugTaken", () => Effect.succeed(undefined)));
-      if (added === undefined) continue;
-      if (added !== null) return added;
+      );
+      if (Result.isError(started)) {
+        if (started.error._tag === "SlugTaken") continue;
+        return Result.err(started.error);
+      }
+      const added = started.value;
+      if (added !== null) return Result.ok(added);
       // Nothing was written: the Area is gone, or the Note changed and is
       // read again.
       if (input.areaId !== undefined) {
-        const area = yield* database(() =>
-          areaStorage(scope).find(input.areaId!),
+        const area = yield* Result.await(
+          database(() => areaStorage(scope).find(input.areaId!)),
         );
-        if (area === null) return yield* areaNotFound();
+        if (area === null) return Result.err(areaNotFound());
       }
     }
-    return yield* new ChangeConflict();
+    return Result.err(new ChangeConflict());
   });
 }

@@ -1,40 +1,29 @@
 import type { OperationResult, ThreadId } from "@vita-os/contracts";
 
+import { Result } from "better-result";
 import { env } from "cloudflare:test";
-import { Effect } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { OperationFailure } from "../src/platform/failures";
+import type { Operation } from "../src/platform/operation";
 import type { RequestScope } from "../src/platform/request-scope";
 
 import { getThreadActivityPage } from "../src/features/activity-log/operations";
 import * as areas from "../src/features/areas/operations";
 import * as threads from "../src/features/threads/operations";
 import { toRefusal } from "../src/platform/http/errors";
-import { RequestContext } from "../src/platform/request-scope";
 
 const clock = { now: () => Date.now(), newId: () => crypto.randomUUID() };
 function value<T>(result: OperationResult<T>): T {
   if (!result.ok) throw new Error(result.error.code);
   return result.value;
 }
-function result<T>(
-  scope: RequestScope,
-  operation: Effect.Effect<T, OperationFailure, RequestContext>,
-): Promise<OperationResult<T>> {
-  return Effect.runPromise(
-    operation.pipe(
-      Effect.provideService(RequestContext, scope),
-      Effect.match({
-        onSuccess: (value): OperationResult<T> => ({ ok: true, value }),
-        onFailure: (failure): OperationResult<T> => ({
-          ok: false,
-          error: toRefusal(failure).error,
-        }),
-      }),
-    ),
-  );
+async function result<T>(operation: Operation<T>): Promise<OperationResult<T>> {
+  const result = await operation;
+  return Result.isOk(result)
+    ? { ok: true, value: result.value }
+    : { ok: false, error: toRefusal(result.error).error };
 }
+
 async function setup() {
   const scope: RequestScope = {
     db: env.DB,
@@ -42,7 +31,7 @@ async function setup() {
     actorId: crypto.randomUUID(),
   };
   const area = value(
-    await result(scope, areas.createArea({ name: "Home", icon: "Home" })),
+    await result(areas.createArea(scope, { name: "Home", icon: "Home" })),
   );
   return { scope, area };
 }
@@ -63,11 +52,10 @@ describe("slug collision recovery", () => {
         name: string,
       ): Promise<{ _id: string; slug: string }> =>
         kind === "area"
-          ? value(await result(scope, areas.createArea({ name, icon: "Home" })))
+          ? value(await result(areas.createArea(scope, { name, icon: "Home" })))
           : value(
               await result(
-                scope,
-                threads.createThread({ title: name, areaId: area._id }),
+                threads.createThread(scope, { title: name, areaId: area._id }),
               ),
             );
       const first = await create("Repeated");
@@ -98,15 +86,13 @@ describe("slug collision recovery", () => {
       const renamed =
         kind === "area"
           ? await result(
-              scope,
-              areas.updateArea({
+              areas.updateArea(scope, {
                 areaId: other._id as typeof area._id,
                 name: "Repeated",
               }),
             )
           : await result(
-              scope,
-              threads.updateThread({
+              threads.updateThread(scope, {
                 threadId: other._id as ThreadId,
                 title: "Repeated",
               }),
@@ -131,11 +117,12 @@ describe("slug write failures", () => {
         },
       } as unknown as D1PreparedStatement;
     });
-    const failure = await Effect.runPromise(
-      areas
-        .createArea({ name: "Rejected", icon: "Home" })
-        .pipe(Effect.provideService(RequestContext, scope), Effect.flip),
-    );
+    const result = await areas.createArea(scope, {
+      name: "Rejected",
+      icon: "Home",
+    });
+    if (Result.isOk(result)) throw new Error("Expected storage refusal");
+    const failure = result.error;
     return { failure, slugs };
   }
 
@@ -176,25 +163,25 @@ describe("Area contention", () => {
     const { scope, area } = await setup();
     const destination = value(
       await result(
-        scope,
-        areas.createArea({ name: "Destination", icon: "Home" }),
+        areas.createArea(scope, { name: "Destination", icon: "Home" }),
       ),
     );
     const thread = value(
       await result(
-        scope,
-        threads.createThread({ areaId: area._id, title: "Moving" }),
+        threads.createThread(scope, { areaId: area._id, title: "Moving" }),
       ),
     );
     const batch = env.DB.batch.bind(env.DB);
     vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
-      await result(scope, areas.removeArea({ areaId: destination._id }));
+      await result(areas.removeArea(scope, { areaId: destination._id }));
       return batch(statements);
     });
     await expect(
       result(
-        scope,
-        threads.updateThread({ threadId: thread._id, areaId: destination._id }),
+        threads.updateThread(scope, {
+          threadId: thread._id,
+          areaId: destination._id,
+        }),
       ),
     ).resolves.toEqual({
       ok: false,
@@ -205,14 +192,13 @@ describe("Area contention", () => {
       },
     });
     expect(
-      value(await result(scope, threads.getThreadDetail({ slug: thread.slug })))
+      value(await result(threads.getThreadDetail(scope, { slug: thread.slug })))
         .thread.areaId,
     ).toBe(area._id);
     expect(
       value(
         await result(
-          scope,
-          getThreadActivityPage({ threadId: thread._id, limit: 20 }),
+          getThreadActivityPage(scope, { threadId: thread._id, limit: 20 }),
         ),
       ).entries,
     ).toEqual([]);
