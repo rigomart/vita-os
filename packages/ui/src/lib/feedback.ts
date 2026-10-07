@@ -26,7 +26,16 @@ export type Feedback = {
 
 export type ErrorDetail = {
   description: string;
-  action?: { label: string; onClick: () => void };
+  /**
+   * The toast stays until the action succeeds (its promise resolves), and
+   * only then closes. If it fails the toast stays, its message becomes
+   * `failedMessage`, and the description is still there to read.
+   */
+  action?: {
+    label: string;
+    onClick: () => unknown;
+    failedMessage: string;
+  };
 };
 
 export type UndoableOptions = {
@@ -35,17 +44,44 @@ export type UndoableOptions = {
 
 const UNDO_WINDOW_MS = 5000;
 
+let errorToasts = 0;
+
 const defaultFeedback: Feedback = {
   success: (message) => toast.success(message),
-  error: (message, detail) =>
-    detail === undefined
-      ? toast.error(message)
-      : toast.error(message, {
-          description: detail.description,
-          duration: Number.POSITIVE_INFINITY,
-          closeButton: true,
-          ...(detail.action === undefined ? {} : { action: detail.action }),
-        }),
+  error: (message, detail) => {
+    if (detail === undefined) {
+      toast.error(message);
+      return;
+    }
+    const id = `error-${++errorToasts}`;
+    const show = (title: string) =>
+      toast.error(title, {
+        id,
+        description: detail.description,
+        duration: Number.POSITIVE_INFINITY,
+        closeButton: true,
+        ...(detail.action === undefined
+          ? {}
+          : {
+              action: {
+                label: detail.action.label,
+                onClick: (event: { preventDefault: () => void }) => {
+                  // Sonner closes an action's toast unless told not to; it
+                  // closes once the action has worked.
+                  event.preventDefault();
+                  const action = detail.action!;
+                  void Promise.resolve()
+                    .then(action.onClick)
+                    .then(
+                      () => toast.dismiss(id),
+                      () => show(action.failedMessage),
+                    );
+                },
+              },
+            }),
+      });
+    show(message);
+  },
   undoable: (message, options) =>
     new Promise((resolve) => {
       let settled = false;

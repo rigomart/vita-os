@@ -11,9 +11,16 @@ import type {
 } from "@vita-os/contracts";
 import type { PropsWithChildren } from "react";
 
-import { act, renderHook, waitFor } from "@testing-library/react";
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { nextTaskDate } from "@vita-os/core";
+import { Toaster } from "@vita-os/ui/components/sonner";
 import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -26,9 +33,9 @@ import {
   failure,
   success,
 } from "../test/fake-application-client";
-import { anArea, aThread } from "../test/fixtures";
+import { anArea, aThread, aThreadNote } from "../test/fixtures";
 import { createHarness } from "../test/harness";
-import { useThreadNotes } from "../thread-notes/hooks";
+import { useThreadNotes, useUpdateThreadNoteBody } from "../thread-notes/hooks";
 import { useOpenThreads } from "./hooks";
 import { useTasks } from "./use-tasks";
 
@@ -127,18 +134,28 @@ function service() {
   };
 }
 
-function setup(fake: ReturnType<typeof service>, { observe = true } = {}) {
+function setup(
+  fake: ReturnType<typeof service>,
+  { observe = true, realFeedback = false } = {},
+) {
   const feedback = { success: vi.fn(), error: vi.fn(), undoable: vi.fn() };
   const { cache, wrapper: Application } = createHarness(
     fake.client,
     (cache) => {
       cache.setQueryData(queryKeys.threads.open(), [seed]);
-      cache.setQueryData(queryKeys.threadNotes.open(seed._id), []);
+      cache.setQueryData(
+        queryKeys.threadNotes.open(seed._id),
+        fake.storedNotes(),
+      );
     },
   );
   const wrapper = ({ children }: PropsWithChildren) => (
     <Application>
-      <FeedbackProvider feedback={feedback}>{children}</FeedbackProvider>
+      {realFeedback ? (
+        <FeedbackProvider>{children}</FeedbackProvider>
+      ) : (
+        <FeedbackProvider feedback={feedback}>{children}</FeedbackProvider>
+      )}
     </Application>
   );
   // The reads Thread detail observes, so a settled command refetches them.
@@ -154,7 +171,7 @@ function setup(fake: ReturnType<typeof service>, { observe = true } = {}) {
     cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0];
   const notes = () =>
     cache.getQueryData<ThreadNote[]>(queryKeys.threadNotes.open(seed._id));
-  return { feedback, tasks, unmount, add, open, notes };
+  return { feedback, wrapper, tasks, unmount, add, open, notes };
 }
 
 const task = (thread: Thread | undefined, taskId: TaskId) =>
@@ -167,7 +184,10 @@ function expectHandedBack(
 ) {
   expect(feedback.error).toHaveBeenCalledExactlyOnceWith(message, {
     description: text,
-    action: { label: "Copy note", onClick: expect.any(Function) },
+    action: expect.objectContaining({
+      label: "Copy note",
+      onClick: expect.any(Function),
+    }),
   });
 }
 const sentNote = (fake: ReturnType<typeof service>, call = 0) =>
@@ -353,8 +373,7 @@ describe("completing with a note when the connection drops", () => {
   it("counts it completed, quietly, when this attempt's Note is found, and shows the Note", async () => {
     const fake = service();
     fake.switches.dropAfterCommit = true;
-    // Nothing observes the reads: the lookup itself brings the Notes up to date.
-    const { tasks, notes, feedback } = setup(fake, { observe: false });
+    const { tasks, notes, feedback } = setup(fake);
 
     let outcome: unknown;
     await act(async () => {
@@ -393,6 +412,41 @@ describe("completing with a note when the connection drops", () => {
     await expect(navigator.clipboard.readText()).resolves.toBe("Picked up");
   });
 
+  it("only looks for the Note, so a Note edit pending in the Thread keeps showing", async () => {
+    const fake = service();
+    fake.switches.dropAfterCommit = true;
+    const kept = aThreadNote({ body: "Clinic opens at nine" });
+    fake.state.threadNotes.set(seed._id, [kept]);
+    fake.client.updateThreadNoteBody = () => new Promise(() => undefined);
+    const { tasks, wrapper, notes } = setup(fake);
+    const { result: edit } = renderHook(() => useUpdateThreadNoteBody(), {
+      wrapper,
+    });
+    act(() => {
+      edit.current.mutate({
+        threadId: seed._id,
+        threadNoteId: kept._id,
+        body: "Clinic opens at ten",
+      });
+    });
+    await waitFor(() =>
+      expect(notes()).toEqual([
+        expect.objectContaining({ body: "Clinic opens at ten" }),
+      ]),
+    );
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
+    });
+
+    expect(outcome).toBe("completed");
+    // The edit is still on its way, and still shown.
+    expect(notes()?.find((note) => note._id === kept._id)?.body).toBe(
+      "Clinic opens at ten",
+    );
+  });
+
   it("says it could not confirm when the Notes cannot be read, and hands the text back", async () => {
     const fake = service();
     fake.switches.dropAfterCommit = true;
@@ -411,6 +465,46 @@ describe("completing with a note when the connection drops", () => {
       "Picked up",
     );
     expect(feedback.error.mock.calls[0]![0]).not.toMatch(/not saved/);
+  });
+
+  it("keeps the toast and its text, saying so, when copying fails", async () => {
+    const user = userEvent.setup();
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockRejectedValue(new Error("denied"));
+    render(<Toaster />);
+    const fake = service();
+    fake.switches.dropBeforeCommit = true;
+    const { tasks } = setup(fake, { realFeedback: true });
+
+    await act(async () => {
+      await tasks.current.completeWithNote(refill._id, "Picked up");
+    });
+    await user.click(await screen.findByRole("button", { name: "Copy note" }));
+
+    expect(writeText).toHaveBeenCalledWith("Picked up");
+    expect(
+      await screen.findByText(
+        "Couldn’t copy the note. Select its text below to copy it.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Picked up")).toBeInTheDocument();
+  });
+
+  it("closes the toast once the note is copied", async () => {
+    const user = userEvent.setup();
+    render(<Toaster />);
+    const fake = service();
+    fake.switches.dropBeforeCommit = true;
+    const { tasks } = setup(fake, { realFeedback: true });
+
+    await act(async () => {
+      await tasks.current.completeWithNote(refill._id, "Picked up");
+    });
+    await user.click(await screen.findByRole("button", { name: "Copy note" }));
+
+    await expect(navigator.clipboard.readText()).resolves.toBe("Picked up");
+    await waitFor(() => expect(screen.queryByText("Picked up")).toBeNull());
   });
 
   it("still hands the text back once the Thread pane has gone", async () => {

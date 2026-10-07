@@ -1,4 +1,3 @@
-import type { QueryClient } from "@tanstack/react-query";
 import type {
   ApplicationClient,
   Repeat,
@@ -85,20 +84,19 @@ const NOT_SAVED = "Your note was not saved.";
 /**
  * Whether this attempt's Note is among the Thread's open Notes, read from the
  * service: `true` or `false`, or `undefined` when they could not be read.
- * The open Notes read takes what was found, so a Note that landed shows even
- * where no settled command refetched it. A Note archived meanwhile reads as
- * missing, which only means its text is handed back to copy.
+ * It only looks: the cached Notes read is left to the command's own
+ * invalidation, which waits for every overlapping command, so a Note capture
+ * or edit still pending in the Thread keeps showing. A Note archived
+ * meanwhile reads as missing, which only means its text is handed back.
  */
 async function findNote(
   client: ApplicationClient,
-  cache: QueryClient,
   threadId: ThreadId,
   noteId: ThreadNoteId,
 ): Promise<boolean | undefined> {
   try {
     const open = await client.listOpenThreadNotes({ threadId });
     if (!open.ok) return open.error.code === "not_found" ? false : undefined;
-    cache.setQueryData(queryKeys.threadNotes.open(threadId), open.value);
     return open.value.some((note) => note._id === noteId);
   } catch {
     return undefined;
@@ -384,7 +382,6 @@ export function useTasks(thread: Thread) {
   const setDate = useSetDateCommand(thread);
   const setRepeat = useSetRepeatCommand(thread);
   const client = useApplicationClient();
-  const cache = useQueryClient();
 
   const settle = (pending: Promise<unknown>) =>
     pending.then(() => undefined, report);
@@ -404,7 +401,10 @@ export function useTasks(thread: Thread) {
         description: note.body,
         action: {
           label: "Copy note",
-          onClick: () => void navigator.clipboard?.writeText(note.body),
+          // Rejects without a clipboard too: the toast then stays, saying so.
+          onClick: () => navigator.clipboard.writeText(note.body),
+          failedMessage:
+            "Couldn’t copy the note. Select its text below to copy it.",
         },
       });
       return "failed";
@@ -426,7 +426,7 @@ export function useTasks(thread: Thread) {
       }
       // Sent: whatever the answer said, this attempt's Note says whether it
       // landed.
-      const found = await findNote(client, cache, thread._id, note.id);
+      const found = await findNote(client, thread._id, note.id);
       if (found === true) return "completed";
       if (found === undefined) {
         return handBack(
