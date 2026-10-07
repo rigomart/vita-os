@@ -247,6 +247,30 @@ describe("ThreadDetailView", () => {
     expect(screen.getByRole("button", { name: "Close thread" })).toBeVisible();
   });
 
+  it("closes a Task's note line on Escape and keeps the drawer open", async () => {
+    mocks.tasks = [{ _id: "task-scan", text: "Book the scan" }];
+    renderThreadDetail();
+
+    const drawer = await screen.findByRole("dialog", {
+      name: "Sister's front teeth",
+    });
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Complete with a note" }),
+    );
+    await userEvent.type(
+      within(drawer).getByRole("textbox", { name: "Note" }),
+      "Draft{Escape}",
+    );
+
+    expect(within(drawer).queryByRole("textbox", { name: "Note" })).toBeNull();
+    // A drawer asked to close says so at once, before its exit animation.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(
+      screen.getByRole("dialog", { name: "Sister's front teeth" }),
+    ).toHaveAttribute("data-state", "open");
+    expect(mocks.onClose).not.toHaveBeenCalled();
+  });
+
   it("closes the narrow Thread pane after its close animation", async () => {
     renderThreadDetail();
 

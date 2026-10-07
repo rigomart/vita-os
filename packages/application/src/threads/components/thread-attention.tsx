@@ -473,6 +473,8 @@ function CompletionNoteLine({
         role="group"
         aria-label={`Complete “${taskText}” with a note`}
         data-slot="completion-note"
+        // Its Escape closes it alone, never the Thread drawer around it.
+        data-keeps-escape=""
         className="flex flex-col gap-2 rounded-lg border border-border/70 bg-background p-2.5"
       >
         <label
@@ -492,9 +494,7 @@ function CompletionNoteLine({
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
-              // Closes the line, not the Thread pane around it.
               event.preventDefault();
-              event.stopPropagation();
               onCancel();
             }
             if (
