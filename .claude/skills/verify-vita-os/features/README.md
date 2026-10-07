@@ -60,3 +60,5 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 - [Follow-up dates](./follow-up-dates.md) covers the Follow-up date on standalone Notes and their Dashboard placement. A Thread comes back at its soonest dated Task, covered in [Tasks](./tasks.md).
 - [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter the board row.
 - [Phone installation and sharing](./phone-installation.md) covers manifest/icons, shared Note capture through sign-in, retry, and persistence.
+
+- [Reload an outdated tab](./version-reload.md) covers API/web version mismatch, web readiness, pending saves, and preserved stored results.
