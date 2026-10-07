@@ -148,6 +148,7 @@ export function requestMiddleware(createScope: CreateScope) {
         return yield* HttpMiddleware.cors({
           allowedOrigins: (candidate) => candidate === origin,
           credentials: true,
+          exposedHeaders: ["X-Vita-Version"],
         })(guarded);
       }).pipe(
         Effect.catchDefect((defect) =>

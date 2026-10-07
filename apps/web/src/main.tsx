@@ -15,6 +15,7 @@ import { createRoot } from "react-dom/client";
 import { createHttpApplicationClient } from "./application/http/http-application-client";
 import { SignedInApplication } from "./application/signed-in-application";
 import { API_BASE_URL } from "./lib/env";
+import { versionAwareFetch } from "./lib/version-aware-fetch";
 import { BrowserSessionGate } from "./routing/browser-session-gate";
 import { router } from "./routing/router";
 import "@vita-os/ui/globals.css";
@@ -33,6 +34,7 @@ initializeTheme();
  */
 const applicationClient = createHttpApplicationClient({
   apiBaseUrl: API_BASE_URL,
+  fetchImpl: versionAwareFetch.fetch,
 });
 
 const root = document.getElementById("root");

@@ -2,6 +2,8 @@ import { createAuthClient } from "better-auth/react";
 
 import { API_BASE_URL } from "@/lib/env";
 
+import { versionAwareFetch } from "./version-aware-fetch";
+
 /**
  * Better Auth in the browser.
  *
@@ -10,4 +12,7 @@ import { API_BASE_URL } from "@/lib/env";
  * the browser host: the shared application knows only that it was handed an
  * already-authenticated client.
  */
-export const authClient = createAuthClient({ baseURL: API_BASE_URL });
+export const authClient = createAuthClient({
+  baseURL: API_BASE_URL,
+  fetchOptions: { customFetchImpl: versionAwareFetch.fetch },
+});

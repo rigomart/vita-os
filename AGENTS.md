@@ -36,6 +36,8 @@ ownership checks hold, and failures are visible, never silent.
 - Add shadcn components from `apps/web/` with `bunx shadcn@latest add <component>`. Never `--overwrite`: components in `packages/ui/src/components/` carry local changes.
 - Scope a command to one package with `bunx turbo run <task> --filter=@vita-os/<name>`.
 - Don't use the shared dev server (`bun run dev`, Vite on :5173) or the owner's account for verification. `bun run verify` starts an isolated stack with a throwaway user.
+- API changes ship without compatibility aliases for old browser tabs. The host reloads an old tab after pending writes settle and the matching web build is available.
+- Data migrations must support the API still serving during deployment: migrations run before the new API deploys. Never remove or change storage that the serving API still needs.
 - Never deploy by hand. Deploys go through `.github/workflows/deploy-*.yml`, which migrate D1 and deploy the API before the web app. The `deploy:*` scripts in `apps/web` ship the web Worker alone.
 - Conventional commits with a scope: `<type>(<scope>): <description>`.
 - Issues live in GitHub. Use the `gh` CLI.
