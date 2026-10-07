@@ -2,6 +2,19 @@
 
 Vita OS is a personal life-awareness app: open Threads and standalone Notes, optionally labeled by Area, on one Dashboard. Bun + Turbo monorepo. Run every command from the repo root with `bun` (never npm, yarn, or pnpm).
 
+## Phase: iterating fast
+
+Vita OS is still finding its shape, and its model changes often. Write code that is cheap to change
+and cheap to delete: the simplest thing that works for what exists today, not machinery for cases
+that haven't happened.
+
+Compromises are fine when they're surfaced. Say in your report or PR what you left out, what could
+go wrong, and how it would show up; the developer decides whether it's acceptable. Don't silently
+harden against it, and don't silently ignore it.
+
+Not up for compromise: stored data is never lost or corrupted (migrations, writes), auth and
+ownership checks hold, and failures are visible, never silent.
+
 ## Done means
 
 1. `bun run lint` (auto-fixes lint, format, import order) and `bun run build` (type-check + build) pass.
@@ -19,6 +32,7 @@ Vita OS is a personal life-awareness app: open Threads and standalone Notes, opt
 
 ## Rules
 
+- After two review rounds with new findings in the same area, stop patching and propose a simpler design.
 - Add shadcn components from `apps/web/` with `bunx shadcn@latest add <component>`. Never `--overwrite`: components in `packages/ui/src/components/` carry local changes.
 - Scope a command to one package with `bunx turbo run <task> --filter=@vita-os/<name>`.
 - Don't use the shared dev server (`bun run dev`, Vite on :5173) or the owner's account for verification. `bun run verify` starts an isolated stack with a throwaway user.
