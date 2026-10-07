@@ -163,7 +163,7 @@ function chosenDay(day: number, weekdays: readonly number[]): number {
 export function snapTaskDate(
   date: number,
   repeat: Repeat,
-  timeZone: string | undefined,
+  timeZone: string,
 ): number {
   const zone = calendar(timeZone);
   if (repeat.kind === "days") return date;
@@ -179,7 +179,7 @@ export function snapTaskDate(
 export function nextTaskDate(
   date: number,
   repeat: Repeat,
-  timeZone: string | undefined,
+  timeZone: string,
   now: number,
 ): number {
   const zone = calendar(timeZone);

@@ -109,6 +109,7 @@ describe("a Task made by adding a Note to a Thread", () => {
       threadId: thread._id,
       taskId,
       expectedRevision: 5,
+      timeZone: expect.any(String),
     });
   });
 });

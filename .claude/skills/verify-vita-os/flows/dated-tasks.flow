@@ -26,6 +26,9 @@ browser -- wait --fn "document.querySelector('input[type=time]').value === '15:3
 browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() + 2); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click(); })()"
 browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 2); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"']\")"
 browser -- eval "document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 2); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"'] button\").click()"
+# A row's picker stays open after a day is picked (its Repeat can follow); Escape closes it (a toast can cover Done).
+browser -- press Escape
+browser -- wait --fn "!document.querySelector('[data-slot=popover-content]')"
 
 # The Thread leaves the No date tray for This week, under that day's heading, and its card leads with A1 and its time.
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2); const day = d.toLocaleDateString('en-US', { weekday: 'long' }); return [...document.querySelectorAll(\"section[aria-label='This week'] section[aria-label='\" + day + \"'] li\")].some(li => li.textContent.includes('Dated A ${STAMP}') && li.textContent.includes('A1 ${STAMP}') && li.textContent.includes('3:30 PM')); })()"
@@ -61,9 +64,13 @@ browser -- press Enter
 browser -- wait --text "C2 ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="C1 ${STAMP}"]]//button[@aria-label="Set date"]'
 browser -- click 'xpath=//td[@data-today]//button'
+browser -- press Escape
+browser -- wait --fn "!document.querySelector('[data-slot=popover-content]')"
 browser -- wait --fn "document.querySelectorAll('ul[aria-label=\"Tasks\"] > li button[aria-label^=\"Change date\"]').length === 1"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="C2 ${STAMP}"]]//button[@aria-label="Set date"]'
 browser -- click 'xpath=//td[@data-today]//button'
+browser -- press Escape
+browser -- wait --fn "!document.querySelector('[data-slot=popover-content]')"
 browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Now'] li\")].some(li => li.textContent.includes('Dated C ${STAMP}') && li.textContent.includes('2 tasks today') && !li.textContent.includes('C1 ${STAMP}'))"
 shot dated-c-two-today
 

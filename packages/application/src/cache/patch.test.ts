@@ -125,6 +125,13 @@ describe("a pending record", () => {
 });
 
 describe("the Task rules applied locally", () => {
+  const complete = (taskId: TaskId) => ({
+    kind: "complete" as const,
+    taskId,
+    occurrence: undefined,
+    timeZone: "UTC",
+    now: 0,
+  });
   const callClinic = { _id: "task-1" as TaskId, text: "Call clinic" };
   const bookSlot = { _id: "task-2" as TaskId, text: "Book slot" };
   const open = {
@@ -134,16 +141,17 @@ describe("the Task rules applied locally", () => {
   };
 
   it("completing the Focused Task leaves the Thread unfocused, promoting nothing", () => {
-    expect(
-      changeTasksLocally(open, { kind: "complete", taskId: callClinic._id }),
-    ).toEqual({ state: "open", tasks: [bookSlot] });
+    expect(changeTasksLocally(open, complete(callClinic._id))).toEqual({
+      state: "open",
+      tasks: [bookSlot],
+    });
   });
 
   it("completing the last Task leaves no Tasks at all", () => {
     expect(
       changeTasksLocally(
         { state: "open" as const, tasks: [bookSlot] },
-        { kind: "complete", taskId: bookSlot._id },
+        complete(bookSlot._id),
       ),
     ).toEqual({ state: "open" });
   });
@@ -163,9 +171,7 @@ describe("the Task rules applied locally", () => {
     expect(changeTasksLocally(resolved, { kind: "focus", taskId: null })).toBe(
       resolved,
     );
-    expect(
-      changeTasksLocally(open, { kind: "complete", taskId: "gone" as TaskId }),
-    ).toBe(open);
+    expect(changeTasksLocally(open, complete("gone" as TaskId))).toBe(open);
   });
 });
 

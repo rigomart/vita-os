@@ -86,6 +86,7 @@ describe("useCompleteTask", () => {
       threadId: thread._id,
       taskId: callClinic._id,
       expectedRevision: 4,
+      timeZone: expect.any(String),
     });
 
     await act(async () => {
@@ -278,6 +279,7 @@ describe("useTasks", () => {
         threadId: thread._id,
         taskId: callClinic._id,
         expectedRevision: 5,
+        timeZone: expect.any(String),
       }),
     );
   });

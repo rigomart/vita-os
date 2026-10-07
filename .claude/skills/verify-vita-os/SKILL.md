@@ -71,7 +71,7 @@ A flow is plain text in `flows/<name>.flow`, started after `up` and `signin`. On
 
 Each step has a 20 s timeout (`--step-timeout <seconds>`). The run stops at the first failing step and prints one JSON object with `failedLine`, `command`, `output`, and `evidenceDir`, then exits 1. On success it prints the `shot` labels and the wall time in `ms`.
 
-Existing flows: `tasks`, `dashboard-tasks`, `dated-tasks`, `resolve-reopen`, `thread-drawer`, `thread-edit-tasks`. A flow proves what its lines assert. Mutations follow the same rule as below: a reload or a `d1` SELECT, not the optimistic UI alone.
+Existing flows: `tasks`, `dashboard-tasks`, `dated-tasks`, `repeating-tasks`, `resolve-reopen`, `thread-drawer`, `thread-edit-tasks`. A flow proves what its lines assert. Mutations follow the same rule as below: a reload or a `d1` SELECT, not the optimistic UI alone.
 
 ## Evidence
 

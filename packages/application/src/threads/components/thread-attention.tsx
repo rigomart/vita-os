@@ -1,12 +1,20 @@
-import type { Task, TaskId } from "@vita-os/contracts";
+import type { Repeat, Task, TaskId } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
-import { CalendarClock, Check, Plus, X } from "lucide-react";
+import {
+  CalendarClock,
+  Check,
+  Plus,
+  Repeat as RepeatIcon,
+  SkipForward,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 
 import {
+  repeatLabel,
   taskDateLabels,
   WhenPopover,
   whenTone,
@@ -33,8 +41,12 @@ interface ThreadAttentionProps {
   onCompleteTask: (taskId: TaskId) => void;
   /** `null` unfocuses; a Task replaces any earlier focus. */
   onFocusTask: (taskId: TaskId | null) => void;
-  /** Sets, changes or (with `null`) clears one Task's date. */
+  /** Sets, changes or (with `null`) clears one Task's date, and its Repeat with it. */
   onSetTaskDate: (taskId: TaskId, date: number | null) => void;
+  /** Sets, changes or (with `null`) clears one dated Task's Repeat. */
+  onSetTaskRepeat: (taskId: TaskId, repeat: Repeat | null) => void;
+  /** Moves a repeating Task to its next occurrence. */
+  onSkipTask: (taskId: TaskId) => void;
 }
 
 /**
@@ -64,6 +76,8 @@ export function ThreadAttention({
   onCompleteTask,
   onFocusTask,
   onSetTaskDate,
+  onSetTaskRepeat,
+  onSkipTask,
 }: ThreadAttentionProps) {
   const dated = tasks
     .filter((task) => task.date !== undefined)
@@ -83,6 +97,8 @@ export function ThreadAttention({
       onRemove={() => onRemoveTask(task._id)}
       onComplete={() => onCompleteTask(task._id)}
       onSetDate={(date) => onSetTaskDate(task._id, date)}
+      onSetRepeat={(repeat) => onSetTaskRepeat(task._id, repeat)}
+      onSkip={() => onSkipTask(task._id)}
       onToggleFocus={() =>
         onFocusTask(task._id === focusedTaskId ? null : task._id)
       }
@@ -116,19 +132,26 @@ export function ThreadAttention({
 
       {tasks.length > 0 && (
         <ul aria-label="Tasks" className="flex flex-col gap-0.5">
-          {dated.map(renderTask)}
-          {dated.length > 0 && undated.length > 0 && (
-            <li
-              role="presentation"
-              className="flex items-center gap-2 px-1.5 pt-1.5 pb-0.5"
-            >
-              <span className="text-2xs font-medium tracking-wide text-muted-foreground/60 uppercase">
-                No date
-              </span>
-              <span aria-hidden className="h-px flex-1 bg-border/40" />
-            </li>
-          )}
-          {undated.map(renderTask)}
+          {/* One keyed list, so a row that gains or loses its date moves
+              rather than remounts, and its open date picker stays open. */}
+          {[
+            ...dated.map(renderTask),
+            ...(dated.length > 0 && undated.length > 0
+              ? [
+                  <li
+                    key="no-date"
+                    role="presentation"
+                    className="flex items-center gap-2 px-1.5 pt-1.5 pb-0.5"
+                  >
+                    <span className="text-2xs font-medium tracking-wide text-muted-foreground/60 uppercase">
+                      No date
+                    </span>
+                    <span aria-hidden className="h-px flex-1 bg-border/40" />
+                  </li>,
+                ]
+              : []),
+            ...undated.map(renderTask),
+          ]}
         </ul>
       )}
 
@@ -152,6 +175,8 @@ function TaskRow({
   onRemove,
   onComplete,
   onSetDate,
+  onSetRepeat,
+  onSkip,
   onToggleFocus,
 }: {
   task: Task;
@@ -163,6 +188,8 @@ function TaskRow({
   onRemove: () => void;
   onComplete: () => void;
   onSetDate: (date: number | null) => void;
+  onSetRepeat: (repeat: Repeat | null) => void;
+  onSkip: () => void;
   onToggleFocus: () => void;
 }) {
   const dateLabel =
@@ -208,6 +235,23 @@ function TaskRow({
         </span>
       </button>
 
+      {task.repeat !== undefined && (
+        <span
+          role="img"
+          aria-label={repeatLabel(task.repeat)}
+          title={repeatLabel(task.repeat)}
+          data-slot="repeat-glyph"
+          className={cn(
+            "flex shrink-0 items-center",
+            tone === "overdue"
+              ? "text-condition-attention"
+              : "text-muted-foreground/70",
+          )}
+        >
+          <RepeatIcon aria-hidden className="size-3" />
+        </span>
+      )}
+
       <span className="min-w-0 flex-1">
         <EditableField
           value={task.text}
@@ -231,7 +275,9 @@ function TaskRow({
           busy={disabled}
           when={task.date}
           clearLabel={taskDateLabels.clear}
+          keepOpenOnPick
           onSetWhen={(when) => onSetDate(when ?? null)}
+          repeat={{ value: task.repeat, onChange: onSetRepeat }}
           trigger={
             dateLabel === undefined ? (
               <Button
@@ -280,6 +326,19 @@ function TaskRow({
         >
           <X />
         </Button>
+        {task.repeat !== undefined && (
+          <Button
+            variant="ghost"
+            disabled={disabled}
+            size="icon-xs"
+            onClick={onSkip}
+            aria-label="Skip task"
+            title="Skip to the next date"
+            className="size-7 text-muted-foreground/60 transition-opacity hover:text-foreground motion-reduce:transition-none xl:size-6 xl:opacity-0 xl:group-focus-within/task:opacity-100 xl:group-hover/task:opacity-100"
+          >
+            <SkipForward />
+          </Button>
+        )}
         <Button
           variant="ghost"
           disabled={disabled}

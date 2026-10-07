@@ -258,7 +258,10 @@ export class CommandDropped extends Error {
  * queued command left — the Task is gone, or nothing would change — is dropped
  * at the head of the queue: no request, no refusal to report. Duplicate
  * activations arrive before the first command's optimistic layer lands, so
- * this cannot be decided when the command is issued. The basis is the newest
+ * this cannot be decided when the command is issued. A repeating Task is
+ * never gone, so completing or skipping it names the occurrence the person
+ * saw, and one aimed at an occurrence the Task has already left is dropped
+ * (`TaskChange`): a double-click completes or skips once. The basis is the newest
  * Thread this Thread's own queue got back, and the command carries its
  * revision. The Thread's edits share the queue (`useUpdateThread`), so one
  * made meanwhile goes out in turn and its answer moves the basis forward. A
@@ -277,6 +280,8 @@ export function useTaskCommand<TInput>(
       expectedRevision: number,
     ) => Promise<OperationResult<Thread>>;
     change: (input: TInput) => TaskChange;
+    /** Names the command for the mutation cache, so a surface can find it pending. */
+    mutationKey?: readonly unknown[];
   },
 ): ApplicationMutationResult<TInput, Thread> {
   const cache = useQueryClient();
@@ -285,6 +290,9 @@ export function useTaskCommand<TInput>(
 
   return useApplicationMutation<TInput, Thread>({
     scope,
+    ...(command.mutationKey === undefined
+      ? {}
+      : { mutationKey: command.mutationKey }),
     // A Note being added to the Thread locks its Tasks: a command issued
     // meanwhile would move under it. The surfaces disable their controls too;
     // this catches what reaches the command anyway.
@@ -292,7 +300,8 @@ export function useTaskCommand<TInput>(
       conversionPending(cache, thread) ? new ThreadBusy() : undefined,
     run: async (client, input) => {
       const change = command.change(input);
-      const signature = JSON.stringify(change);
+      // The time a command was issued does not make it a different command.
+      const signature = JSON.stringify({ ...change, now: undefined });
       const memo = queueMemo(cache);
       // What this Thread's own queue got back from the service. Without it
       // (the head of a fresh queue) there is nothing to decide against.

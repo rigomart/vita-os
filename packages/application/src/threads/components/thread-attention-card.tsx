@@ -1,18 +1,36 @@
-import type { AreaSummary, Task, TaskId, Thread } from "@vita-os/contracts";
+import type {
+  AreaSummary,
+  Repeat,
+  Task,
+  TaskId,
+  Thread,
+} from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import { Link } from "@tanstack/react-router";
-import { attentionDate, taskSlot } from "@vita-os/core";
+import { attentionDate } from "@vita-os/core";
 import { cn } from "@vita-os/ui/lib/utils";
-import { CalendarClock, ListTodo } from "lucide-react";
+import {
+  CalendarClock,
+  ListTodo,
+  Repeat as RepeatIcon,
+  SkipForward,
+} from "lucide-react";
 
 import type { ProductSearch } from "../../navigation/search-params";
 
 import { AreaIcon } from "../../areas/components/area-icon";
-import { taskDateLabels, timeToken, withTimeToken } from "../../attention-list";
+import {
+  repeatLabel,
+  taskDateLabels,
+  timeToken,
+  withTimeToken,
+} from "../../attention-list";
+import { cardTask } from "../../dashboard/components/attention-board-model";
 import {
   BoardCard,
   BoardCompleteButton,
+  BoardControl,
   BoardDate,
   BoardTag,
   concealed,
@@ -25,7 +43,12 @@ import {
   dateToneClassName,
   dayDelta,
 } from "../../dashboard/components/dashboard-model";
-import { useCompleteTask, useConversionLock, useTaskDates } from "../use-tasks";
+import {
+  useCompleteTask,
+  useConversionLock,
+  useSkipTask,
+  useTaskDates,
+} from "../use-tasks";
 
 /** Past this many Tasks the pips stop growing and a count takes over. */
 const MAX_PIPS = 6;
@@ -45,8 +68,10 @@ const noPendingTasks: ReadonlySet<TaskId> = new Set();
  *
  * The date control sets the date of the Task the slot shows. On a card that
  * shows no single Task, setting a date adds a Task named "Follow up" with it.
- * The footer completes only the Task the slot shows. Focusing, removing, and
- * choosing among Tasks happen in Thread detail, where every Task is in view.
+ * The footer completes only the Task the slot shows, and skips it when it
+ * repeats; a repeating Task wears the repeat glyph and its picker holds its
+ * Repeat. Focusing, removing, and choosing among Tasks happen in Thread
+ * detail, where every Task is in view.
  */
 export function ThreadAttentionCard({
   actions,
@@ -56,6 +81,8 @@ export function ThreadAttentionCard({
   onAddFollowUp,
   onCompleteTask,
   onSetTaskDate,
+  onSetTaskRepeat,
+  onSkipTask,
   onTray,
   pendingTaskIds = noPendingTasks,
   locked = false,
@@ -71,6 +98,10 @@ export function ThreadAttentionCard({
   onCompleteTask: (taskId: TaskId) => void;
   /** Sets, changes or (with `null`) clears one Task's date. */
   onSetTaskDate: (taskId: TaskId, date: number | null) => void;
+  /** Sets, changes or (with `null`) clears one Task's Repeat. */
+  onSetTaskRepeat: (taskId: TaskId, repeat: Repeat | null) => void;
+  /** Moves a repeating Task to its next occurrence. */
+  onSkipTask: (taskId: TaskId) => void;
   onTray?: boolean;
   /** Tasks shown but not yet at the service. */
   pendingTaskIds?: ReadonlySet<TaskId>;
@@ -80,9 +111,9 @@ export function ThreadAttentionCard({
 }) {
   const tasks = thread.tasks ?? [];
   const placedBy = attentionDate(thread);
-  const slot = taskSlot(thread);
-  const lead = slot.kind === "task" ? slot.task : undefined;
-  const focused = slot.kind === "task" && slot.focused;
+  const shown = cardTask(thread);
+  const { slot, focused } = shown;
+  const lead = shown.task;
   // What the picker holds: the shown Task's own date. A card with no single
   // Task opens it empty, and a date set there adds a Task.
   const taskDate = lead?.date;
@@ -109,6 +140,15 @@ export function ThreadAttentionCard({
         if (lead !== undefined) onSetTaskDate(lead._id, when ?? null);
         else if (when !== undefined) onAddFollowUp(when);
       }}
+      {...(lead === undefined
+        ? {}
+        : {
+            repeat: {
+              value: lead.repeat,
+              onChange: (repeat: Repeat | null) =>
+                onSetTaskRepeat(lead._id, repeat),
+            },
+          })}
       when={taskDate}
     />
   );
@@ -149,6 +189,15 @@ export function ThreadAttentionCard({
             )}
             <span className="flex items-center gap-1.5">
               {!showsDate && !locked && dateControl}
+              {lead !== undefined && shown.canSkip && !locked && (
+                <BoardControl
+                  label={`Skip “${lead.text}” to its next date`}
+                  onClick={() => onSkipTask(lead._id)}
+                  className={revealed}
+                >
+                  <SkipForward className="size-3.5" />
+                </BoardControl>
+              )}
               {lead !== undefined && !locked && (
                 <BoardCompleteButton
                   label={`Complete “${lead.text}”`}
@@ -184,6 +233,18 @@ export function ThreadAttentionCard({
           >
             {lead === undefined ? (
               <ListTodo className="size-3 text-muted-foreground/60" />
+            ) : shown.marker === "repeat" ? (
+              <RepeatIcon
+                data-slot="repeat-glyph"
+                className={cn(
+                  "size-3",
+                  focused
+                    ? "text-brand-accent-strong"
+                    : isLate(placedBy, currentDate)
+                      ? "text-condition-attention"
+                      : "text-muted-foreground",
+                )}
+              />
             ) : (
               <TaskMarker focused={focused} />
             )}
@@ -207,7 +268,10 @@ export function ThreadAttentionCard({
               )}
             >
               <span className="sr-only">
-                {focused ? "Focused Task: " : "Task: "}
+                {focused ? "Focused Task" : "Task"}
+                {lead.repeat === undefined
+                  ? ": "
+                  : `, ${repeatLabel(lead.repeat).toLowerCase()}: `}
               </span>
               {lead.text}
               {leadPending && (
@@ -235,6 +299,7 @@ export function ConnectedThreadAttentionCard({
   thread: Thread;
 }) {
   const completeTask = useCompleteTask(thread);
+  const skipTask = useSkipTask(thread);
   const taskDates = useTaskDates(thread);
   const { locked, pendingTaskIds } = useConversionLock(thread);
 
@@ -250,6 +315,10 @@ export function ConnectedThreadAttentionCard({
       onAddFollowUp={(when) => void taskDates.addFollowUp(when)}
       onCompleteTask={(taskId) => void completeTask(taskId)}
       onSetTaskDate={(taskId, date) => void taskDates.setDate(taskId, date)}
+      onSetTaskRepeat={(taskId, repeat) =>
+        void taskDates.setRepeat(taskId, repeat)
+      }
+      onSkipTask={(taskId) => void skipTask(taskId)}
     />
   );
 }
