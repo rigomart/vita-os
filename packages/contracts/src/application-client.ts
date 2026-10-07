@@ -86,6 +86,8 @@ export interface CompleteTaskInput extends TaskCommand {
   taskId: TaskId;
   /** Required when the Task repeats. */
   timeZone?: string;
+  /** A client-minted Thread Note captured atomically with completion. */
+  note?: { id: ThreadNoteId; body: string };
 }
 
 export interface SetTaskDateInput extends TaskCommand {

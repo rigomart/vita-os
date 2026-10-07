@@ -124,6 +124,16 @@ function ThreadDetailDrawer({
     >
       <DrawerContent
         className="h-[90dvh] max-h-[90dvh] p-0 before:inset-0 before:rounded-t-4xl data-[vaul-drawer-direction=bottom]:max-h-[90dvh]"
+        // Escape in a field that closes itself on it (the note line under a
+        // Task) closes that field, not the drawer around it.
+        onEscapeKeyDown={(event) => {
+          if (
+            event.target instanceof Element &&
+            event.target.closest("[data-keeps-escape]")
+          ) {
+            event.preventDefault();
+          }
+        }}
         onAnimationEndCapture={(event) => {
           if (
             event.target === event.currentTarget &&

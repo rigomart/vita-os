@@ -1,4 +1,10 @@
-import type { AreaId, TaskId, NoteId, ThreadId } from "@vita-os/contracts";
+import type {
+  AreaId,
+  TaskId,
+  NoteId,
+  ThreadId,
+  ThreadNoteId,
+} from "@vita-os/contracts";
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -58,6 +64,33 @@ function applicationError(code: string, message: string, retryable: boolean) {
 }
 
 describe("createHttpApplicationClient", () => {
+  it("sends an optional completion Note and keeps the Thread-only response", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse(detail.thread));
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      fetchImpl,
+    });
+    const note = {
+      id: "client-note" as ThreadNoteId,
+      body: "Called **clinic**",
+    };
+    expect(
+      await client.completeTask({
+        threadId: "thread" as ThreadId,
+        taskId: "task" as TaskId,
+        expectedRevision: 2,
+        timeZone: "UTC",
+        note,
+      }),
+    ).toEqual({ ok: true, value: detail.thread });
+    expect(JSON.parse(fetchImpl.mock.calls[0]![1]!.body as string)).toEqual({
+      expectedRevision: 2,
+      timeZone: "UTC",
+      note,
+    });
+  });
   it("transports repeating Task commands and preserves Repeat in decoded responses", async () => {
     const repeat = { kind: "weekly" as const, weekdays: [2, 4] };
     const thread = {

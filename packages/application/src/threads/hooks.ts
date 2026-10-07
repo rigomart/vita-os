@@ -1,4 +1,8 @@
-import type { UseQueryResult } from "@tanstack/react-query";
+import type {
+  QueryClient,
+  QueryKey,
+  UseQueryResult,
+} from "@tanstack/react-query";
 import type {
   ActivityLogEntry,
   ApplicationClient,
@@ -282,6 +286,16 @@ export function useTaskCommand<TInput>(
     change: (input: TInput) => TaskChange;
     /** Names the command for the mutation cache, so a surface can find it pending. */
     mutationKey?: readonly unknown[];
+    /**
+     * What the same command changes beside the Thread's Tasks: the Thread
+     * Note a completion captures. It shows with the Task change, rolls back
+     * with it, and is refetched once the command settles. The answer is the
+     * Thread alone, so it keeps showing once answered, until that refetch.
+     */
+    alsoShows?: {
+      keys: (input: TInput) => QueryKey[];
+      show: (cache: QueryClient, input: TInput) => void;
+    };
   },
 ): ApplicationMutationResult<TInput, Thread> {
   const cache = useQueryClient();
@@ -329,12 +343,15 @@ export function useTaskCommand<TInput>(
       }
       return result;
     },
-    affected: (_input, cache) =>
-      threadChangeKeys(cache, { threadId: thread._id }),
+    affected: (input, cache) => [
+      ...threadChangeKeys(cache, { threadId: thread._id }),
+      ...(command.alsoShows?.keys(input) ?? []),
+    ],
     // Once answered, the answer carries the change (and is skipped if a newer
     // one is already shown), so the change itself is not replayed over it.
     optimistic: (cache, input, _local, answered) => {
       if (!answered) showTaskChange(cache, thread._id, command.change(input));
+      command.alsoShows?.show(cache, input);
     },
     reconcile: (cache, settled) => settleTaskChange(cache, settled),
     // Completion writes an Activity Log entry, which is read separately.

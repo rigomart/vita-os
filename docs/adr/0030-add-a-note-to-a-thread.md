@@ -1,8 +1,6 @@
 # Add a Note to a Thread
 
-Amended by ADR 0032: a dated Note added to a Thread becomes a dated Task on it, replacing the earlier-date-wins rule.
-
-**Status:** Accepted
+**Status:** Accepted. Amended by ADR 0032: a dated Note added to a Thread becomes a dated Task on it, replacing the earlier-date-wins rule.
 **Date:** 2026-10-02
 
 A Standalone Note sometimes turns out to belong to a situation the user is already holding as a Thread, or to be the start of one. Until now the only path was to copy the body into a Thread Note and delete the Note, which lost its creation time and its Follow-up date. This amends ADR 0015, which removed processing, conversion, and attachment to a Thread.

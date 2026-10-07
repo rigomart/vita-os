@@ -5,7 +5,8 @@ import { addDays, subDays } from "date-fns";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { render, screen, within } from "../../test/render-with-providers";
+import { deferred } from "../../test/fake-application-client";
+import { act, render, screen, within } from "../../test/render-with-providers";
 import { ThreadAttention } from "./thread-attention";
 
 const now = new Date("2026-08-13T12:00:00").getTime();
@@ -30,11 +31,38 @@ function renderAttention(
     onSkipTask: vi.fn(),
   };
 
-  const { unmount } = render(
-    <ThreadAttention tasks={[]} now={now} {...handlers} {...props} />,
+  const onCompleteTaskWithNote = vi.fn<
+    (taskId: TaskId, body: string) => unknown
+  >(async () => "completed");
+
+  const { unmount, rerender, feedback } = render(
+    <ThreadAttention
+      tasks={[]}
+      now={now}
+      {...handlers}
+      onCompleteTaskWithNote={onCompleteTaskWithNote}
+      {...props}
+    />,
   );
 
-  return { ...handlers, unmount };
+  return {
+    ...handlers,
+    onCompleteTaskWithNote,
+    feedback,
+    unmount,
+    /** Renders again with the same handlers and these props. */
+    show: (next: Partial<Parameters<typeof ThreadAttention>[0]>) =>
+      rerender(
+        <ThreadAttention
+          tasks={[]}
+          now={now}
+          {...handlers}
+          onCompleteTaskWithNote={onCompleteTaskWithNote}
+          {...props}
+          {...next}
+        />,
+      ),
+  };
 }
 
 function taskRows() {
@@ -543,6 +571,7 @@ describe("ThreadAttention repeating Tasks", () => {
           onEditTask={vi.fn()}
           onRemoveTask={vi.fn()}
           onCompleteTask={vi.fn()}
+          onCompleteTaskWithNote={vi.fn()}
           onFocusTask={vi.fn()}
           onSkipTask={vi.fn()}
           onSetTaskRepeat={onSetTaskRepeat}
@@ -609,5 +638,144 @@ describe("ThreadAttention repeating Tasks", () => {
     );
     expect(onAddTask).toHaveBeenCalledExactlyOnceWith("Evening check-in");
     expect(screen.queryByRole("group", { name: "Repeat" })).toBeNull();
+  });
+});
+
+describe("ThreadAttention completing with a note", () => {
+  const note = (row: HTMLElement) =>
+    within(row).getByRole("button", { name: "Complete with a note" });
+  const composer = () => screen.queryByRole("group", { name: /with a note$/ });
+
+  it("offers a note on every Task, while Complete itself stays one click", async () => {
+    const user = userEvent.setup();
+    const { onCompleteTask, onCompleteTaskWithNote } = renderAttention({
+      tasks: [callClinic, bookScan],
+    });
+
+    for (const row of taskRows()) expect(note(row)).toBeInTheDocument();
+    await user.click(
+      within(taskRows()[0]!).getByRole("button", { name: "Complete task" }),
+    );
+    expect(onCompleteTask).toHaveBeenCalledExactlyOnceWith(callClinic._id);
+    expect(composer()).toBeNull();
+    expect(onCompleteTaskWithNote).not.toHaveBeenCalled();
+  });
+
+  it("completes with the note on Enter from a line under the row", async () => {
+    const user = userEvent.setup();
+    const { onCompleteTask, onCompleteTaskWithNote } = renderAttention({
+      tasks: [callClinic, bookScan],
+    });
+
+    await user.click(note(taskRows()[1]!));
+    const group = composer()!;
+    expect(group).toHaveAccessibleName("Complete “Book the scan” with a note");
+    const field = within(group).getByRole("textbox", { name: "Note" });
+    expect(field).toHaveFocus();
+    await user.type(field, "Booked for Friday{Enter}");
+
+    expect(onCompleteTaskWithNote).toHaveBeenCalledExactlyOnceWith(
+      bookScan._id,
+      "Booked for Friday",
+    );
+    expect(onCompleteTask).not.toHaveBeenCalled();
+    expect(composer()).toBeNull();
+  });
+
+  it("keeps Shift+Enter as a new line, and completes from its button", async () => {
+    const user = userEvent.setup();
+    const { onCompleteTaskWithNote } = renderAttention({ tasks: [callClinic] });
+
+    await user.click(note(taskRows()[0]!));
+    await user.type(
+      screen.getByRole("textbox", { name: "Note" }),
+      "Called{Shift>}{Enter}{/Shift}No answer",
+    );
+    await user.click(
+      within(composer()!).getByRole("button", { name: "Complete" }),
+    );
+
+    expect(onCompleteTaskWithNote).toHaveBeenCalledExactlyOnceWith(
+      callClinic._id,
+      "Called\nNo answer",
+    );
+  });
+
+  it("completes plainly when the line is left blank", async () => {
+    const user = userEvent.setup();
+    const { onCompleteTask, onCompleteTaskWithNote } = renderAttention({
+      tasks: [callClinic],
+    });
+
+    await user.click(note(taskRows()[0]!));
+    await user.type(screen.getByRole("textbox", { name: "Note" }), "  {Enter}");
+
+    expect(onCompleteTask).toHaveBeenCalledExactlyOnceWith(callClinic._id);
+    expect(onCompleteTaskWithNote).not.toHaveBeenCalled();
+  });
+
+  it("cancels with Escape, from the field or a button, or with Cancel, keeping nothing", async () => {
+    const user = userEvent.setup();
+    const { onCompleteTask, onCompleteTaskWithNote } = renderAttention({
+      tasks: [callClinic],
+    });
+
+    await user.click(note(taskRows()[0]!));
+    await user.type(screen.getByRole("textbox", { name: "Note" }), "Draft");
+    await user.keyboard("{Escape}");
+    expect(composer()).toBeNull();
+
+    await user.click(note(taskRows()[0]!));
+    expect(screen.getByRole("textbox", { name: "Note" })).toHaveValue("");
+    within(composer()!).getByRole("button", { name: "Cancel" }).focus();
+    await user.keyboard("{Escape}");
+    expect(composer()).toBeNull();
+
+    await user.click(note(taskRows()[0]!));
+    await user.click(
+      within(composer()!).getByRole("button", { name: "Cancel" }),
+    );
+    expect(composer()).toBeNull();
+    expect(onCompleteTask).not.toHaveBeenCalled();
+    expect(onCompleteTaskWithNote).not.toHaveBeenCalled();
+  });
+
+  it("lets the text go once sent: the line stays closed and opens empty, whatever comes back", async () => {
+    const user = userEvent.setup();
+    const answer = deferred<unknown>();
+    const { onCompleteTaskWithNote } = renderAttention({ tasks: [callClinic] });
+    onCompleteTaskWithNote.mockReturnValueOnce(answer.promise);
+
+    await user.click(note(taskRows()[0]!));
+    await user.type(
+      screen.getByRole("textbox", { name: "Note" }),
+      "Clinic closed today{Enter}",
+    );
+    // A failure is reported by the caller, with the text; nothing comes back here.
+    await act(async () => {
+      answer.resolve({ status: "kept", message: "Not saved." });
+      await answer.promise;
+    });
+
+    expect(composer()).toBeNull();
+    await user.click(note(taskRows()[0]!));
+    expect(screen.getByRole("textbox", { name: "Note" })).toHaveValue("");
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("takes no note while a plain complete or skip of the Task is pending", () => {
+    renderAttention({
+      tasks: [callClinic, bookScan],
+      completingTaskIds: new Set([callClinic._id]),
+    });
+
+    expect(note(taskRows()[0]!)).toBeDisabled();
+    expect(note(taskRows()[1]!)).toBeEnabled();
+  });
+
+  it("takes no note while the Thread is locked", () => {
+    renderAttention({ tasks: [callClinic], locked: true });
+
+    expect(note(taskRows()[0]!)).toBeDisabled();
   });
 });

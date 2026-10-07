@@ -16,7 +16,7 @@ This directory is the maintained source for verifying Vita OS's user-facing beha
 - Use unique text for anything you create (append a timestamp) so a check cannot match leftovers. Generate the timestamp in a separate command (`date +%s`) and paste the literal text into later commands. Inline `$(...)` inside a `bun run verify` command can be refused by command guards.
 - Wait on the specific end state (`wait --text`, `wait --fn`, `wait '<selector>'`). Never use `wait --load networkidle` or bare sleeps as proof.
 
-- Prefer `bun run verify run <flow-file>` over step-by-step driving for anything longer than a few steps. Flows live in `../flows/` (`tasks`, `dashboard-tasks`, `dated-tasks`, `repeating-tasks`, `resolve-reopen`, `thread-drawer`, `thread-edit-tasks`) and are built from the command blocks in these files; see Flows in `../SKILL.md` for the format. Add or update a flow when a feature file's recipe changes.
+- Prefer `bun run verify run <flow-file>` over step-by-step driving for anything longer than a few steps. Flows live in `../flows/` (`tasks`, `dashboard-tasks`, `dated-tasks`, `repeating-tasks`, `complete-with-note`, `resolve-reopen`, `thread-drawer`, `thread-edit-tasks`) and are built from the command blocks in these files; see Flows in `../SKILL.md` for the format. Add or update a flow when a feature file's recipe changes.
 - Never `press Enter` to commit an edit of an existing Task's text (agent-browser 0.38.1 floods the browser with keydown events); use `press Tab` or a click. `press Enter` in `Add a task` is fine and is the capture path flows must keep proving.
 - Time-limit verification. If the same step fails twice, stop that item and report it `INCONCLUSIVE` with the failing command and its output.
 
@@ -41,7 +41,7 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 - [Create a thread](./create-thread.md) covers the New thread dialog and the thread pane it opens.
 - [Resolved Threads](./resolved-threads.md) covers the Resolved threads group of the palette's History chip, its search and resolution ordering, opening in place, and Reopen in the pane and drawer.
 - [Notes on the Dashboard](./notes-on-the-dashboard.md) covers the Dashboard's Notes filter and its URL, the old Notes addresses, Archive and Unarchive, and finding Archived Notes in History by searching their bodies.
-- [Tasks](./tasks.md) covers adding, focusing, and completing a Task in the thread pane, the drawer, and the Dashboard card, dated Tasks, and repeating Tasks (Repeat, Skip, Late).
+- [Tasks](./tasks.md) covers adding, focusing, and completing a Task in the thread pane, the drawer, and the Dashboard card, dated Tasks, repeating Tasks (Repeat, Skip, Late), and completing a Task with a note.
 - [Dashboard board](./dashboard-board.md) covers the dated lanes, the No date tray, the shared Thread and Note card, and the stacked layouts.
 - [Follow-up dates](./follow-up-dates.md) covers the Follow-up date on standalone Notes and their Dashboard placement. A Thread comes back at its soonest dated Task, covered in [Tasks](./tasks.md).
 - [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter the board row.

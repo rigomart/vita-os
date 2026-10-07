@@ -80,6 +80,22 @@ function patchOpenThreadNotes(
 }
 
 /**
+ * A Thread Note shown before the service answers, newest first. One already
+ * there by its ID is left alone, so showing it again never doubles it.
+ */
+export function showThreadNote(
+  cache: QueryClient,
+  threadId: ThreadId,
+  note: ThreadNote,
+): void {
+  patchOpenThreadNotes(cache, threadId, (notes) =>
+    notes.some((existing) => existing._id === note._id)
+      ? notes
+      : [note, ...notes],
+  );
+}
+
+/**
  * Capturing a Note inside a Thread. It counts as Thread activity, so the reads
  * that show a Thread's recent activity are invalidated with it.
  */
@@ -98,16 +114,13 @@ export function useCaptureThreadNote(): ApplicationMutationResult<
     optimistic: (cache, input, previousLocal) => {
       const pendingId = previousLocal ?? (newRecordId() as ThreadNoteId);
       const now = Date.now();
-      patchOpenThreadNotes(cache, input.threadId, (notes) => [
-        {
-          _id: pendingId,
-          body: input.body,
-          state: "open",
-          createdAt: now,
-          updatedAt: now,
-        },
-        ...notes,
-      ]);
+      showThreadNote(cache, input.threadId, {
+        _id: pendingId,
+        body: input.body,
+        state: "open",
+        createdAt: now,
+        updatedAt: now,
+      });
       return pendingId;
     },
     reconcile: (cache, note, input, pendingId) => {

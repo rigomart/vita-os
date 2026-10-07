@@ -1,0 +1,123 @@
+# Complete a Task with a note (ADR 0032, issue #405): in Thread detail, "Complete with a note" opens a note line under the row;
+# Enter completes the Task and captures the text as one Thread Note, in one command. A plain Task is removed (side pane, 1440x900),
+# a repeating Task moves to its next occurrence (drawer, 1024x768, where Escape closes the note line and not the drawer), and a
+# Dashboard card still completes in one click with no note. Each mutation is proven by a reload and D1: one Thread Note, one
+# move_completed. Needs a signed-in instance (up + signin). Add Tasks with Enter in "Add a task"; never press Enter to commit an
+# edit of an existing Task (use Tab). Enter in the note line is its own capture path. Restores 1440x900 at the end.
+open /
+
+# P: a plain Task, completed with a note in the side pane.
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Note P ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+browser -- wait 'input[aria-label="Add a task"]'
+browser -- find label "Add a task" fill "P1 ${STAMP}"
+browser -- press Enter
+browser -- wait --text "P1 ${STAMP}"
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="P1 ${STAMP}"]]//button[@aria-label="Complete with a note"]'
+browser -- wait '[data-slot=completion-note] textarea'
+browser -- wait --fn "!document.querySelector('[role=dialog]')"
+browser -- wait --fn "document.activeElement === document.querySelector('[data-slot=completion-note] textarea')"
+browser -- fill '[data-slot=completion-note] textarea' "Picked up at the counter ${STAMP}"
+shot note-line-pane
+browser -- press Enter
+browser -- wait --fn "!document.querySelector('[data-slot=completion-note]') && !document.querySelector('ul[aria-label=\"Tasks\"]')"
+browser -- wait --text "Picked up at the counter ${STAMP}"
+shot note-completed-pane
+browser -- wait 1500
+browser -- reload
+browser -- wait 'input[aria-label="Add a task"]'
+browser -- wait --text "Picked up at the counter ${STAMP}"
+browser -- wait --fn "!document.querySelector('ul[aria-label=\"Tasks\"]')"
+d1 "SELECT COUNT(*) AS n FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Note P ${STAMP}'"
+expect '"n": 1'
+d1 "SELECT n.body, n.state FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Note P ${STAMP}'"
+expect '"body": "Picked up at the counter ${STAMP}"'
+expect '"state": "open"'
+d1 "SELECT l.type, l.content, COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Note P ${STAMP}' GROUP BY l.type"
+expect '"type": "move_completed"'
+expect '"n": 1'
+d1 "SELECT COALESCE(json_array_length(moves_json), 0) AS tasks, last_activity_content IS NULL AS note_is_last FROM threads WHERE title = 'Note P ${STAMP}'"
+expect '"tasks": 0'
+expect '"note_is_last": 1'
+
+# R: a repeating Task (today, daily), completed with a note in the drawer. Escape closes the note line, not the drawer.
+browser -- find role button click --name "Close thread" --exact
+browser -- wait --fn "!document.querySelector('input[aria-label=\"Add a task\"]')"
+browser -- set viewport 1024 768
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Note R ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+browser -- wait '[role=dialog] input[aria-label="Add a task"]'
+browser -- find label "Add a task" fill "R1 ${STAMP}"
+browser -- press Enter
+browser -- wait --text "R1 ${STAMP}"
+# At 1024 wide the "Thread created" toast covers the picker's Done button until it leaves.
+browser -- wait --fn "!document.querySelector('li.cn-toast')"
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Set date"]'
+browser -- wait '[role=group][aria-label=Repeat]'
+browser -- click 'xpath=//td[@data-today]//button'
+browser -- wait --fn "!document.querySelector('[role=group][aria-label=Repeat] button').disabled"
+browser -- find role button click --name "Daily" --exact
+browser -- find role button click --name "Done" --exact
+browser -- wait --fn "!document.querySelector('[role=group][aria-label=Repeat]') && !!document.querySelector('ul[aria-label=\"Tasks\"] [role=img][aria-label=\"Repeats daily\"]')"
+browser -- wait 1500
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Complete with a note"]'
+browser -- wait '[role=dialog] [data-slot=completion-note] textarea'
+browser -- fill '[data-slot=completion-note] textarea' "Draft to drop ${STAMP}"
+browser -- press Escape
+browser -- wait --fn "!document.querySelector('[data-slot=completion-note]')"
+# Longer than the drawer's exit animation: it is still open.
+browser -- wait 800
+browser -- wait --fn "document.querySelector('[role=dialog]')?.getAttribute('data-state') === 'open' && !!document.querySelector('[role=dialog] ul[aria-label=\"Tasks\"]')"
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Complete with a note"]'
+browser -- wait --fn "document.querySelector('[data-slot=completion-note] textarea')?.value === ''"
+browser -- fill '[data-slot=completion-note] textarea' "Slept well ${STAMP}"
+shot note-line-drawer
+browser -- press Enter
+browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); return !document.querySelector('[data-slot=completion-note]') && !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '\"]'); })()"
+browser -- wait --text "Slept well ${STAMP}"
+shot note-completed-drawer
+browser -- wait 1500
+browser -- reload
+browser -- wait '[role=dialog] ul[aria-label="Tasks"]'
+browser -- wait --text "Slept well ${STAMP}"
+browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '\"]'); })()"
+d1 "SELECT COUNT(*) AS n FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Note R ${STAMP}'"
+expect '"n": 1'
+d1 "SELECT n.body FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Note R ${STAMP}'"
+expect '"body": "Slept well ${STAMP}"'
+d1 "SELECT l.type, COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Note R ${STAMP}' GROUP BY l.type"
+expect '"type": "move_completed"'
+expect '"n": 1'
+d1 "SELECT json_array_length(moves_json) AS tasks, json_extract(moves_json, '$[0].repeat.kind') AS kind FROM threads WHERE title = 'Note R ${STAMP}'"
+expect '"tasks": 1'
+expect '"kind": "days"'
+browser -- find role button click --name "Close thread" --exact
+browser -- wait --fn "!document.querySelector('[role=dialog]')"
+browser -- set viewport 1440 900
+
+# C: a Dashboard card completes in one click and never asks for a note.
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Note C ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+browser -- wait 'input[aria-label="Add a task"]'
+browser -- find label "Add a task" fill "C1 ${STAMP}"
+browser -- press Enter
+browser -- wait --text "C1 ${STAMP}"
+browser -- wait 1500
+browser -- find role button click --name "Close thread" --exact
+browser -- wait --fn "[...document.querySelectorAll('li')].some(li => li.textContent.includes('Note C ${STAMP}') && li.textContent.includes('C1 ${STAMP}'))"
+browser -- wait --fn "!document.querySelector('button[aria-label=\"Complete with a note\"]')"
+browser -- click 'xpath=//li[.//a[normalize-space()="Note C ${STAMP}"]]//button[starts-with(@aria-label, "Complete")]'
+browser -- wait --fn "![...document.querySelectorAll('li')].some(li => li.textContent.includes('C1 ${STAMP}')) && !document.querySelector('textarea')"
+shot card-completed
+browser -- wait 1500
+d1 "SELECT l.type, COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Note C ${STAMP}' GROUP BY l.type"
+expect '"type": "move_completed"'
+expect '"n": 1'
+d1 "SELECT COUNT(*) AS n FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Note C ${STAMP}'"
+expect '"n": 0'

@@ -25,6 +25,36 @@ import { THREAD_NOTE_COLUMNS, toThreadNote } from "./rows";
  * counts as Thread activity, so the Thread's activity stamp moves with it.
  */
 export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
+  /** A capture that can join a Thread command's atomic batch. */
+  function prepareInsert(
+    threadId: string,
+    body: string,
+    change?: { token?: string; at: number; id?: string },
+  ): D1PreparedStatement {
+    const now = change?.at ?? clock.now();
+    return db
+      .prepare(
+        `INSERT INTO thread_notes (
+         id, user_id, thread_id, body, state, completed_at, created_at, updated_at
+       )
+       SELECT ?, ?, ?, ?, 'open', NULL, ?, ?
+       WHERE EXISTS (
+         SELECT 1 FROM threads WHERE id = ? AND user_id = ?${change?.token === undefined ? "" : " AND last_change_token = ?"}
+       )
+       RETURNING ${THREAD_NOTE_COLUMNS}`,
+      )
+      .bind(
+        change?.id ?? clock.newId(),
+        actorId,
+        threadId,
+        body,
+        now,
+        now,
+        threadId,
+        actorId,
+        ...(change?.token === undefined ? [] : [change.token]),
+      );
+  }
   /**
    * Change one Thread Note. `null` means it is missing or is not theirs, which
    * are the same answer.
@@ -48,6 +78,7 @@ export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
   }
 
   return {
+    prepareInsert,
     async listOpen(threadId: string): Promise<ThreadNote[]> {
       const result = await db
         .prepare(
@@ -100,26 +131,7 @@ export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
     async insert(threadId: string, body: string): Promise<ThreadNote | null> {
       const now = clock.now();
       const [insert] = await db.batch<ThreadNoteRow>([
-        db
-          .prepare(
-            `INSERT INTO thread_notes (
-               id, user_id, thread_id, body, state, completed_at, created_at,
-               updated_at
-             )
-             SELECT ?, ?, ?, ?, 'open', NULL, ?, ?
-             WHERE EXISTS (SELECT 1 FROM threads WHERE id = ? AND user_id = ?)
-             RETURNING ${THREAD_NOTE_COLUMNS}`,
-          )
-          .bind(
-            clock.newId(),
-            actorId,
-            threadId,
-            body,
-            now,
-            now,
-            threadId,
-            actorId,
-          ),
+        prepareInsert(threadId, body, { at: now }),
         db
           .prepare(
             `UPDATE threads

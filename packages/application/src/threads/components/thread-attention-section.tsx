@@ -2,7 +2,7 @@ import type { Thread } from "@vita-os/contracts";
 
 import { useAttentionClock } from "../../hooks/use-attention-clock";
 import { useConversionLock } from "../task-queue";
-import { useTasks } from "../use-tasks";
+import { useCompletingTaskIds, useTasks } from "../use-tasks";
 import { ThreadAttention } from "./thread-attention";
 
 interface ThreadAttentionSectionProps {
@@ -17,12 +17,14 @@ export function ThreadAttentionSection({
   // change at once, so quick successive edits compose instead of racing.
   const tasks = useTasks(thread);
   const { locked, pendingTaskIds } = useConversionLock(thread);
+  const completingTaskIds = useCompletingTaskIds(thread);
 
   return (
     <ThreadAttention
       tasks={thread.tasks ?? []}
       pendingTaskIds={pendingTaskIds}
       locked={locked}
+      completingTaskIds={completingTaskIds}
       {...(thread.focusedTaskId === undefined
         ? {}
         : { focusedTaskId: thread.focusedTaskId })}
@@ -31,6 +33,7 @@ export function ThreadAttentionSection({
       onEditTask={(taskId, text) => void tasks.edit(taskId, text)}
       onRemoveTask={(taskId) => void tasks.remove(taskId)}
       onCompleteTask={(taskId) => void tasks.complete(taskId)}
+      onCompleteTaskWithNote={tasks.completeWithNote}
       onFocusTask={(taskId) => void tasks.focus(taskId)}
       onSetTaskDate={(taskId, date) => void tasks.setDate(taskId, date)}
       onSetTaskRepeat={(taskId, repeat) => void tasks.setRepeat(taskId, repeat)}

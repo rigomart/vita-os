@@ -1,6 +1,6 @@
 # Vita OS: Product Direction
 
-> Last update: 2026/10/04.
+> Last update: 2026/10/06.
 
 This document says what Vita OS is for and where it is going. `CONTEXT.md` owns the vocabulary and the exact rules; `docs/adr/` records each decision. When this document and either of those disagree, they win and this document is stale.
 
@@ -73,7 +73,7 @@ The Dashboard is the product. Everything else exists to make the Dashboard trust
 Two kinds of thing live in Vita OS. Areas label one of them.
 
 ```text
-Thread → Summary · Tasks (each optionally dated, one optionally Focused) · Thread Notes · Activity Log
+Thread → Summary · Tasks (each optionally dated and repeating, one optionally Focused) · Thread Notes · Activity Log
 Standalone Note → Follow-up date
 Area → an optional label on a Thread
 ```
@@ -85,7 +85,7 @@ An ongoing effort, concern, decision, or situation. It is **Open** or **Resolved
 A Thread may carry:
 
 - a **Summary**: what the Thread is about right now.
-- **Tasks**: useful actions, as unordered peers, each with an optional date. No done state, no order. Completing one removes it and writes it into the Activity Log. A date is a soft resurfacing point, a day with an optional time of day; "look at this again in two weeks" is a dated Task.
+- **Tasks**: useful actions, as unordered peers, each with an optional date and an optional repeat. No done state, no order. Completing one removes it, or moves a repeating one to its next occurrence, and writes it into the Activity Log; completed from Thread detail it can carry a note, kept as a Thread Note. A date is a soft resurfacing point, a day with an optional time of day; "look at this again in two weeks" is a dated Task. A repeat is every N days or weekly on chosen days: missed occurrences collapse into one, and an occurrence can be skipped.
 - a **Focused Task**: the one Task the user has singled out, if any. Focus is emphasis only, and it may sit on a dated Task.
 - **Thread Notes**: body-only notes that belong to this Thread and nowhere else.
 - an **Activity Log**: the automatic, read-only record of meaningful changes.
@@ -124,7 +124,7 @@ Placement is derived from dates and from whether a Thread has Tasks. A Thread si
 
 A row above the board filters it to one Area, to unlabeled Threads, or to Notes alone. Notes have no list of their own: the Notes filter is where to read them together.
 
-The board can act on what it shows. A card completes the Task it displays and sets, changes, or clears that Task's date, or adds a "Follow up" Task when it shows no single Task; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
+The board can act on what it shows. A card completes the Task it displays in one click, skips it when it repeats, and sets, changes, or clears that Task's date and repeat, or adds a "Follow up" Task when it shows no single Task; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
 
 The intended loop takes one to two minutes:
 
@@ -185,8 +185,7 @@ The product narrowed from its first direction through daily use. [`docs/product-
 
 Ordered by how directly they serve the thesis. None is committed; each needs a spec before work starts.
 
-1. **Tasks with an optional date and repeat** (issue #397, ADR 0032, proposed): a Task becomes text with an optional date and repeat, and a Thread's Follow-up date folds into its Tasks.
-2. **Cross-device freshness stays parked** (issue #342) until normal use shows that refresh on focus is not enough.
+1. **Cross-device freshness stays parked** (issue #342) until normal use shows that refresh on focus is not enough.
 
 Reaching Resolved Threads again, once an open direction, shipped as the palette's History (ADR 0029), which now holds Archived Notes too (ADR 0031).
 

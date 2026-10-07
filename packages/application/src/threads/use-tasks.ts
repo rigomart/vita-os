@@ -1,15 +1,36 @@
-import type { Repeat, Task, TaskId, Thread } from "@vita-os/contracts";
+import type {
+  ApplicationClient,
+  Repeat,
+  Task,
+  TaskId,
+  Thread,
+  ThreadId,
+  ThreadNoteId,
+} from "@vita-os/contracts";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutationState, useQueryClient } from "@tanstack/react-query";
 import { isApplicationError } from "@vita-os/contracts";
 import { newRecordId } from "@vita-os/core";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
+import { useMemo } from "react";
 
+import { useApplicationClient } from "../application-client-provider";
 import { browserTimeZone } from "../lib/time-zone";
+import { queryKeys } from "../query-keys";
+import { showThreadNote } from "../thread-notes/hooks";
 import { CommandDropped, useTaskCommand } from "./hooks";
 import { ThreadBusy } from "./task-queue";
 
 export { useConversionLock } from "./task-queue";
+
+/** What a refused Task command means to the person, or nothing when it was only dropped. */
+function failureMessage(error: unknown): string | undefined {
+  if (error instanceof CommandDropped) return undefined;
+  if (error instanceof ThreadBusy) return error.message;
+  return isApplicationError(error) && error.code === "conflict"
+    ? "This Thread changed elsewhere. It has been refreshed."
+    : "Could not save that change. Please try again.";
+}
 
 /**
  * A Task command never throws at the surface that issued it. A refusal has
@@ -20,17 +41,8 @@ function useReportFailure() {
   const feedback = useFeedback();
 
   return (error: unknown) => {
-    if (error instanceof CommandDropped) return;
-    if (error instanceof ThreadBusy) {
-      feedback.error(error.message);
-      return;
-    }
-    const conflict = isApplicationError(error) && error.code === "conflict";
-    feedback.error(
-      conflict
-        ? "This Thread changed elsewhere. It has been refreshed."
-        : "Could not save that change. Please try again.",
-    );
+    const message = failureMessage(error);
+    if (message !== undefined) feedback.error(message);
   };
 }
 
@@ -45,6 +57,50 @@ interface Occurrence {
   occurrence: number | undefined;
   timeZone: string;
   now: number;
+}
+
+/**
+ * The Thread Note a completion captures. Its ID is minted for each attempt,
+ * as every client-minted ID is, so the Note shown at once is the one the
+ * service keeps. A later attempt never needs an earlier one's ID: the service
+ * checks the revision inside the same write, so an attempt after one that
+ * landed is refused as stale and cannot add a second Note.
+ */
+interface CompletionNote {
+  id: ThreadNoteId;
+  body: string;
+}
+
+/**
+ * What became of completing a Task with a note: `completed` (the answer said
+ * so, or the Note was found by its ID once it failed), `failed` (the text
+ * went to a toast to copy), or `duplicate` (a complete of the same Task was
+ * already on its way, and nothing was sent).
+ */
+export type CompletionNoteOutcome = "completed" | "failed" | "duplicate";
+
+const NOT_SAVED = "Your note was not saved.";
+
+/**
+ * Whether this attempt's Note is among the Thread's open Notes, read from the
+ * service: `true` or `false`, or `undefined` when they could not be read.
+ * It only looks: the cached Notes read is left to the command's own
+ * invalidation, which waits for every overlapping command, so a Note capture
+ * or edit still pending in the Thread keeps showing. A Note archived
+ * meanwhile reads as missing, which only means its text is handed back.
+ */
+async function findNote(
+  client: ApplicationClient,
+  threadId: ThreadId,
+  noteId: ThreadNoteId,
+): Promise<boolean | undefined> {
+  try {
+    const open = await client.listOpenThreadNotes({ threadId });
+    if (!open.ok) return open.error.code === "not_found" ? false : undefined;
+    return open.value.some((note) => note._id === noteId);
+  } catch {
+    return undefined;
+  }
 }
 
 /** Skip exists only for a repeating Task; the surfaces offer it nowhere else. */
@@ -71,6 +127,24 @@ function occurrenceKey(thread: Thread) {
 }
 
 /**
+ * The Tasks of this Thread with a complete or skip on its way. Until it is
+ * answered the surface takes no new note for them, so nothing an answer
+ * brings back can land on a note written meanwhile.
+ */
+export function useCompletingTaskIds(thread: Thread): ReadonlySet<TaskId> {
+  const taskIds = useMutationState({
+    filters: { mutationKey: occurrenceKey(thread), status: "pending" },
+    select: (mutation) =>
+      (mutation.state.variables as Occurrence | undefined)?.taskId ?? "",
+  });
+  const signature = taskIds.filter(Boolean).join("\n");
+  return useMemo(
+    () => new Set(signature.split("\n").filter(Boolean) as TaskId[]),
+    [signature],
+  );
+}
+
+/**
  * Complete and skip, acting once per activation the person meant.
  *
  * The first activation moves a repeating Task to its next occurrence on
@@ -83,17 +157,41 @@ function occurrenceKey(thread: Thread) {
 function useOccurrenceCommands(thread: Thread) {
   const cache = useQueryClient();
   const mutationKey = occurrenceKey(thread);
-  const complete = useTaskCommand<Occurrence>(thread, {
-    mutationKey,
-    run: (client, { taskId, timeZone }, expectedRevision) =>
-      client.completeTask({
-        threadId: thread._id,
-        taskId,
-        timeZone,
-        expectedRevision,
+  // Completing with a note is the same command: it queues, guards and
+  // drops exactly as a plain complete does, and its Note shows and rolls
+  // back with the Task change.
+  const complete = useTaskCommand<Occurrence & { note?: CompletionNote }>(
+    thread,
+    {
+      mutationKey,
+      run: (client, { taskId, timeZone, note }, expectedRevision) =>
+        client.completeTask({
+          threadId: thread._id,
+          taskId,
+          timeZone,
+          expectedRevision,
+          ...(note === undefined ? {} : { note }),
+        }),
+      change: ({ note: _note, ...occurrence }) => ({
+        kind: "complete",
+        ...occurrence,
       }),
-    change: (input) => ({ kind: "complete", ...input }),
-  });
+      alsoShows: {
+        keys: ({ note }) =>
+          note === undefined ? [] : [queryKeys.threadNotes.open(thread._id)],
+        show: (cache, { note, now }) => {
+          if (note === undefined) return;
+          showThreadNote(cache, thread._id, {
+            _id: note.id,
+            body: note.body,
+            state: "open",
+            createdAt: now,
+            updatedAt: now,
+          });
+        },
+      },
+    },
+  );
   const skip = useTaskCommand<Occurrence>(thread, {
     mutationKey,
     run: (client, { taskId, timeZone }, expectedRevision) =>
@@ -117,10 +215,19 @@ function useOccurrenceCommands(thread: Thread) {
       );
 
   return {
-    complete: (taskId: TaskId): Promise<unknown> =>
+    /** Settles `duplicate` when a complete or skip of the Task is pending. */
+    complete: (
+      taskId: TaskId,
+      note?: CompletionNote,
+    ): Promise<"sent" | "duplicate"> =>
       pending(taskId)
-        ? Promise.resolve()
-        : complete.mutateAsync(occurrenceOf(thread, taskId)),
+        ? Promise.resolve("duplicate")
+        : complete
+            .mutateAsync({
+              ...occurrenceOf(thread, taskId),
+              ...(note === undefined ? {} : { note }),
+            })
+            .then(() => "sent"),
     /** Skip exists only for a repeating Task. */
     skip: (taskId: TaskId): Promise<unknown> =>
       !repeats(thread, taskId) || pending(taskId)
@@ -244,6 +351,7 @@ export function useTaskDates(thread: Thread) {
  */
 export function useTasks(thread: Thread) {
   const report = useReportFailure();
+  const feedback = useFeedback();
 
   const add = useTaskCommand<Task>(thread, {
     run: (client, task, expectedRevision) =>
@@ -273,9 +381,65 @@ export function useTasks(thread: Thread) {
   });
   const setDate = useSetDateCommand(thread);
   const setRepeat = useSetRepeatCommand(thread);
+  const client = useApplicationClient();
 
   const settle = (pending: Promise<unknown>) =>
     pending.then(() => undefined, report);
+
+  const completeWithNote = async (
+    taskId: TaskId,
+    body: string,
+  ): Promise<CompletionNoteOutcome> => {
+    const note: CompletionNote = {
+      id: newRecordId() as ThreadNoteId,
+      body: body.trim(),
+    };
+    // The text is never left on a surface that may be gone by now: it goes
+    // to a toast that outlives the Thread pane, with the reason and a copy.
+    const handBack = (message: string): CompletionNoteOutcome => {
+      feedback.error(message, {
+        description: note.body,
+        action: {
+          label: "Copy note",
+          // Rejects without a clipboard too: the toast then stays, saying so.
+          onClick: () => navigator.clipboard.writeText(note.body),
+          failedMessage:
+            "Couldn’t copy the note. Select its text below to copy it.",
+        },
+      });
+      return "failed";
+    };
+    try {
+      return (await occurrences.complete(taskId, note)) === "duplicate"
+        ? "duplicate"
+        : "completed";
+    } catch (error) {
+      // Rolled back on screen, and the reads refetched once the queue
+      // settled. Refused before it was sent, it cannot have landed.
+      if (error instanceof CommandDropped) {
+        return handBack(
+          `This task already changed, so it was not completed. ${NOT_SAVED}`,
+        );
+      }
+      if (error instanceof ThreadBusy) {
+        return handBack(`${error.message} ${NOT_SAVED}`);
+      }
+      // Sent: whatever the answer said, this attempt's Note says whether it
+      // landed.
+      const found = await findNote(client, thread._id, note.id);
+      if (found === true) return "completed";
+      if (found === undefined) {
+        return handBack(
+          "Couldn’t confirm whether the task was completed and your note saved. Check this thread’s notes before adding it again.",
+        );
+      }
+      return handBack(
+        isApplicationError(error) && error.code === "unavailable"
+          ? `Couldn’t reach Vita OS. The task was not completed and your note was not saved.`
+          : `${failureMessage(error)} ${NOT_SAVED}`,
+      );
+    }
+  };
 
   return {
     add: (text: string) => {
@@ -292,6 +456,12 @@ export function useTasks(thread: Thread) {
     },
     remove: (taskId: TaskId) => settle(remove.mutateAsync(taskId)),
     complete: (taskId: TaskId) => settle(occurrences.complete(taskId)),
+    /**
+     * Completes the Task and captures `body` (not blank) as a Thread Note
+     * in one command. Never throws: if it fails and the Note is not found
+     * by its ID, the text comes back in a toast with the reason and Copy.
+     */
+    completeWithNote,
     /** Moves a repeating Task to its next occurrence; nothing is logged. */
     skip: (taskId: TaskId) => settle(occurrences.skip(taskId)),
     /** `null` unfocuses; focusing a Task replaces any earlier focus. */

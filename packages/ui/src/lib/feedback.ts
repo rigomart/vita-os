@@ -9,7 +9,12 @@ import { toast } from "./toast";
 
 export type Feedback = {
   success(message: string): void;
-  error(message: string): void;
+  /**
+   * A failure. `detail` carries text the person must not lose — a note that
+   * was not saved, say — shown under the message and kept on screen until
+   * dismissed, with an action such as Copy.
+   */
+  error(message: string, detail?: ErrorDetail): void;
   /**
    * Offer an Undo for an action that has already happened on screen. Resolves
    * `true` once the offer lapses and the action should be committed, or `false`
@@ -19,15 +24,71 @@ export type Feedback = {
   undoable(message: string, options?: UndoableOptions): Promise<boolean>;
 };
 
+export type ErrorDetail = {
+  description: string;
+  /**
+   * The toast stays until the action succeeds (its promise resolves), and
+   * only then closes. If it fails the toast stays, its message becomes
+   * `failedMessage`, and the description is still there to read.
+   */
+  action?: {
+    label: string;
+    onClick: () => unknown;
+    failedMessage: string;
+  };
+};
+
 export type UndoableOptions = {
   action?: { label: string; onClick: () => void };
 };
 
 const UNDO_WINDOW_MS = 5000;
 
+let errorToasts = 0;
+
 const defaultFeedback: Feedback = {
   success: (message) => toast.success(message),
-  error: (message) => toast.error(message),
+  error: (message, detail) => {
+    if (detail === undefined) {
+      toast.error(message);
+      return;
+    }
+    const id = `error-${++errorToasts}`;
+    // Once closed it stays closed: an action that fails later says nothing.
+    let dismissed = false;
+    const show = (title: string) =>
+      toast.error(title, {
+        id,
+        description: detail.description,
+        duration: Number.POSITIVE_INFINITY,
+        closeButton: true,
+        onDismiss: () => {
+          dismissed = true;
+        },
+        ...(detail.action === undefined
+          ? {}
+          : {
+              action: {
+                label: detail.action.label,
+                onClick: (event: { preventDefault: () => void }) => {
+                  // Sonner closes an action's toast unless told not to; it
+                  // closes once the action has worked.
+                  event.preventDefault();
+                  const action = detail.action!;
+                  void Promise.resolve()
+                    .then(action.onClick)
+                    .then(
+                      () => toast.dismiss(id),
+                      () => {
+                        if (!dismissed) show(action.failedMessage);
+                      },
+                    );
+                },
+              },
+            }),
+      });
+    show(message);
+  },
   undoable: (message, options) =>
     new Promise((resolve) => {
       let settled = false;
