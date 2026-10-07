@@ -571,6 +571,7 @@ describe("ThreadAttention repeating Tasks", () => {
           onEditTask={vi.fn()}
           onRemoveTask={vi.fn()}
           onCompleteTask={vi.fn()}
+          onCompleteTaskWithNote={vi.fn()}
           onFocusTask={vi.fn()}
           onSkipTask={vi.fn()}
           onSetTaskRepeat={onSetTaskRepeat}
