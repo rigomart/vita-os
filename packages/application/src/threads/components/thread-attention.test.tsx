@@ -35,9 +35,9 @@ function renderAttention(
 
   const onCompleteTaskWithNote = vi.fn<
     (taskId: TaskId, body: string) => Promise<CompletionNoteOutcome>
-  >(async () => "completed");
+  >(async () => ({ status: "completed" }));
 
-  const { unmount, rerender } = render(
+  const { unmount, rerender, feedback } = render(
     <ThreadAttention
       tasks={[]}
       now={now}
@@ -50,6 +50,7 @@ function renderAttention(
   return {
     ...handlers,
     onCompleteTaskWithNote,
+    feedback,
     unmount,
     /** Renders again with the same handlers and these props. */
     show: (next: Partial<Parameters<typeof ThreadAttention>[0]>) =>
@@ -645,6 +646,8 @@ describe("ThreadAttention completing with a note", () => {
   const note = (row: HTMLElement) =>
     within(row).getByRole("button", { name: "Complete with a note" });
   const composer = () => screen.queryByRole("group", { name: /with a note$/ });
+  const unreached =
+    "Couldn’t reach Vita OS. The task was not completed and your note was not saved.";
 
   it("offers a note on every Task, while Complete itself stays one click", async () => {
     const user = userEvent.setup();
@@ -701,7 +704,20 @@ describe("ThreadAttention completing with a note", () => {
     );
   });
 
-  it("cancels with Escape or Cancel, completing nothing and keeping nothing", async () => {
+  it("completes plainly when the line is left blank", async () => {
+    const user = userEvent.setup();
+    const { onCompleteTask, onCompleteTaskWithNote } = renderAttention({
+      tasks: [callClinic],
+    });
+
+    await user.click(note(taskRows()[0]!));
+    await user.type(screen.getByRole("textbox", { name: "Note" }), "  {Enter}");
+
+    expect(onCompleteTask).toHaveBeenCalledExactlyOnceWith(callClinic._id);
+    expect(onCompleteTaskWithNote).not.toHaveBeenCalled();
+  });
+
+  it("cancels with Escape, from the field or a button, or with Cancel, keeping nothing", async () => {
     const user = userEvent.setup();
     const { onCompleteTask, onCompleteTaskWithNote } = renderAttention({
       tasks: [callClinic],
@@ -714,6 +730,11 @@ describe("ThreadAttention completing with a note", () => {
 
     await user.click(note(taskRows()[0]!));
     expect(screen.getByRole("textbox", { name: "Note" })).toHaveValue("");
+    within(composer()!).getByRole("button", { name: "Cancel" }).focus();
+    await user.keyboard("{Escape}");
+    expect(composer()).toBeNull();
+
+    await user.click(note(taskRows()[0]!));
     await user.click(
       within(composer()!).getByRole("button", { name: "Cancel" }),
     );
@@ -722,10 +743,10 @@ describe("ThreadAttention completing with a note", () => {
     expect(onCompleteTaskWithNote).not.toHaveBeenCalled();
   });
 
-  it("brings the text back to retry when the service could not be reached, even after the row left and returned", async () => {
+  it("puts the text back under the row with the reason when it was not completed, even after the row left and returned", async () => {
     const user = userEvent.setup();
     const answer = deferred<CompletionNoteOutcome>();
-    const { onCompleteTaskWithNote, show } = renderAttention({
+    const { onCompleteTaskWithNote, feedback, show } = renderAttention({
       tasks: [callClinic],
     });
     onCompleteTaskWithNote.mockReturnValueOnce(answer.promise);
@@ -740,7 +761,7 @@ describe("ThreadAttention completing with a note", () => {
     expect(composer()).toBeNull();
     show({ tasks: [callClinic] });
     await act(async () => {
-      answer.resolve("unconfirmed");
+      answer.resolve({ status: "kept", message: unreached });
       await answer.promise;
     });
 
@@ -748,9 +769,8 @@ describe("ThreadAttention completing with a note", () => {
     expect(within(group).getByRole("textbox", { name: "Note" })).toHaveValue(
       "Clinic closed today",
     );
-    expect(within(group).getByRole("status")).toHaveTextContent(
-      /couldn’t reach vita os/i,
-    );
+    expect(within(group).getByRole("status")).toHaveTextContent(unreached);
+    expect(feedback.error).not.toHaveBeenCalled();
 
     await user.click(within(group).getByRole("button", { name: "Complete" }));
     expect(onCompleteTaskWithNote).toHaveBeenLastCalledWith(
@@ -759,21 +779,72 @@ describe("ThreadAttention completing with a note", () => {
     );
   });
 
-  it("keeps the text without a message when the change was refused", async () => {
+  it("hands the text over in a toast with Copy when its row is gone", async () => {
     const user = userEvent.setup();
-    const { onCompleteTaskWithNote } = renderAttention({ tasks: [callClinic] });
-    onCompleteTaskWithNote.mockResolvedValueOnce("kept");
+    const answer = deferred<CompletionNoteOutcome>();
+    const { onCompleteTaskWithNote, feedback, show } = renderAttention({
+      tasks: [callClinic],
+    });
+    onCompleteTaskWithNote.mockReturnValueOnce(answer.promise);
 
     await user.click(note(taskRows()[0]!));
     await user.type(
       screen.getByRole("textbox", { name: "Note" }),
-      "Clinic closed{Enter}",
+      "Clinic closed today{Enter}",
     );
+    // Completed elsewhere meanwhile: the row does not come back.
+    show({ tasks: [] });
+    await act(async () => {
+      answer.resolve({ status: "kept", message: unreached });
+      await answer.promise;
+    });
 
-    expect(await screen.findByRole("textbox", { name: "Note" })).toHaveValue(
-      "Clinic closed",
+    expect(composer()).toBeNull();
+    expect(feedback.error).toHaveBeenCalledExactlyOnceWith(unreached, {
+      description: "Clinic closed today",
+      action: { label: "Copy note", onClick: expect.any(Function) },
+    });
+    const [, detail] = vi.mocked(feedback.error).mock.calls[0]!;
+    detail!.action!.onClick();
+    await expect(navigator.clipboard.readText()).resolves.toBe(
+      "Clinic closed today",
     );
-    expect(within(composer()!).queryByRole("status")).toBeNull();
+  });
+
+  it("takes no new note while a completion of the Task is pending", async () => {
+    const user = userEvent.setup();
+    const repeating: Task = {
+      ...callClinic,
+      date: today,
+      repeat: { kind: "days", every: 1 },
+    };
+    const answer = deferred<CompletionNoteOutcome>();
+    const { onCompleteTaskWithNote } = renderAttention({ tasks: [repeating] });
+    onCompleteTaskWithNote.mockReturnValueOnce(answer.promise);
+
+    await user.click(note(taskRows()[0]!));
+    await user.type(
+      screen.getByRole("textbox", { name: "Note" }),
+      "Called{Enter}",
+    );
+    // The row stays (it repeats), but its note waits for the answer.
+    expect(note(taskRows()[0]!)).toBeDisabled();
+
+    await act(async () => {
+      answer.resolve({ status: "completed" });
+      await answer.promise;
+    });
+    expect(note(taskRows()[0]!)).toBeEnabled();
+  });
+
+  it("takes no note while a plain complete or skip of the Task is pending", () => {
+    renderAttention({
+      tasks: [callClinic, bookScan],
+      completingTaskIds: new Set([callClinic._id]),
+    });
+
+    expect(note(taskRows()[0]!)).toBeDisabled();
+    expect(note(taskRows()[1]!)).toBeEnabled();
   });
 
   it("forgets the text once completed", async () => {

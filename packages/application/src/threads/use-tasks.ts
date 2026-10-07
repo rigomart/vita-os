@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import type {
   ApplicationClient,
   Repeat,
@@ -5,14 +6,15 @@ import type {
   TaskId,
   Thread,
   ThreadId,
+  ThreadNote,
   ThreadNoteId,
 } from "@vita-os/contracts";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutationState, useQueryClient } from "@tanstack/react-query";
 import { isApplicationError } from "@vita-os/contracts";
 import { newRecordId } from "@vita-os/core";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
-import { useRef } from "react";
+import { useMemo } from "react";
 
 import { useApplicationClient } from "../application-client-provider";
 import { browserTimeZone } from "../lib/time-zone";
@@ -23,6 +25,15 @@ import { ThreadBusy } from "./task-queue";
 
 export { useConversionLock } from "./task-queue";
 
+/** What a refused Task command means to the person, or nothing when it was only dropped. */
+function failureMessage(error: unknown): string | undefined {
+  if (error instanceof CommandDropped) return undefined;
+  if (error instanceof ThreadBusy) return error.message;
+  return isApplicationError(error) && error.code === "conflict"
+    ? "This Thread changed elsewhere. It has been refreshed."
+    : "Could not save that change. Please try again.";
+}
+
 /**
  * A Task command never throws at the surface that issued it. A refusal has
  * already been rolled back on screen; this names it for the person, so a Task
@@ -32,17 +43,8 @@ function useReportFailure() {
   const feedback = useFeedback();
 
   return (error: unknown) => {
-    if (error instanceof CommandDropped) return;
-    if (error instanceof ThreadBusy) {
-      feedback.error(error.message);
-      return;
-    }
-    const conflict = isApplicationError(error) && error.code === "conflict";
-    feedback.error(
-      conflict
-        ? "This Thread changed elsewhere. It has been refreshed."
-        : "Could not save that change. Please try again.",
-    );
+    const message = failureMessage(error);
+    if (message !== undefined) feedback.error(message);
   };
 }
 
@@ -60,8 +62,11 @@ interface Occurrence {
 }
 
 /**
- * The Thread Note a completion captures. Its ID is minted here, as every
- * client-minted ID is, so the Note shown at once is the one the service keeps.
+ * The Thread Note a completion captures. Its ID is minted for each attempt,
+ * as every client-minted ID is, so the Note shown at once is the one the
+ * service keeps. A later attempt never needs an earlier one's ID: the service
+ * checks the revision inside the same write, so an attempt after one that
+ * landed is refused as stale and cannot add a second Note.
  */
 interface CompletionNote {
   id: ThreadNoteId;
@@ -71,31 +76,55 @@ interface CompletionNote {
 /**
  * What became of completing a Task with a note:
  * - `completed`: the Task is completed and the Note captured, whether the
- *   answer said so or the Note was found by its ID after the answer was lost;
- * - `unconfirmed`: the service could not be reached and the Note is not
- *   there (or could not be looked for); the text stays to complete again;
- * - `kept`: refused or not sent; nothing changed and the text stays;
- * - `duplicate`: a complete of the same Task is already on its way.
+ *   answer said so or the Note was found by its ID once the answer failed;
+ * - `kept`: not completed, or not confirmed; the surface puts the text back
+ *   and shows `message`, which says what is known of the Task and the Note;
+ * - `duplicate`: a complete of the same Task was already on its way; nothing
+ *   was sent, and that one's outcome stands.
  */
 export type CompletionNoteOutcome =
-  | "completed"
-  | "unconfirmed"
-  | "kept"
-  | "duplicate";
+  | { status: "completed" }
+  | { status: "kept"; message: string }
+  | { status: "duplicate" };
+
+const NOT_SAVED = "Your note was not saved.";
+
+/** Archived Notes looked through for a Note: it would be among the newest. */
+const ARCHIVED_LOOKUP = 20;
 
 /**
- * Whether a completion's Note is among the Thread's Notes, by its ID. `true`
- * and `false` are the service's answer; `undefined` means it could not say.
+ * Whether this attempt's Note is among the Thread's Notes, open or archived,
+ * read from the service: `true` or `false`, or `undefined` when they could
+ * not be read. The open Notes read takes what was found, so a Note that
+ * landed shows even where no settled command refetched it.
  */
-async function noteLanded(
+async function findNote(
   client: ApplicationClient,
+  cache: QueryClient,
   threadId: ThreadId,
   noteId: ThreadNoteId,
 ): Promise<boolean | undefined> {
   try {
-    const notes = await client.listOpenThreadNotes({ threadId });
-    if (notes.ok) return notes.value.some((note) => note._id === noteId);
-    return notes.error.code === "not_found" ? false : undefined;
+    const [open, archived] = await Promise.all([
+      client.listOpenThreadNotes({ threadId }),
+      client.getDoneThreadNotePage({ threadId, limit: ARCHIVED_LOOKUP }),
+    ]);
+    if (open.ok) {
+      cache.setQueryData(queryKeys.threadNotes.open(threadId), open.value);
+    }
+    const has = (notes: readonly ThreadNote[]) =>
+      notes.some((note) => note._id === noteId);
+    if (
+      (open.ok && has(open.value)) ||
+      (archived.ok && has(archived.value.entries))
+    ) {
+      void cache.invalidateQueries({
+        queryKey: queryKeys.threadNotes.doneAll(threadId),
+      });
+      return true;
+    }
+    if (!open.ok && open.error.code === "not_found") return false;
+    return open.ok && archived.ok ? false : undefined;
   } catch {
     return undefined;
   }
@@ -122,6 +151,24 @@ function occurrenceOf(thread: Thread, taskId: TaskId): Occurrence {
 /** Marks the completes and skips of one Thread's Tasks. */
 function occurrenceKey(thread: Thread) {
   return ["task-occurrence", thread._id] as const;
+}
+
+/**
+ * The Tasks of this Thread with a complete or skip on its way. Until it is
+ * answered the surface takes no new note for them, so nothing an answer
+ * brings back can land on a note written meanwhile.
+ */
+export function useCompletingTaskIds(thread: Thread): ReadonlySet<TaskId> {
+  const taskIds = useMutationState({
+    filters: { mutationKey: occurrenceKey(thread), status: "pending" },
+    select: (mutation) =>
+      (mutation.state.variables as Occurrence | undefined)?.taskId ?? "",
+  });
+  const signature = taskIds.filter(Boolean).join("\n");
+  return useMemo(
+    () => new Set(signature.split("\n").filter(Boolean) as TaskId[]),
+    [signature],
+  );
 }
 
 /**
@@ -361,11 +408,7 @@ export function useTasks(thread: Thread) {
   const setDate = useSetDateCommand(thread);
   const setRepeat = useSetRepeatCommand(thread);
   const client = useApplicationClient();
-  // The Note of a completion that may have reached the service. Completing
-  // that Task with a note again carries the same ID: the service refuses a
-  // second Note with it rather than keeping two, and the refusal is then
-  // recognised as the first completion having landed.
-  const unconfirmed = useRef(new Map<TaskId, ThreadNoteId>());
+  const cache = useQueryClient();
 
   const settle = (pending: Promise<unknown>) =>
     pending.then(() => undefined, report);
@@ -374,45 +417,47 @@ export function useTasks(thread: Thread) {
     taskId: TaskId,
     body: string,
   ): Promise<CompletionNoteOutcome> => {
-    const text = body.trim();
-    const note =
-      text === ""
-        ? undefined
-        : {
-            id:
-              unconfirmed.current.get(taskId) ??
-              (newRecordId() as ThreadNoteId),
-            body: text,
-          };
-    let outcome: CompletionNoteOutcome;
+    const note: CompletionNote = {
+      id: newRecordId() as ThreadNoteId,
+      body: body.trim(),
+    };
     try {
-      outcome =
-        (await occurrences.complete(taskId, note)) === "duplicate"
-          ? "duplicate"
-          : "completed";
+      const sent = await occurrences.complete(taskId, note);
+      return sent === "duplicate"
+        ? { status: "duplicate" }
+        : { status: "completed" };
     } catch (error) {
-      // With the answer lost, or refused, the Note itself says whether the
-      // completion landed: the reads have been refetched; look for it by ID.
-      const code = isApplicationError(error) ? error.code : undefined;
-      const landed =
-        note !== undefined && (code === "unavailable" || code === "conflict")
-          ? await noteLanded(client, thread._id, note.id)
-          : undefined;
-      if (landed === true) {
-        outcome = "completed";
-      } else if (note !== undefined && code === "unavailable") {
-        outcome = "unconfirmed";
-      } else {
-        report(error);
-        outcome = "kept";
+      // Rolled back on screen, and the reads refetched once the queue
+      // settled. Refused before it was sent, it cannot have landed.
+      if (error instanceof CommandDropped) {
+        return {
+          status: "kept",
+          message: `This task already changed, so it was not completed. ${NOT_SAVED}`,
+        };
       }
+      if (error instanceof ThreadBusy) {
+        return { status: "kept", message: `${error.message} ${NOT_SAVED}` };
+      }
+      // Sent: whatever the answer said, this attempt's Note says whether it
+      // landed.
+      const found = await findNote(client, cache, thread._id, note.id);
+      if (found === true) return { status: "completed" };
+      if (found === undefined) {
+        return {
+          status: "kept",
+          message:
+            "Couldn’t confirm whether the task was completed and your note saved. Check this thread’s notes before completing it again.",
+        };
+      }
+      const unreachable =
+        isApplicationError(error) && error.code === "unavailable";
+      return {
+        status: "kept",
+        message: unreachable
+          ? "Couldn’t reach Vita OS. The task was not completed and your note was not saved."
+          : `${failureMessage(error)} ${NOT_SAVED}`,
+      };
     }
-    if (note !== undefined && outcome === "completed") {
-      unconfirmed.current.delete(taskId);
-    } else if (note !== undefined && outcome !== "duplicate") {
-      unconfirmed.current.set(taskId, note.id);
-    }
-    return outcome;
   };
 
   return {
@@ -431,9 +476,10 @@ export function useTasks(thread: Thread) {
     remove: (taskId: TaskId) => settle(remove.mutateAsync(taskId)),
     complete: (taskId: TaskId) => settle(occurrences.complete(taskId)),
     /**
-     * Completes the Task and captures `body` as a Thread Note in one
-     * command; a blank body completes it plainly. Never throws: a refusal is
-     * reported here, and the outcome says whether the text is still needed.
+     * Completes the Task and captures `body` (not blank) as a Thread Note
+     * in one command. Never throws and never reports: the outcome says
+     * whether the text is still needed and why, for the surface to show
+     * beside it.
      */
     completeWithNote,
     /** Moves a repeating Task to its next occurrence; nothing is logged. */

@@ -78,6 +78,8 @@ function service() {
     /** The request never reaches the service. */
     dropBeforeCommit: false,
     offline: false,
+    /** Another device archives the Note right after the service keeps it. */
+    archiveAfterCommit: false,
   };
   const base = createFakeApplicationClient(
     {
@@ -93,11 +95,23 @@ function service() {
     },
     state,
   );
+  /** Thread Notes archived (stored Done) meanwhile, from another device. */
+  const archived: ThreadNote[] = [];
+  const archiveAll = () => {
+    archived.push(
+      ...(state.threadNotes.get(seed._id) ?? []).map((note) => ({
+        ...note,
+        state: "done" as const,
+      })),
+    );
+    state.threadNotes.set(seed._id, []);
+  };
   const completeTask = vi.fn(
     async (input: CompleteTaskInput): Promise<OperationResult<Thread>> => {
       if (switches.gated) await new Promise<void>((open) => gates.push(open));
       if (switches.dropBeforeCommit) return failure(unavailable);
       const result = await base.completeTask(input);
+      if (switches.archiveAfterCommit) archiveAll();
       return switches.dropAfterCommit ? failure(unavailable) : result;
     },
   );
@@ -107,10 +121,14 @@ function service() {
         ? Promise.resolve(failure<ThreadNote[]>(unavailable))
         : base.listOpenThreadNotes(input),
   );
+  const getDoneThreadNotePage: ApplicationClient["getDoneThreadNotePage"] =
+    async () =>
+      switches.offline ? failure(unavailable) : success({ entries: archived });
   const client: ApplicationClient = {
     ...base,
     completeTask,
     listOpenThreadNotes,
+    getDoneThreadNotePage,
   };
   return {
     client,
@@ -200,7 +218,7 @@ describe("completing a Task with a note", () => {
       outcome = await completing;
     });
 
-    expect(outcome).toBe("completed");
+    expect(outcome).toEqual({ status: "completed" });
     expect(fake.completeTask).toHaveBeenCalledTimes(1);
     expect(fake.completeTask).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -241,13 +259,16 @@ describe("completing a Task with a note", () => {
       outcome = await completing;
     });
 
-    expect(outcome).toBe("kept");
+    // The surface shows why, beside the text it puts back.
+    expect(outcome).toEqual({
+      status: "kept",
+      message:
+        "This Thread changed elsewhere. It has been refreshed. Your note was not saved.",
+    });
     await waitFor(() => expect(task(open(), refill._id)).toEqual(refill));
     expect(notes()).toEqual([]);
     expect(fake.storedNotes()).toEqual([]);
-    expect(feedback.error).toHaveBeenCalledWith(
-      "This Thread changed elsewhere. It has been refreshed.",
-    );
+    expect(feedback.error).not.toHaveBeenCalled();
   });
 
   it("moves a repeating Task to its next occurrence and captures the Note", async () => {
@@ -294,7 +315,10 @@ describe("completing a Task with a note", () => {
     });
 
     expect(fake.completeTask).toHaveBeenCalledTimes(1);
-    expect(outcomes).toEqual(["completed", "duplicate"]);
+    expect(outcomes).toEqual([
+      { status: "completed" },
+      { status: "duplicate" },
+    ]);
     expect(fake.storedNotes()).toHaveLength(1);
     await waitFor(() => expect(notes()).toHaveLength(1));
     expect(feedback.error).not.toHaveBeenCalled();
@@ -320,11 +344,13 @@ describe("completing a Task with a note", () => {
       outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
     });
 
-    expect(outcome).toBe("kept");
+    expect(outcome).toEqual({
+      status: "kept",
+      message:
+        "A note is being added to this thread. Try again in a moment. Your note was not saved.",
+    });
     expect(fake.completeTask).not.toHaveBeenCalled();
-    expect(feedback.error).toHaveBeenCalledWith(
-      "A note is being added to this thread. Try again in a moment.",
-    );
+    expect(feedback.error).not.toHaveBeenCalled();
     expect(task(open(), refill._id)).toEqual(refill);
     // Only the Note being added shows.
     expect(notes()?.map((note) => note.body)).toEqual(["Call the dentist"]);
@@ -332,24 +358,39 @@ describe("completing a Task with a note", () => {
 });
 
 describe("completing with a note when the connection drops", () => {
-  it("shows the truth when the service committed before the answer was lost", async () => {
+  it("counts it completed when this attempt's Note is found, and shows the Note", async () => {
     const fake = service();
     fake.switches.dropAfterCommit = true;
-    const { tasks, open, notes, feedback } = setup(fake);
+    // Nothing observes the reads: the lookup itself brings the Notes up to date.
+    const { tasks, notes, feedback } = setup(fake, { observe: false });
 
     let outcome: unknown;
     await act(async () => {
       outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
     });
 
-    expect(outcome).toBe("completed");
-    const id = sentNote(fake)!.id;
-    expect(notes()).toEqual([expect.objectContaining({ _id: id })]);
-    await waitFor(() => expect(task(open(), refill._id)).toBeUndefined());
+    expect(outcome).toEqual({ status: "completed" });
+    expect(notes()).toEqual([
+      expect.objectContaining({ _id: sentNote(fake)!.id, body: "Picked up" }),
+    ]);
     expect(feedback.error).not.toHaveBeenCalled();
   });
 
-  it("keeps the text to retry when the service never got it, and the retry carries the same Note", async () => {
+  it("finds this attempt's Note among the archived ones too", async () => {
+    const fake = service();
+    fake.switches.dropAfterCommit = true;
+    fake.switches.archiveAfterCommit = true;
+    const { tasks } = setup(fake, { observe: false });
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
+    });
+
+    expect(outcome).toEqual({ status: "completed" });
+  });
+
+  it("puts the text back, saying nothing was saved, when the Note is not there; completing again mints a new Note", async () => {
     const fake = service();
     fake.switches.dropBeforeCommit = true;
     const { tasks, open, notes, feedback } = setup(fake);
@@ -359,10 +400,12 @@ describe("completing with a note when the connection drops", () => {
       outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
     });
 
-    expect(outcome).toBe("unconfirmed");
+    expect(outcome).toEqual({
+      status: "kept",
+      message: expect.stringMatching(/couldn’t reach vita os.*not completed/i),
+    });
     expect(task(open(), refill._id)).toEqual(refill);
     expect(notes()).toEqual([]);
-    // The screen offers the retry itself; no toast claims anything changed.
     expect(feedback.error).not.toHaveBeenCalled();
 
     fake.switches.dropBeforeCommit = false;
@@ -370,18 +413,15 @@ describe("completing with a note when the connection drops", () => {
       outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
     });
 
-    expect(outcome).toBe("completed");
-    expect(sentNote(fake, 1)!.id).toBe(sentNote(fake, 0)!.id);
+    expect(outcome).toEqual({ status: "completed" });
+    expect(sentNote(fake, 1)!.id).not.toBe(sentNote(fake, 0)!.id);
     expect(fake.storedNotes()).toHaveLength(1);
     await waitFor(() => expect(task(open(), refill._id)).toBeUndefined());
-    expect(feedback.error).not.toHaveBeenCalled();
   });
 
-  it("finds the Note a retry would duplicate, without a misleading refusal", async () => {
+  it("says it could not confirm, and keeps the text, when the Notes cannot be read", async () => {
     const fake = service();
     fake.switches.dropAfterCommit = true;
-    // Still offline when it looks: whether it landed is unknown. Nothing on
-    // screen observes the reads, so none of them fails while offline.
     fake.switches.offline = true;
     const { tasks, feedback } = setup(fake, { observe: false });
 
@@ -389,19 +429,11 @@ describe("completing with a note when the connection drops", () => {
     await act(async () => {
       outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
     });
-    expect(outcome).toBe("unconfirmed");
 
-    // Back online; the retry is refused (the Note's ID is taken), and that
-    // refusal is the earlier completion landing, not a change elsewhere.
-    fake.switches.dropAfterCommit = false;
-    fake.switches.offline = false;
-    await act(async () => {
-      outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
+    expect(outcome).toEqual({
+      status: "kept",
+      message: expect.stringMatching(/couldn’t confirm/i),
     });
-
-    expect(outcome).toBe("completed");
-    expect(sentNote(fake, 1)!.id).toBe(sentNote(fake, 0)!.id);
-    expect(fake.storedNotes()).toHaveLength(1);
     expect(feedback.error).not.toHaveBeenCalled();
   });
 });

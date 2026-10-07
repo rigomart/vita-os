@@ -9,7 +9,12 @@ import { toast } from "./toast";
 
 export type Feedback = {
   success(message: string): void;
-  error(message: string): void;
+  /**
+   * A failure. `detail` carries text the person must not lose — a note that
+   * was not saved, say — shown under the message and kept on screen until
+   * dismissed, with an action such as Copy.
+   */
+  error(message: string, detail?: ErrorDetail): void;
   /**
    * Offer an Undo for an action that has already happened on screen. Resolves
    * `true` once the offer lapses and the action should be committed, or `false`
@@ -17,6 +22,11 @@ export type Feedback = {
    * then runs — Open thread, say, after adding a Note to one.
    */
   undoable(message: string, options?: UndoableOptions): Promise<boolean>;
+};
+
+export type ErrorDetail = {
+  description: string;
+  action?: { label: string; onClick: () => void };
 };
 
 export type UndoableOptions = {
@@ -27,7 +37,15 @@ const UNDO_WINDOW_MS = 5000;
 
 const defaultFeedback: Feedback = {
   success: (message) => toast.success(message),
-  error: (message) => toast.error(message),
+  error: (message, detail) =>
+    detail === undefined
+      ? toast.error(message)
+      : toast.error(message, {
+          description: detail.description,
+          duration: Number.POSITIVE_INFINITY,
+          closeButton: true,
+          ...(detail.action === undefined ? {} : { action: detail.action }),
+        }),
   undoable: (message, options) =>
     new Promise((resolve) => {
       let settled = false;
