@@ -6,7 +6,6 @@ import type {
   TaskId,
   Thread,
   ThreadId,
-  ThreadNote,
   ThreadNoteId,
 } from "@vita-os/contracts";
 
@@ -74,29 +73,21 @@ interface CompletionNote {
 }
 
 /**
- * What became of completing a Task with a note:
- * - `completed`: the Task is completed and the Note captured, whether the
- *   answer said so or the Note was found by its ID once the answer failed;
- * - `kept`: not completed, or not confirmed; the surface puts the text back
- *   and shows `message`, which says what is known of the Task and the Note;
- * - `duplicate`: a complete of the same Task was already on its way; nothing
- *   was sent, and that one's outcome stands.
+ * What became of completing a Task with a note: `completed` (the answer said
+ * so, or the Note was found by its ID once it failed), `failed` (the text
+ * went to a toast to copy), or `duplicate` (a complete of the same Task was
+ * already on its way, and nothing was sent).
  */
-export type CompletionNoteOutcome =
-  | { status: "completed" }
-  | { status: "kept"; message: string }
-  | { status: "duplicate" };
+export type CompletionNoteOutcome = "completed" | "failed" | "duplicate";
 
 const NOT_SAVED = "Your note was not saved.";
 
-/** Archived Notes looked through for a Note: it would be among the newest. */
-const ARCHIVED_LOOKUP = 20;
-
 /**
- * Whether this attempt's Note is among the Thread's Notes, open or archived,
- * read from the service: `true` or `false`, or `undefined` when they could
- * not be read. The open Notes read takes what was found, so a Note that
- * landed shows even where no settled command refetched it.
+ * Whether this attempt's Note is among the Thread's open Notes, read from the
+ * service: `true` or `false`, or `undefined` when they could not be read.
+ * The open Notes read takes what was found, so a Note that landed shows even
+ * where no settled command refetched it. A Note archived meanwhile reads as
+ * missing, which only means its text is handed back to copy.
  */
 async function findNote(
   client: ApplicationClient,
@@ -105,26 +96,10 @@ async function findNote(
   noteId: ThreadNoteId,
 ): Promise<boolean | undefined> {
   try {
-    const [open, archived] = await Promise.all([
-      client.listOpenThreadNotes({ threadId }),
-      client.getDoneThreadNotePage({ threadId, limit: ARCHIVED_LOOKUP }),
-    ]);
-    if (open.ok) {
-      cache.setQueryData(queryKeys.threadNotes.open(threadId), open.value);
-    }
-    const has = (notes: readonly ThreadNote[]) =>
-      notes.some((note) => note._id === noteId);
-    if (
-      (open.ok && has(open.value)) ||
-      (archived.ok && has(archived.value.entries))
-    ) {
-      void cache.invalidateQueries({
-        queryKey: queryKeys.threadNotes.doneAll(threadId),
-      });
-      return true;
-    }
-    if (!open.ok && open.error.code === "not_found") return false;
-    return open.ok && archived.ok ? false : undefined;
+    const open = await client.listOpenThreadNotes({ threadId });
+    if (!open.ok) return open.error.code === "not_found" ? false : undefined;
+    cache.setQueryData(queryKeys.threadNotes.open(threadId), open.value);
+    return open.value.some((note) => note._id === noteId);
   } catch {
     return undefined;
   }
@@ -378,6 +353,7 @@ export function useTaskDates(thread: Thread) {
  */
 export function useTasks(thread: Thread) {
   const report = useReportFailure();
+  const feedback = useFeedback();
 
   const add = useTaskCommand<Task>(thread, {
     run: (client, task, expectedRevision) =>
@@ -421,42 +397,47 @@ export function useTasks(thread: Thread) {
       id: newRecordId() as ThreadNoteId,
       body: body.trim(),
     };
+    // The text is never left on a surface that may be gone by now: it goes
+    // to a toast that outlives the Thread pane, with the reason and a copy.
+    const handBack = (message: string): CompletionNoteOutcome => {
+      feedback.error(message, {
+        description: note.body,
+        action: {
+          label: "Copy note",
+          onClick: () => void navigator.clipboard?.writeText(note.body),
+        },
+      });
+      return "failed";
+    };
     try {
-      const sent = await occurrences.complete(taskId, note);
-      return sent === "duplicate"
-        ? { status: "duplicate" }
-        : { status: "completed" };
+      return (await occurrences.complete(taskId, note)) === "duplicate"
+        ? "duplicate"
+        : "completed";
     } catch (error) {
       // Rolled back on screen, and the reads refetched once the queue
       // settled. Refused before it was sent, it cannot have landed.
       if (error instanceof CommandDropped) {
-        return {
-          status: "kept",
-          message: `This task already changed, so it was not completed. ${NOT_SAVED}`,
-        };
+        return handBack(
+          `This task already changed, so it was not completed. ${NOT_SAVED}`,
+        );
       }
       if (error instanceof ThreadBusy) {
-        return { status: "kept", message: `${error.message} ${NOT_SAVED}` };
+        return handBack(`${error.message} ${NOT_SAVED}`);
       }
       // Sent: whatever the answer said, this attempt's Note says whether it
       // landed.
       const found = await findNote(client, cache, thread._id, note.id);
-      if (found === true) return { status: "completed" };
+      if (found === true) return "completed";
       if (found === undefined) {
-        return {
-          status: "kept",
-          message:
-            "Couldn’t confirm whether the task was completed and your note saved. Check this thread’s notes before completing it again.",
-        };
+        return handBack(
+          "Couldn’t confirm whether the task was completed and your note saved. Check this thread’s notes before adding it again.",
+        );
       }
-      const unreachable =
-        isApplicationError(error) && error.code === "unavailable";
-      return {
-        status: "kept",
-        message: unreachable
-          ? "Couldn’t reach Vita OS. The task was not completed and your note was not saved."
+      return handBack(
+        isApplicationError(error) && error.code === "unavailable"
+          ? `Couldn’t reach Vita OS. The task was not completed and your note was not saved.`
           : `${failureMessage(error)} ${NOT_SAVED}`,
-      };
+      );
     }
   };
 
@@ -477,9 +458,8 @@ export function useTasks(thread: Thread) {
     complete: (taskId: TaskId) => settle(occurrences.complete(taskId)),
     /**
      * Completes the Task and captures `body` (not blank) as a Thread Note
-     * in one command. Never throws and never reports: the outcome says
-     * whether the text is still needed and why, for the surface to show
-     * beside it.
+     * in one command. Never throws: if it fails and the Note is not found
+     * by its ID, the text comes back in a toast with the reason and Copy.
      */
     completeWithNote,
     /** Moves a repeating Task to its next occurrence; nothing is logged. */

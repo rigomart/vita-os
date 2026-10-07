@@ -2,7 +2,6 @@ import type { Repeat, Task, TaskId } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
 import { Textarea } from "@vita-os/ui/components/textarea";
-import { useFeedback } from "@vita-os/ui/lib/feedback";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
 import {
@@ -14,9 +13,7 @@ import {
   SkipForward,
   X,
 } from "lucide-react";
-import { Fragment, useId, useRef, useState } from "react";
-
-import type { CompletionNoteOutcome } from "../use-tasks";
+import { Fragment, useId, useState } from "react";
 
 import {
   repeatLabel,
@@ -48,13 +45,10 @@ interface ThreadAttentionProps {
   onCompleteTask: (taskId: TaskId) => void;
   /**
    * Completes the Task and captures the text (never blank; blank text
-   * completes plainly) as a Thread Note, in one command. The outcome says
-   * whether the text is still needed, and why.
+   * completes plainly) as a Thread Note, in one command. A failure is the
+   * caller's to report, text included: this surface has let it go.
    */
-  onCompleteTaskWithNote: (
-    taskId: TaskId,
-    body: string,
-  ) => Promise<CompletionNoteOutcome>;
+  onCompleteTaskWithNote: (taskId: TaskId, body: string) => unknown;
   /** `null` unfocuses; a Task replaces any earlier focus. */
   onFocusTask: (taskId: TaskId | null) => void;
   /** Sets, changes or (with `null`) clears one Task's date, and its Repeat with it. */
@@ -78,10 +72,8 @@ interface ThreadAttentionProps {
  *
  * Complete is one click. Beside it, "Complete with a note" opens a line
  * under the row; completing from there also captures the text as a Thread
- * Note. The text is held here, not in the row: a completed one-off row
- * leaves at once. If it was not completed the text comes back under its
- * row with the reason, or, when the row is gone, in a toast that offers to
- * copy it.
+ * Note. The text is held here while it is written; once sent it is the
+ * caller's, which hands it back in a toast if the completion fails.
  *
  * `xl` is the Thread pane's breakpoint (THREAD_PANE_BREAKPOINT): from there up
  * the pane is a rail with room for hover affordances; below it the Thread is a
@@ -104,64 +96,26 @@ export function ThreadAttention({
   onSetTaskRepeat,
   onSkipTask,
 }: ThreadAttentionProps) {
-  const feedback = useFeedback();
   // The Task whose note line is open, and the text written for each Task.
   const [noting, setNoting] = useState<TaskId | null>(null);
-  const [notes, setNotes] = useState<ReadonlyMap<TaskId, NoteDraft>>(new Map());
-  // Tasks whose completion with a note awaits its outcome.
-  const [sending, setSending] = useState<ReadonlySet<TaskId>>(new Set());
-  // The Tasks as shown now, for an outcome that arrives after the render that sent it.
-  const shown = useRef(tasks);
-  shown.current = tasks;
-  const keepNote = (taskId: TaskId, draft: NoteDraft | undefined) =>
+  const [notes, setNotes] = useState<ReadonlyMap<TaskId, string>>(new Map());
+  const keepNote = (taskId: TaskId, text: string | undefined) =>
     setNotes((current) => {
       const next = new Map(current);
-      if (draft === undefined) next.delete(taskId);
-      else next.set(taskId, draft);
+      if (text === undefined) next.delete(taskId);
+      else next.set(taskId, text);
       return next;
     });
-  const markSending = (taskId: TaskId, on: boolean) =>
-    setSending((current) => {
-      const next = new Set(current);
-      if (on) next.add(taskId);
-      else next.delete(taskId);
-      return next;
-    });
-  // Nothing new can be written for the Task until the outcome is in, so the
-  // text it hands back never lands on a newer draft.
-  const busy = (taskId: TaskId) =>
-    sending.has(taskId) || (completingTaskIds?.has(taskId) ?? false);
+  // A Task being completed takes no new note until the service answers.
+  const busy = (taskId: TaskId) => completingTaskIds?.has(taskId) ?? false;
+  // Sent, the text leaves this surface for good: if the completion fails,
+  // it comes back in a toast, never here.
   const completeWithNote = (taskId: TaskId) => {
-    const text = notes.get(taskId)?.text ?? "";
+    const text = notes.get(taskId) ?? "";
     setNoting(null);
     keepNote(taskId, undefined);
-    if (text.trim() === "") {
-      onCompleteTask(taskId);
-      return;
-    }
-    markSending(taskId, true);
-    void onCompleteTaskWithNote(taskId, text).then((outcome) => {
-      markSending(taskId, false);
-      if (outcome.status === "completed") return;
-      if (outcome.status === "duplicate") {
-        keepNote(taskId, { text });
-        return;
-      }
-      if (shown.current.some((task) => task._id === taskId)) {
-        keepNote(taskId, { text, message: outcome.message });
-        // Back under its row, unless another note line was opened meanwhile.
-        setNoting((current) => current ?? taskId);
-        return;
-      }
-      // The row is gone: the text goes with the message, to be copied.
-      feedback.error(outcome.message, {
-        description: text,
-        action: {
-          label: "Copy note",
-          onClick: () => void navigator.clipboard?.writeText(text),
-        },
-      });
-    });
+    if (text.trim() === "") onCompleteTask(taskId);
+    else void onCompleteTaskWithNote(taskId, text);
   };
 
   const dated = tasks
@@ -197,9 +151,9 @@ export function ThreadAttention({
       {noting === task._id && (
         <CompletionNoteLine
           taskText={task.text}
-          draft={notes.get(task._id) ?? { text: "" }}
+          text={notes.get(task._id) ?? ""}
           disabled={locked || busy(task._id)}
-          onChange={(text) => keepNote(task._id, { text })}
+          onChange={(text) => keepNote(task._id, text)}
           onComplete={() => completeWithNote(task._id)}
           onCancel={() => {
             setNoting(null);
@@ -485,12 +439,6 @@ function TaskRow({
   );
 }
 
-/** The text written to complete a Task with, and why it came back, if it did. */
-interface NoteDraft {
-  text: string;
-  message?: string;
-}
-
 /**
  * The note line under a Task: what to keep from completing it, which joins
  * the Thread's Notes. Enter completes, Shift+Enter starts a new line, and
@@ -498,14 +446,14 @@ interface NoteDraft {
  */
 function CompletionNoteLine({
   taskText,
-  draft,
+  text,
   disabled,
   onChange,
   onComplete,
   onCancel,
 }: {
   taskText: string;
-  draft: NoteDraft;
+  text: string;
   disabled: boolean;
   onChange: (text: string) => void;
   onComplete: () => void;
@@ -541,7 +489,7 @@ function CompletionNoteLine({
           // Opened on purpose, to write in.
           autoFocus
           rows={2}
-          value={draft.text}
+          value={text}
           disabled={disabled}
           aria-describedby={hintId}
           placeholder="What happened?"
@@ -558,11 +506,6 @@ function CompletionNoteLine({
           }}
           className="min-h-14 rounded-md px-2 py-1.5 text-sm"
         />
-        {draft.message !== undefined && (
-          <p role="status" className="text-xs text-condition-attention">
-            {draft.message}
-          </p>
-        )}
         <div className="flex flex-wrap items-center gap-2">
           <span id={hintId} className="text-xs text-muted-foreground">
             Saved to this thread’s notes

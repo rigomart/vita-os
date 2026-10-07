@@ -5,8 +5,6 @@ import { addDays, subDays } from "date-fns";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { CompletionNoteOutcome } from "../use-tasks";
-
 import { deferred } from "../../test/fake-application-client";
 import { act, render, screen, within } from "../../test/render-with-providers";
 import { ThreadAttention } from "./thread-attention";
@@ -34,8 +32,8 @@ function renderAttention(
   };
 
   const onCompleteTaskWithNote = vi.fn<
-    (taskId: TaskId, body: string) => Promise<CompletionNoteOutcome>
-  >(async () => ({ status: "completed" }));
+    (taskId: TaskId, body: string) => unknown
+  >(async () => "completed");
 
   const { unmount, rerender, feedback } = render(
     <ThreadAttention
@@ -646,8 +644,6 @@ describe("ThreadAttention completing with a note", () => {
   const note = (row: HTMLElement) =>
     within(row).getByRole("button", { name: "Complete with a note" });
   const composer = () => screen.queryByRole("group", { name: /with a note$/ });
-  const unreached =
-    "Couldn’t reach Vita OS. The task was not completed and your note was not saved.";
 
   it("offers a note on every Task, while Complete itself stays one click", async () => {
     const user = userEvent.setup();
@@ -743,12 +739,10 @@ describe("ThreadAttention completing with a note", () => {
     expect(onCompleteTaskWithNote).not.toHaveBeenCalled();
   });
 
-  it("puts the text back under the row with the reason when it was not completed, even after the row left and returned", async () => {
+  it("lets the text go once sent: the line stays closed and opens empty, whatever comes back", async () => {
     const user = userEvent.setup();
-    const answer = deferred<CompletionNoteOutcome>();
-    const { onCompleteTaskWithNote, feedback, show } = renderAttention({
-      tasks: [callClinic],
-    });
+    const answer = deferred<unknown>();
+    const { onCompleteTaskWithNote } = renderAttention({ tasks: [callClinic] });
     onCompleteTaskWithNote.mockReturnValueOnce(answer.promise);
 
     await user.click(note(taskRows()[0]!));
@@ -756,85 +750,16 @@ describe("ThreadAttention completing with a note", () => {
       screen.getByRole("textbox", { name: "Note" }),
       "Clinic closed today{Enter}",
     );
-    // Removed at once on screen, then back once the change rolled back.
-    show({ tasks: [] });
-    expect(composer()).toBeNull();
-    show({ tasks: [callClinic] });
+    // A failure is reported by the caller, with the text; nothing comes back here.
     await act(async () => {
-      answer.resolve({ status: "kept", message: unreached });
-      await answer.promise;
-    });
-
-    const group = composer()!;
-    expect(within(group).getByRole("textbox", { name: "Note" })).toHaveValue(
-      "Clinic closed today",
-    );
-    expect(within(group).getByRole("status")).toHaveTextContent(unreached);
-    expect(feedback.error).not.toHaveBeenCalled();
-
-    await user.click(within(group).getByRole("button", { name: "Complete" }));
-    expect(onCompleteTaskWithNote).toHaveBeenLastCalledWith(
-      callClinic._id,
-      "Clinic closed today",
-    );
-  });
-
-  it("hands the text over in a toast with Copy when its row is gone", async () => {
-    const user = userEvent.setup();
-    const answer = deferred<CompletionNoteOutcome>();
-    const { onCompleteTaskWithNote, feedback, show } = renderAttention({
-      tasks: [callClinic],
-    });
-    onCompleteTaskWithNote.mockReturnValueOnce(answer.promise);
-
-    await user.click(note(taskRows()[0]!));
-    await user.type(
-      screen.getByRole("textbox", { name: "Note" }),
-      "Clinic closed today{Enter}",
-    );
-    // Completed elsewhere meanwhile: the row does not come back.
-    show({ tasks: [] });
-    await act(async () => {
-      answer.resolve({ status: "kept", message: unreached });
+      answer.resolve({ status: "kept", message: "Not saved." });
       await answer.promise;
     });
 
     expect(composer()).toBeNull();
-    expect(feedback.error).toHaveBeenCalledExactlyOnceWith(unreached, {
-      description: "Clinic closed today",
-      action: { label: "Copy note", onClick: expect.any(Function) },
-    });
-    const [, detail] = vi.mocked(feedback.error).mock.calls[0]!;
-    detail!.action!.onClick();
-    await expect(navigator.clipboard.readText()).resolves.toBe(
-      "Clinic closed today",
-    );
-  });
-
-  it("takes no new note while a completion of the Task is pending", async () => {
-    const user = userEvent.setup();
-    const repeating: Task = {
-      ...callClinic,
-      date: today,
-      repeat: { kind: "days", every: 1 },
-    };
-    const answer = deferred<CompletionNoteOutcome>();
-    const { onCompleteTaskWithNote } = renderAttention({ tasks: [repeating] });
-    onCompleteTaskWithNote.mockReturnValueOnce(answer.promise);
-
     await user.click(note(taskRows()[0]!));
-    await user.type(
-      screen.getByRole("textbox", { name: "Note" }),
-      "Called{Enter}",
-    );
-    // The row stays (it repeats), but its note waits for the answer.
-    expect(note(taskRows()[0]!)).toBeDisabled();
-
-    await act(async () => {
-      answer.resolve({ status: "completed" });
-      await answer.promise;
-    });
-    expect(note(taskRows()[0]!)).toBeEnabled();
+    expect(screen.getByRole("textbox", { name: "Note" })).toHaveValue("");
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("takes no note while a plain complete or skip of the Task is pending", () => {
@@ -845,20 +770,6 @@ describe("ThreadAttention completing with a note", () => {
 
     expect(note(taskRows()[0]!)).toBeDisabled();
     expect(note(taskRows()[1]!)).toBeEnabled();
-  });
-
-  it("forgets the text once completed", async () => {
-    const user = userEvent.setup();
-    renderAttention({ tasks: [callClinic] });
-
-    await user.click(note(taskRows()[0]!));
-    await user.type(
-      screen.getByRole("textbox", { name: "Note" }),
-      "Done{Enter}",
-    );
-    await user.click(note(taskRows()[0]!));
-
-    expect(screen.getByRole("textbox", { name: "Note" })).toHaveValue("");
   });
 
   it("takes no note while the Thread is locked", () => {

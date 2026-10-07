@@ -12,6 +12,7 @@ import type {
 import type { PropsWithChildren } from "react";
 
 import { act, renderHook, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { nextTaskDate } from "@vita-os/core";
 import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -78,8 +79,6 @@ function service() {
     /** The request never reaches the service. */
     dropBeforeCommit: false,
     offline: false,
-    /** Another device archives the Note right after the service keeps it. */
-    archiveAfterCommit: false,
   };
   const base = createFakeApplicationClient(
     {
@@ -95,23 +94,11 @@ function service() {
     },
     state,
   );
-  /** Thread Notes archived (stored Done) meanwhile, from another device. */
-  const archived: ThreadNote[] = [];
-  const archiveAll = () => {
-    archived.push(
-      ...(state.threadNotes.get(seed._id) ?? []).map((note) => ({
-        ...note,
-        state: "done" as const,
-      })),
-    );
-    state.threadNotes.set(seed._id, []);
-  };
   const completeTask = vi.fn(
     async (input: CompleteTaskInput): Promise<OperationResult<Thread>> => {
       if (switches.gated) await new Promise<void>((open) => gates.push(open));
       if (switches.dropBeforeCommit) return failure(unavailable);
       const result = await base.completeTask(input);
-      if (switches.archiveAfterCommit) archiveAll();
       return switches.dropAfterCommit ? failure(unavailable) : result;
     },
   );
@@ -121,14 +108,10 @@ function service() {
         ? Promise.resolve(failure<ThreadNote[]>(unavailable))
         : base.listOpenThreadNotes(input),
   );
-  const getDoneThreadNotePage: ApplicationClient["getDoneThreadNotePage"] =
-    async () =>
-      switches.offline ? failure(unavailable) : success({ entries: archived });
   const client: ApplicationClient = {
     ...base,
     completeTask,
     listOpenThreadNotes,
-    getDoneThreadNotePage,
   };
   return {
     client,
@@ -163,17 +146,30 @@ function setup(fake: ReturnType<typeof service>, { observe = true } = {}) {
     renderHook(() => useOpenThreads(), { wrapper });
     renderHook(() => useThreadNotes(seed._id), { wrapper });
   }
-  const { result: tasks } = renderHook(() => useTasks(seed), { wrapper });
+  const { result: tasks, unmount } = renderHook(() => useTasks(seed), {
+    wrapper,
+  });
   const { result: add } = renderHook(() => useAddNoteToThread(), { wrapper });
   const open = () =>
     cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0];
   const notes = () =>
     cache.getQueryData<ThreadNote[]>(queryKeys.threadNotes.open(seed._id));
-  return { feedback, tasks, add, open, notes };
+  return { feedback, tasks, unmount, add, open, notes };
 }
 
 const task = (thread: Thread | undefined, taskId: TaskId) =>
   thread?.tasks?.find((candidate) => candidate._id === taskId);
+/** The text came back once, in an error toast, with a Copy action. */
+function expectHandedBack(
+  feedback: { error: ReturnType<typeof vi.fn> },
+  message: unknown,
+  text: string,
+) {
+  expect(feedback.error).toHaveBeenCalledExactlyOnceWith(message, {
+    description: text,
+    action: { label: "Copy note", onClick: expect.any(Function) },
+  });
+}
 const sentNote = (fake: ReturnType<typeof service>, call = 0) =>
   fake.completeTask.mock.calls[call]![0].note;
 
@@ -218,7 +214,7 @@ describe("completing a Task with a note", () => {
       outcome = await completing;
     });
 
-    expect(outcome).toEqual({ status: "completed" });
+    expect(outcome).toBe("completed");
     expect(fake.completeTask).toHaveBeenCalledTimes(1);
     expect(fake.completeTask).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -259,16 +255,15 @@ describe("completing a Task with a note", () => {
       outcome = await completing;
     });
 
-    // The surface shows why, beside the text it puts back.
-    expect(outcome).toEqual({
-      status: "kept",
-      message:
-        "This Thread changed elsewhere. It has been refreshed. Your note was not saved.",
-    });
+    expect(outcome).toBe("failed");
     await waitFor(() => expect(task(open(), refill._id)).toEqual(refill));
     expect(notes()).toEqual([]);
     expect(fake.storedNotes()).toEqual([]);
-    expect(feedback.error).not.toHaveBeenCalled();
+    expectHandedBack(
+      feedback,
+      "This Thread changed elsewhere. It has been refreshed. Your note was not saved.",
+      "Picked it up",
+    );
   });
 
   it("moves a repeating Task to its next occurrence and captures the Note", async () => {
@@ -315,10 +310,7 @@ describe("completing a Task with a note", () => {
     });
 
     expect(fake.completeTask).toHaveBeenCalledTimes(1);
-    expect(outcomes).toEqual([
-      { status: "completed" },
-      { status: "duplicate" },
-    ]);
+    expect(outcomes).toEqual(["completed", "duplicate"]);
     expect(fake.storedNotes()).toHaveLength(1);
     await waitFor(() => expect(notes()).toHaveLength(1));
     expect(feedback.error).not.toHaveBeenCalled();
@@ -344,13 +336,13 @@ describe("completing a Task with a note", () => {
       outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
     });
 
-    expect(outcome).toEqual({
-      status: "kept",
-      message:
-        "A note is being added to this thread. Try again in a moment. Your note was not saved.",
-    });
+    expect(outcome).toBe("failed");
     expect(fake.completeTask).not.toHaveBeenCalled();
-    expect(feedback.error).not.toHaveBeenCalled();
+    expectHandedBack(
+      feedback,
+      "A note is being added to this thread. Try again in a moment. Your note was not saved.",
+      "Picked up",
+    );
     expect(task(open(), refill._id)).toEqual(refill);
     // Only the Note being added shows.
     expect(notes()?.map((note) => note.body)).toEqual(["Call the dentist"]);
@@ -358,7 +350,7 @@ describe("completing a Task with a note", () => {
 });
 
 describe("completing with a note when the connection drops", () => {
-  it("counts it completed when this attempt's Note is found, and shows the Note", async () => {
+  it("counts it completed, quietly, when this attempt's Note is found, and shows the Note", async () => {
     const fake = service();
     fake.switches.dropAfterCommit = true;
     // Nothing observes the reads: the lookup itself brings the Notes up to date.
@@ -369,28 +361,16 @@ describe("completing with a note when the connection drops", () => {
       outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
     });
 
-    expect(outcome).toEqual({ status: "completed" });
+    expect(outcome).toBe("completed");
     expect(notes()).toEqual([
       expect.objectContaining({ _id: sentNote(fake)!.id, body: "Picked up" }),
     ]);
     expect(feedback.error).not.toHaveBeenCalled();
   });
 
-  it("finds this attempt's Note among the archived ones too", async () => {
-    const fake = service();
-    fake.switches.dropAfterCommit = true;
-    fake.switches.archiveAfterCommit = true;
-    const { tasks } = setup(fake, { observe: false });
-
-    let outcome: unknown;
-    await act(async () => {
-      outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
-    });
-
-    expect(outcome).toEqual({ status: "completed" });
-  });
-
-  it("puts the text back, saying nothing was saved, when the Note is not there; completing again mints a new Note", async () => {
+  it("hands the text back in a toast with Copy when the Note is not there", async () => {
+    // Gives the page a clipboard to copy into.
+    userEvent.setup();
     const fake = service();
     fake.switches.dropBeforeCommit = true;
     const { tasks, open, notes, feedback } = setup(fake);
@@ -400,26 +380,20 @@ describe("completing with a note when the connection drops", () => {
       outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
     });
 
-    expect(outcome).toEqual({
-      status: "kept",
-      message: expect.stringMatching(/couldn’t reach vita os.*not completed/i),
-    });
+    expect(outcome).toBe("failed");
     expect(task(open(), refill._id)).toEqual(refill);
     expect(notes()).toEqual([]);
-    expect(feedback.error).not.toHaveBeenCalled();
-
-    fake.switches.dropBeforeCommit = false;
-    await act(async () => {
-      outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
-    });
-
-    expect(outcome).toEqual({ status: "completed" });
-    expect(sentNote(fake, 1)!.id).not.toBe(sentNote(fake, 0)!.id);
-    expect(fake.storedNotes()).toHaveLength(1);
-    await waitFor(() => expect(task(open(), refill._id)).toBeUndefined());
+    expectHandedBack(
+      feedback,
+      "Couldn’t reach Vita OS. The task was not completed and your note was not saved.",
+      "Picked up",
+    );
+    const [, detail] = feedback.error.mock.calls[0]!;
+    detail!.action!.onClick();
+    await expect(navigator.clipboard.readText()).resolves.toBe("Picked up");
   });
 
-  it("says it could not confirm, and keeps the text, when the Notes cannot be read", async () => {
+  it("says it could not confirm when the Notes cannot be read, and hands the text back", async () => {
     const fake = service();
     fake.switches.dropAfterCommit = true;
     fake.switches.offline = true;
@@ -430,10 +404,35 @@ describe("completing with a note when the connection drops", () => {
       outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
     });
 
-    expect(outcome).toEqual({
-      status: "kept",
-      message: expect.stringMatching(/couldn’t confirm/i),
+    expect(outcome).toBe("failed");
+    expectHandedBack(
+      feedback,
+      expect.stringMatching(/^Couldn’t confirm whether/),
+      "Picked up",
+    );
+    expect(feedback.error.mock.calls[0]![0]).not.toMatch(/not saved/);
+  });
+
+  it("still hands the text back once the Thread pane has gone", async () => {
+    const fake = service();
+    fake.switches.gated = true;
+    fake.switches.dropBeforeCommit = true;
+    const { tasks, unmount, feedback } = setup(fake);
+
+    let completing: Promise<unknown> | undefined;
+    act(() => {
+      completing = tasks.current.completeWithNote(refill._id, "Picked up");
     });
-    expect(feedback.error).not.toHaveBeenCalled();
+    unmount();
+    await act(async () => {
+      fake.release();
+      await completing;
+    });
+
+    expectHandedBack(
+      feedback,
+      expect.stringMatching(/^Couldn’t reach Vita OS/),
+      "Picked up",
+    );
   });
 });
