@@ -5,6 +5,8 @@ Terminology amended by ADR 0033: **Move** is renamed **Task**, and **Focused Mov
 **Status:** Accepted. Amended by ADR 0032: a Task gains an optional date and Repeat; completing a repeating Task moves it to its next occurrence instead of removing it, and completing may carry a note captured as a Thread Note.
 **Date:** 2026-09-26
 
+Amended by [ADR 0034](./0034-plain-application-writes.md): current-state Task commands and independent optimistic writes replace client revision coordination; conversion destinations appear after confirmation without a Thread lock.
+
 A **Thread**'s **Next Move** and its **Up Next** queue are replaced by **Moves**: an unordered set of peers, shown in the order they were captured. The user may single out one as the **Focused Move**, or leave all of them unfocused. Issue #366 is the specification.
 
 The queue assumed the moves had a known order. Most of the situations Vita OS holds don't: the moves can be done in parallel, their order doesn't matter, or ranking them needs information the user doesn't have yet. The queue ranked them anyway. Whatever was written down first became the Next Move and led the Thread's card on the **Dashboard** — a priority the user never chose — and completing it promoted the next one, so the headline changed to something the user didn't pick either. Avoiding that meant deciding the order while capturing, which breaks the rule that capture needs no classification.

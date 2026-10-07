@@ -61,7 +61,6 @@ async function addTasks(session: Session, thread: Thread, texts: string[]) {
       body: {
         taskId: crypto.randomUUID(),
         text,
-        expectedRevision: current.revision,
       },
     });
   }
@@ -210,7 +209,7 @@ describe("a Thread resurfaces at its dated Tasks", () => {
         {
           method: "PUT",
           session,
-          body: { date, expectedRevision: thread.revision },
+          body: { date },
         },
       );
     }
@@ -448,7 +447,7 @@ describe("Thread lifecycle", () => {
       {
         method: "PUT",
         session: owner,
-        body: { date: Date.UTC(2026, 4, 20), expectedRevision: added.revision },
+        body: { date: Date.UTC(2026, 4, 20) },
       },
     );
     expect(withTasks.tasks?.[0]?.date).toBe(Date.UTC(2026, 4, 20));
@@ -457,7 +456,6 @@ describe("Thread lifecycle", () => {
       session: owner,
       body: {
         taskId: withTasks.tasks?.[1]?._id,
-        expectedRevision: withTasks.revision,
       },
     });
 
@@ -572,7 +570,7 @@ describe("Thread change privacy", () => {
     await succeed(`/v1/threads/${theirs._id}/tasks`, {
       method: "POST",
       session: other,
-      body: { taskId: "theirs", text: "Theirs", expectedRevision: 0 },
+      body: { taskId: "theirs", text: "Theirs" },
     });
 
     for (const [path, method, body] of [
@@ -580,28 +578,16 @@ describe("Thread change privacy", () => {
       [
         `/v1/threads/${theirs._id}/tasks`,
         "POST",
-        { taskId: "mine", text: "Mine", expectedRevision: 0 },
+        { taskId: "mine", text: "Mine" },
       ],
-      [
-        `/v1/threads/${theirs._id}/tasks/theirs`,
-        "PATCH",
-        { text: "Mine", expectedRevision: 1 },
-      ],
+      [`/v1/threads/${theirs._id}/tasks/theirs`, "PATCH", { text: "Mine" }],
       [
         `/v1/threads/${theirs._id}/tasks/theirs/complete`,
         "POST",
-        { expectedRevision: 1 },
+        { expectedOccurrence: null },
       ],
-      [
-        `/v1/threads/${theirs._id}/tasks/theirs`,
-        "DELETE",
-        { expectedRevision: 1 },
-      ],
-      [
-        `/v1/threads/${theirs._id}/focus`,
-        "PUT",
-        { taskId: "theirs", expectedRevision: 1 },
-      ],
+      [`/v1/threads/${theirs._id}/tasks/theirs`, "DELETE", {}],
+      [`/v1/threads/${theirs._id}/focus`, "PUT", { taskId: "theirs" }],
       [`/v1/threads/${theirs._id}`, "DELETE", undefined],
     ] as const) {
       expectError(await call(path, { method, session: owner, body }), {
@@ -618,7 +604,6 @@ describe("Thread change privacy", () => {
       title: "Book checkup",
       state: "open",
       tasks: [{ _id: "theirs", text: "Theirs" }],
-      revision: 1,
     });
   });
 });

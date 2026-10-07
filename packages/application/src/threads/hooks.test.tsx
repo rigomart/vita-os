@@ -19,6 +19,7 @@ import {
 import { anArea, aThread } from "../test/fixtures";
 import { createHarness } from "../test/harness";
 import {
+  useTaskCommand,
   useCreateThread,
   useOpenThreads,
   useRemoveThread,
@@ -234,7 +235,6 @@ describe("useUpdateThread", () => {
         success({
           ...settled,
           state: "resolved" as const,
-          revision: attentive.revision + 1,
         }),
     });
     const { wrapper, cache } = createHarness(
@@ -389,5 +389,62 @@ describe("useRemoveThread", () => {
     expect(
       cache.getQueryData(queryKeys.threads.detail(thread.slug)),
     ).toBeNull();
+  });
+});
+
+describe("Task rollback", () => {
+  it("preserves a successful title edit when a Task edit fails", async () => {
+    const pending = deferred<{ ok: false; error: ApplicationError }>();
+    const { wrapper, cache } = createHarness(
+      createFakeApplicationClient({
+        updateThread: async (input) =>
+          success({ ...thread, title: input.title! }),
+      }),
+      seedThreadReads(),
+    );
+    const { result } = renderHook(
+      () => ({
+        task: useTaskCommand<{
+          threadId: ThreadId;
+          taskId: TaskId;
+          text: string;
+        }>(thread, {
+          run: () => pending.promise,
+          change: (input) => ({
+            kind: "edit",
+            taskId: input.taskId,
+            text: input.text,
+          }),
+        }),
+        title: useUpdateThread(thread._id),
+      }),
+      { wrapper },
+    );
+    act(() =>
+      result.current.task.mutate({
+        threadId: thread._id,
+        taskId: thread.tasks![0]!._id,
+        text: "Pending Task edit",
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0]?.tasks?.[0]
+          ?.text,
+      ).toBe("Pending Task edit"),
+    );
+    await act(async () => {
+      await result.current.title.mutateAsync({ thread, title: "Saved title" });
+    });
+    await act(async () => pending.resolve({ ok: false, error: unavailable }));
+    await waitFor(() => expect(result.current.task.isError).toBe(true));
+    for (const current of [
+      cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0],
+      cache.getQueryData<ThreadDetail>(queryKeys.threads.detail(thread.slug))
+        ?.thread,
+    ]) {
+      expect(current?.title).toBe("Saved title");
+      expect(current?.tasks).toEqual(thread.tasks);
+    }
   });
 });

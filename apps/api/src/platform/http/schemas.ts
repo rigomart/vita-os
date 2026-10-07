@@ -8,7 +8,6 @@ import { RequestRefusal } from "./errors";
 
 export const Id = Schema.String.check(Schema.isMinLength(1));
 export const Timestamp = Schema.Number.check(Schema.isInt());
-export const Revision = Timestamp.check(Schema.isGreaterThanOrEqualTo(0));
 export const CommandAck = Schema.Struct({ acknowledged: Schema.Literal(true) });
 // Repeated query keys retain the first value, matching the previous router.
 export const QueryValue = Schema.String.pipe(

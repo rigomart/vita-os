@@ -38,7 +38,7 @@ function add(session: Session, thread: Thread, taskId: string, text: string) {
   return call(`/v1/threads/${thread._id}/tasks`, {
     method: "POST",
     session,
-    body: { taskId, text, expectedRevision: thread.revision },
+    body: { taskId, text },
   });
 }
 
@@ -66,7 +66,10 @@ function complete(session: Session, thread: Thread, taskId: string) {
   return call(`/v1/threads/${thread._id}/tasks/${taskId}/complete`, {
     method: "POST",
     session,
-    body: { expectedRevision: thread.revision },
+    body: {
+      expectedOccurrence:
+        thread.tasks?.find((task) => task._id === taskId)?.date ?? null,
+    },
   });
 }
 
@@ -74,7 +77,7 @@ function focus(session: Session, thread: Thread, taskId: string | null) {
   return call(`/v1/threads/${thread._id}/focus`, {
     method: "PUT",
     session,
-    body: { taskId, expectedRevision: thread.revision },
+    body: { taskId },
   });
 }
 
@@ -82,7 +85,7 @@ function remove(session: Session, thread: Thread, taskId: string) {
   return call(`/v1/threads/${thread._id}/tasks/${taskId}`, {
     method: "DELETE",
     session,
-    body: { expectedRevision: thread.revision },
+    body: {},
   });
 }
 
@@ -119,7 +122,7 @@ describe("capturing Tasks", () => {
       { _id: "task-2", text: "Book slot" },
     ]);
     expect(thread).not.toHaveProperty("focusedTaskId");
-    expect(thread.revision).toBe(2);
+
     expect(await activityOf(owner, thread)).toEqual([]);
     expect(thread).not.toHaveProperty("lastActivityAt");
   });
@@ -145,7 +148,7 @@ describe("capturing Tasks", () => {
       {
         method: "PATCH",
         session: owner,
-        body: { text: " Call the clinic before nine ", expectedRevision: 2 },
+        body: { text: " Call the clinic before nine " },
       },
     );
 
@@ -178,7 +181,7 @@ describe("capturing Tasks", () => {
       await call(`/v1/threads/${thread._id}/tasks/task-1`, {
         method: "PATCH",
         session: owner,
-        body: { text: "Edited", expectedRevision: resolved.revision },
+        body: { text: "Edited" },
       }),
       resolvedRefusal,
     );
@@ -283,17 +286,6 @@ describe("completing and removing", () => {
 });
 
 describe("conflicts", () => {
-  it("refuses a command made against a stale revision, writing nothing", async () => {
-    const owner = await createSession("tasks-stale");
-    const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
-    const stale = { ...thread, revision: thread.revision - 1 };
-
-    expectError(await complete(owner, stale, "task-1"), taskConflict);
-    expectError(await add(owner, stale, "task-3", "Pay bill"), taskConflict);
-    expect(await read(owner, thread)).toEqual(thread);
-    expect(await activityOf(owner, thread)).toEqual([]);
-  });
-
   it("refuses to complete a Task another device already completed", async () => {
     const owner = await createSession("tasks-gone");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
@@ -326,7 +318,7 @@ describe("conflicts", () => {
       await call("/v1/threads/missing-thread/tasks/task-1/complete", {
         method: "POST",
         session: owner,
-        body: { expectedRevision: 0 },
+        body: { expectedOccurrence: null },
       }),
       { status: 404, code: "not_found", message: "Thread not found." },
     );
@@ -366,7 +358,7 @@ describe("rollback", () => {
       {
         method: "POST",
         headers: { cookie: owner.cookie, "content-type": "application/json" },
-        body: JSON.stringify({ expectedRevision: thread.revision }),
+        body: JSON.stringify({ expectedOccurrence: null }),
       },
       env,
     );
@@ -379,16 +371,26 @@ describe("rollback", () => {
 
 describe("request shape", () => {
   it.each([
-    ["POST", "tasks", { taskId: "m", text: "Call" }],
-    ["POST", "tasks", { taskId: "", text: "Call", expectedRevision: 0 }],
-    ["POST", "tasks", { taskId: "m", text: 1, expectedRevision: 0 }],
-    ["POST", "tasks", { taskId: "m", text: "a", expectedRevision: -1 }],
-    ["POST", "tasks", { taskId: "m", text: "a", expectedRevision: 0, x: 1 }],
-    ["PATCH", "tasks/task-1", { text: "Call" }],
-    ["POST", "tasks/task-1/complete", { expectedRevision: 1.5 }],
-    ["DELETE", "tasks/task-1", {}],
-    ["PUT", "focus", { expectedRevision: 0 }],
-    ["PUT", "focus", { taskId: 3, expectedRevision: 0 }],
+    ["POST", "tasks", { text: "Call" }],
+    ["POST", "tasks", { taskId: "", text: "Call" }],
+    ["POST", "tasks", { taskId: "m", text: 1 }],
+    ["POST", "tasks", { taskId: "m", text: "a", expectedRevision: 0 }],
+    ["POST", "tasks", { taskId: "m", text: "a", x: 1 }],
+    ["PATCH", "tasks/task-1", {}],
+    ["POST", "tasks/task-1/complete", {}],
+    ["POST", "tasks/task-1/complete", { expectedOccurrence: 1.5 }],
+    [
+      "POST",
+      "tasks/task-1/complete",
+      { expectedOccurrence: Number.MAX_SAFE_INTEGER + 1 },
+    ],
+    [
+      "POST",
+      "tasks/task-1/complete",
+      { expectedOccurrence: null, expectedRevision: 0 },
+    ],
+    ["PUT", "focus", {}],
+    ["PUT", "focus", { taskId: 3 }],
   ] as const)("refuses %s %s with %j", async (method, route, body) => {
     const owner = await createSession("tasks-shape");
     const thread = await threadWith(owner, ["Call clinic"]);

@@ -284,3 +284,40 @@ describe("useRemoveArea", () => {
     expect(cache.getQueryData(queryKeys.areas.list())).toEqual([health, home]);
   });
 });
+
+describe("Area label rollback", () => {
+  it("restores a removed label while preserving a later Thread title", async () => {
+    const pending = deferred<{ ok: false; error: ApplicationError }>();
+    const thread = aThread();
+    const key = queryKeys.threads.detail(thread.slug);
+    const { wrapper, cache } = createHarness(
+      createFakeApplicationClient({ removeArea: () => pending.promise }),
+      (seeded) => {
+        seeded.setQueryData(queryKeys.areas.list(), [health]);
+        seeded.setQueryData(queryKeys.threads.open(), [thread]);
+        seeded.setQueryData(key, { thread, area: health });
+      },
+    );
+    const { result } = renderHook(() => useRemoveArea(), { wrapper });
+    act(() => result.current.mutate({ areaId: health._id }));
+    await waitFor(() =>
+      expect(cache.getQueryData<ThreadDetail>(key)?.area).toBeUndefined(),
+    );
+    cache.setQueryData<ThreadDetail>(key, (current) => ({
+      ...current!,
+      thread: { ...current!.thread, title: "Saved title" },
+    }));
+    cache.setQueryData<Thread[]>(queryKeys.threads.open(), (current) =>
+      current?.map((item) => ({ ...item, title: "Saved title" })),
+    );
+    await act(async () => pending.resolve({ ok: false, error: unavailable }));
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(cache.getQueryData<ThreadDetail>(key)).toEqual({
+      thread: { ...thread, title: "Saved title" },
+      area: health,
+    });
+    expect(cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0]).toEqual(
+      { ...thread, title: "Saved title" },
+    );
+  });
+});

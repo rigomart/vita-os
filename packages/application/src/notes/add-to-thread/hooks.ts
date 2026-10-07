@@ -2,170 +2,101 @@ import type {
   AreaId,
   Note,
   NoteAddedToThread,
+  TaskId,
   Thread,
-  ThreadId,
   ThreadNote,
-  ThreadNoteId,
 } from "@vita-os/contracts";
-
-import { useQueryClient } from "@tanstack/react-query";
-import { newRecordId, taskFromNote } from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../../cache/use-application-mutation";
 
-import { insertNewestFirst, patchQuery } from "../../cache/patch";
+import {
+  changeRecords,
+  insertNewestFirst,
+  insertOrdered,
+  patchQuery,
+} from "../../cache/patch";
 import { afterUndoWindow } from "../../cache/undo-window";
 import { useApplicationMutation } from "../../cache/use-application-mutation";
 import { queryKeys } from "../../query-keys";
-import {
-  settleTaskChange,
-  settlePendingThread,
-  showNoteAddedToThread,
-  showPendingThread,
-  threadChangeKeys,
-} from "../../threads/optimistic";
-import {
-  afterTaskCommands,
-  conversionAnswered,
-  conversionPending,
-  noteConversionKey,
-  noteTaskId,
-  ThreadBusy,
-} from "../../threads/task-queue";
+import { settleTaskChange, threadChangeKeys } from "../../threads/optimistic";
 import { noteKeys, showNoteLeavingOpenNotes } from "../optimistic";
 
-/** The Thread Note a Note becomes, shown before the service mints its own. */
-function pendingThreadNote(note: Note, id: ThreadNoteId): ThreadNote {
-  return {
-    _id: id,
-    body: note.body,
-    state: "open",
-    createdAt: note.createdAt,
-    updatedAt: note.updatedAt ?? note.createdAt,
-  };
+/** A converted source names its destination Task once. */
+function taskIdFor(note: Note): TaskId {
+  return `note-task-${note._id}` as TaskId;
 }
-
-function patchOpenThreadNotes(
+function showConfirmedNote(
   cache: Parameters<typeof patchQuery>[0],
-  threadId: ThreadId,
-  patch: (notes: ThreadNote[]) => ThreadNote[],
+  added: NoteAddedToThread,
 ) {
-  patchQuery<ThreadNote[]>(cache, queryKeys.threadNotes.open(threadId), patch);
+  const key = queryKeys.threadNotes.open(added.thread._id);
+  cache.setQueryData<ThreadNote[]>(key, (notes) =>
+    notes?.some((note) => note._id === added.threadNote._id)
+      ? notes
+      : insertNewestFirst(
+          notes ?? [],
+          added.threadNote,
+          (note) => note.createdAt,
+        ),
+  );
 }
-
+function hideSource(cache: Parameters<typeof patchQuery>[0], note: Note) {
+  return changeRecords<Note>(cache, noteKeys(), [note._id], [], () =>
+    showNoteLeavingOpenNotes(cache, note._id),
+  );
+}
 export interface AddNoteToThreadVariables {
   note: Note;
-  /** The Thread as the person chose it; the Task the Note adds is decided from it. */
   thread: Thread;
   undoWindow?: () => Promise<boolean>;
 }
-
-/**
- * Add an Open Standalone Note to an Open Thread. The Note leaves Notes and the
- * Dashboard at once; the Thread shows the dated Task it may gain and the
- * activity stamp, and the Thread Note appears where its creation time puts it. With an
- * `undoWindow` the command waits out the Undo offer, so an undone add never
- * reaches the service. Until the add settles, the Thread takes no Task
- * command and the Task it shows reads as pending (`useConversionLock`).
- */
+/** Hide the source immediately; publish the destination only once saved after Undo. */
 export function useAddNoteToThread(): ApplicationMutationResult<
   AddNoteToThreadVariables,
-  NoteAddedToThread,
-  ThreadNoteId
+  NoteAddedToThread
 > {
-  const cache = useQueryClient();
-  return useApplicationMutation<
-    AddNoteToThreadVariables,
-    NoteAddedToThread,
-    ThreadNoteId
-  >({
-    // While pending it locks the Thread's Tasks (`useConversionLock`), and a
-    // second Note into the same Thread is refused until it settles.
-    mutationKey: noteConversionKey,
-    refuse: (variables, cache) =>
-      conversionPending(cache, variables.thread, variables)
-        ? new ThreadBusy()
-        : undefined,
-    run: async (client, variables) => {
-      const { note, thread, undoWindow } = variables;
-      try {
-        await afterUndoWindow(undoWindow);
-        // The Task commands queued before it reach the service first.
-        await afterTaskCommands(cache, thread._id);
-        return await client.addNoteToThread({
-          noteId: note._id,
-          threadId: thread._id,
-          taskId: noteTaskId(note),
-        });
-      } finally {
-        // From here its answer, or its rollback, is in the replay.
-        conversionAnswered(variables);
-      }
+  return useApplicationMutation<AddNoteToThreadVariables, NoteAddedToThread>({
+    mutationKey: ["note-conversion"],
+    run: async (client, { note, thread, undoWindow }) => {
+      await afterUndoWindow(undoWindow);
+      return client.addNoteToThread({
+        noteId: note._id,
+        threadId: thread._id,
+        taskId: taskIdFor(note),
+      });
     },
     affected: ({ thread }, cache) => [
       ...noteKeys(),
       ...threadChangeKeys(cache, { threadId: thread._id }),
       queryKeys.threadNotes.open(thread._id),
     ],
-    optimistic: (cache, { note, thread }, previousLocal, answered) => {
-      const pendingId = previousLocal ?? (newRecordId() as ThreadNoteId);
-      showNoteLeavingOpenNotes(cache, note._id);
-      // Once answered, the answer carries the Task, unless a newer answer
-      // already shows the Thread without it.
-      if (!answered) {
-        showNoteAddedToThread(cache, thread._id, {
-          task: taskFromNote(note, noteTaskId(note)),
-          lastActivityAt: Date.now(),
-        });
-      }
-      patchOpenThreadNotes(cache, thread._id, (notes) =>
-        insertNewestFirst(
-          notes,
-          pendingThreadNote(note, pendingId),
-          (candidate) => candidate.createdAt,
-        ),
-      );
-      return pendingId;
-    },
-    reconcile: (cache, added, { thread }, pendingId) => {
+    optimistic: (cache, { note }) => hideSource(cache, note),
+    reconcile: (cache, added) => {
       settleTaskChange(cache, added.thread);
-      patchOpenThreadNotes(cache, thread._id, (notes) =>
-        notes.map((existing) =>
-          existing._id === pendingId ? added.threadNote : existing,
-        ),
-      );
+      showConfirmedNote(cache, added);
     },
-    // The Thread's activity is read separately.
     alsoInvalidate: ({ thread }) => [queryKeys.threads.activity(thread._id)],
   });
 }
-
 export interface CreateThreadFromNoteVariables {
   note: Note;
   title: string;
   areaId?: AreaId;
 }
-
-/**
- * Start a Thread from a Note: the Thread appears with the Note's dated Task, the Note
- * leaves Notes, and the new Thread's Notes are seeded with the Thread Note so
- * its pane opens with the Note inside.
- */
+/** Creating from a Note also publishes only the confirmed Thread and its Note. */
 export function useCreateThreadFromNote(): ApplicationMutationResult<
   CreateThreadFromNoteVariables,
-  NoteAddedToThread,
-  ThreadId
+  NoteAddedToThread
 > {
   return useApplicationMutation<
     CreateThreadFromNoteVariables,
-    NoteAddedToThread,
-    ThreadId
+    NoteAddedToThread
   >({
-    mutationKey: noteConversionKey,
+    mutationKey: ["note-conversion"],
     run: (client, { note, title, areaId }) =>
       client.createThreadFromNote({
         noteId: note._id,
-        taskId: noteTaskId(note),
+        taskId: taskIdFor(note),
         title,
         ...(areaId === undefined ? {} : { areaId }),
       }),
@@ -173,31 +104,14 @@ export function useCreateThreadFromNote(): ApplicationMutationResult<
       ...noteKeys(),
       ...threadChangeKeys(cache, {}),
     ],
-    optimistic: (cache, { note, title, areaId }, previousLocal) => {
-      const pendingId = previousLocal ?? (newRecordId() as ThreadId);
-      const now = Date.now();
-      showNoteLeavingOpenNotes(cache, note._id);
-      showPendingThread(
-        cache,
-        { title, ...(areaId === undefined ? {} : { areaId }) },
-        { id: pendingId, now },
+    optimistic: (cache, { note }) => hideSource(cache, note),
+    reconcile: (cache, added) => {
+      patchQuery<Thread[]>(cache, queryKeys.threads.open(), (threads) =>
+        threads.some((thread) => thread._id === added.thread._id)
+          ? threads
+          : insertOrdered(threads, added.thread, (thread) => thread.order),
       );
-      showNoteAddedToThread(cache, pendingId, {
-        task: taskFromNote(note, noteTaskId(note)),
-        lastActivityAt: now,
-      });
-      return pendingId;
-    },
-    reconcile: (cache, added, _input, pendingId) => {
-      if (pendingId !== undefined)
-        settlePendingThread(cache, pendingId, added.thread);
-      cache.setQueryData<ThreadNote[]>(
-        queryKeys.threadNotes.open(added.thread._id),
-        (notes) =>
-          notes?.some((existing) => existing._id === added.threadNote._id)
-            ? notes
-            : [added.threadNote, ...(notes ?? [])],
-      );
+      showConfirmedNote(cache, added);
     },
   });
 }

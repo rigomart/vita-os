@@ -35,7 +35,7 @@ const thread = {
   slug: "sister-s-front-teeth",
   areaId: area._id,
   state: "open",
-  revision: 0,
+
   order: 0,
   createdAt: 0,
 } satisfies Thread;

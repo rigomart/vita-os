@@ -56,9 +56,8 @@ export const ThreadsHandlers = HttpApiBuilder.group(
           taskId: params.taskId,
         }),
       )
-      .handle("removeTask", ({ params, payload }) =>
+      .handle("removeTask", ({ params }) =>
         removeTask({
-          ...payload,
           threadId: params.threadId,
           taskId: params.taskId,
         }),

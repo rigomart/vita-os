@@ -12,15 +12,16 @@ import { newRecordId } from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
 
+import { changeRecords, patchQuery } from "../cache/patch";
 import { useApplicationMutation } from "../cache/use-application-mutation";
 import { useApplicationQuery } from "../cache/use-application-query";
 import { queryKeys } from "../query-keys";
 import {
   areaChangeKeys,
   settlePendingArea,
-  showAreaChange,
+  optimisticallyChangeArea,
+  optimisticallyRemoveArea,
   showAreaOrder,
-  showAreaRemoval,
   showPendingArea,
 } from "./optimistic";
 
@@ -53,10 +54,16 @@ export function useCreateArea(): ApplicationMutationResult<
   return useApplicationMutation<CreateAreaInput, AreaSummary, AreaId>({
     run: (client, input) => client.createArea(input),
     affected: (_input, cache) => areaChangeKeys(cache),
-    optimistic: (cache, input, previousLocal) => {
-      const pendingId = previousLocal ?? (newRecordId() as AreaId);
-      showPendingArea(cache, input, { id: pendingId, now: Date.now() });
-      return pendingId;
+    optimistic: (cache, input) => {
+      const pendingId = newRecordId() as AreaId;
+      const rollback = changeRecords<AreaSummary>(
+        cache,
+        [queryKeys.areas.list()],
+        [pendingId],
+        [],
+        () => showPendingArea(cache, input, { id: pendingId, now: Date.now() }),
+      );
+      return { local: pendingId, ...rollback };
     },
     reconcile: (cache, area, _input, pendingId) => {
       if (pendingId === undefined) return;
@@ -72,7 +79,7 @@ export function useUpdateArea(): ApplicationMutationResult<
   return useApplicationMutation<UpdateAreaInput, AreaSummary>({
     run: (client, input) => client.updateArea(input),
     affected: (input, cache) => areaChangeKeys(cache, input.areaId),
-    optimistic: (cache, input) => showAreaChange(cache, input),
+    optimistic: (cache, input) => optimisticallyChangeArea(cache, input),
   });
 }
 
@@ -84,7 +91,23 @@ export function useReorderAreas(): ApplicationMutationResult<
   return useApplicationMutation<{ areaIds: AreaId[] }, AreaSummary[]>({
     run: (client, input) => client.reorderAreas(input),
     affected: (_input, cache) => areaChangeKeys(cache),
-    optimistic: (cache, input) => showAreaOrder(cache, input.areaIds),
+    optimistic: (cache, input) => {
+      const undo = changeRecords<AreaSummary>(
+        cache,
+        [queryKeys.areas.list()],
+        input.areaIds,
+        ["order"],
+        () => showAreaOrder(cache, input.areaIds),
+      );
+      return {
+        rollback: () => {
+          undo.rollback();
+          patchQuery<AreaSummary[]>(cache, queryKeys.areas.list(), (areas) =>
+            [...areas].sort((a, b) => a.order - b.order),
+          );
+        },
+      };
+    },
   });
 }
 
@@ -102,7 +125,7 @@ export function useRemoveArea(): ApplicationMutationResult<
       ...areaChangeKeys(cache, input.areaId),
       queryKeys.threads.open(),
     ],
-    optimistic: (cache, input) => showAreaRemoval(cache, input.areaId),
+    optimistic: (cache, input) => optimisticallyRemoveArea(cache, input.areaId),
     alsoInvalidate: () => [queryKeys.threads.all],
   });
 }

@@ -17,16 +17,12 @@ import type {
   UpdateThreadInput,
 } from "@vita-os/contracts";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { newRecordId } from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
 import type { PagedResult } from "../cache/use-paged-application-query";
 
-import {
-  queueMemo,
-  useApplicationMutation,
-} from "../cache/use-application-mutation";
+import { useApplicationMutation } from "../cache/use-application-mutation";
 import {
   useApplicationQuery,
   useOptionalApplicationQuery,
@@ -34,23 +30,16 @@ import {
 import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
 import { queryKeys } from "../query-keys";
 import {
-  cachedRevision,
-  changesTasks,
+  changeThread,
+  optimisticallyChangeTasks,
+  optimisticallyCreateThread,
   type TaskChange,
   settleTaskChange,
   settlePendingThread,
-  showTaskChange,
-  showPendingThread,
   showThreadChange,
   showThreadRemoval,
   threadChangeKeys,
 } from "./optimistic";
-import {
-  conversionAwaitingAnswer,
-  conversionPending,
-  taskScope,
-  ThreadBusy,
-} from "./task-queue";
 
 const ACTIVITY_PAGE_SIZE = 20;
 
@@ -77,8 +66,7 @@ export function useResolvedThreads(
 }
 
 /**
- * Everything the Thread rail renders: the Thread, the revision it was read at,
- * and its Area when it has one. `null` means the Thread is not there.
+ * Everything the Thread rail renders: the Thread and its Area when it has one. `null` means the Thread is not there.
  */
 export function useThreadDetail(
   slug: string,
@@ -119,10 +107,13 @@ export function useCreateThread(): ApplicationMutationResult<
   return useApplicationMutation<CreateThreadInput, Thread, ThreadId>({
     run: (client, input) => client.createThread(input),
     affected: (_input, cache) => threadChangeKeys(cache, {}),
-    optimistic: (cache, input, previousLocal) => {
-      const pendingId = previousLocal ?? (newRecordId() as ThreadId);
-      showPendingThread(cache, input, { id: pendingId, now: Date.now() });
-      return pendingId;
+    optimistic: (cache, input) => {
+      const pendingId = newRecordId() as ThreadId;
+      const rollback = optimisticallyCreateThread(cache, input, {
+        id: pendingId,
+        now: Date.now(),
+      });
+      return { local: pendingId, ...rollback };
     },
     reconcile: (cache, thread, _input, pendingId) => {
       if (pendingId === undefined) return;
@@ -147,70 +138,37 @@ export interface UpdateThreadVariables extends Omit<
   destinationArea?: AreaSummary;
 }
 
-/**
- * Edits to one Thread: title, Summary, Area, resolve and reopen.
- *
- * An edit carries no revision, but it moves the Thread's, which every Task
- * command must carry. So the edits join the Thread's Task queue: they go out
- * in turn with its Task commands, and an answer newer than the queue's basis
- * moves the basis forward, so the Task command behind it carries the edit's
- * revision. An edit only advances a basis a Task command started: unlike a
- * Task command, it can run beside a Note conversion, so its answer may
- * predate the conversion's. A fresh queue takes the revision from the reads,
- * which keep the newest answer either one brought back.
- * `threadId` names the Thread the edits issued now carry; a surface that
- * moves to another Thread leaves the edits already queued in the first one's
- * queue (`useApplicationMutation`'s `scope`).
- */
+/** Edits stay attached to the Thread they were issued for, even if the surface moves. */
 export function useUpdateThread(
   threadId: ThreadId,
 ): ApplicationMutationResult<UpdateThreadVariables, Thread> {
-  const cache = useQueryClient();
-  const scope = taskScope(threadId);
-
   return useApplicationMutation<UpdateThreadVariables, Thread>({
-    scope,
-    run: async (
-      client,
-      { thread, destinationArea: _destination, ...change },
-    ) => {
-      const result = await client.updateThread({
-        threadId: thread._id,
-        ...change,
-      });
-      const memo = queueMemo(cache);
-      const basis = memo?.get(scope) as Thread | undefined;
-      if (
-        result.ok &&
-        basis !== undefined &&
-        result.value.revision > basis.revision
-      ) {
-        memo?.set(scope, result.value);
-      }
-      return result;
-    },
+    mutationKey: ["update-thread", threadId],
+    run: (client, { thread, destinationArea: _destination, ...change }) =>
+      client.updateThread({ threadId: thread._id, ...change }),
     affected: ({ thread }, cache) =>
       threadChangeKeys(cache, { threadId: thread._id }),
-    optimistic: (cache, { thread, destinationArea, ...change }) =>
-      showThreadChange(
+    optimistic: (cache, { thread, destinationArea, ...change }) => {
+      const fields = Object.keys(change).filter(
+        (field) => field !== "resolutionNote",
+      ) as (keyof Thread)[];
+      if (change.state === "resolved") fields.push("tasks", "focusedTaskId");
+      return changeThread(
         cache,
-        { threadId: thread._id, ...change },
-        {
-          thread,
-          ...(destinationArea === undefined ? {} : { destinationArea }),
-        },
-      ),
-    // The edit itself stays shown; the answer brings the revision it moved
-    // to, with the Tasks at that revision, for the next Task command to carry.
-    // While a conversion into the Thread awaits its answer, this answer may
-    // predate it and would replace its pending Task, so it waits: the
-    // conversion's answer replays it, before the lock lets a Task command in.
-    reconcile: (cache, settled, { thread }) => {
-      if (!conversionAwaitingAnswer(cache, thread)) {
-        settleTaskChange(cache, settled);
-      }
+        thread._id,
+        fields,
+        () =>
+          showThreadChange(
+            cache,
+            { threadId: thread._id, ...change },
+            {
+              thread,
+              ...(destinationArea === undefined ? {} : { destinationArea }),
+            },
+          ),
+        thread.tasks?.map((task) => task._id) ?? [],
+      );
     },
-    // A Thread change can write Activity Log entries, which are read separately.
     alsoInvalidate: ({ thread }) => [
       queryKeys.threads.activity(thread._id),
       queryKeys.threads.resolved(),
@@ -226,7 +184,10 @@ export function useRemoveThread(): ApplicationMutationResult<
     run: (client, { thread }) => client.removeThread({ threadId: thread._id }),
     affected: ({ thread }, cache) =>
       threadChangeKeys(cache, { threadId: thread._id }),
-    optimistic: (cache, { thread }) => showThreadRemoval(cache, thread._id),
+    optimistic: (cache, { thread }) =>
+      changeThread(cache, thread._id, [], () =>
+        showThreadRemoval(cache, thread._id),
+      ),
     // The Thread takes its Activity Log and its Notes with it.
     alsoInvalidate: ({ thread }) => [
       queryKeys.threads.activity(thread._id),
@@ -236,125 +197,44 @@ export function useRemoveThread(): ApplicationMutationResult<
   });
 }
 
-/**
- * A Task command dropped at the head of the queue because the rule already
- * refuses it. It settles as a failure so its optimistic layer is neutralised,
- * but it is not one to report: nothing was sent and nothing went wrong.
- */
-export class CommandDropped extends Error {
-  constructor() {
-    super("Task command dropped");
-    this.name = "CommandDropped";
-  }
-}
-
-/**
- * One kind of Task command, for one Thread.
- *
- * Every Task command carries the revision the Thread was read at, and the
- * service refuses a stale one. So the commands for one Thread share a scope:
- * each shows its change at once, but they reach the service one at a time, and
- * each carries the revision the one before it brought back. A refusal — a
- * Task another device already completed, say — rolls back only its own change
- * and refetches, rather than being retried against something different.
- *
- * A command the core rule already refuses against the Thread the previous
- * queued command left — the Task is gone, or nothing would change — is dropped
- * at the head of the queue: no request, no refusal to report. Duplicate
- * activations arrive before the first command's optimistic layer lands, so
- * this cannot be decided when the command is issued. A repeating Task is
- * never gone, so completing or skipping it names the occurrence the person
- * saw, and one aimed at an occurrence the Task has already left is dropped
- * (`TaskChange`): a double-click completes or skips once. The basis is the newest
- * Thread this Thread's own queue got back, and the command carries its
- * revision. The Thread's edits share the queue (`useUpdateThread`), so one
- * made meanwhile goes out in turn and its answer moves the basis forward. A
- * Note conversion never runs beside the Task commands: it waits for the
- * commands queued before it, and none can be issued while it is pending
- * (`useConversionLock`). A change made on another device is unknown here:
- * that command is still sent and refused once, and identical commands queued
- * behind a refusal are dropped rather than refused again.
- */
-export function useTaskCommand<TInput>(
+/** A Task command uses the issued Thread identity and ordinary optimistic rollback. */
+export function useTaskCommand<TInput extends { threadId: ThreadId }>(
   thread: Thread,
   command: {
     run: (
       client: ApplicationClient,
       input: TInput,
-      expectedRevision: number,
     ) => Promise<OperationResult<Thread>>;
     change: (input: TInput) => TaskChange;
-    /** Names the command for the mutation cache, so a surface can find it pending. */
     mutationKey?: readonly unknown[];
-    /**
-     * What the same command changes beside the Thread's Tasks: the Thread
-     * Note a completion captures. It shows with the Task change, rolls back
-     * with it, and is refetched once the command settles. The answer is the
-     * Thread alone, so it keeps showing once answered, until that refetch.
-     */
     alsoShows?: {
       keys: (input: TInput) => QueryKey[];
-      show: (cache: QueryClient, input: TInput) => void;
+      show: (cache: QueryClient, input: TInput) => { rollback(): void };
     };
   },
 ): ApplicationMutationResult<TInput, Thread> {
-  const cache = useQueryClient();
-  const scope = taskScope(thread._id);
-  const refusedKey = `${scope}:refused`;
-
   return useApplicationMutation<TInput, Thread>({
-    scope,
-    ...(command.mutationKey === undefined
-      ? {}
-      : { mutationKey: command.mutationKey }),
-    // A Note being added to the Thread locks its Tasks: a command issued
-    // meanwhile would move under it. The surfaces disable their controls too;
-    // this catches what reaches the command anyway.
-    refuse: (_input, cache) =>
-      conversionPending(cache, thread) ? new ThreadBusy() : undefined,
-    run: async (client, input) => {
-      const change = command.change(input);
-      // The time a command was issued does not make it a different command.
-      const signature = JSON.stringify({ ...change, now: undefined });
-      const memo = queueMemo(cache);
-      // What this Thread's own queue got back from the service. Without it
-      // (the head of a fresh queue) there is nothing to decide against.
-      const basis = memo?.get(scope) as Thread | undefined;
-      const refused = (memo?.get(refusedKey) as string[] | undefined) ?? [];
-      if (
-        refused.includes(signature) ||
-        (basis !== undefined && !changesTasks(basis, change))
-      ) {
-        throw new CommandDropped();
-      }
-      const result = await command.run(
-        client,
-        input,
-        basis?.revision ?? cachedRevision(cache, thread),
-      );
-      if (result.ok) {
-        // The basis only moves forward: an older answer never replaces it.
-        if (basis === undefined || result.value.revision > basis.revision) {
-          memo?.set(scope, result.value);
-        }
-      } else if (result.error.code === "conflict") {
-        // Identical commands queued behind it are refused too, each with its own toast.
-        memo?.set(refusedKey, [...refused, signature]);
-      }
-      return result;
-    },
+    mutationKey: [...(command.mutationKey ?? ["task-command"]), thread._id],
+    run: command.run,
     affected: (input, cache) => [
-      ...threadChangeKeys(cache, { threadId: thread._id }),
+      ...threadChangeKeys(cache, { threadId: input.threadId }),
       ...(command.alsoShows?.keys(input) ?? []),
     ],
-    // Once answered, the answer carries the change (and is skipped if a newer
-    // one is already shown), so the change itself is not replayed over it.
-    optimistic: (cache, input, _local, answered) => {
-      if (!answered) showTaskChange(cache, thread._id, command.change(input));
-      command.alsoShows?.show(cache, input);
+    optimistic: (cache, input) => {
+      const tasks = optimisticallyChangeTasks(
+        cache,
+        input.threadId,
+        command.change(input),
+      );
+      const extra = command.alsoShows?.show(cache, input);
+      return {
+        rollback: () => {
+          tasks.rollback();
+          extra?.rollback();
+        },
+      };
     },
     reconcile: (cache, settled) => settleTaskChange(cache, settled),
-    // Completion writes an Activity Log entry, which is read separately.
-    alsoInvalidate: () => [queryKeys.threads.activity(thread._id)],
+    alsoInvalidate: (input) => [queryKeys.threads.activity(input.threadId)],
   });
 }

@@ -34,8 +34,7 @@ const mocks = vi.hoisted(() => ({
   unlabeled: false,
   detailError: false,
   tasks: undefined as { _id: string; text: string }[] | undefined,
-  /** The revision the service is at: every Task command tasks it on. */
-  revision: 0,
+
   /** Slugs the composite resolves; null lets every slug resolve. */
   knownSlugs: null as string[] | null,
   /** Every operation the rail asked for, in order. */
@@ -74,7 +73,7 @@ const thread = {
   summary: "Waiting for the specialist's opinion.",
   areaId: area._id,
   state: "open",
-  revision: 0,
+
   order: 0,
   createdAt: 0,
 } satisfies Thread;
@@ -135,7 +134,6 @@ function createApplicationClient(): ApplicationClient {
         ...(mocks.tasks === undefined
           ? {}
           : { tasks: mocks.tasks as Thread["tasks"] }),
-        revision: mocks.revision,
       };
       return {
         ok: true,
@@ -205,7 +203,6 @@ describe("ThreadDetailView", () => {
     mocks.unlabeled = false;
     mocks.detailError = false;
     mocks.tasks = undefined;
-    mocks.revision = thread.revision;
     mocks.knownSlugs = null;
     mocks.calls = [];
     mocks.applicationDetailSlugs = [];
@@ -213,7 +210,7 @@ describe("ThreadDetailView", () => {
     mocks.activityCursors = [];
     mocks.activityHasMore = false;
     mocks.activityEntries = [];
-    // Each Task command answers with the Thread one revision on.
+    // Each accepted Task command answers with current Thread state.
     for (const command of [
       mocks.addTask,
       mocks.removeTask,
@@ -222,10 +219,7 @@ describe("ThreadDetailView", () => {
     ]) {
       command
         .mockReset()
-        .mockImplementation(async (input: { expectedRevision: number }) => {
-          mocks.revision = input.expectedRevision + 1;
-          return { ok: true, value: { ...thread, revision: mocks.revision } };
-        });
+        .mockImplementation(async () => ({ ok: true, value: thread }));
     }
     mocks.updateThread
       .mockReset()
@@ -597,13 +591,11 @@ describe("ThreadDetailView", () => {
         threadId: thread._id,
         taskId: expect.any(String),
         text: "Share the report",
-        expectedRevision: thread.revision,
       });
-      // Queued behind the add, it carries the revision the add brought back.
+
       expect(mocks.removeTask).toHaveBeenCalledWith({
         threadId: thread._id,
         taskId: "task-scan",
-        expectedRevision: thread.revision + 1,
       });
     });
   });
@@ -630,12 +622,11 @@ describe("ThreadDetailView", () => {
       expect(mocks.focusTask).toHaveBeenCalledWith({
         threadId: thread._id,
         taskId: "task-scan",
-        expectedRevision: thread.revision,
       });
       expect(mocks.completeTask).toHaveBeenCalledWith({
         threadId: thread._id,
         taskId: "task-specialist",
-        expectedRevision: thread.revision + 1,
+        expectedOccurrence: null,
         timeZone: expect.any(String),
       });
     });

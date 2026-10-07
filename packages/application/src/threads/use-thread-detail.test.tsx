@@ -29,7 +29,7 @@ const detail: ThreadDetail = {
     order: 1,
     state: "open",
     tasks: [{ _id: "task-1" as TaskId, text: "Call clinic" }],
-    revision: 0,
+
     createdAt: 1,
   },
   area: {

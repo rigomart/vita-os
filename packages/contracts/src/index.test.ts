@@ -30,7 +30,6 @@ const thread = {
   tasks: [{ _id: "task-1" as TaskId, text: "Call clinic" }],
   focusedTaskId: "task-1" as TaskId,
   createdAt: 2,
-  revision: 3,
 };
 
 const note = {
@@ -155,7 +154,6 @@ describe("the application contract", () => {
         threadId: thread._id,
         taskId: "task-2" as TaskId,
         text: "Book slot",
-        expectedRevision: 3,
       }),
     ).resolves.toEqual({
       ok: true,
@@ -169,7 +167,6 @@ describe("the application contract", () => {
       contract.focusTask({
         threadId: thread._id,
         taskId: null,
-        expectedRevision: 3,
       }),
     ).resolves.toEqual({
       ok: true,

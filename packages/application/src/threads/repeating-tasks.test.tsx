@@ -1,7 +1,5 @@
 import type {
   ApplicationClient,
-  Note,
-  NoteId,
   OperationResult,
   Repeat,
   Task,
@@ -49,7 +47,7 @@ const checkIn: Task = {
   repeat: { kind: "days", every: 1 },
 };
 const refill: Task = { _id: "refill" as TaskId, text: "Pharmacy refill" };
-const seed = aThread({ revision: 4, tasks: [checkIn, refill] });
+const seed = aThread({ tasks: [checkIn, refill] });
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -68,7 +66,7 @@ function withoutAbsent<T extends object>(value: T): T {
 /**
  * A service that decides every Task command with the core rules, the way the
  * API does, at its own clock (the same `NOW`) and in the zone the command
- * carries. A stale revision or a refused rule is refused. Answers can be held
+ * carries. A refused domain rule is refused. Answers can be held
  * back until the test opens their gate.
  */
 function coreService(options: { gated?: boolean } = {}) {
@@ -84,12 +82,11 @@ function coreService(options: { gated?: boolean } = {}) {
 
   const decide = (
     label: string,
-    expectedRevision: number,
     rule: (thread: Thread) => ThreadUpdateDecision | null,
   ): Promise<OperationResult<Thread>> => {
     let decision: ThreadUpdateDecision | null;
     try {
-      decision = expectedRevision === stored.revision ? rule(stored) : null;
+      decision = rule(stored);
     } catch (error) {
       return answer(
         label,
@@ -113,14 +110,17 @@ function coreService(options: { gated?: boolean } = {}) {
     stored = withoutAbsent({
       ...stored,
       ...decision.patch,
-      revision: stored.revision + 1,
     });
     return answer(label, success(stored));
   };
 
   const completeTask = vi.fn(
-    (input: { taskId: TaskId; expectedRevision: number; timeZone?: string }) =>
-      decide("completeTask", input.expectedRevision, (thread) =>
+    (input: {
+      taskId: TaskId;
+      expectedOccurrence: number | null;
+      timeZone?: string;
+    }) =>
+      decide("completeTask", (thread) =>
         decideCompleteTask(thread, input.taskId, {
           timeZone: input.timeZone,
           now: NOW,
@@ -128,8 +128,12 @@ function coreService(options: { gated?: boolean } = {}) {
       ),
   );
   const skipTask = vi.fn(
-    (input: { taskId: TaskId; expectedRevision: number; timeZone: string }) =>
-      decide("skipTask", input.expectedRevision, (thread) =>
+    (input: {
+      taskId: TaskId;
+      expectedOccurrence: number | null;
+      timeZone: string;
+    }) =>
+      decide("skipTask", (thread) =>
         decideSkipTask(thread, input.taskId, {
           timeZone: input.timeZone,
           now: NOW,
@@ -137,24 +141,14 @@ function coreService(options: { gated?: boolean } = {}) {
       ),
   );
   const setTaskRepeat = vi.fn(
-    (input: {
-      taskId: TaskId;
-      repeat: Repeat | null;
-      expectedRevision: number;
-      timeZone: string;
-    }) =>
-      decide("setTaskRepeat", input.expectedRevision, (thread) =>
+    (input: { taskId: TaskId; repeat: Repeat | null; timeZone: string }) =>
+      decide("setTaskRepeat", (thread) =>
         decideSetTaskRepeat(thread, input.taskId, input.repeat, input.timeZone),
       ),
   );
   const setTaskDate = vi.fn(
-    (input: {
-      taskId: TaskId;
-      date: number | null;
-      expectedRevision: number;
-      timeZone?: string;
-    }) =>
-      decide("setTaskDate", input.expectedRevision, (thread) =>
+    (input: { taskId: TaskId; date: number | null; timeZone?: string }) =>
+      decide("setTaskDate", (thread) =>
         decideSetTaskDate(thread, input.taskId, input.date, input.timeZone),
       ),
   );
@@ -162,7 +156,6 @@ function coreService(options: { gated?: boolean } = {}) {
     stored = {
       ...stored,
       ...(input.title === undefined ? {} : { title: input.title }),
-      revision: stored.revision + 1,
     };
     return answer("updateThread", success(stored));
   });
@@ -264,7 +257,7 @@ describe("completing a repeating Task", () => {
       expect.objectContaining({
         taskId: checkIn._id,
         timeZone: zone,
-        expectedRevision: 4,
+        expectedOccurrence: checkIn.date,
       }),
     );
     // The service's answer, decided in the same zone at the same now, agrees.
@@ -328,7 +321,7 @@ describe("skipping a repeating Task", () => {
       expect.objectContaining({
         taskId: checkIn._id,
         timeZone: zone,
-        expectedRevision: 4,
+        expectedOccurrence: checkIn.date,
       }),
     );
     expect(task(service.stored(), checkIn._id)?.date).toBe(tonight);
@@ -426,7 +419,7 @@ describe("a Task's Repeat", () => {
   it("is set with the zone, and a weekly choice moves the date to the first chosen day on screen as the service does", async () => {
     const service = coreService();
     const { tasks, open, showing } = setup(service);
-    // Date the one-off Task first (Tuesday 9 AM), through the same queue.
+    // Date the one-off Task first (Tuesday 9 AM), using an ordinary command.
     await act(async () => {
       await tasks.current.setDate(refill._id, dated.date!);
     });
@@ -514,125 +507,5 @@ describe("a Task's Repeat", () => {
     });
     expect(task(service.stored(), checkIn._id)).toEqual(plain);
     expect(task(open(), checkIn._id)).toEqual(plain);
-  });
-
-  it("is not sent when it changes nothing", async () => {
-    const service = coreService();
-    const { tasks } = setup(service);
-
-    await act(async () => {
-      await Promise.all([
-        tasks.current.setRepeat(checkIn._id, { kind: "days", every: 3 }),
-        tasks.current.setRepeat(checkIn._id, { kind: "days", every: 3 }),
-      ]);
-    });
-
-    expect(service.setTaskRepeat).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("the conversion lock", () => {
-  const dentist: Note = {
-    _id: "dentist" as NoteId,
-    body: "Call the dentist",
-    followUp: at(9, 10),
-    state: "open",
-    createdAt: 1_000,
-  };
-
-  it("refuses skip, complete and Repeat changes while a Note is being added to the Thread", async () => {
-    const service = coreService();
-    const { feedback, tasks, add, open } = setup(service);
-
-    act(() => {
-      add.current.mutate({ note: dentist, thread: seed });
-    });
-    await waitFor(() => expect(open()?.tasks).toHaveLength(3));
-
-    await act(async () => {
-      await tasks.current.skip(checkIn._id);
-      await tasks.current.complete(checkIn._id);
-      await tasks.current.setRepeat(checkIn._id, null);
-    });
-
-    expect(service.skipTask).not.toHaveBeenCalled();
-    expect(service.completeTask).not.toHaveBeenCalled();
-    expect(service.setTaskRepeat).not.toHaveBeenCalled();
-    expect(feedback.error).toHaveBeenCalledTimes(3);
-    expect(feedback.error).toHaveBeenCalledWith(
-      "A note is being added to this thread. Try again in a moment.",
-    );
-    expect(task(open(), checkIn._id)).toEqual(checkIn);
-  });
-});
-
-describe("a Thread edit between repeating-Task commands", () => {
-  it("goes out in turn, and the command behind it carries its revision", async () => {
-    const service = coreService({ gated: true });
-    const { feedback, tasks, update, open, showing } = setup(service);
-
-    let skipping: Promise<unknown> | undefined;
-    let renaming: Promise<unknown> | undefined;
-    act(() => {
-      skipping = tasks.current.skip(checkIn._id);
-    });
-    await waitFor(() => expect(task(open(), checkIn._id)?.date).toBe(tonight));
-    act(() => {
-      renaming = update
-        .current({ title: "Mom's recovery" })
-        .catch(() => undefined);
-    });
-    // The surface shows tonight's occurrence and changes its Repeat.
-    showing();
-    let repeating: Promise<unknown> | undefined;
-    act(() => {
-      repeating = tasks.current.setRepeat(checkIn._id, {
-        kind: "days",
-        every: 3,
-      });
-    });
-    await waitFor(() =>
-      expect(task(open(), checkIn._id)?.repeat).toEqual({
-        kind: "days",
-        every: 3,
-      }),
-    );
-
-    // Nothing reaches the service out of turn.
-    expect(service.updateThread).not.toHaveBeenCalled();
-    expect(service.setTaskRepeat).not.toHaveBeenCalled();
-
-    await act(async () => {
-      service.flowFreely();
-      await Promise.all([skipping, renaming, repeating]);
-    });
-
-    expect(service.skipTask).toHaveBeenCalledWith(
-      expect.objectContaining({ expectedRevision: 4 }),
-    );
-    expect(service.setTaskRepeat).toHaveBeenCalledWith(
-      expect.objectContaining({ expectedRevision: 6, timeZone: zone }),
-    );
-    expect(service.skipTask.mock.invocationCallOrder[0]!).toBeLessThan(
-      service.updateThread.mock.invocationCallOrder[0]!,
-    );
-    expect(service.updateThread.mock.invocationCallOrder[0]!).toBeLessThan(
-      service.setTaskRepeat.mock.invocationCallOrder[0]!,
-    );
-    expect(service.stored()).toMatchObject({
-      title: "Mom's recovery",
-      revision: 7,
-    });
-    expect(task(service.stored(), checkIn._id)).toEqual({
-      ...checkIn,
-      date: tonight,
-      repeat: { kind: "days", every: 3 },
-    });
-    await waitFor(() =>
-      expect(task(open(), checkIn._id)).toEqual(
-        task(service.stored(), checkIn._id),
-      ),
-    );
-    expect(feedback.error).not.toHaveBeenCalled();
   });
 });

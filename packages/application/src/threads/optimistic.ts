@@ -26,6 +26,9 @@ import {
 } from "@vita-os/core";
 
 import {
+  changeRecords,
+  restoreFields,
+  restoreRecords,
   insertOrdered,
   nextOrder,
   patchQueries,
@@ -66,8 +69,7 @@ function applyTaskDecision<T extends TaskFields>(
  * the Task showed then. A repeating Task that has moved on since — a duplicate
  * activation behind the first, or a change from elsewhere — is not completed
  * or skipped again. The zone and the current time are taken once, when the
- * command is issued, so every replay of it computes the same next date, the
- * one the service computes in that zone.
+ * command is issued, so optimism computes the same next date as the service.
  */
 interface OccurrenceCommand {
   taskId: TaskId;
@@ -147,23 +149,6 @@ export function changeTasksLocally<T extends TaskFields>(
 }
 
 /**
- * Whether the core rule would change anything for this command against this
- * Thread. A refusal (the Task is gone, the Thread resolved) and a no-op both
- * answer no: the service would refuse the first and the second changes nothing.
- */
-export function changesTasks(thread: TaskFields, change: TaskChange): boolean {
-  try {
-    const decision = decideTaskChange(thread, change);
-    return (
-      decision !== null &&
-      (Object.keys(decision.patch).length > 0 || decision.logs.length > 0)
-    );
-  } catch {
-    return false;
-  }
-}
-
-/**
  * The pending Thread, shaped like the one the service will send back. Its slug is
  * a placeholder: a link built from it resolves only once the create has returned
  * the slug the service chose.
@@ -181,7 +166,6 @@ export function buildPendingThread(
     order: minted.order,
     state: "open",
     createdAt: minted.now,
-    revision: 0,
   };
 }
 
@@ -364,84 +348,126 @@ export function showTaskChange(
   );
 }
 
-/**
- * The service's answer to a Task command, a Thread edit or adding a Note: the Thread's
- * whole Task state at that revision — the Tasks, the focus, the revision, and
- * the last activity — and nothing else, so an unrelated change still in
- * flight keeps showing.
- * An answer older than what the read already shows changes nothing
- * (`newerAnswer`).
- */
+/** Reconcile Task fields only, leaving concurrent Thread edits visible. */
 export function settleTaskChange(cache: QueryClient, settled: Thread): void {
   patchThreadEverywhere(cache, settled._id, (thread) =>
-    newerAnswer(thread, settled)
-      ? withoutAbsent({
-          ...thread,
-          tasks: settled.tasks,
-          focusedTaskId: settled.focusedTaskId,
-          revision: settled.revision,
-          lastActivityAt: settled.lastActivityAt,
-          lastActivityContent: settled.lastActivityContent,
-        })
-      : thread,
-  );
-}
-
-/**
- * Whether an answer may replace what a read shows of the Thread. Answers are
- * replayed in the order their commands were issued, not the order the
- * service applied them, so an older one can come after a newer one: taking
- * its Tasks would show old Tasks under the newer revision. A read's Tasks
- * and its revision always move together, and never backwards.
- */
-function newerAnswer(thread: Thread, settled: Thread): boolean {
-  return settled.revision >= thread.revision;
-}
-
-/**
- * A Note added to the Thread, shown before the service answers: the dated Task
- * it may add and the activity stamp. A cleared field stays absent; nothing
- * else on the Thread changes.
- */
-export function showNoteAddedToThread(
-  cache: QueryClient,
-  threadId: ThreadId,
-  change: Pick<Thread, "lastActivityAt" | "lastActivityContent"> & {
-    /** The one Task this conversion adds, appended to the Tasks as they are now. */
-    task?: Task | undefined;
-  },
-): void {
-  patchThreadEverywhere(cache, threadId, (thread) =>
     withoutAbsent({
       ...thread,
-      ...(change.task === undefined ||
-      thread.tasks?.some((task) => task._id === change.task?._id)
-        ? {}
-        : { tasks: [...(thread.tasks ?? []), change.task] }),
-      lastActivityAt: change.lastActivityAt,
-      lastActivityContent: change.lastActivityContent,
+      tasks: settled.tasks,
+      focusedTaskId: settled.focusedTaskId,
+      lastActivityAt: settled.lastActivityAt,
+      lastActivityContent: settled.lastActivityContent,
     }),
   );
 }
 
-/**
- * The newest revision any read holds for the Thread. Reads refresh on their
- * own schedules, so the freshest of them — or the caller's own copy — is the
- * one a command must carry.
- */
-export function cachedRevision(cache: QueryClient, thread: Thread): number {
-  let revision = thread.revision;
-  const open = cache
-    .getQueryData<Thread[]>(queryKeys.threads.open())
-    ?.find((candidate) => candidate._id === thread._id);
-  if (open) revision = Math.max(revision, open.revision);
-
-  for (const [, detail] of cache.getQueriesData<ThreadDetail | null>({
-    queryKey: queryKeys.threads.details(),
-  })) {
-    if (detail?.thread._id === thread._id) {
-      revision = Math.max(revision, detail.thread.revision);
+/** Undo a Thread's selected fields in each read without replacing another edit. */
+export function changeThread(
+  cache: QueryClient,
+  threadId: ThreadId,
+  fields: readonly (keyof Thread)[],
+  apply: () => void,
+  taskIds: readonly string[] = [],
+): { rollback(): void } {
+  const details = cache
+    .getQueriesData<ThreadDetail | null>({
+      queryKey: queryKeys.threads.details(),
+    })
+    .filter(([, detail]) => detail?.thread._id === threadId);
+  const beforeOpen = cache.getQueryData<Thread[]>(queryKeys.threads.open());
+  apply();
+  const afterOpen = cache.getQueryData<Thread[]>(queryKeys.threads.open());
+  const detailSnapshots = details.map(([key, before]) => ({
+    key,
+    before,
+    after: cache.getQueryData<ThreadDetail | null>(key),
+  }));
+  const restore = (current: Thread, before: Thread, after: Thread): Thread => {
+    const restored = restoreFields(
+      current,
+      before,
+      after,
+      fields.filter((field) => field !== "tasks"),
+    );
+    if (fields.includes("tasks")) {
+      const tasks = restoreRecords(
+        current.tasks ?? [],
+        before.tasks ?? [],
+        after.tasks ?? [],
+        taskIds,
+        ["text", "date", "repeat"],
+      );
+      restored.tasks =
+        tasks.length === 0 && before.tasks === undefined ? undefined : tasks;
     }
-  }
-  return revision;
+    return withoutAbsent(restored);
+  };
+  return {
+    rollback: () => {
+      if (beforeOpen && afterOpen)
+        patchQuery<Thread[]>(cache, queryKeys.threads.open(), (current) => {
+          const previous = beforeOpen.find((thread) => thread._id === threadId);
+          const shown = afterOpen.find((thread) => thread._id === threadId);
+          if (previous && shown)
+            return current.map((thread) =>
+              thread._id === threadId
+                ? restore(thread, previous, shown)
+                : thread,
+            );
+          return restoreRecords(current, beforeOpen, afterOpen, [threadId], []);
+        });
+      for (const { key, before, after } of detailSnapshots) {
+        if (!before || after === undefined) continue;
+        const current = cache.getQueryData<ThreadDetail | null>(key);
+        if (current === undefined) continue;
+        if (after === null) {
+          if (current === null) cache.setQueryData(key, before);
+          continue;
+        }
+        if (current === null) continue;
+        const thread = restore(current.thread, before.thread, after.thread);
+        const area = Object.is(current.area, after.area)
+          ? before.area
+          : current.area;
+        cache.setQueryData(key, {
+          thread,
+          ...(area === undefined ? {} : { area }),
+        });
+      }
+    },
+  };
+}
+
+export function optimisticallyChangeTasks(
+  cache: QueryClient,
+  threadId: ThreadId,
+  change: TaskChange,
+): { rollback(): void } {
+  const taskId =
+    change.kind === "add"
+      ? change.task._id
+      : change.kind === "focus"
+        ? undefined
+        : change.taskId;
+  return changeThread(
+    cache,
+    threadId,
+    ["tasks", "focusedTaskId", "state"],
+    () => showTaskChange(cache, threadId, change),
+    taskId === undefined ? [] : [taskId],
+  );
+}
+
+export function optimisticallyCreateThread(
+  cache: QueryClient,
+  input: CreateThreadInput,
+  minted: { id: ThreadId; now: number },
+): { rollback(): void } {
+  return changeRecords<Thread>(
+    cache,
+    [queryKeys.threads.open()],
+    [minted.id],
+    [],
+    () => showPendingThread(cache, input, minted),
+  );
 }

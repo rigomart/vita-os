@@ -160,27 +160,24 @@ describe("Threads through the HTTP client", () => {
 
     const callClinic = "task-call-clinic" as TaskId;
     const bookSlot = "task-book-slot" as TaskId;
-    const one = await value(
+    await value(
       client.addTask({
         threadId: thread._id,
         taskId: callClinic,
         text: "Call clinic",
-        expectedRevision: thread.revision,
       }),
     );
-    const two = await value(
+    await value(
       client.addTask({
         threadId: thread._id,
         taskId: bookSlot,
         text: "Book appointment",
-        expectedRevision: one.revision,
       }),
     );
     const focused = await value(
       client.focusTask({
         threadId: thread._id,
         taskId: callClinic,
-        expectedRevision: two.revision,
       }),
     );
     expect(focused.focusedTaskId).toBe(callClinic);
@@ -190,7 +187,6 @@ describe("Threads through the HTTP client", () => {
         threadId: thread._id,
         taskId: bookSlot,
         date: 1_800_000_000_000,
-        expectedRevision: focused.revision,
       }),
     );
     expect(dated.tasks?.[1]).toEqual({
@@ -201,9 +197,10 @@ describe("Threads through the HTTP client", () => {
 
     const completed = await value(
       client.completeTask({
+        expectedOccurrence:
+          dated.tasks?.find((task) => task._id === callClinic)?.date ?? null,
         threadId: thread._id,
         taskId: callClinic,
-        expectedRevision: dated.revision,
       }),
     );
     expect(completed.tasks).toEqual([
@@ -215,7 +212,6 @@ describe("Threads through the HTTP client", () => {
       client.removeTask({
         threadId: thread._id,
         taskId: bookSlot,
-        expectedRevision: completed.revision,
       }),
     );
     expect(removed).not.toHaveProperty("tasks");
@@ -245,7 +241,7 @@ describe("Threads through the HTTP client", () => {
     ).resolves.toEqual({ ok: true, value: { acknowledged: true } });
   });
 
-  it("reports a Task command against a stale Thread as a conflict", async () => {
+  it("applies a Task command after another Thread edit", async () => {
     const client = clientFor(await createSession("client-task-conflict"));
     const area = await value(
       client.createArea({
@@ -260,21 +256,17 @@ describe("Threads through the HTTP client", () => {
       client.updateThread({ threadId: thread._id, title: "Book a checkup" }),
     );
 
-    await expect(
+    const added = await value(
       client.addTask({
         threadId: thread._id,
-        taskId: "task-too-late" as TaskId,
-        text: "Too late",
-        expectedRevision: thread.revision,
+        taskId: "task-current" as TaskId,
+        text: "Still useful",
       }),
-    ).resolves.toEqual({
-      ok: false,
-      error: {
-        code: "conflict",
-        message: "The Thread's Tasks have changed.",
-        retryable: false,
-      },
-    });
+    );
+    expect(added.title).toBe("Book a checkup");
+    expect(added.tasks).toEqual([
+      { _id: "task-current", text: "Still useful" },
+    ]);
   });
 });
 

@@ -27,7 +27,6 @@ async function setup(repeats = false) {
       taskId: "a",
       text: "Call clinic",
       date,
-      expectedRevision: created.revision,
     },
   });
   if (repeats)
@@ -37,7 +36,6 @@ async function setup(repeats = false) {
       body: {
         repeat: { kind: "days", every: 1 },
         timeZone: "UTC",
-        expectedRevision: thread.revision,
       },
     });
   return { session, thread };
@@ -95,7 +93,11 @@ async function complete(
     {
       method: "POST",
       headers: { cookie: session.cookie, "content-type": "application/json" },
-      body: JSON.stringify({ expectedRevision: thread.revision, ...body }),
+      body: JSON.stringify({
+        expectedOccurrence:
+          thread.tasks?.find((task) => task._id === taskId)?.date ?? null,
+        ...body,
+      }),
     },
     env,
   );
@@ -121,11 +123,11 @@ describe("completing a Task with a Thread Note", () => {
           .run();
       },
     );
-    expect(batches).toBe(1);
+    expect(batches).toBe(3);
     expectError(answer, { status: 409, code: "conflict" });
     expect(await snapshot(session, thread)).toEqual({
       ...before,
-      thread: { ...before.thread, revision: thread.revision + 1 },
+      thread: before.thread,
     });
   });
 
@@ -160,7 +162,7 @@ describe("completing a Task with a Thread Note", () => {
     });
     const input = {
       threadId: thread._id,
-      expectedRevision: thread.revision,
+      expectedRevision: (await storage.findForChange(thread._id))!.revision,
       completionNote: { id: newRecordId(), body: "Uncaptured" },
       change: {
         patch: {},
@@ -198,7 +200,7 @@ describe("completing a Task with a Thread Note", () => {
       const after = await snapshot(session, thread);
       expect(after.notes).toHaveLength(1);
       expect(after.log).toHaveLength(1);
-      expect(after.thread.revision).toBe(thread.revision + 1);
+
       const winner = answers.find((answer) => answer.status === 200);
       expect(after.thread).toEqual(winner!.body);
     },
@@ -225,7 +227,7 @@ describe("completing a Task with a Thread Note", () => {
       expect(answer.minted).not.toContain(noteId);
       expect(after.thread.lastActivityAt).toBe(now);
       expect(after.thread).not.toHaveProperty("lastActivityContent");
-      expect(after.thread.revision).toBe(thread.revision + 1);
+
       if (repeats)
         expect(after.thread.tasks).toEqual([
           { ...thread.tasks![0], date: Date.parse("2026-10-10T15:30Z") },
@@ -238,7 +240,7 @@ describe("completing a Task with a Thread Note", () => {
         createdAt: now,
       });
       expect(answer.body).toEqual(after.thread);
-      // Replaying the original command is refused by its revision, including for repeats.
+      // Replaying the original command is refused by its occurrence, including for repeats.
       expectError(
         await complete(session, thread, {
           note: { id: noteId, body: "Called **clinic**\nOpens at nine" },
@@ -252,8 +254,8 @@ describe("completing a Task with a Thread Note", () => {
 
   it.each([
     [
-      "stale revision",
-      { expectedRevision: 0, note: { id: newRecordId(), body: "Called" } },
+      "changed occurrence",
+      { expectedOccurrence: null, note: { id: newRecordId(), body: "Called" } },
       "a",
       409,
     ],
@@ -348,7 +350,7 @@ describe("completing a Task with a Thread Note", () => {
         method: "POST",
         session: stranger,
         body: {
-          expectedRevision: thread.revision,
+          expectedOccurrence: date,
           note: { id: newRecordId(), body: "Mine" },
         },
       }),

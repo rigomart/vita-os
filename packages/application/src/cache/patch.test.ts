@@ -3,8 +3,11 @@ import type { AreaId, TaskId, NoteId, ThreadId } from "@vita-os/contracts";
 import { describe, expect, it } from "vitest";
 
 import { buildPendingArea } from "../areas/optimistic";
+import { createTestQueryClient } from "../test/render-with-providers";
 import { buildPendingThread, changeTasksLocally } from "../threads/optimistic";
 import {
+  changeRecords,
+  patchPagedEntries,
   insertNewestFirst,
   insertOrdered,
   nextOrder,
@@ -106,7 +109,7 @@ describe("a pending record", () => {
     expect(pending).not.toHaveProperty("standard");
   });
 
-  it("looks like the Thread the service will store, at revision zero", () => {
+  it("looks like the Thread the service will store", () => {
     const pending = buildPendingThread(
       { title: "Book checkup", areaId: "area-1" as AreaId },
       { id: "pending" as ThreadId, now: 2_000, order: 1 },
@@ -118,7 +121,6 @@ describe("a pending record", () => {
       state: "open",
       order: 1,
       createdAt: 2_000,
-      revision: 0,
     });
     expect(pending).not.toHaveProperty("summary");
   });
@@ -187,5 +189,141 @@ describe("what a Note keeps through a local change", () => {
     expect(patchById([note], note._id, { body: "Refill both" })).toEqual([
       { ...note, body: "Refill both" },
     ]);
+  });
+});
+
+describe("paged rollback", () => {
+  it("restores only an edited Note field, keeping a later Note write and current cursor", () => {
+    const cache = createTestQueryClient();
+    const key = ["paged"];
+    const before = {
+      pages: [
+        {
+          entries: [
+            { _id: "a", body: "Original", followUp: 1 },
+            { _id: "b", body: "Original", followUp: 1 },
+          ],
+          nextCursor: "old",
+        },
+      ],
+      pageParams: [undefined],
+    };
+    cache.setQueryData(key, before);
+    const undo = changeRecords<{ _id: string; body: string; followUp: number }>(
+      cache,
+      [key],
+      ["a"],
+      ["body"],
+      () =>
+        patchPagedEntries<{ _id: string; body: string; followUp: number }>(
+          cache,
+          key,
+          (entries) => patchById(entries, "a", { body: "Pending" }),
+        ),
+    );
+    cache.setQueryData<typeof before>(key, (current) => ({
+      ...current!,
+      pages: current!.pages.map((page) => ({
+        ...page,
+        nextCursor: "new",
+        entries: page.entries.map((note) =>
+          note._id === "a"
+            ? { ...note, followUp: 9 }
+            : { ...note, body: "Saved" },
+        ),
+      })),
+    }));
+    undo.rollback();
+    expect(cache.getQueryData(key)).toEqual({
+      ...before,
+      pages: [
+        {
+          entries: [
+            { _id: "a", body: "Original", followUp: 9 },
+            { _id: "b", body: "Saved", followUp: 1 },
+          ],
+          nextCursor: "new",
+        },
+      ],
+    });
+  });
+});
+
+describe("rollback after a Note changes pages", () => {
+  it("does not insert a removed Note again when refetch has moved it to another page", () => {
+    const cache = createTestQueryClient();
+    const key = ["moved-note"];
+    const a = { _id: "a", body: "Original" };
+    const b = { _id: "b", body: "B" };
+    const c = { _id: "c", body: "C" };
+    cache.setQueryData(key, {
+      pages: [
+        { entries: [a], nextCursor: "old-1" },
+        { entries: [b], nextCursor: "old-2" },
+      ],
+      pageParams: [undefined, "old-1"],
+    });
+    const undo = changeRecords<{ _id: string; body: string }>(
+      cache,
+      [key],
+      ["a"],
+      [],
+      () =>
+        patchPagedEntries<{ _id: string; body: string }>(
+          cache,
+          key,
+          (entries) => removeById(entries, "a"),
+        ),
+    );
+    const refetched = {
+      pages: [
+        { entries: [c], nextCursor: "new-1" },
+        {
+          entries: [{ ...a, body: "Saved elsewhere" }, b],
+          nextCursor: "new-2",
+        },
+      ],
+      pageParams: [undefined, "new-1"],
+    };
+    cache.setQueryData(key, refetched);
+    undo.rollback();
+    expect(cache.getQueryData(key)).toEqual(refetched);
+  });
+  it("rolls back an edited Note on its current page while preserving later fields", () => {
+    const cache = createTestQueryClient();
+    const key = ["moved-edit"];
+    const a = { _id: "a", body: "Original", followUp: 1 };
+    const b = { _id: "b", body: "B", followUp: 1 };
+    cache.setQueryData(key, {
+      pages: [
+        { entries: [a], nextCursor: "old-1" },
+        { entries: [b], nextCursor: "old-2" },
+      ],
+      pageParams: [undefined, "old-1"],
+    });
+    const undo = changeRecords<typeof a>(cache, [key], ["a"], ["body"], () =>
+      patchPagedEntries<typeof a>(cache, key, (entries) =>
+        patchById(entries, "a", { body: "Pending" }),
+      ),
+    );
+    const refetched = {
+      pages: [
+        { entries: [], nextCursor: "new-1" },
+        {
+          entries: [{ ...a, body: "Pending", followUp: 9 }, b],
+          nextCursor: "new-2",
+        },
+      ],
+      pageParams: [undefined, "new-1"],
+    };
+    cache.setQueryData(key, refetched);
+    undo.rollback();
+    expect(cache.getQueryData(key)).toEqual({
+      ...refetched,
+      pages: [
+        refetched.pages[0],
+        { ...refetched.pages[1], entries: [{ ...a, followUp: 9 }, b] },
+      ],
+    });
   });
 });

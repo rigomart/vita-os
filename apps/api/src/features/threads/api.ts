@@ -9,7 +9,6 @@ import {
 import { Authentication } from "../../platform/auth/authenticated-scope";
 import {
   CommandAck,
-  Revision,
   Timestamp,
   ValidationMessage,
 } from "../../platform/http/schemas";
@@ -25,7 +24,6 @@ import {
   SkipTaskBody,
   CompleteTaskBody,
   RepeatSchema,
-  TaskRevisionBody,
   UpdateThreadBody,
   ThreadIdSchema,
   TaskIdSchema,
@@ -51,7 +49,6 @@ export const ThreadSchema = Schema.Struct({
   lastActivityAt: Schema.optionalKey(Timestamp),
   lastActivityContent: Schema.optionalKey(Schema.String),
   createdAt: Timestamp,
-  revision: Revision,
 });
 export const ThreadDetailSchema = Schema.Struct({
   thread: ThreadSchema,
@@ -100,7 +97,6 @@ export const ThreadsApi = HttpApiGroup.make("threads")
       "/v1/threads/:threadId/tasks/:taskId",
       {
         params: TaskParams,
-        payload: TaskRevisionBody,
         success: ThreadSchema,
       },
     ).annotate(ValidationMessage, "Invalid Task change."),

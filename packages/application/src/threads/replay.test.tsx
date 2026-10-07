@@ -15,9 +15,9 @@ import { aThread } from "../test/fixtures";
 import { createHarness } from "../test/harness";
 import { useRemoveThread, useUpdateThread } from "./hooks";
 
-describe("replaying the reads while commands overlap", () => {
+describe("independent commands while reads overlap", () => {
   it("does not bring back a Thread deleted while its reopen is still pending", async () => {
-    const resolved = aThread({ state: "resolved", revision: 4 });
+    const resolved = aThread({ state: "resolved" });
     const reopening = deferred<OperationResult<Thread>>();
     const removeThread = vi.fn(async () => success(commandAcknowledged));
     const { cache, wrapper } = createHarness(

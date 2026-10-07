@@ -11,6 +11,7 @@ import { boundNoteSearch, newRecordId } from "@vita-os/core";
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
 import type { PagedResult } from "../cache/use-paged-application-query";
 
+import { changeRecords } from "../cache/patch";
 import { afterUndoWindow } from "../cache/undo-window";
 import { useApplicationMutation } from "../cache/use-application-mutation";
 import { useApplicationQuery } from "../cache/use-application-query";
@@ -84,18 +85,27 @@ export function useCaptureNote(): ApplicationMutationResult<
   return useApplicationMutation<CaptureNoteVariables, Note, NoteId>({
     run: (client, input) => client.createNote(input),
     affected: () => noteKeys(),
-    optimistic: (cache, input, previousLocal) => {
-      const pendingId = previousLocal ?? (newRecordId() as NoteId);
+    optimistic: (cache, input) => {
+      const pendingId = newRecordId() as NoteId;
       const now = Date.now();
-      showCapturedNote(cache, {
-        _id: pendingId,
-        body: input.body,
-        ...(input.followUp === undefined ? {} : { followUp: input.followUp }),
-        state: "open",
-        createdAt: now,
-        updatedAt: now,
-      });
-      return pendingId;
+      const rollback = changeRecords<Note>(
+        cache,
+        noteKeys(),
+        [pendingId],
+        [],
+        () =>
+          showCapturedNote(cache, {
+            _id: pendingId,
+            body: input.body,
+            ...(input.followUp === undefined
+              ? {}
+              : { followUp: input.followUp }),
+            state: "open",
+            createdAt: now,
+            updatedAt: now,
+          }),
+      );
+      return { local: pendingId, ...rollback };
     },
     reconcile: (cache, note, _input, pendingId) => {
       if (pendingId === undefined) return;
@@ -112,7 +122,9 @@ export function useUpdateNoteBody(): ApplicationMutationResult<
     run: (client, input) => client.updateNoteBody(input),
     affected: () => noteKeys(),
     optimistic: (cache, input) =>
-      showNoteEdit(cache, input.noteId, { body: input.body }),
+      changeRecords<Note>(cache, noteKeys(), [input.noteId], ["body"], () =>
+        showNoteEdit(cache, input.noteId, { body: input.body }),
+      ),
   });
 }
 
@@ -128,12 +140,14 @@ export function useUpdateNoteFollowUp(): ApplicationMutationResult<
     run: (client, input) => client.updateNoteFollowUp(input),
     affected: () => noteKeys(),
     optimistic: (cache, input) =>
-      showNoteEdit(
-        cache,
-        input.noteId,
-        input.followUp === null
-          ? { followUp: undefined }
-          : { followUp: input.followUp },
+      changeRecords<Note>(cache, noteKeys(), [input.noteId], ["followUp"], () =>
+        showNoteEdit(
+          cache,
+          input.noteId,
+          input.followUp === null
+            ? { followUp: undefined }
+            : { followUp: input.followUp },
+        ),
       ),
   });
 }
@@ -146,7 +160,10 @@ export function useArchiveNote(): ApplicationMutationResult<
   return useApplicationMutation<{ noteId: NoteId }, Note>({
     run: (client, input) => client.markNoteDone(input),
     affected: () => noteKeys(),
-    optimistic: (cache, input) => showNoteLeavingOpenNotes(cache, input.noteId),
+    optimistic: (cache, input) =>
+      changeRecords<Note>(cache, noteKeys(), [input.noteId], [], () =>
+        showNoteLeavingOpenNotes(cache, input.noteId),
+      ),
   });
 }
 
@@ -158,7 +175,14 @@ export function useUnarchiveNote(): ApplicationMutationResult<
   return useApplicationMutation<{ note: Note }, Note>({
     run: (client, input) => client.markNoteOpen({ noteId: input.note._id }),
     affected: () => noteKeys(),
-    optimistic: (cache, input) => showUnarchivedNote(cache, input.note),
+    optimistic: (cache, input) =>
+      changeRecords<Note>(
+        cache,
+        noteKeys(),
+        [input.note._id],
+        ["state", "completedAt"],
+        () => showUnarchivedNote(cache, input.note),
+      ),
   });
 }
 
@@ -175,6 +199,9 @@ export function useDiscardNote(): ApplicationMutationResult<
       return client.removeNote({ noteId: input.noteId });
     },
     affected: () => noteKeys(),
-    optimistic: (cache, input) => showNoteLeavingOpenNotes(cache, input.noteId),
+    optimistic: (cache, input) =>
+      changeRecords<Note>(cache, noteKeys(), [input.noteId], [], () =>
+        showNoteLeavingOpenNotes(cache, input.noteId),
+      ),
   });
 }

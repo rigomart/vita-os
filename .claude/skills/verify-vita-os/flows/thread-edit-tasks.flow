@@ -1,4 +1,4 @@
-# Thread edits beside the Task queue (#413): complete a Task and rename the Thread
+# Thread edits beside independent Task commands: complete a Task and rename the Thread
 # right away, then focus another Task; then rename and complete a Task right away.
 # Neither order may end in "This Thread changed elsewhere", and everything sticks.
 # Needs a signed-in instance (up + signin). Add Tasks with Enter in "Add a task";
@@ -18,7 +18,7 @@ browser -- wait --text "Task B ${STAMP}"
 browser -- find label "Add a task" fill "Task C ${STAMP}"
 browser -- press Enter
 browser -- wait --text "Task C ${STAMP}"
-# Let the queued adds land, then watch for any refusal toast from here on.
+# Let the Task saves land, then watch for any refusal toast from here on.
 browser -- wait 1500
 browser -- eval "window.__refused = false; new MutationObserver(() => { const text = document.body.textContent; if (text.includes('changed elsewhere') || text.includes('Could not save')) window.__refused = true; }).observe(document.body, { childList: true, subtree: true, characterData: true }); 'watching'"
 expect watching
