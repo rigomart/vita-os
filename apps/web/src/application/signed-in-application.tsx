@@ -7,6 +7,7 @@ import {
 } from "@vita-os/application";
 
 import { authClient } from "../lib/auth-client";
+import { VersionReload } from "./version-reload";
 
 export function SignedInApplication({
   client,
@@ -19,6 +20,7 @@ export function SignedInApplication({
       key={data?.user?.id ?? "signed-out"}
       client={client}
     >
+      <VersionReload />
       <ViewerProvider
         viewer={data?.user}
         signOut={() => void authClient.signOut()}

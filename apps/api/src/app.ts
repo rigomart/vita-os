@@ -94,12 +94,19 @@ export function createApp({
     },
   });
   return {
-    fetch: (
+    fetch: async (
       request: Request,
       env: WorkerEnv,
       _context?: ExecutionContext,
-    ): Promise<Response> =>
-      app.handler(request, Context.make(WorkerBindings, env)),
+    ): Promise<Response> => {
+      const response = await app.handler(
+        request,
+        Context.make(WorkerBindings, env),
+      );
+      const versioned = new Response(response.body, response);
+      versioned.headers.set("X-Vita-Version", env.APP_VERSION?.trim() ?? "");
+      return versioned;
+    },
     dispose: app.dispose,
   };
 }

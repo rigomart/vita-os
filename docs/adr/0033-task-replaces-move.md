@@ -1,6 +1,6 @@
 # Task replaces Move
 
-**Status:** Accepted. Amended by #402: compatibility window closed.
+**Status:** Accepted. Amended by #402: compatibility window closed. Amended by #422: version reload replaces compatibility windows for browser tabs.
 **Date:** 2026-10-04
 
 The concept **Move** (one useful action on a **Thread**) is renamed **Task**. **Moves** becomes **Tasks** and **Focused Move** becomes **Focused Task**. The margin run **Ready to move** keeps its name: there "move" is a verb. Issue #397 raised the question; sub-issue #400 ships the rename.
@@ -40,3 +40,9 @@ That reason is gone. Tasks have no priority and no order. Dates are soft: they r
 - "Task" has a history: it named what became Notes. The Flagged Ambiguities entry keeps the two apart, and a Note is never a task.
 - Code and storage keep the old name in places. A reader of `moves_json` needs the mapping. The glossary and this ADR carry it.
 - The compatibility window adds duplicate JSON fields and routes for one release.
+
+## Compatibility practice after #422
+
+The compatibility window above records how this change shipped. Future API changes do not keep old routes or fields for browser tabs. The web build and every API response carry the same deployment commit. A mismatch waits for pending commands (including queued writes and their settlement) and for the matching web build's `/version.json` manifest, then reloads once. Auth requests use the same observer. Missing local versions disable reloads. Unsaved drafts may be lost when the page reloads; accepted for this phase.
+
+This changes browser compatibility only. D1 migrations still run before the API deploys, so they must keep the currently serving API working throughout that window.

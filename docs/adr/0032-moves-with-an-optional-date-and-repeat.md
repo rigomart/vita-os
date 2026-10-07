@@ -2,7 +2,7 @@
 
 Terminology amended by ADR 0033: **Move** is renamed **Task** (Moves become Tasks, Focused Move becomes Focused Task). This ADR keeps its original wording, and the sections added below use the new terms.
 
-**Status:** Accepted. Amended by #402: compatibility window closed, `threads.follow_up` dropped.
+**Status:** Accepted. Amended by #402: compatibility window closed, `threads.follow_up` dropped. Amended by #422: version reload replaces compatibility windows for browser tabs.
 **Date:** 2026-10-04
 
 A **Move** becomes text with an optional date and an optional repeat, the way a calendar event is a title with an optional time and repeat. A **Thread**'s own **Follow-up date** is folded into its Moves: a Thread comes back on the **Dashboard** at its soonest dated Move. Issue #397 is the specification.
@@ -80,3 +80,9 @@ Sub-issues of #397, in order:
 - A Thread has one kind of date instead of two, and can hold any number of rhythms.
 - The list of Moves can grow dated entries, which risks turning into a dated checklist. The guardrails are soft dates, text-only capture, and missed occurrences that collapse.
 - `follow_up_change` entries already written keep their wording; new ones are no longer written for Threads.
+
+## Compatibility practice after #422
+
+The compatibility window above records how this change shipped. Future API changes do not keep old routes or fields for browser tabs. The web build and every API response carry the same deployment commit. A mismatch waits for pending commands (including queued writes and their settlement) and for the matching web build's `/version.json` manifest, then reloads once. Auth requests use the same observer. Missing local versions disable reloads. Unsaved drafts may be lost when the page reloads; accepted for this phase.
+
+This changes browser compatibility only. D1 migrations still run before the API deploys, so they must keep the currently serving API working throughout that window.

@@ -1,5 +1,6 @@
 export type WorkerEnv = Pick<
   Env,
+  | "APP_VERSION"
   | "BETTER_AUTH_SECRET"
   | "BETTER_AUTH_URL"
   | "BROWSER_ORIGIN"

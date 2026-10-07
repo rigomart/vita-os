@@ -38,6 +38,7 @@ jobs:
       API_DOMAIN: vita-api.rigos.dev
       WEB_WORKER_NAME: vita-os-web
       WEB_DOMAIN: vita.rigos.dev
+      VITE_APP_VERSION: ${{ github.sha }}
       D1_DATABASE: vita-os-production
     steps:
       - name: Require Cloudflare credentials
@@ -110,7 +111,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/api
-          command: deploy --env production
+          command: deploy --env production --var APP_VERSION:${{ github.sha }}
 
       # The API must pass before the web deploy moves traffic onto it. A custom
       # domain created by this deploy has no DNS record for its first seconds,

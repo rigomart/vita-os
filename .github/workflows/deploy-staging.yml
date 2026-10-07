@@ -39,6 +39,7 @@ jobs:
       API_DOMAIN: vita-api-staging.rigos.dev
       WEB_WORKER_NAME: vita-os-web-staging
       WEB_DOMAIN: vita-staging.rigos.dev
+      VITE_APP_VERSION: ${{ github.sha }}
       D1_DATABASE: vita-os-staging
     steps:
       - uses: actions/checkout@v6
@@ -83,7 +84,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/api
-          command: deploy --env staging
+          command: deploy --env staging --var APP_VERSION:${{ github.sha }}
 
       - name: Deploy staging web Worker
         if: env.CLOUDFLARE_API_TOKEN != ''

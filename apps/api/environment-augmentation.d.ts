@@ -2,6 +2,7 @@ import type { D1Migration } from "cloudflare:test";
 
 declare global {
   interface Env {
+    APP_VERSION?: string;
     BETTER_AUTH_SECRET: string;
     BETTER_AUTH_URL: string;
     BROWSER_ORIGIN: string;
@@ -13,6 +14,7 @@ declare global {
 
   namespace Cloudflare {
     interface Env {
+      APP_VERSION?: string;
       BETTER_AUTH_SECRET: string;
       BETTER_AUTH_URL: string;
       BROWSER_ORIGIN: string;
