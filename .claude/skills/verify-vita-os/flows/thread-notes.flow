@@ -1,0 +1,73 @@
+# Thread Notes: desktop capture, edit, archive, unarchive and persisted deletion.
+# Needs a signed-in isolated instance. Every write is checked in D1.
+open /
+browser -- set viewport 1440 900
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Thread Notes ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+d1 "SELECT COUNT(*) AS n FROM threads WHERE title = 'Thread Notes ${STAMP}'"
+expect '"n": 1'
+browser -- find role button click --name "Write a note…" --exact
+browser -- find label "Note body" fill "Original Thread Note ${STAMP}"
+shot thread-note-create-before
+browser -- find role button click --name Add --exact
+browser -- wait --text "Note added"
+browser -- reload
+browser -- wait --text "Original Thread Note ${STAMP}"
+d1 "SELECT n.body, n.state FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Thread Notes ${STAMP}'"
+expect '"body": "Original Thread Note ${STAMP}"'
+expect '"state": "open"'
+shot thread-note-created
+
+browser -- find role button click --name "Open note: Original Thread Note ${STAMP}" --exact
+browser -- find role tab click --name Write --exact
+browser -- find label "Note body" fill "Edited Thread Note ${STAMP}"
+shot thread-note-edit-before
+browser -- find role button click --name Save --exact
+browser -- wait --text "Note saved"
+browser -- find role button click --name Close --exact
+browser -- reload
+browser -- wait --text "Edited Thread Note ${STAMP}"
+d1 "SELECT n.body, n.updated_at > n.created_at AS edited FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Thread Notes ${STAMP}'"
+expect '"body": "Edited Thread Note ${STAMP}"'
+expect '"edited": 1'
+shot thread-note-edited
+
+browser -- find role button click --name "Open note: Edited Thread Note ${STAMP}" --exact
+shot thread-note-archive-before
+browser -- find role button click --name Archive --exact
+browser -- wait --text "Note archived"
+browser -- find role button click --name Close --exact
+browser -- reload
+browser -- wait --fn "[...document.querySelectorAll('button')].some(button => button.textContent.includes('Archived notes'))"
+browser -- find role button click --name "Archived notes 1" --exact
+browser -- wait --text "Edited Thread Note ${STAMP}"
+d1 "SELECT n.state, n.completed_at IS NOT NULL AS archived FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Thread Notes ${STAMP}'"
+expect '"state": "done"'
+expect '"archived": 1'
+shot thread-note-archived
+
+shot thread-note-unarchive-before
+browser -- find role button click --name "Unarchive note" --exact
+browser -- wait --text "Note unarchived"
+browser -- reload
+browser -- wait --text "Edited Thread Note ${STAMP}"
+browser -- wait --fn "!document.body.innerText.includes('Archived notes')"
+d1 "SELECT n.state, n.completed_at IS NULL AS unarchived FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Thread Notes ${STAMP}'"
+expect '"state": "open"'
+expect '"unarchived": 1'
+shot thread-note-unarchived
+
+browser -- find role button click --name "Open note: Edited Thread Note ${STAMP}" --exact
+browser -- find role button click --name "More actions" --exact
+shot thread-note-delete-before
+browser -- find role menuitem click --name "Delete note" --exact
+browser -- wait --text "Note deleted"
+browser -- wait --fn "!document.body.innerText.includes('Undo')"
+browser -- reload
+browser -- wait 'section[aria-label="Thread Notes"]'
+browser -- wait --fn "!document.body.innerText.includes('Edited Thread Note ${STAMP}')"
+d1 "SELECT COUNT(*) AS n FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Thread Notes ${STAMP}'"
+expect '"n": 0'
+shot thread-note-deleted

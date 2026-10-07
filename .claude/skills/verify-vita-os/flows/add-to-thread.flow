@@ -1,0 +1,79 @@
+# Add undated Standalone Notes through the Note view at 1440x900.
+# Covers ordinary commit and New thread from note; dated conversion lives in dated-tasks.flow.
+# Every write has a D1 assertion. No temporary pending-control state is part of this proof.
+open /
+browser -- set viewport 1440 900
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Add target ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+d1 "SELECT COUNT(*) AS n FROM threads WHERE title = 'Add target ${STAMP}'"
+expect '"n": 1'
+browser -- find role button click --name "Close thread" --exact
+open /
+
+# A: ordinary add commits when the Undo offer expires.
+browser -- find role button click --name "New note" --exact
+browser -- find label "Note body" fill "Added Note ${STAMP}"
+browser -- find role button click --name Add --exact
+browser -- wait --text "Note added"
+browser -- reload
+browser -- wait --text "Added Note ${STAMP}"
+d1 "SELECT COUNT(*) AS n FROM notes WHERE body = 'Added Note ${STAMP}' AND state = 'open' AND attention_date IS NULL"
+expect '"n": 1'
+browser -- find role button click --name "Open note: Added Note ${STAMP}" --exact
+browser -- find role button click --name "More actions" --exact
+shot add-commit-before-menu
+browser -- find role menuitem click --name "Add to thread…" --exact
+browser -- wait --text "Add target ${STAMP}"
+shot add-commit-before-picker
+browser -- find role option click --name "Add target ${STAMP}" --exact
+browser -- wait --text "Note added to thread"
+browser -- wait --fn "!document.body.innerText.includes('Undo')"
+browser -- reload
+browser -- wait --text "Add target ${STAMP}"
+browser -- wait --fn "!document.body.innerText.includes('Added Note ${STAMP}')"
+browser -- find role link click --name "Add target ${STAMP}" --exact
+browser -- wait --text "Added Note ${STAMP}"
+d1 "SELECT COUNT(*) AS n FROM notes WHERE body = 'Added Note ${STAMP}'"
+expect '"n": 0'
+d1 "SELECT COUNT(*) AS n FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Add target ${STAMP}' AND n.body = 'Added Note ${STAMP}' AND n.state = 'open'"
+expect '"n": 1'
+d1 "SELECT COUNT(*) AS n FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Add target ${STAMP}'"
+expect '"n": 1'
+d1 "SELECT COALESCE(json_array_length(moves_json), 0) AS tasks FROM threads WHERE title = 'Add target ${STAMP}'"
+expect '"tasks": 0'
+d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Add target ${STAMP}'"
+expect '"n": 0'
+shot add-commit-after
+browser -- find role button click --name "Close thread" --exact
+open /
+
+# B: the Note's first line suggests a title, and creating preserves its body.
+browser -- find role button click --name "New note" --exact
+browser -- find label "Note body" fill "New from Note ${STAMP}"
+browser -- find role button click --name Add --exact
+browser -- wait --text "Note added"
+browser -- reload
+browser -- wait --text "New from Note ${STAMP}"
+d1 "SELECT COUNT(*) AS n FROM notes WHERE body = 'New from Note ${STAMP}' AND state = 'open' AND attention_date IS NULL"
+expect '"n": 1'
+browser -- find role button click --name "Open note: New from Note ${STAMP}" --exact
+browser -- find role button click --name "More actions" --exact
+shot new-thread-from-note-before
+browser -- find role menuitem click --name "New thread from note" --exact
+browser -- wait --fn "[...document.querySelectorAll('input')].some(input => input.value === 'New from Note ${STAMP}')"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+browser -- reload
+browser -- wait --text "New from Note ${STAMP}"
+browser -- wait --fn "!!document.querySelector('aside[aria-label]') && [...document.querySelectorAll('button')].some(button => button.getAttribute('aria-label') === 'Open note: New from Note ${STAMP}')"
+d1 "SELECT COUNT(*) AS n FROM notes WHERE body = 'New from Note ${STAMP}'"
+expect '"n": 0'
+d1 "SELECT COUNT(*) AS n FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'New from Note ${STAMP}' AND n.body = 'New from Note ${STAMP}' AND n.state = 'open'"
+expect '"n": 1'
+d1 "SELECT COALESCE(json_array_length(moves_json), 0) AS tasks FROM threads WHERE title = 'New from Note ${STAMP}'"
+expect '"tasks": 0'
+d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'New from Note ${STAMP}'"
+expect '"n": 0'
+shot new-thread-from-note-after

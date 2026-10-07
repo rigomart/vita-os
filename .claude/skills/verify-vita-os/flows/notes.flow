@@ -1,0 +1,71 @@
+# Capture a standalone Note, preview/edit its shared Read/Write draft, then delete with Undo and with the offer lapsing.
+# Needs a fresh signed-in instance (up + signin). D1 SELECTs prove every saved write; Undo never deletes the row.
+open /
+browser -- find role button click --name "New note" --exact
+browser -- wait '[role=dialog] textarea[aria-label="Note body"]'
+browser -- find label "Note body" fill "**Verify Note ${STAMP}**"
+shot notes-compose-before
+browser -- find role tab click --name Read --exact
+browser -- wait --fn "[...document.querySelectorAll('[role=dialog] strong')].some(el => el.textContent === 'Verify Note ${STAMP}')"
+shot notes-compose-read
+browser -- click 'xpath=//*[@role="dialog"]//button[normalize-space()="Add"]'
+browser -- wait --text "Note added"
+d1 "SELECT COUNT(*) AS matching FROM notes WHERE body = '**Verify Note ${STAMP}**' AND state = 'open'"
+expect '"matching": 1'
+browser -- reload
+browser -- wait --text "Verify Note ${STAMP}"
+shot notes-captured-after
+
+# A saved Note opens in Read. Read previews the same unsaved draft; Escape from discard keeps it.
+browser -- find role button click --name "Open note: Verify Note ${STAMP}" --exact
+browser -- wait '[role=dialog] [role=tab][aria-selected="true"]'
+browser -- wait --fn "[...document.querySelectorAll('[role=dialog] [role=tab]')].some(el => el.textContent.trim() === 'Read' && el.getAttribute('aria-selected') === 'true')"
+browser -- find role tab click --name Write --exact
+browser -- find label "Note body" fill "**Verify Edited ${STAMP}**"
+browser -- press Escape
+browser -- wait --text "Discard unsaved changes?"
+shot notes-discard-before
+browser -- press Escape
+browser -- wait --fn "!document.querySelector('[role=alertdialog]') && document.querySelector('textarea[aria-label=\"Note body\"]')?.value === '**Verify Edited ${STAMP}**'"
+browser -- find role tab click --name Read --exact
+browser -- wait --fn "[...document.querySelectorAll('[role=dialog] strong')].some(el => el.textContent === 'Verify Edited ${STAMP}')"
+browser -- wait --text "Unsaved changes"
+shot notes-read-unsaved
+browser -- find role button click --name Save --exact
+browser -- wait --text "Note saved"
+d1 "SELECT COUNT(*) AS matching FROM notes WHERE body = '**Verify Edited ${STAMP}**' AND state = 'open'"
+expect '"matching": 1'
+browser -- press Escape
+browser -- reload
+browser -- wait --text "Verify Edited ${STAMP}"
+shot notes-edited-after
+
+# Delete closes the view and hides the card. Undo restores it without deleting persisted data.
+browser -- find role button click --name "Open note: Verify Edited ${STAMP}" --exact
+browser -- find role button click --name "More actions" --exact
+shot notes-delete-before
+browser -- find role menuitem click --name "Delete note" --exact
+browser -- wait --text "Note deleted"
+browser -- wait --fn "![...document.querySelectorAll('button')].some(el => el.getAttribute('aria-label') === 'Open note: Verify Edited ${STAMP}')"
+browser -- click 'xpath=//li[contains(@class,"cn-toast")][contains(.,"Note deleted")]//button[normalize-space()="Undo"]'
+browser -- wait --text "Verify Edited ${STAMP}"
+# Wait beyond the five-second offer, then read storage and reload to prove Undo lasted.
+browser -- wait 7000
+d1 "SELECT COUNT(*) AS matching FROM notes WHERE body = '**Verify Edited ${STAMP}**' AND state = 'open'"
+expect '"matching": 1'
+browser -- reload
+browser -- wait --text "Verify Edited ${STAMP}"
+shot notes-delete-undone-after
+
+# A second deletion is allowed to commit after the Undo window.
+browser -- find role button click --name "Open note: Verify Edited ${STAMP}" --exact
+browser -- find role button click --name "More actions" --exact
+browser -- find role menuitem click --name "Delete note" --exact
+browser -- wait --text "Note deleted"
+browser -- wait 8000
+d1 "SELECT COUNT(*) AS matching FROM notes WHERE body LIKE '%${STAMP}%'"
+expect '"matching": 0'
+browser -- reload
+browser -- wait --text "Nothing is asking for you."
+browser -- wait --fn "![...document.querySelectorAll('button')].some(el => el.getAttribute('aria-label')?.includes('Verify Edited ${STAMP}'))"
+shot notes-deleted-after
