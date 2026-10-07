@@ -2,7 +2,7 @@
 
 A user with an email and password account signs in from `/sign-in` and lands on the Dashboard. A signed-out visit to any product route redirects to `/sign-in`, and a signed-in visit to `/sign-in` redirects to `/`.
 
-Status: proven on 1d2885d by an independent cold run (`bun run verify signin`).
+Status: proven on 1d2885d by an independent cold run (`bun run verify signin`). Re-driven on b2bd91a with `sign-in.flow`: menu sign-out, signed-out product-route gate, form sign-in with an API-recognized session, and signed-in `/sign-in` redirect. Evidence: `.verify/evidence/signin426/2026-10-07T06-08-48-371Z/`. Wrong-password errors were not re-driven in this flow.
 
 ## Sub-features
 
@@ -18,6 +18,8 @@ Status: proven on 1d2885d by an independent cold run (`bun run verify signin`).
 - Choose `Sign out` from the user menu, then sign in again.
 
 ## Driving it with agent-browser
+
+Repeatable flow: `bun run verify run .claude/skills/verify-vita-os/flows/sign-in.flow`, after a fresh `up` and one `signin`. It checks session persistence after sign-out and sign-in; the signup session created by `up` stays in D1, so counts are 2 → 1 → 2.
 
 Preconditions:
 

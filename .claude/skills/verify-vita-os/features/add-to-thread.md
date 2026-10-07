@@ -29,6 +29,8 @@ Preconditions: an isolated instance (`up`, `signin`). Create two Threads through
 - **Open thread.** At `set viewport 1024 768`, add a Note and click the toast's `Open thread` by ref: the URL gains `?thread=<slug>` and `dialog "<title>"` lists the Note. Return to `1440 900`.
 - **New thread from note.** Open a Note whose first line is `## Plan trip <ts>`, choose `New thread from note`: `textbox "Thread title"` holds `Plan trip <ts>`. Click Create, `wait --text "Thread created"`, then `wait --text "<a later line>"`: the pane shows the Note, a dated Task carries the Note's date. Reload; D1 shows a Task in `moves_json` with the Note's old `attention_date` and no Activity Log entry.
 
+**Repeatable flow.** `bun run verify run .claude/skills/verify-vita-os/flows/add-to-thread.flow` was proven on b2bd91a at 1440×900: undated add through the picker after the Undo offer expires, and New thread from note with its suggested title, with reloads, D1 assertions after every write, and before/after screenshots. Evidence: `.verify/evidence/addthread426/2026-10-07T06-20-13-558Z/`. Undo and the toast's Open thread action are excluded from this recipe after Undo was inconclusive in two baseline automation attempts. This flow also does not cover dated conversion, temporary conversion locks, menu restrictions, search, original creation-time equality, Area defaults, failed requests, drawer, or phone paths; dated conversion remains in `dated-tasks.flow`.
+
 ## Gotchas
 
 - Notes dated a week or more out sit in the folded Later column; unfold it (`find role button click --name "Later"`) or choose the `Notes` filter link (`find role link click --name "Notes <count>" --exact`, the one after `Manage areas`).

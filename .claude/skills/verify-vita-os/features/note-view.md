@@ -24,6 +24,8 @@ Status: proven on 6231a78 plus the Read/Write working-tree change (Dashboard dia
 
 ## Driving it with agent-browser
 
+Repeatable standalone Note smoke: `bun run verify run .claude/skills/verify-vita-os/flows/notes.flow` on a fresh signed-in instance. Proven on b2bd91a at 1440×900: compose Read preview, saved Read, Write draft retained through the discard question, Save from Read, Delete with Undo, and committed deletion. Each saved write has a D1 SELECT and reload proof. Checkboxes, Thread Notes, and phone drawers remain outside this flow.
+
 Preconditions: launch and sign in using the verification CLI. Use a unique Thread title and Note body. The consultation example should contain a heading, lists including `- [ ]` and `- [x]`, a quote, and bold text.
 
 - **Compose and preview.** Run `bun run verify browser -- find role button click --name "New note" --exact`, then `find label "Note body" fill "<Markdown>"`. The `tab "Write"` is selected. Capture `compose-write`. Run `find role tab click --name "Read"`: the heading, real checkboxes, and quote render at the same dialog height. Capture `compose-read-preview`. Take `snapshot -i` and click Add by its ref (`click @eN`), then `wait --text "Note added"`.

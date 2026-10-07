@@ -1,0 +1,67 @@
+# Dashboard Notes filtering, Archive from the card and Note view, History search, and Unarchive.
+# Needs a fresh signed-in instance (up + signin). Each saved write is checked by a read-only D1 SELECT.
+open /
+browser -- find role button click --name "New note" --exact
+browser -- find label "Note body" fill "Board note ${STAMP} needlealpha"
+browser -- click 'xpath=//*[@role="dialog"]//button[normalize-space()="Add"]'
+browser -- wait --text "Note added"
+d1 "SELECT COUNT(*) AS matching FROM notes WHERE body = 'Board note ${STAMP} needlealpha' AND state = 'open'"
+expect '"matching": 1'
+browser -- find role button click --name "New note" --exact
+browser -- find label "Note body" fill "History note ${STAMP} needlebeta"
+browser -- click 'xpath=//*[@role="dialog"]//button[normalize-space()="Add"]'
+browser -- wait --text "Note added"
+d1 "SELECT COUNT(*) AS matching FROM notes WHERE body = 'History note ${STAMP} needlebeta' AND state = 'open'"
+expect '"matching": 1'
+browser -- reload
+browser -- wait --text "Board note ${STAMP} needlealpha"
+browser -- wait --text "History note ${STAMP} needlebeta"
+browser -- find role link click --name "Notes 2" --exact
+browser -- wait --fn "location.pathname === '/' && location.search === '?show=notes'"
+shot notes-dashboard-before
+
+# Archive the named card, then confirm only the other Note remains after a reload.
+browser -- hover 'xpath=//li[.//button[@aria-label="Open note: Board note ${STAMP} needlealpha"]]'
+browser -- click 'xpath=//li[.//button[@aria-label="Open note: Board note ${STAMP} needlealpha"]]//button[@aria-label="Archive note"]'
+browser -- wait --text "Note archived"
+d1 "SELECT COUNT(*) AS matching FROM notes WHERE body = 'Board note ${STAMP} needlealpha' AND state = 'done' AND completed_at IS NOT NULL"
+expect '"matching": 1'
+browser -- reload
+browser -- wait --text "History note ${STAMP} needlebeta"
+browser -- wait --fn "![...document.querySelectorAll('button')].some(el => el.getAttribute('aria-label') === 'Open note: Board note ${STAMP} needlealpha')"
+browser -- find role link click --name "Notes 1" --exact
+shot notes-board-archived-after
+
+# Archive from the view: it remains open over the empty Notes board and offers Unarchive.
+browser -- find role button click --name "Open note: History note ${STAMP} needlebeta" --exact
+browser -- wait --fn "location.search === '?show=notes'"
+shot notes-view-archive-before
+browser -- find role button click --name Archive --exact
+browser -- wait --text "Note archived"
+d1 "SELECT COUNT(*) AS matching FROM notes WHERE body = 'History note ${STAMP} needlebeta' AND state = 'done' AND completed_at IS NOT NULL"
+expect '"matching": 1'
+browser -- wait --fn "[...document.querySelectorAll('[role=dialog] button')].some(el => el.textContent.trim() === 'Unarchive')"
+shot notes-view-archived-after
+browser -- press Escape
+browser -- reload
+browser -- wait --text "No Note is asking for you."
+
+# Search Archived notes by body, showing the matching Note and excluding the other one.
+browser -- press Meta+k
+browser -- find role button click --name History --exact
+browser -- find role combobox fill "needlealpha"
+browser -- wait --text "Board note ${STAMP} needlealpha"
+browser -- wait --fn "[...document.querySelectorAll('[role=option]')].some(el => el.textContent.includes('needlealpha')) && ![...document.querySelectorAll('[role=option]')].some(el => el.textContent.includes('needlebeta'))"
+shot notes-history-search-after
+browser -- find role option click --name "Board note ${STAMP} needlealpha"
+browser -- wait --fn "[...document.querySelectorAll('[role=dialog] button')].some(el => el.textContent.trim() === 'Unarchive')"
+shot notes-history-open-before
+browser -- find role button click --name Unarchive --exact
+browser -- wait --text "Note unarchived"
+d1 "SELECT COUNT(*) AS matching FROM notes WHERE body = 'Board note ${STAMP} needlealpha' AND state = 'open' AND completed_at IS NULL"
+expect '"matching": 1'
+browser -- press Escape
+browser -- reload
+browser -- wait --text "Board note ${STAMP} needlealpha"
+browser -- wait --fn "location.search === '?show=notes' && ![...document.querySelectorAll('button')].some(el => el.getAttribute('aria-label') === 'Open note: History note ${STAMP} needlebeta')"
+shot notes-unarchived-after

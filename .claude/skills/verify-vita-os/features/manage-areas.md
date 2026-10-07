@@ -2,12 +2,15 @@
 
 A signed-in user adds, renames, reorders, and deletes areas from the `Manage areas` dialog. A new area shows up in the Dashboard's `Filter the board` row, followed by the button that opens the dialog and then, set apart, the `Notes` filter.
 
-Status: proven on 6ee2543 (with the Manage areas button moved to the filter row).
+Status: proven on 6ee2543 (with the Manage areas button moved to the filter row). Re-driven on b2bd91a with `areas.flow`: create, rename, Health icon, keyboard reorder, and deletion preserving an unlabeled Thread at 1440×900. Evidence: `.verify/evidence/areas426/2026-10-07T06-04-43-000Z/`.
 
 ## Sub-features
 
 - `areas-open` opens `Manage areas` from the command palette, or from the button after the Areas in the `Filter the board` row.
 - `areas-add` adds an area by name.
+- `areas-rename` saves its edited name on blur.
+- `areas-icon` chooses an icon and shows it selected when the picker reopens.
+- `areas-delete` removes the label from its Threads while keeping the Threads open.
 - `areas-reorder` reorders areas by dragging a row's `Reorder <name>` handle with the mouse, or by keyboard (Space, arrows, Space; Escape cancels and keeps the dialog open).
 - `areas-filter` shows the new area in `Filter the board`.
 - `areas-persist` keeps the area after a reload and in D1 (`areas`).
@@ -18,6 +21,8 @@ Status: proven on 6ee2543 (with the Manage areas button moved to the filter row)
 - Click the `Manage areas` icon button after the Areas in the Dashboard's filter row. On a phone it sits beside the `Filter the board: <option>` dropdown.
 
 ## Driving it with agent-browser
+
+Repeatable flow: `bun run verify run .claude/skills/verify-vita-os/flows/areas.flow`. Start with a fresh signed-in instance. It checks each write in D1 and ends with a reload showing the surviving Thread without its deleted Area.
 
 Preconditions:
 

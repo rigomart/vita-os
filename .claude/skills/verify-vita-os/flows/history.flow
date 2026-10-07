@@ -1,0 +1,91 @@
+# Needs a fresh signed-in instance. Browse and search resolved Threads, then reopen in pane and drawer.
+open /
+browser -- press Meta+k
+browser -- find role button click --name History --exact
+browser -- wait --text "No resolved threads or archived notes yet."
+shot history-empty
+browser -- press Escape
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "History older ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+d1 "SELECT COUNT(*) AS older_created FROM threads WHERE title = 'History older ${STAMP}' AND state = 'open'"
+expect '"older_created": 1'
+browser -- find role button click --name "Thread actions" --exact
+browser -- find role menuitem click --name Resolve --exact
+shot history-resolve-before
+browser -- find role button click --name "Resolve thread" --exact
+browser -- wait --text "Thread resolved"
+d1 "SELECT COUNT(*) AS older_resolved FROM threads WHERE title = 'History older ${STAMP}' AND state = 'resolved'"
+expect '"older_resolved": 1'
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "History newer ${STAMP}"
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+d1 "SELECT COUNT(*) AS newer_created FROM threads WHERE title = 'History newer ${STAMP}' AND state = 'open'"
+expect '"newer_created": 1'
+browser -- find role button click --name "Thread actions" --exact
+browser -- find role menuitem click --name Resolve --exact
+browser -- find role button click --name "Resolve thread" --exact
+browser -- wait --text "Thread resolved"
+d1 "SELECT COUNT(*) AS newer_resolved FROM threads WHERE title = 'History newer ${STAMP}' AND state = 'resolved'"
+expect '"newer_resolved": 1'
+browser -- reload
+browser -- wait 'nav[aria-label="Primary"]'
+browser -- press Meta+k
+browser -- find role button click --name History --exact
+browser -- wait --text "History newer ${STAMP}"
+browser -- wait --text "History older ${STAMP}"
+browser -- wait --fn 'Array.from(document.querySelectorAll("[role=option]")).filter(element => element.textContent.includes("History ")).map(element => element.textContent.trim()).join("|").startsWith("History newer ${STAMP}")'
+shot history-list
+browser -- find role combobox fill "older ${STAMP}"
+browser -- wait --text "History older ${STAMP}"
+browser -- wait --fn '!document.body.innerText.includes("History newer ${STAMP}")'
+shot history-search
+browser -- find role combobox fill "unmatched ${STAMP}"
+browser -- wait --text "No results found."
+browser -- find role button click --name History --exact
+browser -- wait --fn 'document.querySelector("[role=combobox]").value === ""'
+shot history-open-work
+browser -- find role button click --name History --exact
+browser -- find role option click --name "History newer ${STAMP}" --exact
+browser -- wait 'aside[aria-label="History newer ${STAMP}"]'
+browser -- wait --text "while resolved"
+shot history-pane
+browser -- find role button click --name "Thread actions" --exact
+browser -- find role menuitem click --name Reopen --exact
+browser -- wait --text "Thread reopened"
+d1 "SELECT COUNT(*) AS newer_reopened FROM threads WHERE title = 'History newer ${STAMP}' AND state = 'open'"
+expect '"newer_reopened": 1'
+browser -- reload
+browser -- wait 'input[aria-label="Add a task"]'
+shot history-reopened-pane
+browser -- find role button click --name "Close thread" --exact
+# Navigate to the board before changing width: closing surfaces animate.
+open /
+browser -- set viewport 1024 768
+browser -- press Meta+k
+browser -- find role button click --name History --exact
+browser -- find role combobox fill "older ${STAMP}"
+browser -- find role option click --name "History older ${STAMP}" --exact
+browser -- wait '[role="dialog"]'
+browser -- snapshot -s '[role="dialog"]'
+expect 'dialog "History older ${STAMP}"'
+browser -- wait --text "while resolved"
+shot history-drawer
+browser -- find role button click --name "Thread actions" --exact
+browser -- find role menuitem click --name Reopen --exact
+browser -- wait --text "Thread reopened"
+d1 "SELECT COUNT(*) AS older_reopened FROM threads WHERE title = 'History older ${STAMP}' AND state = 'open'"
+expect '"older_reopened": 1'
+browser -- reload
+browser -- wait 'input[aria-label="Add a task"]'
+shot history-reopened-drawer
+browser -- find role button click --name "Close thread" --exact
+open /
+browser -- press Meta+k
+browser -- find role button click --name History --exact
+browser -- wait --text "No resolved threads or archived notes yet."
+shot history-after
+browser -- press Escape
+browser -- set viewport 1440 900

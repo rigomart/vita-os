@@ -2,7 +2,7 @@
 
 The palette starts with open work. Its History chip (named Resolved before ADR 0031) switches to history: a `Resolved threads` group with all resolved Threads, newest resolution first, without typing, then an `Archived notes` group covered in [Notes on the Dashboard](./notes-on-the-dashboard.md). Search filters that history by title or Area. Clicking the chip again returns to open work and clears the query. Selecting a result opens the existing Thread pane, where Thread actions → Reopen returns it to open work without restoring discarded Tasks, focus, or a Follow-up date.
 
-Status: proven on c03470d plus the resolved chip change, at 1440×900 and 1024×768 (`resolved-chip`, `resolved-search`, `resolved-order`, `resolved-open`, `resolved-reopen`). Evidence is under `.verify/evidence/resolved-chip/2026-10-02T04-28-49-117Z/`. Re-driven on 446055e after the rename: the History chip lists `Resolved threads` beside `Archived notes` at 1440×900, a search for `passport` matches in both groups, and choosing a Resolved Thread at 1024×768 opens `dialog "<title>"` with the Dashboard's `?show=notes` filter kept. The step-by-step recipe below was written for the Resolved chip; its names are updated but its full sequence was not re-run.
+Status: proven on c03470d plus the resolved chip change, at 1440×900 and 1024×768 (`resolved-chip`, `resolved-search`, `resolved-order`, `resolved-open`, `resolved-reopen`). Evidence is under `.verify/evidence/resolved-chip/2026-10-02T04-28-49-117Z/`. Re-driven on 446055e after the rename: the History chip lists `Resolved threads` beside `Archived notes` at 1440×900, a search for `passport` matches in both groups, and choosing a Resolved Thread at 1024×768 opens `dialog "<title>"` with the Dashboard's `?show=notes` filter kept. The step-by-step recipe below was written for the Resolved chip; its names are updated but its full sequence was not re-run. Re-driven on b2bd91a with `history.flow`: empty history, newest-first order, title search, unmatched search, clearing search on mode switch, and persisted Reopen from both the pane and drawer. Evidence: `.verify/evidence/history426/2026-10-07T06-10-23-268Z/`. Keyboard chip activation, Area search, and discarded Tasks were not re-driven in this flow; the existing `resolve-reopen.flow` covers discarded Tasks.
 
 ## Sub-features
 
@@ -18,6 +18,8 @@ Status: proven on c03470d plus the resolved chip change, at 1440×900 and 1024×
 Open the palette with Command K or the dock's Jump anywhere button, then click History. Browse all resolved Threads or search their titles and Areas. Select a Thread, then choose Thread actions → Reopen. Click the chip again to return to open work. Opening the palette afresh starts with open work.
 
 ## Driving it with agent-browser
+
+Repeatable flow: `bun run verify run .claude/skills/verify-vita-os/flows/history.flow`, on a fresh signed-in instance with no history. It checks every creation, resolution and reopening in D1, and reloads each reopened Thread at 1440×900 and 1024×768.
 
 Preconditions: run `bun run verify up --instance resolved-chip --api-port 18787 --web-port 15173`, then `bun run verify signin --instance resolved-chip`. Use this instance on every command. Choose fresh titles on subsequent runs. All browser arguments below run as `bun run verify browser --instance resolved-chip -- <arguments>`, and screenshots as `bun run verify shot <label> --instance resolved-chip`.
 

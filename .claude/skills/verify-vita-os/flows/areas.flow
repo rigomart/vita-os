@@ -1,0 +1,68 @@
+# Needs a fresh signed-in instance. Create, rename, change icon, reorder and delete an Area.
+# The labeled Thread survives deletion without its label.
+open /
+browser -- press Meta+k
+browser -- find role option click --name "Manage areas" --exact
+browser -- wait 'input[aria-label="New area name"]'
+shot areas-before
+browser -- find label "New area name" fill "Area first ${STAMP}"
+browser -- find role button click --name Add --exact
+browser -- wait 'input[aria-label="Name of Area first ${STAMP}"]'
+d1 "SELECT COUNT(*) AS first_area_created FROM areas WHERE name = 'Area first ${STAMP}'"
+expect '"first_area_created": 1'
+browser -- find label "New area name" fill "Area second ${STAMP}"
+browser -- find role button click --name Add --exact
+browser -- wait 'input[aria-label="Name of Area second ${STAMP}"]'
+d1 "SELECT COUNT(*) AS second_area_created FROM areas WHERE name = 'Area second ${STAMP}'"
+expect '"second_area_created": 1'
+browser -- find label "Name of Area first ${STAMP}" fill "Area renamed ${STAMP}"
+browser -- press Tab
+browser -- wait 'input[aria-label="Name of Area renamed ${STAMP}"]'
+d1 "SELECT COUNT(*) AS area_renamed FROM areas WHERE name = 'Area renamed ${STAMP}'"
+expect '"area_renamed": 1'
+browser -- find role button click --name "Change icon for Area renamed ${STAMP}" --exact
+browser -- find role button click --name Health --exact
+# Reopen the picker: its selected icon is visible as pressed.
+browser -- find role button click --name "Change icon for Area renamed ${STAMP}" --exact
+browser -- wait 'button[aria-label="Health"][aria-pressed="true"]'
+d1 "SELECT icon FROM areas WHERE name = 'Area renamed ${STAMP}'"
+expect HeartPulse
+browser -- press Escape
+browser -- focus '[aria-label="Reorder Area second ${STAMP}"]'
+browser -- press Space
+browser -- press ArrowUp
+browser -- press Space
+browser -- wait --fn 'document.querySelector("ul[aria-label=Areas] input").getAttribute("aria-label") === "Name of Area second ${STAMP}"'
+d1 "SELECT COUNT(*) AS reordered FROM areas first JOIN areas second ON first.user_id = second.user_id WHERE first.name = 'Area renamed ${STAMP}' AND second.name = 'Area second ${STAMP}' AND second.sort_order < first.sort_order"
+expect '"reordered": 1'
+shot areas-reordered
+browser -- press Escape
+browser -- wait 'nav[aria-label="Filter the board"]'
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Area survives ${STAMP}"
+browser -- find role button click --name "Add area" --exact
+browser -- find role combobox fill "Area renamed ${STAMP}"
+browser -- find role option click --name "Area renamed ${STAMP}" --exact
+browser -- find role button click --name Create --exact
+browser -- wait --text "Thread created"
+browser -- wait 'button[aria-label="Area: Area renamed ${STAMP}"]'
+d1 "SELECT COUNT(*) AS labeled_thread FROM threads t JOIN areas a ON a.id = t.area_id WHERE t.title = 'Area survives ${STAMP}' AND a.name = 'Area renamed ${STAMP}'"
+expect '"labeled_thread": 1'
+browser -- find role button click --name "Close thread" --exact
+browser -- find role button click --name "Manage areas" --exact
+browser -- find role button click --name "Delete Area renamed ${STAMP}" --exact
+browser -- wait --text "1 open Thread will lose this label."
+shot areas-delete-before
+browser -- find role button click --name "Delete area" --exact
+browser -- wait --text "Area deleted"
+d1 "SELECT COUNT(*) AS deleted_area FROM areas WHERE name = 'Area renamed ${STAMP}'"
+expect '"deleted_area": 0'
+d1 "SELECT COUNT(*) AS surviving_unlabeled_thread FROM threads WHERE title = 'Area survives ${STAMP}' AND state = 'open' AND area_id IS NULL"
+expect '"surviving_unlabeled_thread": 1'
+browser -- press Escape
+browser -- reload
+browser -- wait --text "Area survives ${STAMP}"
+browser -- wait --fn '!document.body.innerText.includes("Area renamed ${STAMP}")'
+browser -- find role link click --name "Area survives ${STAMP}" --exact
+browser -- wait 'button[aria-label="Add area"]'
+shot areas-after

@@ -1,0 +1,28 @@
+# Needs a fresh signed-in instance. Sign out through the menu, prove the gate and sign in again.
+# up creates a signup session without retaining its cookie; signin adds the browser session.
+# The signup session remains, so D1 counts are 2, then 1, then 2.
+open /
+browser -- wait 'nav[aria-label="Primary"]'
+d1 "SELECT COUNT(*) AS signed_in_sessions FROM session"
+expect '"signed_in_sessions": 2'
+shot sign-in-before
+browser -- find role button click --name "Verify Bot" --exact
+browser -- find role menuitem click --name "Sign out" --exact
+browser -- wait --url '**/sign-in'
+browser -- wait --text "Sign in to your account to continue"
+d1 "SELECT COUNT(*) AS signed_out_sessions FROM session"
+expect '"signed_out_sessions": 1'
+shot sign-in-signed-out
+# open waits for the signed-in dock, so navigate within the browser while signed out.
+browser -- eval "location.assign('/')"
+browser -- wait --url '**/sign-in'
+browser -- wait --text "Sign in to your account to continue"
+# signin fills the real form with this instance's generated credentials and verifies /api/auth/get-session.
+signin
+browser -- wait 'nav[aria-label="Primary"]'
+d1 "SELECT COUNT(*) AS new_signed_in_session FROM session"
+expect '"new_signed_in_session": 2'
+open /sign-in
+browser -- wait --url '**/'
+browser -- wait 'nav[aria-label="Primary"]'
+shot sign-in-after

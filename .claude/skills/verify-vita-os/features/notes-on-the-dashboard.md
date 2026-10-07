@@ -29,6 +29,8 @@ Pagination follow-up: proven with the PR 394 fix at 1440×900 and 390×844. Crea
 
 ## Driving it with agent-browser
 
+Repeatable desktop smoke: `bun run verify run .claude/skills/verify-vita-os/flows/notes-dashboard.flow` on a fresh signed-in instance. Proven on b2bd91a at 1440×900: two captured Notes, Notes filter/count and URL, card Archive, view Archive keeping the view open, History body search excluding another archived Note, and Unarchive restoring the card after reload. A D1 SELECT checks every saved write. Pagination, filter-name collision, legacy redirects, and phone layouts remain outside this flow.
+
 Preconditions: `bun run verify up --instance notes`, then `bun run verify signin --instance notes`. Every browser command below runs as `bun run verify browser --instance notes -- <args>` and every capture as `bun run verify shot <label> --instance notes`. Seed through the UI: Manage areas (palette) → add `Notes` and `Home`; a Thread `Fix the side gate` in Home and an unlabeled `Renew passport`; Notes `Water the plants on the balcony` (Follow-up date today), `Idea: solar garden lights along the path`, and `Passport photo sizes: 35x45mm, white background` (New note → `find label "Note body" fill …` → `press Meta+Enter` → `wait --text "Note added"`).
 
 1. **No panel, filter row.** `reload`, `wait --text "solar garden"`, capture `a-dashboard-all-desktop`: the top-right has only the date and `button "Verify Bot"`; the row reads `All 2 · Notes 0 · Home 1 · No area 1 · Manage areas · Notes 3`.

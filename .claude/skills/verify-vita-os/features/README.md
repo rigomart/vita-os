@@ -20,6 +20,20 @@ This directory is the maintained source for verifying Vita OS's user-facing beha
 - Never `press Enter` to commit an edit of an existing Task's text (agent-browser 0.38.1 floods the browser with keydown events); use `press Tab` or a click. `press Enter` in `Add a task` is fine and is the capture path flows must keep proving.
 - Time-limit verification. If the same step fails twice, stop that item and report it `INCONCLUSIVE` with the failing command and its output.
 
+## Scripted feature coverage
+
+Run each new flow below from a fresh instance: `bun run verify up`, `bun run verify signin`, then `bun run verify run .claude/skills/verify-vita-os/flows/<name>.flow`. Each flow checks visible behavior and persisted writes with read-only D1 queries. These flows supplement the existing Task and Thread flows listed above.
+
+| Flow | Feature maps and scope |
+| --- | --- |
+| [notes](../flows/notes.flow) | [Capture a note](./capture-note.md), [Note view](./note-view.md): dock capture, Read/Write, saved edits, Delete with Undo and persisted deletion. |
+| [notes-dashboard](../flows/notes-dashboard.flow) | [Notes on the Dashboard](./notes-on-the-dashboard.md): Notes filter, archive, archived body search in History, and unarchive. |
+| [thread-notes](../flows/thread-notes.flow) | [Thread Notes](./thread-notes.md): desktop capture, edit, archive, unarchive, and deletion. |
+| [add-to-thread](../flows/add-to-thread.flow) | [Add a Note to a Thread](./add-to-thread.md): undated add to an existing Thread and New thread from note. Dated conversion stays in `dated-tasks.flow`. |
+| [areas](../flows/areas.flow) | [Manage areas](./manage-areas.md): create, rename, icon, reorder, and delete while Threads survive without the label. |
+| [history](../flows/history.flow) | [Resolved Threads](./resolved-threads.md): palette browsing and search, opening and reopening in the pane and drawer. |
+| [sign-in](../flows/sign-in.flow) | [Sign in](./sign-in.md): menu sign-out, the signed-out gate, and sign-in through the real form. |
+
 ## Proof and skip reporting
 
 - Capture the action and the resulting state: `bun run verify shot <feature>-before` and `bun run verify shot <feature>-after`.

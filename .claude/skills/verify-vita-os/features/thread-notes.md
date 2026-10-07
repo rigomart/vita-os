@@ -28,6 +28,8 @@ Use an isolated instance and a Thread created through the real New thread dialog
 
 Evidence from this run is in `.verify/evidence/effect/2026-10-02T23-44-52-650Z/`, including `effect-thread-note-before`, `effect-thread-note-after`, `effect-thread-note-done`, and `effect-thread-note-removed`.
 
+**Repeatable flow.** `bun run verify run .claude/skills/verify-vita-os/flows/thread-notes.flow` was proven on b2bd91a at 1440×900: capture, edit, archive, expand Archived notes, unarchive, and delete after the Undo offer, with reloads, D1 assertions after every write, and before/after screenshots. Evidence: `.verify/evidence/threadnotes426/2026-10-07T06-05-09-586Z/`. This flow does not cover archived pagination, drawer, or phone paths.
+
 ## Gotchas
 
 - Delete is delayed during the Undo period. Reloading before that period ends cancels the queued deletion; an optimistic empty list does not prove removal.
