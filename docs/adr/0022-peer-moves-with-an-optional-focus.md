@@ -2,7 +2,7 @@
 
 Terminology amended by ADR 0033: **Move** is renamed **Task**, and **Focused Move** is **Focused Task**. Existing behavior is retained.
 
-**Status:** Accepted
+**Status:** Accepted. Amended by ADR 0032: a Task gains an optional date and Repeat; completing a repeating Task moves it to its next occurrence instead of removing it, and completing may carry a note captured as a Thread Note.
 **Date:** 2026-09-26
 
 A **Thread**'s **Next Move** and its **Up Next** queue are replaced by **Moves**: an unordered set of peers, shown in the order they were captured. The user may single out one as the **Focused Move**, or leave all of them unfocused. Issue #366 is the specification.
