@@ -30,6 +30,7 @@ import { useAddNoteToThread } from "../notes/add-to-thread/hooks";
 import { queryKeys } from "../query-keys";
 import {
   createFakeApplicationClient,
+  deferred,
   failure,
   success,
 } from "../test/fake-application-client";
@@ -489,6 +490,32 @@ describe("completing with a note when the connection drops", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Picked up")).toBeInTheDocument();
+  });
+
+  it("stays closed when closed while a copy is still pending and the copy then fails", async () => {
+    const user = userEvent.setup();
+    const copying = deferred<void>();
+    vi.spyOn(navigator.clipboard, "writeText").mockReturnValue(copying.promise);
+    render(<Toaster />);
+    const fake = service();
+    fake.switches.dropBeforeCommit = true;
+    const { tasks } = setup(fake, { realFeedback: true });
+
+    await act(async () => {
+      await tasks.current.completeWithNote(refill._id, "Picked up");
+    });
+    await user.click(await screen.findByRole("button", { name: "Copy note" }));
+    await user.click(screen.getByRole("button", { name: "Close toast" }));
+    await waitFor(() => expect(screen.queryByText("Picked up")).toBeNull());
+
+    await act(async () => {
+      copying.reject(new Error("denied"));
+      await copying.promise.catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(screen.queryByText("Picked up")).toBeNull();
+    expect(screen.queryByText(/Couldn’t copy the note/)).toBeNull();
   });
 
   it("closes the toast once the note is copied", async () => {

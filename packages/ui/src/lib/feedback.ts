@@ -54,12 +54,17 @@ const defaultFeedback: Feedback = {
       return;
     }
     const id = `error-${++errorToasts}`;
+    // Once closed it stays closed: an action that fails later says nothing.
+    let dismissed = false;
     const show = (title: string) =>
       toast.error(title, {
         id,
         description: detail.description,
         duration: Number.POSITIVE_INFINITY,
         closeButton: true,
+        onDismiss: () => {
+          dismissed = true;
+        },
         ...(detail.action === undefined
           ? {}
           : {
@@ -74,7 +79,9 @@ const defaultFeedback: Feedback = {
                     .then(action.onClick)
                     .then(
                       () => toast.dismiss(id),
-                      () => show(action.failedMessage),
+                      () => {
+                        if (!dismissed) show(action.failedMessage);
+                      },
                     );
                 },
               },
