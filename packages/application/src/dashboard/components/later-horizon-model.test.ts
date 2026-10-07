@@ -17,7 +17,7 @@ function thread(id: string, followUp: number, order = 0): Thread {
     slug: id,
     order,
     state: "open",
-    revision: 0,
+
     createdAt: currentDate,
     tasks: [{ _id: `due-${id}`, text: "Follow up", date: followUp }],
   } as Thread;
@@ -28,7 +28,7 @@ function note(id: string, followUp: number): Note {
     _id: id as Note["_id"],
     body: id,
     state: "open",
-    revision: 0,
+
     createdAt: currentDate,
     followUp,
   } as Note;

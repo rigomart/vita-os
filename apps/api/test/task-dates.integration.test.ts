@@ -35,7 +35,6 @@ async function threadWith(session: Session, texts: string[]) {
       body: {
         taskId: `task-${index + 1}`,
         text,
-        expectedRevision: thread.revision,
       },
     });
   }
@@ -51,7 +50,7 @@ function setDate(
   return call(`/v1/threads/${thread._id}/tasks/${taskId}/date`, {
     method: "PUT",
     session,
-    body: { date, expectedRevision: thread.revision },
+    body: { date },
   });
 }
 
@@ -81,7 +80,6 @@ describe("a Task's date", () => {
       { _id: "task-1", text: "Call clinic" },
       { _id: "task-2", text: "Book slot", date: afternoon },
     ]);
-    expect(set.revision).toBe(thread.revision + 1);
 
     const changed = (await setDate(owner, set, "task-2", day)).body as Thread;
     expect(changed.tasks?.[1]).toEqual({
@@ -123,10 +121,10 @@ describe("a Task's date", () => {
 
     const again = await setDate(owner, dated, "task-1", day);
     expect(again.status).toBe(200);
-    expect((again.body as Thread).revision).toBe(dated.revision);
 
     const clearUndated = await setDate(owner, thread, "task-1", null);
-    expectError(clearUndated, taskConflict);
+    expect(clearUndated.status).toBe(200);
+    expect((clearUndated.body as Thread).tasks?.[0]).not.toHaveProperty("date");
   });
 
   it("can be put on a Task that is focused, and focus stays", async () => {
@@ -136,7 +134,7 @@ describe("a Task's date", () => {
       await call(`/v1/threads/${thread._id}/focus`, {
         method: "PUT",
         session: owner,
-        body: { taskId: "task-1", expectedRevision: thread.revision },
+        body: { taskId: "task-1" },
       })
     ).body as Thread;
 
@@ -145,12 +143,10 @@ describe("a Task's date", () => {
     expect(dated.tasks?.[0]?.date).toBe(day);
   });
 
-  it("is refused against a stale revision or a missing Task, writing nothing", async () => {
+  it("is refused for a missing Task, writing nothing", async () => {
     const owner = await createSession("task-dates-refused");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
-    const stale = { ...thread, revision: thread.revision - 1 };
 
-    expectError(await setDate(owner, stale, "task-1", day), taskConflict);
     expectError(await setDate(owner, thread, "task-9", day), taskConflict);
     expect(await read(owner, thread)).toEqual(thread);
   });
@@ -170,7 +166,7 @@ describe("a Task's date", () => {
       await call("/v1/threads/missing/tasks/task-1/date", {
         method: "PUT",
         session: owner,
-        body: { date: day, expectedRevision: 0 },
+        body: { date: day },
       }),
       { status: 404, code: "not_found", message: "Thread not found." },
     );
@@ -193,11 +189,11 @@ describe("a Task's date", () => {
   });
 
   it.each([
-    [{ expectedRevision: 0 }],
-    [{ date: "tomorrow", expectedRevision: 0 }],
-    [{ date: 1.5, expectedRevision: 0 }],
-    [{ date: 1, expectedRevision: -1 }],
-    [{ date: 1, expectedRevision: 0, extra: true }],
+    [{}],
+    [{ date: "tomorrow" }],
+    [{ date: 1.5 }],
+    [{ date: 1, expectedRevision: 0 }],
+    [{ date: 1, extra: true }],
   ])("refuses the request shape %j", async (body) => {
     const owner = await createSession("task-dates-shape");
     const thread = await threadWith(owner, ["Call clinic"]);
@@ -238,7 +234,6 @@ describe("a Task's date", () => {
           taskId: "task-2",
           text: "Too far",
           date: last + 1,
-          expectedRevision: edge.revision,
         },
       }),
       { status: 400, code: "validation", message: "Invalid Task change." },
@@ -259,7 +254,6 @@ describe("adding a Task already dated", () => {
         taskId: "task-2",
         text: "Follow up",
         date: afternoon,
-        expectedRevision: thread.revision,
       },
     });
 

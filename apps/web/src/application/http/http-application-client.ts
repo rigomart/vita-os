@@ -243,19 +243,19 @@ export function createHttpApplicationClient({
         change,
         decodeThread,
       ),
-    removeTask: ({ threadId, taskId, expectedRevision }) =>
+    removeTask: ({ threadId, taskId }) =>
       send(
         "DELETE",
         path("threads", threadId, "tasks", taskId),
-        { expectedRevision },
+        undefined,
         decodeThread,
       ),
-    completeTask: ({ threadId, taskId, expectedRevision, timeZone, note }) =>
+    completeTask: ({ threadId, taskId, expectedOccurrence, timeZone, note }) =>
       send(
         "POST",
         path("threads", threadId, "tasks", taskId, "complete"),
         {
-          expectedRevision,
+          expectedOccurrence,
           ...(timeZone === undefined ? {} : { timeZone }),
           ...(note === undefined
             ? {}

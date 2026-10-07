@@ -1,8 +1,6 @@
 import type {
   ApplicationClient,
   CompleteTaskInput,
-  Note,
-  NoteId,
   OperationResult,
   Task,
   TaskId,
@@ -52,7 +50,7 @@ const checkIn: Task = {
   repeat: { kind: "days", every: 1 },
 };
 const refill: Task = { _id: "refill" as TaskId, text: "Pharmacy refill" };
-const seed = aThread({ revision: 4, tasks: [checkIn, refill] });
+const seed = aThread({ tasks: [checkIn, refill] });
 const tonight = nextTaskDate(checkIn.date!, checkIn.repeat!, zone, NOW);
 
 const unavailable = {
@@ -242,7 +240,7 @@ describe("completing a Task with a note", () => {
         threadId: seed._id,
         taskId: refill._id,
         timeZone: zone,
-        expectedRevision: 4,
+        expectedOccurrence: null,
         note: { id: shownId, body: "Picked it up" },
       }),
     );
@@ -258,8 +256,10 @@ describe("completing a Task with a note", () => {
 
   it("rolls back the Task change and the Note together when refused", async () => {
     const fake = service();
-    // Changed elsewhere: the revision the screen carries is stale.
-    fake.state.threads = [{ ...seed, revision: 5 }];
+    // Its occurrence was dated elsewhere after this screen read the Task.
+    fake.state.threads = [
+      { ...seed, tasks: [checkIn, { ...refill, date: at(9, 10) }] },
+    ];
     fake.switches.gated = true;
     const { tasks, open, notes, feedback } = setup(fake);
 
@@ -277,7 +277,9 @@ describe("completing a Task with a note", () => {
     });
 
     expect(outcome).toBe("failed");
-    await waitFor(() => expect(task(open(), refill._id)).toEqual(refill));
+    await waitFor(() =>
+      expect(task(open(), refill._id)).toEqual({ ...refill, date: at(9, 10) }),
+    );
     expect(notes()).toEqual([]);
     expect(fake.storedNotes()).toEqual([]);
     expectHandedBack(
@@ -336,38 +338,6 @@ describe("completing a Task with a note", () => {
     await waitFor(() => expect(notes()).toHaveLength(1));
     expect(feedback.error).not.toHaveBeenCalled();
   });
-
-  it("is refused while a Note is being added to the Thread", async () => {
-    const fake = service();
-    const { tasks, add, open, notes, feedback } = setup(fake);
-    const dentist: Note = {
-      _id: "dentist" as NoteId,
-      body: "Call the dentist",
-      followUp: at(9, 10),
-      state: "open",
-      createdAt: 1_000,
-    };
-    act(() => {
-      add.current.mutate({ note: dentist, thread: seed });
-    });
-    await waitFor(() => expect(open()?.tasks).toHaveLength(3));
-
-    let outcome: unknown;
-    await act(async () => {
-      outcome = await tasks.current.completeWithNote(refill._id, "Picked up");
-    });
-
-    expect(outcome).toBe("failed");
-    expect(fake.completeTask).not.toHaveBeenCalled();
-    expectHandedBack(
-      feedback,
-      "A note is being added to this thread. Try again in a moment. Your note was not saved.",
-      "Picked up",
-    );
-    expect(task(open(), refill._id)).toEqual(refill);
-    // Only the Note being added shows.
-    expect(notes()?.map((note) => note.body)).toEqual(["Call the dentist"]);
-  });
 });
 
 describe("completing with a note when the connection drops", () => {
@@ -413,12 +383,13 @@ describe("completing with a note when the connection drops", () => {
     await expect(navigator.clipboard.readText()).resolves.toBe("Picked up");
   });
 
-  it("only looks for the Note, so a Note edit pending in the Thread keeps showing", async () => {
+  it("confirms the saved Note while another Note edit is still pending", async () => {
     const fake = service();
     fake.switches.dropAfterCommit = true;
     const kept = aThreadNote({ body: "Clinic opens at nine" });
     fake.state.threadNotes.set(seed._id, [kept]);
-    fake.client.updateThreadNoteBody = () => new Promise(() => undefined);
+    const editing = deferred<OperationResult<ThreadNote>>();
+    fake.client.updateThreadNoteBody = () => editing.promise;
     const { tasks, wrapper, notes } = setup(fake);
     const { result: edit } = renderHook(() => useUpdateThreadNoteBody(), {
       wrapper,
@@ -442,10 +413,21 @@ describe("completing with a note when the connection drops", () => {
     });
 
     expect(outcome).toBe("completed");
-    // The edit is still on its way, and still shown.
-    expect(notes()?.find((note) => note._id === kept._id)?.body).toBe(
-      "Clinic opens at ten",
+    expect(edit.current.isPending).toBe(true);
+    const updated = { ...kept, body: "Clinic opens at ten" };
+    fake.state.threadNotes.set(
+      seed._id,
+      fake
+        .storedNotes()
+        .map((note) => (note._id === kept._id ? updated : note)),
     );
+    await act(async () => editing.resolve(success(updated)));
+    await waitFor(() =>
+      expect(notes()?.find((note) => note._id === kept._id)?.body).toBe(
+        updated.body,
+      ),
+    );
+    expect(fake.storedNotes()).toHaveLength(2);
   });
 
   it("says it could not confirm when the Notes cannot be read, and hands the text back", async () => {

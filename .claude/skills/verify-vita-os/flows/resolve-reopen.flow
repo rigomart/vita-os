@@ -15,7 +15,7 @@ browser -- press Enter
 browser -- wait --text "Discard B ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Discard B ${STAMP}"]]//button[@aria-label="Focus this task"]'
 browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
-# Let the queued Task commands land before resolving.
+# Let the Task saves land before resolving.
 browser -- wait 1500
 shot resolve-before
 

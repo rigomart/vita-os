@@ -23,7 +23,7 @@ describe("retired API names", () => {
     await succeed(`/v1/threads/${thread._id}/tasks`, {
       method: "POST",
       session: owner,
-      body: { taskId: "a", text: "Call", expectedRevision: 0 },
+      body: { taskId: "a", text: "Call" },
     });
     expect(
       (
@@ -32,11 +32,10 @@ describe("retired API names", () => {
           session: owner,
           body:
             path === "moves"
-              ? { moveId: "b", text: "Book", expectedRevision: 1 }
-              : {
-                  ...(method === "PATCH" ? { text: "Call" } : {}),
-                  expectedRevision: 1,
-                },
+              ? { moveId: "b", text: "Book" }
+              : method === "PATCH"
+                ? { text: "Call" }
+                : {},
         })
       ).status,
     ).toBe(404);
@@ -80,16 +79,12 @@ describe("retired API names", () => {
       body: { title: "Checkup" },
     });
     for (const [path, method, body] of [
-      ["tasks", "POST", { moveId: "a", text: "Call", expectedRevision: 0 }],
-      [
-        "tasks",
-        "POST",
-        { taskId: "a", moveId: "a", text: "Call", expectedRevision: 0 },
-      ],
-      ["focus", "PUT", { moveId: null, expectedRevision: 0 }],
-      ["focus", "PUT", { taskId: null, moveId: null, expectedRevision: 0 }],
-      ["tasks", "POST", { text: "Missing ID", expectedRevision: 0 }],
-      ["focus", "PUT", { expectedRevision: 0 }],
+      ["tasks", "POST", { moveId: "a", text: "Call" }],
+      ["tasks", "POST", { taskId: "a", moveId: "a", text: "Call" }],
+      ["focus", "PUT", { moveId: null }],
+      ["focus", "PUT", { taskId: null, moveId: null }],
+      ["tasks", "POST", { text: "Missing ID" }],
+      ["focus", "PUT", {}],
     ] as const) {
       expectError(
         await call(`/v1/threads/${thread._id}/${path}`, {
@@ -177,12 +172,12 @@ describe("retired API names", () => {
     await succeed(`/v1/threads/${created._id}/tasks`, {
       method: "POST",
       session: owner,
-      body: { taskId: "a", text: "Call", date: 123, expectedRevision: 0 },
+      body: { taskId: "a", text: "Call", date: 123 },
     });
     const focused = await succeed<Thread>(`/v1/threads/${created._id}/focus`, {
       method: "PUT",
       session: owner,
-      body: { taskId: "a", expectedRevision: 1 },
+      body: { taskId: "a" },
     });
     const detail = await succeed<ThreadDetail>(`/v1/threads/${created.slug}`, {
       session: owner,

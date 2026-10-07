@@ -372,13 +372,25 @@ describe("0004: Areas become optional labels", () => {
       lastActivityAt: 1_700_000_000_000,
       lastActivityContent: "Next move set",
       createdAt: 1_600_000_000_000,
-      revision: 8,
     });
+    expect(
+      await env.MIGRATION_DB.prepare(
+        "SELECT revision FROM threads WHERE id = ?",
+      )
+        .bind(checkup.thread._id)
+        .first<number>("revision"),
+    ).toBe(8);
+    expect(
+      await env.MIGRATION_DB.prepare(
+        "SELECT revision FROM threads WHERE id = ?",
+      )
+        .bind(gate.thread._id)
+        .first<number>("revision"),
+    ).toBe(2);
     expect(checkup.area?._id).toBe("area-health");
     expect(gate.thread).toMatchObject({
       areaId: "area-home",
       state: "resolved",
-      revision: 2,
     });
   });
 
@@ -492,7 +504,13 @@ describe("0005: Next Move and Up Next become peer Tasks", () => {
     ]);
     expect(thread.focusedTaskId).toBe(thread.tasks?.[0]?._id);
     expect(new Set(thread.tasks?.map((task) => task._id)).size).toBe(4);
-    expect(thread.revision).toBe(4);
+    expect(
+      await env.MIGRATION_DB.prepare(
+        "SELECT revision FROM threads WHERE id = ?",
+      )
+        .bind(thread._id)
+        .first<number>("revision"),
+    ).toBe(4);
   });
 
   it("gives a Thread with only a Next Move one focused Task", async () => {
@@ -522,7 +540,9 @@ describe("0005: Next Move and Up Next become peer Tasks", () => {
       {
         method: "POST",
         headers: { cookie: mover.cookie },
-        body: JSON.stringify({ expectedRevision: thread.revision }),
+        body: JSON.stringify({
+          expectedOccurrence: thread.tasks?.[0]?.date ?? null,
+        }),
       },
     );
     expect(response.status).toBe(200);
@@ -648,7 +668,13 @@ describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
     expect(thread.focusedTaskId).toBe("call");
     expect(thread.tasks?.[2]?._id).toMatch(/^[0-9a-f]{32}$/);
     // Changed Threads move to a new revision; untouched ones keep theirs.
-    expect(thread.revision).toBe(7);
+    expect(
+      await env.MIGRATION_DB.prepare(
+        "SELECT revision FROM threads WHERE id = ?",
+      )
+        .bind(thread._id)
+        .first<number>("revision"),
+    ).toBe(7);
   });
 
   it("starts the Tasks of a Thread that had none, with a date-only Task", async () => {
@@ -658,7 +684,13 @@ describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
       { _id: expect.any(String), text: "Follow up", date: FOLLOW_UP_DAY },
     ]);
     expect(thread).not.toHaveProperty("focusedTaskId");
-    expect(thread.revision).toBe(7);
+    expect(
+      await env.MIGRATION_DB.prepare(
+        "SELECT revision FROM threads WHERE id = ?",
+      )
+        .bind(thread._id)
+        .first<number>("revision"),
+    ).toBe(7);
   });
 
   it("leaves a Thread without a Follow-up date as it was", async () => {
@@ -669,7 +701,13 @@ describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
     ]);
     expect(thread.focusedTaskId).toBe("email");
     expect(thread).not.toHaveProperty("followUp");
-    expect(thread.revision).toBe(6);
+    expect(
+      await env.MIGRATION_DB.prepare(
+        "SELECT revision FROM threads WHERE id = ?",
+      )
+        .bind(thread._id)
+        .first<number>("revision"),
+    ).toBe(6);
   });
 
   it("leaves a Resolved Thread as it was", async () => {
@@ -678,7 +716,13 @@ describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
     expect(thread).not.toHaveProperty("tasks");
     expect(thread).not.toHaveProperty("followUp");
     expect(thread.state).toBe("resolved");
-    expect(thread.revision).toBe(6);
+    expect(
+      await env.MIGRATION_DB.prepare(
+        "SELECT revision FROM threads WHERE id = ?",
+      )
+        .bind(thread._id)
+        .first<number>("revision"),
+    ).toBe(6);
   });
 
   it("retains the legacy column through 0006 and every Activity Log entry", async () => {

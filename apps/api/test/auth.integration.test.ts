@@ -143,7 +143,7 @@ describe("authentication and actor gate", () => {
           "content-type": "text/plain",
           cookie: signUp.headers.get("set-cookie") ?? "",
         },
-        body: JSON.stringify({ expectedRevision: 0 }),
+        body: JSON.stringify({}),
       },
       env,
     );
@@ -171,7 +171,7 @@ describe("authentication and actor gate", () => {
           origin: env.BROWSER_ORIGIN,
           "content-type": "text/plain",
         },
-        body: JSON.stringify({ expectedRevision: 0 }),
+        body: JSON.stringify({}),
       },
       env,
     );

@@ -125,18 +125,21 @@ browser -- find role button click --name "More actions" --exact
 browser -- find role menuitem click --name "Add to thread…" --exact
 browser -- find role option click --name "Dated D ${STAMP}"
 browser -- wait --text "Note added to thread"
-# Until the conversion settles (the Undo window plus the request), the whole Thread takes no Task command: its Task reads Adding… and is busy, and every control, Add a task included, is disabled.
+# During Undo the destination is not published, and ordinary Task capture remains usable.
 browser -- find role link click --name "Dated D ${STAMP}"
-browser -- wait --fn "[...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('Note task ${STAMP}') && li.getAttribute('aria-busy') === 'true' && li.textContent.includes('Adding…') && li.querySelector('button[aria-label=\"Complete task\"]').disabled && li.querySelector('button[aria-label=\"Remove task\"]').disabled) && document.querySelector('input[aria-label=\"Add a task\"]').disabled"
+browser -- wait --fn "![...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('Note task ${STAMP}')) && !document.querySelector('input[aria-label=\"Add a task\"]').disabled"
+browser -- find label "Add a task" fill "During conversion ${STAMP}"
+browser -- press Enter
+browser -- wait --text "During conversion ${STAMP}"
 shot dated-d-pending
-# Then it is usable.
+# The confirmed dated Task appears after Undo and save finish.
 browser -- wait --fn "[...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('Note task ${STAMP}') && !li.hasAttribute('aria-busy') && !li.querySelector('button[aria-label=\"Complete task\"]').disabled) && !document.querySelector('input[aria-label=\"Add a task\"]').disabled"
 shot dated-d-usable
 # The write lands after the five-second Undo window.
 browser -- wait 2000
 browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='This week'] li\")].some(li => li.textContent.includes('Dated D ${STAMP}') && li.textContent.includes('Note task ${STAMP}'))"
 shot dated-d-added
-d1 "SELECT json_extract(moves_json, '$[0].text') AS text, json_extract(moves_json, '$[0].date') IS NOT NULL AS dated, focused_move_id FROM threads WHERE title = 'Dated D ${STAMP}'"
+d1 "SELECT json_extract(value, '$.text') AS text, json_extract(value, '$.date') IS NOT NULL AS dated, focused_move_id FROM threads, json_each(moves_json) WHERE title = 'Dated D ${STAMP}' AND json_extract(value, '$.text') = 'Note task ${STAMP}'"
 expect Note task ${STAMP}
 expect '"dated": 1'
 d1 "SELECT COUNT(*) AS n FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Dated D ${STAMP}' AND n.body = '## Note task ${STAMP}'"
@@ -144,12 +147,14 @@ expect '"n": 1'
 d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title LIKE 'Dated % ${STAMP}'"
 expect '"n": 0'
 
-# Completing the converted Task goes out once, against the revision the conversion left: it is gone and logged once.
+# Completing the confirmed converted Task goes out once: it is gone and logged once; the unrelated Task remains.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Note task ${STAMP}"]]//button[@aria-label="Complete task"]'
 browser -- wait --fn "![...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('Note task ${STAMP}'))"
 browser -- wait 1500
 shot dated-d-completed
 d1 "SELECT COALESCE(json_array_length(moves_json), 0) AS tasks FROM threads WHERE title = 'Dated D ${STAMP}'"
-expect '"tasks": 0'
+expect '"tasks": 1'
+d1 "SELECT json_extract(value, '$.text') AS text FROM threads, json_each(moves_json) WHERE title = 'Dated D ${STAMP}'"
+expect During conversion ${STAMP}
 d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Dated D ${STAMP}'"
 expect '"n": 1'

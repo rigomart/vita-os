@@ -67,7 +67,7 @@ bun run verify browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[no
 - `Set date` exists twice while a thread is open: once on the pane's rows and once on the card behind it. Scope by XPath (`//ul[@aria-label="Tasks"]/li[...]` for rows, `//li[.//a[normalize-space()="<title>"]]` for the card).
 - The `No date` divider is drawn in capitals, so read it with `innerText.toLowerCase()`.
 - Task commands show no success toast. Only a failure toasts (`This Thread changed elsewhere. It has been refreshed.` or `Could not save that change. Please try again.`). The server confirmation is the reload plus `verify d1`, and for completion the `Task done` activity entry.
-- Tasks render optimistically and queue per thread: each command carries the revision the one before it brought back. Several quick actions are safe, but prove the end state after a reload.
+- Tasks render optimistically and settle independently. Controls disable while their own action is pending. Complete and Skip carry the displayed occurrence date; commands apply to current stored state. Prove the end state after a reload.
 - `Add a task` also commits on blur, and `Escape` clears the draft (from source, not yet driven).
 - After a reload the pane renders after the Dashboard. Wait for `ul[aria-label="Tasks"]` before clicking a tab, or `find role tab` fails with `No element found`.
 - The accessibility snapshot shows neither `aria-pressed` nor the activity log's text. Read focus from the radio's name or `li[data-focused]`, and the log with `eval "document.querySelector('[aria-label=\"Activity log\"]').innerText"`.

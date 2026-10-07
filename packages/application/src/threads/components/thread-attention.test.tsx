@@ -772,10 +772,25 @@ describe("ThreadAttention completing with a note", () => {
     expect(note(taskRows()[0]!)).toBeDisabled();
     expect(note(taskRows()[1]!)).toBeEnabled();
   });
+});
 
-  it("takes no note while the Thread is locked", () => {
-    renderAttention({ tasks: [callClinic], locked: true });
-
-    expect(note(taskRows()[0]!)).toBeDisabled();
+describe("ThreadAttention pending occurrence controls", () => {
+  it("disables Complete and Skip for the pending Task while another Task stays usable", () => {
+    renderAttention({
+      tasks: [
+        { ...callClinic, date: today, repeat: { kind: "days", every: 1 } },
+        bookScan,
+      ],
+      completingTaskIds: new Set([callClinic._id]),
+    });
+    expect(
+      within(taskRows()[0]!).getByRole("button", { name: "Complete task" }),
+    ).toBeDisabled();
+    expect(
+      within(taskRows()[0]!).getByRole("button", { name: "Skip task" }),
+    ).toBeDisabled();
+    expect(
+      within(taskRows()[1]!).getByRole("button", { name: "Complete task" }),
+    ).toBeEnabled();
   });
 });

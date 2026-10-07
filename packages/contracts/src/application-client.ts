@@ -54,15 +54,9 @@ export interface UpdateThreadInput {
   resolutionNote?: string;
 }
 
-/**
- * Every Task command names one Task by its ID and carries the revision the
- * caller read the Thread at. A stale revision, or a Task that is no longer
- * there, is refused as a conflict and writes nothing — so a command can never
- * land on a different Task than the one the person saw.
- */
+/** Task commands apply to the current Thread and identify Tasks by their IDs. */
 interface TaskCommand {
   threadId: ThreadId;
-  expectedRevision: number;
 }
 
 export interface AddTaskInput extends TaskCommand {
@@ -84,6 +78,8 @@ export interface RemoveTaskInput extends TaskCommand {
 
 export interface CompleteTaskInput extends TaskCommand {
   taskId: TaskId;
+  /** The displayed date, or null for an undated Task; refuses a changed occurrence. */
+  expectedOccurrence: number | null;
   /** Required when the Task repeats. */
   timeZone?: string;
   /** A client-minted Thread Note captured atomically with completion. */
@@ -106,6 +102,8 @@ export interface SetTaskRepeatInput extends TaskCommand {
 
 export interface SkipTaskInput extends TaskCommand {
   taskId: TaskId;
+  /** The displayed occurrence date; refuses if it has already advanced. */
+  expectedOccurrence: number;
   timeZone: string;
 }
 

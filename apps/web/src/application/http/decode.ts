@@ -176,7 +176,6 @@ export function decodeThread(value: unknown): Thread | undefined {
     lastActivityAt,
     lastActivityContent,
     createdAt,
-    revision,
   } = value;
   const tasks =
     rawTasks === undefined ? undefined : decodeList(rawTasks, decodeTask);
@@ -192,9 +191,7 @@ export function decodeThread(value: unknown): Thread | undefined {
     !isOptionalString(focusedTaskId) ||
     !isOptionalSafeInteger(lastActivityAt) ||
     !isOptionalString(lastActivityContent) ||
-    !isSafeInteger(createdAt) ||
-    !isSafeInteger(revision) ||
-    revision < 0
+    !isSafeInteger(createdAt)
   ) {
     return undefined;
   }
@@ -214,7 +211,6 @@ export function decodeThread(value: unknown): Thread | undefined {
     ...(lastActivityAt === undefined ? {} : { lastActivityAt }),
     ...(lastActivityContent === undefined ? {} : { lastActivityContent }),
     createdAt,
-    revision,
   };
 }
 

@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 
 import { Link } from "@tanstack/react-router";
 import { attentionDate } from "@vita-os/core";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
 import {
   CalendarClock,
@@ -45,15 +46,13 @@ import {
 } from "../../dashboard/components/dashboard-model";
 import {
   useCompleteTask,
-  useConversionLock,
+  useCompletingTaskIds,
   useSkipTask,
   useTaskDates,
 } from "../use-tasks";
 
 /** Past this many Tasks the pips stop growing and a count takes over. */
 const MAX_PIPS = 6;
-
-const noPendingTasks: ReadonlySet<TaskId> = new Set();
 
 /**
  * One Thread on the board, in the three rows every `BoardCard` keeps.
@@ -84,8 +83,7 @@ export function ThreadAttentionCard({
   onSetTaskRepeat,
   onSkipTask,
   onTray,
-  pendingTaskIds = noPendingTasks,
-  locked = false,
+  completingTaskIds,
   thread,
 }: {
   actions?: ReactNode;
@@ -94,19 +92,16 @@ export function ThreadAttentionCard({
   /** The group heading above already names this Thread's day. */
   dateInHeading?: boolean;
   /** Adds a Task named "Follow up" carrying the date. */
-  onAddFollowUp: (when: number) => void;
-  onCompleteTask: (taskId: TaskId) => void;
+  onAddFollowUp: (when: number) => unknown;
+  onCompleteTask: (taskId: TaskId) => unknown;
   /** Sets, changes or (with `null`) clears one Task's date. */
-  onSetTaskDate: (taskId: TaskId, date: number | null) => void;
+  onSetTaskDate: (taskId: TaskId, date: number | null) => unknown;
   /** Sets, changes or (with `null`) clears one Task's Repeat. */
-  onSetTaskRepeat: (taskId: TaskId, repeat: Repeat | null) => void;
+  onSetTaskRepeat: (taskId: TaskId, repeat: Repeat | null) => unknown;
   /** Moves a repeating Task to its next occurrence. */
-  onSkipTask: (taskId: TaskId) => void;
+  onSkipTask: (taskId: TaskId) => unknown;
   onTray?: boolean;
-  /** Tasks shown but not yet at the service. */
-  pendingTaskIds?: ReadonlySet<TaskId>;
-  /** A Note is being added to the Thread: no Task command until it settles. */
-  locked?: boolean;
+  completingTaskIds?: ReadonlySet<TaskId>;
   thread: Thread;
 }) {
   const tasks = thread.tasks ?? [];
@@ -117,36 +112,42 @@ export function ThreadAttentionCard({
   // What the picker holds: the shown Task's own date. A card with no single
   // Task opens it empty, and a date set there adds a Task.
   const taskDate = lead?.date;
-  // While a Note is being added to the Thread, the card takes no Task
-  // command: its date reads but does not open, and nothing can be completed.
-  const leadPending = lead !== undefined && pendingTaskIds.has(lead._id);
+  const action = useGuardedAsyncAction((run: () => unknown) => run(), {
+    errorToast: false,
+  });
+  const dateAction = useGuardedAsyncAction(
+    (when: number | undefined) => {
+      if (lead !== undefined) return onSetTaskDate(lead._id, when ?? null);
+      if (when !== undefined) return onAddFollowUp(when);
+    },
+    { errorToast: false },
+  );
+  const repeatAction = useGuardedAsyncAction(
+    (repeat: Repeat | null) =>
+      lead === undefined ? undefined : onSetTaskRepeat(lead._id, repeat),
+    { errorToast: false },
+  );
+  const pending =
+    action.isPending ||
+    dateAction.isPending ||
+    repeatAction.isPending ||
+    (lead !== undefined && (completingTaskIds?.has(lead._id) ?? false));
   const showsDate = showsBoardDate(taskDate, dateInHeading);
   const showsPlacedDate =
     taskDate === undefined && showsBoardDate(placedBy, dateInHeading);
-  const dateControl = locked ? (
-    taskDate !== undefined && (
-      <PlacedDate
-        currentDate={currentDate}
-        inHeading={dateInHeading}
-        when={taskDate}
-      />
-    )
-  ) : (
+  const dateControl = (
     <BoardDate
+      busy={pending}
       currentDate={currentDate}
       inHeading={dateInHeading}
       labels={taskDateLabels}
-      onSetWhen={(when) => {
-        if (lead !== undefined) onSetTaskDate(lead._id, when ?? null);
-        else if (when !== undefined) onAddFollowUp(when);
-      }}
+      onSetWhen={(when) => dateAction.run(when)}
       {...(lead === undefined
         ? {}
         : {
             repeat: {
               value: lead.repeat,
-              onChange: (repeat: Repeat | null) =>
-                onSetTaskRepeat(lead._id, repeat),
+              onChange: (repeat: Repeat | null) => repeatAction.run(repeat),
             },
           })}
       when={taskDate}
@@ -188,20 +189,24 @@ export function ThreadAttentionCard({
               />
             )}
             <span className="flex items-center gap-1.5">
-              {!showsDate && !locked && dateControl}
-              {lead !== undefined && shown.canSkip && !locked && (
+              {!showsDate && dateControl}
+              {lead !== undefined && shown.canSkip && (
                 <BoardControl
                   label={`Skip “${lead.text}” to its next date`}
-                  onClick={() => onSkipTask(lead._id)}
+                  disabled={pending}
+                  onClick={() => void action.run(() => onSkipTask(lead._id))}
                   className={revealed}
                 >
                   <SkipForward className="size-3.5" />
                 </BoardControl>
               )}
-              {lead !== undefined && !locked && (
+              {lead !== undefined && (
                 <BoardCompleteButton
                   label={`Complete “${lead.text}”`}
-                  onClick={() => onCompleteTask(lead._id)}
+                  disabled={pending}
+                  onClick={() =>
+                    void action.run(() => onCompleteTask(lead._id))
+                  }
                 />
               )}
               {actions && (
@@ -261,11 +266,8 @@ export function ThreadAttentionCard({
             </span>
           ) : (
             <span
-              aria-busy={leadPending || undefined}
-              className={cn(
-                "line-clamp-3 min-w-0 flex-1 text-foreground/75",
-                leadPending && "opacity-60",
-              )}
+              aria-busy={pending || undefined}
+              className={cn("line-clamp-3 min-w-0 flex-1 text-foreground/75")}
             >
               <span className="sr-only">
                 {focused ? "Focused Task" : "Task"}
@@ -274,9 +276,6 @@ export function ThreadAttentionCard({
                   : `, ${repeatLabel(lead.repeat).toLowerCase()}: `}
               </span>
               {lead.text}
-              {leadPending && (
-                <span className="text-muted-foreground"> · adding…</span>
-              )}
             </span>
           )}
         </div>
@@ -301,24 +300,21 @@ export function ConnectedThreadAttentionCard({
   const completeTask = useCompleteTask(thread);
   const skipTask = useSkipTask(thread);
   const taskDates = useTaskDates(thread);
-  const { locked, pendingTaskIds } = useConversionLock(thread);
+  const completingTaskIds = useCompletingTaskIds(thread);
 
   return (
     <ThreadAttentionCard
-      locked={locked}
-      pendingTaskIds={pendingTaskIds}
+      completingTaskIds={completingTaskIds}
       area={area}
       currentDate={currentDate}
       dateInHeading={dateInHeading}
       onTray={onTray}
       thread={thread}
-      onAddFollowUp={(when) => void taskDates.addFollowUp(when)}
-      onCompleteTask={(taskId) => void completeTask(taskId)}
-      onSetTaskDate={(taskId, date) => void taskDates.setDate(taskId, date)}
-      onSetTaskRepeat={(taskId, repeat) =>
-        void taskDates.setRepeat(taskId, repeat)
-      }
-      onSkipTask={(taskId) => void skipTask(taskId)}
+      onAddFollowUp={(when) => taskDates.addFollowUp(when)}
+      onCompleteTask={(taskId) => completeTask(taskId)}
+      onSetTaskDate={(taskId, date) => taskDates.setDate(taskId, date)}
+      onSetTaskRepeat={(taskId, repeat) => taskDates.setRepeat(taskId, repeat)}
+      onSkipTask={(taskId) => skipTask(taskId)}
     />
   );
 }

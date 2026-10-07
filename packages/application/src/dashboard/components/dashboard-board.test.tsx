@@ -1,13 +1,21 @@
-import type { Note, NoteId, TaskId, Thread } from "@vita-os/contracts";
+import type {
+  Note,
+  NoteId,
+  OperationResult,
+  TaskId,
+  Thread,
+} from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import {
   createQuietApplicationClient,
+  deferred,
   success,
 } from "../../test/fake-application-client";
 import {
+  act,
   render,
   screen,
   waitFor,
@@ -31,7 +39,7 @@ function aThread(fields: Partial<Thread>): Thread {
     slug: "checkup",
     order: 0,
     state: "open",
-    revision: 3,
+
     createdAt: currentDate,
     ...fields,
   } as Thread;
@@ -82,7 +90,6 @@ describe("DashboardBoard card date control", () => {
         threadId: "thread1",
         taskId: "task1",
         date: dayOfThisMonth(28),
-        expectedRevision: 3,
         timeZone: expect.any(String),
       }),
     );
@@ -114,7 +121,6 @@ describe("DashboardBoard card date control", () => {
         threadId: "thread1",
         taskId: "task1",
         date: new Date(2026, 6, 22).getTime(),
-        expectedRevision: 3,
         timeZone: expect.any(String),
       }),
     );
@@ -146,7 +152,6 @@ describe("DashboardBoard card date control", () => {
       taskId: expect.any(String),
       text: "Follow up",
       date: dayOfThisMonth(28),
-      expectedRevision: 3,
     });
   });
 });
@@ -192,7 +197,7 @@ describe("DashboardBoard repeating Task card", () => {
         threadId: "thread1",
         taskId: "check-in",
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        expectedRevision: 3,
+        expectedOccurrence: checkIn.date,
       }),
     );
   });
@@ -220,11 +225,49 @@ describe("DashboardBoard repeating Task card", () => {
         threadId: "thread1",
         taskId: "check-in",
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        expectedRevision: 3,
+        expectedOccurrence: checkIn.date,
       }),
     );
     expect(screen.queryByRole("textbox")).toBeNull();
   });
+
+  it.each(["complete", "skip"] as const)(
+    "disables the pending %s card control and accepts a double click once",
+    async (command) => {
+      const user = userEvent.setup();
+      const thread = aThread({ tasks: [checkIn] });
+      const answer = deferred<OperationResult<Thread>>();
+      const send = vi.fn(() => answer.promise);
+      render(
+        <DashboardBoard
+          areas={[]}
+          board={buildAttentionBoard([thread], [], currentDate)}
+          currentDate={currentDate}
+        />,
+        {
+          applicationClient: createQuietApplicationClient(
+            command === "complete"
+              ? { completeTask: send }
+              : { skipTask: send },
+          ),
+        },
+      );
+      const button = screen.getByRole("button", {
+        name:
+          command === "complete"
+            ? "Complete “Evening check-in”"
+            : "Skip “Evening check-in” to its next date",
+      });
+      await user.dblClick(button);
+      await waitFor(() => expect(button).toBeDisabled());
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(send).toHaveBeenCalledWith(
+        expect.objectContaining({ expectedOccurrence: checkIn.date }),
+      );
+      await act(async () => answer.resolve(success(thread)));
+      await waitFor(() => expect(button).toBeEnabled());
+    },
+  );
 
   it("offers no skip and no glyph on a one-off Task", () => {
     const { repeat: _repeat, ...oneOff } = checkIn;

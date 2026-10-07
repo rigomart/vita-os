@@ -17,7 +17,6 @@ function setup(repeats = false) {
     slug: "check",
     state: "open",
     order: 0,
-    revision: 1,
     createdAt: 1,
     tasks: [
       {
@@ -40,7 +39,7 @@ function setup(repeats = false) {
   const input = {
     threadId: thread._id,
     taskId: thread.tasks![0]!._id,
-    expectedRevision: 1,
+    expectedOccurrence: thread.tasks![0]!.date ?? null,
     note: { id: newRecordId() as ThreadNoteId, body: "  Called  " },
     ...(repeats ? { timeZone: "UTC" } : {}),
   };
@@ -77,6 +76,26 @@ describe("in-memory completion with a Note", () => {
       ).toEqual({ ok: true, value: state.threadNotes.get(input.threadId) });
     },
   );
+
+  it("completes the captured occurrence after an unrelated title change", async () => {
+    const { state, client, input } = setup(true);
+    state.threads[0]!.title = "Edited elsewhere";
+    expect(await client.completeTask(input)).toMatchObject({
+      ok: true,
+      value: { title: "Edited elsewhere" },
+    });
+  });
+
+  it("refuses a changed occurrence without writing any collection", async () => {
+    const { state, client, input } = setup(true);
+    state.threads[0]!.tasks![0]!.date! += 86_400_000;
+    const before = structuredClone(state);
+    expect(await client.completeTask(input)).toMatchObject({
+      ok: false,
+      error: { code: "conflict" },
+    });
+    expect(state).toEqual(before);
+  });
 
   it("omits the activity quote when a Note is captured", async () => {
     const { state, client, input } = setup();
@@ -119,7 +138,10 @@ describe("in-memory completion with a Note", () => {
     await client.completeTask(input);
     const before = structuredClone(state);
     expect(
-      await client.completeTask({ ...input, expectedRevision: 2 }),
+      await client.completeTask({
+        ...input,
+        expectedOccurrence: state.threads[0]!.tasks![0]!.date!,
+      }),
     ).toMatchObject({ ok: false, error: { code: "conflict" } });
     expect(state).toEqual(before);
   });

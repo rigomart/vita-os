@@ -123,7 +123,6 @@ describe("HTTP ApplicationClient against the Worker", () => {
       threadId: thread.id,
       taskId: "task-1" as TaskId,
       date: 1_800_000_000_000,
-      expectedRevision: 0,
     });
     expect(dated.ok).toBe(true);
     await expect(client.listResolvedThreads()).resolves.toEqual({
@@ -170,7 +169,6 @@ describe("HTTP ApplicationClient against the Worker", () => {
           _id: thread.id,
           tasks: [{ _id: "task-1", text: "Call clinic" }],
           focusedTaskId: "task-1",
-          revision: 0,
         }),
         area: expect.objectContaining({ name: "Family Health" }),
       },
@@ -189,9 +187,9 @@ describe("HTTP ApplicationClient against the Worker", () => {
       },
     });
     const completed = await client.completeTask({
+      expectedOccurrence: null,
       threadId: thread.id,
       taskId: "task-1" as TaskId,
-      expectedRevision: 0,
     });
     expect(completed.ok).toBe(true);
     expect(completed.ok && completed.value).not.toHaveProperty("tasks");
@@ -222,9 +220,9 @@ describe("HTTP ApplicationClient against the Worker", () => {
     });
     await expect(
       client.completeTask({
+        expectedOccurrence: null,
         threadId: thread.id,
         taskId: "task-1" as TaskId,
-        expectedRevision: 0,
       }),
     ).resolves.toEqual({
       ok: false,

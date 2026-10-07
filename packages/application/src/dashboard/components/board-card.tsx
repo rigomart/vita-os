@@ -86,6 +86,7 @@ export function BoardTag({ icon, label }: { icon: ReactNode; label: string }) {
  * Under such a heading a time is all the token says.
  */
 export function BoardDate({
+  busy,
   currentDate,
   inHeading = false,
   labels = followUpDateLabels,
@@ -93,17 +94,19 @@ export function BoardDate({
   repeat,
   when,
 }: {
+  busy?: boolean;
   currentDate: number;
   inHeading?: boolean;
   /** What the control is called: a Note's Follow-up date, or a Task's date. */
   labels?: { set: string; change: string; clear: string };
-  onSetWhen: (when: number | undefined) => void;
+  onSetWhen: (when: number | undefined) => unknown;
   /** A Task's Repeat, held in the same picker. */
   repeat?: RepeatControl;
   when?: number;
 }) {
   return (
     <WhenPopover
+      busy={busy}
       when={when}
       {...(repeat === undefined ? {} : { repeat })}
       clearLabel={labels.clear}
@@ -111,6 +114,7 @@ export function BoardDate({
       trigger={
         when === undefined || !showsBoardDate(when, inHeading) ? (
           <BoardControl
+            disabled={busy}
             className={revealed}
             label={when === undefined ? labels.set : labels.change}
           >
@@ -118,6 +122,7 @@ export function BoardDate({
           </BoardControl>
         ) : (
           <button
+            disabled={busy}
             type="button"
             aria-label={labels.change}
             className={cn(
@@ -156,14 +161,17 @@ export function BoardCompleteButton({
   icon: Icon = Check,
   label,
   onClick,
+  disabled,
 }: {
   icon?: typeof Check;
   label: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <BoardControl
       label={label}
+      disabled={disabled}
       onClick={onClick}
       className={cn(
         revealed,
@@ -180,17 +188,20 @@ export function BoardControl({
   className,
   label,
   onClick,
+  disabled,
 }: {
   children: ReactNode;
   className?: string;
   label: string;
   onClick?: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
+      disabled={disabled}
       onClick={onClick}
       className={cn(
         "relative z-10 -my-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform,opacity] hover:bg-muted hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40",

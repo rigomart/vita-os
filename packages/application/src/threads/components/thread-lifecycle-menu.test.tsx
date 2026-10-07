@@ -13,7 +13,7 @@ function makeThread(overrides: Partial<Thread> = {}): Thread {
     slug: "renew-passport",
     areaId: "area1" as AreaId,
     state: "open",
-    revision: 0,
+
     order: 0,
     createdAt: 0,
     ...overrides,

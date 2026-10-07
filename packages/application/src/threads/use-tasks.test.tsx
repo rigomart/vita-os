@@ -27,7 +27,6 @@ const bookSlot = { _id: "task-2" as TaskId, text: "Book slot" };
 const thread = aThread({
   tasks: [callClinic, bookSlot],
   focusedTaskId: callClinic._id,
-  revision: 4,
 });
 
 function render<T>(client: ApplicationClient, hook: () => T) {
@@ -85,7 +84,7 @@ describe("useCompleteTask", () => {
     expect(completeTask).toHaveBeenCalledWith({
       threadId: thread._id,
       taskId: callClinic._id,
-      expectedRevision: 4,
+      expectedOccurrence: null,
       timeZone: expect.any(String),
     });
 
@@ -95,13 +94,17 @@ describe("useCompleteTask", () => {
           ...thread,
           tasks: [bookSlot],
           focusedTaskId: undefined,
-          revision: 5,
+
           lastActivityContent: 'Completed "Call clinic"',
         }),
       );
       await pending.promise;
     });
-    await waitFor(() => expect(shown(cache).open?.revision).toBe(5));
+    await waitFor(() =>
+      expect(shown(cache).open?.lastActivityContent).toBe(
+        'Completed "Call clinic"',
+      ),
+    );
   });
 
   it("rolls a refused completion back and says why", async () => {
@@ -133,22 +136,16 @@ describe("useCompleteTask", () => {
 });
 
 describe("useTaskDates", () => {
-  it("adds one Follow up Task however often a card is activated at once", async () => {
+  it("adds one dated Follow up Task per accepted activation", async () => {
     const date = new Date(2026, 6, 20).getTime();
     const addTask = vi.fn(
-      async (input: {
-        taskId: TaskId;
-        text: string;
-        date?: number;
-        expectedRevision: number;
-      }) =>
+      async (input: { taskId: TaskId; text: string; date?: number }) =>
         success({
           ...thread,
           tasks: [
             ...(thread.tasks ?? []),
             { _id: input.taskId, text: input.text, date },
           ],
-          revision: input.expectedRevision + 1,
         }),
     );
     const { cache, feedback, result } = render(
@@ -157,11 +154,7 @@ describe("useTaskDates", () => {
     );
 
     await act(async () => {
-      await Promise.all([
-        result.current.addFollowUp(date),
-        result.current.addFollowUp(date),
-        result.current.addFollowUp(date),
-      ]);
+      await result.current.addFollowUp(date);
     });
 
     expect(addTask).toHaveBeenCalledTimes(1);
@@ -174,15 +167,13 @@ describe("useTaskDates", () => {
 
 describe("useTasks", () => {
   it("focuses and unfocuses without reordering the list", async () => {
-    const focusTask = vi.fn(
-      async (input: { taskId: TaskId | null; expectedRevision: number }) =>
-        success({
-          ...thread,
-          ...(input.taskId === null
-            ? { focusedTaskId: undefined }
-            : { focusedTaskId: input.taskId }),
-          revision: input.expectedRevision + 1,
-        }),
+    const focusTask = vi.fn(async (input: { taskId: TaskId | null }) =>
+      success({
+        ...thread,
+        ...(input.taskId === null
+          ? { focusedTaskId: undefined }
+          : { focusedTaskId: input.taskId }),
+      }),
     );
     const { cache, result } = render(
       createFakeApplicationClient({ focusTask }),
@@ -202,7 +193,6 @@ describe("useTasks", () => {
     expect(focusTask).toHaveBeenLastCalledWith({
       threadId: thread._id,
       taskId: null,
-      expectedRevision: 5,
     });
   });
 
@@ -221,67 +211,7 @@ describe("useTasks", () => {
       expect(shown(cache).rail?.tasks).toEqual([bookSlot]);
       expect(shown(cache).rail).not.toHaveProperty("focusedTaskId");
     });
-    pending.resolve(success({ ...thread, tasks: [bookSlot], revision: 5 }));
-  });
-
-  it("queues commands for one Thread, each carrying the revision the one before brought back", async () => {
-    const added = deferred<OperationResult<Thread>>();
-    const addTask = vi.fn(() => added.promise);
-    const completeTask = vi.fn(
-      async (input: { taskId: TaskId; expectedRevision: number }) =>
-        success({
-          ...thread,
-          tasks: [bookSlot],
-          focusedTaskId: undefined,
-          revision: input.expectedRevision + 1,
-        }),
-    );
-    const { cache, result } = render(
-      createFakeApplicationClient({ addTask, completeTask }),
-      () => useTasks(thread),
-    );
-
-    act(() => {
-      void result.current.add("  Pay the bill  ");
-      void result.current.complete(callClinic._id);
-    });
-
-    // Both changes show at once, but only the first has reached the service.
-    await waitFor(() =>
-      expect(shown(cache).open?.tasks?.map((task) => task.text)).toEqual([
-        "Book slot",
-        "Pay the bill",
-      ]),
-    );
-    expect(addTask).toHaveBeenCalledTimes(1);
-    expect(completeTask).not.toHaveBeenCalled();
-    const newTask = shown(cache).open?.tasks?.[1];
-    expect(addTask).toHaveBeenCalledWith({
-      threadId: thread._id,
-      taskId: newTask?._id,
-      text: "Pay the bill",
-      expectedRevision: 4,
-    });
-
-    await act(async () => {
-      added.resolve(
-        success({
-          ...thread,
-          tasks: [callClinic, bookSlot, newTask!],
-          revision: 5,
-        }),
-      );
-      await added.promise;
-    });
-
-    await waitFor(() =>
-      expect(completeTask).toHaveBeenCalledWith({
-        threadId: thread._id,
-        taskId: callClinic._id,
-        expectedRevision: 5,
-        timeZone: expect.any(String),
-      }),
-    );
+    pending.resolve(success({ ...thread, tasks: [bookSlot] }));
   });
 
   it("captures nothing blank", async () => {

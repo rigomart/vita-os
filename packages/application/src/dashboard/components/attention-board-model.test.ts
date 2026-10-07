@@ -31,7 +31,7 @@ function thread(
     areaId: "area-1" as Thread["areaId"],
     order: 0,
     state: "open",
-    revision: 0,
+
     createdAt: currentDate,
     ...fields,
     ...(followUp === undefined
@@ -50,7 +50,7 @@ function note(id: string, fields: Partial<Note> = {}): Note {
     _id: id as Note["_id"],
     body: id,
     state: "open",
-    revision: 0,
+
     createdAt: currentDate,
     ...fields,
   } as Note;

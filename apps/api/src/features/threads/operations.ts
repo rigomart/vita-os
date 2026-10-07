@@ -48,16 +48,7 @@ import { areaStorage } from "../areas/storage";
 import { moveConflict, threadNotFound } from "./errors";
 import { isThreadSlugTaken, threadStorage } from "./storage";
 
-/**
- * How many times a Thread change re-reads and re-decides after losing a
- * revision race.
- *
- * An ordinary edit should not fail because somebody else wrote first, so a lost
- * race is retried from the fresh Thread instead of surfacing a conflict. Only a
- * caller that supplied its own expectation — every Task command — is told
- * about the conflict, because for that caller a retry could act on a different
- * Task.
- */
+/** Re-read and recompute whole-JSON Task writes after losing a storage race. */
 const CHANGE_ATTEMPTS = 3;
 
 /** How many times a create re-mints a colliding slug. */
@@ -202,7 +193,7 @@ export function removeTask(input: RemoveTaskInput): Operation<Thread> {
 /**
  * Complete one Task, focused or not. Its Activity Log entry is written with the
  * change or not at all, and two competing completions of the same Task record
- * one: the loser finds the revision moved on.
+ * one: the loser finds the occurrence changed.
  */
 export function completeTask(input: CompleteTaskInput): Operation<Thread> {
   return Effect.gen(function* () {
@@ -210,6 +201,12 @@ export function completeTask(input: CompleteTaskInput): Operation<Thread> {
     return yield* changeTasks(
       input,
       (thread) => {
+        const task = thread.tasks?.find((task) => task._id === input.taskId);
+        if (
+          task === undefined ||
+          (task.date ?? null) !== input.expectedOccurrence
+        )
+          return null;
         if (input.timeZone !== undefined) requireTimeZone(input.timeZone);
         return decideCompleteTask(thread, input.taskId, {
           timeZone: input.timeZone,
@@ -241,12 +238,15 @@ export function setTaskRepeat(input: SetTaskRepeatInput): Operation<Thread> {
 export function skipTask(input: SkipTaskInput): Operation<Thread> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
-    return yield* changeTasks(input, (thread) =>
-      decideSkipTask(thread, input.taskId, {
+    return yield* changeTasks(input, (thread) => {
+      const task = thread.tasks?.find((task) => task._id === input.taskId);
+      if (task === undefined || task.date !== input.expectedOccurrence)
+        return null;
+      return decideSkipTask(thread, input.taskId, {
         timeZone: input.timeZone,
         now: scope.clock.now(),
-      }),
-    );
+      });
+    });
   });
 }
 
@@ -262,59 +262,29 @@ export function removeThread(input: {
   });
 }
 
-/**
- * One Task command, decided against the Thread the caller read.
- *
- * The caller's revision must be the Thread's, and the Task it names must still
- * be there; otherwise the command is a conflict and nothing is written. The
- * write is conditional on the same revision, so a command that loses a race
- * after the check is refused too — never retried, since a retry could land on
- * a different Task.
- */
+/** Apply a Task command to the current Thread, rechecking its rule on every retry. */
 function changeTasks(
-  command: { threadId: ThreadId; expectedRevision: number },
+  command: { threadId: ThreadId },
   decide: (thread: Thread) => ThreadUpdateDecision | null,
   note?: CompleteTaskInput["note"],
 ): Operation<Thread> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
-    const threads = threadStorage(scope);
-    const thread = yield* database(() => threads.find(command.threadId));
-    if (thread === null) return yield* threadNotFound();
-    if (thread.revision !== command.expectedRevision) {
-      return yield* moveConflict();
-    }
-
-    const decision = yield* attempt(() => decide(thread));
-    if (decision === null) return yield* moveConflict();
-    const completionNote =
-      note === undefined
-        ? undefined
-        : yield* attempt(() => {
-            // Completion Note IDs follow the same opaque-ID bounds as Task IDs.
-            requireTaskId(note.id);
-            return {
-              id: note.id,
-              body: requireNonBlankText(note.body, "Thread note body"),
-            };
-          });
-    if (
-      Object.keys(decision.patch).length === 0 &&
-      decision.logs.length === 0
-    ) {
-      return thread;
-    }
-
-    const written = yield* database(() =>
-      threads.writeChange({
-        threadId: command.threadId,
-        expectedRevision: command.expectedRevision,
-        change: decision,
-        completionNote,
-      }),
-    );
-    return written === null ? yield* moveConflict() : written;
-  });
+  return changeThread(command.threadId, (thread) =>
+    Effect.gen(function* () {
+      const decision = yield* attempt(() => decide(thread));
+      if (decision === null) return yield* moveConflict();
+      const completionNote =
+        note === undefined
+          ? undefined
+          : yield* attempt(() => {
+              requireTaskId(note.id);
+              return {
+                id: note.id,
+                body: requireNonBlankText(note.body, "Thread note body"),
+              };
+            });
+      return { ...decision, completionNote };
+    }),
+  );
 }
 
 /**
@@ -326,15 +296,21 @@ function changeTasks(
  */
 function changeThread(
   threadId: ThreadId,
-  decide: (thread: Thread) => Effect.Effect<ThreadChange, OperationFailure>,
+  decide: (
+    thread: Thread,
+  ) => Effect.Effect<
+    ThreadChange & { completionNote?: CompleteTaskInput["note"] },
+    OperationFailure
+  >,
 ): Operation<Thread> {
   return Effect.gen(function* () {
     const scope = yield* RequestContext;
     const threads = threadStorage(scope);
 
     for (let execution = 0; execution < CHANGE_ATTEMPTS; execution += 1) {
-      const thread = yield* database(() => threads.find(threadId));
-      if (thread === null) return yield* threadNotFound();
+      const current = yield* database(() => threads.findForChange(threadId));
+      if (current === null) return yield* threadNotFound();
+      const { thread, revision } = current;
 
       const change = yield* decide(thread);
       if (Object.keys(change.patch).length === 0 && change.logs.length === 0) {
@@ -345,8 +321,9 @@ function changeThread(
         () =>
           threads.writeChange({
             threadId,
-            expectedRevision: thread.revision,
+            expectedRevision: revision,
             change,
+            completionNote: change.completionNote,
           }),
         isThreadSlugTaken,
       ).pipe(Effect.catchTag("SlugTaken", () => Effect.succeed(null)));

@@ -4,6 +4,7 @@ import type {
   Note,
   NoteAddedToThread,
   OperationResult,
+  TaskId,
   Thread,
   ThreadDetail,
   ThreadNote,
@@ -76,7 +77,6 @@ async function createThread(
       taskId: "existing-task",
       text: "Existing",
       date: taskDate,
-      expectedRevision: thread.revision,
     },
   });
 }
@@ -183,7 +183,7 @@ describe("adding a Note to a Thread", () => {
     expect(added.thread.lastActivityAt).toEqual(expect.any(Number));
     expect(added.thread).not.toHaveProperty("lastActivityContent");
     expect(added.thread).not.toHaveProperty("followUp");
-    expect(added.thread.revision).toBe(thread.revision + 1);
+
     expect(await activityOf(owner, thread._id)).toEqual([]);
     const detail = await succeed<ThreadDetail>(`/v1/threads/${thread.slug}`, {
       session: owner,
@@ -537,6 +537,65 @@ describe("contention", () => {
     expect(copies?.n).toBe(1);
   });
 
+  it("preserves a Task edit and a dated Note conversion when their writes race", async () => {
+    const scope = scopeFor();
+    const created = value(
+      await run(scope, threads.createThread({ title: "Both actions" })),
+    );
+    const thread = value(
+      await run(
+        scope,
+        threads.addTask({
+          threadId: created._id,
+          taskId: "existing" as TaskId,
+          text: "Old text",
+        }),
+      ),
+    );
+    const note = value(
+      await run(scope, notes.createNote({ body: "Converted", followUp: jun1 })),
+    );
+    const batch = env.DB.batch.bind(env.DB);
+    vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
+      value(
+        await run(
+          scope,
+          adding.addNoteToThread({
+            noteId: note._id,
+            threadId: thread._id,
+            taskId: "converted" as TaskId,
+          }),
+        ),
+      );
+      return batch(statements);
+    });
+    const edited = value(
+      await run(
+        scope,
+        threads.editTask({
+          threadId: thread._id,
+          taskId: "existing" as TaskId,
+          text: "New text",
+        }),
+      ),
+    );
+    expect(edited.tasks).toEqual([
+      { _id: "existing", text: "New text" },
+      { _id: "converted", text: "Converted", date: jun1 },
+    ]);
+    const copied = await env.DB.prepare(
+      "SELECT body FROM thread_notes WHERE thread_id = ?",
+    )
+      .bind(thread._id)
+      .all<{ body: string }>();
+    expect(copied.results).toEqual([{ body: "Converted" }]);
+    expect(
+      await env.DB.prepare("SELECT id FROM notes WHERE id = ?")
+        .bind(note._id)
+        .first(),
+    ).toBeNull();
+  });
+
   it("writes nothing when the Note is completed under the decision", async () => {
     const scope = scopeFor();
     const thread = value(
@@ -569,7 +628,7 @@ describe("contention", () => {
       .bind(thread._id)
       .first();
     expect(stored).toEqual({
-      revision: thread.revision,
+      revision: 0,
       moves_json: null,
       last_activity_at: null,
       copies: 0,

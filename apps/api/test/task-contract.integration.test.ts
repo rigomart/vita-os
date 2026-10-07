@@ -32,7 +32,7 @@ describe("Task HTTP contract", () => {
     let thread = await succeed<Thread>(`${base}/tasks`, {
       method: "POST",
       session: owner,
-      body: { taskId: "a", text: "Call clinic", expectedRevision: 0 },
+      body: { taskId: "a", text: "Call clinic" },
     });
     thread = await succeed<Thread>(`${base}/tasks`, {
       method: "POST",
@@ -40,18 +40,17 @@ describe("Task HTTP contract", () => {
       body: {
         taskId: "b",
         text: "Book slot",
-        expectedRevision: thread.revision,
       },
     });
     thread = await succeed<Thread>(`${base}/tasks/b`, {
       method: "PATCH",
       session: owner,
-      body: { text: "Book a slot", expectedRevision: thread.revision },
+      body: { text: "Book a slot" },
     });
     thread = await succeed<Thread>(`${base}/focus`, {
       method: "PUT",
       session: owner,
-      body: { taskId: "b", expectedRevision: thread.revision },
+      body: { taskId: "b" },
     });
     expect(thread.tasks).toEqual([
       { _id: "a", text: "Call clinic" },
@@ -62,7 +61,7 @@ describe("Task HTTP contract", () => {
     thread = await succeed<Thread>(`${base}/focus`, {
       method: "PUT",
       session: owner,
-      body: { taskId: null, expectedRevision: thread.revision },
+      body: { taskId: null },
     });
     expect(thread).not.toHaveProperty("focusedTaskId");
     expect(thread).not.toHaveProperty("focusedMoveId");
@@ -70,7 +69,7 @@ describe("Task HTTP contract", () => {
     thread = await succeed<Thread>(`${base}/tasks/a/complete`, {
       method: "POST",
       session: owner,
-      body: { expectedRevision: thread.revision },
+      body: { expectedOccurrence: null },
     });
     expect(thread.tasks).toEqual([{ _id: "b", text: "Book a slot" }]);
     expect(await logOf(owner, thread)).toEqual([
@@ -80,11 +79,38 @@ describe("Task HTTP contract", () => {
     thread = await succeed<Thread>(`${base}/tasks/b`, {
       method: "DELETE",
       session: owner,
-      body: { expectedRevision: thread.revision },
+      body: {},
     });
     expect(thread).not.toHaveProperty("tasks");
     expect(thread).not.toHaveProperty("moves");
   });
+
+  it.each([-1, 253_402_300_800_000])(
+    "completes a legacy stored Task date outside new-write bounds: %s",
+    async (date) => {
+      const owner = await createSession("tasks-legacy-date");
+      const thread = await createThread(owner);
+      await env.DB.prepare("UPDATE threads SET moves_json = ? WHERE id = ?")
+        .bind(
+          JSON.stringify([{ id: "legacy", text: "Legacy task", date }]),
+          thread._id,
+        )
+        .run();
+      const detail = await succeed<{ thread: Thread }>(
+        `/v1/threads/${thread.slug}`,
+        { session: owner },
+      );
+      expect(detail.thread.tasks?.[0]?.date).toBe(date);
+      const completed = await succeed<Thread>(
+        `/v1/threads/${thread._id}/tasks/legacy/complete`,
+        { method: "POST", session: owner, body: { expectedOccurrence: date } },
+      );
+      expect(completed).not.toHaveProperty("tasks");
+      expect(await logOf(owner, thread)).toEqual([
+        ["move_completed", 'Completed "Legacy task"'],
+      ]);
+    },
+  );
 
   it("stores Tasks in the unchanged columns", async () => {
     const owner = await createSession("tasks-routes-storage");
@@ -92,12 +118,12 @@ describe("Task HTTP contract", () => {
     await succeed(`/v1/threads/${created._id}/tasks`, {
       method: "POST",
       session: owner,
-      body: { taskId: "a", text: "Call clinic", expectedRevision: 0 },
+      body: { taskId: "a", text: "Call clinic" },
     });
     await succeed(`/v1/threads/${created._id}/focus`, {
       method: "PUT",
       session: owner,
-      body: { taskId: "a", expectedRevision: 1 },
+      body: { taskId: "a" },
     });
 
     expect(

@@ -309,6 +309,21 @@ export function threadStorage({ db, clock, actorId }: RequestScope) {
       return row === null ? null : toThread(row);
     },
 
+    /** Revision is private to storage decisions, never part of a public Thread. */
+    async findForChange(
+      threadId: string,
+    ): Promise<{ thread: Thread; revision: number } | null> {
+      const row = await db
+        .prepare(
+          `SELECT ${THREAD_COLUMNS} FROM threads WHERE user_id = ? AND id = ? LIMIT 1`,
+        )
+        .bind(actorId, threadId)
+        .first<ThreadRow>();
+      return row === null
+        ? null
+        : { thread: toThread(row), revision: row.revision };
+    },
+
     async exists(threadId: string): Promise<boolean> {
       const row = await db
         .prepare("SELECT id FROM threads WHERE user_id = ? AND id = ? LIMIT 1")

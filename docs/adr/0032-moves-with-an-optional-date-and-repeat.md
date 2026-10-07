@@ -5,6 +5,8 @@ Terminology amended by ADR 0033: **Move** is renamed **Task** (Moves become Task
 **Status:** Accepted. Amended by #402: compatibility window closed, `threads.follow_up` dropped.
 **Date:** 2026-10-04
 
+Amended by [ADR 0034](./0034-plain-application-writes.md): current-state Task commands and independent optimistic writes replace client revision coordination; conversion destinations appear after confirmation without a Thread lock.
+
 A **Move** becomes text with an optional date and an optional repeat, the way a calendar event is a title with an optional time and repeat. A **Thread**'s own **Follow-up date** is folded into its Moves: a Thread comes back on the **Dashboard** at its soonest dated Move. Issue #397 is the specification.
 
 Some situations need the same small attention again and again: an evening check-in during someone's recovery, a weekly call, a monthly refill. Vita OS could not hold that. Moves had no date and no done state (ADR 0022), so a daily check had to be retyped after every completion. The Follow-up date was a Thread's only date (ADR 0028), so a daily rhythm used it up, left nowhere for a one-off date like an appointment, and had to be reset by hand every night. The product direction named that manual reset as the evidence for building recurrence. In practice the friction was enough for such check-ins not to be tracked in the app at all.

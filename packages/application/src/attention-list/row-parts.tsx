@@ -125,7 +125,7 @@ export function AreaTag({
  */
 export interface RepeatControl {
   value: Repeat | undefined;
-  onChange: (repeat: Repeat | null) => void;
+  onChange: (repeat: Repeat | null) => unknown;
 }
 
 /**
@@ -165,7 +165,7 @@ export function WhenPopover({
    * to its new day's heading, and its picker closes as it always has.
    */
   keepOpenOnPick?: boolean;
-  onSetWhen?: (when: number | undefined) => void;
+  onSetWhen?: (when: number | undefined) => unknown;
   /** A Task's Repeat; without it the picker holds a date alone. */
   repeat?: RepeatControl;
   trigger: ReactElement;
@@ -180,24 +180,26 @@ export function WhenPopover({
   const selected = when === undefined ? undefined : new Date(when);
   const savedTime = when === undefined ? "" : (timeOfDay(when) ?? "");
 
-  /** Saves the Repeat choice, if it is a whole one and differs from the Task's. */
-  function commitRepeat() {
+  /** A chosen day depends on this Repeat write finishing first. */
+  async function commitRepeat() {
     if (repeat === undefined || when === undefined || busy) return;
     const chosen = draftRepeat(draft);
     if (chosen !== undefined && !sameRepeat(chosen, repeat.value)) {
-      repeat.onChange(chosen);
+      await repeat.onChange(chosen);
     }
   }
 
-  function handleOpenChange(next: boolean) {
+  async function handleOpenChange(next: boolean) {
     if (next) {
       setTime(savedTime);
       setAddingTime(savedTime !== "");
       setDraft(repeatDraft(repeat?.value));
     } else {
-      commitRepeat();
-      if (when !== undefined && time !== savedTime && !busy) {
-        onSetWhen?.(withTimeOfDay(when, time));
+      if (!busy) {
+        await commitRepeat();
+        if (when !== undefined && time !== savedTime) {
+          await onSetWhen?.(withTimeOfDay(when, time));
+        }
       }
     }
     setOpen(next);
@@ -217,10 +219,10 @@ export function WhenPopover({
           selected={selected}
           defaultMonth={selected}
           disabled={busy}
-          onSelect={(date) => {
+          onSelect={async (date) => {
             if (!date || busy) return;
-            commitRepeat();
-            onSetWhen?.(withTimeOfDay(date.getTime(), time));
+            await commitRepeat();
+            await onSetWhen?.(withTimeOfDay(date.getTime(), time));
             if (!keepOpenOnPick) setOpen(false);
           }}
         />
@@ -302,6 +304,7 @@ export function WhenPopover({
                 type="button"
                 size="sm"
                 className="ml-auto"
+                disabled={busy}
                 onClick={() => handleOpenChange(false)}
               >
                 Done

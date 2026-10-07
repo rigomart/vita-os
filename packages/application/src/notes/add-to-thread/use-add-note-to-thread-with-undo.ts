@@ -3,7 +3,6 @@ import type { Note, Thread } from "@vita-os/contracts";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
 
 import { CommandUndone } from "../../cache/undo-window";
-import { ThreadBusy } from "../../threads/task-queue";
 import { useAddNoteToThread } from "./hooks";
 
 /**
@@ -31,10 +30,6 @@ export function useAddNoteToThreadWithUndo(openThread: (slug: string) => void) {
       });
     } catch (error) {
       if (error instanceof CommandUndone) return;
-      if (error instanceof ThreadBusy) {
-        feedback.error(error.message);
-        return;
-      }
       feedback.error("The note was not added to the thread. Please try again.");
     }
   };

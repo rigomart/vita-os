@@ -164,13 +164,12 @@ describe("HTTP contract compatibility", () => {
         body: { title: "Remove task" },
         session,
       });
-      const added = await succeed<Thread>(`/v1/threads/${thread._id}/tasks`, {
+      await succeed<Thread>(`/v1/threads/${thread._id}/tasks`, {
         method: "POST",
         session,
         body: {
           taskId: "task",
           text: "Remove me",
-          expectedRevision: thread.revision,
         },
       });
       const response = await SELF.fetch(
@@ -183,7 +182,7 @@ describe("HTTP contract compatibility", () => {
               ? {}
               : { "content-type": contentType }),
           },
-          body: JSON.stringify({ expectedRevision: added.revision }),
+          body: JSON.stringify({ expectedOccurrence: null }),
         },
       );
       expect(response.status).toBe(200);

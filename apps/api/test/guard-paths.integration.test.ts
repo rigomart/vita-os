@@ -450,7 +450,7 @@ describe("Task routes across encoded IDs", () => {
     let current = await succeed<Thread>(`/v1/threads/${thread._id}/tasks`, {
       method: "POST",
       session: owner,
-      body: { taskId: "private-task", text: "Private", expectedRevision: 0 },
+      body: { taskId: "private-task", text: "Private" },
     });
 
     const spellings = [thread._id, encodeEvery(thread._id)].flatMap(
@@ -462,9 +462,9 @@ describe("Task routes across encoded IDs", () => {
 
     for (const path of spellings) {
       for (const [suffix, method, body] of [
-        ["", "PATCH", { text: "Taken", expectedRevision: current.revision }],
-        ["/complete", "POST", { expectedRevision: current.revision }],
-        ["", "DELETE", { expectedRevision: current.revision }],
+        ["", "PATCH", { text: "Taken" }],
+        ["/complete", "POST", { expectedOccurrence: null }],
+        ["", "DELETE", {}],
       ] as const) {
         const answer = await call(`${path}${suffix}`, {
           method,
@@ -483,7 +483,6 @@ describe("Task routes across encoded IDs", () => {
       expect.objectContaining({
         _id: thread._id,
         tasks: [{ _id: "private-task", text: "Private" }],
-        revision: current.revision,
       }),
     ]);
 
@@ -492,7 +491,7 @@ describe("Task routes across encoded IDs", () => {
       current = await succeed<Thread>(path, {
         method: "PATCH",
         session: owner,
-        body: { text: `Edit ${index}`, expectedRevision: current.revision },
+        body: { text: `Edit ${index}` },
       });
       expect(current.tasks).toEqual([
         { _id: "private-task", text: `Edit ${index}` },

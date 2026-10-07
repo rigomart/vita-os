@@ -5,7 +5,6 @@ import type {
   OperationResult,
   TaskId,
   Thread,
-  ThreadNote,
   ThreadNoteId,
 } from "@vita-os/contracts";
 
@@ -153,7 +152,7 @@ async function chooseThread(title: string) {
   );
 }
 
-function addedTo(thread: Thread, revision = thread.revision + 1) {
+function addedTo(thread: Thread) {
   return {
     thread: {
       ...thread,
@@ -162,7 +161,6 @@ function addedTo(thread: Thread, revision = thread.revision + 1) {
         { _id: "from-note-task" as TaskId, text: "Dentist", date: jul23 },
       ],
       lastActivityAt: 9_000,
-      revision,
     },
     threadNote: aThreadNote({
       _id: "from-note" as ThreadNoteId,
@@ -225,7 +223,7 @@ describe("adding a Note to a Thread", () => {
     ]);
   });
 
-  it("takes the Note out of Notes and shows it on the Thread at once, then commits", async () => {
+  it("hides the source Note and publishes the destination only after saving", async () => {
     const pending = deferred<OperationResult<NoteAddedToThread>>();
     const addNoteToThread = vi.fn(() => pending.promise);
     const { queryClient, feedback } = setup({ addNoteToThread });
@@ -240,20 +238,10 @@ describe("adding a Note to a Thread", () => {
     const shown = queryClient
       .getQueryData<Thread[]>(queryKeys.threads.open())
       ?.find((thread) => thread._id === undatedThread._id);
-    expect(shown?.tasks).toEqual([
-      { _id: expect.any(String), text: "Dentist", date: jul23 },
-    ]);
-    expect(shown).not.toHaveProperty("lastActivityContent");
+    expect(shown).toEqual(undatedThread);
     expect(
-      queryClient
-        .getQueryData<ThreadNote[]>(
-          queryKeys.threadNotes.open(undatedThread._id),
-        )
-        ?.map((threadNote) => [threadNote.body, threadNote.createdAt]),
-    ).toEqual([
-      [note.body, note.createdAt],
-      [existingThreadNote.body, existingThreadNote.createdAt],
-    ]);
+      queryClient.getQueryData(queryKeys.threadNotes.open(undatedThread._id)),
+    ).toEqual([existingThreadNote]);
     expect(feedback.undoable).toHaveBeenCalledWith("Note added to thread", {
       action: { label: "Open thread", onClick: expect.any(Function) },
     });
@@ -270,8 +258,9 @@ describe("adding a Note to a Thread", () => {
       expect(
         queryClient
           .getQueryData<Thread[]>(queryKeys.threads.open())
-          ?.find((thread) => thread._id === undatedThread._id)?.revision,
-      ).toBe(1),
+          ?.find((thread) => thread._id === undatedThread._id)
+          ?.tasks?.map((task) => task.text),
+      ).toEqual(["Dentist"]),
     );
     expect(feedback.error).not.toHaveBeenCalled();
   });
@@ -287,7 +276,7 @@ describe("adding a Note to a Thread", () => {
         .getQueryData<Thread[]>(queryKeys.threads.open())
         ?.find((thread) => thread._id === laterThread._id)
         ?.tasks?.map((task) => task.text),
-    ).toEqual(["Renew policy", "Dentist"]);
+    ).toEqual(["Renew policy"]);
     await act(async () => offer.resolve(false));
 
     expect(
@@ -360,7 +349,6 @@ describe("starting a Thread from a Note", () => {
         tasks: [
           { _id: "from-note-task" as TaskId, text: "Dentist", date: jul23 },
         ],
-        revision: 1,
       }),
       threadNote: aThreadNote({ _id: "from-note" as ThreadNoteId }),
     };

@@ -66,14 +66,6 @@ export interface Thread {
   lastActivityAt?: number;
   lastActivityContent?: string;
   createdAt: number;
-  /**
-   * How many times the Thread has changed.
-   *
-   * Every read carries it, so any surface that shows a Task can also act on
-   * one: the revision travels back with the command, and a request made against
-   * a Thread that has since moved on is refused rather than applied twice.
-   */
-  revision: number;
 }
 
 /**
@@ -126,7 +118,7 @@ export interface ThreadNote {
 
 /**
  * A Standalone Note added to a Thread: the Thread as it now stands — its
- * Tasks, activity, and revision — and the Thread Note the Note became.
+ * Tasks and activity — and the Thread Note the Note became.
  */
 export interface NoteAddedToThread {
   thread: Thread;

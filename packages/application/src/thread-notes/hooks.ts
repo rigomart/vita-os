@@ -13,6 +13,7 @@ import type { ApplicationMutationResult } from "../cache/use-application-mutatio
 import type { PagedResult } from "../cache/use-paged-application-query";
 
 import {
+  changeRecords,
   patchById,
   patchPagedEntries,
   patchQuery,
@@ -111,17 +112,24 @@ export function useCaptureThreadNote(): ApplicationMutationResult<
   >({
     run: (client, input) => client.createThreadNote(input),
     affected: (input) => threadNoteKeys(input.threadId),
-    optimistic: (cache, input, previousLocal) => {
-      const pendingId = previousLocal ?? (newRecordId() as ThreadNoteId);
+    optimistic: (cache, input) => {
+      const pendingId = newRecordId() as ThreadNoteId;
       const now = Date.now();
-      showThreadNote(cache, input.threadId, {
-        _id: pendingId,
-        body: input.body,
-        state: "open",
-        createdAt: now,
-        updatedAt: now,
-      });
-      return pendingId;
+      const rollback = changeRecords<ThreadNote>(
+        cache,
+        threadNoteKeys(input.threadId),
+        [pendingId],
+        [],
+        () =>
+          showThreadNote(cache, input.threadId, {
+            _id: pendingId,
+            body: input.body,
+            state: "open",
+            createdAt: now,
+            updatedAt: now,
+          }),
+      );
+      return { local: pendingId, ...rollback };
     },
     reconcile: (cache, note, input, pendingId) => {
       if (pendingId === undefined) return;
@@ -150,16 +158,23 @@ export function useUpdateThreadNoteBody(): ApplicationMutationResult<
         body: input.body,
       }),
     affected: (input) => threadNoteKeys(input.threadId),
-    optimistic: (cache, input) => {
-      const patch = (notes: ThreadNote[]) =>
-        patchById(notes, input.threadNoteId, { body: input.body });
-      patchOpenThreadNotes(cache, input.threadId, patch);
-      patchPagedEntries(
+    optimistic: (cache, input) =>
+      changeRecords<ThreadNote>(
         cache,
-        queryKeys.threadNotes.doneAll(input.threadId),
-        patch,
-      );
-    },
+        threadNoteKeys(input.threadId),
+        [input.threadNoteId],
+        ["body"],
+        () => {
+          const patch = (notes: ThreadNote[]) =>
+            patchById(notes, input.threadNoteId, { body: input.body });
+          patchOpenThreadNotes(cache, input.threadId, patch);
+          patchPagedEntries(
+            cache,
+            queryKeys.threadNotes.doneAll(input.threadId),
+            patch,
+          );
+        },
+      ),
   });
 }
 
@@ -175,16 +190,23 @@ export function useArchiveThreadNote(): ApplicationMutationResult<
     run: (client, input) =>
       client.markThreadNoteDone({ threadNoteId: input.threadNoteId }),
     affected: (input) => threadNoteKeys(input.threadId),
-    optimistic: (cache, input) => {
-      const patch = (notes: ThreadNote[]) =>
-        removeById(notes, input.threadNoteId);
-      patchOpenThreadNotes(cache, input.threadId, patch);
-      patchPagedEntries(
+    optimistic: (cache, input) =>
+      changeRecords<ThreadNote>(
         cache,
-        queryKeys.threadNotes.doneAll(input.threadId),
-        patch,
-      );
-    },
+        threadNoteKeys(input.threadId),
+        [input.threadNoteId],
+        ["body"],
+        () => {
+          const patch = (notes: ThreadNote[]) =>
+            removeById(notes, input.threadNoteId);
+          patchOpenThreadNotes(cache, input.threadId, patch);
+          patchPagedEntries(
+            cache,
+            queryKeys.threadNotes.doneAll(input.threadId),
+            patch,
+          );
+        },
+      ),
   });
 }
 
@@ -203,21 +225,28 @@ export function useUnarchiveThreadNote(): ApplicationMutationResult<
     run: (client, input) =>
       client.markThreadNoteOpen({ threadNoteId: input.note._id }),
     affected: (input) => threadNoteKeys(input.threadId),
-    optimistic: (cache, input) => {
-      patchPagedEntries<ThreadNote>(
+    optimistic: (cache, input) =>
+      changeRecords<ThreadNote>(
         cache,
-        queryKeys.threadNotes.doneAll(input.threadId),
-        (notes) => removeById(notes, input.note._id),
-      );
-      patchOpenThreadNotes(cache, input.threadId, (notes) =>
-        notes.some((existing) => existing._id === input.note._id)
-          ? notes
-          : [
-              { ...input.note, state: "open", completedAt: undefined },
-              ...notes,
-            ],
-      );
-    },
+        threadNoteKeys(input.threadId),
+        [input.note._id],
+        ["state", "completedAt"],
+        () => {
+          patchPagedEntries<ThreadNote>(
+            cache,
+            queryKeys.threadNotes.doneAll(input.threadId),
+            (notes) => removeById(notes, input.note._id),
+          );
+          patchOpenThreadNotes(cache, input.threadId, (notes) =>
+            notes.some((existing) => existing._id === input.note._id)
+              ? notes
+              : [
+                  { ...input.note, state: "open", completedAt: undefined },
+                  ...notes,
+                ],
+          );
+        },
+      ),
   });
 }
 
@@ -242,15 +271,22 @@ export function useDiscardThreadNote(): ApplicationMutationResult<
       return client.removeThreadNote({ threadNoteId: input.threadNoteId });
     },
     affected: (input) => threadNoteKeys(input.threadId),
-    optimistic: (cache, input) => {
-      const patch = (notes: ThreadNote[]) =>
-        removeById(notes, input.threadNoteId);
-      patchOpenThreadNotes(cache, input.threadId, patch);
-      patchPagedEntries(
+    optimistic: (cache, input) =>
+      changeRecords<ThreadNote>(
         cache,
-        queryKeys.threadNotes.doneAll(input.threadId),
-        patch,
-      );
-    },
+        threadNoteKeys(input.threadId),
+        [input.threadNoteId],
+        ["body"],
+        () => {
+          const patch = (notes: ThreadNote[]) =>
+            removeById(notes, input.threadNoteId);
+          patchOpenThreadNotes(cache, input.threadId, patch);
+          patchPagedEntries(
+            cache,
+            queryKeys.threadNotes.doneAll(input.threadId),
+            patch,
+          );
+        },
+      ),
   });
 }

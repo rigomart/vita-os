@@ -1,6 +1,7 @@
 import type { ComponentPropsWithoutRef } from "react";
 
 import { act, render, screen, within } from "@testing-library/react";
+import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DashboardScreen } from "./dashboard-screen";
@@ -74,7 +75,7 @@ vi.mock("../../threads/use-tasks", () => ({
     setRepeat: vi.fn(),
     addFollowUp: vi.fn(),
   }),
-  useConversionLock: () => ({ locked: false, pendingTaskIds: new Set() }),
+  useCompletingTaskIds: () => new Set(),
 }));
 vi.mock("../../threads/use-update-thread", () => ({
   useUpdateThread: () => vi.fn(),
@@ -113,14 +114,34 @@ describe("DashboardScreen", () => {
     mocks.areas = [];
     mocks.threads = [];
     mocks.notes = undefined;
-    render(<DashboardScreen />);
+    render(
+      <FeedbackProvider
+        feedback={{
+          success: vi.fn(),
+          error: vi.fn(),
+          undoable: vi.fn(async () => true),
+        }}
+      >
+        <DashboardScreen />
+      </FeedbackProvider>,
+    );
 
     expect(screen.getByTestId("dashboard-overview-skeleton")).toBeVisible();
   });
 
   it("asks for no Area before it can be used", () => {
     answerEmpty();
-    render(<DashboardScreen />);
+    render(
+      <FeedbackProvider
+        feedback={{
+          success: vi.fn(),
+          error: vi.fn(),
+          undoable: vi.fn(async () => true),
+        }}
+      >
+        <DashboardScreen />
+      </FeedbackProvider>,
+    );
 
     expect(screen.getByText("Nothing is asking for you.")).toBeVisible();
     expect(
@@ -130,7 +151,17 @@ describe("DashboardScreen", () => {
 
   it("reads exactly the three inventories", () => {
     answerEmpty();
-    render(<DashboardScreen />);
+    render(
+      <FeedbackProvider
+        feedback={{
+          success: vi.fn(),
+          error: vi.fn(),
+          undoable: vi.fn(async () => true),
+        }}
+      >
+        <DashboardScreen />
+      </FeedbackProvider>,
+    );
 
     expect([...new Set(mocks.reads)].sort()).toEqual([
       "areas",
@@ -160,7 +191,7 @@ describe("DashboardScreen", () => {
         areaId: "health",
         order: 0,
         state: "open",
-        revision: 0,
+
         tasks: [
           {
             _id: "task1",
@@ -172,7 +203,17 @@ describe("DashboardScreen", () => {
       },
     ];
     mocks.notes = [];
-    render(<DashboardScreen />);
+    render(
+      <FeedbackProvider
+        feedback={{
+          success: vi.fn(),
+          error: vi.fn(),
+          undoable: vi.fn(async () => true),
+        }}
+      >
+        <DashboardScreen />
+      </FeedbackProvider>,
+    );
 
     const inLane = (lane: string) =>
       within(screen.getByRole("region", { name: lane })).queryByText("Dentist");

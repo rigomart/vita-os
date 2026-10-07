@@ -109,3 +109,141 @@ export function patchPagedEntries<T>(
     })),
   }));
 }
+
+/** Restore only fields changed on this record, leaving newer field writes alone. */
+export function restoreFields<T extends object>(
+  current: T,
+  before: T,
+  after: T,
+  fields: readonly (keyof T)[],
+): T {
+  const restored = { ...current };
+  for (const field of fields) {
+    if (
+      Object.is(before[field], after[field]) ||
+      !Object.is(current[field], after[field])
+    )
+      continue;
+    if (Object.hasOwn(before, field)) restored[field] = before[field];
+    else delete restored[field];
+  }
+  return restored;
+}
+
+/** Undo changes to selected IDs, preserving other records and their ordering. */
+export function restoreRecords<T extends { _id: string }>(
+  current: T[],
+  before: T[],
+  after: T[],
+  ids: readonly string[],
+  fields: readonly (keyof T)[],
+): T[] {
+  let restored = current;
+  for (const id of ids) {
+    const previous = before.find((record) => record._id === id);
+    const shown = after.find((record) => record._id === id);
+    const existing = restored.find((record) => record._id === id);
+    if (previous === undefined) {
+      if (shown !== undefined) restored = removeById(restored, id);
+    } else if (shown === undefined) {
+      if (existing === undefined) {
+        const position = Math.min(
+          before.findIndex((record) => record._id === id),
+          restored.length,
+        );
+        restored = [
+          ...restored.slice(0, position),
+          previous,
+          ...restored.slice(position),
+        ];
+      }
+    } else if (existing !== undefined) {
+      restored = restored.map((record) =>
+        record._id === id
+          ? restoreFields(record, previous, shown, fields)
+          : record,
+      );
+    }
+  }
+  return restored;
+}
+
+/** Capture the selected record changes in lists or paged reads, retaining cursors. */
+export function changeRecords<T extends { _id: string }>(
+  cache: QueryClient,
+  keys: readonly QueryKey[],
+  ids: readonly string[],
+  fields: readonly (keyof T)[],
+  apply: () => void,
+): { rollback(): void } {
+  type Read = T[] | InfiniteData<Page<T>>;
+  const before = keys.flatMap((queryKey) =>
+    cache.getQueriesData<Read>({ queryKey }),
+  );
+  apply();
+  const snapshots = before.map(([key, value]) => ({
+    key,
+    before: value,
+    after: cache.getQueryData<Read>(key),
+  }));
+  return {
+    rollback: () => {
+      for (const snapshot of snapshots) {
+        const { key, before: previous, after: shown } = snapshot;
+        if (!previous || !shown) continue;
+        patchQuery<Read>(cache, key, (current) => {
+          if (
+            Array.isArray(current) &&
+            Array.isArray(previous) &&
+            Array.isArray(shown)
+          )
+            return restoreRecords(current, previous, shown, ids, fields);
+          if (
+            Array.isArray(current) ||
+            Array.isArray(previous) ||
+            Array.isArray(shown)
+          )
+            return current;
+          const beforeEntries = previous.pages.flatMap((page) => page.entries);
+          const afterEntries = shown.pages.flatMap((page) => page.entries);
+          const currentIds = new Set(
+            current.pages.flatMap((page) =>
+              page.entries.map((record) => record._id),
+            ),
+          );
+          return {
+            ...current,
+            pages: current.pages.map((page, index) => {
+              const originalEntries = previous.pages[index]?.entries ?? [];
+              const originalIds = new Set(
+                originalEntries.map((record) => record._id),
+              );
+              // An existing record stays on its current page. Restore a missing
+              // record only on its original page, without duplicating a refetch.
+              const pageIds = ids.filter(
+                (id) =>
+                  page.entries.some((record) => record._id === id) ||
+                  (!currentIds.has(id) && originalIds.has(id)),
+              );
+              return {
+                ...page,
+                entries: restoreRecords(
+                  page.entries,
+                  [
+                    ...originalEntries,
+                    ...beforeEntries.filter(
+                      (record) => !originalIds.has(record._id),
+                    ),
+                  ],
+                  afterEntries,
+                  pageIds,
+                  fields,
+                ),
+              };
+            }),
+          };
+        });
+      }
+    },
+  };
+}

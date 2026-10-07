@@ -26,7 +26,6 @@ const detail = {
     focusedTaskId: "task/1",
     lastActivityAt: 1_700_000_000_000,
     lastActivityContent: "Captured next move",
-    revision: 0,
     createdAt: 1_600_000_000_000,
   },
   area: {
@@ -78,15 +77,15 @@ describe("createHttpApplicationClient", () => {
     };
     expect(
       await client.completeTask({
+        expectedOccurrence: null,
         threadId: "thread" as ThreadId,
         taskId: "task" as TaskId,
-        expectedRevision: 2,
         timeZone: "UTC",
         note,
       }),
     ).toEqual({ ok: true, value: detail.thread });
     expect(JSON.parse(fetchImpl.mock.calls[0]![1]!.body as string)).toEqual({
-      expectedRevision: 2,
+      expectedOccurrence: null,
       timeZone: "UTC",
       note,
     });
@@ -110,16 +109,25 @@ describe("createHttpApplicationClient", () => {
       threadId: "thread/with/slashes" as ThreadId,
       taskId: "task/1" as TaskId,
       timeZone: "America/New_York",
-      expectedRevision: 0,
     };
     await expect(client.setTaskRepeat({ ...command, repeat })).resolves.toEqual(
       { ok: true, value: thread },
     );
-    await expect(client.skipTask(command)).resolves.toEqual({
+    await expect(
+      client.skipTask({
+        ...command,
+        expectedOccurrence: thread.tasks[0]!.date,
+      }),
+    ).resolves.toEqual({
       ok: true,
       value: thread,
     });
-    await expect(client.completeTask(command)).resolves.toEqual({
+    await expect(
+      client.completeTask({
+        ...command,
+        expectedOccurrence: thread.tasks[0]!.date,
+      }),
+    ).resolves.toEqual({
       ok: true,
       value: thread,
     });
@@ -139,7 +147,13 @@ describe("createHttpApplicationClient", () => {
       );
       expect(
         JSON.parse(fetchImpl.mock.calls[index - 1]![1]!.body as string),
-      ).toEqual({ ...fields, timeZone: command.timeZone, expectedRevision: 0 });
+      ).toEqual({
+        ...fields,
+        timeZone: command.timeZone,
+        ...(action === "skip" || action === "complete"
+          ? { expectedOccurrence: thread.tasks[0]!.date }
+          : {}),
+      });
     }
   });
 
@@ -160,9 +174,9 @@ describe("createHttpApplicationClient", () => {
     });
     await expect(
       client.completeTask({
+        expectedOccurrence: null,
         threadId: "thread" as ThreadId,
         taskId: "a" as TaskId,
-        expectedRevision: 0,
       }),
     ).resolves.toMatchObject({ ok: false });
   });
@@ -208,16 +222,15 @@ describe("createHttpApplicationClient", () => {
     ).resolves.toEqual({ ok: true, value: activityPage });
     await expect(
       client.completeTask({
+        expectedOccurrence: null,
         threadId: "thread/with/slashes" as ThreadId,
         taskId: "task/1" as TaskId,
-        expectedRevision: 0,
       }),
     ).resolves.toEqual({ ok: true, value: detail.thread });
     await expect(
       client.focusTask({
         threadId: "thread/with/slashes" as ThreadId,
         taskId: null,
-        expectedRevision: 0,
       }),
     ).resolves.toEqual({ ok: true, value: detail.thread });
     await expect(
@@ -225,7 +238,6 @@ describe("createHttpApplicationClient", () => {
         threadId: "thread/with/slashes" as ThreadId,
         taskId: "task/1" as TaskId,
         date: 1_700_000_000_000,
-        expectedRevision: 0,
       }),
     ).resolves.toEqual({ ok: true, value: detail.thread });
 
@@ -245,7 +257,7 @@ describe("createHttpApplicationClient", () => {
       expect.objectContaining({
         method: "POST",
         credentials: "include",
-        body: JSON.stringify({ expectedRevision: 0 }),
+        body: JSON.stringify({ expectedOccurrence: null }),
       }),
     );
     expect(fetchImpl).toHaveBeenNthCalledWith(
@@ -254,7 +266,7 @@ describe("createHttpApplicationClient", () => {
       expect.objectContaining({
         method: "PUT",
         credentials: "include",
-        body: JSON.stringify({ taskId: null, expectedRevision: 0 }),
+        body: JSON.stringify({ taskId: null }),
       }),
     );
     expect(fetchImpl).toHaveBeenNthCalledWith(
@@ -263,7 +275,7 @@ describe("createHttpApplicationClient", () => {
       expect.objectContaining({
         method: "PUT",
         credentials: "include",
-        body: JSON.stringify({ date: 1_700_000_000_000, expectedRevision: 0 }),
+        body: JSON.stringify({ date: 1_700_000_000_000 }),
       }),
     );
   });
@@ -378,30 +390,29 @@ describe("createHttpApplicationClient", () => {
     });
   });
 
-  it.each([
-    ["missing", undefined],
-    ["negative", -1],
-  ])("rejects a %s Thread revision", async (_case, revision) => {
-    const thread = { ...detail.thread } as Record<string, unknown>;
-    if (revision === undefined) delete thread.revision;
-    else thread.revision = revision;
+  it("decodes a public Thread without a revision", async () => {
     const client = createHttpApplicationClient({
       apiBaseUrl: "https://api.test",
-      fetchImpl: vi
-        .fn<typeof fetch>()
-        .mockResolvedValue(jsonResponse({ ...detail, thread })),
+      fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(detail)),
     });
-
-    await expect(
-      client.getThreadDetail({ slug: "book-checkup" }),
-    ).resolves.toEqual({
-      ok: false,
-      error: {
-        code: "unexpected",
-        message: "Unexpected response from the service.",
-        retryable: false,
-      },
+    const result = await client.getThreadDetail({ slug: "book-checkup" });
+    expect(result).toEqual({ ok: true, value: detail });
+    expect(result.ok && result.value.thread).not.toHaveProperty("revision");
+  });
+  it("removes a Task without a request body", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse(detail.thread));
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      fetchImpl,
     });
+    await client.removeTask({
+      threadId: "thread" as ThreadId,
+      taskId: "task" as TaskId,
+    });
+    expect(fetchImpl.mock.calls[0]![1]).toMatchObject({ method: "DELETE" });
+    expect(fetchImpl.mock.calls[0]![1]!.body).toBeUndefined();
   });
 
   it("adds a Note to a Thread and starts a Thread from a Note", async () => {

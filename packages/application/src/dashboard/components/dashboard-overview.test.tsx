@@ -51,7 +51,7 @@ vi.mock("../../threads/use-tasks", () => ({
     setRepeat: vi.fn(),
     addFollowUp: vi.fn(),
   }),
-  useConversionLock: () => ({ locked: false, pendingTaskIds: new Set() }),
+  useCompletingTaskIds: () => new Set(),
 }));
 vi.mock("../../threads/use-update-thread", () => ({
   useUpdateThread: () => vi.fn(),
@@ -100,7 +100,7 @@ function thread(
     areaId: "health" as Thread["areaId"],
     order: 0,
     state: "open",
-    revision: 0,
+
     createdAt: currentDate,
     ...fields,
     ...(followUp === undefined
@@ -123,7 +123,7 @@ function note(body: string, fields: Partial<Note> = {}): Note {
     _id: body as Note["_id"],
     body,
     state: "open",
-    revision: 0,
+
     createdAt: currentDate,
     ...fields,
   } as Note;

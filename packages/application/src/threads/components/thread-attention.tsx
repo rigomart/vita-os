@@ -2,6 +2,7 @@ import type { Repeat, Task, TaskId } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
 import { Textarea } from "@vita-os/ui/components/textarea";
+import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
 import {
@@ -28,21 +29,14 @@ interface ThreadAttentionProps {
   /** Every Task, in the order it was captured. */
   tasks: readonly Task[];
   focusedTaskId?: TaskId;
-  /** Tasks shown but not yet at the service — a Note being added — read as pending. */
-  pendingTaskIds?: ReadonlySet<TaskId>;
-  /**
-   * While a Note is being added to the Thread, nothing on its Tasks can be
-   * changed: every control is disabled, Add a task included.
-   */
-  locked?: boolean;
   /** The shared attention clock, so lateness matches every other surface. */
   now: number;
-  onAddTask: (text: string) => void;
-  onEditTask: (taskId: TaskId, text: string) => void;
-  onRemoveTask: (taskId: TaskId) => void;
+  onAddTask: (text: string) => unknown;
+  onEditTask: (taskId: TaskId, text: string) => unknown;
+  onRemoveTask: (taskId: TaskId) => unknown;
   /** Tasks with a complete or skip on its way: they take no new note until it is answered. */
   completingTaskIds?: ReadonlySet<TaskId>;
-  onCompleteTask: (taskId: TaskId) => void;
+  onCompleteTask: (taskId: TaskId) => unknown;
   /**
    * Completes the Task and captures the text (never blank; blank text
    * completes plainly) as a Thread Note, in one command. A failure is the
@@ -50,13 +44,13 @@ interface ThreadAttentionProps {
    */
   onCompleteTaskWithNote: (taskId: TaskId, body: string) => unknown;
   /** `null` unfocuses; a Task replaces any earlier focus. */
-  onFocusTask: (taskId: TaskId | null) => void;
+  onFocusTask: (taskId: TaskId | null) => unknown;
   /** Sets, changes or (with `null`) clears one Task's date, and its Repeat with it. */
-  onSetTaskDate: (taskId: TaskId, date: number | null) => void;
+  onSetTaskDate: (taskId: TaskId, date: number | null) => unknown;
   /** Sets, changes or (with `null`) clears one dated Task's Repeat. */
-  onSetTaskRepeat: (taskId: TaskId, repeat: Repeat | null) => void;
+  onSetTaskRepeat: (taskId: TaskId, repeat: Repeat | null) => unknown;
   /** Moves a repeating Task to its next occurrence. */
-  onSkipTask: (taskId: TaskId) => void;
+  onSkipTask: (taskId: TaskId) => unknown;
 }
 
 /**
@@ -82,8 +76,6 @@ interface ThreadAttentionProps {
 export function ThreadAttention({
   tasks,
   focusedTaskId,
-  pendingTaskIds,
-  locked = false,
   now,
   onAddTask,
   onEditTask,
@@ -125,15 +117,11 @@ export function ThreadAttention({
   const renderTask = (task: Task) => (
     <Fragment key={task._id}>
       <TaskRow
-        // Remounted when the lock starts or ends, which closes an open date
-        // picker or text editor on the row.
-        key={locked ? "locked" : "open"}
         task={task}
         now={now}
         focused={task._id === focusedTaskId}
-        pending={pendingTaskIds?.has(task._id) ?? false}
-        disabled={locked}
-        noteDisabled={locked || busy(task._id)}
+        disabled={busy(task._id)}
+        noteDisabled={busy(task._id)}
         noting={noting === task._id}
         onEdit={(text) => onEditTask(task._id, text)}
         onRemove={() => onRemoveTask(task._id)}
@@ -152,7 +140,7 @@ export function ThreadAttention({
         <CompletionNoteLine
           taskText={task.text}
           text={notes.get(task._id) ?? ""}
-          disabled={locked || busy(task._id)}
+          disabled={busy(task._id)}
           onChange={(text) => keepNote(task._id, text)}
           onComplete={() => completeWithNote(task._id)}
           onCancel={() => {
@@ -214,7 +202,7 @@ export function ThreadAttention({
         </ul>
       )}
 
-      <AddTask onAdd={onAddTask} disabled={locked} />
+      <AddTask onAdd={onAddTask} />
     </section>
   );
 }
@@ -228,7 +216,6 @@ function TaskRow({
   task,
   now,
   focused,
-  pending,
   disabled,
   noteDisabled,
   noting,
@@ -244,21 +231,32 @@ function TaskRow({
   task: Task;
   now: number;
   focused: boolean;
-  pending: boolean;
   disabled: boolean;
-  /** Whether it takes a note now: not while locked or while it is being completed. */
+  /** Whether it takes a note now: not while it is being completed. */
   noteDisabled: boolean;
   /** Whether its note line is open beneath it. */
   noting: boolean;
-  onEdit: (text: string) => void;
-  onRemove: () => void;
-  onComplete: () => void;
-  onToggleNote: () => void;
-  onSetDate: (date: number | null) => void;
-  onSetRepeat: (repeat: Repeat | null) => void;
-  onSkip: () => void;
-  onToggleFocus: () => void;
+  onEdit: (text: string) => unknown;
+  onRemove: () => unknown;
+  onComplete: () => unknown;
+  onToggleNote: () => unknown;
+  onSetDate: (date: number | null) => unknown;
+  onSetRepeat: (repeat: Repeat | null) => unknown;
+  onSkip: () => unknown;
+  onToggleFocus: () => unknown;
 }) {
+  const action = useGuardedAsyncAction((run: () => unknown) => run(), {
+    errorToast: false,
+  });
+  const dateAction = useGuardedAsyncAction(onSetDate, { errorToast: false });
+  const repeatAction = useGuardedAsyncAction(onSetRepeat, {
+    errorToast: false,
+  });
+  const busy =
+    disabled ||
+    action.isPending ||
+    dateAction.isPending ||
+    repeatAction.isPending;
   const dateLabel =
     task.date === undefined
       ? undefined
@@ -268,20 +266,18 @@ function TaskRow({
   return (
     <li
       data-focused={focused || undefined}
-      data-pending={pending || undefined}
-      aria-busy={pending || undefined}
+      aria-busy={busy || undefined}
       className={cn(
         "group/task flex min-h-10 items-center gap-2 rounded-lg px-1.5 py-1 transition-colors motion-reduce:transition-none xl:min-h-9",
         focused
           ? "bg-brand-accent/12 font-medium"
           : "text-foreground/90 hover:bg-muted/50",
-        pending && "opacity-60",
       )}
     >
       <button
         type="button"
-        disabled={disabled}
-        onClick={onToggleFocus}
+        disabled={busy}
+        onClick={() => void action.run(onToggleFocus)}
         aria-pressed={focused}
         aria-label={focused ? "Unfocus this task" : "Focus this task"}
         title={focused ? "Unfocus this task" : "Focus this task"}
@@ -323,10 +319,10 @@ function TaskRow({
         <EditableField
           value={task.text}
           onSave={(text) => {
-            if (text) onEdit(text);
+            if (text) void action.run(() => onEdit(text));
           }}
           inputAriaLabel="Task"
-          disabled={disabled}
+          disabled={busy}
           className="min-h-0 py-0.5 text-sm leading-snug"
           displayClassName="border-transparent hover:bg-transparent"
         />
@@ -335,21 +331,21 @@ function TaskRow({
       {/* Always reachable on touch; on the wide rail the row stays clean until
           it is hovered or focused. */}
       <span className="flex shrink-0 items-center gap-0.5">
-        {pending && (
-          <span className="px-1 text-2xs text-muted-foreground">Adding…</span>
-        )}
         <WhenPopover
-          busy={disabled}
+          busy={busy}
           when={task.date}
           clearLabel={taskDateLabels.clear}
           keepOpenOnPick
-          onSetWhen={(when) => onSetDate(when ?? null)}
-          repeat={{ value: task.repeat, onChange: onSetRepeat }}
+          onSetWhen={(when) => dateAction.run(when ?? null)}
+          repeat={{
+            value: task.repeat,
+            onChange: (repeat) => repeatAction.run(repeat),
+          }}
           trigger={
             dateLabel === undefined ? (
               <Button
                 variant="ghost"
-                disabled={disabled}
+                disabled={busy}
                 size="icon-xs"
                 aria-label={taskDateLabels.set}
                 title={taskDateLabels.set}
@@ -360,7 +356,7 @@ function TaskRow({
             ) : (
               <Button
                 variant="ghost"
-                disabled={disabled}
+                disabled={busy}
                 size="xs"
                 aria-label={`${taskDateLabels.change}: ${dateLabel}`}
                 title={taskDateLabels.change}
@@ -384,9 +380,9 @@ function TaskRow({
         />
         <Button
           variant="ghost"
-          disabled={disabled}
+          disabled={busy}
           size="icon-xs"
-          onClick={onRemove}
+          onClick={() => void action.run(onRemove)}
           aria-label="Remove task"
           title="Remove"
           className="size-7 text-muted-foreground/50 transition-opacity hover:text-destructive motion-reduce:transition-none xl:size-6 xl:opacity-0 xl:group-focus-within/task:opacity-100 xl:group-hover/task:opacity-100"
@@ -396,9 +392,9 @@ function TaskRow({
         {task.repeat !== undefined && (
           <Button
             variant="ghost"
-            disabled={disabled}
+            disabled={busy}
             size="icon-xs"
-            onClick={onSkip}
+            onClick={() => void action.run(onSkip)}
             aria-label="Skip task"
             title="Skip to the next date"
             className="size-7 text-muted-foreground/60 transition-opacity hover:text-foreground motion-reduce:transition-none xl:size-6 xl:opacity-0 xl:group-focus-within/task:opacity-100 xl:group-hover/task:opacity-100"
@@ -408,7 +404,7 @@ function TaskRow({
         )}
         <Button
           variant="ghost"
-          disabled={noteDisabled}
+          disabled={noteDisabled || busy}
           size="icon-xs"
           onClick={onToggleNote}
           aria-label="Complete with a note"
@@ -425,9 +421,9 @@ function TaskRow({
         </Button>
         <Button
           variant="ghost"
-          disabled={disabled}
+          disabled={busy}
           size="icon-xs"
-          onClick={onComplete}
+          onClick={() => void action.run(onComplete)}
           aria-label="Complete task"
           title="Complete"
           className="size-8 shrink-0 rounded-full border border-condition-healthy/40 text-transparent hover:bg-condition-healthy/10 hover:text-condition-healthy focus-visible:text-condition-healthy xl:size-6"
@@ -455,9 +451,9 @@ function CompletionNoteLine({
   taskText: string;
   text: string;
   disabled: boolean;
-  onChange: (text: string) => void;
-  onComplete: () => void;
-  onCancel: () => void;
+  onChange: (text: string) => unknown;
+  onComplete: () => unknown;
+  onCancel: () => unknown;
 }) {
   const fieldId = useId();
   const hintId = useId();
@@ -535,20 +531,16 @@ function CompletionNoteLine({
 }
 
 /** The foot of the list: capture a Task with nothing to decide. */
-function AddTask({
-  onAdd,
-  disabled,
-}: {
-  onAdd: (text: string) => void;
-  disabled: boolean;
-}) {
+function AddTask({ onAdd }: { onAdd: (text: string) => unknown }) {
   const [draft, setDraft] = useState("");
+  const action = useGuardedAsyncAction(onAdd, { errorToast: false });
+  const disabled = action.isPending;
 
   const commit = () => {
     const text = draft.trim();
     if (!text || disabled) return;
     setDraft("");
-    onAdd(text);
+    void action.run(text);
   };
 
   return (

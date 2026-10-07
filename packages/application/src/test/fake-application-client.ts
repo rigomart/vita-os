@@ -108,7 +108,12 @@ function completionClient(
       );
       const thread = state.threads[index];
       if (thread === undefined) return notFound();
-      if (thread.revision !== input.expectedRevision) return taskConflict();
+      const task = thread.tasks?.find((task) => task._id === input.taskId);
+      if (
+        task === undefined ||
+        (task.date ?? null) !== input.expectedOccurrence
+      )
+        return taskConflict();
       try {
         if (input.timeZone !== undefined) requireTimeZone(input.timeZone);
         const now = Date.now();
@@ -143,7 +148,6 @@ function completionClient(
         const written = {
           ...thread,
           ...decision.patch,
-          revision: thread.revision + 1,
           lastActivityAt: now,
           lastActivityContent: decision.logs.at(-1)?.content,
         };

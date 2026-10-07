@@ -14,7 +14,7 @@ import {
 } from "@vita-os/core";
 import { Schema } from "effect";
 
-import { Revision, Timestamp } from "../../platform/http/schemas";
+import { Timestamp } from "../../platform/http/schemas";
 import { AreaIdSchema } from "../areas/requests";
 import { ThreadNoteBody, ThreadNoteIdSchema } from "../thread-notes/requests";
 
@@ -59,22 +59,21 @@ export const AddTaskBody = Schema.Struct({
   taskId: TaskIdSchema,
   text: Schema.String,
   date: Schema.optionalKey(TaskDateSchema),
-  expectedRevision: Revision,
 });
 export const EditTaskBody = Schema.Struct({
   text: Schema.String,
-  expectedRevision: Revision,
 });
 /** `date: null` clears the Task's date, and must be spelled out: absent is not a choice. */
 export const SetTaskDateBody = Schema.Struct({
   date: Schema.NullOr(TaskDateSchema),
   timeZone: Schema.optionalKey(TimeZoneSchema),
-  expectedRevision: Revision,
 });
-/** Removing and completing name the Task in the path; the body holds only the revision. */
-export const TaskRevisionBody = Schema.Struct({ expectedRevision: Revision });
+// Occurrence identity describes stored dates, including legacy dates outside new-write bounds.
+const TaskOccurrenceSchema = Schema.Number.check(
+  Schema.makeFilter(Number.isSafeInteger),
+);
 export const CompleteTaskBody = Schema.Struct({
-  expectedRevision: Revision,
+  expectedOccurrence: Schema.NullOr(TaskOccurrenceSchema),
   timeZone: Schema.optionalKey(TimeZoneSchema),
   note: Schema.optionalKey(
     Schema.Struct({
@@ -113,11 +112,10 @@ export const RepeatSchema = Schema.Union([
 export const SetTaskRepeatBody = Schema.Struct({
   repeat: Schema.NullOr(RepeatSchema),
   timeZone: TimeZoneSchema,
-  expectedRevision: Revision,
 });
 export const SkipTaskBody = Schema.Struct({
+  expectedOccurrence: TaskOccurrenceSchema,
   timeZone: TimeZoneSchema,
-  expectedRevision: Revision,
 });
 
 export function normalizeSetTaskRepeat(
@@ -133,7 +131,6 @@ export function normalizeSetTaskRepeat(
  */
 export const FocusTaskBody = Schema.Struct({
   taskId: Schema.NullOr(TaskIdSchema),
-  expectedRevision: Revision,
 });
 
 /** Only present clearable fields enter the domain patch; absence leaves them alone. */

@@ -5,12 +5,15 @@ import type {
   CreateAreaInput,
   Thread,
   ThreadDetail,
+  ThreadId,
   UpdateAreaInput,
 } from "@vita-os/contracts";
 
 import { generateSlug } from "@vita-os/core";
 
 import {
+  changeRecords,
+  restoreFields,
   nextOrder,
   patchById,
   patchQueries,
@@ -18,6 +21,7 @@ import {
   removeById,
 } from "../cache/patch";
 import { queryKeys } from "../query-keys";
+import { changeThread, showThreadChange } from "../threads/optimistic";
 
 /**
  * The pending Area, shaped like the one the service will send back.
@@ -147,4 +151,84 @@ export function showAreaRemoval(cache: QueryClient, areaId: AreaId): void {
         ? { thread: unlabel(detail.thread) }
         : detail,
   );
+}
+
+/** An Area edit restores its fields without replacing the Thread carrying its label. */
+export function optimisticallyChangeArea(
+  cache: QueryClient,
+  input: UpdateAreaInput,
+): { rollback(): void } {
+  const details = cache
+    .getQueriesData<ThreadDetail | null>({
+      queryKey: queryKeys.threads.details(),
+    })
+    .filter(([, detail]) => detail?.area?._id === input.areaId);
+  const fields = Object.keys(input).filter(
+    (field) => field !== "areaId",
+  ) as (keyof AreaSummary)[];
+  const list = changeRecords<AreaSummary>(
+    cache,
+    [queryKeys.areas.list()],
+    [input.areaId],
+    fields,
+    () => showAreaChange(cache, input),
+  );
+  const snapshots = details.map(([key, before]) => ({
+    key,
+    before: before?.area,
+    after: cache.getQueryData<ThreadDetail | null>(key)?.area,
+  }));
+  return {
+    rollback: () => {
+      list.rollback();
+      for (const { key, before, after } of snapshots) {
+        if (!before || !after) continue;
+        patchQuery<ThreadDetail | null>(cache, key, (current) =>
+          current?.area?._id === input.areaId
+            ? {
+                ...current,
+                area: restoreFields(current.area, before, after, fields),
+              }
+            : current,
+        );
+      }
+    },
+  };
+}
+
+export function optimisticallyRemoveArea(
+  cache: QueryClient,
+  areaId: AreaId,
+): { rollback(): void } {
+  const threads = new Map<ThreadId, Thread>();
+  for (const thread of cache.getQueryData<Thread[]>(queryKeys.threads.open()) ??
+    [])
+    if (thread.areaId === areaId) threads.set(thread._id, thread);
+  for (const [, detail] of cache.getQueriesData<ThreadDetail | null>({
+    queryKey: queryKeys.threads.details(),
+  }))
+    if (detail?.thread.areaId === areaId)
+      threads.set(detail.thread._id, detail.thread);
+  const labels = [...threads.values()].map((thread) =>
+    changeThread(cache, thread._id, ["areaId"], () =>
+      showThreadChange(
+        cache,
+        { threadId: thread._id, areaId: null },
+        { thread },
+      ),
+    ),
+  );
+  const list = changeRecords<AreaSummary>(
+    cache,
+    [queryKeys.areas.list()],
+    [areaId],
+    [],
+    () => showAreaRemoval(cache, areaId),
+  );
+  return {
+    rollback: () => {
+      list.rollback();
+      for (const label of labels) label.rollback();
+    },
+  };
 }

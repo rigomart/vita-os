@@ -135,6 +135,5 @@ export function toThread(row: ThreadRow): Thread {
       ? {}
       : { lastActivityContent: row.last_activity_content }),
     createdAt: row.created_at,
-    revision: row.revision,
   };
 }

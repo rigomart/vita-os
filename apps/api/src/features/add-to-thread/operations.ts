@@ -55,16 +55,17 @@ export function addNoteToThread(
     const threads = threadStorage(scope);
     const storage = addToThreadStorage(scope);
     for (let execution = 0; execution < CHANGE_ATTEMPTS; execution += 1) {
-      const [note, thread] = yield* Effect.all(
+      const [note, current] = yield* Effect.all(
         [
           database(() => notes.find(input.noteId)),
-          database(() => threads.find(input.threadId)),
+          database(() => threads.findForChange(input.threadId)),
         ],
         { concurrency: "unbounded" },
       );
       if (note === null || note.state !== "open") return yield* noteNotFound();
-      if (thread === null || thread.state !== "open")
+      if (current === null || current.thread.state !== "open")
         return yield* threadNotFound();
+      const { thread, revision } = current;
       const change = yield* attempt(() =>
         decideAddNoteToThread(thread, note, taskIdFor(input.taskId, scope)),
       );
@@ -72,7 +73,7 @@ export function addNoteToThread(
         storage.addToThread({
           note,
           threadId: thread._id,
-          expectedRevision: thread.revision,
+          expectedRevision: revision,
           change,
         }),
       );
