@@ -4,7 +4,8 @@ Issue [#349](https://github.com/rigomart/vita-os/issues/349) completes the
 replacement the [proof](../superpowers/specs/2026-09-19-cloudflare-target-architecture-proof-design.md)
 validated: every Vita OS workflow now runs through an asynchronous application
 client, a Cloudflare Worker, Better Auth, and D1. The repository now implements
-the Worker API with Effect v4; the Cloudflare hosting remains:
+the Worker API with Hono, Valibot, and better-result
+([ADR 0035](../adr/0035-hono-valibot-result-api.md)); the Cloudflare hosting remains:
 `vita.rigos.dev`, `vita-api.rigos.dev`, and D1 `vita-os-production`.
 
 Convex was the previous production backend. After cutover it was removed from
@@ -18,25 +19,26 @@ retirement in [#364](https://github.com/rigomart/vita-os/issues/364)).
 packages/contracts     plain models, inputs, outputs, errors, ApplicationClient
 packages/core          the domain rules, framework-free
 packages/application   Vita OS as an application: routes, screens, cache, commands
-apps/api               Effect HttpApi handlers, Better Auth, canonical D1 storage
+apps/api               Hono routes and Result operations, Better Auth, canonical D1 storage
 apps/web               the browser host: auth, configuration, HTTP client, session gate
 ```
 
 Inside `apps/api/src`, code is organized by feature
-([ADR 0020](../adr/0020-api-layering-operations-and-one-round-trip-storage.md)):
+([ADR 0020](../adr/0020-api-layering-operations-and-one-round-trip-storage.md),
+with its runtime amended by [ADR 0035](../adr/0035-hono-valibot-result-api.md)):
 
 ```text
 worker.ts              builds the app once per isolate
 app.ts                 middleware and mounting
-platform/http          HttpApi composition, schemas, CORS, guards, and error responses
+platform/http          Hono composition, Valibot validation, CORS, guards, and error responses
 platform/auth          Better Auth, and the middleware that builds the request scope
 platform/d1            page cursors, the SET builder, unique-violation detection
 platform/request-scope { db, clock, actorId }, built once per request after authentication
 features/<feature>     areas, threads, activity-log, notes, thread-notes:
-                       endpoint schemas, handlers, Effect operations, storage, rows, errors
+                       request schemas, routes, Result operations, storage, and rows
 ```
 
-The shared application imports no Effect, database, Cloudflare, or Better
+The shared application imports no API runtime, database, Cloudflare, or Better
 Auth type. The web host is what remains once the product is taken out of it:
 Better Auth in the browser, `VITE_API_BASE_URL`, the HTTP implementation of the
 contract, the session gate, and its sign-in/sign-up routes. It mounts the shared
@@ -93,12 +95,13 @@ writes neither the patch nor an orphan entry. An ordinary edit re-reads and
 re-decides rather than failing; only a caller that supplied its own expectation
 is told about the conflict.
 
-Operations return lazy Effects with typed failures and require an authenticated
-`RequestContext`. Native D1 calls and domain rules use shared Effect boundaries.
-HttpApi schemas validate requests and responses, and shared middleware maps
-failures to the existing JSON error envelope. Worker bindings enter the context
-per request; layers never capture an owner or database globally. The browser
-client continues returning the contract's `OperationResult`.
+Operations start when called with an authenticated `RequestScope` and return
+`Promise<Result<Value, OperationFailure>>`. Native D1 calls and domain rules use
+shared classification functions. Valibot validates requests; typed successes
+are serialized directly without response revalidation, and the HTTP boundary
+maps failures to the existing JSON error envelope while keeping causes private.
+Worker bindings and the scope belong to each request. The browser client
+continues returning the contract's `OperationResult` and decoding response shapes.
 
 ## Reads and writes in the browser
 
@@ -157,8 +160,10 @@ which avoids circular dependencies between routes and screens.
 
 These steps are done. The layout above is the current system.
 
-- The [Effect v4 API migration](./effect-v4-api.md) replaces Hono routing and
-  Promise-based API operations while retaining native D1 and the browser contract.
+- The [Effect v4 API migration](./effect-v4-api.md) previously replaced Hono routing
+  and Promise-based API operations while retaining native D1 and the browser contract.
+  [ADR 0035](../adr/0035-hono-valibot-result-api.md) returns the API to Hono with
+  Valibot request validation and Result operations; the storage rules remain.
 
 - Production data was imported and validated ([#350](https://github.com/rigomart/vita-os/issues/350)).
   The importer translated Convex's `tasks`/`text` storage and its

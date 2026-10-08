@@ -1,42 +1,11 @@
-import type { AreaId, UpdateAreaInput } from "@vita-os/contracts";
+import type { UpdateAreaInput } from "@vita-os/contracts";
+import type * as v from "valibot";
 
-import { Schema } from "effect";
+import { UpdateAreaBody } from "@vita-os/contracts";
 
-export const AreaIconSchema = Schema.Literals([
-  "Compass",
-  "HeartPulse",
-  "Dumbbell",
-  "Users",
-  "Home",
-  "BriefcaseBusiness",
-  "WalletCards",
-  "BookOpen",
-  "Utensils",
-  "Car",
-  "CalendarDays",
-  "Palette",
-  "Leaf",
-  "Shield",
-  "Plane",
-]);
-
-export const AreaIdSchema = Schema.String.pipe(
-  Schema.refine((value): value is AreaId => value.length > 0),
-);
-export const CreateAreaBody = Schema.Struct({
-  name: Schema.String,
-  icon: AreaIconSchema,
-});
-export const UpdateAreaBody = Schema.Struct({
-  name: Schema.optional(Schema.String),
-  icon: Schema.optional(AreaIconSchema),
-});
-export const AreaOrderBody = Schema.Struct({
-  areaIds: Schema.Array(AreaIdSchema),
-});
-
+/** Only present fields enter the domain patch; absence leaves them alone. */
 export function normalizeAreaChange(
-  input: typeof UpdateAreaBody.Type,
+  input: v.InferOutput<typeof UpdateAreaBody>,
 ): Omit<UpdateAreaInput, "areaId"> {
   return {
     ...(input.name === undefined ? {} : { name: input.name }),

@@ -11,39 +11,35 @@ describe("request-local services", () => {
     const first = await createSession("request-context-first");
     const second = await createSession("request-context-second");
     const app = createApp();
-    try {
-      const responses = await Promise.all(
-        [first, second].map((session, index) => {
-          const origin = `http://browser-${index}.test`;
-          return app.fetch(
-            new Request("http://api.test/v1/notes", {
-              method: "POST",
-              headers: {
-                cookie: session.cookie,
-                origin,
-                "content-type": "application/json",
-              },
-              body: JSON.stringify({ body: `Actor ${index} note` }),
-            }),
-            { ...env, BROWSER_ORIGIN: origin },
-          );
-        }),
-      );
-      for (const [index, response] of responses.entries()) {
-        expect(response.status).toBe(201);
-        expect(response.headers.get("access-control-allow-origin")).toBe(
-          `http://browser-${index}.test`,
+    const responses = await Promise.all(
+      [first, second].map((session, index) => {
+        const origin = `http://browser-${index}.test`;
+        return app.fetch(
+          new Request("http://api.test/v1/notes", {
+            method: "POST",
+            headers: {
+              cookie: session.cookie,
+              origin,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({ body: `Actor ${index} note` }),
+          }),
+          { ...env, BROWSER_ORIGIN: origin },
         );
-      }
-      const firstNotes = await succeed<Note[]>("/v1/notes", { session: first });
-      const secondNotes = await succeed<Note[]>("/v1/notes", {
-        session: second,
-      });
-      expect(firstNotes.map((note) => note.body)).toEqual(["Actor 0 note"]);
-      expect(secondNotes.map((note) => note.body)).toEqual(["Actor 1 note"]);
-    } finally {
-      await app.dispose();
+      }),
+    );
+    for (const [index, response] of responses.entries()) {
+      expect(response.status).toBe(201);
+      expect(response.headers.get("access-control-allow-origin")).toBe(
+        `http://browser-${index}.test`,
+      );
     }
+    const firstNotes = await succeed<Note[]>("/v1/notes", { session: first });
+    const secondNotes = await succeed<Note[]>("/v1/notes", {
+      session: second,
+    });
+    expect(firstNotes.map((note) => note.body)).toEqual(["Actor 0 note"]);
+    expect(secondNotes.map((note) => note.body)).toEqual(["Actor 1 note"]);
   });
 
   it("authenticates before decoding a malformed body", async () => {
@@ -60,27 +56,23 @@ describe("request-local services", () => {
   it("preserves Better Auth cookies when signing out", async () => {
     const session = await createSession("effect-sign-out");
     const app = createApp();
-    try {
-      const response = await app.fetch(
-        new Request("http://api.test/api/auth/sign-out", {
-          method: "POST",
-          headers: {
-            cookie: session.cookie,
-            origin: env.BROWSER_ORIGIN,
-            "content-type": "application/json",
-          },
-          body: "{}",
-        }),
-        env,
-      );
-      expect(response.status).toBe(200);
-      expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
-      expectError(await call("/v1/areas", { session }), {
-        status: 401,
-        code: "unauthorized",
-      });
-    } finally {
-      await app.dispose();
-    }
+    const response = await app.fetch(
+      new Request("http://api.test/api/auth/sign-out", {
+        method: "POST",
+        headers: {
+          cookie: session.cookie,
+          origin: env.BROWSER_ORIGIN,
+          "content-type": "application/json",
+        },
+        body: "{}",
+      }),
+      env,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
+    expectError(await call("/v1/areas", { session }), {
+      status: 401,
+      code: "unauthorized",
+    });
   });
 });

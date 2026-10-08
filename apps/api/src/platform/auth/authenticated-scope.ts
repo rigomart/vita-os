@@ -1,19 +1,11 @@
 import type { ApplicationError } from "@vita-os/contracts";
+import type { MiddlewareHandler } from "hono";
 
-import { Effect, Layer } from "effect";
-import { HttpServerRequest } from "effect/http";
-import { HttpApiMiddleware } from "effect/http-api";
-
+import type { ApiEnv } from "../env";
 import type { CreateScope } from "../request-scope";
 
-import { WorkerBindings } from "../http/context";
-import {
-  RequestRefusal,
-  RequestRefusalSchemas,
-  toRefusal,
-} from "../http/errors";
+import { RequestRefusal, refusalResponse, toRefusal } from "../http/errors";
 import { attempt, database } from "../operation";
-import { RequestContext } from "../request-scope";
 import { createAuth } from "./auth";
 
 export const authenticationRequired: ApplicationError = {
@@ -22,44 +14,26 @@ export const authenticationRequired: ApplicationError = {
   retryable: false,
 };
 
-export class Authentication extends HttpApiMiddleware.Service<
-  Authentication,
-  { provides: RequestContext; requires: WorkerBindings }
->()("vita/Authentication", { error: RequestRefusalSchemas }) {}
-
-/**
- * Resolve who is calling, then build the request scope around them.
- *
- * The scope is the only way a route reaches storage, so a request without a
- * session is refused before anything is constructed. Better Auth starts
- * asynchronous initialization when constructed; building it here keeps that
- * work in the request that uses it, and preflight or rejected requests need no
- * auth at all.
- */
-export function authenticatedScope(createScope: CreateScope) {
-  return Effect.gen(function* () {
-    const env = yield* WorkerBindings;
-    const request = yield* HttpServerRequest.HttpServerRequest;
-    const rawRequest = yield* HttpServerRequest.toWeb(request).pipe(
-      Effect.mapError(toRefusal),
+/** Resolve the session first, then create one scope for this request. */
+export function authenticatedScope(
+  createScope: CreateScope,
+): MiddlewareHandler<ApiEnv> {
+  return async (c, next) => {
+    const auth = attempt(() => createAuth(c.env));
+    if (auth.status === "error") return refusalResponse(toRefusal(auth.error));
+    const session = await database(() =>
+      auth.value.api.getSession({ headers: c.req.raw.headers }),
     );
-    const auth = yield* attempt(() => createAuth(env));
-    const session = yield* database(() =>
-      auth.api.getSession({ headers: rawRequest.headers }),
+    if (session.status === "error")
+      return refusalResponse(toRefusal(session.error));
+    if (!session.value)
+      return refusalResponse(new RequestRefusal(authenticationRequired));
+    const scope = attempt(() =>
+      createScope({ db: c.env.DB, actorId: session.value!.user.id }),
     );
-    if (!session) {
-      return yield* Effect.fail(new RequestRefusal(authenticationRequired));
-    }
-    return yield* attempt(() =>
-      createScope({ db: env.DB, actorId: session.user.id }),
-    );
-  });
-}
-
-export function authenticationLayer(createScope: CreateScope) {
-  return Layer.succeed(Authentication, (httpEffect) =>
-    Effect.flatMap(authenticatedScope(createScope), (scope) =>
-      Effect.provideService(httpEffect, RequestContext, scope),
-    ),
-  );
+    if (scope.status === "error")
+      return refusalResponse(toRefusal(scope.error));
+    c.set("scope", scope.value);
+    await next();
+  };
 }

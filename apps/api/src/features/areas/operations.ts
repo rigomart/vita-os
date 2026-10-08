@@ -8,14 +8,14 @@ import type {
 
 import { commandAcknowledged } from "@vita-os/contracts";
 import { generateSlug, slugify, validateAreaName } from "@vita-os/core";
-import { Effect } from "effect";
+import { Result } from "better-result";
 
 import type { Operation } from "../../platform/operation";
+import type { RequestScope } from "../../platform/request-scope";
 import type { AreaChanges } from "./storage";
 
 import { ChangeConflict } from "../../platform/failures";
 import { attempt, database } from "../../platform/operation";
-import { RequestContext } from "../../platform/request-scope";
 import { areaNotFound, areaOrderMismatch } from "./errors";
 import { areaStorage, isAreaSlugTaken } from "./storage";
 
@@ -29,11 +29,8 @@ import { areaStorage, isAreaSlugTaken } from "./storage";
  */
 const ATTEMPTS = 3;
 
-export function listAreas(): Operation<AreaSummary[]> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
-    return yield* database(() => areaStorage(scope).list());
-  });
+export function listAreas(scope: RequestScope): Operation<AreaSummary[]> {
+  return database(() => areaStorage(scope).list());
 }
 
 /**
@@ -41,28 +38,33 @@ export function listAreas(): Operation<AreaSummary[]> {
  * same slug. That is what lets a picker create on type: typing "health" when
  * "Health" exists picks it instead of adding a duplicate.
  */
-export function createArea(input: CreateAreaInput): Operation<AreaSummary> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
+export function createArea(
+  scope: RequestScope,
+  input: CreateAreaInput,
+): Operation<AreaSummary> {
+  return Result.gen(async function* () {
     const areas = areaStorage(scope);
     const name = yield* attempt(() => validateAreaName(input.name));
 
     const base = slugify(name);
-    const listed = yield* database(() => areas.list());
+    const listed = yield* Result.await(database(() => areas.list()));
     const existing = listed.find((area) => slugify(area.name) === base);
-    if (existing !== undefined) return existing;
+    if (existing !== undefined) return Result.ok(existing);
 
     for (let execution = 0; execution < ATTEMPTS; execution += 1) {
       const slug = generateSlug(name);
-      const area = yield* database(
+      const inserted = await database(
         () => areas.insert({ name, icon: input.icon, slug }),
         isAreaSlugTaken,
-      ).pipe(Effect.catchTag("SlugTaken", () => Effect.succeed(undefined)));
-      if (area === undefined) continue;
-      if (area === null) return yield* new ChangeConflict();
-      return area;
+      );
+      if (Result.isError(inserted)) {
+        if (inserted.error._tag === "SlugTaken") continue;
+        return Result.err(inserted.error);
+      }
+      if (inserted.value === null) return Result.err(new ChangeConflict());
+      return Result.ok(inserted.value);
     }
-    return yield* new ChangeConflict();
+    return Result.err(new ChangeConflict());
   });
 }
 
@@ -73,17 +75,16 @@ export function createArea(input: CreateAreaInput): Operation<AreaSummary> {
  * Whether a change is a rename depends on the name as read, so the write is
  * conditional on that name and a concurrent rename is decided again.
  */
-export function updateArea({
-  areaId,
-  ...requested
-}: UpdateAreaInput): Operation<AreaSummary> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
+export function updateArea(
+  scope: RequestScope,
+  { areaId, ...requested }: UpdateAreaInput,
+): Operation<AreaSummary> {
+  return Result.gen(async function* () {
     const areas = areaStorage(scope);
 
     for (let execution = 0; execution < ATTEMPTS; execution += 1) {
-      const existing = yield* database(() => areas.find(areaId));
-      if (existing === null) return yield* areaNotFound();
+      const existing = yield* Result.await(database(() => areas.find(areaId)));
+      if (existing === null) return Result.err(areaNotFound());
 
       const name =
         requested.name === undefined
@@ -96,26 +97,32 @@ export function updateArea({
           : {}),
         ...(requested.icon === undefined ? {} : { icon: requested.icon }),
       };
-      if (Object.keys(changes).length === 0) return existing;
+      if (Object.keys(changes).length === 0) return Result.ok(existing);
 
-      const updated = yield* database(
+      const updated = await database(
         () => areas.update(areaId, existing.name, changes),
         isAreaSlugTaken,
-      ).pipe(Effect.catchTag("SlugTaken", () => Effect.succeed(null)));
-      if (updated !== null) return updated;
+      );
+      if (Result.isError(updated)) {
+        if (updated.error._tag === "SlugTaken") continue;
+        return Result.err(updated.error);
+      }
+      if (updated.value !== null) return Result.ok(updated.value);
     }
-    return yield* new ChangeConflict();
+    return Result.err(new ChangeConflict());
   });
 }
 
 /** Put the owner's Areas in the given order. The list must name each once. */
-export function reorderAreas(input: {
-  areaIds: AreaId[];
-}): Operation<AreaSummary[]> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
+export function reorderAreas(
+  scope: RequestScope,
+  input: {
+    areaIds: AreaId[];
+  },
+): Operation<AreaSummary[]> {
+  return Result.gen(async function* () {
     const areas = areaStorage(scope);
-    const listed = yield* database(() => areas.list());
+    const listed = yield* Result.await(database(() => areas.list()));
     const owned = new Set(listed.map((area) => area._id));
     const requested = new Set(input.areaIds);
     if (
@@ -123,11 +130,11 @@ export function reorderAreas(input: {
       requested.size !== owned.size ||
       input.areaIds.some((areaId) => !owned.has(areaId))
     ) {
-      return yield* areaOrderMismatch();
+      return Result.err(areaOrderMismatch());
     }
 
-    yield* database(() => areas.reorder(input.areaIds));
-    return yield* database(() => areas.list());
+    yield* Result.await(database(() => areas.reorder(input.areaIds)));
+    return await database(() => areas.list());
   });
 }
 
@@ -135,15 +142,17 @@ export function reorderAreas(input: {
  * Delete an Area. It never waits on its Threads: they lose the label and stay
  * as they are.
  */
-export function removeArea(input: {
-  areaId: AreaId;
-}): Operation<CommandAcknowledgement> {
-  return Effect.gen(function* () {
-    const scope = yield* RequestContext;
-    const removed = yield* database(() =>
-      areaStorage(scope).removeClearingLabels(input.areaId),
+export function removeArea(
+  scope: RequestScope,
+  input: {
+    areaId: AreaId;
+  },
+): Operation<CommandAcknowledgement> {
+  return Result.gen(async function* () {
+    const removed = yield* Result.await(
+      database(() => areaStorage(scope).removeClearingLabels(input.areaId)),
     );
-    if (!removed) return yield* areaNotFound();
-    return commandAcknowledged;
+    if (!removed) return Result.err(areaNotFound());
+    return Result.ok(commandAcknowledged);
   });
 }

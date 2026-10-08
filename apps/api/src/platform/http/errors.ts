@@ -1,24 +1,9 @@
 import type { ApplicationError } from "@vita-os/contracts";
-
-import { ConflictError, ValidationError } from "@vita-os/core";
-import { Schema, SchemaGetter } from "effect";
-import { HttpServerResponse } from "effect/http";
-import { HttpApiSchema } from "effect/http-api";
+import type { Result } from "better-result";
 
 import type { OperationFailure } from "../failures";
 
-import { InvalidPageCursorError } from "../d1/page-cursor";
 import { operationFailures } from "../failures";
-
-/**
- * How a failure becomes a response.
- *
- * Operations fail with tagged failures — `attempt` has already turned a domain
- * rule that threw into one — and HttpApi encodes each through these schemas;
- * the request guards send everything else through `toRefusal`. A status comes
- * from the public code, except the transport refusals — a forbidden origin
- * (403) and a body that is not JSON (415) — which carry their own.
- */
 
 export const STATUS_BY_CODE: Record<ApplicationError["code"], number> = {
   unauthorized: 401,
@@ -28,7 +13,6 @@ export const STATUS_BY_CODE: Record<ApplicationError["code"], number> = {
   unavailable: 503,
   unexpected: 500,
 };
-
 export const requestOriginNotAllowed: ApplicationError = {
   code: "unauthorized",
   message: "Request origin is not allowed.",
@@ -48,12 +32,7 @@ export function invalidRequest(message: string): ApplicationError {
   return { code: "validation", message, retryable: false };
 }
 
-/**
- * A request this Worker will not answer with a value.
- *
- * The status is the code's own unless the refusal is about the transport
- * rather than the operation — a forbidden origin or a body that is not JSON.
- */
+/** Transport refusals can override their public code's usual status. */
 export class RequestRefusal extends Error {
   readonly _tag = "RequestRefusal";
   constructor(
@@ -64,13 +43,6 @@ export class RequestRefusal extends Error {
     super(error.message);
     this.name = "RequestRefusal";
   }
-}
-
-/** What HttpApi may encode as an error response. */
-type Refusable = RequestRefusal | OperationFailure;
-
-function isOperationFailure(value: unknown): value is OperationFailure {
-  return operationFailures.some((failure) => value instanceof failure);
 }
 
 function publicError(failure: OperationFailure): ApplicationError {
@@ -90,67 +62,25 @@ function publicError(failure: OperationFailure): ApplicationError {
 
 export function toRefusal(cause: unknown): RequestRefusal {
   if (cause instanceof RequestRefusal) return cause;
-  if (isOperationFailure(cause)) {
-    return new RequestRefusal(publicError(cause), undefined, cause);
-  }
-  // A domain rule that throws outside `attempt` arrives as a defect, and still
-  // refuses in its own words.
-  if (cause instanceof ValidationError) {
-    return new RequestRefusal(invalidRequest(cause.message), undefined, cause);
-  }
-  if (cause instanceof ConflictError) {
+  if (operationFailures.some((failure) => cause instanceof failure)) {
     return new RequestRefusal(
-      { code: "conflict", message: cause.message, retryable: false },
+      publicError(cause as OperationFailure),
       undefined,
       cause,
     );
   }
-  if (cause instanceof InvalidPageCursorError) {
-    return new RequestRefusal(invalidRequest(cause.refusal), undefined, cause);
-  }
   return new RequestRefusal(unexpectedFailure, undefined, cause);
 }
-export function refusalResponse(refusal: RequestRefusal) {
-  return HttpServerResponse.jsonUnsafe(
-    { error: refusal.error },
-    { status: refusal.status },
-  );
+export function refusalResponse(refusal: RequestRefusal): Response {
+  return Response.json({ error: refusal.error }, { status: refusal.status });
 }
 
-function refusalSchema<C extends ApplicationError["code"]>(code: C) {
-  const status = STATUS_BY_CODE[code];
-  const wire = Schema.Struct({
-    error: Schema.Struct({
-      code: Schema.Literal(code),
-      message: Schema.String,
-      retryable: Schema.Boolean,
-    }),
-  });
-  return Schema.declare<Refusable>((value): value is Refusable => {
-    if (!(value instanceof RequestRefusal || isOperationFailure(value))) {
-      return false;
-    }
-    const refusal = toRefusal(value);
-    return refusal.error.code === code && refusal.status === status;
-  }).pipe(
-    Schema.encodeTo(wire, {
-      decode: SchemaGetter.transform(
-        (value) => new RequestRefusal(value.error, status),
-      ),
-      encode: SchemaGetter.transform((value) => ({
-        error: { ...toRefusal(value).error, code },
-      })),
-    }),
-    HttpApiSchema.status(status),
-  );
+/** Operations already return typed values. Only failures need HTTP translation. */
+export function respond<A>(
+  result: Result<A, OperationFailure>,
+  status = 200,
+): Response {
+  return result.status === "ok"
+    ? Response.json(result.value, { status })
+    : refusalResponse(toRefusal(result.error));
 }
-
-/** One codec per public status lets HttpApi choose the correct error response. */
-export const RequestRefusalSchemas = [
-  refusalSchema("unauthorized"),
-  refusalSchema("not_found"),
-  refusalSchema("validation"),
-  refusalSchema("conflict"),
-  refusalSchema("unavailable"),
-  refusalSchema("unexpected"),
-] as const;

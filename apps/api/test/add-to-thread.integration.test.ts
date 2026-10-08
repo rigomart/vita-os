@@ -10,11 +10,11 @@ import type {
   ThreadNote,
 } from "@vita-os/contracts";
 
+import { Result } from "better-result";
 import { env } from "cloudflare:test";
-import { Effect } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { OperationFailure } from "../src/platform/failures";
+import type { Operation } from "../src/platform/operation";
 import type { RequestScope } from "../src/platform/request-scope";
 import type { Session } from "./sessions";
 
@@ -22,7 +22,6 @@ import * as adding from "../src/features/add-to-thread/operations";
 import * as notes from "../src/features/notes/operations";
 import * as threads from "../src/features/threads/operations";
 import { toRefusal } from "../src/platform/http/errors";
-import { RequestContext } from "../src/platform/request-scope";
 import { call, createSession, expectError, succeed } from "./sessions";
 
 /**
@@ -470,22 +469,11 @@ describe("starting a Thread from a Note", () => {
 
 describe("contention", () => {
   const clock = { now: () => Date.now(), newId: () => crypto.randomUUID() };
-  function run<T>(
-    scope: RequestScope,
-    operation: Effect.Effect<T, OperationFailure, RequestContext>,
-  ): Promise<OperationResult<T>> {
-    return Effect.runPromise(
-      operation.pipe(
-        Effect.provideService(RequestContext, scope),
-        Effect.match({
-          onSuccess: (value): OperationResult<T> => ({ ok: true, value }),
-          onFailure: (failure): OperationResult<T> => ({
-            ok: false,
-            error: toRefusal(failure).error,
-          }),
-        }),
-      ),
-    );
+  async function run<T>(operation: Operation<T>): Promise<OperationResult<T>> {
+    const result = await operation;
+    return Result.isOk(result)
+      ? { ok: true, value: result.value }
+      : { ok: false, error: toRefusal(result.error).error };
   }
   function value<T>(result: OperationResult<T>): T {
     if (!result.ok) throw new Error(result.error.message);
@@ -500,18 +488,20 @@ describe("contention", () => {
   it("decides again when the Thread changes under the decision", async () => {
     const scope = scopeFor();
     const thread = value(
-      await run(scope, threads.createThread({ title: "Racing" })),
+      await run(threads.createThread(scope, { title: "Racing" })),
     );
     const note = value(
-      await run(scope, notes.createNote({ body: "Dated", followUp: jun1 })),
+      await run(notes.createNote(scope, { body: "Dated", followUp: jun1 })),
     );
     const batch = env.DB.batch.bind(env.DB);
     vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
       // Another device changes the Thread while this request decides.
       value(
         await run(
-          scope,
-          threads.updateThread({ threadId: thread._id, summary: "Moved on" }),
+          threads.updateThread(scope, {
+            threadId: thread._id,
+            summary: "Moved on",
+          }),
         ),
       );
       return batch(statements);
@@ -519,8 +509,10 @@ describe("contention", () => {
 
     const added = value(
       await run(
-        scope,
-        adding.addNoteToThread({ noteId: note._id, threadId: thread._id }),
+        adding.addNoteToThread(scope, {
+          noteId: note._id,
+          threadId: thread._id,
+        }),
       ),
     );
 
@@ -540,12 +532,11 @@ describe("contention", () => {
   it("preserves a Task edit and a dated Note conversion when their writes race", async () => {
     const scope = scopeFor();
     const created = value(
-      await run(scope, threads.createThread({ title: "Both actions" })),
+      await run(threads.createThread(scope, { title: "Both actions" })),
     );
     const thread = value(
       await run(
-        scope,
-        threads.addTask({
+        threads.addTask(scope, {
           threadId: created._id,
           taskId: "existing" as TaskId,
           text: "Old text",
@@ -553,14 +544,13 @@ describe("contention", () => {
       ),
     );
     const note = value(
-      await run(scope, notes.createNote({ body: "Converted", followUp: jun1 })),
+      await run(notes.createNote(scope, { body: "Converted", followUp: jun1 })),
     );
     const batch = env.DB.batch.bind(env.DB);
     vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
       value(
         await run(
-          scope,
-          adding.addNoteToThread({
+          adding.addNoteToThread(scope, {
             noteId: note._id,
             threadId: thread._id,
             taskId: "converted" as TaskId,
@@ -571,8 +561,7 @@ describe("contention", () => {
     });
     const edited = value(
       await run(
-        scope,
-        threads.editTask({
+        threads.editTask(scope, {
           threadId: thread._id,
           taskId: "existing" as TaskId,
           text: "New text",
@@ -599,20 +588,19 @@ describe("contention", () => {
   it("writes nothing when the Note is completed under the decision", async () => {
     const scope = scopeFor();
     const thread = value(
-      await run(scope, threads.createThread({ title: "Racing note" })),
+      await run(threads.createThread(scope, { title: "Racing note" })),
     );
     const note = value(
-      await run(scope, notes.createNote({ body: "Dated", followUp: jun1 })),
+      await run(notes.createNote(scope, { body: "Dated", followUp: jun1 })),
     );
     const batch = env.DB.batch.bind(env.DB);
     vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
-      value(await run(scope, notes.markNoteDone({ noteId: note._id })));
+      value(await run(notes.markNoteDone(scope, { noteId: note._id })));
       return batch(statements);
     });
 
     const refused = await run(
-      scope,
-      adding.addNoteToThread({ noteId: note._id, threadId: thread._id }),
+      adding.addNoteToThread(scope, { noteId: note._id, threadId: thread._id }),
     );
 
     expect(refused).toMatchObject({
@@ -639,17 +627,16 @@ describe("contention", () => {
   it("names the Task from the body that is copied when the body is edited under the decision", async () => {
     const scope = scopeFor();
     const thread = value(
-      await run(scope, threads.createThread({ title: "Racing body" })),
+      await run(threads.createThread(scope, { title: "Racing body" })),
     );
     const note = value(
-      await run(scope, notes.createNote({ body: "Old name", followUp: jun1 })),
+      await run(notes.createNote(scope, { body: "Old name", followUp: jun1 })),
     );
     const batch = env.DB.batch.bind(env.DB);
     vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
       value(
         await run(
-          scope,
-          notes.updateNoteBody({ noteId: note._id, body: "New name" }),
+          notes.updateNoteBody(scope, { noteId: note._id, body: "New name" }),
         ),
       );
       return batch(statements);
@@ -657,8 +644,10 @@ describe("contention", () => {
 
     const added = value(
       await run(
-        scope,
-        adding.addNoteToThread({ noteId: note._id, threadId: thread._id }),
+        adding.addNoteToThread(scope, {
+          noteId: note._id,
+          threadId: thread._id,
+        }),
       ),
     );
 
@@ -677,9 +666,9 @@ describe("contention", () => {
         return array;
       });
     const first = value(
-      await run(scope, threads.createThread({ title: "Repeated" })),
+      await run(threads.createThread(scope, { title: "Repeated" })),
     );
-    const note = value(await run(scope, notes.createNote({ body: "Note" })));
+    const note = value(await run(notes.createNote(scope, { body: "Note" })));
     random.mockImplementation((array) => {
       (array as Uint8Array).fill(1);
       return array;
@@ -691,8 +680,10 @@ describe("contention", () => {
 
     const added = value(
       await run(
-        scope,
-        adding.createThreadFromNote({ noteId: note._id, title: "Repeated" }),
+        adding.createThreadFromNote(scope, {
+          noteId: note._id,
+          title: "Repeated",
+        }),
       ),
     );
 

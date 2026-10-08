@@ -1,6 +1,16 @@
-import { HttpApiBuilder } from "effect/http-api";
+import {
+  AreaIdSchema,
+  AreaOrderBody,
+  CreateAreaBody,
+  UpdateAreaBody,
+} from "@vita-os/contracts";
+import { Hono } from "hono";
+import * as v from "valibot";
 
-import { ApplicationApi } from "../../platform/http/api";
+import type { ApiEnv } from "../../platform/env";
+
+import { validate } from "../../platform/http/decode";
+import { respond } from "../../platform/http/errors";
 import {
   createArea,
   listAreas,
@@ -10,19 +20,38 @@ import {
 } from "./operations";
 import { normalizeAreaChange } from "./requests";
 
+const AreaParams = v.object({ areaId: AreaIdSchema });
+
 /** Areas: the optional labels a Thread may carry. */
-export const AreasHandlers = HttpApiBuilder.group(
-  ApplicationApi,
-  "areas",
-  (handlers) =>
-    handlers
-      .handle("list", () => listAreas())
-      .handle("create", ({ payload }) => createArea(payload))
-      .handle("order", ({ payload }) =>
-        reorderAreas({ areaIds: [...payload.areaIds] }),
-      )
-      .handle("update", ({ params, payload }) =>
-        updateArea({ ...params, ...normalizeAreaChange(payload) }),
-      )
-      .handle("remove", ({ params }) => removeArea(params)),
-);
+export const areasRoutes = new Hono<ApiEnv>()
+  .get("/areas", async (c) => respond(await listAreas(c.get("scope"))))
+  .post(
+    "/areas",
+    validate("json", CreateAreaBody, "Invalid Area."),
+    async (c) =>
+      respond(await createArea(c.get("scope"), c.req.valid("json")), 201),
+  )
+  .put(
+    "/areas/order",
+    validate("json", AreaOrderBody, "Invalid Area order."),
+    async (c) =>
+      respond(await reorderAreas(c.get("scope"), c.req.valid("json"))),
+  )
+  .patch(
+    "/areas/:areaId",
+    validate("param", AreaParams, "Invalid Area change."),
+    validate("json", UpdateAreaBody, "Invalid Area change."),
+    async (c) =>
+      respond(
+        await updateArea(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...normalizeAreaChange(c.req.valid("json")),
+        }),
+      ),
+  )
+  .delete(
+    "/areas/:areaId",
+    validate("param", AreaParams, "Invalid request."),
+    async (c) =>
+      respond(await removeArea(c.get("scope"), c.req.valid("param"))),
+  );

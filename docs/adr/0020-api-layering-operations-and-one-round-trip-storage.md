@@ -1,7 +1,9 @@
 # API layering: operations and one-round-trip storage
 
-**Status:** Accepted  
+**Status:** Accepted. Amended by [ADR 0035](./0035-hono-valibot-result-api.md) for the API runtime, layers, and operation execution.
 **Date:** 2026-09-26
+
+The Effect descriptions below record the earlier runtime decision. ADR 0035 replaces those runtime details while retaining the feature layering, one-round-trip storage, guarded operations, ownership, and atomic batches.
 
 Issue #367 reorganizes `apps/api` around features instead of technologies. The Cloudflare migration (#349) proved D1's safety guarantees but left each operation written out four times — `ApplicationClient`, a `VitaStore` interface, a Hono route, the web HTTP client — and let "stores" absorb input checks, core decisions, retry loops, and SQL at once. Failures reached the response by four routes.
 

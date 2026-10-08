@@ -17,7 +17,10 @@
     "@vita-os/contracts": "workspace:*",
     "@vita-os/core": "workspace:*",
     "better-auth": "1.6.25",
-    "effect": "4.0.0"
+    "hono": "4.13.13",
+    "@hono/standard-validator": "0.4.0",
+    "better-result": "3.0.1",
+    "valibot": "1.5.0"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.0.0",

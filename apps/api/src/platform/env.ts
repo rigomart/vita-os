@@ -10,3 +10,10 @@ export type WorkerEnv = Pick<
   | "GOOGLE_CLIENT_ID"
   | "GOOGLE_CLIENT_SECRET"
 >;
+
+import type { RequestScope } from "./request-scope";
+
+export type ApiEnv = {
+  Bindings: WorkerEnv;
+  Variables: { scope: RequestScope; validationMessage?: string };
+};

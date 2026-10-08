@@ -1,6 +1,18 @@
-import { HttpApiBuilder } from "effect/http-api";
+import {
+  CreateThreadBody,
+  EditTaskBody,
+  FocusTaskBody,
+  TaskIdSchema,
+  ThreadIdSchema,
+  UpdateThreadBody,
+} from "@vita-os/contracts";
+import { Hono } from "hono";
+import * as v from "valibot";
 
-import { ApplicationApi } from "../../platform/http/api";
+import type { ApiEnv } from "../../platform/env";
+
+import { validate } from "../../platform/http/decode";
+import { respond } from "../../platform/http/errors";
 import {
   addTask,
   completeTask,
@@ -17,83 +29,140 @@ import {
   skipTask,
   updateThread,
 } from "./operations";
-import { normalizeSetTaskRepeat, normalizeThreadChange } from "./requests";
+import {
+  AddTaskBody,
+  CompleteTaskBody,
+  SetTaskDateBody,
+  SetTaskRepeatBody,
+  SkipTaskBody,
+  normalizeSetTaskRepeat,
+  normalizeThreadChange,
+} from "./requests";
 
-/** Threads and their Tasks. */
-export const ThreadsHandlers = HttpApiBuilder.group(
-  ApplicationApi,
-  "threads",
-  (handlers) =>
-    handlers
-      .handle("listOpen", () => listOpenThreads())
-      .handle("listResolved", () => listResolvedThreads())
-      .handle("create", ({ payload }) =>
-        createThread({
-          title: payload.title,
-          ...(payload.summary === undefined
-            ? {}
-            : { summary: payload.summary }),
-          ...(payload.areaId === undefined ? {} : { areaId: payload.areaId }),
-        }),
-      )
-      .handle("detail", ({ params }) => getThreadDetail({ slug: params.slug }))
-      .handle("update", ({ params, payload }) =>
-        updateThread({
-          ...normalizeThreadChange(payload),
-          threadId: params.threadId,
-        }),
-      )
-      .handle("remove", ({ params }) =>
-        removeThread({ threadId: params.threadId }),
-      )
-      .handle("addTask", ({ params, payload }) =>
-        addTask({ ...payload, threadId: params.threadId }),
-      )
-      .handle("editTask", ({ params, payload }) =>
-        editTask({
-          ...payload,
-          threadId: params.threadId,
-          taskId: params.taskId,
-        }),
-      )
-      .handle("removeTask", ({ params }) =>
-        removeTask({
-          threadId: params.threadId,
-          taskId: params.taskId,
-        }),
-      )
-      .handle("completeTask", ({ params, payload }) =>
-        completeTask({
-          ...payload,
-          threadId: params.threadId,
-          taskId: params.taskId,
-        }),
-      )
-      .handle("setTaskDate", ({ params, payload }) =>
-        setTaskDate({
-          ...payload,
-          threadId: params.threadId,
-          taskId: params.taskId,
-        }),
-      )
-      .handle("setTaskRepeat", ({ params, payload }) =>
-        setTaskRepeat({
-          ...normalizeSetTaskRepeat(payload),
-          threadId: params.threadId,
-          taskId: params.taskId,
-        }),
-      )
-      .handle("skipTask", ({ params, payload }) =>
-        skipTask({
-          ...payload,
-          threadId: params.threadId,
-          taskId: params.taskId,
-        }),
-      )
-      .handle("focusTask", ({ params, payload }) =>
-        focusTask({
-          ...payload,
-          threadId: params.threadId,
+const ThreadParams = v.object({ threadId: ThreadIdSchema });
+const TaskParams = v.object({ ...ThreadParams.entries, taskId: TaskIdSchema });
+export const threadsRoutes = new Hono<ApiEnv>()
+  .get("/threads", async (c) => respond(await listOpenThreads(c.get("scope"))))
+  .get("/threads/resolved", async (c) =>
+    respond(await listResolvedThreads(c.get("scope"))),
+  )
+  .post(
+    "/threads",
+    validate("json", CreateThreadBody, "Invalid Thread."),
+    async (c) =>
+      respond(await createThread(c.get("scope"), c.req.valid("json")), 201),
+  )
+  .get(
+    "/threads/:slug",
+    validate("param", v.object({ slug: v.string() }), "Invalid request."),
+    async (c) =>
+      respond(await getThreadDetail(c.get("scope"), c.req.valid("param"))),
+  )
+  .patch(
+    "/threads/:threadId",
+    validate("param", ThreadParams, "Invalid Thread change."),
+    validate("json", UpdateThreadBody, "Invalid Thread change."),
+    async (c) =>
+      respond(
+        await updateThread(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...normalizeThreadChange(c.req.valid("json")),
         }),
       ),
-);
+  )
+  .delete(
+    "/threads/:threadId",
+    validate("param", ThreadParams, "Invalid request."),
+    async (c) =>
+      respond(await removeThread(c.get("scope"), c.req.valid("param"))),
+  )
+  .post(
+    "/threads/:threadId/tasks",
+    validate("param", ThreadParams, "Invalid Task change."),
+    validate("json", AddTaskBody, "Invalid Task change."),
+    async (c) =>
+      respond(
+        await addTask(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...c.req.valid("json"),
+        }),
+      ),
+  )
+  .patch(
+    "/threads/:threadId/tasks/:taskId",
+    validate("param", TaskParams, "Invalid Task change."),
+    validate("json", EditTaskBody, "Invalid Task change."),
+    async (c) =>
+      respond(
+        await editTask(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...c.req.valid("json"),
+        }),
+      ),
+  )
+  .delete(
+    "/threads/:threadId/tasks/:taskId",
+    validate("param", TaskParams, "Invalid Task change."),
+    async (c) =>
+      respond(await removeTask(c.get("scope"), c.req.valid("param"))),
+  )
+  .post(
+    "/threads/:threadId/tasks/:taskId/complete",
+    validate("param", TaskParams, "Invalid Task change."),
+    validate("json", CompleteTaskBody, "Invalid Task change."),
+    async (c) =>
+      respond(
+        await completeTask(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...c.req.valid("json"),
+        }),
+      ),
+  )
+  .put(
+    "/threads/:threadId/tasks/:taskId/repeat",
+    validate("param", TaskParams, "Invalid Task change."),
+    validate("json", SetTaskRepeatBody, "Invalid Task change."),
+    async (c) =>
+      respond(
+        await setTaskRepeat(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...normalizeSetTaskRepeat(c.req.valid("json")),
+        }),
+      ),
+  )
+  .post(
+    "/threads/:threadId/tasks/:taskId/skip",
+    validate("param", TaskParams, "Invalid Task change."),
+    validate("json", SkipTaskBody, "Invalid Task change."),
+    async (c) =>
+      respond(
+        await skipTask(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...c.req.valid("json"),
+        }),
+      ),
+  )
+  .put(
+    "/threads/:threadId/tasks/:taskId/date",
+    validate("param", TaskParams, "Invalid Task change."),
+    validate("json", SetTaskDateBody, "Invalid Task change."),
+    async (c) =>
+      respond(
+        await setTaskDate(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...c.req.valid("json"),
+        }),
+      ),
+  )
+  .put(
+    "/threads/:threadId/focus",
+    validate("param", ThreadParams, "Invalid Task change."),
+    validate("json", FocusTaskBody, "Invalid Task change."),
+    async (c) =>
+      respond(
+        await focusTask(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...c.req.valid("json"),
+        }),
+      ),
+  );

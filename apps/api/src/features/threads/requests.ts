@@ -1,10 +1,15 @@
-import type {
-  SetTaskRepeatInput,
-  TaskId,
-  ThreadId,
-  UpdateThreadInput,
-} from "@vita-os/contracts";
+import type { SetTaskRepeatInput, UpdateThreadInput } from "@vita-os/contracts";
 
+import {
+  AddTaskBody as ContractAddTaskBody,
+  CompleteTaskBody as ContractCompleteTaskBody,
+  RequestRepeatSchema,
+  SetTaskDateBody as ContractSetTaskDateBody,
+  SetTaskRepeatBody as ContractSetTaskRepeatBody,
+  SkipTaskBody as ContractSkipTaskBody,
+  UpdateThreadBody,
+  Timestamp,
+} from "@vita-os/contracts";
 import {
   MAX_TASK_DATE,
   MIN_TASK_DATE,
@@ -12,39 +17,17 @@ import {
   requireTaskId,
   requireTimeZone,
 } from "@vita-os/core";
-import { Schema } from "effect";
+import * as v from "valibot";
 
-import { Timestamp } from "../../platform/http/schemas";
-import { AreaIdSchema } from "../areas/requests";
-import { ThreadNoteBody, ThreadNoteIdSchema } from "../thread-notes/requests";
-
-/** IDs stay opaque strings, including identifiers minted before UUIDs. */
-export const ThreadIdSchema = Schema.String.pipe(
-  Schema.refine((value): value is ThreadId => value.length > 0),
+/** New dates use core's whole-millisecond 1970–9999 bounds. */
+export const TaskDateSchema = v.pipe(
+  Timestamp,
+  v.minValue(MIN_TASK_DATE),
+  v.maxValue(MAX_TASK_DATE),
 );
-export const TaskIdSchema = Schema.String.pipe(
-  Schema.refine((value): value is TaskId => value.length > 0),
-);
-export const CreateThreadBody = Schema.Struct({
-  title: Schema.String,
-  summary: Schema.optional(Schema.String),
-  areaId: Schema.optional(AreaIdSchema),
-});
-export const UpdateThreadBody = Schema.Struct({
-  title: Schema.optional(Schema.String),
-  summary: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  areaId: Schema.optionalKey(Schema.NullOr(AreaIdSchema)),
-  state: Schema.optional(Schema.Literals(["open", "resolved"])),
-  resolutionNote: Schema.optional(Schema.String),
-});
-/** A Task's date: whole milliseconds, 1970 through 9999 (core's bound). */
-export const TaskDateSchema = Timestamp.check(
-  Schema.isGreaterThanOrEqualTo(MIN_TASK_DATE),
-  Schema.isLessThanOrEqualTo(MAX_TASK_DATE),
-);
-
-const TimeZoneSchema = Schema.String.check(
-  Schema.makeFilter((value) => {
+const TimeZoneSchema = v.pipe(
+  v.string(),
+  v.check((value) => {
     try {
       requireTimeZone(value);
       return true;
@@ -53,32 +36,24 @@ const TimeZoneSchema = Schema.String.check(
     }
   }),
 );
-
-/** A new Task may arrive already dated: the card's "Follow up" is one action. */
-export const AddTaskBody = Schema.Struct({
-  taskId: TaskIdSchema,
-  text: Schema.String,
-  date: Schema.optionalKey(TaskDateSchema),
+export const AddTaskBody = v.strictObject({
+  ...ContractAddTaskBody.entries,
+  date: v.optional(TaskDateSchema),
 });
-export const EditTaskBody = Schema.Struct({
-  text: Schema.String,
+export const SetTaskDateBody = v.strictObject({
+  ...ContractSetTaskDateBody.entries,
+  date: v.nullable(TaskDateSchema),
+  timeZone: v.optional(TimeZoneSchema),
 });
-/** `date: null` clears the Task's date, and must be spelled out: absent is not a choice. */
-export const SetTaskDateBody = Schema.Struct({
-  date: Schema.NullOr(TaskDateSchema),
-  timeZone: Schema.optionalKey(TimeZoneSchema),
-});
-// Occurrence identity describes stored dates, including legacy dates outside new-write bounds.
-const TaskOccurrenceSchema = Schema.Number.check(
-  Schema.makeFilter(Number.isSafeInteger),
-);
-export const CompleteTaskBody = Schema.Struct({
-  expectedOccurrence: Schema.NullOr(TaskOccurrenceSchema),
-  timeZone: Schema.optionalKey(TimeZoneSchema),
-  note: Schema.optionalKey(
-    Schema.Struct({
-      id: ThreadNoteIdSchema.check(
-        Schema.makeFilter((value) => {
+export const CompleteTaskBody = v.strictObject({
+  ...ContractCompleteTaskBody.entries,
+  timeZone: v.optional(TimeZoneSchema),
+  note: v.optional(
+    v.strictObject({
+      ...ContractCompleteTaskBody.entries.note.wrapped.entries,
+      id: v.pipe(
+        ContractCompleteTaskBody.entries.note.wrapped.entries.id,
+        v.check((value) => {
           try {
             requireTaskId(value);
             return true;
@@ -87,19 +62,12 @@ export const CompleteTaskBody = Schema.Struct({
           }
         }),
       ),
-      body: ThreadNoteBody.fields.body,
     }),
   ),
 });
-
-export const RepeatSchema = Schema.Union([
-  Schema.Struct({ kind: Schema.Literal("days"), every: Schema.Number }),
-  Schema.Struct({
-    kind: Schema.Literal("weekly"),
-    weekdays: Schema.Array(Schema.Number),
-  }),
-]).check(
-  Schema.makeFilter((value) => {
+export const RepeatSchema = v.pipe(
+  RequestRepeatSchema,
+  v.check((value) => {
     try {
       requireRepeat(value);
       return true;
@@ -108,34 +76,27 @@ export const RepeatSchema = Schema.Union([
     }
   }),
 );
-
-export const SetTaskRepeatBody = Schema.Struct({
-  repeat: Schema.NullOr(RepeatSchema),
+export const SetTaskRepeatBody = v.strictObject({
+  ...ContractSetTaskRepeatBody.entries,
+  repeat: v.nullable(RepeatSchema),
   timeZone: TimeZoneSchema,
 });
-export const SkipTaskBody = Schema.Struct({
-  expectedOccurrence: TaskOccurrenceSchema,
+export const SkipTaskBody = v.strictObject({
+  ...ContractSkipTaskBody.entries,
   timeZone: TimeZoneSchema,
 });
 
 export function normalizeSetTaskRepeat(
-  input: typeof SetTaskRepeatBody.Type,
+  input: v.InferOutput<typeof SetTaskRepeatBody>,
 ): Omit<SetTaskRepeatInput, "threadId" | "taskId"> {
   return {
     ...input,
     repeat: input.repeat === null ? null : requireRepeat(input.repeat),
   };
 }
-/**
- * `taskId: null` unfocuses, and must be spelled out: absent is not a choice.
- */
-export const FocusTaskBody = Schema.Struct({
-  taskId: Schema.NullOr(TaskIdSchema),
-});
-
-/** Only present clearable fields enter the domain patch; absence leaves them alone. */
+/** Only present clearable fields enter the patch; absent fields stay unchanged. */
 export function normalizeThreadChange(
-  input: typeof UpdateThreadBody.Type,
+  input: v.InferOutput<typeof UpdateThreadBody>,
 ): Omit<UpdateThreadInput, "threadId"> {
   return {
     ...(input.title === undefined ? {} : { title: input.title }),

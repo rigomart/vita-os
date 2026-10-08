@@ -25,7 +25,7 @@ ownership checks hold, and failures are visible, never silent.
 
 - `packages/application` is the product: routes, every authenticated screen, the reads and commands behind them, the TanStack Query cache, optimistic updates. Its modules import each other by relative path, never by the package name.
 - `apps/web` is only the host: Better Auth in the browser, the HTTP application client, session gating, auth routes. `@` maps to `apps/web/src`.
-- `apps/api` is the Effect HTTP API Worker over Cloudflare D1. Migrations are in `apps/api/migrations`. Background: `docs/migrations/cloudflare-application.md`.
+- `apps/api` is the Hono HTTP API Worker over Cloudflare D1. Migrations are in `apps/api/migrations`. Background: `docs/migrations/cloudflare-application.md`.
 - `packages/contracts` (shared types and the application contract), `packages/core` (domain rules, no framework code), `packages/ui` (shadcn components). `apps/design` previews `packages/ui`.
 - Domain language is in `CONTEXT.md`, decisions in `docs/adr/`. Use the glossary's terms for its concepts; plain words are fine around them (see Naming in `CONTEXT.md`). Say so when a change contradicts an ADR.
 - `CONTEXT.md` and `docs/product-direction.md` describe the present. History goes in `docs/adr/`, delivery status in GitHub issues and PRs.
