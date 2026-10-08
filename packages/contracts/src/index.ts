@@ -32,6 +32,12 @@ export type {
   NoteId,
   ThreadId,
   ThreadNoteId,
+  ActivityLogEntryIdBrand,
+  AreaIdBrand,
+  TaskIdBrand,
+  NoteIdBrand,
+  ThreadIdBrand,
+  ThreadNoteIdBrand,
 } from "./ids";
 export type {
   ActivityLogEntry,

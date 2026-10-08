@@ -15,18 +15,33 @@ declare const threadNoteIdBrand: unique symbol;
 declare const activityLogEntryIdBrand: unique symbol;
 declare const taskIdBrand: unique symbol;
 
-export type ThreadId = string & { readonly [threadIdBrand]: "ThreadId" };
-export type AreaId = string & { readonly [areaIdBrand]: "AreaId" };
-export type NoteId = string & { readonly [noteIdBrand]: "NoteId" };
-export type ThreadNoteId = string & {
+/** Named brand interfaces let declarations describe schema-inferred IDs. */
+export interface ThreadIdBrand {
+  readonly [threadIdBrand]: "ThreadId";
+}
+export type ThreadId = string & ThreadIdBrand;
+export interface AreaIdBrand {
+  readonly [areaIdBrand]: "AreaId";
+}
+export type AreaId = string & AreaIdBrand;
+export interface NoteIdBrand {
+  readonly [noteIdBrand]: "NoteId";
+}
+export type NoteId = string & NoteIdBrand;
+export interface ThreadNoteIdBrand {
   readonly [threadNoteIdBrand]: "ThreadNoteId";
-};
-export type ActivityLogEntryId = string & {
+}
+export type ThreadNoteId = string & ThreadNoteIdBrand;
+export interface ActivityLogEntryIdBrand {
   readonly [activityLogEntryIdBrand]: "ActivityLogEntryId";
-};
+}
+export type ActivityLogEntryId = string & ActivityLogEntryIdBrand;
 /**
  * A Task is named within its Thread, not across the database. The caller that
  * adds a Task mints its ID, so a Task shown optimistically keeps the name every
  * later command uses for it.
  */
-export type TaskId = string & { readonly [taskIdBrand]: "TaskId" };
+export interface TaskIdBrand {
+  readonly [taskIdBrand]: "TaskId";
+}
+export type TaskId = string & TaskIdBrand;
