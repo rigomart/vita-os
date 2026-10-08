@@ -5,23 +5,19 @@ import type {
 } from "@vita-os/contracts";
 
 import {
-  decodeAcknowledgement,
-  decodeActivityLogPage,
-  decodeAreaList,
-  decodeAreaSummary,
-  decodeCount,
-  decodeNote,
-  decodeNoteAddedToThread,
-  decodeNoteList,
-  decodeNotePage,
-  decodeThread,
-  decodeThreadDetail,
-  decodeThreadList,
-  decodeThreadNote,
-  decodeThreadNoteList,
-  decodeThreadNotePage,
-  isObject,
-} from "./decode";
+  ActivityLogPageSchema,
+  ApplicationErrorSchema,
+  AreaSummarySchema,
+  CommandAckSchema,
+  NoteAddedToThreadSchema,
+  NotePageSchema,
+  NoteSchema,
+  ThreadDetailSchema,
+  ThreadNotePageSchema,
+  ThreadNoteSchema,
+  ThreadSchema,
+} from "@vita-os/contracts";
+import * as v from "valibot";
 
 type BrowserRequestInit = RequestInit & {
   credentials?: "include" | "omit" | "same-origin";
@@ -49,24 +45,22 @@ const unavailable: ApplicationError = {
   retryable: true,
 };
 
-function decodeApplicationError(value: unknown): ApplicationError | undefined {
-  if (!isObject(value) || !isObject(value.error)) return undefined;
+const AreaListSchema = v.array(AreaSummarySchema);
+const ThreadListSchema = v.array(ThreadSchema);
+const NoteListSchema = v.array(NoteSchema);
+const ThreadNoteListSchema = v.array(ThreadNoteSchema);
+const CountSchema = v.pipe(
+  v.object({ count: v.pipe(v.number(), v.safeInteger()) }),
+  v.transform(({ count }) => count),
+);
+const ErrorResponseSchema = v.object({ error: ApplicationErrorSchema });
 
-  const { code, message, retryable } = value.error;
-  if (
-    (code !== "unauthorized" &&
-      code !== "not_found" &&
-      code !== "validation" &&
-      code !== "conflict" &&
-      code !== "unavailable" &&
-      code !== "unexpected") ||
-    typeof message !== "string" ||
-    typeof retryable !== "boolean"
-  ) {
-    return undefined;
-  }
-
-  return { code, message, retryable };
+function parseResponse<T>(
+  schema: v.GenericSchema<unknown, T>,
+  value: unknown,
+): T | undefined {
+  const result = v.safeParse(schema, value);
+  return result.success ? result.output : undefined;
 }
 
 /**
@@ -106,7 +100,7 @@ async function request<T>(input: {
   fetchImpl: FetchImplementation;
   url: string;
   init: BrowserRequestInit;
-  decodeSuccess: (value: unknown) => T | undefined;
+  successSchema: v.GenericSchema<unknown, T>;
 }): Promise<OperationResult<T>> {
   let response: Response;
   try {
@@ -122,13 +116,13 @@ async function request<T>(input: {
 
   const body = await readJson(response);
   if (response.ok) {
-    const value = input.decodeSuccess(body);
+    const value = parseResponse(input.successSchema, body);
     return value === undefined
       ? { ok: false, error: unexpectedResponse }
       : { ok: true, value };
   }
 
-  const error = decodeApplicationError(body);
+  const error = parseResponse(ErrorResponseSchema, body)?.error;
   if (error === undefined) return { ok: false, error: unexpectedResponse };
 
   const code = statusErrorCode(response.status);
@@ -159,22 +153,19 @@ export function createHttpApplicationClient({
     `${baseUrl}/v1/${segments.map((segment) => encodeURIComponent(segment)).join("/")}`;
   const literalPath = (path_: string) => `${baseUrl}/v1/${path_}`;
 
-  const read = <T>(
-    url: string,
-    decodeSuccess: (value: unknown) => T | undefined,
-  ) =>
+  const read = <T>(url: string, successSchema: v.GenericSchema<unknown, T>) =>
     request({
       fetchImpl,
       url,
       init: { method: "GET", credentials: "include" },
-      decodeSuccess,
+      successSchema,
     });
 
   const send = <T>(
     method: "POST" | "PATCH" | "PUT" | "DELETE",
     url: string,
     body: unknown,
-    decodeSuccess: (value: unknown) => T | undefined,
+    successSchema: v.GenericSchema<unknown, T>,
   ) =>
     request({
       fetchImpl,
@@ -189,7 +180,7 @@ export function createHttpApplicationClient({
               body: JSON.stringify(body),
             }),
       },
-      decodeSuccess,
+      successSchema,
     });
 
   const pageQuery = (input: { limit: number; cursor?: string }) => {
@@ -200,55 +191,50 @@ export function createHttpApplicationClient({
 
   return {
     /* Areas */
-    listAreas: () => read(literalPath("areas"), decodeAreaList),
+    listAreas: () => read(literalPath("areas"), AreaListSchema),
     createArea: (input) =>
-      send("POST", literalPath("areas"), input, decodeAreaSummary),
+      send("POST", literalPath("areas"), input, AreaSummarySchema),
     updateArea: ({ areaId, ...change }) =>
-      send("PATCH", path("areas", areaId), change, decodeAreaSummary),
+      send("PATCH", path("areas", areaId), change, AreaSummarySchema),
     reorderAreas: (input) =>
-      send("PUT", literalPath("areas/order"), input, decodeAreaList),
+      send("PUT", literalPath("areas/order"), input, AreaListSchema),
     removeArea: (input) =>
-      send(
-        "DELETE",
-        path("areas", input.areaId),
-        undefined,
-        decodeAcknowledgement,
-      ),
+      send("DELETE", path("areas", input.areaId), undefined, CommandAckSchema),
 
     /* Threads */
-    listOpenThreads: () => read(literalPath("threads"), decodeThreadList),
+    listOpenThreads: () => read(literalPath("threads"), ThreadListSchema),
     listResolvedThreads: () =>
-      read(literalPath("threads/resolved"), decodeThreadList),
+      read(literalPath("threads/resolved"), ThreadListSchema),
     getThreadDetail: (input) =>
-      read(path("threads", input.slug), decodeThreadDetail),
+      read(path("threads", input.slug), ThreadDetailSchema),
     createThread: (input) =>
-      send("POST", literalPath("threads"), input, decodeThread),
+      send("POST", literalPath("threads"), input, ThreadSchema),
     updateThread: ({ threadId, ...change }) =>
-      send("PATCH", path("threads", threadId), change, decodeThread),
+      send("PATCH", path("threads", threadId), change, ThreadSchema),
     removeThread: (input) =>
       send(
         "DELETE",
         path("threads", input.threadId),
         undefined,
-        decodeAcknowledgement,
+        CommandAckSchema,
       ),
 
     /* Tasks */
     addTask: ({ threadId, ...task }) =>
-      send("POST", path("threads", threadId, "tasks"), task, decodeThread),
+      send("POST", path("threads", threadId, "tasks"), task, ThreadSchema),
     editTask: ({ threadId, taskId, ...change }) =>
       send(
         "PATCH",
         path("threads", threadId, "tasks", taskId),
         change,
-        decodeThread,
+        ThreadSchema,
       ),
     removeTask: ({ threadId, taskId }) =>
       send(
         "DELETE",
         path("threads", threadId, "tasks", taskId),
         undefined,
-        decodeThread,
+        ThreadSchema,
       ),
     completeTask: ({ threadId, taskId, expectedOccurrence, timeZone, note }) =>
       send(
@@ -261,84 +247,79 @@ export function createHttpApplicationClient({
             ? {}
             : { note: { id: note.id, body: note.body } }),
         },
-        decodeThread,
+        ThreadSchema,
       ),
     setTaskDate: ({ threadId, taskId, ...change }) =>
       send(
         "PUT",
         path("threads", threadId, "tasks", taskId, "date"),
         change,
-        decodeThread,
+        ThreadSchema,
       ),
     setTaskRepeat: ({ threadId, taskId, ...change }) =>
       send(
         "PUT",
         path("threads", threadId, "tasks", taskId, "repeat"),
         change,
-        decodeThread,
+        ThreadSchema,
       ),
     skipTask: ({ threadId, taskId, ...change }) =>
       send(
         "POST",
         path("threads", threadId, "tasks", taskId, "skip"),
         change,
-        decodeThread,
+        ThreadSchema,
       ),
     focusTask: ({ threadId, ...focus }) =>
-      send("PUT", path("threads", threadId, "focus"), focus, decodeThread),
+      send("PUT", path("threads", threadId, "focus"), focus, ThreadSchema),
 
     /* Activity Log */
     getThreadActivityPage: ({ threadId, ...page }) =>
       read(
         `${path("threads", threadId)}/activity?${pageQuery(page)}`,
-        decodeActivityLogPage,
+        ActivityLogPageSchema,
       ),
 
     /* Standalone Notes */
-    listOpenNotes: () => read(literalPath("notes"), decodeNoteList),
+    listOpenNotes: () => read(literalPath("notes"), NoteListSchema),
     getDoneNotePage: ({ query, ...page }) => {
       const params = new URLSearchParams(pageQuery(page));
       if (query?.trim()) params.set("q", query);
-      return read(literalPath(`notes/done?${params}`), decodeNotePage);
+      return read(literalPath(`notes/done?${params}`), NotePageSchema);
     },
-    countOpenNotes: () => read(literalPath("notes/open-count"), decodeCount),
+    countOpenNotes: () => read(literalPath("notes/open-count"), CountSchema),
     createNote: (input) =>
-      send("POST", literalPath("notes"), input, decodeNote),
+      send("POST", literalPath("notes"), input, NoteSchema),
     updateNoteBody: (input) =>
       send(
         "PATCH",
         `${path("notes", input.noteId)}/body`,
         { body: input.body },
-        decodeNote,
+        NoteSchema,
       ),
     updateNoteFollowUp: (input) =>
       send(
         "PATCH",
         `${path("notes", input.noteId)}/follow-up`,
         { followUp: input.followUp },
-        decodeNote,
+        NoteSchema,
       ),
     markNoteDone: (input) =>
       send(
         "PATCH",
         `${path("notes", input.noteId)}/state`,
         { state: "done" },
-        decodeNote,
+        NoteSchema,
       ),
     markNoteOpen: (input) =>
       send(
         "PATCH",
         `${path("notes", input.noteId)}/state`,
         { state: "open" },
-        decodeNote,
+        NoteSchema,
       ),
     removeNote: (input) =>
-      send(
-        "DELETE",
-        path("notes", input.noteId),
-        undefined,
-        decodeAcknowledgement,
-      ),
+      send("DELETE", path("notes", input.noteId), undefined, CommandAckSchema),
     addNoteToThread: (input) =>
       send(
         "POST",
@@ -347,58 +328,58 @@ export function createHttpApplicationClient({
           threadId: input.threadId,
           ...(input.taskId === undefined ? {} : { taskId: input.taskId }),
         },
-        decodeNoteAddedToThread,
+        NoteAddedToThreadSchema,
       ),
     createThreadFromNote: ({ noteId, ...thread }) =>
       send(
         "POST",
         `${path("notes", noteId)}/new-thread`,
         thread,
-        decodeNoteAddedToThread,
+        NoteAddedToThreadSchema,
       ),
 
     /* Thread Notes */
     listOpenThreadNotes: (input) =>
-      read(`${path("threads", input.threadId)}/notes`, decodeThreadNoteList),
+      read(`${path("threads", input.threadId)}/notes`, ThreadNoteListSchema),
     getDoneThreadNotePage: ({ threadId, ...page }) =>
       read(
         `${path("threads", threadId)}/notes/done?${pageQuery(page)}`,
-        decodeThreadNotePage,
+        ThreadNotePageSchema,
       ),
     createThreadNote: (input) =>
       send(
         "POST",
         `${path("threads", input.threadId)}/notes`,
         { body: input.body },
-        decodeThreadNote,
+        ThreadNoteSchema,
       ),
     updateThreadNoteBody: (input) =>
       send(
         "PATCH",
         `${path("thread-notes", input.threadNoteId)}/body`,
         { body: input.body },
-        decodeThreadNote,
+        ThreadNoteSchema,
       ),
     markThreadNoteDone: (input) =>
       send(
         "PATCH",
         `${path("thread-notes", input.threadNoteId)}/state`,
         { state: "done" },
-        decodeThreadNote,
+        ThreadNoteSchema,
       ),
     markThreadNoteOpen: (input) =>
       send(
         "PATCH",
         `${path("thread-notes", input.threadNoteId)}/state`,
         { state: "open" },
-        decodeThreadNote,
+        ThreadNoteSchema,
       ),
     removeThreadNote: (input) =>
       send(
         "DELETE",
         path("thread-notes", input.threadNoteId),
         undefined,
-        decodeAcknowledgement,
+        CommandAckSchema,
       ),
   };
 }

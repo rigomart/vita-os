@@ -1,4 +1,5 @@
 import type {
+  ApplicationClient,
   AreaId,
   TaskId,
   NoteId,
@@ -51,6 +52,58 @@ const activityPage = {
   nextCursor: "eyJ2IjoxfQ",
 };
 
+const note = {
+  _id: "note-1",
+  body: "Clinic opens at nine",
+  state: "open",
+  createdAt: 1_600_000_000_000,
+};
+
+const threadNote = {
+  ...note,
+  _id: "thread-note-1",
+  updatedAt: 1_600_000_000_000,
+};
+
+const responseFamilies = [
+  {
+    name: "Notes",
+    entry: note,
+    page: false,
+    read: (client: ApplicationClient) => client.listOpenNotes(),
+  },
+  {
+    name: "Thread Notes",
+    entry: threadNote,
+    page: false,
+    read: (client: ApplicationClient) =>
+      client.listOpenThreadNotes({ threadId: "thread-1" as ThreadId }),
+  },
+  {
+    name: "Note page",
+    entry: note,
+    page: true,
+    read: (client: ApplicationClient) => client.getDoneNotePage({ limit: 2 }),
+  },
+  {
+    name: "Thread Note page",
+    entry: threadNote,
+    page: true,
+    read: (client: ApplicationClient) =>
+      client.getDoneThreadNotePage({
+        threadId: "thread-1" as ThreadId,
+        limit: 2,
+      }),
+  },
+];
+
+function respondingClient(body: unknown) {
+  return createHttpApplicationClient({
+    apiBaseUrl: "https://api.test",
+    fetchImpl: async () => jsonResponse(body),
+  });
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -63,6 +116,250 @@ function applicationError(code: string, message: string, retryable: boolean) {
 }
 
 describe("createHttpApplicationClient", () => {
+  it.each(responseFamilies)(
+    "decodes $name and strips private fields",
+    async ({ entry, page, read }) => {
+      const entries = [{ ...entry, ownerId: "private-user", revision: 3 }];
+      const body = page ? { entries, privateCursor: "secret" } : entries;
+      await expect(read(respondingClient(body))).resolves.toEqual({
+        ok: true,
+        value: page ? { entries: [entry] } : [entry],
+      });
+    },
+  );
+
+  it.each(responseFamilies)(
+    "rejects the entire $name response with one malformed entry",
+    async ({ entry, page, read }) => {
+      const entries = [entry, { ...entry, _id: 12 }];
+      await expect(
+        read(respondingClient(page ? { entries } : entries)),
+      ).resolves.toMatchObject({ ok: false, error: { code: "unexpected" } });
+    },
+  );
+
+  it("rejects an empty Thread ID", async () => {
+    await expect(
+      respondingClient([{ ...detail.thread, _id: "" }]).listOpenThreads(),
+    ).resolves.toMatchObject({ ok: false, error: { code: "unexpected" } });
+  });
+
+  it.each(responseFamilies.filter(({ page }) => page))(
+    "rejects malformed $name cursors",
+    async ({ entry, read }) => {
+      for (const nextCursor of [null, 12]) {
+        await expect(
+          read(respondingClient({ entries: [entry], nextCursor })),
+        ).resolves.toMatchObject({ ok: false, error: { code: "unexpected" } });
+      }
+    },
+  );
+
+  it.each([
+    {
+      _id: "task/1",
+      text: "Check",
+      date: 1,
+      repeat: { kind: "days", every: 0 },
+    },
+    {
+      _id: "task/1",
+      text: "Check",
+      date: 1,
+      repeat: { kind: "weekly", weekdays: [2, 2] },
+    },
+    { _id: "task/1", text: "Check", repeat: { kind: "days", every: 1 } },
+    {
+      _id: "task/1",
+      text: "Check",
+      date: 1,
+      repeat: { kind: "weekly", weekdays: [4, 2] },
+    },
+  ])(
+    "preserves shared-shape Repeat values without core validation: %j",
+    async (task) => {
+      const thread = { ...detail.thread, tasks: [task] };
+      await expect(
+        respondingClient(thread).completeTask({
+          expectedOccurrence: null,
+          threadId: "thread" as ThreadId,
+          taskId: "task/1" as TaskId,
+        }),
+      ).resolves.toEqual({ ok: true, value: thread });
+    },
+  );
+
+  it("accepts shared integer timestamps and order above the safe integer limit", async () => {
+    const thread = {
+      ...detail.thread,
+      createdAt: 9_007_199_254_740_992,
+      order: 9_007_199_254_740_992,
+      tasks: [{ _id: "task/1", text: "Check", date: 9_007_199_254_740_992 }],
+    };
+    await expect(respondingClient([thread]).listOpenThreads()).resolves.toEqual(
+      { ok: true, value: [thread] },
+    );
+  });
+
+  it("keeps omitted Thread and detail fields absent while stripping nested legacy fields", async () => {
+    const thread = {
+      _id: "thread-1",
+      title: "Book checkup",
+      slug: "book-checkup",
+      order: 2,
+      state: "open",
+      createdAt: 1_600_000_000_000,
+    };
+    const task = { _id: "task-1", text: "Call clinic" };
+    await expect(
+      respondingClient({
+        thread: { ...thread, revision: 2 },
+        privateArea: {},
+      }).getThreadDetail({ slug: "book-checkup" }),
+    ).resolves.toEqual({ ok: true, value: { thread } });
+    await expect(
+      respondingClient({
+        thread: { ...thread, tasks: [{ ...task, legacyDate: 4 }] },
+      }).getThreadDetail({ slug: "book-checkup" }),
+    ).resolves.toEqual({
+      ok: true,
+      value: { thread: { ...thread, tasks: [task] } },
+    });
+  });
+
+  it.each([
+    { thread: { ...detail.thread, summary: null } },
+    { thread: { ...detail.thread, areaId: null } },
+    { thread: { ...detail.thread, tasks: null } },
+    { thread: detail.thread, area: null },
+    { thread: { ...detail.thread, tasks: [{ _id: "", text: "Check" }] } },
+  ])(
+    "rejects null optional Thread fields and empty Task IDs: %j",
+    async (body) => {
+      await expect(
+        respondingClient(body).getThreadDetail({ slug: "book-checkup" }),
+      ).resolves.toMatchObject({ ok: false, error: { code: "unexpected" } });
+    },
+  );
+
+  it.each([
+    {
+      field: "followUp",
+      entry: note,
+      read: (client: ApplicationClient) => client.listOpenNotes(),
+    },
+    {
+      field: "completedAt",
+      entry: note,
+      read: (client: ApplicationClient) => client.listOpenNotes(),
+    },
+    {
+      field: "updatedAt",
+      entry: note,
+      read: (client: ApplicationClient) => client.listOpenNotes(),
+    },
+    {
+      field: "completedAt",
+      entry: threadNote,
+      read: (client: ApplicationClient) =>
+        client.listOpenThreadNotes({ threadId: "thread-1" as ThreadId }),
+    },
+  ])(
+    "rejects null optional Note field $field",
+    async ({ field, entry, read }) => {
+      await expect(
+        read(respondingClient([{ ...entry, [field]: null }])),
+      ).resolves.toMatchObject({ ok: false, error: { code: "unexpected" } });
+    },
+  );
+
+  it.each([0, 4, Number.MAX_SAFE_INTEGER])(
+    "returns count %i as a number",
+    async (count) => {
+      await expect(
+        respondingClient({ count, privateCount: 7 }).countOpenNotes(),
+      ).resolves.toEqual({ ok: true, value: count });
+    },
+  );
+
+  it.each([9_007_199_254_740_992, "4", null, 1.5])(
+    "rejects count outside the safe integer shape: %j",
+    async (count) => {
+      await expect(
+        respondingClient({ count }).countOpenNotes(),
+      ).resolves.toMatchObject({ ok: false, error: { code: "unexpected" } });
+    },
+  );
+
+  it.each([
+    {
+      name: "Area",
+      remove: (client: ApplicationClient) =>
+        client.removeArea({ areaId: "area-1" as AreaId }),
+    },
+    {
+      name: "Thread",
+      remove: (client: ApplicationClient) =>
+        client.removeThread({ threadId: "thread-1" as ThreadId }),
+    },
+    {
+      name: "Note",
+      remove: (client: ApplicationClient) =>
+        client.removeNote({ noteId: "note-1" as NoteId }),
+    },
+    {
+      name: "Thread Note",
+      remove: (client: ApplicationClient) =>
+        client.removeThreadNote({
+          threadNoteId: "thread-note-1" as ThreadNoteId,
+        }),
+    },
+  ])(
+    "requires a literal true acknowledgement when removing a $name",
+    async ({ remove }) => {
+      await expect(
+        remove(respondingClient({ acknowledged: true, removedId: "private" })),
+      ).resolves.toEqual({ ok: true, value: { acknowledged: true } });
+      await expect(
+        remove(respondingClient({ acknowledged: false })),
+      ).resolves.toMatchObject({ ok: false, error: { code: "unexpected" } });
+    },
+  );
+
+  it.each([200, 404])("rejects unreadable JSON at HTTP %i", async (status) => {
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      fetchImpl: async () => new Response("{broken", { status }),
+    });
+    await expect(client.listAreas()).resolves.toMatchObject({
+      ok: false,
+      error: { code: "unexpected" },
+    });
+  });
+
+  it("preserves a valid error at an unmapped HTTP status and strips private fields", async () => {
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      fetchImpl: async () =>
+        jsonResponse(
+          {
+            error: {
+              code: "conflict",
+              message: "Try again later",
+              retryable: true,
+              internalId: "private",
+            },
+            trace: "private",
+          },
+          418,
+        ),
+    });
+    await expect(client.listAreas()).resolves.toEqual({
+      ok: false,
+      error: { code: "conflict", message: "Try again later", retryable: true },
+    });
+  });
+
   it("sends an optional completion Note and keeps the Thread-only response", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
@@ -158,9 +455,10 @@ describe("createHttpApplicationClient", () => {
   });
 
   it.each([
-    { kind: "days", every: 0 },
-    { kind: "weekly", weekdays: [2, 2] },
     null,
+    { kind: "monthly", every: 1 },
+    { kind: "days", every: "one" },
+    { kind: "weekly", weekdays: [2, "four"] },
   ])("refuses malformed Repeat in a server response %j", async (repeat) => {
     const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async () =>
       jsonResponse({
@@ -178,7 +476,7 @@ describe("createHttpApplicationClient", () => {
         threadId: "thread" as ThreadId,
         taskId: "a" as TaskId,
       }),
-    ).resolves.toMatchObject({ ok: false });
+    ).resolves.toMatchObject({ ok: false, error: { code: "unexpected" } });
   });
 
   it("calls fetch the way a browser requires, without an object as its receiver", async () => {
