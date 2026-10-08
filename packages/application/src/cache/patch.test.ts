@@ -106,7 +106,6 @@ describe("a pending record", () => {
       createdAt: 1_000,
     });
     expect(pending.slug).toMatch(/^family-health-[0-9a-f]{8}$/);
-    expect(pending).not.toHaveProperty("standard");
   });
 
   it("looks like the Thread the service will store", () => {

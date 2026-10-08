@@ -7,12 +7,6 @@ import type { Session } from "./sessions";
 
 import { call, createSession, expectError, succeed } from "./sessions";
 
-/**
- * A Task's optional date (ADR 0032), driven through the Worker: set, change
- * and clear by Task ID with the caller's revision, no Activity Log entry, and
- * the same refusals as every other Task command.
- */
-
 const taskConflict = {
   status: 409,
   code: "conflict",

@@ -1,6 +1,8 @@
 # Effect v4 API
 
-The API now uses pinned Effect 4.0.0 in place of Hono. Better Auth, native D1 storage, shared contracts, domain rules, and the browser's HTTP client keep their existing roles. This amends [ADR 0020](../adr/0020-api-layering-operations-and-one-round-trip-storage.md).
+Historical migration record. [ADR 0035](../adr/0035-hono-valibot-result-api.md) replaces the Effect runtime described below.
+
+The API used pinned Effect 4.0.0 in place of Hono. Better Auth, native D1 storage, shared contracts, domain rules, and the browser's HTTP client keep their existing roles. This amends [ADR 0020](../adr/0020-api-layering-operations-and-one-round-trip-storage.md).
 
 ## Request flow
 
@@ -14,7 +16,7 @@ Storage still performs one D1 statement or batch per method. No SQL or migration
 
 - Payload schemas reject extra keys. Query schemas retain the first repeated value and ignore unrelated keys.
 - Optional fields retain the distinction between omitted and explicitly cleared values. IDs remain opaque strings; timestamps remain safe integers.
-- Existing paths, creation statuses, error messages, Note date aliases, and acknowledgements remain available.
+- Existing paths, creation statuses, error messages, and acknowledgements remain available.
 - Better Auth receives the original web Request; a native Response copy preserves cookies and permits outer CORS headers.
 - Router configuration preserves case-sensitive paths, strict slashes, and unbounded Thread slugs. Middleware classifies decoded prefixes consistently with routing and preserves semicolons in opaque IDs.
 - Only endpoint input failures become validation responses. Invalid responses and unexpected defects become sanitized 500 responses.

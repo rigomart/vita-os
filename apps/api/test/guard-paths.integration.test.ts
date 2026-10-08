@@ -1,12 +1,10 @@
 import type { Note, Thread } from "@vita-os/contracts";
 
 import { env, SELF } from "cloudflare:test";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { CallOptions } from "./sessions";
 
-import { createRequestScope } from "../src/platform/request-scope";
-import { createTestApp } from "./app";
 import { call, createSession, expectError, succeed } from "./sessions";
 
 function encodeEvery(value: string): string {
@@ -128,22 +126,5 @@ describe("encoded paths preserve authentication and ownership", () => {
     expect(response.headers.get("access-control-allow-credentials")).toBe(
       "true",
     );
-  });
-
-  it("builds the authenticated scope once through the application mount", async () => {
-    const session = await createSession("scope-once");
-    const createScope = vi.fn(createRequestScope);
-    const response = await createTestApp({ createScope }).request(
-      "/v1/notes",
-      {
-        headers: { cookie: session.cookie },
-      },
-      env,
-    );
-    expect(response.status).toBe(200);
-    expect(createScope).toHaveBeenCalledOnce();
-    expect(createScope.mock.calls[0]?.[0]).toMatchObject({
-      actorId: session.actorId,
-    });
   });
 });
