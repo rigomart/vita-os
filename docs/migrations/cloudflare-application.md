@@ -1,8 +1,7 @@
 # The Cloudflare-Backed Vita OS
 
 Issue [#349](https://github.com/rigomart/vita-os/issues/349) completes the
-replacement the [proof](../superpowers/specs/2026-09-19-cloudflare-target-architecture-proof-design.md)
-validated: every Vita OS workflow now runs through an asynchronous application
+replacement: every Vita OS workflow now runs through an asynchronous application
 client, a Cloudflare Worker, Better Auth, and D1. The repository now implements
 the Worker API with Hono, Valibot, and better-result
 ([ADR 0035](../adr/0035-hono-valibot-result-api.md)); the Cloudflare hosting remains:
