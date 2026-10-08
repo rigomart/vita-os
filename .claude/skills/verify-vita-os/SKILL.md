@@ -1,6 +1,6 @@
 ---
 name: verify-vita-os
-description: Drive the real Vita OS web app locally, the way a user does, and capture proof that a change works. Launches an isolated local stack (Effect HTTP API on wrangler dev with its own D1, Vite web app), signs in a throwaway user through the real /sign-in form, and drives features with agent-browser. Use to verify any user-visible change, reproduce a bug in the browser, or prove a feature before opening a PR.
+description: Drive the real Vita OS web app locally, the way a user does, and capture proof that a change works. Launches an isolated local stack (Hono HTTP API on wrangler dev with its own D1, Vite web app), signs in a throwaway user through the real /sign-in form, and drives features with agent-browser. Use to verify any user-visible change, reproduce a bug in the browser, or prove a feature before opening a PR.
 ---
 
 # Verify Vita OS
