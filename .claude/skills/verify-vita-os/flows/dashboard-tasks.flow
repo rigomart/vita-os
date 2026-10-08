@@ -43,7 +43,6 @@ browser -- wait --text "Focus 2 ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Focus 2 ${STAMP}"]]//button[@aria-label="Focus this task"]'
 browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
 
-# Let the queued Task commands land, then open / afresh (no pane) so the cards show server state.
 browser -- wait 1500
 open /
 browser -- wait --text "Ready to move"

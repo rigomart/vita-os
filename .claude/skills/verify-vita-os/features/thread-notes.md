@@ -2,7 +2,7 @@
 
 A signed-in user writes a Note inside a Thread, edits it in the shared Note view, archives or unarchives it, and deletes it. Thread Notes have no independent Follow-up date. Archived Thread Notes stay in their Thread under `Archived notes`, never in the palette's History (ADR 0031).
 
-Status: proven on 84ce18f plus the Effect v4 API working-tree migration (desktop create, edit, complete, reopen, delete, completed-page read, reload and D1 persistence). Archive wording re-driven on 446055e at 1440×900: the card's `Archive note`, `Note archived`, `Archived notes 1`, the archived view's `Archived Oct 2` and `Unarchive`, `Note unarchived`, reload and D1 `state = 'open'`. Create, edit, and delete were not re-driven.
+Status: proven on 84ce18f (desktop create, edit, complete, reopen, delete, completed-page read, reload and D1 persistence). Archive wording re-driven on 446055e at 1440×900: the card's `Archive note`, `Note archived`, `Archived notes 1`, the archived view's `Archived Oct 2` and `Unarchive`, `Note unarchived`, reload and D1 `state = 'open'`. Create, edit, and delete were not re-driven.
 
 ## Sub-features
 
@@ -35,4 +35,4 @@ Evidence from this run is in `.verify/evidence/effect/2026-10-02T23-44-52-650Z/`
 - Delete is delayed during the Undo period. Reloading before that period ends cancels the queued deletion; an optimistic empty list does not prove removal.
 - The Note preview is `Open note: <plain-text body>`. Reacquire controls after reload.
 - The shared Note view exposes Archive, and Unarchive on an Archived Note; the card's toggle is `Archive note` or `Unarchive note`.
-- Desktop API paths were driven here. Drawer and phone layouts were not re-driven for this API-only migration.
+- Desktop API paths were driven here. Drawer and phone layouts were not re-driven.

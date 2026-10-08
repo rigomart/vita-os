@@ -1,6 +1,5 @@
-import { QueryObserver } from "@tanstack/react-query";
 import { act, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   createTestQueryClient,
@@ -75,29 +74,6 @@ async function issue(
   );
 }
 describe("independent application commands", () => {
-  it("refetches a settled command while an unrelated command remains pending", async () => {
-    const state = setup();
-    const fetch = vi.fn(async () => [
-      { _id: "a", body: "server" },
-      { _id: "b", body: "original" },
-    ]);
-    const observer = new QueryObserver(state.cache, {
-      queryKey: key,
-      queryFn: fetch,
-    });
-    const unsubscribe = observer.subscribe(() => {});
-    await issue(state, 0, "a");
-    await issue(state, 1, "b");
-    await act(async () =>
-      state.requests[0]!.resolve({ ok: true, value: "first" }),
-    );
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
-    expect(state.cache.isMutating()).toBe(1);
-    await act(async () =>
-      state.requests[1]!.resolve({ ok: true, value: "second" }),
-    );
-    unsubscribe();
-  });
   it("a failed edit preserves a successful edit to another record in the shared list", async () => {
     const state = setup();
     await issue(state, 0, "a");

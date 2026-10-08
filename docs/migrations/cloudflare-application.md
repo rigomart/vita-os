@@ -52,11 +52,6 @@ about transport. Reads return values; commands return the record they wrote, so
 the application can reconcile with the service's own answer rather than trusting
 its optimistic guess.
 
-Every `Thread` carries the `revision` it was read at. That is what makes every
-Task command safe to repeat from any surface: commands name a Task by ID and
-carry the revision, and a click made against a Thread that has since moved on
-comes back as a conflict instead of acting on a different Task (ADR 0022, ADR 0033).
-
 ## Storage
 
 `apps/api/migrations` holds the canonical schema: `areas`, `threads`,
@@ -107,11 +102,9 @@ continues returning the contract's `OperationResult` and decoding response shape
 
 TanStack Query owns the cache. Reads fetch when observed and refresh stale data
 on mount, focus, and reconnect; nothing polls, and nothing is delivered across
-tabs. One mutation machine gives every command the same shape: cancel the reads
-it touches, remember exactly what they held, show the change, fold in the
-service's answer, and discard only the failed command on failure. Overlapping commands share a
-base snapshot and replay their remaining changes, so one failure cannot undo
-another pending or successful command. Refetch waits until those commands settle.
+tabs. Each command cancels affected reads, applies its optimistic change once,
+reconciles the service’s answer, rolls back its own failed change, and refetches
+when it settles.
 The browser creates a fresh cache when the authenticated account changes.
 Affected reads
 are chosen from what the cache actually holds, so a command against one Thread
