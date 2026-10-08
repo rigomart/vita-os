@@ -2,6 +2,7 @@ import type { ActivityLogPage, Thread, ThreadNote } from "@vita-os/contracts";
 
 import { newRecordId } from "@vita-os/core";
 import { env } from "cloudflare:test";
+import { drizzle } from "drizzle-orm/d1";
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "./sessions";
@@ -176,7 +177,7 @@ describe("completing a Task with a Thread Note", () => {
       },
     };
     const prepared = storage.prepareChange(input);
-    await env.DB.batch(prepared.statements);
+    await drizzle(env.DB).batch([prepared.update, ...prepared.inserts]);
     const after = await snapshot(session, thread);
     expect(after.thread.lastActivityContent).toBe("Completed");
     expect(after.notes).toEqual([]);

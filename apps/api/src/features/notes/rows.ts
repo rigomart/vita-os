@@ -1,5 +1,7 @@
 import type { Note, NoteId } from "@vita-os/contracts";
 
+import { notes } from "../../platform/d1/schema";
+
 /**
  * Where a stored Standalone Note becomes a Vita OS value.
  *
@@ -9,18 +11,17 @@ import type { Note, NoteId } from "@vita-os/contracts";
  * never something a read hands back.
  */
 
-export const NOTE_COLUMNS =
-  "id, body, attention_date, state, completed_at, created_at, updated_at";
+export const NOTE_FIELDS = {
+  id: notes.id,
+  body: notes.body,
+  attention_date: notes.attention_date,
+  state: notes.state,
+  completed_at: notes.completed_at,
+  created_at: notes.created_at,
+  updated_at: notes.updated_at,
+};
 
-export interface NoteRow {
-  id: string;
-  body: string;
-  attention_date: number | null;
-  state: Note["state"];
-  completed_at: number | null;
-  created_at: number;
-  updated_at: number | null;
-}
+export type NoteRow = Pick<typeof notes.$inferSelect, keyof typeof NOTE_FIELDS>;
 
 // The physical column keeps its stored name (ADR 0028).
 export function toNote(row: NoteRow): Note {

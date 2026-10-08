@@ -11,7 +11,8 @@
     "migrate:local": "wrangler d1 migrations apply vita-os-local --local",
     "test": "vitest",
     "test:run": "vitest run && python3 -m unittest discover -s migration -p 'test_*.py'",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrations:generate": "drizzle-kit generate --config=drizzle.config.ts"
   },
   "dependencies": {
     "@vita-os/contracts": "workspace:*",
@@ -20,12 +21,14 @@
     "hono": "4.13.13",
     "@hono/standard-validator": "0.4.0",
     "better-result": "3.0.1",
-    "valibot": "1.5.0"
+    "valibot": "1.5.0",
+    "drizzle-orm": "0.45.3"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.0.0",
     "typescript": "catalog:",
     "vitest": "4.1.7",
-    "wrangler": "4.135.0"
+    "wrangler": "4.135.0",
+    "drizzle-kit": "0.31.11"
   }
 }

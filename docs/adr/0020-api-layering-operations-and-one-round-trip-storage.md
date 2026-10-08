@@ -1,6 +1,7 @@
 # API layering: operations and one-round-trip storage
 
 **Status:** Accepted. Amended by [ADR 0035](./0035-hono-valibot-result-api.md) for the API runtime, layers, and operation execution.
+Amended by [ADR 0036](./0036-drizzle-d1-storage.md) for typed D1 queries and schema generation; the storage safety rules remain.
 **Date:** 2026-09-26
 
 The Effect descriptions below record the earlier runtime decision. ADR 0035 replaces those runtime details while retaining the feature layering, one-round-trip storage, guarded operations, ownership, and atomic batches.

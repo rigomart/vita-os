@@ -31,7 +31,7 @@ worker.ts              builds the app once per isolate
 app.ts                 middleware and mounting
 platform/http          Hono composition, Valibot validation, CORS, guards, and error responses
 platform/auth          Better Auth, and the middleware that builds the request scope
-platform/d1            page cursors, the SET builder, unique-violation detection
+platform/d1            Drizzle product schema, page cursors, unique-violation detection
 platform/request-scope { db, clock, actorId }, built once per request after authentication
 features/<feature>     areas, threads, activity-log, notes, thread-notes:
                        request schemas, routes, Result operations, storage, and rows
@@ -53,11 +53,30 @@ its optimistic guess.
 
 ## Storage
 
-`apps/api/migrations` holds the canonical schema: `areas`, `threads`,
+`apps/api/migrations` holds the applied SQL history: `areas`, `threads`,
 `activity_log_entries`, `notes`, and `thread_notes`, under those names. Convex's
 physical `tasks` table and its `text` column did not survive; the importer
 translated them at cutover. IDs are opaque text, so Convex-generated IDs stay
 valid and new records get application-generated ones.
+
+The API now queries those tables through Drizzle's D1 driver
+([ADR 0036](../adr/0036-drizzle-d1-storage.md)).
+`apps/api/src/platform/d1/schema.ts` defines the product tables and supplies
+inferred storage row types. Explicit adapters still translate database values
+to contract models and validate stored Task JSON. Better Auth uses native D1
+and owns its separate tables.
+
+For future product schema changes, edit the TypeScript schema and run
+`bun run --filter=@vita-os/api migrations:generate`. Review and commit the SQL
+and metadata written under `apps/api/migrations`. The metadata baseline matches
+the existing schema after `0007`; adopting Drizzle adds no SQL migration and
+generation without a schema change produces none. Wrangler remains the sole
+migration runner in local setup, verification, tests, and deployment. Generated
+SQL must support the API still serving before deployment replaces it.
+Changing the historical Area or Thread slug uniqueness requires hand-written
+table-rebuild SQL: those inline SQLite constraints are represented as named
+unique indexes by Drizzle Kit, so a generated DROP INDEX does not apply to the
+existing database. See ADR 0036 before changing either constraint.
 
 Two deliberate differences from Convex are worth naming. Slugs are unique per
 owner, and a create or rename re-mints a colliding one a few times before giving

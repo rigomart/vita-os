@@ -8,6 +8,8 @@ import type {
 
 import { requireRepeat } from "@vita-os/core";
 
+import { threads } from "../../platform/d1/schema";
+
 /**
  * Where a stored Thread becomes a Vita OS value.
  *
@@ -19,26 +21,26 @@ import { requireRepeat } from "@vita-os/core";
 
 // Storage names predate Tasks and stay (ADR 0033): `moves_json` holds the
 // Tasks and `focused_move_id` the Focused Task. They are mapped here, at the edge.
-export const THREAD_COLUMNS =
-  "id, title, slug, summary, area_id, sort_order, state, moves_json, " +
-  "focused_move_id, last_activity_at, last_activity_content, " +
-  "created_at, revision";
+export const THREAD_FIELDS = {
+  id: threads.id,
+  title: threads.title,
+  slug: threads.slug,
+  summary: threads.summary,
+  area_id: threads.area_id,
+  sort_order: threads.sort_order,
+  state: threads.state,
+  moves_json: threads.moves_json,
+  focused_move_id: threads.focused_move_id,
+  last_activity_at: threads.last_activity_at,
+  last_activity_content: threads.last_activity_content,
+  created_at: threads.created_at,
+  revision: threads.revision,
+};
 
-export interface ThreadRow {
-  id: string;
-  title: string;
-  slug: string;
-  summary: string | null;
-  area_id: string | null;
-  sort_order: number;
-  state: Thread["state"];
-  moves_json: string | null;
-  focused_move_id: string | null;
-  last_activity_at: number | null;
-  last_activity_content: string | null;
-  created_at: number;
-  revision: number;
-}
+export type ThreadRow = Pick<
+  typeof threads.$inferSelect,
+  keyof typeof THREAD_FIELDS
+>;
 
 /**
  * Tasks as the Thread stores them: SQL NULL, or a non-empty JSON array of

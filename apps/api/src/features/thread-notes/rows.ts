@@ -1,5 +1,7 @@
 import type { ThreadNote, ThreadNoteId } from "@vita-os/contracts";
 
+import { threadNotes } from "../../platform/d1/schema";
+
 /**
  * Where a stored Thread Note becomes a Vita OS value.
  *
@@ -9,17 +11,19 @@ import type { ThreadNote, ThreadNoteId } from "@vita-os/contracts";
  * never something a read hands back.
  */
 
-export const THREAD_NOTE_COLUMNS =
-  "id, body, state, completed_at, created_at, updated_at";
+export const THREAD_NOTE_FIELDS = {
+  id: threadNotes.id,
+  body: threadNotes.body,
+  state: threadNotes.state,
+  completed_at: threadNotes.completed_at,
+  created_at: threadNotes.created_at,
+  updated_at: threadNotes.updated_at,
+};
 
-export interface ThreadNoteRow {
-  id: string;
-  body: string;
-  state: ThreadNote["state"];
-  completed_at: number | null;
-  created_at: number;
-  updated_at: number;
-}
+export type ThreadNoteRow = Pick<
+  typeof threadNotes.$inferSelect,
+  keyof typeof THREAD_NOTE_FIELDS
+>;
 
 export function toThreadNote(row: ThreadNoteRow): ThreadNote {
   return {

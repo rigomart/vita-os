@@ -1,6 +1,9 @@
-import type { Note, NoteAddedToThread } from "@vita-os/contracts";
+import type { Note, NoteAddedToThread, ThreadNote } from "@vita-os/contracts";
+import type { SQL } from "drizzle-orm";
 
-import type { SqlCondition } from "../../platform/d1/statements";
+import { and, eq, exists, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
+
 import type { RequestScope } from "../../platform/request-scope";
 import type { ThreadNoteRow } from "../thread-notes/rows";
 import type { ThreadRow } from "../threads/rows";
@@ -10,44 +13,40 @@ import type {
   ThreadChange,
 } from "../threads/storage";
 
-import { THREAD_NOTE_COLUMNS, toThreadNote } from "../thread-notes/rows";
+import {
+  notes,
+  threadNotes,
+  threads as threadTable,
+} from "../../platform/d1/schema";
+import { THREAD_NOTE_FIELDS, toThreadNote } from "../thread-notes/rows";
 import { threadStorage } from "../threads/storage";
 
 /**
- * A Standalone Note becoming a Thread Note, one D1 batch per function.
- *
- * D1 has no interactive transactions (ADR 0019), so every write is guarded by
- * what the operation read, and each later statement depends on the one before
- * it having written:
- *
- * 1. The Thread write — a change on an existing Thread, or the insert of a new
- *    one followed by its first change — happens only while the Note is still
- *    open with the date the decision read. The change stamps a fresh token.
- * 2. The Note is copied into `thread_notes` only from the Thread row carrying
- *    that token, keeping its body and creation time.
- * 3. The Note is deleted only when its copy exists.
- *
- * A missing, foreign, or Done Note, a resolved or foreign Thread, or a lost
- * race therefore writes nothing at all — no Thread change, no Activity Log
- * entry, no copy, no deletion — and the batch answers `null`.
+ * A Standalone Note becoming a Thread Note, in one guarded atomic D1 batch.
+ * The Thread changes only while the source Note matches the decision. Its
+ * fresh token guards copying the Note; the copy then guards source deletion.
  */
 export function addToThreadStorage(scope: RequestScope) {
   const { db, clock, actorId } = scope;
+  const database = drizzle(db);
   const threads = threadStorage(scope);
 
-  /**
-   * The Note as the decision read it: still open, with the same date and body,
-   * so the Task named from its first line matches the body that is copied.
-   */
-  function noteUnchanged(note: Note): SqlCondition {
-    return {
-      sql: `EXISTS (
-              SELECT 1 FROM notes
-              WHERE id = ? AND user_id = ? AND state = 'open'
-                AND attention_date IS ? AND body = ?
-            )`,
-      binds: [note._id, actorId, note.followUp ?? null, note.body],
-    };
+  /** Match the source date and body that were used to decide the change. */
+  function noteUnchanged(note: Note): SQL {
+    return exists(
+      database
+        .select({ id: notes.id })
+        .from(notes)
+        .where(
+          and(
+            eq(notes.id, note._id),
+            eq(notes.user_id, actorId),
+            eq(notes.state, "open"),
+            sql`${notes.attention_date} IS ${note.followUp ?? null}`,
+            eq(notes.body, note.body),
+          ),
+        ),
+    );
   }
 
   /** Copy the Note and remove it, both behind the Thread change. */
@@ -55,69 +54,100 @@ export function addToThreadStorage(scope: RequestScope) {
     note: Note,
     threadId: string,
     change: PreparedThreadChange,
-  ): D1PreparedStatement[] {
+  ) {
     const threadNoteId = clock.newId();
-    return [
-      db
-        .prepare(
-          `INSERT INTO thread_notes (
-             id, user_id, thread_id, body, state, completed_at, created_at,
-             updated_at
-           )
-           SELECT ?, user_id, ?, body, 'open', NULL, created_at,
-                  COALESCE(updated_at, created_at)
-           FROM notes
-           WHERE id = ? AND user_id = ? AND state = 'open'
-             AND EXISTS (
-               SELECT 1 FROM threads
-               WHERE id = ? AND user_id = ? AND last_change_token = ?
-             )
-           RETURNING ${THREAD_NOTE_COLUMNS}`,
-        )
-        .bind(
-          threadNoteId,
-          threadId,
-          note._id,
-          actorId,
-          threadId,
-          actorId,
-          change.changeToken,
+    const copy = database
+      .insert(threadNotes)
+      .select(
+        database
+          .select({
+            id: sql<string>`${threadNoteId}`.as("id"),
+            user_id: notes.user_id,
+            thread_id: sql<string>`${threadId}`.as("thread_id"),
+            body: notes.body,
+            state: sql<ThreadNote["state"]>`'open'`.as("state"),
+            completed_at: sql<null>`NULL`.as("completed_at"),
+            created_at: notes.created_at,
+            updated_at:
+              sql<number>`COALESCE(${notes.updated_at}, ${notes.created_at})`.as(
+                "updated_at",
+              ),
+          })
+          .from(notes)
+          .where(
+            and(
+              eq(notes.id, note._id),
+              eq(notes.user_id, actorId),
+              eq(notes.state, "open"),
+              exists(
+                database
+                  .select({ id: threadTable.id })
+                  .from(threadTable)
+                  .where(
+                    and(
+                      eq(threadTable.id, threadId),
+                      eq(threadTable.user_id, actorId),
+                      eq(threadTable.last_change_token, change.changeToken),
+                    ),
+                  ),
+              ),
+            ),
+          ),
+      )
+      .returning(THREAD_NOTE_FIELDS);
+    const removal = database.delete(notes).where(
+      and(
+        eq(notes.id, note._id),
+        eq(notes.user_id, actorId),
+        exists(
+          database
+            .select({ id: threadNotes.id })
+            .from(threadNotes)
+            .where(
+              and(
+                eq(threadNotes.id, threadNoteId),
+                eq(threadNotes.user_id, actorId),
+              ),
+            ),
         ),
-      db
-        .prepare(
-          `DELETE FROM notes
-           WHERE id = ? AND user_id = ?
-             AND EXISTS (
-               SELECT 1 FROM thread_notes WHERE id = ? AND user_id = ?
-             )`,
-        )
-        .bind(note._id, actorId, threadNoteId, actorId),
-    ];
+      ),
+    );
+    return { copy, removal };
   }
 
   async function write(
-    leading: D1PreparedStatement[],
     change: PreparedThreadChange,
     note: Note,
     threadId: string,
+    leading?: ReturnType<typeof threads.prepareInsert>["statement"],
   ): Promise<NoteAddedToThread | null> {
-    const results = await db.batch<ThreadRow | ThreadNoteRow>([
-      ...leading,
-      ...change.statements,
-      ...copyAndRemoveNote(note, threadId, change),
-    ]);
-    const changeResults = results.slice(
-      leading.length,
-      leading.length + change.statements.length,
-    ) as D1Result<ThreadRow>[];
-    const [copy, removal] = results.slice(
-      leading.length + change.statements.length,
-    ) as [D1Result<ThreadNoteRow>, D1Result];
+    const { copy, removal } = copyAndRemoveNote(note, threadId, change);
+    // Logs and copying depend only on the fresh Thread token. Keeping their
+    // queries in one batch retains rollback while preserving typed results.
+    const [writtenRows, copyRows, deletion, ...insertResults] =
+      leading === undefined
+        ? await database.batch([
+            change.update,
+            copy,
+            removal,
+            ...change.inserts,
+          ])
+        : await database
+            .batch([leading, change.update, copy, removal, ...change.inserts])
+            .then(([, ...results]) => results);
+    return settle(change, writtenRows, insertResults, copyRows, deletion);
+  }
 
-    const thread = change.settle(changeResults);
+  function settle(
+    change: PreparedThreadChange,
+    writtenRows: ThreadRow[],
+    insertResults: D1Result[],
+    copyRows: ThreadNoteRow[],
+    removal: D1Result,
+  ): NoteAddedToThread | null {
+    const thread = change.settle(writtenRows, insertResults);
     if (thread === null) return null;
-
-    const threadNote = copy.results.at(0);
+    const threadNote = copyRows.at(0);
     if (threadNote === undefined || removal.meta.changes !== 1) {
       throw new Error("Adding a Note to a Thread wrote an inconsistent batch");
     }
@@ -125,33 +155,24 @@ export function addToThreadStorage(scope: RequestScope) {
   }
 
   return {
-    /**
-     * Add the Note to an existing Open Thread, with the change decided against
-     * the Thread at `expectedRevision`. The change always stamps the Thread's
-     * activity, as capturing a Thread Note does.
-     */
+    /** Capture into an owned Open Thread at the revision the decision read. */
     addToThread(input: {
       note: Note;
       threadId: string;
       expectedRevision: number;
       change: ThreadChange;
     }): Promise<NoteAddedToThread | null> {
-      const guard = noteUnchanged(input.note);
       const change = threads.prepareChange({
         threadId: input.threadId,
         expectedRevision: input.expectedRevision,
         change: input.change,
-        guard: { sql: `state = 'open' AND ${guard.sql}`, binds: guard.binds },
+        guard: and(eq(threadTable.state, "open"), noteUnchanged(input.note)),
         stampActivity: true,
       });
-      return write([], change, input.note, input.threadId);
+      return write(change, input.note, input.threadId);
     },
 
-    /**
-     * Start a Thread from the Note: the insert, then the new Thread's first
-     * change, which carries the Note's date. `null` means the Note changed or
-     * the Area is missing; throws when the slug is taken.
-     */
+    /** Insert and change the new Thread, preserving the source Note's date. */
     startThread(input: {
       note: Note;
       thread: NewThread;
@@ -167,7 +188,7 @@ export function addToThreadStorage(scope: RequestScope) {
         change: input.change,
         stampActivity: true,
       });
-      return write([insert.statement], change, input.note, insert.threadId);
+      return write(change, input.note, insert.threadId, insert.statement);
     },
   };
 }
