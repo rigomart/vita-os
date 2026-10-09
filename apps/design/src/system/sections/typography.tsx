@@ -1,4 +1,4 @@
-import { Section } from "@/components/section";
+import { Section } from "@/system/components/section";
 
 const TYPE_SCALE = [
   "text-4xl",

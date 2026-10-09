@@ -1,4 +1,4 @@
-import { Section } from "@/components/section";
+import { Section } from "@/system/components/section";
 
 import { ButtonsGroup } from "./components/buttons";
 import { FeedbackGroup } from "./components/feedback";
