@@ -1,3 +1,5 @@
+import { describe, expect, it, vi } from "vitest";
+
 import type {
   ApplicationClient,
   AreaId,
@@ -5,11 +7,9 @@ import type {
   NoteId,
   ThreadId,
   ThreadNoteId,
-} from "@vita-os/contracts";
+} from "../index";
 
-import { describe, expect, it, vi } from "vitest";
-
-import { createHttpApplicationClient } from "./http-application-client";
+import { createHttpApplicationClient } from "./client";
 
 const detail = {
   thread: {
@@ -326,15 +326,75 @@ describe("createHttpApplicationClient", () => {
     },
   );
 
-  it.each([200, 404])("rejects unreadable JSON at HTTP %i", async (status) => {
+  it.each([
+    [200, "unexpected"],
+    [404, "not_found"],
+  ] as const)("handles unreadable JSON at HTTP %i", async (status, code) => {
     const client = createHttpApplicationClient({
       apiBaseUrl: "https://api.test",
       fetchImpl: async () => new Response("{broken", { status }),
     });
     await expect(client.listAreas()).resolves.toMatchObject({
       ok: false,
-      error: { code: "unexpected" },
+      error: { code },
     });
+  });
+
+  it.each([true, false])(
+    "preserves retryable=%s from a valid HTTP 409 error",
+    async (retryable) => {
+      const client = createHttpApplicationClient({
+        apiBaseUrl: "https://api.test",
+        fetchImpl: async () =>
+          jsonResponse(
+            applicationError("conflict", "Please try again", retryable),
+            409,
+          ),
+      });
+      await expect(client.listAreas()).resolves.toEqual({
+        ok: false,
+        error: { code: "conflict", message: "Please try again", retryable },
+      });
+    },
+  );
+
+  it("preserves the server error code on a known HTTP status", async () => {
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      fetchImpl: async () =>
+        jsonResponse(
+          applicationError("unexpected", "Service failure", false),
+          503,
+        ),
+    });
+    await expect(client.listAreas()).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "unexpected",
+        message: "Service failure",
+        retryable: false,
+      },
+    });
+  });
+
+  it("applies host credentials to reads and writes", async () => {
+    const requests: RequestInit[] = [];
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      credentials: "omit",
+      fetchImpl: async (_input, init) => {
+        requests.push(init!);
+        return jsonResponse(note);
+      },
+    });
+    await client.listOpenNotes();
+    await client.createNote({ body: note.body });
+    expect(
+      requests.map(({ method, credentials }) => ({ method, credentials })),
+    ).toEqual([
+      { method: "GET", credentials: "omit" },
+      { method: "POST", credentials: "omit" },
+    ]);
   });
 
   it("preserves a valid error at an unmapped HTTP status and strips private fields", async () => {
@@ -613,27 +673,29 @@ describe("createHttpApplicationClient", () => {
     [502, "unavailable", true],
     [503, "unavailable", true],
     [504, "unavailable", true],
+    [500, "unexpected", false],
+    [418, "unexpected", false],
   ] as const)("maps HTTP %i to %s", async (status, code, retryable) => {
     const client = createHttpApplicationClient({
       apiBaseUrl: "https://api.test",
       fetchImpl: vi
         .fn<typeof fetch>()
         .mockResolvedValue(
-          jsonResponse(
-            applicationError("unexpected", "A server error", false),
-            status,
-          ),
+          new Response("<html>private upstream error</html>", { status }),
         ),
     });
 
-    await expect(client.getThreadDetail({ slug: "missing" })).resolves.toEqual({
+    const result = await client.getThreadDetail({ slug: "missing" });
+    expect(result).toEqual({
       ok: false,
       error: {
         code,
-        message: "A server error",
+        message: expect.any(String),
         retryable,
       },
     });
+    if (!result.ok)
+      expect(result.error.message).not.toContain("private upstream error");
   });
 
   it("maps a rejected network request to a retryable unavailable result", async () => {
@@ -656,7 +718,7 @@ describe("createHttpApplicationClient", () => {
     });
   });
 
-  it("rejects malformed successful and expected-error JSON as unexpected", async () => {
+  it("rejects malformed success and falls back for a malformed error envelope", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(jsonResponse({ thread: detail.thread, area: {} }))
@@ -681,8 +743,8 @@ describe("createHttpApplicationClient", () => {
     await expect(client.getThreadDetail({ slug: "missing" })).resolves.toEqual({
       ok: false,
       error: {
-        code: "unexpected",
-        message: "Unexpected response from the service.",
+        code: "not_found",
+        message: "The requested item was not found.",
         retryable: false,
       },
     });

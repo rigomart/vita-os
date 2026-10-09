@@ -1,6 +1,6 @@
+import { createHttpApplicationClient } from "@vita-os/contracts/http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createHttpApplicationClient } from "../application/http/http-application-client";
 import { createVersionAwareFetch } from "./version-aware-fetch";
 
 afterEach(() => {

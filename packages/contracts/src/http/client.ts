@@ -1,8 +1,10 @@
+import * as v from "valibot";
+
 import type {
   ApplicationClient,
   ApplicationError,
   OperationResult,
-} from "@vita-os/contracts";
+} from "../index";
 
 import {
   ActivityLogPageSchema,
@@ -16,21 +18,22 @@ import {
   ThreadNotePageSchema,
   ThreadNoteSchema,
   ThreadSchema,
-} from "@vita-os/contracts";
-import * as v from "valibot";
+} from "../index";
 
-type BrowserRequestInit = RequestInit & {
+// Worker RequestInit omits browser credentials; the client can run in either host.
+type HttpRequestInit = RequestInit & {
   credentials?: "include" | "omit" | "same-origin";
 };
 
 type FetchImplementation = (
   input: string | URL | Request,
-  init?: BrowserRequestInit,
+  init?: HttpRequestInit,
 ) => Promise<Response>;
 
 export interface HttpApplicationClientOptions {
   apiBaseUrl: string;
   fetchImpl?: FetchImplementation;
+  credentials?: HttpRequestInit["credentials"];
 }
 
 const unexpectedResponse: ApplicationError = {
@@ -63,28 +66,41 @@ function parseResponse<T>(
   return result.success ? result.output : undefined;
 }
 
-/**
- * The status the service answered with decides the error's code, so a caller's
- * handling of "not found" or "unauthorized" never depends on a message.
- */
-function statusErrorCode(status: number): ApplicationError["code"] | undefined {
+/** Safe fallback when the response contains no valid public error envelope. */
+function statusError(status: number): ApplicationError {
   switch (status) {
     case 400:
     case 415:
-      return "validation";
+      return {
+        code: "validation",
+        message: "The service refused the request.",
+        retryable: false,
+      };
     case 401:
     case 403:
-      return "unauthorized";
+      return {
+        code: "unauthorized",
+        message: "Authentication required.",
+        retryable: false,
+      };
     case 404:
-      return "not_found";
+      return {
+        code: "not_found",
+        message: "The requested item was not found.",
+        retryable: false,
+      };
     case 409:
-      return "conflict";
+      return {
+        code: "conflict",
+        message: "The request conflicts with the current state.",
+        retryable: false,
+      };
     case 502:
     case 503:
     case 504:
-      return "unavailable";
+      return unavailable;
     default:
-      return undefined;
+      return unexpectedResponse;
   }
 }
 
@@ -99,7 +115,7 @@ async function readJson(response: Response): Promise<unknown> {
 async function request<T>(input: {
   fetchImpl: FetchImplementation;
   url: string;
-  init: BrowserRequestInit;
+  init: HttpRequestInit;
   successSchema: v.GenericSchema<unknown, T>;
 }): Promise<OperationResult<T>> {
   let response: Response;
@@ -123,14 +139,7 @@ async function request<T>(input: {
   }
 
   const error = parseResponse(ErrorResponseSchema, body)?.error;
-  if (error === undefined) return { ok: false, error: unexpectedResponse };
-
-  const code = statusErrorCode(response.status);
-  if (code === undefined) return { ok: false, error };
-  return {
-    ok: false,
-    error: { code, message: error.message, retryable: code === "unavailable" },
-  };
+  return { ok: false, error: error ?? statusError(response.status) };
 }
 
 function normalizeApiBaseUrl(apiBaseUrl: string): string {
@@ -138,15 +147,16 @@ function normalizeApiBaseUrl(apiBaseUrl: string): string {
 }
 
 /**
- * The browser's implementation of the application contract.
+ * The HTTP implementation of the application contract, configured by its host.
  *
- * Every request carries credentials, and every response is validated before it
+ * Requests use the host's credentials policy, and every response is validated before it
  * becomes a Vita OS value. Nothing here caches, retries, or holds loading state:
  * that belongs to the shared React application.
  */
 export function createHttpApplicationClient({
   apiBaseUrl,
   fetchImpl = fetch,
+  credentials = "include",
 }: HttpApplicationClientOptions): ApplicationClient {
   const baseUrl = normalizeApiBaseUrl(apiBaseUrl);
   const path = (...segments: string[]) =>
@@ -157,7 +167,7 @@ export function createHttpApplicationClient({
     request({
       fetchImpl,
       url,
-      init: { method: "GET", credentials: "include" },
+      init: { method: "GET", credentials },
       successSchema,
     });
 
@@ -172,7 +182,7 @@ export function createHttpApplicationClient({
       url,
       init: {
         method,
-        credentials: "include",
+        credentials,
         ...(body === undefined
           ? {}
           : {

@@ -1,9 +1,9 @@
 import type { ApplicationClient, TaskId } from "@vita-os/contracts";
 
+import { createHttpApplicationClient } from "@vita-os/contracts/http";
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
-import { createHttpApplicationClient } from "../../web/src/application/http/http-application-client";
 import worker from "../src/worker";
 import { createSession, type Session } from "./sessions";
 
