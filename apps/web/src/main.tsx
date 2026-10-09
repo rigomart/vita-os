@@ -7,12 +7,12 @@ import {
   ThemeProvider,
   useTheme,
 } from "@vita-os/application";
+import { createHttpApplicationClient } from "@vita-os/contracts/http";
 import { Toaster } from "@vita-os/ui/components/sonner";
 import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { createHttpApplicationClient } from "./application/http/http-application-client";
 import { SignedInApplication } from "./application/signed-in-application";
 import { API_BASE_URL } from "./lib/env";
 import { versionAwareFetch } from "./lib/version-aware-fetch";
@@ -26,8 +26,8 @@ initializeTheme();
  * The browser host's composition.
  *
  * It owns exactly what the shared application cannot: Better Auth in the
- * browser, the runtime API address, the HTTP implementation of the application
- * contract, and the gate in front of the product. Everything above that — the
+ * browser, the runtime API address and fetch, and the gate in front of the
+ * product. It configures the shared HTTP client. Everything above that — the
  * routes, the product screens, the cache, the optimistic behavior — belongs to
  * `@vita-os/application`, which a desktop host can mount the same way against a
  * local client.
@@ -35,6 +35,7 @@ initializeTheme();
 const applicationClient = createHttpApplicationClient({
   apiBaseUrl: API_BASE_URL,
   fetchImpl: versionAwareFetch.fetch,
+  credentials: "include",
 });
 
 const root = document.getElementById("root");

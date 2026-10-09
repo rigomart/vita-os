@@ -1,9 +1,9 @@
 import type { TaskId, ThreadId } from "@vita-os/contracts";
 
+import { createHttpApplicationClient } from "@vita-os/contracts/http";
 import { env, SELF } from "cloudflare:test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { createHttpApplicationClient } from "../../web/src/application/http/http-application-client";
 import worker from "../src/worker";
 
 type Session = { actorId: string; cookie: string };
@@ -112,6 +112,46 @@ function authenticatedWorkerFetch(cookie: string): typeof fetch {
 }
 
 describe("HTTP ApplicationClient against the Worker", () => {
+  it("preserves a retryable conflict after the Worker exhausts slug attempts", async () => {
+    const owner = await createSession();
+    const prepare = env.DB.prepare.bind(env.DB);
+    const insert = vi.spyOn(env.DB, "prepare").mockImplementation((sql) => {
+      if (!/^insert into "areas" /i.test(sql)) return prepare(sql);
+      return {
+        bind: () => ({
+          raw: () =>
+            Promise.reject(
+              new Error(
+                "D1_ERROR: UNIQUE constraint failed: areas.user_id, areas.slug",
+              ),
+            ),
+        }),
+      } as unknown as D1PreparedStatement;
+    });
+    try {
+      const client = createHttpApplicationClient({
+        apiBaseUrl: "http://api.test",
+        fetchImpl: authenticatedWorkerFetch(owner.cookie),
+      });
+      await expect(
+        client.createArea({ name: "Collision", icon: "Home" }),
+      ).resolves.toEqual({
+        ok: false,
+        error: {
+          code: "conflict",
+          message: "The record changed while this request was in flight.",
+          retryable: true,
+        },
+      });
+      await expect(client.listAreas()).resolves.toEqual({
+        ok: true,
+        value: [],
+      });
+    } finally {
+      insert.mockRestore();
+    }
+  });
+
   it("finds resolved Threads and removes reopened Threads from that list without restoring attention", async () => {
     const owner = await createSession();
     const thread = await seedThread(owner);

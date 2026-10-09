@@ -15,11 +15,11 @@ retirement in [#364](https://github.com/rigomart/vita-os/issues/364)).
 ## Where things live
 
 ```text
-packages/contracts     plain models, inputs, outputs, errors, ApplicationClient
+packages/contracts     shared schemas, models, inputs, outputs, errors, ApplicationClient, HTTP client
 packages/core          the domain rules, framework-free
 packages/application   Vita OS as an application: routes, screens, cache, commands
 apps/api               Hono routes and Result operations, Better Auth, canonical D1 storage
-apps/web               the browser host: auth, configuration, HTTP client, session gate
+apps/web               the browser host: auth, HTTP client configuration, session gate
 ```
 
 Inside `apps/api/src`, code is organized by feature
@@ -39,8 +39,9 @@ features/<feature>     areas, threads, activity-log, notes, thread-notes:
 
 The shared application imports no API runtime, database, Cloudflare, or Better
 Auth type. The web host is what remains once the product is taken out of it:
-Better Auth in the browser, `VITE_API_BASE_URL`, the HTTP implementation of the
-contract, the session gate, and its sign-in/sign-up routes. It mounts the shared
+Better Auth in the browser, `VITE_API_BASE_URL`, credentials and version-aware
+fetch for the shared `@vita-os/contracts/http` client, the session gate, and its
+sign-in/sign-up routes. It mounts the shared
 product route tree. A desktop host can mount that tree against a local client,
 a `Viewer` of its own, and its own session gate.
 
