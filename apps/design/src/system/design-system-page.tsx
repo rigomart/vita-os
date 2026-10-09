@@ -1,6 +1,6 @@
+import { useTheme } from "@vita-os/application";
 import { Button } from "@vita-os/ui/components/button";
 import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
 
 import { ColorsSection } from "./sections/colors";
 import { ComponentsSection } from "./sections/components";
@@ -14,20 +14,11 @@ const NAV_ITEMS = [
   { id: "components", label: "Components" },
 ];
 
-function useDarkMode() {
-  const [dark, setDark] = useState(
-    () => window.matchMedia("(prefers-color-scheme: dark)").matches,
-  );
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
-  }, [dark]);
-
-  return { dark, toggle: () => setDark((value) => !value) };
-}
-
-export function App() {
-  const { dark, toggle } = useDarkMode();
+/** The tokens and shared components of `@vita-os/ui`, on one page. */
+export function DesignSystemPage() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const dark = resolvedTheme === "dark";
+  const toggle = () => setTheme(dark ? "light" : "dark");
 
   return (
     <div className="min-h-svh">

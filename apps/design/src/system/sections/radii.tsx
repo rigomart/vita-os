@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { Section } from "@/components/section";
-import { collectTokens, type TokenEntry } from "@/lib/tokens";
+import { Section } from "@/system/components/section";
+import { collectTokens, type TokenEntry } from "@/system/lib/tokens";
 
 const RADIUS_SCALE = [
   "rounded-sm",

@@ -44,6 +44,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./test": "./src/test/index.ts",
-    "./test/render": "./src/test/render-with-providers.tsx"
+    "./test/render": "./src/test/render-with-providers.tsx",
+    "./internal/*": "./src/*"
   }
 }

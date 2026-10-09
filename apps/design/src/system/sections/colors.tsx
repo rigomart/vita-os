@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Section } from "@/components/section";
+import { Section } from "@/system/components/section";
 import {
   collectTokens,
   groupToken,
@@ -8,7 +8,7 @@ import {
   tokenStyleVars,
   type TokenEntry,
   type TokenGroup,
-} from "@/lib/tokens";
+} from "@/system/lib/tokens";
 
 function TokenCard({ token }: { token: TokenEntry }) {
   return (
