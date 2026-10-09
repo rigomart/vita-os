@@ -4,144 +4,125 @@ import type {
   ThreadNotePage,
 } from "@vita-os/contracts";
 
-import type { SqlValue } from "../../platform/d1/statements";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
+
 import type { RequestScope } from "../../platform/request-scope";
-import type { ThreadNoteRow } from "./rows";
 
 import {
   doneCursor,
   pageBoundary,
   toPage,
 } from "../../platform/d1/page-cursor";
-import { setClause } from "../../platform/d1/statements";
-import { THREAD_NOTE_COLUMNS, toThreadNote } from "./rows";
+import { threadNotes, threads } from "../../platform/d1/schema";
+import { THREAD_NOTE_FIELDS, toThreadNote } from "./rows";
 
-/**
- * Notes captured inside one Thread, and owned by it. One D1 round trip per
- * function, every statement scoped by the owner.
- *
- * Distinct from Standalone Notes: a Thread Note has no Follow-up date of its own,
- * because the Thread it belongs to already carries the attention. Capturing one
- * counts as Thread activity, so the Thread's activity stamp moves with it.
- */
+/** Thread Notes, with one owner-scoped statement or atomic batch per function. */
 export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
-  /** A capture that can join a Thread command's atomic batch. */
+  const database = drizzle(db);
+  const owned = eq(threadNotes.user_id, actorId);
+
+  /** A guarded capture that can join a Thread command's atomic batch. */
   function prepareInsert(
     threadId: string,
     body: string,
     change?: { token?: string; at: number; id?: string },
-  ): D1PreparedStatement {
+  ) {
     const now = change?.at ?? clock.now();
-    return db
-      .prepare(
-        `INSERT INTO thread_notes (
-         id, user_id, thread_id, body, state, completed_at, created_at, updated_at
-       )
-       SELECT ?, ?, ?, ?, 'open', NULL, ?, ?
-       WHERE EXISTS (
-         SELECT 1 FROM threads WHERE id = ? AND user_id = ?${change?.token === undefined ? "" : " AND last_change_token = ?"}
-       )
-       RETURNING ${THREAD_NOTE_COLUMNS}`,
-      )
-      .bind(
-        change?.id ?? clock.newId(),
-        actorId,
-        threadId,
-        body,
-        now,
-        now,
-        threadId,
-        actorId,
-        ...(change?.token === undefined ? [] : [change.token]),
-      );
+    const guard = and(
+      eq(threads.id, threadId),
+      eq(threads.user_id, actorId),
+      change?.token === undefined
+        ? undefined
+        : eq(threads.last_change_token, change.token),
+    );
+    return database.insert(threadNotes).select(
+      database
+        .select({
+          // INSERT SELECT follows the schema column order.
+          id: sql<string>`${change?.id ?? clock.newId()}`.as("id"),
+          user_id: sql<string>`${actorId}`.as("user_id"),
+          thread_id: sql<string>`${threadId}`.as("thread_id"),
+          body: sql<string>`${body}`.as("body"),
+          state: sql<ThreadNote["state"]>`'open'`.as("state"),
+          completed_at: sql<null>`NULL`.as("completed_at"),
+          created_at: sql<number>`${now}`.as("created_at"),
+          updated_at: sql<number>`${now}`.as("updated_at"),
+        })
+        .from(threads)
+        .where(guard),
+    );
   }
-  /**
-   * Change one Thread Note. `null` means it is missing or is not theirs, which
-   * are the same answer.
-   */
+
   async function update(
     threadNoteId: string,
-    columns: Record<string, SqlValue>,
+    columns: Partial<typeof threadNotes.$inferInsert>,
   ): Promise<ThreadNote | null> {
-    const set = setClause(columns);
-    const row = await db
-      .prepare(
-        `UPDATE thread_notes
-         SET ${set.sql}
-         WHERE user_id = ? AND id = ?
-         RETURNING ${THREAD_NOTE_COLUMNS}`,
-      )
-      .bind(...set.binds, actorId, threadNoteId)
-      .first<ThreadNoteRow>();
-
-    return row === null ? null : toThreadNote(row);
+    const [row] = await database
+      .update(threadNotes)
+      .set(columns)
+      .where(and(owned, eq(threadNotes.id, threadNoteId)))
+      .returning(THREAD_NOTE_FIELDS);
+    return row === undefined ? null : toThreadNote(row);
   }
 
   return {
     prepareInsert,
     async listOpen(threadId: string): Promise<ThreadNote[]> {
-      const result = await db
-        .prepare(
-          `SELECT ${THREAD_NOTE_COLUMNS}
-           FROM thread_notes
-           WHERE user_id = ? AND thread_id = ? AND state = 'open'
-           ORDER BY created_at DESC, id DESC`,
+      const rows = await database
+        .select(THREAD_NOTE_FIELDS)
+        .from(threadNotes)
+        .where(
+          and(
+            owned,
+            eq(threadNotes.thread_id, threadId),
+            eq(threadNotes.state, "open"),
+          ),
         )
-        .bind(actorId, threadId)
-        .all<ThreadNoteRow>();
-
-      return result.results.map(toThreadNote);
+        .orderBy(desc(threadNotes.created_at), desc(threadNotes.id));
+      return rows.map(toThreadNote);
     },
 
-    /** Throws when the cursor is not one this Worker minted. */
+    /** Throws before reading when the cursor is not one this Worker minted. */
     async readDonePage(
       threadId: string,
       page: PageRequest,
     ): Promise<ThreadNotePage> {
       const cursor =
         page.cursor === undefined ? undefined : doneCursor.decode(page.cursor);
-      const boundary = pageBoundary("completed_at", cursor);
-      const result = await db
-        .prepare(
-          `SELECT ${THREAD_NOTE_COLUMNS}
-           FROM thread_notes
-           WHERE user_id = ? AND thread_id = ? AND state = 'done'${boundary.sql}
-           ORDER BY completed_at DESC, id DESC
-           LIMIT ?`,
+      const rows = await database
+        .select(THREAD_NOTE_FIELDS)
+        .from(threadNotes)
+        .where(
+          and(
+            owned,
+            eq(threadNotes.thread_id, threadId),
+            eq(threadNotes.state, "done"),
+            pageBoundary(threadNotes.completed_at, threadNotes.id, cursor),
+          ),
         )
-        .bind(actorId, threadId, ...boundary.binds, page.limit + 1)
-        .all<ThreadNoteRow>();
-
-      return toPage(result.results, page.limit, {
+        .orderBy(desc(threadNotes.completed_at), desc(threadNotes.id))
+        .limit(page.limit + 1);
+      return toPage(rows, page.limit, {
         toEntry: toThreadNote,
         cursorFor: (note) => ({ at: note.completedAt ?? null, id: note._id }),
         codec: doneCursor,
       });
     },
 
-    /**
-     * Capture a Note inside a Thread. The insert and the Thread's activity
-     * stamp are one batch: the Dashboard's recent-activity strip reads only the
-     * Thread, so it must never disagree with what the Thread actually holds.
-     *
-     * The stamp clears the denormalized content: a captured Note is activity
-     * without an Activity Log entry to quote. `null` means the Thread is missing
-     * or is not theirs.
-     */
+    /** Capture and move the Thread activity stamp in one atomic batch. */
     async insert(threadId: string, body: string): Promise<ThreadNote | null> {
       const now = clock.now();
-      const [insert] = await db.batch<ThreadNoteRow>([
-        prepareInsert(threadId, body, { at: now }),
-        db
-          .prepare(
-            `UPDATE threads
-             SET last_activity_at = ?, last_activity_content = NULL
-             WHERE id = ? AND user_id = ?`,
-          )
-          .bind(now, threadId, actorId),
+      const [insert] = await database.batch([
+        prepareInsert(threadId, body, { at: now }).returning(
+          THREAD_NOTE_FIELDS,
+        ),
+        database
+          .update(threads)
+          .set({ last_activity_at: now, last_activity_content: null })
+          .where(and(eq(threads.id, threadId), eq(threads.user_id, actorId))),
       ]);
-
-      const row = insert.results.at(0);
+      const row = insert[0];
       return row === undefined ? null : toThreadNote(row);
     },
 
@@ -159,14 +140,11 @@ export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
     },
 
     async remove(threadNoteId: string): Promise<boolean> {
-      const removed = await db
-        .prepare(
-          "DELETE FROM thread_notes WHERE user_id = ? AND id = ? RETURNING id",
-        )
-        .bind(actorId, threadNoteId)
-        .first<{ id: string }>();
-
-      return removed !== null;
+      const [removed] = await database
+        .delete(threadNotes)
+        .where(and(owned, eq(threadNotes.id, threadNoteId)))
+        .returning({ id: threadNotes.id });
+      return removed !== undefined;
     },
   };
 }

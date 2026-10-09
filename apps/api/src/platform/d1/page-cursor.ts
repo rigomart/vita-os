@@ -1,4 +1,8 @@
 import type { ApplicationError } from "@vita-os/contracts";
+import type { SQL } from "drizzle-orm";
+import type { AnySQLiteColumn } from "drizzle-orm/sqlite-core";
+
+import { and, eq, isNull, lt, or } from "drizzle-orm";
 
 /**
  * Opaque, versioned page cursors.
@@ -156,21 +160,19 @@ export const doneCursor = createPageCursorCodec("completedAt", {
  * their IDs continue the read.
  */
 export function pageBoundary(
-  column: string,
+  column: AnySQLiteColumn,
+  idColumn: AnySQLiteColumn,
   cursor: PageCursor | undefined,
-): { sql: string; binds: (string | number | null)[] } {
-  if (cursor === undefined) return { sql: "", binds: [] };
-
+): SQL | undefined {
+  if (cursor === undefined) return undefined;
   if (cursor.at === null) {
-    return { sql: ` AND ${column} IS NULL AND id < ?`, binds: [cursor.id] };
+    return and(isNull(column), lt(idColumn, cursor.id));
   }
-
-  return {
-    sql:
-      ` AND (${column} IS NULL OR ${column} < ?` +
-      ` OR (${column} = ? AND id < ?))`,
-    binds: [cursor.at, cursor.at, cursor.id],
-  };
+  return or(
+    isNull(column),
+    lt(column, cursor.at),
+    and(eq(column, cursor.at), lt(idColumn, cursor.id)),
+  );
 }
 
 /**

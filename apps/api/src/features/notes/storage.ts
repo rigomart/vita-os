@@ -1,132 +1,94 @@
 import type { Note, NotePage, PageRequest } from "@vita-os/contracts";
 
-import type { SqlValue } from "../../platform/d1/statements";
+import { and, count, desc, eq, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
+
 import type { RequestScope } from "../../platform/request-scope";
-import type { NoteRow } from "./rows";
 
 import {
   doneCursor,
   pageBoundary,
   toPage,
 } from "../../platform/d1/page-cursor";
-import { setClause } from "../../platform/d1/statements";
-import { NOTE_COLUMNS, toNote } from "./rows";
+import { notes } from "../../platform/d1/schema";
+import { NOTE_FIELDS, toNote } from "./rows";
 
-/**
- * A `LIKE` condition per term, each matching the term literally: `%`, `_` and
- * the escape character itself are escaped, so a search for `50%` finds "50%"
- * rather than everything starting with "50". SQLite's `LIKE` ignores ASCII case.
- */
-export function bodyContainsAll(terms: readonly string[]): {
-  sql: string;
-  binds: string[];
-} {
-  return {
-    sql: terms.map(() => " AND body LIKE ? ESCAPE '\\'").join(""),
-    binds: terms.map((term) => `%${term.replace(/[\\%_]/g, "\\$&")}%`),
-  };
+/** Match every term literally; SQLite LIKE ignores ASCII case. */
+export function bodyContainsAll(terms: readonly string[]) {
+  return and(
+    ...terms.map((term) => {
+      const pattern = `%${term.replace(/[\\%_]/g, "\\$&")}%`;
+      return sql`${notes.body} LIKE ${pattern} ESCAPE '\\'`;
+    }),
+  );
 }
 
-/**
- * Standalone Notes: captured on their own, attached to no Thread. One D1 round
- * trip per function, every statement scoped by the owner.
- *
- * Open Notes are read whole — they are what the person has agreed to look at, so
- * they keep the collection small themselves. Done Notes (Archived, in the
- * product's words) only grow, so they are paged, and searched by body.
- */
+/** Standalone Notes, with one owner-scoped statement per function. */
 export function noteStorage({ db, clock, actorId }: RequestScope) {
-  /**
-   * Change one Note. The owner is part of the statement, and the row comes back
-   * from the same statement that changed it; `null` means the Note is missing
-   * or is not theirs, which are the same answer.
-   */
+  const database = drizzle(db);
+  const owned = eq(notes.user_id, actorId);
+
   async function update(
     noteId: string,
-    columns: Record<string, SqlValue>,
+    columns: Partial<typeof notes.$inferInsert>,
   ): Promise<Note | null> {
-    const set = setClause(columns);
-    const row = await db
-      .prepare(
-        `UPDATE notes
-         SET ${set.sql}
-         WHERE user_id = ? AND id = ?
-         RETURNING ${NOTE_COLUMNS}`,
-      )
-      .bind(...set.binds, actorId, noteId)
-      .first<NoteRow>();
-
-    return row === null ? null : toNote(row);
+    const [row] = await database
+      .update(notes)
+      .set(columns)
+      .where(and(owned, eq(notes.id, noteId)))
+      .returning(NOTE_FIELDS);
+    return row === undefined ? null : toNote(row);
   }
 
   return {
     async listOpen(): Promise<Note[]> {
-      const result = await db
-        .prepare(
-          `SELECT ${NOTE_COLUMNS}
-           FROM notes
-           WHERE user_id = ? AND state = 'open'
-           ORDER BY created_at DESC, id DESC`,
-        )
-        .bind(actorId)
-        .all<NoteRow>();
-
-      return result.results.map(toNote);
+      const rows = await database
+        .select(NOTE_FIELDS)
+        .from(notes)
+        .where(and(owned, eq(notes.state, "open")))
+        .orderBy(desc(notes.created_at), desc(notes.id));
+      return rows.map(toNote);
     },
 
     async find(noteId: string): Promise<Note | null> {
-      const row = await db
-        .prepare(
-          `SELECT ${NOTE_COLUMNS}
-           FROM notes
-           WHERE user_id = ? AND id = ?
-           LIMIT 1`,
-        )
-        .bind(actorId, noteId)
-        .first<NoteRow>();
-
-      return row === null ? null : toNote(row);
+      const [row] = await database
+        .select(NOTE_FIELDS)
+        .from(notes)
+        .where(and(owned, eq(notes.id, noteId)))
+        .limit(1);
+      return row === undefined ? null : toNote(row);
     },
 
-    /**
-     * How many Open Notes there are. Read from the same index the list reads,
-     * so a count and the list cannot disagree.
-     */
+    /** Count from the same owner/state index as the open list. */
     async countOpen(): Promise<number> {
-      const row = await db
-        .prepare(
-          "SELECT COUNT(*) AS total FROM notes WHERE user_id = ? AND state = 'open'",
-        )
-        .bind(actorId)
-        .first<{ total: number }>();
-
+      const [row] = await database
+        .select({ total: count() })
+        .from(notes)
+        .where(and(owned, eq(notes.state, "open")));
       return row?.total ?? 0;
     },
 
-    /**
-     * One page of Done Notes, narrowed to the bodies containing every term.
-     * Throws when the cursor is not one this Worker minted.
-     */
+    /** A bounded, stable page containing every literal search term. */
     async readDonePage(
       page: PageRequest,
       terms: readonly string[] = [],
     ): Promise<NotePage> {
       const cursor =
         page.cursor === undefined ? undefined : doneCursor.decode(page.cursor);
-      const boundary = pageBoundary("completed_at", cursor);
-      const search = bodyContainsAll(terms);
-      const result = await db
-        .prepare(
-          `SELECT ${NOTE_COLUMNS}
-           FROM notes
-           WHERE user_id = ? AND state = 'done'${search.sql}${boundary.sql}
-           ORDER BY completed_at DESC, id DESC
-           LIMIT ?`,
+      const rows = await database
+        .select(NOTE_FIELDS)
+        .from(notes)
+        .where(
+          and(
+            owned,
+            eq(notes.state, "done"),
+            bodyContainsAll(terms),
+            pageBoundary(notes.completed_at, notes.id, cursor),
+          ),
         )
-        .bind(actorId, ...search.binds, ...boundary.binds, page.limit + 1)
-        .all<NoteRow>();
-
-      return toPage(result.results, page.limit, {
+        .orderBy(desc(notes.completed_at), desc(notes.id))
+        .limit(page.limit + 1);
+      return toPage(rows, page.limit, {
         toEntry: toNote,
         cursorFor: (note) => ({ at: note.completedAt ?? null, id: note._id }),
         codec: doneCursor,
@@ -138,26 +100,20 @@ export function noteStorage({ db, clock, actorId }: RequestScope) {
       followUp?: number;
     }): Promise<Note | null> {
       const now = clock.now();
-      const row = await db
-        .prepare(
-          `INSERT INTO notes (
-             id, user_id, body, attention_date, state, completed_at, created_at,
-             updated_at
-           )
-           VALUES (?, ?, ?, ?, 'open', NULL, ?, ?)
-           RETURNING ${NOTE_COLUMNS}`,
-        )
-        .bind(
-          clock.newId(),
-          actorId,
-          note.body,
-          note.followUp ?? null,
-          now,
-          now,
-        )
-        .first<NoteRow>();
-
-      return row === null ? null : toNote(row);
+      const [row] = await database
+        .insert(notes)
+        .values({
+          id: clock.newId(),
+          user_id: actorId,
+          body: note.body,
+          attention_date: note.followUp ?? null,
+          state: "open",
+          completed_at: null,
+          created_at: now,
+          updated_at: now,
+        })
+        .returning(NOTE_FIELDS);
+      return row === undefined ? null : toNote(row);
     },
 
     setBody(noteId: string, body: string): Promise<Note | null> {
@@ -190,12 +146,11 @@ export function noteStorage({ db, clock, actorId }: RequestScope) {
     },
 
     async remove(noteId: string): Promise<boolean> {
-      const removed = await db
-        .prepare("DELETE FROM notes WHERE user_id = ? AND id = ? RETURNING id")
-        .bind(actorId, noteId)
-        .first<{ id: string }>();
-
-      return removed !== null;
+      const [removed] = await database
+        .delete(notes)
+        .where(and(owned, eq(notes.id, noteId)))
+        .returning({ id: notes.id });
+      return removed !== undefined;
     },
   };
 }

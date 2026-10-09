@@ -1,5 +1,7 @@
 import type { ActivityLogEntry, ActivityLogEntryId } from "@vita-os/contracts";
 
+import { activityLogEntries } from "../../platform/d1/schema";
+
 /**
  * Where a stored Activity Log entry becomes a Vita OS value.
  *
@@ -9,17 +11,19 @@ import type { ActivityLogEntry, ActivityLogEntryId } from "@vita-os/contracts";
  * never something a read hands back.
  */
 
-export const ACTIVITY_COLUMNS =
-  "id, type, content, previous_value, new_value, created_at";
+export const ACTIVITY_FIELDS = {
+  id: activityLogEntries.id,
+  type: activityLogEntries.type,
+  content: activityLogEntries.content,
+  previous_value: activityLogEntries.previous_value,
+  new_value: activityLogEntries.new_value,
+  created_at: activityLogEntries.created_at,
+};
 
-export interface ActivityRow {
-  id: string;
-  type: ActivityLogEntry["type"];
-  content: string;
-  previous_value: string | null;
-  new_value: string | null;
-  created_at: number;
-}
+export type ActivityRow = Pick<
+  typeof activityLogEntries.$inferSelect,
+  keyof typeof ACTIVITY_FIELDS
+>;
 
 export function toActivityLogEntry(row: ActivityRow): ActivityLogEntry {
   return {

@@ -2,6 +2,7 @@ import type { OperationResult, ThreadId } from "@vita-os/contracts";
 
 import { Result } from "better-result";
 import { env } from "cloudflare:test";
+import { DrizzleQueryError } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Operation } from "../src/platform/operation";
@@ -109,11 +110,11 @@ describe("slug write failures", () => {
     // The slug each insert attempt bound, in the insert's parameter order.
     const slugs: unknown[] = [];
     vi.spyOn(env.DB, "prepare").mockImplementation((sql) => {
-      if (!sql.startsWith("INSERT INTO areas")) return prepare(sql);
+      if (!/^insert into "areas" /i.test(sql)) return prepare(sql);
       return {
         bind: (...values: unknown[]) => {
           slugs.push(values[3]);
-          return { first: () => Promise.reject(rejection) };
+          return { raw: () => Promise.reject(rejection) };
         },
       } as unknown as D1PreparedStatement;
     });
@@ -149,7 +150,9 @@ describe("slug write failures", () => {
     const { failure, slugs } = await createAreaFailingWith(outage);
 
     expect(slugs).toHaveLength(1);
-    expect(failure).toMatchObject({ _tag: "Unexpected", cause: outage });
+    expect(failure).toMatchObject({ _tag: "Unexpected" });
+    expect(failure).toHaveProperty("cause", expect.any(DrizzleQueryError));
+    expect(failure).toHaveProperty("cause.cause", outage);
     expect(toRefusal(failure).error).toEqual({
       code: "unexpected",
       message: "Unexpected error.",

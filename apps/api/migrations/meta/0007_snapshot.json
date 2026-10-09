@@ -1,0 +1,573 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "0af0f47c-8d4d-4da5-bfe0-fae4e1652e36",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "activity_log_entries": {
+      "name": "activity_log_entries",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "thread_id": {
+          "name": "thread_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "previous_value": {
+          "name": "previous_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "new_value": {
+          "name": "new_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "activity_log_entries_by_owner_thread_time": {
+          "name": "activity_log_entries_by_owner_thread_time",
+          "columns": [
+            "user_id",
+            "thread_id",
+            "\"created_at\" DESC",
+            "\"id\" DESC"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "activity_log_entries_thread_id_threads_id_fk": {
+          "name": "activity_log_entries_thread_id_threads_id_fk",
+          "tableFrom": "activity_log_entries",
+          "tableTo": "threads",
+          "columnsFrom": ["thread_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "activity_log_entries_type": {
+          "name": "activity_log_entries_type",
+          "value": "\"activity_log_entries\".\"type\" IN ('area_move', 'next_move_change', 'move_completed', 'state_change', 'follow_up_change')"
+        }
+      }
+    },
+    "areas": {
+      "name": "areas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "icon": {
+          "name": "icon",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "areas_by_owner_order": {
+          "name": "areas_by_owner_order",
+          "columns": ["user_id", "sort_order", "id"],
+          "isUnique": false
+        },
+        "areas_user_id_slug_unique": {
+          "name": "areas_user_id_slug_unique",
+          "columns": ["user_id", "slug"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "notes": {
+      "name": "notes",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "attention_date": {
+          "name": "attention_date",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "notes_by_owner_state_created": {
+          "name": "notes_by_owner_state_created",
+          "columns": ["user_id", "state", "\"created_at\" DESC", "\"id\" DESC"],
+          "isUnique": false
+        },
+        "notes_by_owner_state_completed": {
+          "name": "notes_by_owner_state_completed",
+          "columns": [
+            "user_id",
+            "state",
+            "\"completed_at\" DESC",
+            "\"id\" DESC"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "notes_state": {
+          "name": "notes_state",
+          "value": "\"notes\".\"state\" IN ('open', 'done')"
+        }
+      }
+    },
+    "thread_notes": {
+      "name": "thread_notes",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "thread_id": {
+          "name": "thread_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "thread_notes_by_owner_thread_state_created": {
+          "name": "thread_notes_by_owner_thread_state_created",
+          "columns": [
+            "user_id",
+            "thread_id",
+            "state",
+            "\"created_at\" DESC",
+            "\"id\" DESC"
+          ],
+          "isUnique": false
+        },
+        "thread_notes_by_owner_thread_state_completed": {
+          "name": "thread_notes_by_owner_thread_state_completed",
+          "columns": [
+            "user_id",
+            "thread_id",
+            "state",
+            "\"completed_at\" DESC",
+            "\"id\" DESC"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "thread_notes_thread_id_threads_id_fk": {
+          "name": "thread_notes_thread_id_threads_id_fk",
+          "tableFrom": "thread_notes",
+          "tableTo": "threads",
+          "columnsFrom": ["thread_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "thread_notes_state": {
+          "name": "thread_notes_state",
+          "value": "\"thread_notes\".\"state\" IN ('open', 'done')"
+        }
+      }
+    },
+    "threads": {
+      "name": "threads",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "area_id": {
+          "name": "area_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_activity_at": {
+          "name": "last_activity_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_activity_content": {
+          "name": "last_activity_content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "last_change_token": {
+          "name": "last_change_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "moves_json": {
+          "name": "moves_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "focused_move_id": {
+          "name": "focused_move_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "threads_by_owner_state_order": {
+          "name": "threads_by_owner_state_order",
+          "columns": ["user_id", "state", "sort_order", "id"],
+          "isUnique": false
+        },
+        "threads_by_owner_area_state": {
+          "name": "threads_by_owner_area_state",
+          "columns": ["user_id", "area_id", "state", "created_at", "id"],
+          "isUnique": false
+        },
+        "threads_user_id_slug_unique": {
+          "name": "threads_user_id_slug_unique",
+          "columns": ["user_id", "slug"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "threads_area_id_areas_id_fk": {
+          "name": "threads_area_id_areas_id_fk",
+          "tableFrom": "threads",
+          "tableTo": "areas",
+          "columnsFrom": ["area_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "threads_state": {
+          "name": "threads_state",
+          "value": "\"threads\".\"state\" IN ('open', 'resolved')"
+        },
+        "threads_moves_json": {
+          "name": "threads_moves_json",
+          "value": "\"threads\".\"moves_json\" IS NULL OR json_valid(\"threads\".\"moves_json\")"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {
+      "activity_log_entries_by_owner_thread_time": {
+        "columns": {
+          "\"created_at\" DESC": {
+            "isExpression": true
+          },
+          "\"id\" DESC": {
+            "isExpression": true
+          }
+        }
+      },
+      "notes_by_owner_state_created": {
+        "columns": {
+          "\"created_at\" DESC": {
+            "isExpression": true
+          },
+          "\"id\" DESC": {
+            "isExpression": true
+          }
+        }
+      },
+      "notes_by_owner_state_completed": {
+        "columns": {
+          "\"completed_at\" DESC": {
+            "isExpression": true
+          },
+          "\"id\" DESC": {
+            "isExpression": true
+          }
+        }
+      },
+      "thread_notes_by_owner_thread_state_created": {
+        "columns": {
+          "\"created_at\" DESC": {
+            "isExpression": true
+          },
+          "\"id\" DESC": {
+            "isExpression": true
+          }
+        }
+      },
+      "thread_notes_by_owner_thread_state_completed": {
+        "columns": {
+          "\"completed_at\" DESC": {
+            "isExpression": true
+          },
+          "\"id\" DESC": {
+            "isExpression": true
+          }
+        }
+      }
+    }
+  }
+}

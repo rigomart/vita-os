@@ -1,29 +1,27 @@
 import type { ActivityLogPage, PageRequest } from "@vita-os/contracts";
 
+import { and, desc, eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
+
 import type { RequestScope } from "../../platform/request-scope";
-import type { ActivityRow } from "./rows";
 
 import {
   createPageCursorCodec,
   pageBoundary,
   toPage,
 } from "../../platform/d1/page-cursor";
+import { activityLogEntries } from "../../platform/d1/schema";
 import { invalidActivityPagination } from "./errors";
-import { ACTIVITY_COLUMNS, toActivityLogEntry } from "./rows";
+import { ACTIVITY_FIELDS, toActivityLogEntry } from "./rows";
 
 /** The Activity Log reads by entry creation time. */
 const activityCursor = createPageCursorCodec("createdAt", {
   refusal: invalidActivityPagination.message,
 });
 
-/**
- * One Thread's Activity Log, newest first.
- *
- * Entries are written only as part of a Thread change, in the Thread's own
- * batch; this is the read side. A cursor the Worker did not mint throws before
- * anything is read.
- */
+/** One Thread's Activity Log, newest first, in one owner-scoped statement. */
 export function activityLogStorage({ db, actorId }: RequestScope) {
+  const database = drizzle(db);
   return {
     async readPage(
       threadId: string,
@@ -33,19 +31,26 @@ export function activityLogStorage({ db, actorId }: RequestScope) {
         page.cursor === undefined
           ? undefined
           : activityCursor.decode(page.cursor);
-      const boundary = pageBoundary("created_at", cursor);
-      const result = await db
-        .prepare(
-          `SELECT ${ACTIVITY_COLUMNS}
-           FROM activity_log_entries
-           WHERE user_id = ? AND thread_id = ?${boundary.sql}
-           ORDER BY created_at DESC, id DESC
-           LIMIT ?`,
+      const rows = await database
+        .select(ACTIVITY_FIELDS)
+        .from(activityLogEntries)
+        .where(
+          and(
+            eq(activityLogEntries.user_id, actorId),
+            eq(activityLogEntries.thread_id, threadId),
+            pageBoundary(
+              activityLogEntries.created_at,
+              activityLogEntries.id,
+              cursor,
+            ),
+          ),
         )
-        .bind(actorId, threadId, ...boundary.binds, page.limit + 1)
-        .all<ActivityRow>();
-
-      return toPage(result.results, page.limit, {
+        .orderBy(
+          desc(activityLogEntries.created_at),
+          desc(activityLogEntries.id),
+        )
+        .limit(page.limit + 1);
+      return toPage(rows, page.limit, {
         toEntry: toActivityLogEntry,
         cursorFor: (entry) => ({ at: entry.createdAt, id: entry._id }),
         codec: activityCursor,
