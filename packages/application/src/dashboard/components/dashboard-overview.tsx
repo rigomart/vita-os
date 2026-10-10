@@ -56,7 +56,7 @@ export function DashboardOverview({
   };
 
   return (
-    <div className="mx-auto grid max-w-[76rem] gap-x-12 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div className="mx-auto grid max-w-[76rem] gap-x-12 px-4 sm:px-6 lg:min-h-full lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="min-w-0 lg:pb-16">
         <h1 className="sr-only">Dashboard</h1>
         <div className="sticky top-0 z-20 -mx-4 bg-surface-1/90 px-4 pt-5 pb-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-3 lg:px-3">
@@ -93,9 +93,11 @@ export function DashboardOverview({
       </div>
 
       {!empty && (
+        // Sized by the row, never sizing it: the page is as tall as the list
+        // or the room under the sky, and No date scrolls within one screen.
         <aside
           aria-label="No date"
-          className="hidden min-w-0 pt-6 pb-24 [scrollbar-width:thin] lg:sticky lg:top-0 lg:-mr-3 lg:block lg:h-svh lg:self-start lg:overflow-y-auto lg:border-l lg:pr-3 lg:pl-8"
+          className="hidden min-w-0 pt-6 pb-24 [scrollbar-width:thin] lg:sticky lg:top-0 lg:-mr-3 lg:block lg:max-h-svh lg:overflow-y-auto lg:border-l lg:pr-3 lg:pl-8 lg:[contain:size]"
         >
           <NoDate board={board} scope={scope} />
         </aside>

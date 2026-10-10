@@ -21,11 +21,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 function Chrome({ children }: { children: ReactNode }) {
   const actions = useShellActions();
   return (
-    <div className="flex min-h-svh min-w-0 flex-col">
+    // A grid, not a flex column, so `main` gets a definite height under the
+    // header that a page can fill with `min-h-full`.
+    <div className="grid min-h-svh min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr]">
       <SkyHeader {...actions} />
       {/* Below `lg` the action bar floats over the page's foot, so the page
           keeps that much room under its last item. */}
-      <main className="w-full min-w-0 flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0">
+      <main className="w-full min-w-0 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0">
         {children}
       </main>
       <ActionBar {...actions} />
