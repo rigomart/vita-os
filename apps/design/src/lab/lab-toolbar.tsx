@@ -44,8 +44,6 @@ export function LabToolbar() {
     prototypeId === undefined ? undefined : findPrototype(prototypeId);
   const [open, setOpen] = useState(false);
   const placement = useSnappedPlacement("vita-os:lab:toolbar", "bottom-right");
-  // A compare frame shows the variant alone.
-  if (search.embed) return null;
 
   // Picking a destination closes the controls, even when it is this page.
   const close = () => setOpen(false);

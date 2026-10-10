@@ -1,14 +1,13 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { Button, buttonVariants } from "@vita-os/ui/components/button";
-import { cn } from "@vita-os/ui/lib/utils";
-import { ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Button } from "@vita-os/ui/components/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import type { Prototype } from "./prototype";
 
 /**
  * Step through a prototype's variants, in the lab toolbar: the one showing,
- * the way to the previous and next, and the way to compare them all.
+ * and the way to the previous and next.
  */
 export function VariantStepper({
   id,
@@ -84,17 +83,6 @@ export function VariantStepper({
       >
         <ChevronRight />
       </Button>
-      <Link
-        to="/lab/$prototypeId/compare"
-        params={{ prototypeId: id }}
-        aria-label="Compare all variants"
-        className={cn(
-          buttonVariants({ variant: "ghost", size: "icon-sm" }),
-          "rounded-full",
-        )}
-      >
-        <LayoutGrid />
-      </Link>
     </>
   );
 }

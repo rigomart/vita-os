@@ -24,12 +24,7 @@ import { AreaIcon } from "../areas/components/area-icon";
 import { useAreas } from "../areas/hooks";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { clock } from "../lib/clock";
-import { useDashboardPath } from "../navigation/dashboard-path";
-import {
-  NOTES_FILTER,
-  toUnfilteredDashboard,
-  withDashboardFilter,
-} from "../navigation/search-params";
+import { NOTES_FILTER, withDashboardFilter } from "../navigation/search-params";
 import { useArchivedNotes } from "../notes/hooks";
 import { useOpenThreads, useResolvedThreads } from "../threads/hooks";
 import {
@@ -80,7 +75,6 @@ export function CommandPalette({
   onOpenNote,
 }: CommandPaletteProps) {
   const navigate = useNavigate();
-  const dashboard = useDashboardPath();
   const { area: areaFilter, show }: ProductSearch = useSearch({
     strict: false,
   });
@@ -131,7 +125,7 @@ export function CommandPalette({
   };
 
   const filterBy = (filter: Parameters<typeof withDashboardFilter>[0]) =>
-    run(() => navigate({ to: dashboard, search: withDashboardFilter(filter) }));
+    run(() => navigate({ to: "/", search: withDashboardFilter(filter) }));
   const historyLoading =
     showHistory && (resolvedQuery.isPending || archivedQuery.isPending);
 
@@ -294,13 +288,7 @@ export function CommandPalette({
               )}
             </CommandGroup>
             <CommandGroup heading="Go to">
-              <CommandItem
-                onSelect={() =>
-                  run(() =>
-                    navigate({ to: dashboard, search: toUnfilteredDashboard }),
-                  )
-                }
-              >
+              <CommandItem onSelect={() => run(() => navigate({ to: "/" }))}>
                 <LayoutDashboard />
                 Dashboard
               </CommandItem>

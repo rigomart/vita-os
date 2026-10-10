@@ -16,8 +16,6 @@ import { useEffect, useState } from "react";
 import { useAttentionClock } from "../hooks/use-attention-clock";
 import { clock } from "../lib/clock";
 import { isApplePlatform } from "../lib/platform";
-import { useDashboardPath } from "../navigation/dashboard-path";
-import { toUnfilteredDashboard } from "../navigation/search-params";
 import { useTheme } from "../theme/theme-provider";
 import { useViewer } from "../viewer/viewer-context";
 import { hourOf, isDay, skyAt, sunAt } from "./sky";
@@ -51,7 +49,6 @@ export function SkyHeader({
   const hour = hourOf(useMinuteClock());
   const sky = skyAt(hour);
   const palette = paletteKey();
-  const dashboard = useDashboardPath();
 
   return (
     <header
@@ -70,8 +67,7 @@ export function SkyHeader({
         <Sun hour={hour} />
         <div className="flex h-16 items-center gap-4">
           <Link
-            to={dashboard}
-            search={toUnfilteredDashboard}
+            to="/"
             aria-label="Vita OS home"
             className="shrink-0 rounded-lg outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-[var(--ink)]"
           >
