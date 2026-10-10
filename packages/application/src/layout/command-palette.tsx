@@ -5,7 +5,7 @@ import { boundNoteSearch, matchesNoteSearch } from "@vita-os/core";
 import { Button } from "@vita-os/ui/components/button";
 import { markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { defaultFilter } from "cmdk";
-import { format, isThisYear } from "date-fns";
+import { format, isSameYear } from "date-fns";
 import {
   FilterX,
   History,
@@ -23,7 +23,13 @@ import type { ProductSearch } from "../navigation/search-params";
 import { AreaIcon } from "../areas/components/area-icon";
 import { useAreas } from "../areas/hooks";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
-import { NOTES_FILTER, withDashboardFilter } from "../navigation/search-params";
+import { clock } from "../lib/clock";
+import { useDashboardPath } from "../navigation/dashboard-path";
+import {
+  NOTES_FILTER,
+  toUnfilteredDashboard,
+  withDashboardFilter,
+} from "../navigation/search-params";
 import { useArchivedNotes } from "../notes/hooks";
 import { useOpenThreads, useResolvedThreads } from "../threads/hooks";
 import {
@@ -74,6 +80,7 @@ export function CommandPalette({
   onOpenNote,
 }: CommandPaletteProps) {
   const navigate = useNavigate();
+  const dashboard = useDashboardPath();
   const { area: areaFilter, show }: ProductSearch = useSearch({
     strict: false,
   });
@@ -124,7 +131,7 @@ export function CommandPalette({
   };
 
   const filterBy = (filter: Parameters<typeof withDashboardFilter>[0]) =>
-    run(() => navigate({ to: "/", search: withDashboardFilter(filter) }));
+    run(() => navigate({ to: dashboard, search: withDashboardFilter(filter) }));
   const historyLoading =
     showHistory && (resolvedQuery.isPending || archivedQuery.isPending);
 
@@ -287,7 +294,13 @@ export function CommandPalette({
               )}
             </CommandGroup>
             <CommandGroup heading="Go to">
-              <CommandItem onSelect={() => run(() => navigate({ to: "/" }))}>
+              <CommandItem
+                onSelect={() =>
+                  run(() =>
+                    navigate({ to: dashboard, search: toUnfilteredDashboard }),
+                  )
+                }
+              >
                 <LayoutDashboard />
                 Dashboard
               </CommandItem>
@@ -355,7 +368,10 @@ function ArchivedNoteItem({
           dateTime={archivedAt.toISOString()}
           className="shrink-0 text-xs text-muted-foreground"
         >
-          {format(archivedAt, isThisYear(archivedAt) ? "MMM d" : "MMM d, yyyy")}
+          {format(
+            archivedAt,
+            isSameYear(archivedAt, clock.now()) ? "MMM d" : "MMM d, yyyy",
+          )}
         </time>
       )}
     </CommandItem>

@@ -61,3 +61,15 @@ export function toNotesFilter(previous: ProductSearch): ProductSearch {
     inbox: undefined,
   };
 }
+
+/**
+ * The Dashboard as it opens: no filter and no Thread. Parameters that are not
+ * the product's, such as a host's own, are kept.
+ */
+export function toUnfilteredDashboard(previous: ProductSearch): ProductSearch {
+  return {
+    ...withDashboardFilter({})(previous),
+    thread: undefined,
+    inbox: undefined,
+  };
+}

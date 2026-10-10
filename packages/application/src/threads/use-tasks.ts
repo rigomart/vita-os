@@ -16,6 +16,7 @@ import { useFeedback } from "@vita-os/ui/lib/feedback";
 
 import { useApplicationClient } from "../application-client-provider";
 import { changeRecords } from "../cache/patch";
+import { clock } from "../lib/clock";
 import { browserTimeZone } from "../lib/time-zone";
 import { queryKeys } from "../query-keys";
 import { showThreadNote } from "../thread-notes/hooks";
@@ -62,7 +63,7 @@ function occurrenceOf(thread: Thread, taskId: TaskId): Occurrence {
     taskId,
     occurrence: thread.tasks?.find((task) => task._id === taskId)?.date,
     timeZone: browserTimeZone(),
-    now: Date.now(),
+    now: clock.now(),
   };
 }
 const occurrenceKey = ["task-occurrence"] as const;

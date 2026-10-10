@@ -15,6 +15,7 @@ import type { ApplicationMutationResult } from "../cache/use-application-mutatio
 import { changeRecords, patchQuery } from "../cache/patch";
 import { useApplicationMutation } from "../cache/use-application-mutation";
 import { useApplicationQuery } from "../cache/use-application-query";
+import { clock } from "../lib/clock";
 import { queryKeys } from "../query-keys";
 import {
   areaChangeKeys,
@@ -61,7 +62,8 @@ export function useCreateArea(): ApplicationMutationResult<
         [queryKeys.areas.list()],
         [pendingId],
         [],
-        () => showPendingArea(cache, input, { id: pendingId, now: Date.now() }),
+        () =>
+          showPendingArea(cache, input, { id: pendingId, now: clock.now() }),
       );
       return { local: pendingId, ...rollback };
     },

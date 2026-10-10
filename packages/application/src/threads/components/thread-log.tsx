@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { Button } from "@vita-os/ui/components/button";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
 import { cn } from "@vita-os/ui/lib/utils";
-import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
+import { format, formatDistance, isSameDay, subDays } from "date-fns";
 import {
   ArrowRight,
   Bell,
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { withTimeToken } from "../../attention-list/date-parts";
+import { clock } from "../../lib/clock";
 import { getActivityLogEntryLabel } from "../activity-log-entry";
 
 interface ActivityLogProps {
@@ -101,7 +102,7 @@ function TimelineOrigin({ lastActivityAt }: { lastActivityAt?: number }) {
       <p className="text-2xs font-medium tracking-wide text-muted-foreground/80 uppercase">
         {lastActivityAt === undefined
           ? "No activity yet"
-          : `Updated ${formatDistanceToNow(new Date(lastActivityAt), {
+          : `Updated ${formatDistance(lastActivityAt, clock.now(), {
               addSuffix: true,
             })}`}
       </p>
@@ -273,8 +274,9 @@ function groupLogsByDay(logs: AutomaticActivityLogEntry[]) {
 
 function getDayLabel(createdAt: number) {
   const date = new Date(createdAt);
-  if (isToday(date)) return "Today";
-  if (isYesterday(date)) return "Yesterday";
+  const today = clock.now();
+  if (isSameDay(date, today)) return "Today";
+  if (isSameDay(date, subDays(today, 1))) return "Yesterday";
   return format(date, "MMMM d, yyyy");
 }
 

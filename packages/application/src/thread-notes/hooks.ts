@@ -23,6 +23,7 @@ import { afterUndoWindow } from "../cache/undo-window";
 import { useApplicationMutation } from "../cache/use-application-mutation";
 import { useOptionalApplicationQuery } from "../cache/use-application-query";
 import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
+import { clock } from "../lib/clock";
 import { queryKeys } from "../query-keys";
 
 const DONE_PAGE_SIZE = 20;
@@ -114,7 +115,7 @@ export function useCaptureThreadNote(): ApplicationMutationResult<
     affected: (input) => threadNoteKeys(input.threadId),
     optimistic: (cache, input) => {
       const pendingId = newRecordId() as ThreadNoteId;
-      const now = Date.now();
+      const now = clock.now();
       const rollback = changeRecords<ThreadNote>(
         cache,
         threadNoteKeys(input.threadId),

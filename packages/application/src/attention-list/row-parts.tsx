@@ -40,6 +40,7 @@ import type { AttentionRowModel } from "./attention-row-model";
 import type { RepeatDraft } from "./repeat";
 
 import { AreaIcon } from "../areas/components/area-icon";
+import { clock } from "../lib/clock";
 import { browserTimeZone } from "../lib/time-zone";
 import { followUpDateLabels } from "./follow-up-date";
 import {
@@ -218,6 +219,7 @@ export function WhenPopover({
           mode="single"
           selected={selected}
           defaultMonth={selected}
+          today={new Date(clock.now())}
           disabled={busy}
           onSelect={async (date) => {
             if (!date || busy) return;

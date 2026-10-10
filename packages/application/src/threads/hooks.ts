@@ -28,6 +28,7 @@ import {
   useOptionalApplicationQuery,
 } from "../cache/use-application-query";
 import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
+import { clock } from "../lib/clock";
 import { queryKeys } from "../query-keys";
 import {
   changeThread,
@@ -111,7 +112,7 @@ export function useCreateThread(): ApplicationMutationResult<
       const pendingId = newRecordId() as ThreadId;
       const rollback = optimisticallyCreateThread(cache, input, {
         id: pendingId,
-        now: Date.now(),
+        now: clock.now(),
       });
       return { local: pendingId, ...rollback };
     },

@@ -4,11 +4,12 @@ import { Button } from "@vita-os/ui/components/button";
 import { Markdown, markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
-import { format, isThisYear } from "date-fns";
+import { format, isSameYear } from "date-fns";
 import { Archive, ArchiveRestore, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { AttentionCollapsed } from "../../attention-list";
+import { clock } from "../../lib/clock";
 import { NoteDialog } from "../../notes/note-view/note-dialog";
 
 interface ThreadNotesProps {
@@ -119,7 +120,7 @@ export function ThreadNotes({
           }}
           onSave={async (body) => {
             await onUpdateBody(currentNote, body);
-            setSelected({ ...currentNote, body, updatedAt: Date.now() });
+            setSelected({ ...currentNote, body, updatedAt: clock.now() });
           }}
           onToggleArchived={async () => {
             await onToggleArchived(currentNote);
@@ -127,7 +128,7 @@ export function ThreadNotes({
             setSelected({
               ...currentNote,
               state: archiving ? "done" : "open",
-              completedAt: archiving ? Date.now() : undefined,
+              completedAt: archiving ? clock.now() : undefined,
             });
           }}
           onDelete={() => onRemove(currentNote)}
@@ -185,7 +186,10 @@ function ThreadNoteCard({
           dateTime={date.toISOString()}
           className="text-2xs text-muted-foreground/60"
         >
-          {format(date, isThisYear(date) ? "MMM d" : "MMM d, yyyy")}
+          {format(
+            date,
+            isSameYear(date, clock.now()) ? "MMM d" : "MMM d, yyyy",
+          )}
         </time>
         <Button
           variant="secondary"
