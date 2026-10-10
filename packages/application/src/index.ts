@@ -44,7 +44,9 @@ export {
   readProductSearch,
   type ProductSearch,
 } from "./navigation/search-params";
-export { DashboardPathProvider } from "./navigation/dashboard-path";
+
+/* Time: the product's one "now", which a host may set to show another moment */
+export { clock } from "./lib/clock";
 
 /* Appearance: a host initializes it, the product owns it from then on */
 export {

@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { ProductSearch } from "./search-params";
-
 import {
   readProductSearch,
   toNotesFilter,
-  toUnfilteredDashboard,
   withDashboardFilter,
 } from "./search-params";
 
@@ -42,22 +39,6 @@ describe("choosing a Dashboard filter", () => {
     expect(withDashboardFilter({})({ area: "home", show: "notes" })).toEqual({
       area: undefined,
       show: undefined,
-    });
-  });
-
-  it("opens the Dashboard unfiltered and without a Thread, keeping the rest", () => {
-    expect(
-      toUnfilteredDashboard({
-        area: "home",
-        thread: "roof",
-        variant: "b",
-      } as ProductSearch),
-    ).toEqual({
-      area: undefined,
-      show: undefined,
-      thread: undefined,
-      inbox: undefined,
-      variant: "b",
     });
   });
 

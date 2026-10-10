@@ -43,6 +43,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./shell": "./src/shell.ts",
     "./test": "./src/test/index.ts",
     "./test/render": "./src/test/render-with-providers.tsx",
     "./internal/*": "./src/*"

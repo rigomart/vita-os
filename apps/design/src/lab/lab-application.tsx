@@ -1,8 +1,8 @@
 import {
   ApplicationClientProvider,
+  clock,
   ViewerProvider,
 } from "@vita-os/application";
-import { clock } from "@vita-os/application/internal/lib/clock.ts";
 import { toast } from "@vita-os/ui/lib/toast";
 import {
   createContext,

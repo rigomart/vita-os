@@ -18,7 +18,7 @@ import type {
 } from "@vita-os/contracts";
 import type { ThreadUpdateDecision } from "@vita-os/core";
 
-import { clock } from "@vita-os/application/internal/lib/clock.ts";
+import { clock } from "@vita-os/application";
 import { commandAcknowledged } from "@vita-os/contracts";
 import {
   clearedToAbsent,

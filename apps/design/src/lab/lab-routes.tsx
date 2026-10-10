@@ -3,29 +3,23 @@ import type { ReactNode } from "react";
 import { createRoute, Link, notFound } from "@tanstack/react-router";
 import {
   authenticatedRouteTree,
-  DashboardPathProvider,
   productRootRoute,
   readProductSearch,
 } from "@vita-os/application";
-import { AppShell } from "@vita-os/application/internal/layout/app-shell.tsx";
-import { ShellBehavior } from "@vita-os/application/internal/layout/shell-behavior.tsx";
+import { AppShell, ShellBehavior } from "@vita-os/application/shell";
 
 import { DesignSystemPage } from "@/system/design-system-page";
 
 import type { Prototype } from "./prototype";
 
-import {
-  CompareVariants,
-  PrototypeStage,
-  readPrototypeSearch,
-} from "./prototype-stage";
+import { PrototypeStage, readPrototypeSearch } from "./prototype-stage";
 import { findPrototype, prototypes } from "./prototypes";
 import { scenarios } from "./scenarios";
 
 /**
  * The lab's own pages, beside the product's routes: `/lab` lists what there is
- * to open, `/lab/system` is the design system, `/lab/<prototype>` opens one
- * prototype and `/lab/<prototype>/compare` lays its variants side by side.
+ * to open, `/lab/system` is the design system and `/lab/<prototype>` opens one
+ * prototype.
  * Their static `lab` segment wins over the product's Area slugs.
  */
 const labRoute = createRoute({
@@ -46,11 +40,7 @@ function loadPrototype({ params }: { params: { prototypeId: string } }) {
   return entry;
 }
 
-/**
- * One prototype, in as much of the product's shell as it asks for. Its page
- * stands in for the Dashboard, so the product's ways back to the Dashboard
- * stay here.
- */
+/** One prototype, in as much of the product's shell as it asks for. */
 const prototypeRoute = createRoute({
   getParentRoute: () => productRootRoute,
   path: "/lab/$prototypeId",
@@ -61,16 +51,14 @@ const prototypeRoute = createRoute({
   }),
   loader: loadPrototype,
   component: function PrototypePage() {
-    const { id, prototype } = prototypeRoute.useLoaderData();
+    const { prototype } = prototypeRoute.useLoaderData();
     return (
-      <DashboardPathProvider path={`/lab/${id}`}>
-        <PrototypeShell shell={prototype.shell}>
-          <PrototypeStage
-            prototype={prototype}
-            search={prototypeRoute.useSearch()}
-          />
-        </PrototypeShell>
-      </DashboardPathProvider>
+      <PrototypeShell shell={prototype.shell}>
+        <PrototypeStage
+          prototype={prototype}
+          search={prototypeRoute.useSearch()}
+        />
+      </PrototypeShell>
     );
   },
   notFoundComponent: NoSuchPrototype,
@@ -90,17 +78,6 @@ function PrototypeShell({
   return children;
 }
 
-const compareRoute = createRoute({
-  getParentRoute: () => productRootRoute,
-  path: "/lab/$prototypeId/compare",
-  loader: loadPrototype,
-  component: function ComparePage() {
-    const { id, prototype } = compareRoute.useLoaderData();
-    return <CompareVariants id={id} prototype={prototype} />;
-  },
-  notFoundComponent: NoSuchPrototype,
-});
-
 /** The product's route tree with the lab's pages beside its routes. */
 export function labRouteTree() {
   return productRootRoute.addChildren([
@@ -108,7 +85,6 @@ export function labRouteTree() {
     labRoute,
     systemRoute,
     prototypeRoute,
-    compareRoute,
   ]);
 }
 
@@ -150,31 +126,21 @@ function LabIndexPage() {
           </p>
         )}
         {prototypes.map(({ id, prototype }) => (
-          <div key={id} className="flex items-start gap-2">
-            <Link
-              to="/lab/$prototypeId"
-              params={{ prototypeId: id }}
-              className={`${entry} flex-1`}
-            >
-              <EntryText
-                title={prototype.title}
-                description={
-                  prototype.variants.length > 1
-                    ? `${prototype.description} ${prototype.variants.length} variants.`
-                    : prototype.description
-                }
-              />
-            </Link>
-            {prototype.variants.length > 1 && (
-              <Link
-                to="/lab/$prototypeId/compare"
-                params={{ prototypeId: id }}
-                className="mt-2 rounded-lg px-2 py-1 text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-              >
-                Compare
-              </Link>
-            )}
-          </div>
+          <Link
+            key={id}
+            to="/lab/$prototypeId"
+            params={{ prototypeId: id }}
+            className={entry}
+          >
+            <EntryText
+              title={prototype.title}
+              description={
+                prototype.variants.length > 1
+                  ? `${prototype.description} ${prototype.variants.length} variants.`
+                  : prototype.description
+              }
+            />
+          </Link>
         ))}
       </Section>
 

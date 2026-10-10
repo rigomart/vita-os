@@ -3,7 +3,6 @@ import type { AreaSummary } from "@vita-os/contracts";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { useDashboardPath } from "./dashboard-path";
 import { withDashboardFilter } from "./search-params";
 
 /**
@@ -17,7 +16,6 @@ export function useAreaFilterShortcuts(
   areas: readonly AreaSummary[] | undefined,
 ) {
   const navigate = useNavigate();
-  const dashboard = useDashboardPath();
 
   useEffect(() => {
     if (areas === undefined) return;
@@ -38,11 +36,11 @@ export function useAreaFilterShortcuts(
       if (digit !== 0 && area === undefined) return;
       e.preventDefault();
       void navigate({
-        to: dashboard,
+        to: "/",
         search: withDashboardFilter({ area: area?.slug }),
       });
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [areas, navigate, dashboard]);
+  }, [areas, navigate]);
 }

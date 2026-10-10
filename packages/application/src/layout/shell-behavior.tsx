@@ -9,7 +9,6 @@ import type { ProductSearch } from "../navigation/search-params";
 import { useAreas } from "../areas/hooks";
 import { ManageAreasDialog } from "../areas/manage-areas/manage-areas-dialog";
 import { filteredAreaId } from "../dashboard/components/dashboard-filter-model";
-import { useDashboardPath } from "../navigation/dashboard-path";
 import { toNotesFilter } from "../navigation/search-params";
 import { useAreaFilterShortcuts } from "../navigation/use-area-filter-shortcuts";
 import { useCommandPaletteShortcut } from "../navigation/use-command-palette-shortcut";
@@ -52,7 +51,6 @@ export function useShellActions(): ShellActions {
  */
 export function ShellBehavior({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  const dashboard = useDashboardPath();
   const createNote = useCreateNote();
   const createThread = useCreateThread();
   const dialogs = useCreateDialogs();
@@ -90,12 +88,12 @@ export function ShellBehavior({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (inbox !== true) return;
     void navigate({
-      to: dashboard,
+      to: "/",
       search: (prev: ProductSearch): ProductSearch =>
         toNotesFilter({ ...prev, thread: openThreadSlug }),
       replace: true,
     });
-  }, [inbox, navigate, dashboard, openThreadSlug]);
+  }, [inbox, navigate, openThreadSlug]);
 
   // A Thread captured while the Dashboard is filtered to an Area starts in
   // that Area; the dialog's chip can clear it before saving. The Notes filter
@@ -107,7 +105,7 @@ export function ShellBehavior({ children }: { children: ReactNode }) {
   // the param would let the route match reopen the pane with the stale thread.
   const closeThreadPane = () => {
     navigate({
-      to: threadRouteMatch === undefined ? "." : dashboard,
+      to: threadRouteMatch === undefined ? "." : "/",
       search: (prev: ProductSearch): ProductSearch => ({
         ...prev,
         thread: undefined,

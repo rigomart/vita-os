@@ -16,7 +16,6 @@ import type { DashboardFilterOption } from "./dashboard-filter-model";
 
 import { AreaIcon } from "../../areas/components/area-icon";
 import { ManageAreasDialog } from "../../areas/manage-areas/manage-areas-dialog";
-import { useDashboardPath } from "../../navigation/dashboard-path";
 import { withDashboardFilter } from "../../navigation/search-params";
 import { fitFilterChips } from "./dashboard-filter-fit";
 
@@ -48,7 +47,6 @@ export function DashboardFilter({
   options: DashboardFilterOption[];
 }) {
   const navigate = useNavigate();
-  const dashboard = useDashboardPath();
   const [manageOpen, setManageOpen] = useState(false);
   const areas = options.filter((option) => !option.separated);
   const notes = options.filter((option) => option.separated);
@@ -148,7 +146,7 @@ export function DashboardFilter({
                   const option = folded.find((each) => each.key === key);
                   if (option === undefined) return;
                   void navigate({
-                    to: dashboard,
+                    to: "/",
                     search: withDashboardFilter(option.search),
                   });
                 }}
@@ -207,10 +205,9 @@ function FilterLink({
   option: DashboardFilterOption;
   className?: string;
 }) {
-  const dashboard = useDashboardPath();
   return (
     <Link
-      to={dashboard}
+      to="/"
       search={withDashboardFilter(option.search)}
       // Exact, so All — whose search only clears — is not active under every
       // other option too.
