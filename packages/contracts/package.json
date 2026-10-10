@@ -19,7 +19,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./http": "./src/http/index.ts"
+    "./http": "./src/http/index.ts",
+    "./testing": "./src/testing/application-client-contract.ts"
   },
   "dependencies": {
     "valibot": "1.5.0"

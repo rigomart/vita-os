@@ -5,6 +5,7 @@ import type {
   ThreadNoteId,
 } from "@vita-os/contracts";
 
+import { describeApplicationClient } from "@vita-os/contracts/testing";
 import { describe, expect, it } from "vitest";
 
 import { createInMemoryApplicationClient } from "./in-memory-application-client";
@@ -28,6 +29,10 @@ async function threadWithTask(client: ApplicationClient, date?: number) {
   );
   return { thread, taskId };
 }
+
+describeApplicationClient("The in-memory client", async () =>
+  createInMemoryApplicationClient(),
+);
 
 describe("in-memory application client", () => {
   it.each(scenarios.map((scenario) => [scenario.id, scenario] as const))(
