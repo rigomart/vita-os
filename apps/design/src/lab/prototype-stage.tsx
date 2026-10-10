@@ -1,7 +1,6 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { Button, buttonVariants } from "@vita-os/ui/components/button";
+import { Link } from "@tanstack/react-router";
+import { Button } from "@vita-os/ui/components/button";
 import { cn } from "@vita-os/ui/lib/utils";
-import { ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { findVariant, type Prototype } from "./prototype";
@@ -25,125 +24,20 @@ export function readPrototypeSearch(
 }
 
 /**
- * One prototype, showing one of its variants, with a bar to step through the
- * others. Stepping keeps the scenario's data, so every direction is seen
+ * One prototype, showing one of its variants; the lab toolbar steps through
+ * the others. Stepping keeps the scenario's data, so every direction is seen
  * against the same situation, including whatever was changed in the last one.
  */
 export function PrototypeStage({
-  id,
   prototype,
   search,
 }: {
-  id: string;
   prototype: Prototype;
   search: PrototypeSearch;
 }) {
   const variant = findVariant(prototype, search.variant);
   const Component = variant.component;
-
-  return (
-    <>
-      <Component key={variant.key} />
-      {!search.embed && prototype.variants.length > 1 && (
-        <VariantBar id={id} prototype={prototype} active={variant.key} />
-      )}
-    </>
-  );
-}
-
-function VariantBar({
-  id,
-  prototype,
-  active,
-}: {
-  id: string;
-  prototype: Prototype;
-  active: string;
-}) {
-  const navigate = useNavigate();
-  const { variants } = prototype;
-  const index = variants.findIndex((variant) => variant.key === active);
-  const current = variants[index]!;
-
-  const step = (by: number) => {
-    const next = variants[(index + by + variants.length) % variants.length]!;
-    void navigate({
-      to: ".",
-      search: (previous: Record<string, unknown>) => ({
-        ...previous,
-        variant: next.key,
-      }),
-    } as never);
-  };
-
-  // `[` and `]` step, unless someone is typing; digits are the app's own.
-  const stepRef = useRef(step);
-  stepRef.current = step;
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.key !== "[" && event.key !== "]") return;
-      const target = event.target as HTMLElement | null;
-      if (
-        target?.closest("input, textarea, select, [contenteditable='true']")
-      ) {
-        return;
-      }
-      event.preventDefault();
-      stepRef.current(event.key === "]" ? 1 : -1);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  return (
-    <div
-      role="toolbar"
-      aria-label="Prototype variants"
-      className="fixed right-4 bottom-4 z-50 flex items-center gap-1 rounded-full border bg-popover/95 p-1 shadow-lg backdrop-blur"
-    >
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="rounded-full"
-        aria-label="Previous variant ([)"
-        onClick={() => step(-1)}
-      >
-        <ChevronLeft />
-      </Button>
-      <div
-        className="flex min-w-36 flex-col items-center px-2 text-center"
-        title={current.description}
-      >
-        <span className="text-[13px] leading-tight font-medium">
-          {current.name}
-        </span>
-        <span className="text-[11px] leading-tight text-muted-foreground">
-          {index + 1} of {variants.length}
-        </span>
-      </div>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="rounded-full"
-        aria-label="Next variant (])"
-        onClick={() => step(1)}
-      >
-        <ChevronRight />
-      </Button>
-      <Link
-        to="/lab/$prototypeId/compare"
-        params={{ prototypeId: id }}
-        aria-label="Compare all variants"
-        className={cn(
-          buttonVariants({ variant: "ghost", size: "icon-sm" }),
-          "rounded-full",
-        )}
-      >
-        <LayoutGrid />
-      </Link>
-    </div>
-  );
+  return <Component key={variant.key} />;
 }
 
 const devices = {
@@ -169,7 +63,7 @@ export function CompareVariants({
 }) {
   const [device, setDevice] = useState<Device>("desktop");
   const { width, height } = devices[device];
-  const path = prototype.shell ? `/lab/${id}/app` : `/lab/${id}`;
+  const path = `/lab/${id}`;
 
   return (
     <main className="flex min-h-svh flex-col gap-6 px-6 py-6">

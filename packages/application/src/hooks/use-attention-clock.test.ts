@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { clock } from "../lib/clock";
 import { nextLocalMidnight, useAttentionClock } from "./use-attention-clock";
 
 const HOUR = 3_600_000;
@@ -16,6 +17,7 @@ describe("useAttentionClock", () => {
   });
 
   afterEach(() => {
+    clock.set(undefined);
     vi.useRealTimers();
   });
 
@@ -78,6 +80,23 @@ describe("useAttentionClock", () => {
 
     second.unmount();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("follows the clock when it is set, and its midnight from there", () => {
+    const { result, unmount } = renderHook(() => useAttentionClock());
+    const lastWeek = noon - 7 * DAY;
+
+    act(() => clock.set(lastWeek));
+    expect(result.current).toBe(lastWeek);
+    expect(vi.getTimerCount()).toBe(1);
+
+    act(() => vi.advanceTimersByTime(nextLocalMidnight(lastWeek) - lastWeek));
+    expect(result.current).toBe(nextLocalMidnight(lastWeek));
+
+    act(() => clock.set(undefined));
+    expect(result.current).toBe(Date.now());
+
+    unmount();
   });
 
   it("picks the clock back up on the day it is remounted", () => {

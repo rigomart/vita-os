@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 
+import { clock } from "../lib/clock";
+
 /**
  * The attention clock — one "now" for every surface that reads a date. The
  * Dashboard's columns and its date all classify by *day*, so they share a
@@ -7,7 +9,8 @@ import { useSyncExternalStore } from "react";
  * midnight.
  *
  * A module-level store, not per-component state: every consumer sees the same
- * instant and the app arms one timer.
+ * instant and the app arms one timer. It reads the product's `clock`, and
+ * starts over from the new time when that clock is set.
  */
 
 /** The midnight that opens the local calendar day after `at`. */
@@ -20,8 +23,9 @@ export function nextLocalMidnight(at: number): number {
   ).getTime();
 }
 
-let now = Date.now();
+let now = clock.now();
 let rollover: ReturnType<typeof setTimeout> | undefined;
+let stopFollowingClock: (() => void) | undefined;
 const listeners = new Set<() => void>();
 
 function scheduleRollover() {
@@ -31,12 +35,22 @@ function scheduleRollover() {
     () => {
       // A timer is allowed to fire a hair early; never land back on the day we
       // just left.
-      now = Math.max(Date.now(), midnight);
+      now = Math.max(clock.now(), midnight);
       scheduleRollover();
-      for (const listener of listeners) listener();
+      notify();
     },
-    Math.max(midnight - Date.now(), 0),
+    Math.max(midnight - clock.now(), 0),
   );
+}
+
+function notify() {
+  for (const listener of listeners) listener();
+}
+
+function restart() {
+  clearTimeout(rollover);
+  now = clock.now();
+  scheduleRollover();
 }
 
 function subscribe(listener: () => void): () => void {
@@ -44,8 +58,11 @@ function subscribe(listener: () => void): () => void {
   // again; React compares the snapshot after subscribing, so a day that passed
   // while the app was unmounted still lands.
   if (listeners.size === 0) {
-    now = Date.now();
-    scheduleRollover();
+    restart();
+    stopFollowingClock = clock.subscribe(() => {
+      restart();
+      notify();
+    });
   }
   listeners.add(listener);
 
@@ -54,6 +71,8 @@ function subscribe(listener: () => void): () => void {
     if (listeners.size > 0) return;
     clearTimeout(rollover);
     rollover = undefined;
+    stopFollowingClock?.();
+    stopFollowingClock = undefined;
   };
 }
 

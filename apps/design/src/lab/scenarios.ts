@@ -7,6 +7,7 @@ import type {
   Thread,
 } from "@vita-os/contracts";
 
+import { clock } from "@vita-os/application/internal/lib/clock.ts";
 import { newRecordId } from "@vita-os/core";
 
 /**
@@ -147,7 +148,7 @@ function must<T>(result: OperationResult<T>): T {
  * alone, or that day at `at` (`HH:mm`).
  */
 function dayFromToday(days: number, at?: string): number {
-  const date = new Date();
+  const date = new Date(clock.now());
   const [hours = 0, minutes = 0] = at?.split(":").map(Number) ?? [];
   date.setHours(hours, minutes, 0, 0);
   date.setDate(date.getDate() + days);

@@ -16,6 +16,7 @@ import { afterUndoWindow } from "../cache/undo-window";
 import { useApplicationMutation } from "../cache/use-application-mutation";
 import { useApplicationQuery } from "../cache/use-application-query";
 import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
+import { clock } from "../lib/clock";
 import { queryKeys } from "../query-keys";
 import {
   noteKeys,
@@ -87,7 +88,7 @@ export function useCaptureNote(): ApplicationMutationResult<
     affected: () => noteKeys(),
     optimistic: (cache, input) => {
       const pendingId = newRecordId() as NoteId;
-      const now = Date.now();
+      const now = clock.now();
       const rollback = changeRecords<Note>(
         cache,
         noteKeys(),

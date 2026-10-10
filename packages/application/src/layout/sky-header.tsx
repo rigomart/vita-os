@@ -14,7 +14,10 @@ import { MessageSquarePlus, PenLine, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useAttentionClock } from "../hooks/use-attention-clock";
+import { clock } from "../lib/clock";
 import { isApplePlatform } from "../lib/platform";
+import { useDashboardPath } from "../navigation/dashboard-path";
+import { toUnfilteredDashboard } from "../navigation/search-params";
 import { useTheme } from "../theme/theme-provider";
 import { useViewer } from "../viewer/viewer-context";
 import { hourOf, isDay, skyAt, sunAt } from "./sky";
@@ -48,6 +51,7 @@ export function SkyHeader({
   const hour = hourOf(useMinuteClock());
   const sky = skyAt(hour);
   const palette = paletteKey();
+  const dashboard = useDashboardPath();
 
   return (
     <header
@@ -66,7 +70,8 @@ export function SkyHeader({
         <Sun hour={hour} />
         <div className="flex h-16 items-center gap-4">
           <Link
-            to="/"
+            to={dashboard}
+            search={toUnfilteredDashboard}
             aria-label="Vita OS home"
             className="shrink-0 rounded-lg outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-[var(--ink)]"
           >
@@ -133,12 +138,17 @@ export function paletteKey() {
   };
 }
 
-/** The wall clock to the minute, which is as finely as the sky moves. */
+/** The clock to the minute, which is as finely as the sky moves. */
 function useMinuteClock() {
-  const [now, setNow] = useState(Date.now);
+  const [now, setNow] = useState(clock.now);
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(timer);
+    const tick = () => setNow(clock.now());
+    const timer = setInterval(tick, 60_000);
+    const stop = clock.subscribe(tick);
+    return () => {
+      clearInterval(timer);
+      stop();
+    };
   }, []);
   return now;
 }

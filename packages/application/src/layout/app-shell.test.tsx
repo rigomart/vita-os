@@ -11,6 +11,7 @@ import type { Mock } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DashboardPathProvider } from "../navigation/dashboard-path";
 import { createFakeApplicationClient } from "../test/fake-application-client";
 import {
   fireEvent,
@@ -119,7 +120,7 @@ function read(name: keyof ReadSpies) {
   return reads[name].mock.calls.length > 0;
 }
 
-function renderShell() {
+function renderShell({ dashboardPath = "/" } = {}) {
   reads = {
     listAreas: vi.fn<ApplicationClient["listAreas"]>(async () => ({
       ok: true,
@@ -140,9 +141,11 @@ function renderShell() {
   };
 
   return render(
-    <AppShell>
-      <p>page body</p>
-    </AppShell>,
+    <DashboardPathProvider path={dashboardPath}>
+      <AppShell>
+        <p>page body</p>
+      </AppShell>
+    </DashboardPathProvider>,
     {
       applicationClient: createFakeApplicationClient({
         ...reads,
@@ -310,6 +313,21 @@ describe("AppShell", () => {
     mocks.navigate.mockClear();
     await user.keyboard("2");
     expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("filters on a digit where the host says the Dashboard is", async () => {
+    const user = userEvent.setup();
+    renderShell({ dashboardPath: "/lab/prototype" });
+    await waitFor(() => expect(read("listAreas")).toBe(true));
+
+    await waitFor(async () => {
+      mocks.navigate.mockClear();
+      await user.keyboard("1");
+      expect(mocks.navigate).toHaveBeenCalled();
+    });
+    expect(mocks.navigate.mock.calls[0]?.[0]).toMatchObject({
+      to: "/lab/prototype",
+    });
   });
 
   it("opens the new note dialog from the chrome", async () => {

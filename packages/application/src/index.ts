@@ -44,6 +44,7 @@ export {
   readProductSearch,
   type ProductSearch,
 } from "./navigation/search-params";
+export { DashboardPathProvider } from "./navigation/dashboard-path";
 
 /* Appearance: a host initializes it, the product owns it from then on */
 export {

@@ -18,6 +18,7 @@ import type {
 } from "@vita-os/contracts";
 import type { ThreadUpdateDecision } from "@vita-os/core";
 
+import { clock } from "@vita-os/application/internal/lib/clock.ts";
 import { commandAcknowledged } from "@vita-os/contracts";
 import {
   clearedToAbsent,
@@ -55,7 +56,8 @@ import {
  * revisions, and persistence (a reload starts the scenario again).
  *
  * Values cross it as JSON, as they cross HTTP: inputs lose their `undefined`
- * keys and results are fresh copies the cache can hold without aliasing.
+ * keys and results are fresh copies the cache can hold without aliasing. Its
+ * time is the product's `clock`, so a clock the lab sets is the server's too.
  */
 export function createInMemoryApplicationClient(
   options: { latencyMs?: () => number } = {},
@@ -85,7 +87,7 @@ export function createInMemoryApplicationClient(
     { patch, logs }: ThreadUpdateDecision,
     stamp?: { content: null },
   ): Thread {
-    const now = Date.now();
+    const now = clock.now();
     const record = thread as Record<string, unknown>;
     for (const [key, value] of Object.entries(patch)) {
       if (value === undefined) delete record[key];
@@ -149,7 +151,7 @@ export function createInMemoryApplicationClient(
       ...(input.areaId === undefined ? {} : { areaId: input.areaId }),
       order: nextOrder(threads),
       state: "open",
-      createdAt: Date.now(),
+      createdAt: clock.now(),
     };
     threads.push(thread);
     return thread;
@@ -183,7 +185,7 @@ export function createInMemoryApplicationClient(
     id: ThreadNoteId = newRecordId() as ThreadNoteId,
   ): ThreadNote {
     if (findThreadNote(id) !== undefined) throw refusal(changeConflict);
-    const now = Date.now();
+    const now = clock.now();
     const note: ThreadNote = {
       _id: id,
       body,
@@ -229,7 +231,7 @@ export function createInMemoryApplicationClient(
         slug: generateSlug(name),
         icon: input.icon,
         order: nextOrder(areas),
-        createdAt: Date.now(),
+        createdAt: clock.now(),
       };
       areas.push(area);
       return ok(area);
@@ -416,7 +418,7 @@ export function createInMemoryApplicationClient(
       if (input.timeZone !== undefined) requireTimeZone(input.timeZone);
       const decision = decideCompleteTask(thread, input.taskId, {
         timeZone: input.timeZone,
-        now: Date.now(),
+        now: clock.now(),
       });
       if (decision === null) return fail(tasksChanged);
       // A completion that captures a Note stamps the Thread without a summary.
@@ -466,7 +468,7 @@ export function createInMemoryApplicationClient(
             return null;
           return decideSkipTask(thread, input.taskId, {
             timeZone: input.timeZone,
-            now: Date.now(),
+            now: clock.now(),
           });
         }),
       );
@@ -516,7 +518,7 @@ export function createInMemoryApplicationClient(
     },
 
     async createNote(input) {
-      const now = Date.now();
+      const now = clock.now();
       const note: Note = {
         _id: newRecordId() as NoteId,
         body: requireNonBlankText(input.body, "Note body"),
@@ -534,7 +536,7 @@ export function createInMemoryApplicationClient(
       return ok(
         editNote(findNote(noteId), "Note", (note) => {
           note.body = text;
-          note.updatedAt = Date.now();
+          note.updatedAt = clock.now();
         }),
       );
     },
@@ -544,7 +546,7 @@ export function createInMemoryApplicationClient(
         editNote(findNote(noteId), "Note", (note) => {
           if (followUp === null) delete note.followUp;
           else note.followUp = followUp;
-          note.updatedAt = Date.now();
+          note.updatedAt = clock.now();
         }),
       );
     },
@@ -552,7 +554,7 @@ export function createInMemoryApplicationClient(
     async markNoteDone({ noteId }) {
       return ok(
         editNote(findNote(noteId), "Note", (note) => {
-          const now = Date.now();
+          const now = clock.now();
           note.state = "done";
           note.completedAt = now;
           note.updatedAt = now;
@@ -565,7 +567,7 @@ export function createInMemoryApplicationClient(
         editNote(findNote(noteId), "Note", (note) => {
           note.state = "open";
           delete note.completedAt;
-          note.updatedAt = Date.now();
+          note.updatedAt = clock.now();
         }),
       );
     },
@@ -646,7 +648,7 @@ export function createInMemoryApplicationClient(
         withoutThreadId(
           editNote(findThreadNote(threadNoteId), "Thread note", (note) => {
             note.body = text;
-            note.updatedAt = Date.now();
+            note.updatedAt = clock.now();
           }),
         ),
       );
@@ -657,7 +659,7 @@ export function createInMemoryApplicationClient(
         withoutThreadId(
           editNote(findThreadNote(threadNoteId), "Thread note", (note) => {
             note.state = "done";
-            note.completedAt = Date.now();
+            note.completedAt = clock.now();
           }),
         ),
       );
