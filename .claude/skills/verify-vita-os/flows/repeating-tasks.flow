@@ -38,7 +38,7 @@ browser -- wait --fn "!document.querySelector('[role=group][aria-label=Repeat]')
 
 # The row and the card wear the repeat glyph before the Task's text; the card sits under Now, Today, at 9 PM.
 browser -- wait --fn "[...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('R1 ${STAMP}') && li.querySelector('[role=img][aria-label=\"Repeats daily\"]'))"
-browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Now'] section[aria-label='Today'] li\")].some(li => li.textContent.includes('Repeat A ${STAMP}') && li.textContent.includes('R1 ${STAMP}') && li.textContent.includes('9 PM') && li.querySelector('[data-slot=repeat-glyph]'))"
+browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Today'] li\")].some(li => li.textContent.includes('Repeat A ${STAMP}') && li.textContent.includes('R1 ${STAMP}') && li.textContent.includes('9 PM') && li.querySelector('[data-slot=repeat-glyph]'))"
 shot repeat-card-glyph
 browser -- wait 1500
 d1 "SELECT json_extract(moves_json, '$[0].repeat.kind') AS kind, json_extract(moves_json, '$[0].repeat.every') AS every FROM threads WHERE title = 'Repeat A ${STAMP}'"
@@ -50,7 +50,7 @@ expect '"n": 0'
 # Complete from the row: the Task stays and comes back tomorrow at 9 PM; one move_completed is written.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Complete task"]'
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); const label = 'Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · 9 PM'; return [...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('R1 ${STAMP}') && li.querySelector('button[aria-label=\"' + label + '\"]')); })()"
-browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='This week'] section[aria-label='Tomorrow'] li\")].some(li => li.textContent.includes('Repeat A ${STAMP}') && li.textContent.includes('R1 ${STAMP}'))"
+browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Tomorrow'] li\")].some(li => li.textContent.includes('Repeat A ${STAMP}') && li.textContent.includes('R1 ${STAMP}'))"
 shot repeat-completed
 browser -- wait 1500
 d1 "SELECT json_array_length(moves_json) AS tasks, json_extract(moves_json, '$[0].repeat.kind') AS kind FROM threads WHERE title = 'Repeat A ${STAMP}'"
@@ -99,6 +99,10 @@ d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.
 expect '"n": 1'
 
 # L: a missed daily Task, dated three days ago through the picker, shows as one Late card, never one per missed day.
+# An open Thread pane covers the header's actions and the right of the list (ADR 0023, ADR 0037), so close it first.
+browser -- eval "document.querySelector('button[aria-label=\"Close thread\"]')?.click() ?? null"
+browser -- wait --fn "!document.querySelector('button[aria-label=\"Close thread\"]')"
+browser -- wait 500
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Repeat L ${STAMP}"
 browser -- find role button click --name Create --exact
@@ -116,7 +120,7 @@ browser -- find role button click --name "Daily" --exact
 browser -- find role button click --name "Done" --exact
 browser -- wait 1500
 browser -- find role button click --name "Close thread" --exact
-browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Now'] section[aria-label='Late'] li\")].filter(li => li.textContent.includes('Repeat L ${STAMP}')).length === 1 && [...document.querySelectorAll('li')].filter(li => li.textContent.includes('L1 ${STAMP}')).length === 1 && [...document.querySelectorAll(\"section[aria-label='Late'] li\")].some(li => li.textContent.includes('L1 ${STAMP}') && li.querySelector('[data-slot=repeat-glyph]'))"
+browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Late'] li\")].filter(li => li.textContent.includes('Repeat L ${STAMP}')).length === 1 && [...document.querySelectorAll('li')].filter(li => li.textContent.includes('L1 ${STAMP}')).length === 1 && [...document.querySelectorAll(\"section[aria-label='Late'] li\")].some(li => li.textContent.includes('L1 ${STAMP}') && li.querySelector('[data-slot=repeat-glyph]'))"
 shot repeat-late-card
 d1 "SELECT json_array_length(moves_json) AS tasks, json_extract(moves_json, '$[0].repeat.every') AS every FROM threads WHERE title = 'Repeat L ${STAMP}'"
 expect '"tasks": 1'
@@ -124,18 +128,18 @@ expect '"every": 1'
 
 # Skip from the card: the missed run collapses to today; nothing is logged.
 browser -- click 'xpath=//li[.//a[normalize-space()="Repeat L ${STAMP}"]]//button[starts-with(@aria-label, "Skip")]'
-browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Now'] section[aria-label='Today'] li\")].some(li => li.textContent.includes('Repeat L ${STAMP}')) && ![...document.querySelectorAll(\"section[aria-label='Late'] li\")].some(li => li.textContent.includes('Repeat L ${STAMP}'))"
+browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Today'] li\")].some(li => li.textContent.includes('Repeat L ${STAMP}')) && ![...document.querySelectorAll(\"section[aria-label='Late'] li\")].some(li => li.textContent.includes('Repeat L ${STAMP}'))"
 shot repeat-card-skipped
 browser -- wait 1500
 d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Repeat L ${STAMP}'"
 expect '"n": 0'
 
-# Complete from the card: the card stays, tomorrow, under This week; one move_completed.
+# Complete from the card: the card stays, under Tomorrow; one move_completed.
 browser -- click 'xpath=//li[.//a[normalize-space()="Repeat L ${STAMP}"]]//button[starts-with(@aria-label, "Complete")]'
-browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='This week'] section[aria-label='Tomorrow'] li\")].some(li => li.textContent.includes('Repeat L ${STAMP}') && li.textContent.includes('L1 ${STAMP}'))"
+browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Tomorrow'] li\")].some(li => li.textContent.includes('Repeat L ${STAMP}') && li.textContent.includes('L1 ${STAMP}'))"
 browser -- wait 1500
 browser -- reload
-browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='This week'] section[aria-label='Tomorrow'] li\")].some(li => li.textContent.includes('Repeat L ${STAMP}') && li.querySelector('[data-slot=repeat-glyph]'))"
+browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Tomorrow'] li\")].some(li => li.textContent.includes('Repeat L ${STAMP}') && li.querySelector('[data-slot=repeat-glyph]'))"
 shot repeat-card-completed
 d1 "SELECT l.type, COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Repeat L ${STAMP}' GROUP BY l.type"
 expect '"type": "move_completed"'

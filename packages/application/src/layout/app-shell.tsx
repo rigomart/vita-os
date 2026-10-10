@@ -21,8 +21,9 @@ import { useCreateNote } from "../notes/use-create-note";
 import { NewThreadDialog } from "../threads/new-thread/new-thread-dialog";
 import { ThreadDetailView } from "../threads/thread-detail/thread-detail-view";
 import { useCreateThread } from "../threads/use-create-thread";
-import { AppChrome } from "./app-chrome";
+import { ActionBar } from "./action-bar";
 import { CommandPalette } from "./command-palette";
+import { SkyHeader } from "./sky-header";
 
 // Matches the thread pane's width in ThreadDetailPane.
 const RAIL_WIDTH = "clamp(28rem,34vw,34rem)";
@@ -114,10 +115,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   };
 
+  const chrome = {
+    onNewNote: dialogs.openNewNote,
+    onNewThread: () => dialogs.openCreateThread(createForAreaId),
+    onOpenPalette: () => setPaletteOpen(true),
+  };
+
   return (
     // The thread rail covers the page rather than pushing it (ADR 0023). The
-    // page keeps its full width; only the controls anchored to the right edge
-    // — the chrome — clear the rail, by `--rail`.
+    // page keeps its full width; `--rail` is the rail's width for anything
+    // that must clear it. The sky header's actions do not yet, so the open
+    // pane covers them on a wide screen (ADR 0037).
     <div
       className="flex min-h-svh"
       style={
@@ -127,15 +135,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       }
     >
       <div className="flex min-h-svh min-w-0 flex-1 flex-col">
-        <AppChrome
-          onNewNote={dialogs.openNewNote}
-          onNewThread={() => dialogs.openCreateThread(createForAreaId)}
-          onOpenPalette={() => setPaletteOpen(true)}
-        />
-        {/* The chrome floats, so this padding is what clears it. */}
-        <main className="w-full min-w-0 flex-1 px-4 pt-20 pb-24">
+        <SkyHeader {...chrome} />
+        {/* Below `lg` the action bar floats over the page's foot, so the
+            page keeps that much room under its last item. */}
+        <main className="w-full min-w-0 flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0">
           {children}
         </main>
+        <ActionBar {...chrome} />
       </div>
       {openThreadSlug !== undefined && (
         <ThreadDetailView
@@ -151,8 +157,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <CommandPalette
           open
           onOpenChange={setPaletteOpen}
-          onNewNote={dialogs.openNewNote}
-          onNewThread={() => dialogs.openCreateThread(createForAreaId)}
+          onNewNote={chrome.onNewNote}
+          onNewThread={chrome.onNewThread}
           onManageAreas={dialogs.openManageAreas}
           onOpenNote={setHistoryNote}
         />

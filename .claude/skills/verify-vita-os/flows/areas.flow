@@ -49,7 +49,7 @@ browser -- wait 'button[aria-label="Area: Area renamed ${STAMP}"]'
 d1 "SELECT COUNT(*) AS labeled_thread FROM threads t JOIN areas a ON a.id = t.area_id WHERE t.title = 'Area survives ${STAMP}' AND a.name = 'Area renamed ${STAMP}'"
 expect '"labeled_thread": 1'
 browser -- find role button click --name "Close thread" --exact
-browser -- find role button click --name "Manage areas" --exact
+browser -- find role button click --name "Edit areas" --exact
 browser -- find role button click --name "Delete Area renamed ${STAMP}" --exact
 browser -- wait --text "1 open Thread will lose this label."
 shot areas-delete-before

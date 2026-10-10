@@ -8,7 +8,7 @@ import {
   cardTask,
   groupByWhen,
   itemId,
-  unscheduledCount,
+  unscheduledRuns,
 } from "./attention-board-model";
 import { DAY } from "./dashboard-model";
 
@@ -213,7 +213,13 @@ describe("buildAttentionBoard", () => {
 
     expect(ids).toHaveLength(threads.length + notes.length);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(unscheduledCount(board)).toBe(3);
+    expect(
+      unscheduledRuns(board).map((run) => [run.title, run.items.length]),
+    ).toEqual([
+      ["Ready to move", 1],
+      ["Open", 1],
+      ["Notes", 1],
+    ]);
   });
 });
 
@@ -253,14 +259,14 @@ describe("groupByWhen", () => {
       },
       {
         label: "Sunday",
-        hint: "2d",
+        hint: "in 2 days",
         exact: true,
         tone: "soon",
         items: ["d2", "d2"],
       },
       {
         label: "Wednesday",
-        hint: "5d",
+        hint: "in 5 days",
         exact: true,
         tone: "week",
         items: ["d5"],

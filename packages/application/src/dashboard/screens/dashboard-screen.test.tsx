@@ -215,16 +215,16 @@ describe("DashboardScreen", () => {
       </FeedbackProvider>,
     );
 
-    const inLane = (lane: string) =>
-      within(screen.getByRole("region", { name: lane })).queryByText("Dentist");
+    const group = (name: string) => screen.queryByRole("region", { name });
 
-    expect(inLane("This week")).toBeVisible();
-    expect(inLane("Now")).toBeNull();
+    expect(within(group("Tomorrow")!).getByText("Dentist")).toBeVisible();
+    expect(group("Today")).toBeNull();
     const readsBefore = new Set(mocks.reads).size;
 
     act(() => vi.advanceTimersByTime(30 * 60_000));
 
-    expect(inLane("Now")).toBeVisible();
+    expect(within(group("Today")!).getByText("Dentist")).toBeVisible();
+    expect(group("Tomorrow")).toBeNull();
     // The rollover reclassifies what is already read; it reads nothing new.
     expect(new Set(mocks.reads).size).toBe(readsBefore);
   });

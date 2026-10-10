@@ -33,7 +33,7 @@ Preconditions: an isolated instance (`up`, `signin`). Create two Threads through
 
 ## Gotchas
 
-- Notes dated a week or more out sit in the folded Later column; unfold it (`find role button click --name "Later"`) or choose the `Notes` filter link (`find role link click --name "Notes <count>" --exact`, the one after `Manage areas`).
+- Notes dated a week or more out are one-line rows (`button "Open note: <preview>"`) under `In 1 week` and later groups, with no card controls; open one there, or choose the `Notes` filter link (`find role link click --name "Notes <count>" --exact`, the one after the Areas and before `Edit areas`).
 - The Undo and Open thread buttons live in a toast; click them by snapshot ref.
 - The write happens only after the five-second Undo window. D1 shows nothing until then; `Open thread` commits at once.
 - The New thread dialog says `Thread created` on success; adding to an existing Thread has no separate server toast, so prove it after the window with D1 and a reload.

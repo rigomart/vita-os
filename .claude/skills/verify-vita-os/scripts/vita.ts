@@ -512,7 +512,7 @@ async function signin(instance: string) {
     "Sign In",
     "--exact",
   ]);
-  agentBrowser(state, ["wait", 'nav[aria-label="Primary"]']);
+  agentBrowser(state, ["wait", 'header[aria-label="Vita OS"]']);
   const raw = agentBrowser(state, [
     "eval",
     `fetch(${JSON.stringify(`${state.apiUrl}/api/auth/get-session`)}, { credentials: "include" }).then(r => r.json()).then(s => s?.user?.email ?? null)`,
@@ -538,7 +538,7 @@ async function open(instance: string, path: string | undefined) {
     "open",
     `${state.webUrl}${path.startsWith("/") ? path : `/${path}`}`,
   ]);
-  agentBrowser(state, ["wait", 'nav[aria-label="Primary"]']);
+  agentBrowser(state, ["wait", 'header[aria-label="Vita OS"]']);
   return { ok: true, url: agentBrowser(state, ["get", "url"]) };
 }
 

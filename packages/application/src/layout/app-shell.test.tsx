@@ -75,8 +75,9 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 
 // The chrome pulls in auth and theme providers; these tests are about the
 // shell's wiring, so each entry point becomes a labelled button.
-vi.mock("./app-chrome", () => ({
-  AppChrome: ({
+vi.mock("./action-bar", () => ({ ActionBar: () => null }));
+vi.mock("./sky-header", () => ({
+  SkyHeader: ({
     onNewNote,
     onOpenPalette,
   }: {

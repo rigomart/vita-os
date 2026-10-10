@@ -82,7 +82,7 @@ export function ThreadAttentionCard({
   onSetTaskDate,
   onSetTaskRepeat,
   onSkipTask,
-  onTray,
+  onLateFill,
   completingTaskIds,
   thread,
 }: {
@@ -100,7 +100,8 @@ export function ThreadAttentionCard({
   onSetTaskRepeat: (taskId: TaskId, repeat: Repeat | null) => unknown;
   /** Moves a repeating Task to its next occurrence. */
   onSkipTask: (taskId: TaskId) => unknown;
-  onTray?: boolean;
+  /** The card sits on Late's fill, so it drops its own late tint. */
+  onLateFill?: boolean;
   completingTaskIds?: ReadonlySet<TaskId>;
   thread: Thread;
 }) {
@@ -157,7 +158,7 @@ export function ThreadAttentionCard({
   return (
     <BoardCard
       late={isLate(placedBy, currentDate)}
-      onTray={onTray}
+      onLateFill={onLateFill}
       footer={
         <>
           {showsDate && dateControl}
@@ -288,13 +289,13 @@ export function ConnectedThreadAttentionCard({
   area,
   currentDate,
   dateInHeading,
-  onTray,
+  onLateFill,
   thread,
 }: {
   area?: AreaSummary;
   currentDate: number;
   dateInHeading?: boolean;
-  onTray?: boolean;
+  onLateFill?: boolean;
   thread: Thread;
 }) {
   const completeTask = useCompleteTask(thread);
@@ -308,7 +309,7 @@ export function ConnectedThreadAttentionCard({
       area={area}
       currentDate={currentDate}
       dateInHeading={dateInHeading}
-      onTray={onTray}
+      onLateFill={onLateFill}
       thread={thread}
       onAddFollowUp={(when) => taskDates.addFollowUp(when)}
       onCompleteTask={(taskId) => completeTask(taskId)}

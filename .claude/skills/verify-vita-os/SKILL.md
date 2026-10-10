@@ -26,7 +26,7 @@ Then sign in through the real form:
 bun run verify signin
 ```
 
-`signin` opens `/sign-in`, fills `Email` and `Password`, clicks `Sign In`, waits for the dock (`nav[aria-label="Primary"]`), and confirms via `GET /api/auth/get-session` that the browser holds the throwaway user's session. The browser stays signed in for later commands. Capture the landing state with `bun run verify shot signin-after`.
+`signin` opens `/sign-in`, fills `Email` and `Password`, clicks `Sign In`, waits for the header (`header[aria-label="Vita OS"]`), and confirms via `GET /api/auth/get-session` that the browser holds the throwaway user's session. The browser stays signed in for later commands. Capture the landing state with `bun run verify shot signin-after`.
 
 **Isolation.** Each instance (`--instance <name>` or `VITA_INSTANCE`, default `main`) has its own ports (auto-picked from 8787/5173 upward), its own D1 under `.verify/instances/<name>/d1`, and its own agent-browser session. Two agents in one checkout use two instance names. Never drive a server or browser session this CLI did not start, including the developer's own `bun run dev`.
 
@@ -121,5 +121,5 @@ The feature map is only as good as its last update, and you are the one who upda
 - Saved Notes are read-only preview buttons named `Open note: <plain-text preview>`. Use `wait --text` for saved text and click the button to open the Note view. Its editor is `Note body` after choosing the `Write` tab.
 - Use `localhost`, never `127.0.0.1`. CORS allows exactly the instance's `http://localhost:<webPort>` origin.
 - "Continue with GitHub" and "Continue with Google" render but have no local credentials. Do not click them.
-- Keep a desktop viewport. Below 768px the filter row folds into a dropdown and the "Later" and "No date" columns start collapsed.
+- Keep a desktop viewport. Below 1024px (`lg`) the header's actions move to the bottom `navigation "Actions"` bar and `No date` leads the list folded to one line. From 1280px an open Thread pane covers the header's actions: close it, or use the palette.
 - The TanStack Router devtools toggle floats in a corner in dev. If a corner control will not click, check whether the toggle covers it.
