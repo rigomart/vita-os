@@ -2,6 +2,7 @@ import {
   ApplicationClientProvider,
   ViewerProvider,
 } from "@vita-os/application";
+import { clock } from "@vita-os/application/internal/lib/clock.ts";
 import { toast } from "@vita-os/ui/lib/toast";
 import {
   createContext,
@@ -29,6 +30,8 @@ export type Latency = keyof typeof latencies;
 export interface LabSettings {
   scenarioId: ScenarioId;
   latency: Latency;
+  /** The moment the clock is set to, or the real time when absent. */
+  at?: number | undefined;
 }
 
 interface LabControls extends LabSettings {
@@ -53,11 +56,19 @@ export function useLab(): LabControls {
 
 /**
  * The product's surroundings in the lab: an in-memory client seeded from the
- * chosen scenario, and a made-up person signed in. Changing the scenario or
- * resetting builds a new client and a new cache, so nothing leaks between runs.
+ * chosen scenario, a made-up person signed in, and the product's clock set to
+ * the chosen moment. Changing the scenario or resetting builds a new client
+ * and a new cache, so nothing leaks between runs. Setting the clock keeps the
+ * data, so the same situation can be seen at another time; a reset seeds it
+ * again around the moment set.
  */
 export function LabApplication({ children }: PropsWithChildren) {
-  const [settings, setSettings] = useState(readSettings);
+  const [settings, setSettings] = useState(() => {
+    const stored = readSettings();
+    // Before the first seed, which dates its items from the clock.
+    clock.set(stored.at);
+    return stored;
+  });
   const [generation, setGeneration] = useState(0);
   const latency = useRef(latencies[settings.latency]);
   latency.current = latencies[settings.latency];
@@ -81,7 +92,10 @@ export function LabApplication({ children }: PropsWithChildren) {
 
   const controls: LabControls = {
     ...settings,
-    change: (changes) => setSettings((current) => ({ ...current, ...changes })),
+    change: (changes) => {
+      if ("at" in changes) clock.set(changes.at);
+      setSettings((current) => ({ ...current, ...changes }));
+    },
     reset: () => setGeneration((current) => current + 1),
   };
 
@@ -124,5 +138,8 @@ function readSettings(): LabSettings {
       stored.latency !== undefined && Object.hasOwn(latencies, stored.latency)
         ? stored.latency
         : DEFAULT_SETTINGS.latency,
+    ...(typeof stored.at === "number" && Number.isFinite(stored.at)
+      ? { at: stored.at }
+      : {}),
   };
 }

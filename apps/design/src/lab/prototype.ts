@@ -18,6 +18,9 @@ export interface Variant {
  *
  * Give it `variants` to compare directions: they are switched in place with
  * `[` and `]`, or laid side by side at `/lab/<folder>/compare`.
+ *
+ * Its page is the Dashboard as far as the product knows: choosing a filter,
+ * a digit, the logo or Dashboard in the palette stays on it.
  */
 export interface Prototype {
   title: string;
@@ -26,8 +29,11 @@ export interface Prototype {
   /**
    * Render inside the product's shell: its chrome, command palette and Thread
    * pane. For whole-screen directions; leave it off for parts of a screen.
+   * `"without-chrome"` keeps the pane, the palette, the dialogs and the
+   * shortcuts but draws no chrome, for a direction that draws its own; it
+   * reaches the shell's actions with `useShellActions`.
    */
-  shell?: boolean;
+  shell?: boolean | "without-chrome";
   variants: readonly [Variant, ...Variant[]];
 }
 

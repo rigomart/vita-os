@@ -1,13 +1,18 @@
+import type { ReactNode } from "react";
+
+import { createRoute, Link, notFound } from "@tanstack/react-router";
 import {
-  createRoute,
-  Link,
-  notFound,
-  redirect,
-  type AnyRoute,
-} from "@tanstack/react-router";
-import { authenticatedRouteTree, productRootRoute } from "@vita-os/application";
+  authenticatedRouteTree,
+  DashboardPathProvider,
+  productRootRoute,
+  readProductSearch,
+} from "@vita-os/application";
+import { AppShell } from "@vita-os/application/internal/layout/app-shell.tsx";
+import { ShellBehavior } from "@vita-os/application/internal/layout/shell-behavior.tsx";
 
 import { DesignSystemPage } from "@/system/design-system-page";
+
+import type { Prototype } from "./prototype";
 
 import {
   CompareVariants,
@@ -41,56 +46,49 @@ function loadPrototype({ params }: { params: { prototypeId: string } }) {
   return entry;
 }
 
+/**
+ * One prototype, in as much of the product's shell as it asks for. Its page
+ * stands in for the Dashboard, so the product's ways back to the Dashboard
+ * stay here.
+ */
 const prototypeRoute = createRoute({
   getParentRoute: () => productRootRoute,
   path: "/lab/$prototypeId",
-  validateSearch: readPrototypeSearch,
-  // A prototype that wants the product's shell lives under it.
-  beforeLoad: ({ params, search }) => {
-    if (findPrototype(params.prototypeId)?.prototype.shell) {
-      // Added at runtime, so the router's types do not know this address.
-      const query =
-        search.variant === undefined
-          ? ""
-          : `?variant=${encodeURIComponent(search.variant)}`;
-      throw redirect({ href: `/lab/${params.prototypeId}/app${query}` });
-    }
-  },
+  // The product's own search too: the shell and the screens read it.
+  validateSearch: (search: Record<string, unknown>) => ({
+    ...readProductSearch(search),
+    ...readPrototypeSearch(search),
+  }),
   loader: loadPrototype,
   component: function PrototypePage() {
     const { id, prototype } = prototypeRoute.useLoaderData();
     return (
-      <PrototypeStage
-        id={id}
-        prototype={prototype}
-        search={prototypeRoute.useSearch()}
-      />
+      <DashboardPathProvider path={`/lab/${id}`}>
+        <PrototypeShell shell={prototype.shell}>
+          <PrototypeStage
+            prototype={prototype}
+            search={prototypeRoute.useSearch()}
+          />
+        </PrototypeShell>
+      </DashboardPathProvider>
     );
   },
   notFoundComponent: NoSuchPrototype,
 });
 
-/**
- * The same, inside the product's authenticated layout, so a whole-screen
- * direction sits in the real chrome and can summon the real Thread pane.
- */
-const shellPrototypeRoute = createRoute({
-  getParentRoute: () => authenticatedRouteTree,
-  path: "/lab/$prototypeId/app",
-  validateSearch: readPrototypeSearch,
-  loader: loadPrototype,
-  component: function ShellPrototypePage() {
-    const { id, prototype } = shellPrototypeRoute.useLoaderData();
-    return (
-      <PrototypeStage
-        id={id}
-        prototype={prototype}
-        search={shellPrototypeRoute.useSearch()}
-      />
-    );
-  },
-  notFoundComponent: NoSuchPrototype,
-});
+function PrototypeShell({
+  shell,
+  children,
+}: {
+  shell: Prototype["shell"];
+  children: ReactNode;
+}) {
+  if (shell === true) return <AppShell>{children}</AppShell>;
+  if (shell === "without-chrome") {
+    return <ShellBehavior>{children}</ShellBehavior>;
+  }
+  return children;
+}
 
 const compareRoute = createRoute({
   getParentRoute: () => productRootRoute,
@@ -103,17 +101,8 @@ const compareRoute = createRoute({
   notFoundComponent: NoSuchPrototype,
 });
 
-/**
- * The product's route tree with the lab's pages added: beside the product's
- * routes, and one under its authenticated layout. `addChildren` replaces a
- * route's children, so the product's own are passed along.
- */
+/** The product's route tree with the lab's pages beside its routes. */
 export function labRouteTree() {
-  // Hot reloading runs this again; drop the copy the last run added.
-  const productChildren = (
-    authenticatedRouteTree.children as unknown as AnyRoute[]
-  ).filter((route) => pathOf(route) !== pathOf(shellPrototypeRoute));
-  authenticatedRouteTree.addChildren([...productChildren, shellPrototypeRoute]);
   return productRootRoute.addChildren([
     authenticatedRouteTree,
     labRoute,
@@ -121,10 +110,6 @@ export function labRouteTree() {
     prototypeRoute,
     compareRoute,
   ]);
-}
-
-function pathOf(route: AnyRoute): unknown {
-  return (route.options as { path?: string }).path;
 }
 
 function NoSuchPrototype() {
@@ -158,6 +143,12 @@ function LabIndexPage() {
       </Section>
 
       <Section title="Prototypes">
+        {prototypes.length === 0 && (
+          <p className="px-3 py-2 text-sm text-muted-foreground">
+            None yet. Add a folder under <code>src/prototypes/</code> whose{" "}
+            <code>index.tsx</code> default-exports a prototype.
+          </p>
+        )}
         {prototypes.map(({ id, prototype }) => (
           <div key={id} className="flex items-start gap-2">
             <Link
