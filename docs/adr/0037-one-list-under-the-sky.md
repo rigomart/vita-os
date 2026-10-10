@@ -29,7 +29,7 @@ The sky gives the page one honest piece of orientation, the time of day, in plac
 
 ## Considered Options
 
-The decision came out of a prototype in the design lab (`apps/design/src/prototypes/dashboard-redesign`), over the product's own cards, models and scenarios, in rounds:
+The decision came out of a prototype in the design lab, over the product's own cards, models and scenarios, in rounds. The prototype was removed once this shipped, so it would not drift from the product it copies; its final round is commit `0c27cbc` in the pull request that added this ADR (`git log` on this file finds it). The earlier rounds were replaced as they were decided and were not kept:
 
 - **Whole-page directions**: *Daylight*, *Approach* and *Runway*. Daylight, the sky as the header over one list, won and the later rounds refined it.
 - **Filter in the header vs on the board**: the board won. It has room to show most Areas, and it sits over what it filters.
