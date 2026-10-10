@@ -1,6 +1,6 @@
 # Notes open in a Note view; bodies are Markdown
 
-Status: Amended by ADR 0025 — the view has Read and Write modes over one draft, the discard question sits in the footer, Delete offers Undo instead of asking, and task checkboxes can be ticked in Read.
+Status: Amended by ADR 0025 — the view has Read and Write modes over one draft, the discard question sits in the footer, Delete offers Undo instead of asking, and task checkboxes can be ticked in Read. Amended by ADR 0038 — one live-preview editor replaces Read and Write.
 
 A consultation write-up can contain medication changes, tests, and next steps. Such a Note needs room and structure, while its saved card needs to remain small enough to scan beside other Notes.
 

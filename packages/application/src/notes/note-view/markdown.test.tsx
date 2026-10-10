@@ -1,11 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import {
-  Markdown,
-  markdownToPlainText,
-  toggleMarkdownTask,
-} from "@vita-os/ui/components/markdown";
-import { describe, expect, it, vi } from "vitest";
+import { Markdown, markdownToPlainText } from "@vita-os/ui/components/markdown";
+import { describe, expect, it } from "vitest";
 
 describe("Markdown", () => {
   it("preserves single line breaks in existing Notes", () => {
@@ -77,7 +72,7 @@ describe("Markdown", () => {
     expect(screen.queryByRole("link")).toBeNull();
   });
 
-  it("draws tasks without controls unless they can be toggled", () => {
+  it("draws tasks as boxes, not controls", () => {
     render(
       <Markdown variant="preview">
         {"- [ ] Tests ordered\n- [x] Call completed"}
@@ -90,54 +85,6 @@ describe("Markdown", () => {
     expect(screen.getAllByRole("listitem")[1]).toHaveTextContent(
       "Done: Call completed",
     );
-  });
-
-  it("reports the source offset of a toggled task in read mode", async () => {
-    const user = userEvent.setup();
-    const body = "Before:\n\n- [ ] Tests ordered\n- [x] Call completed";
-    const onToggleTask = vi.fn();
-    render(<Markdown onToggleTask={onToggleTask}>{body}</Markdown>);
-    expect(
-      screen.getByRole("checkbox", { name: "Call completed" }),
-    ).toBeChecked();
-    await user.click(screen.getByRole("checkbox", { name: "Tests ordered" }));
-    expect(onToggleTask).toHaveBeenCalledExactlyOnceWith(body.indexOf("- [ ]"));
-  });
-
-  it("keeps preview tasks inert even when a toggle is supplied", () => {
-    render(
-      <Markdown variant="preview" onToggleTask={vi.fn()}>
-        {"- [ ] Tests ordered"}
-      </Markdown>,
-    );
-    expect(screen.queryByRole("checkbox")).toBeNull();
-  });
-});
-
-describe("toggleMarkdownTask", () => {
-  it("flips the marker of the item at an offset and nothing else", () => {
-    const body = "- [ ] One\n  1. [x] Two\n- Three";
-    expect(toggleMarkdownTask(body, 0)).toBe(
-      "- [x] One\n  1. [x] Two\n- Three",
-    );
-    expect(toggleMarkdownTask(body, body.indexOf("1."))).toBe(
-      "- [ ] One\n  1. [ ] Two\n- Three",
-    );
-    expect(toggleMarkdownTask(body, body.indexOf("- Three"))).toBe(body);
-  });
-
-  it("toggles the offsets the renderer reports, inside quotes too", async () => {
-    const user = userEvent.setup();
-    let body = "> - [ ] Quoted task";
-    render(
-      <Markdown
-        onToggleTask={(offset) => (body = toggleMarkdownTask(body, offset))}
-      >
-        {body}
-      </Markdown>,
-    );
-    await user.click(screen.getByRole("checkbox", { name: "Quoted task" }));
-    expect(body).toBe("> - [x] Quoted task");
   });
 });
 

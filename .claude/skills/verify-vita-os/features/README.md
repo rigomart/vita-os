@@ -26,7 +26,7 @@ Run each new flow below from a fresh instance: `bun run verify up`, `bun run ver
 
 | Flow | Feature maps and scope |
 | --- | --- |
-| [notes](../flows/notes.flow) | [Capture a note](./capture-note.md), [Note view](./note-view.md): header capture, Read/Write, saved edits, Delete with Undo and persisted deletion. |
+| [notes](../flows/notes.flow) | [Capture a note](./capture-note.md), [Note view](./note-view.md): header capture, live preview while typing, saved edits in place, Delete with Undo and persisted deletion. |
 | [notes-dashboard](../flows/notes-dashboard.flow) | [Notes on the Dashboard](./notes-on-the-dashboard.md): Notes filter, archive, archived body search in History, and unarchive. |
 | [thread-notes](../flows/thread-notes.flow) | [Thread Notes](./thread-notes.md): desktop capture, edit, archive, unarchive, and deletion. |
 | [add-to-thread](../flows/add-to-thread.flow) | [Add a Note to a Thread](./add-to-thread.md): undated add to an existing Thread and New thread from note. Dated conversion stays in `dated-tasks.flow`. |
@@ -49,7 +49,7 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 
 - [Sign in](./sign-in.md) covers the email and password form, the session check, and the signed-out redirect.
 - [Capture a note](./capture-note.md) covers the header button, the Q shortcut, and the command palette, plus persistence.
-- [Note view](./note-view.md) covers Read/Write over one draft, task checkboxes, inline discard, Delete with Undo, previews, and nested phone drawers.
+- [Note view](./note-view.md) covers the live-preview editor, task checkboxes, inline discard, Delete with Undo, previews, and nested phone drawers.
 - [Thread Notes](./thread-notes.md) covers capture, editing, archiving and its history, unarchiving, and persisted deletion inside a Thread.
 - [Add a Note to a Thread](./add-to-thread.md) covers Add to thread… with its date preview, Undo and Open thread, and New thread from note.
 - [Create a thread](./create-thread.md) covers the New thread dialog and the thread pane it opens.

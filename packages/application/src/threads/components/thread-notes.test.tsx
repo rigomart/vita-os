@@ -3,6 +3,12 @@ import type { ThreadNote, ThreadNoteId } from "@vita-os/contracts";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import {
+  findNoteEditor,
+  noteText,
+  replaceNoteText,
+  typeInNote,
+} from "../../test/note-editor";
 import { render, screen, within } from "../../test/render-with-providers";
 import { ThreadNotes } from "./thread-notes";
 
@@ -54,9 +60,9 @@ describe("ThreadNotes", () => {
     expect(
       screen.queryByRole("button", { name: /follow-up date/i }),
     ).toBeNull();
-    await user.type(
-      screen.getByRole("textbox", { name: "Note body" }),
-      "Called the clinic{Enter}Waiting for a reply",
+    typeInNote(
+      await findNoteEditor(),
+      "Called the clinic\nWaiting for a reply",
     );
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(callbacks.onCreate).toHaveBeenCalledExactlyOnceWith(
@@ -74,21 +80,16 @@ describe("ThreadNotes", () => {
     expect(screen.queryByRole("button", { name: "Delete note" })).toBeNull();
     await user.click(screen.getByRole("button", { name: /Open note: Clinic/ }));
     const dialog = screen.getByRole("dialog");
-    expect(
-      within(dialog).getByRole("link", { name: "Portal" }),
-    ).toHaveAttribute("href", "https://example.com");
-    await user.click(within(dialog).getByRole("tab", { name: "Write" }));
-    await user.clear(screen.getByRole("textbox", { name: "Note body" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Note body" }),
-      "Clinic called back",
-    );
+    const editor = await findNoteEditor();
+    expect(dialog).toContainElement(editor);
+    expect(within(editor).getByText("Portal")).toBeVisible();
+    replaceNoteText(editor, "Clinic called back");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(callbacks.onUpdateBody).toHaveBeenCalledWith(
       saved,
       "Clinic called back",
     );
-    expect(within(dialog).getByText("Clinic called back")).toBeVisible();
+    expect(noteText(editor)).toBe("Clinic called back");
     await user.click(
       within(dialog).getByRole("button", { name: "More actions" }),
     );

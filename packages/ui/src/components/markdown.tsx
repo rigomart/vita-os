@@ -1,50 +1,18 @@
 import type { Nodes } from "mdast";
 
 import { CheckIcon } from "lucide-react";
-import { createContext, use } from "react";
-import ReactMarkdown, {
-  type Components,
-  type ExtraProps,
-} from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 
 import { cn } from "../lib/utils";
-import { Checkbox } from "./checkbox";
 import { Separator } from "./separator";
-
-/** The task list item a checkbox belongs to: where it starts in the source. */
-const TaskItemContext = createContext<{ offset?: number; label: string }>({
-  label: "",
-});
-
-type HastElement = NonNullable<ExtraProps["node"]>;
-
-function hastText(node: HastElement | HastElement["children"][number]): string {
-  if (node.type === "text") return node.value;
-  if (node.type !== "element") return "";
-  return node.children.map(hastText).join("");
-}
-
-const taskMarker = /^((?:[-*+]|\d+[.)])[ \t]+)\[([ xX])\]/;
-
-/**
- * Flip the task marker of the list item that starts at `offset`. Returns the
- * body unchanged when no task marker starts there.
- */
-export function toggleMarkdownTask(body: string, offset: number): string {
-  const match = taskMarker.exec(body.slice(offset));
-  if (!match) return body;
-  const at = offset + match[1]!.length + 1;
-  const next = body[at] === " " ? "x" : " ";
-  return body.slice(0, at) + next + body.slice(at + 1);
-}
 
 const linkClassName = "text-primary underline underline-offset-2 break-words";
 
-function safeLink(url: string) {
+export function safeLink(url: string) {
   return /^(https?:|mailto:)/i.test(url) ? url : undefined;
 }
 
@@ -87,16 +55,9 @@ const components: Components = {
       {children}
     </ol>
   ),
-  li: ({ children, className, node }) =>
+  li: ({ children, className }) =>
     className?.includes("task-list-item") ? (
-      <TaskItemContext
-        value={{
-          offset: node?.position?.start.offset,
-          label: node ? hastText(node).trim() : "",
-        }}
-      >
-        <li className="flex items-start gap-2.5 [&>p]:mb-1">{children}</li>
-      </TaskItemContext>
+      <li className="flex items-start gap-2.5 [&>p]:mb-1">{children}</li>
     ) : (
       <li className="pl-0.5 [&>p]:mb-1">{children}</li>
     ),
@@ -143,37 +104,18 @@ const components: Components = {
   img: ({ alt }) => <span>{alt}</span>,
 };
 
-function TaskCheckbox({
-  checked,
-  onToggleTask,
-}: {
-  checked: boolean;
-  onToggleTask?: (offset: number) => void;
-}) {
-  const { offset, label } = use(TaskItemContext);
-
-  if (!onToggleTask || offset === undefined) {
-    // A preview sits inside a card button, so it draws the box without a control.
-    return (
-      <span
-        className={cn(
-          "mt-1 flex size-4 shrink-0 items-center justify-center rounded-[5px] bg-input/90",
-          checked && "bg-primary text-primary-foreground",
-        )}
-      >
-        {checked ? <CheckIcon aria-hidden className="size-3.5" /> : null}
-        <span className="sr-only">{checked ? "Done: " : "To do: "}</span>
-      </span>
-    );
-  }
-
+// Notes are edited in the Note view, so rendered tasks draw a box, not a control.
+function TaskCheckbox({ checked }: { checked: boolean }) {
   return (
-    <Checkbox
-      checked={checked}
-      aria-label={label}
-      onCheckedChange={() => onToggleTask(offset)}
-      className="mt-1"
-    />
+    <span
+      className={cn(
+        "mt-1 flex size-4 shrink-0 items-center justify-center rounded-[5px] bg-input/90",
+        checked && "bg-primary text-primary-foreground",
+      )}
+    >
+      {checked ? <CheckIcon aria-hidden className="size-3.5" /> : null}
+      <span className="sr-only">{checked ? "Done: " : "To do: "}</span>
+    </span>
   );
 }
 
@@ -181,13 +123,10 @@ export function Markdown({
   children,
   variant = "read",
   className,
-  onToggleTask,
 }: {
   children: string;
   variant?: "read" | "preview";
   className?: string;
-  /** Makes task list checkboxes interactive; receives the item's source offset. */
-  onToggleTask?: (offset: number) => void;
 }) {
   return (
     <div
@@ -199,12 +138,7 @@ export function Markdown({
         urlTransform={safeLink}
         components={{
           ...components,
-          input: ({ checked }) => (
-            <TaskCheckbox
-              checked={checked === true}
-              onToggleTask={variant === "read" ? onToggleTask : undefined}
-            />
-          ),
+          input: ({ checked }) => <TaskCheckbox checked={checked === true} />,
           a: ({ children: label, href }) =>
             variant === "read" && href ? (
               <a

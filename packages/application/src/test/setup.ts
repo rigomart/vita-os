@@ -32,3 +32,8 @@ Element.prototype.scrollIntoView ??= vi.fn();
 Element.prototype.setPointerCapture ??= vi.fn();
 Element.prototype.releasePointerCapture ??= vi.fn();
 Element.prototype.hasPointerCapture ??= vi.fn(() => false);
+
+// CodeMirror, behind the Note view's editor, measures text ranges for layout.
+Range.prototype.getClientRects ??= () =>
+  Object.assign([], { item: () => null }) as unknown as DOMRectList;
+Range.prototype.getBoundingClientRect ??= () => new DOMRect();

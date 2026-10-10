@@ -1,3 +1,5 @@
+import type { MarkdownChangeCause } from "@vita-os/ui/components/markdown-editor";
+
 import { Button } from "@vita-os/ui/components/button";
 import {
   DropdownMenu,
@@ -6,7 +8,6 @@ import {
   DropdownMenuTrigger,
 } from "@vita-os/ui/components/dropdown-menu";
 import { Kbd } from "@vita-os/ui/components/kbd";
-import { Markdown, toggleMarkdownTask } from "@vita-os/ui/components/markdown";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -14,13 +15,6 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@vita-os/ui/components/responsive-dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@vita-os/ui/components/tabs";
-import { Textarea } from "@vita-os/ui/components/textarea";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
 import { cn } from "@vita-os/ui/lib/utils";
@@ -31,22 +25,24 @@ import {
   CalendarClock,
   CopyIcon,
   EllipsisIcon,
-  EyeIcon,
   MessageSquareIcon,
   MessageSquarePlusIcon,
-  PencilIcon,
   Trash2Icon,
   TriangleAlertIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 
 import { withTimeToken } from "../../attention-list/date-parts";
 import { followUpDateLabels } from "../../attention-list/follow-up-date";
 import { WhenPopover } from "../../attention-list/row-parts";
-import { useMarkdownTextarea } from "./use-markdown-textarea";
 
-type Mode = "read" | "write";
+// CodeMirror is a large share of the bundle. It starts downloading with this
+// module, so it is usually ready before the first Note view opens.
+const editorModule = import("@vita-os/ui/components/markdown-editor");
+const MarkdownEditor = lazy(() =>
+  editorModule.then((module) => ({ default: module.MarkdownEditor })),
+);
 
 export interface NoteDialogProps {
   open: boolean;
@@ -105,18 +101,12 @@ export function NoteDialog({
   const feedback = useFeedback();
   const isCompose = note === undefined;
   const canWrite = isCompose ? onSubmit !== undefined : onSave !== undefined;
-  const [mode, setMode] = useState<Mode>(isCompose ? "write" : "read");
   const [savedBody, setSavedBody] = useState(note?.body ?? "");
-  // The unsaved text, or null when nothing has been edited. Read shows it, so
-  // switching modes previews a draft instead of throwing it away.
+  // The unsaved text, or null when nothing has been edited.
   const [draft, setDraft] = useState<string | null>(null);
   const [when, setWhen] = useState<number | undefined>(followUp);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const writeTabRef = useRef<HTMLButtonElement>(null);
   const keepEditingRef = useRef<HTMLButtonElement>(null);
-  const focusEditorOnWrite = useRef(false);
-  const focusWriteTab = useRef(false);
   const discardTitleId = useId();
 
   // Optimistic cache changes can arrive during an edit. Refresh the document
@@ -124,19 +114,6 @@ export function NoteDialog({
   useEffect(() => setSavedBody(note?.body ?? ""), [note?.body]);
 
   const body = draft ?? savedBody;
-
-  useEffect(() => {
-    if (mode === "write" && focusEditorOnWrite.current) {
-      focusEditorOnWrite.current = false;
-      const textarea = textareaRef.current;
-      textarea?.focus();
-      textarea?.setSelectionRange(textarea.value.length, textarea.value.length);
-    }
-    if (mode === "read" && focusWriteTab.current) {
-      focusWriteTab.current = false;
-      writeTabRef.current?.focus();
-    }
-  }, [mode]);
 
   useEffect(() => {
     if (confirmingDiscard) keepEditingRef.current?.focus();
@@ -150,7 +127,7 @@ export function NoteDialog({
     successMessage: "Note saved",
     errorToast: false,
   });
-  // Ticking a box while reading saves quietly; a failure still reports.
+  // Ticking a box on a saved Note saves quietly; a failure still reports.
   const saveTask = useGuardedAsyncAction(async (value: string) =>
     onSave?.(value),
   );
@@ -171,10 +148,6 @@ export function NoteDialog({
   const isDirty = isCompose
     ? body !== "" || when !== followUp
     : draft !== null && draft !== savedBody;
-  const markdownTextarea = useMarkdownTextarea({
-    value: body,
-    onChange: setDraft,
-  });
 
   const finishDismissal = () => {
     setDraft(null);
@@ -213,23 +186,18 @@ export function NoteDialog({
       if (!result.ok) return;
       setSavedBody(trimmed);
       setDraft(null);
-      if (mode === "write") {
-        focusWriteTab.current = true;
-        setMode("read");
-      }
     }
   };
 
-  const handleToggleTask = (offset: number) => {
-    if (isPending) return;
-    const next = toggleMarkdownTask(body, offset);
-    if (next === body) return;
-    if (isCompose || isDirty) {
+  const handleChange = (next: string, cause: MarkdownChangeCause) => {
+    if (cause === "edit" || isCompose || isDirty) {
       setDraft(next);
       return;
     }
     const previous = savedBody;
     setSavedBody(next);
+    // A draft typed back to the saved text is not a change; the tick replaces it.
+    setDraft(null);
     void saveTask.run(next).then((result) => {
       if (!result.ok) setSavedBody(previous);
     });
@@ -327,11 +295,7 @@ export function NoteDialog({
         }}
         className="flex max-h-[85dvh] flex-col overflow-hidden sm:max-w-2xl data-[vaul-drawer-direction=bottom]:max-h-[85dvh] [&>div:last-child]:min-h-0 [&>div:last-child]:overflow-hidden"
       >
-        <Tabs
-          value={mode}
-          onValueChange={(value) => setMode(value as Mode)}
-          className="flex max-h-[calc(85dvh-4rem)] min-h-0 flex-col gap-3"
-        >
+        <div className="flex max-h-[calc(85dvh-4rem)] min-h-0 flex-col gap-3">
           {/* In a drawer the handle sits right above the header. */}
           <ResponsiveDialogHeader className="shrink-0 flex-row items-center justify-between gap-2 in-data-[slot=drawer-content]:pt-4">
             <div className="flex min-w-0 items-center gap-2.5 text-left">
@@ -363,44 +327,10 @@ export function NoteDialog({
               <ResponsiveDialogDescription className="sr-only">
                 {isCompose
                   ? "Write a note using Markdown."
-                  : "Read and manage this note."}
+                  : "Read, edit and manage this note. It uses Markdown."}
               </ResponsiveDialogDescription>
             </div>
             <div className="-my-1 flex shrink-0 items-center gap-1">
-              {canWrite ? (
-                <TabsList
-                  aria-label="Note view"
-                  className="h-8 gap-0.5 bg-muted p-[3px]"
-                >
-                  <TabsTrigger
-                    value="read"
-                    className="h-full gap-1.5 px-2.5 text-xs font-semibold data-active:bg-surface-2 data-active:shadow-xs data-active:ring-1 data-active:ring-border dark:data-active:bg-foreground/15 [&_svg:not([class*='size-'])]:size-3.5"
-                  >
-                    <EyeIcon aria-hidden />
-                    Read
-                  </TabsTrigger>
-                  <TabsTrigger
-                    ref={writeTabRef}
-                    value="write"
-                    onPointerDown={() => {
-                      focusEditorOnWrite.current = true;
-                    }}
-                    className="h-full gap-1.5 px-2.5 text-xs font-semibold data-active:bg-surface-2 data-active:shadow-xs data-active:ring-1 data-active:ring-border dark:data-active:bg-foreground/15 [&_svg:not([class*='size-'])]:size-3.5"
-                  >
-                    <PencilIcon aria-hidden />
-                    Write
-                    {isDirty && !isCompose ? (
-                      <>
-                        <span
-                          aria-hidden
-                          className="size-1.5 rounded-full bg-condition-attention"
-                        />
-                        <span className="sr-only">, unsaved changes</span>
-                      </>
-                    ) : null}
-                  </TabsTrigger>
-                </TabsList>
-              ) : null}
               {!isCompose ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger
@@ -467,45 +397,20 @@ export function NoteDialog({
             </div>
           </ResponsiveDialogHeader>
 
-          <div className="-mx-1 min-h-0 overflow-y-auto overscroll-contain px-1">
-            <TabsContent value="read" className="min-h-85 py-1 text-base">
-              {body.trim() ? (
-                <Markdown
-                  className="text-base leading-relaxed"
-                  onToggleTask={
-                    canWrite && !isPending ? handleToggleTask : undefined
-                  }
-                >
-                  {body}
-                </Markdown>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Nothing to read yet. Switch to Write to start.
-                </p>
-              )}
-            </TabsContent>
-            <TabsContent value="write" className="min-h-85">
-              <Textarea
-                ref={textareaRef}
-                variant="inline"
+          <div className="-mx-1 min-h-0 overflow-y-auto overscroll-contain px-1 py-1">
+            <Suspense fallback={<div className="min-h-85" />}>
+              <MarkdownEditor
                 aria-label="Note body"
                 value={body}
-                onChange={(event) => setDraft(event.target.value)}
-                placeholder="What's on your mind?"
-                autoFocus={isCompose}
+                onChange={handleChange}
+                onSubmit={() => void handleSubmit()}
+                readOnly={!canWrite}
                 disabled={isPending}
-                className="field-sizing-content min-h-85 py-1 text-base leading-relaxed caret-ring disabled:opacity-100"
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    (event.metaKey || event.ctrlKey)
-                  ) {
-                    event.preventDefault();
-                    void handleSubmit();
-                  } else markdownTextarea.onKeyDown(event);
-                }}
+                autoFocus={isCompose}
+                placeholder="What's on your mind?"
+                className="[&_.cm-content]:min-h-85!"
               />
-            </TabsContent>
+            </Suspense>
           </div>
 
           {error ? (
@@ -611,7 +516,7 @@ export function NoteDialog({
               </div>
             </div>
           )}
-        </Tabs>
+        </div>
       </ResponsiveDialogContent>
     </ResponsiveDialog>
   );

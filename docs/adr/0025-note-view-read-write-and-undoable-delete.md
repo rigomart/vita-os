@@ -1,6 +1,6 @@
 # Note view reads and writes one draft; Delete offers Undo
 
-**Status:** Accepted
+**Status:** Accepted. Amended by [ADR 0038](./0038-note-view-live-preview-editor.md): one live-preview editor replaces the Read/Write switch.
 **Date:** 2026-09-30
 
 The **Note view** from ADR 0024 had three modes and two stacked confirmations. A saved **Note** opened in read mode with an Edit button; composing had no way to see the rendered Markdown; read mode shrank to its content, so a one-line **Note** opened as a strip; and both "Discard changes?" and "Delete note?" opened a second modal, with a second scrim, over the view.
