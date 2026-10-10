@@ -12,6 +12,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createFakeApplicationClient } from "../test/fake-application-client";
+import { findNoteEditor, noteText, typeInNote } from "../test/note-editor";
 import {
   fireEvent,
   render,
@@ -248,6 +249,7 @@ describe("AppShell", () => {
 
     const view = await screen.findByRole("dialog", { name: "Note" });
     expect(screen.getByText("page body")).toBeInTheDocument();
+    expect(view).toContainElement(await findNoteEditor());
     expect(view).toHaveTextContent("Passport photo sizes");
     expect(
       screen.getByRole("button", { name: "Unarchive" }),
@@ -318,9 +320,7 @@ describe("AppShell", () => {
 
     await user.click(screen.getByRole("button", { name: "chrome new note" }));
 
-    expect(
-      await screen.findByPlaceholderText("What's on your mind?"),
-    ).toBeVisible();
+    expect(await findNoteEditor()).toBeVisible();
   });
 
   it("opens the new note dialog from the q shortcut", async () => {
@@ -329,9 +329,7 @@ describe("AppShell", () => {
 
     await user.keyboard("q");
 
-    expect(
-      await screen.findByPlaceholderText("What's on your mind?"),
-    ).toBeVisible();
+    expect(await findNoteEditor()).toBeVisible();
   });
 
   it.each([["{Control>}q{/Control}"], ["{Meta>}q{/Meta}"], ["{Alt>}q{/Alt}"]])(
@@ -343,7 +341,7 @@ describe("AppShell", () => {
       await user.keyboard(keys);
 
       expect(
-        screen.queryByPlaceholderText("What's on your mind?"),
+        screen.queryByRole("textbox", { name: "Note body" }),
       ).not.toBeInTheDocument();
     },
   );
@@ -353,22 +351,18 @@ describe("AppShell", () => {
     renderShell();
 
     await user.click(screen.getByRole("button", { name: "chrome new note" }));
-    const textarea = await screen.findByPlaceholderText("What's on your mind?");
-    await user.type(textarea, "Buy milk");
-    expect(textarea).toHaveValue("Buy milk");
+    typeInNote(await findNoteEditor(), "Buy milk");
 
     await user.click(screen.getByRole("button", { name: "Close" }));
     await user.click(screen.getByRole("button", { name: "Discard" }));
     await waitFor(() =>
       expect(
-        screen.queryByPlaceholderText("What's on your mind?"),
+        screen.queryByRole("textbox", { name: "Note body" }),
       ).not.toBeInTheDocument(),
     );
 
     await user.click(screen.getByRole("button", { name: "chrome new note" }));
-    expect(
-      await screen.findByPlaceholderText("What's on your mind?"),
-    ).toHaveValue("");
+    expect(noteText(await findNoteEditor())).toBe("");
   });
 
   it("opens the palette from the shortcut and only then subscribes to areas and threads", async () => {
@@ -435,7 +429,7 @@ describe("AppShell", () => {
     for (const spy of Object.values(reads)) spy.mockClear();
     // A re-render after the close must not read the palette's inventories again.
     await user.click(screen.getByRole("button", { name: "chrome new note" }));
-    await screen.findByPlaceholderText("What's on your mind?");
+    await findNoteEditor();
     expect(read("listOpenThreads")).toBe(false);
   });
 
@@ -457,8 +451,8 @@ describe("AppShell", () => {
     await user.click(screen.getByRole("button", { name: "chrome palette" }));
     await user.click(await screen.findByText("New note"));
 
-    const textarea = await screen.findByPlaceholderText("What's on your mind?");
-    await waitFor(() => expect(textarea).toHaveFocus());
+    const editor = await findNoteEditor();
+    await waitFor(() => expect(editor).toHaveFocus());
   });
 
   it("focuses the thread title input when New thread is chosen from the palette", async () => {

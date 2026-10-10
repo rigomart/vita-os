@@ -14,6 +14,7 @@ import {
   deferred,
   success,
 } from "../../test/fake-application-client";
+import { findNoteEditor } from "../../test/note-editor";
 import {
   act,
   render,
@@ -326,7 +327,7 @@ describe("a Dashboard Note view", () => {
     await user.click(
       screen.getByRole("button", { name: /Open note: Consultation/ }),
     );
-    expect(screen.getByRole("link", { name: "Clinic" })).toBeVisible();
+    expect(await findNoteEditor()).toHaveTextContent("Clinic");
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: "Archive",

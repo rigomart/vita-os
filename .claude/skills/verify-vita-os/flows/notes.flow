@@ -1,13 +1,12 @@
-# Capture a standalone Note, preview/edit its shared Read/Write draft, then delete with Undo and with the offer lapsing.
+# Capture a standalone Note, edit it in place in the live-preview editor, then delete with Undo and with the offer lapsing.
 # Needs a fresh signed-in instance (up + signin). D1 SELECTs prove every saved write; Undo never deletes the row.
 open /
 browser -- find role button click --name "New note" --exact
-browser -- wait '[role=dialog] textarea[aria-label="Note body"]'
+browser -- wait '[role=dialog] [contenteditable][aria-label="Note body"]'
 browser -- find label "Note body" fill "**Verify Note ${STAMP}**"
+# Formatting renders while typing: the bold text is drawn bold in the editor itself.
+browser -- wait --fn "[...document.querySelectorAll('[role=dialog] .cm-atomic-strong')].some(el => el.textContent.includes('Verify Note ${STAMP}'))"
 shot notes-compose-before
-browser -- find role tab click --name Read --exact
-browser -- wait --fn "[...document.querySelectorAll('[role=dialog] strong')].some(el => el.textContent === 'Verify Note ${STAMP}')"
-shot notes-compose-read
 browser -- click 'xpath=//*[@role="dialog"]//button[normalize-space()="Add"]'
 browser -- wait --text "Note added"
 d1 "SELECT COUNT(*) AS matching FROM notes WHERE body = '**Verify Note ${STAMP}**' AND state = 'open'"
@@ -16,21 +15,22 @@ browser -- reload
 browser -- wait --text "Verify Note ${STAMP}"
 shot notes-captured-after
 
-# A saved Note opens in Read. Read previews the same unsaved draft; Escape from discard keeps it.
+# A saved Note opens rendered, with no Read/Write switch. Editing marks it unsaved; Escape from discard keeps it.
 browser -- find role button click --name "Open note: Verify Note ${STAMP}" --exact
-browser -- wait '[role=dialog] [role=tab][aria-selected="true"]'
-browser -- wait --fn "[...document.querySelectorAll('[role=dialog] [role=tab]')].some(el => el.textContent.trim() === 'Read' && el.getAttribute('aria-selected') === 'true')"
-browser -- find role tab click --name Write --exact
-browser -- find label "Note body" fill "**Verify Edited ${STAMP}**"
+browser -- wait '[role=dialog] [contenteditable][aria-label="Note body"]'
+browser -- wait --fn "!document.querySelector('[role=dialog] [role=tab]') && document.activeElement?.getAttribute('aria-label') !== 'Note body'"
+shot notes-saved-open
+# `fill` inserts at the caret in this editor instead of replacing, so select all and type.
+browser -- click '[role=dialog] [aria-label="Note body"]'
+browser -- press Meta+a
+browser -- keyboard type "**Verify Edited ${STAMP}**"
+browser -- wait --text "Unsaved changes"
 browser -- press Escape
 browser -- wait --text "Discard unsaved changes?"
 shot notes-discard-before
 browser -- press Escape
-browser -- wait --fn "!document.querySelector('[role=alertdialog]') && document.querySelector('textarea[aria-label=\"Note body\"]')?.value === '**Verify Edited ${STAMP}**'"
-browser -- find role tab click --name Read --exact
-browser -- wait --fn "[...document.querySelectorAll('[role=dialog] strong')].some(el => el.textContent === 'Verify Edited ${STAMP}')"
-browser -- wait --text "Unsaved changes"
-shot notes-read-unsaved
+browser -- wait --fn "!document.querySelector('[role=alertdialog]') && document.querySelector('[aria-label=\"Note body\"]')?.textContent.includes('Verify Edited ${STAMP}')"
+shot notes-unsaved
 browser -- find role button click --name Save --exact
 browser -- wait --text "Note saved"
 d1 "SELECT COUNT(*) AS matching FROM notes WHERE body = '**Verify Edited ${STAMP}**' AND state = 'open'"

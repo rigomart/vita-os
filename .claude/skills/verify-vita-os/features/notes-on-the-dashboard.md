@@ -58,4 +58,4 @@ Preconditions: `bun run verify up --instance notes`, then `bun run verify signin
 - History's empty search reads one page of 20. A nonempty search offers `Load more archived notes` for further matches. The search is debounced by 250 ms, so wait for the result. A cached search may already contain all loaded pages and no longer show the button; reload before verifying pagination from its first page.
 - `Thread actions` can be clicked before the pane renders, leaving no menu. Click it again after the pane's title shows.
 - Adding to a Thread waits out a five-second Undo window before it writes; prove it after a reload or with D1. The toast says `Note added to thread`.
-- On a phone the Note view's header shows `Archived` without the date to leave room for the Read/Write switch.
+- On a phone the Note view's header shows `Archived` without the date to leave room for the header actions.

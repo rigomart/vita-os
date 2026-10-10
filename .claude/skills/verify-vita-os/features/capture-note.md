@@ -20,7 +20,7 @@ Status: proven on 1d2885d by an independent cold run (dock entry point, body onl
 
 ## Driving it with agent-browser
 
-Repeatable dock-capture smoke: run `bun run verify run .claude/skills/verify-vita-os/flows/notes.flow` after `up` and `signin` on a fresh instance. Proven on b2bd91a at 1440×900; it captures a body, previews it in Read, and checks the saved body in D1 and after reload. Other capture entry points and date picking are outside this flow.
+Repeatable dock-capture smoke: run `bun run verify run .claude/skills/verify-vita-os/flows/notes.flow` after `up` and `signin` on a fresh instance. Proven on c8cc3f5 plus the live-preview editor change at 1440×900; it captures a body, checks that its bold renders in the editor while typing, and checks the saved body in D1 and after reload. Other capture entry points and date picking are outside this flow.
 
 Preconditions:
 
