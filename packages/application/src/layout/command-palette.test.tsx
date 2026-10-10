@@ -135,8 +135,9 @@ vi.mock("../threads/new-thread/new-thread-dialog", () => ({
   ),
 }));
 
-vi.mock("./app-chrome", () => ({
-  AppChrome: ({ onOpenPalette }: { onOpenPalette: () => void }) => (
+vi.mock("./action-bar", () => ({ ActionBar: () => null }));
+vi.mock("./sky-header", () => ({
+  SkyHeader: ({ onOpenPalette }: { onOpenPalette: () => void }) => (
     <button type="button" onClick={onOpenPalette}>
       chrome palette
     </button>

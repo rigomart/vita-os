@@ -27,14 +27,14 @@ Preconditions:
 - For `signin-gate` and `signin-error`, start signed out: `bun run verify browser -- cookies clear`.
 
 - **Sign in.** Run `bun run verify signin`. It prints `"signedInAs": "<instance email>"` and `"url": "http://localhost:<webPort>/"`.
-- **Manual form.** Open the form with `bun run verify browser -- open http://localhost:<webPort>/sign-in` and wait for `Sign in to your account to continue`. Fill with `find label "Email" fill <email>` and `find label "Password" fill <password>`, then `find role button click --name "Sign In" --exact`. The dock `nav[aria-label="Primary"]` appears.
+- **Manual form.** Open the form with `bun run verify browser -- open http://localhost:<webPort>/sign-in` and wait for `Sign in to your account to continue`. Fill with `find label "Email" fill <email>` and `find label "Password" fill <password>`, then `find role button click --name "Sign In" --exact`. The header `header[aria-label="Vita OS"]` appears.
 - **Gate.** After `cookies clear`, run `bun run verify browser -- open http://localhost:<webPort>/`. The URL becomes `/sign-in` and the card title reads `Sign In`.
 - **Error.** Fill a wrong password and click `Sign In`. An element with `role="alert"` appears and the URL stays `/sign-in`.
-- **Proof.** `bun run verify shot signin-after` shows the Dashboard with the dock.
+- **Proof.** `bun run verify shot signin-after` shows the Dashboard under the sky header.
 
 ## Gotchas
 
-- The button reads `Signing in...` with `aria-busy` while the request runs. Wait for the dock, not for the button text.
+- The button reads `Signing in...` with `aria-busy` while the request runs. Wait for the header (`header[aria-label="Vita OS"]`), not for the button text.
 - "Checking your session..." shows while the session loads. It is not an error.
 - Do not click `Continue with GitHub` or `Continue with Google`. No local OAuth credentials exist.
 - Repeated failed sign-ins may hit Better Auth rate limiting. Not yet observed locally.

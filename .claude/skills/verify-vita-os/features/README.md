@@ -26,7 +26,7 @@ Run each new flow below from a fresh instance: `bun run verify up`, `bun run ver
 
 | Flow | Feature maps and scope |
 | --- | --- |
-| [notes](../flows/notes.flow) | [Capture a note](./capture-note.md), [Note view](./note-view.md): dock capture, Read/Write, saved edits, Delete with Undo and persisted deletion. |
+| [notes](../flows/notes.flow) | [Capture a note](./capture-note.md), [Note view](./note-view.md): header capture, Read/Write, saved edits, Delete with Undo and persisted deletion. |
 | [notes-dashboard](../flows/notes-dashboard.flow) | [Notes on the Dashboard](./notes-on-the-dashboard.md): Notes filter, archive, archived body search in History, and unarchive. |
 | [thread-notes](../flows/thread-notes.flow) | [Thread Notes](./thread-notes.md): desktop capture, edit, archive, unarchive, and deletion. |
 | [add-to-thread](../flows/add-to-thread.flow) | [Add a Note to a Thread](./add-to-thread.md): undated add to an existing Thread and New thread from note. Dated conversion stays in `dated-tasks.flow`. |
@@ -48,7 +48,7 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 ## Features
 
 - [Sign in](./sign-in.md) covers the email and password form, the session check, and the signed-out redirect.
-- [Capture a note](./capture-note.md) covers the dock button, the Q shortcut, and the command palette, plus persistence.
+- [Capture a note](./capture-note.md) covers the header button, the Q shortcut, and the command palette, plus persistence.
 - [Note view](./note-view.md) covers Read/Write over one draft, task checkboxes, inline discard, Delete with Undo, previews, and nested phone drawers.
 - [Thread Notes](./thread-notes.md) covers capture, editing, archiving and its history, unarchiving, and persisted deletion inside a Thread.
 - [Add a Note to a Thread](./add-to-thread.md) covers Add to thread… with its date preview, Undo and Open thread, and New thread from note.
@@ -56,7 +56,7 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 - [Resolved Threads](./resolved-threads.md) covers the Resolved threads group of the palette's History chip, its search and resolution ordering, opening in place, and Reopen in the pane and drawer.
 - [Notes on the Dashboard](./notes-on-the-dashboard.md) covers the Dashboard's Notes filter and its URL, the old Notes addresses, Archive and Unarchive, and finding Archived Notes in History by searching their bodies.
 - [Tasks](./tasks.md) covers adding, focusing, and completing a Task in the thread pane, the drawer, and the Dashboard card, dated Tasks, repeating Tasks (Repeat, Skip, Late), and completing a Task with a note.
-- [Dashboard board](./dashboard-board.md) covers the dated lanes, the No date tray, the shared Thread and Note card, and the stacked layouts.
+- [Dashboard board](./dashboard-board.md) covers the one dated list on file tabs, No date beside it or folded above it, the shared Thread and Note card, the filter overflow, and the phone layout.
 - [Follow-up dates](./follow-up-dates.md) covers the Follow-up date on standalone Notes and their Dashboard placement. A Thread comes back at its soonest dated Task, covered in [Tasks](./tasks.md).
 - [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter the board row.
 - [Phone installation and sharing](./phone-installation.md) covers manifest/icons, shared Note capture through sign-in, retry, and persistence.

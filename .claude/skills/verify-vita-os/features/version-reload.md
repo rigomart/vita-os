@@ -48,7 +48,7 @@ Escape, open the saved Note, choose More actions and Delete note, and wait for N
 bun run verify browser --instance reload-proof -- wait --fn 'performance.timeOrigin === Number(sessionStorage.getItem("versionProofOrigin")) && [...document.querySelectorAll("button")].some(x => x.textContent.trim() === "Undo")'
 bun run verify shot --instance reload-proof version-save-pending
 bun run verify browser --instance reload-proof -- wait --fn 'performance.timeOrigin !== Number(sessionStorage.getItem("versionProofOrigin"))'
-bun run verify browser --instance reload-proof -- wait 'nav[aria-label="Primary"]'
+bun run verify browser --instance reload-proof -- wait 'header[aria-label="Vita OS"]'
 bun run verify d1 --instance reload-proof "SELECT COUNT(*) AS remaining FROM notes WHERE body = 'Reload proof saved note'"
 bun run verify shot --instance reload-proof version-reloaded-after-save
 ```

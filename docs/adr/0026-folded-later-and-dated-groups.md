@@ -1,6 +1,6 @@
 # Later starts folded; dated columns group by when
 
-**Status:** Accepted
+**Status:** Accepted. Amended by ADR 0037 — the dated groups stand, now in one list on file tabs, and from next week on items are one line each; Later's fold and horizon are gone.
 **Date:** 2026-10-01
 
 Two complaints about the **Dashboard** from ADR 0017. **Later** took a full column for things that are already scheduled and need no attention today. And **This week** was hard to read: its cards were sorted soonest-first, but nothing marked where one day ended and the next began, so an item due tomorrow and one due in five days looked alike until you read each card's small date token and worked out the weekday.

@@ -32,8 +32,8 @@ bun run verify shot --instance phone phone-share-needs-signin
 bun run verify browser --instance phone -- find role button click --name 'Sign In' --exact
 bun run verify browser --instance phone -- wait --text 'Note added'
 bun run verify browser --instance phone -- reload
-bun run verify browser --instance phone -- wait 'nav[aria-label="Primary"]'
-bun run verify browser --instance phone -- find role button click --name 'No date'
+bun run verify browser --instance phone -- wait 'header[aria-label="Vita OS"]'
+bun run verify browser --instance phone -- click 'section[aria-label="No date"] button[aria-expanded="false"]'
 bun run verify browser --instance phone -- wait --text phone-proof-1001
 bun run verify shot --instance phone phone-share-persisted
 bun run verify d1 --instance phone "SELECT body, state FROM notes"
@@ -53,8 +53,8 @@ bun run verify browser --instance phone -- find role button click --name Retry -
 bun run verify browser --instance phone -- wait --text 'Note added'
 bun run verify browser --instance phone -- wait --fn 'sessionStorage.getItem("vita-pending-shared-note") === null'
 bun run verify browser --instance phone -- reload
-bun run verify browser --instance phone -- wait 'nav[aria-label="Primary"]'
-bun run verify browser --instance phone -- find role button click --name 'No date'
+bun run verify browser --instance phone -- wait 'header[aria-label="Vita OS"]'
+bun run verify browser --instance phone -- click 'section[aria-label="No date"] button[aria-expanded="false"]'
 bun run verify browser --instance phone -- wait --text phone-proof-1004
 bun run verify browser --instance phone -- wait --text phone-proof-1005
 bun run verify shot --instance phone phone-queued-persisted
@@ -65,8 +65,8 @@ The browser proof also fetched `/manifest.webmanifest`, decoded every referenced
 
 ## Gotchas
 
-- At phone width, undated Dashboard content starts collapsed. Unfold `No date` after reload before waiting for saved text.
-- Wait for the Primary navigation after a reload before unfolding `No date`.
+- At phone width, `No date` leads the list folded to one line (`<first>, <second> and <n> more`, or just the names with one or two items). Unfold it after reload before waiting for saved text.
+- Wait for the header (`header[aria-label="Vita OS"]`) after a reload before unfolding `No date`.
 - A URL-driven share proves app handling; it does not prove a physical Android device's share picker.
 - Pending text is held in the current tab's session storage until saving succeeds; closing the tab can discard it.
 - Network request interception is only a verification tool. This feature does not provide offline support.

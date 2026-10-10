@@ -66,12 +66,6 @@ vi.mock("../../notes/use-update-note-when", () => ({
   useUpdateNoteWhen: () => vi.fn(),
 }));
 
-const isMobile = vi.hoisted(() => ({ value: false }));
-vi.mock("../../hooks/use-mobile", () => ({
-  useIsMobile: () => isMobile.value,
-  useIsCompact: () => isMobile.value,
-}));
-
 const currentDate = new Date(2026, 6, 17, 12).getTime();
 /** Today as the pickers store a date alone: local midnight. */
 const today = new Date(2026, 6, 17).getTime();
@@ -173,10 +167,19 @@ function card(title: string) {
   return root;
 }
 
-function columnText(name: string) {
+/** The items under one of the list's groups, Today or Late or a day. */
+function groupText(name: string) {
   return within(screen.getByRole("region", { name }))
     .getAllByRole("listitem")
     .map((item) => item.textContent);
+}
+
+/** The list's groups, top to bottom, by their headings. */
+function groupLabels() {
+  return screen
+    .getAllByRole("heading", { level: 2 })
+    .map((heading) => heading.closest("section")?.getAttribute("aria-label"))
+    .filter((label) => label !== undefined && label !== "No date");
 }
 
 describe("DashboardOverview", () => {
@@ -196,14 +199,18 @@ describe("DashboardOverview", () => {
     ).toEqual(["All1", "Notes1"]);
   });
 
-  it("offers Manage areas beside the Areas, before Notes", () => {
+  it("sets Notes apart after the Areas, then offers Edit areas", () => {
     renderOverview();
 
     const row = screen.getByRole("navigation", { name: "Filter the board" });
-    const manage = within(row).getByRole("button", { name: "Manage areas" });
+    const noArea = within(row).getByRole("link", { name: /No area/ });
     const notes = within(row).getByRole("link", { name: /Notes/ });
+    const edit = within(row).getByRole("button", { name: "Edit areas" });
     expect(
-      manage.compareDocumentPosition(notes) & Node.DOCUMENT_POSITION_FOLLOWING,
+      noArea.compareDocumentPosition(notes) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      notes.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -249,7 +256,7 @@ describe("DashboardOverview", () => {
       notes: [note("Water the plants", { followUp: today })],
     });
 
-    expect(columnText("Now")).toEqual([
+    expect(groupText("Today")).toEqual([
       expect.stringContaining("Fix the gate"),
     ]);
     expect(
@@ -274,7 +281,7 @@ describe("DashboardOverview", () => {
       ],
     });
 
-    expect(columnText("Now")).toEqual([expect.stringContaining("Passport")]);
+    expect(groupText("Today")).toEqual([expect.stringContaining("Passport")]);
   });
 
   it("falls back to the whole board for an Area that is not there", () => {
@@ -309,7 +316,7 @@ describe("DashboardOverview", () => {
       ],
     });
 
-    expect(columnText("Now")).toEqual([
+    expect(groupText("Today")).toEqual([
       expect.stringContaining("Water the plants"),
     ]);
     expect(screen.queryByText("Checkup")).not.toBeInTheDocument();
@@ -345,81 +352,82 @@ describe("DashboardOverview", () => {
     });
 
     const [labeled, unlabeled] = within(
-      screen.getByRole("region", { name: "Now" }),
+      screen.getByRole("region", { name: "Today" }),
     ).getAllByRole("listitem");
     expect(within(labeled!).getByTitle("Health")).toHaveTextContent("Health");
     expect(within(unlabeled!).queryByTitle("Health")).not.toBeInTheDocument();
     expect(within(unlabeled!).queryByTitle("Home")).not.toBeInTheDocument();
   });
 
-  it("states each lane's count on the lane", () => {
+  it("reads every dated item as one list, attention first, each group with its count", () => {
     renderOverview({
       threads: [
         thread("Late one", { followUp: today - DAY }),
         thread("Also late", { followUp: today - DAY, order: 1 }),
         thread("Midweek", { followUp: today + 2 * DAY, order: 2 }),
-      ],
-    });
-
-    const laneHeading = (name: string) =>
-      within(screen.getByRole("region", { name })).getByRole("heading", {
-        level: 2,
-      });
-    expect(laneHeading("Now")).toHaveTextContent(/^Now2/);
-    expect(laneHeading("This week")).toHaveTextContent(/^This week1/);
-  });
-
-  it("puts dated Threads and Notes in the column their date earns", async () => {
-    renderOverview({
-      threads: [
-        thread("Overdue", { followUp: today - DAY }),
-        thread("Midweek", { followUp: today + 2 * DAY, order: 1 }),
-        thread("Distant", { followUp: today + 30 * DAY, order: 2 }),
+        thread("Next week", { followUp: today + 9 * DAY, order: 3 }),
+        thread("Distant", { followUp: today + 30 * DAY, order: 4 }),
       ],
       notes: [note("Water the plants", { followUp: today })],
     });
 
-    const now = screen.getByRole("region", { name: "Now" });
-    expect(within(now).getByText("Overdue")).toBeVisible();
-    expect(
-      within(now).getByRole("button", { name: "Open note: Water the plants" }),
-    ).toBeVisible();
-    expect(columnText("This week")).toEqual([
-      expect.stringContaining("Midweek"),
+    expect(groupLabels()).toEqual([
+      "Late",
+      "Today",
+      "Sunday",
+      "In 1 week",
+      "August",
     ]);
-    await userEvent.click(screen.getByRole("button", { name: /Later/ }));
-    expect(columnText("Later")).toEqual([expect.stringContaining("Distant")]);
+    expect(screen.getByRole("region", { name: "Late" })).toHaveTextContent(
+      /^Late2/,
+    );
+    expect(groupText("Today")).toEqual([
+      expect.stringContaining("Water the plants"),
+    ]);
   });
 
-  it("starts Later folded, saying how many wait there and when the next arrives", async () => {
+  it("shows items from next week on as one line each, opening what they are", () => {
     renderOverview({
-      threads: [
-        thread("Distant", { followUp: today + 30 * DAY }),
-        thread("Further", { followUp: today + 40 * DAY, order: 1 }),
+      threads: [thread("Distant", { followUp: today + 30 * DAY })],
+      notes: [
+        note("Renew the passport\nBring photos", {
+          followUp: today + 10 * DAY,
+        }),
       ],
     });
 
-    const fold = screen.getByRole("button", { name: /Later/ });
-    expect(fold).toHaveAttribute("aria-expanded", "false");
-    expect(fold).toHaveTextContent(/^Later2next Aug 16/);
-    expect(screen.queryByText("Distant")).not.toBeInTheDocument();
-    // The rail's horizon names each item on hover, and only on hover.
+    const week = screen.getByRole("region", { name: "In 1 week" });
+    const line = within(week).getByRole("button", {
+      name: /^Open note: Renew the passport/,
+    });
+    // A Note's first line, and its date: no card controls.
+    expect(line).toHaveTextContent(/^Renew the passport10d$/);
     expect(
-      [...fold.querySelectorAll("[data-label]")].map((mark) =>
-        mark.getAttribute("data-label"),
-      ),
-    ).toEqual(["Distant · Aug 16", "Further · Aug 26"]);
+      within(week).queryByRole("button", { name: "Archive note" }),
+    ).toBeNull();
 
-    await userEvent.click(fold);
-    expect(fold).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("Distant")).toBeVisible();
-    expect(fold).toHaveTextContent("Dated beyond this week");
-
-    await userEvent.click(fold);
-    expect(screen.queryByText("Distant")).not.toBeInTheDocument();
+    const month = screen.getByRole("region", { name: "August" });
+    expect(within(month).getByRole("link")).toHaveAttribute(
+      "href",
+      // The thread pane opens over this page (the mocked Link keeps `.`).
+      ".?thread=distant",
+    );
+    expect(within(month).getByRole("link")).toHaveTextContent(
+      /^DistantAug 16$/,
+    );
   });
 
-  it("heads each column's runs with when they come due, and leaves an exact day to its heading", () => {
+  it("drops a late card's own tint on Late's fill", () => {
+    renderOverview({
+      threads: [thread("Overdue", { followUp: today - DAY })],
+    });
+
+    const lateCard = card("Overdue").firstElementChild;
+    expect(lateCard).toHaveClass("group/card");
+    expect(lateCard).not.toHaveClass("bg-condition-attention/[0.06]");
+  });
+
+  it("heads each group with when it comes due, and leaves an exact day to its heading", () => {
     renderOverview({
       threads: [
         thread("Overdue", { followUp: today - 3 * DAY }),
@@ -430,27 +438,24 @@ describe("DashboardOverview", () => {
       ],
     });
 
-    const group = (lane: string, name: string) =>
-      within(screen.getByRole("region", { name: lane })).getByRole("region", {
-        name,
-      });
+    const group = (name: string) => screen.getByRole("region", { name });
 
     // A late card keeps its own date: "Late" says only that it slipped.
-    expect(group("Now", "Late")).toHaveTextContent("Late1");
-    expect(within(group("Now", "Late")).getByText("−3d")).toBeVisible();
+    expect(group("Late")).toHaveTextContent(/^Late1/);
+    expect(within(group("Late")).getByText("−3d")).toBeVisible();
     // Only the heading says Today; the card under it carries no token.
-    expect(within(group("Now", "Today")).getAllByText(/Today/)).toHaveLength(1);
+    expect(within(group("Today")).getAllByText(/Today/)).toHaveLength(1);
 
-    const tomorrow = group("This week", "Tomorrow");
-    expect(tomorrow).toHaveTextContent(/^Tomorrow1Saturday/);
+    const tomorrow = group("Tomorrow");
+    expect(tomorrow).toHaveTextContent(/^TomorrowSaturday1/);
     expect(within(tomorrow).queryByText("Sat")).not.toBeInTheDocument();
     // The date still opens from the card, as a control rather than a token.
     expect(
       within(tomorrow).getByRole("button", { name: "Change date" }),
     ).toBeInTheDocument();
 
-    const sunday = group("This week", "Sunday");
-    expect(sunday).toHaveTextContent(/^Sunday22d/);
+    const sunday = group("Sunday");
+    expect(sunday).toHaveTextContent(/^Sundayin 2 days2/);
     expect(within(sunday).getAllByRole("listitem")).toHaveLength(2);
   });
 
@@ -466,15 +471,14 @@ describe("DashboardOverview", () => {
       ],
     });
 
-    const now = screen.getByRole("region", { name: "Now" });
-    const todayGroup = within(now).getByRole("region", { name: "Today" });
+    const todayGroup = screen.getByRole("region", { name: "Today" });
     const titles = within(todayGroup)
       .getAllByRole("link")
       .map((link) => link.textContent);
     expect(titles).toEqual(["Sometime today", "Afternoon call"]);
     expect(within(todayGroup).getByText("3 PM")).toBeVisible();
     expect(
-      within(within(now).getByRole("region", { name: "Late" })).getByText(
+      within(screen.getByRole("region", { name: "Late" })).getByText(
         "−2d · 9:30 AM",
       ),
     ).toBeVisible();
@@ -484,7 +488,7 @@ describe("DashboardOverview", () => {
    * #236, settled: a Follow-up outranks undated Tasks, so an actionable
    * Thread with no date keeps its own run in the margin rather than in Now.
    */
-  it("keeps undated Tasks out of Now and in the No date margin", () => {
+  it("keeps undated Tasks off the list and in No date", () => {
     renderOverview({
       threads: [
         thread("Dated", { followUp: today }),
@@ -494,9 +498,9 @@ describe("DashboardOverview", () => {
       notes: [note("Loose thought")],
     });
 
-    expect(columnText("Now")).toEqual([expect.stringContaining("Dated")]);
+    expect(groupText("Today")).toEqual([expect.stringContaining("Dated")]);
 
-    // The margin is an <aside>, so it lands as a complementary landmark.
+    // No date is an <aside> beside the list, a complementary landmark.
     const margin = screen.getByRole("complementary", { name: "No date" });
     expect(within(margin).getByText("Ready to move")).toBeVisible();
     // The Thread's name heads the card; its only Task sits under it.
@@ -527,10 +531,11 @@ describe("DashboardOverview", () => {
       ],
     });
 
-    expect(columnText("Now")).toEqual([expect.stringContaining("Mixed")]);
-    expect(columnText("This week")).toEqual([expect.stringContaining("Soon")]);
-    const later = screen.getByRole("region", { name: "Later" });
-    expect(later).toHaveTextContent("1");
+    expect(groupText("Today")).toEqual([expect.stringContaining("Mixed")]);
+    expect(groupText("Tomorrow")).toEqual([expect.stringContaining("Soon")]);
+    expect(screen.getByRole("region", { name: "August" })).toHaveTextContent(
+      "Far only",
+    );
     const margin = screen.getByRole("complementary", { name: "No date" });
     const ready = within(margin).getByRole("region", { name: "Ready to move" });
     expect(ready).toHaveTextContent("Undated only");
@@ -587,7 +592,7 @@ describe("DashboardOverview", () => {
     expect(recovery.queryByRole("button", { name: /^Complete/ })).toBeNull();
   });
 
-  it("keeps the No date tray's slot rule when a card has undated Tasks only", () => {
+  it("keeps No date's slot rule when a card has undated Tasks only", () => {
     const [a, b] = tasks("A", "B");
     renderOverview({
       threads: [thread("Tray", { tasks: [a!, b!], focusedTaskId: b!._id })],
@@ -600,32 +605,47 @@ describe("DashboardOverview", () => {
     ).toBeVisible();
   });
 
-  it("folds Later and the No date margin on a phone", async () => {
-    isMobile.value = true;
-    try {
-      renderOverview({
-        threads: [
-          thread("Overdue", { followUp: today - DAY }),
-          thread("Distant", { followUp: today + 30 * DAY, order: 1 }),
-          thread("Actionable", {
-            tasks: tasks("Call the clinic"),
-            order: 2,
-          }),
-        ],
-      });
+  it("leads the list with No date folded to one line, which opens in place", async () => {
+    renderOverview({
+      threads: [
+        thread("Overdue", { followUp: today - DAY }),
+        thread("Actionable", { tasks: tasks("Call the clinic"), order: 1 }),
+        thread("Idle", { order: 2 }),
+      ],
+      notes: [note("Loose thought")],
+    });
 
-      expect(columnText("Now")).toEqual([expect.stringContaining("Overdue")]);
-      expect(screen.queryByText("Distant")).not.toBeInTheDocument();
-      expect(screen.queryByText("Call the clinic")).not.toBeInTheDocument();
+    // Below `lg`; from `lg` the same runs sit in the aside instead.
+    const folded = screen.getByRole("region", { name: "No date" });
+    const toggle = within(folded).getByRole("button", { expanded: false });
+    expect(toggle).toHaveTextContent("Actionable, Idle and 1 more");
+    expect(folded).toHaveTextContent(/^No date3/);
+    expect(within(folded).queryByText("Call the clinic")).toBeNull();
+    expect(
+      folded.compareDocumentPosition(
+        screen.getByRole("region", { name: "Late" }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
 
-      await userEvent.click(screen.getByRole("button", { name: /Later/ }));
-      expect(screen.getByText("Distant")).toBeVisible();
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(within(folded).getByText("Call the clinic")).toBeVisible();
+    expect(
+      within(folded).getByRole("region", { name: "Ready to move" }),
+    ).toBeVisible();
+  });
 
-      await userEvent.click(screen.getByRole("button", { name: /No date/ }));
-      expect(screen.getByText("Call the clinic")).toBeVisible();
-    } finally {
-      isMobile.value = false;
-    }
+  it("leaves the folded No date out when everything has a date", () => {
+    renderOverview({
+      threads: [thread("Overdue", { followUp: today - DAY })],
+    });
+
+    expect(screen.queryByRole("region", { name: "No date" })).toBeNull();
+    expect(
+      within(screen.getByRole("complementary", { name: "No date" })).getByText(
+        "Everything open has a date.",
+      ),
+    ).toBeVisible();
   });
 
   it("says so plainly when nothing is asking", () => {
@@ -633,8 +653,9 @@ describe("DashboardOverview", () => {
 
     expect(screen.getByText("Nothing is asking for you.")).toBeVisible();
     expect(
-      screen.queryByRole("region", { name: "Now" }),
+      screen.queryByRole("region", { name: "Today" }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
   });
 });
 

@@ -6,7 +6,7 @@ Status: proven on 6231a78 plus the Read/Write working-tree change (Dashboard dia
 
 ## Sub-features
 
-- `note-compose` opens New note from the dock or Write a note… on a Thread, on Write with the body focused. Only standalone Notes have an Follow-up date. Add or Command/Control+Enter saves.
+- `note-compose` opens New note from the header (the bottom bar below `lg`) or Write a note… on a Thread, on Write with the body focused. Only standalone Notes have an Follow-up date. Add or Command/Control+Enter saves.
 - `note-open` opens the view from anywhere on a Dashboard or Thread card except its controls, and from an Archived note in the palette's History. Proven on the Dashboard and the since-removed Notes panel cards with a real mouse: `get box` the card, then `mouse move`, `mouse down left`, `mouse up left` on empty footer space; `Set follow-up date` and `Archive note` keep their own clicks.
 - `note-read` renders full Markdown. Preview links are inert; read links open safely in a new tab. Task items are checkboxes: ticking one on a saved Note with no unsaved edits saves it quietly; on a draft it edits the draft. Card previews draw the boxes without controls.
 - `note-write` edits the same draft. Leaving Write never discards: Read shows the unsaved text, the Write tab shows a dot (named `Write , unsaved changes`), and the footer shows `Unsaved changes` and Save in either mode. Save returns to Read.
@@ -19,7 +19,7 @@ Status: proven on 6231a78 plus the Read/Write working-tree change (Dashboard dia
 ## How to get to it (user POV)
 
 - On a Thread, choose Write a note… to compose; choose a saved Note card to read it.
-- Choose New note in the dock to capture a standalone Note.
+- Choose New note in the header, or Note in the bottom bar on a phone, to capture a standalone Note.
 - Choose a Note card on the Dashboard or in Notes to open the Note view over the current page.
 
 ## Driving it with agent-browser
@@ -47,6 +47,6 @@ Preconditions: launch and sign in using the verification CLI. Use a unique Threa
 - `type` without a target types into nothing after a tab click. Target the textbox ref.
 - Dialogs and drawers animate. Wait for a nested drawer to settle before clicking footer controls; an early pointer can hit the moving backdrop.
 - Date commands are quiet and asynchronous. Wait until the next control is enabled before using it; clicking during pending state performs no action.
-- On a phone the No date tray starts collapsed, so an undated Note's card is hidden until you unfold it (`No date <n> Not on the calendar`).
+- On a phone `No date` leads the list folded to one line, so an undated Note's card is hidden until you unfold it (`click 'section[aria-label="No date"] button[aria-expanded="false"]'`).
 - Only mutation confirmation plus a reload and D1 proves persistence; previews update optimistically. A delete reaches D1 only after the five-second Undo window.
 - Normal development setup includes four sample Thread Notes: three in Dentist follow-up (one archived) and one in Quarterly review prep. Verification instances are separate and do not inherit this sample data.

@@ -113,23 +113,25 @@ Finished things leave the Dashboard but not the product. The palette's **History
 
 ## The Dashboard
 
-The Dashboard lays every Open Thread and every open Standalone Note on one axis of time:
+The Dashboard lays every Open Thread and every open Standalone Note on one axis of time, as one list read from what is asking now outward:
 
-- **Now**: a date today or earlier.
-- **This week**: the next six days.
-- **Later**: day seven onward.
-- **The unscheduled margin**: **Ready to move** (Threads whose Tasks are all undated), **Open** (Threads with no Tasks), **Notes** (undated Notes).
+- **Late**, then **Today**: what is asking.
+- **Tomorrow** and each day of the coming week that has something due, by name.
+- **Weeks**, then **months**: further out, one line per item, there to be known about rather than read.
+- **No date**: **Ready to move** (Threads whose Tasks are all undated), **Open** (Threads with no Tasks), **Notes** (undated Notes). On a wide screen it sits beside the list; on a phone it leads the list, folded to one line.
 
-Placement is derived from dates and from whether a Thread has Tasks. A Thread sits at its soonest dated Task; a Standalone Note sits at its Follow-up date. The user never sets a status. A date outranks undated Tasks, so a Thread whose Tasks are all undated leads the margin and never enters Now. Nothing is capped or hidden.
+Placement is derived from dates and from whether a Thread has Tasks. A Thread sits at its soonest dated Task; a Standalone Note sits at its Follow-up date. The user never sets a status. A date outranks undated Tasks, so a Thread whose Tasks are all undated leads No date and is never Late or Today. Nothing is capped.
 
-A row above the board filters it to one Area, to unlabeled Threads, or to Notes alone. Notes have no list of their own: the Notes filter is where to read them together.
+Each day sits on a file tab, raised more the nearer it is, with Late on a warm fill: the shape of the coming days reads before any card does. Above the page, the sky shows the time of day and nothing else.
+
+A filter at the top of the list narrows it to one Area, to unlabeled Threads, or to Notes alone. Notes have no list of their own: the Notes filter is where to read them together.
 
 The board can act on what it shows. A card completes the Task it displays in one click, skips it when it repeats, and sets, changes, or clears that Task's date and repeat, or adds a "Follow up" Task when it shows no single Task; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
 
 The intended loop takes one to two minutes:
 
 ```text
-Open the Dashboard → read Now → handle or reschedule what is asking → glance at the margin → close
+Open the Dashboard → read Late and Today → handle or reschedule what is asking → glance at the days ahead and No date → close
 ```
 
 ---
@@ -170,7 +172,7 @@ Resembling another tool is not a test. Task managers have repeats, and repeats p
 | One-tap "not now, next week" on a card | In | Deferring cheaply is the product. |
 | A recap when a Thread is opened after weeks away | In | Restores context. |
 | "Last touched N months ago" on a Thread | Only if neutral | Plain information passes; a warning colour pressures. |
-| Priority levels | Out | Ranks the doing; the time columns already say what is asking. |
+| Priority levels | Out | Ranks the doing; the list already says what is asking. |
 | Subtasks under Tasks | Out | Plans execution. |
 | "You completed 12 Tasks this week" | Out | Scores doing. |
 | Push notifications | Out for now | The Dashboard is a place the user looks, not something that chases; dates are soft and never ping (ADR 0027). |

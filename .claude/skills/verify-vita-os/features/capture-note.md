@@ -1,6 +1,6 @@
 # Capture a note
 
-A signed-in user captures a standalone note from the dock, the `Q` shortcut, or the command palette. After the server confirms, a `Note added` toast shows, the note appears under `No date` → `Notes` on the Dashboard, and it survives a reload.
+A signed-in user captures a standalone note from the header's `New note` (the bottom bar's `Note` below `lg`), the `Q` shortcut, or the command palette. After the server confirms, a `Note added` toast shows, the note appears under `No date` → `Notes` on the Dashboard, and it survives a reload.
 
 Status: proven on 1d2885d by an independent cold run (dock entry point, body only).
 
@@ -14,7 +14,7 @@ Status: proven on 1d2885d by an independent cold run (dock entry point, body onl
 
 ## How to get to it (user POV)
 
-- Choose `New note` in the dock (`nav[aria-label="Primary"]`).
+- Choose `New note` in the header (`header[aria-label="Vita OS"]`) from `lg`, or `Note` in the bottom `navigation "Actions"` below it. Both are `button "New note"`.
 - Press `Q` while focus is outside a text field.
 - Open the command palette with `Meta+k`, then choose `New note` under `Create`.
 

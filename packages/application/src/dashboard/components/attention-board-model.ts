@@ -7,15 +7,16 @@ import { addDays, format } from "date-fns";
 import { dayDelta, startOfLocalDay } from "./dashboard-model";
 
 /**
- * The Dashboard board is one axis — **when** — plus a margin for everything
+ * The Dashboard board is one axis — **when** — plus No date for everything
  * that has no place on it.
  *
- * Three columns carry the dates (Now · This week · Later), and a single
- * unscheduled group carries what is not on the calendar at all: Threads whose
- * Tasks are all undated (ready to move), Threads simply open, and standalone
- * Notes. A Thread sits at its soonest dated Task, and focus never moves it
- * between groups. A Note's Follow-up date is the same kind of signal, so a
- * Note due tomorrow sits beside a Thread due tomorrow.
+ * Three buckets carry the dates (Now · This week · Later), which the
+ * Dashboard reads as one list from now outward, and a single unscheduled
+ * group carries what is not on the calendar at all: Threads whose Tasks are
+ * all undated (ready to move), Threads simply open, and standalone Notes. A
+ * Thread sits at its soonest dated Task, and focus never moves it between
+ * groups. A Note's Follow-up date is the same kind of signal, so a Note due
+ * tomorrow sits beside a Thread due tomorrow.
  *
  * A dated item never appears in the unscheduled group and vice versa, so every
  * open Thread and open Note lands in exactly one place.
@@ -45,12 +46,12 @@ const WEEK_HORIZON = 6;
 const MONTH_HORIZON = 28;
 
 /**
- * A run of a column's items that come due together, under one heading.
+ * A run of dated items that come due together, under one heading.
  *
  * The grain widens with distance: Now splits into Late and Today, This week
- * into its days, Later into weeks and then months. Every group reads the way a
- * lane does — label, count, then a quiet hint — so a column says when its
- * items come due without anyone reading each card's date.
+ * into its days, Later into weeks and then months. Every group reads label,
+ * hint, count, so the list says when its items come due without anyone
+ * reading each card's date.
  */
 export interface BoardGroup {
   /**
@@ -119,7 +120,7 @@ export function buildAttentionBoard(
   };
 }
 
-/** Every open item on the board, for the counts in the header. */
+/** Every open item on the board, dated or not. */
 export function boardItems(board: AttentionBoard): BoardItem[] {
   return [
     ...board.now,
@@ -131,16 +132,17 @@ export function boardItems(board: AttentionBoard): BoardItem[] {
   ];
 }
 
-export function unscheduledCount(board: AttentionBoard) {
-  return (
-    board.unscheduled.moves.length +
-    board.unscheduled.open.length +
-    board.unscheduled.notes.length
-  );
+/** No date's runs, in the order they read, leaving out the empty ones. */
+export function unscheduledRuns(board: AttentionBoard) {
+  return [
+    { key: "moves", title: "Ready to move", items: board.unscheduled.moves },
+    { key: "open", title: "Open", items: board.unscheduled.open },
+    { key: "notes", title: "Notes", items: board.unscheduled.notes },
+  ].filter((run) => run.items.length > 0);
 }
 
 /**
- * Splits a column's soonest-first items into the groups their dates fall in,
+ * Splits soonest-first items into the groups their dates fall in,
  * keeping their order. A day with nothing due gets no heading.
  */
 export function groupByWhen(
@@ -180,7 +182,7 @@ function groupFor(
     return {
       key: `day-${days}`,
       label: format(when, "EEEE"),
-      hint: `${days}d`,
+      hint: `in ${days} days`,
       exact: true,
       tone: days <= 3 ? "soon" : "week",
     };

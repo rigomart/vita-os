@@ -13,6 +13,10 @@ browser -- press Enter
 browser -- wait --text "Only task ${STAMP}"
 
 # Thread Many: three Tasks, none focused.
+# An open Thread pane covers the header's actions and the right of the list (ADR 0023, ADR 0037), so close it first.
+browser -- eval "document.querySelector('button[aria-label=\"Close thread\"]')?.click() ?? null"
+browser -- wait --fn "!document.querySelector('button[aria-label=\"Close thread\"]')"
+browser -- wait 500
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Card many ${STAMP}"
 browser -- find role button click --name Create --exact
@@ -29,6 +33,10 @@ browser -- press Enter
 browser -- wait --text "Many 3 ${STAMP}"
 
 # Thread Focus: two Tasks, the second focused.
+# An open Thread pane covers the header's actions and the right of the list (ADR 0023, ADR 0037), so close it first.
+browser -- eval "document.querySelector('button[aria-label=\"Close thread\"]')?.click() ?? null"
+browser -- wait --fn "!document.querySelector('button[aria-label=\"Close thread\"]')"
+browser -- wait 500
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Card focus ${STAMP}"
 browser -- find role button click --name Create --exact

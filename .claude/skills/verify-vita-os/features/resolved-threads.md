@@ -15,7 +15,7 @@ Status: proven on c03470d plus the resolved chip change, at 1440×900 and 1024×
 
 ## How to get to it (user POV)
 
-Open the palette with Command K or the dock's Jump anywhere button, then click History. Browse all resolved Threads or search their titles and Areas. Select a Thread, then choose Thread actions → Reopen. Click the chip again to return to open work. Opening the palette afresh starts with open work.
+Open the palette with Command K or the header's `Search, Command K` field (the bottom bar's below `lg`), then click History. Browse all resolved Threads or search their titles and Areas. Select a Thread, then choose Thread actions → Reopen. Click the chip again to return to open work. Opening the palette afresh starts with open work.
 
 ## Driving it with agent-browser
 
@@ -29,7 +29,7 @@ Preconditions: run `bun run verify up --instance resolved-chip --api-port 18787 
 4. Create `Chip history open c03470d` and leave it open. Close with `find role button click --name "Close thread" --exact`. Open with `press Meta+k`, capture `palette-default`, then `find role combobox fill "Chip history"` and capture `palette-open-search`: only open work matches. Click History and capture `palette-resolved`: the search is empty, with newer then older history under `Resolved threads`, and no actions or open Threads.
 5. `find role combobox fill older`, capture `palette-history-search`, then `find role combobox fill resolved` and `wait --text "No results found."`; capture `palette-history-unmatched`. Click History and capture `palette-return`: the normal palette has an empty query.
 6. Repeat History → query `resolved` → History to return. Run `press Enter`, then `press Enter` to activate the chip. Capture `palette-keyboard-resolved`: newest history is selected and the palette stays open. Run `press Enter` again and capture `resolved-pane`: `complementary "Chip history newer c03470d"`, with Resolved and no attention controls. Reopen via Thread actions → Reopen, confirm `wait --text "Thread reopened"`, reload, and `wait 'input[aria-label="Add a task"]'`. Capture `reopened-pane` and read D1 as above: open, with null Tasks and focus.
-7. Close the pane, `set viewport 1024 768`, then `find role button click --name "Jump anywhere, Command K" --exact`; capture `drawer-palette-default`. Click History, capture `drawer-palette-resolved`, search `older`, and capture `drawer-history-search`. Select with `find role option click --name "Chip history older c03470d" --exact` and capture `resolved-drawer`: `dialog "Chip history older c03470d"`. Reopen, confirm the toast, reload, wait for the Task input, and capture `reopened-drawer`. Confirm persisted open state with D1.
+7. Close the pane, `set viewport 1024 768`, then `find role button click --name "Search, Command K" --exact`; capture `drawer-palette-default`. Click History, capture `drawer-palette-resolved`, search `older`, and capture `drawer-history-search`. Select with `find role option click --name "Chip history older c03470d" --exact` and capture `resolved-drawer`: `dialog "Chip history older c03470d"`. Reopen, confirm the toast, reload, wait for the Task input, and capture `reopened-drawer`. Confirm persisted open state with D1.
 8. Close the drawer, open with `press Meta+k`, and capture `palette-after-reopen`: both reopened Threads now appear under open work. Click History, `wait --text "No resolved threads or archived notes yet."`, and capture `history-after-reopen`. Clean up with `bun run verify down --purge --instance resolved-chip`.
 
 ## Gotchas

@@ -21,19 +21,15 @@ export function DashboardScreen() {
   const loading =
     areas === undefined || threads === undefined || notes === undefined;
 
-  return (
-    <div className="mx-auto max-w-400 pb-4">
-      {loading ? (
-        <DashboardOverviewSkeleton />
-      ) : (
-        <DashboardOverview
-          areas={areas}
-          filter={filter}
-          threads={threads}
-          notes={notes}
-          currentDate={currentDate}
-        />
-      )}
-    </div>
+  return loading ? (
+    <DashboardOverviewSkeleton />
+  ) : (
+    <DashboardOverview
+      areas={areas}
+      filter={filter}
+      threads={threads}
+      notes={notes}
+      currentDate={currentDate}
+    />
   );
 }

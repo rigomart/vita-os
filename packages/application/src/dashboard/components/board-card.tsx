@@ -27,8 +27,8 @@ export const concealed =
  * the full width to itself. The third is the footer: when and where on the
  * left, the controls on the right.
  *
- * On the No date tray the row lifts to the page's surface instead of sinking
- * into the tray's fill.
+ * A late card carries a faint warm tint, unless it sits on Late's fill
+ * (`onLateFill`), which already says so.
  *
  * A `ruled` card carries a short margin rule inside its left padding: the mark
  * of a thing someone wrote, where a pill would read as one more Area.
@@ -37,23 +37,21 @@ export function BoardCard({
   children,
   footer,
   late = false,
-  onTray = false,
+  onLateFill = false,
   ruled = false,
 }: {
   children: ReactNode;
   footer: ReactNode;
   late?: boolean;
-  onTray?: boolean;
+  onLateFill?: boolean;
   ruled?: boolean;
 }) {
   return (
     <div
       className={cn(
         "group/card relative flex flex-col gap-1 rounded-xl px-3 py-2.5 transition-colors",
-        onTray
-          ? "hover:bg-surface-2 has-focus-visible:bg-surface-2"
-          : "hover:bg-muted/60 has-focus-visible:bg-muted/60",
-        late && "bg-condition-attention/[0.06]",
+        "hover:bg-muted/60 has-focus-visible:bg-muted/60",
+        late && !onLateFill && "bg-condition-attention/[0.06]",
         ruled &&
           "before:absolute before:inset-y-3 before:left-1 before:w-0.5 before:rounded-full before:bg-muted-foreground/45",
       )}

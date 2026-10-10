@@ -1,6 +1,6 @@
 # Floating chrome
 
-Status: Amended by ADR 0031 — the top-right cluster no longer holds Notes; Notes are a filter on the Dashboard. The dock's palette trigger is an icon on mobile and a full field from `sm` up. Create actions stay searchable in the palette, last, because the dock already offers them as one-tap controls.
+Status: Superseded by ADR 0037 — the floating clusters and the dock give way to a sky header in the page flow and, below `lg`, a bar at the bottom. Earlier: amended by ADR 0031 — the top-right cluster no longer holds Notes; Notes are a filter on the Dashboard. The dock's palette trigger is an icon on mobile and a full field from `sm` up. Create actions stay searchable in the palette, last, because the dock already offers them as one-tap controls.
 
 The app chrome stops being a bar. The top bar and the mobile tab bar are replaced by three **floating clusters** over the page: identity and status at the top-left, the date and the personal controls at the top-right, and a dock at the bottom-centre. Nothing spans the width, so the board reads to the top edge of the viewport at every size.
 

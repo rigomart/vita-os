@@ -6,14 +6,14 @@ Status: proven on a6805f5 plus the framed New thread dialog change (dock entry p
 
 ## Sub-features
 
-- `thread-open` opens the `New thread` dialog from the dock or the command palette.
+- `thread-open` opens the `New thread` dialog from the header (the bottom bar below `lg`) or the command palette.
 - `thread-create` saves a title and opens the thread pane.
 - `thread-area` assigns an area from the dialog's area picker, creating the area there if none exists.
 - `thread-persist` keeps the thread after a reload and in D1 (`threads`).
 
 ## How to get to it (user POV)
 
-- Choose `New thread` in the dock (`nav[aria-label="Primary"]`).
+- Choose `New thread` in the header (`header[aria-label="Vita OS"]`) from `lg`, or in the bottom `navigation "Actions"` below it. An open Thread pane covers the header's button at 1280px and up: close it first, or use the palette.
 - Open the command palette with `Meta+k`, then choose `New thread` under `Create`: `bun run verify browser -- press Meta+k`, then `bun run verify browser -- find role option click --name "New thread"`.
 
 ## Driving it with agent-browser

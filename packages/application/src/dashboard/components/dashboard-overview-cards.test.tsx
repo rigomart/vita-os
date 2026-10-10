@@ -21,8 +21,7 @@ import {
   waitFor,
   within,
 } from "../../test/render-with-providers";
-import { buildAttentionBoard } from "./attention-board-model";
-import { DashboardBoard } from "./dashboard-board";
+import { DashboardOverview } from "./dashboard-overview";
 
 const currentDate = new Date(2026, 6, 17, 12).getTime();
 const saved: Note = {
@@ -67,16 +66,17 @@ async function pickJuly(user: ReturnType<typeof userEvent.setup>, day: number) {
   );
 }
 
-describe("DashboardBoard card date control", () => {
+describe("a Dashboard card date control", () => {
   it("sets the date of the Task the card shows", async () => {
     const user = userEvent.setup();
     const task = { _id: "task1" as TaskId, text: "Book the scan" };
     const thread = aThread({ tasks: [task] });
     const setTaskDate = vi.fn(async () => success(thread));
     render(
-      <DashboardBoard
+      <DashboardOverview
         areas={[]}
-        board={buildAttentionBoard([thread], [], currentDate)}
+        threads={[thread]}
+        notes={[]}
         currentDate={currentDate}
       />,
       { applicationClient: createQuietApplicationClient({ setTaskDate }) },
@@ -105,9 +105,10 @@ describe("DashboardBoard card date control", () => {
     const thread = aThread({ tasks: [task] });
     const setTaskDate = vi.fn(async () => success(thread));
     render(
-      <DashboardBoard
+      <DashboardOverview
         areas={[]}
-        board={buildAttentionBoard([thread], [], currentDate)}
+        threads={[thread]}
+        notes={[]}
         currentDate={currentDate}
       />,
       { applicationClient: createQuietApplicationClient({ setTaskDate }) },
@@ -135,9 +136,10 @@ describe("DashboardBoard card date control", () => {
     const thread = aThread({ tasks });
     const addTask = vi.fn(async () => success(thread));
     render(
-      <DashboardBoard
+      <DashboardOverview
         areas={[]}
-        board={buildAttentionBoard([thread], [], currentDate)}
+        threads={[thread]}
+        notes={[]}
         currentDate={currentDate}
       />,
       { applicationClient: createQuietApplicationClient({ addTask }) },
@@ -156,7 +158,7 @@ describe("DashboardBoard card date control", () => {
   });
 });
 
-describe("DashboardBoard repeating Task card", () => {
+describe("a Dashboard repeating Task card", () => {
   const checkIn = {
     _id: "check-in" as TaskId,
     text: "Evening check-in",
@@ -170,9 +172,10 @@ describe("DashboardBoard repeating Task card", () => {
     const thread = aThread({ tasks: [checkIn] });
     const skipTask = vi.fn(async () => success(thread));
     render(
-      <DashboardBoard
+      <DashboardOverview
         areas={[]}
-        board={buildAttentionBoard([thread], [], currentDate)}
+        threads={[thread]}
+        notes={[]}
         currentDate={currentDate}
       />,
       { applicationClient: createQuietApplicationClient({ skipTask }) },
@@ -208,9 +211,10 @@ describe("DashboardBoard repeating Task card", () => {
     const thread = aThread({ tasks: [checkIn] });
     const completeTask = vi.fn(async () => success(thread));
     render(
-      <DashboardBoard
+      <DashboardOverview
         areas={[]}
-        board={buildAttentionBoard([thread], [], currentDate)}
+        threads={[thread]}
+        notes={[]}
         currentDate={currentDate}
       />,
       { applicationClient: createQuietApplicationClient({ completeTask }) },
@@ -239,9 +243,10 @@ describe("DashboardBoard repeating Task card", () => {
       const answer = deferred<OperationResult<Thread>>();
       const send = vi.fn(() => answer.promise);
       render(
-        <DashboardBoard
+        <DashboardOverview
           areas={[]}
-          board={buildAttentionBoard([thread], [], currentDate)}
+          threads={[thread]}
+          notes={[]}
           currentDate={currentDate}
         />,
         {
@@ -273,9 +278,10 @@ describe("DashboardBoard repeating Task card", () => {
     const { repeat: _repeat, ...oneOff } = checkIn;
     const thread = aThread({ tasks: [oneOff] });
     render(
-      <DashboardBoard
+      <DashboardOverview
         areas={[]}
-        board={buildAttentionBoard([thread], [], currentDate)}
+        threads={[thread]}
+        notes={[]}
         currentDate={currentDate}
       />,
       { applicationClient: createQuietApplicationClient() },
@@ -289,14 +295,15 @@ describe("DashboardBoard repeating Task card", () => {
   });
 });
 
-describe("DashboardBoard Note view", () => {
+describe("a Dashboard Note view", () => {
   it("keeps the Note view open when archiving removes its board card", async () => {
     const user = userEvent.setup();
     const markNoteDone = vi.fn(async () => {
       rerender(
-        <DashboardBoard
+        <DashboardOverview
           areas={[]}
-          board={buildAttentionBoard([], [], currentDate)}
+          threads={[]}
+          notes={[]}
           currentDate={currentDate}
         />,
       );
@@ -308,9 +315,10 @@ describe("DashboardBoard Note view", () => {
     });
     const applicationClient = createQuietApplicationClient({ markNoteDone });
     const { rerender } = render(
-      <DashboardBoard
+      <DashboardOverview
         areas={[]}
-        board={buildAttentionBoard([], [saved], currentDate)}
+        threads={[]}
+        notes={[saved]}
         currentDate={currentDate}
       />,
       { applicationClient },
@@ -331,7 +339,7 @@ describe("DashboardBoard Note view", () => {
     expect(markNoteDone).toHaveBeenCalledExactlyOnceWith({ noteId: "note1" });
   });
 
-  it("keeps the Note view open when a Follow-up date moves its card to another lane", async () => {
+  it("keeps the Note view open when a Follow-up date moves its card to another day", async () => {
     const user = userEvent.setup();
     const nextDate = new Date(2026, 6, 18).getTime();
     const datedNote = {
@@ -341,9 +349,10 @@ describe("DashboardBoard Note view", () => {
     const updateNoteFollowUp = vi.fn(async () => {
       const updated = { ...saved, followUp: nextDate };
       rerender(
-        <DashboardBoard
+        <DashboardOverview
           areas={[]}
-          board={buildAttentionBoard([], [updated], currentDate)}
+          threads={[]}
+          notes={[updated]}
           currentDate={currentDate}
         />,
       );
@@ -353,9 +362,10 @@ describe("DashboardBoard Note view", () => {
       updateNoteFollowUp,
     });
     const { rerender } = render(
-      <DashboardBoard
+      <DashboardOverview
         areas={[]}
-        board={buildAttentionBoard([], [datedNote], currentDate)}
+        threads={[]}
+        notes={[datedNote]}
         currentDate={currentDate}
       />,
       { applicationClient },

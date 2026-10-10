@@ -31,7 +31,7 @@ browser -- wait --text "Thread resolved"
 d1 "SELECT COUNT(*) AS newer_resolved FROM threads WHERE title = 'History newer ${STAMP}' AND state = 'resolved'"
 expect '"newer_resolved": 1'
 browser -- reload
-browser -- wait 'nav[aria-label="Primary"]'
+browser -- wait 'header[aria-label="Vita OS"]'
 browser -- press Meta+k
 browser -- find role button click --name History --exact
 browser -- wait --text "History newer ${STAMP}"
