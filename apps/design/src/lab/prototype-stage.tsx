@@ -100,7 +100,7 @@ function VariantBar({
     <div
       role="toolbar"
       aria-label="Prototype variants"
-      className="fixed top-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full border bg-popover/95 p-1 shadow-lg backdrop-blur"
+      className="fixed right-4 bottom-4 z-50 flex items-center gap-1 rounded-full border bg-popover/95 p-1 shadow-lg backdrop-blur"
     >
       <Button
         variant="ghost"
