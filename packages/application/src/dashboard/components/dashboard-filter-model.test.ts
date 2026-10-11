@@ -119,13 +119,31 @@ describe("filterDashboard", () => {
         option.separated,
       ]),
     ).toEqual([
-      ["All", 4, {}, false],
+      ["All", 5, {}, false],
       ["Home", 1, { area: home.slug }, false],
       ["Health", 2, { area: health.slug }, false],
       ["Career", 0, { area: career.slug }, false],
       ["No area", 1, { area: NO_AREA_PARAM }, false],
       ["Notes", 1, { show: "notes" }, true],
     ]);
+  });
+
+  it("counts Standalone Notes under All when there are no Threads", () => {
+    const result = filterDashboard({
+      threads: [],
+      notes: [note],
+      areas: [],
+      params: {},
+    });
+
+    expect(result.threads).toEqual([]);
+    expect(result.notes).toEqual([note]);
+    expect(result.options.find((option) => option.key === "all")).toMatchObject(
+      {
+        count: 1,
+        selected: true,
+      },
+    );
   });
 
   it("shows only the open Standalone Notes under Notes", () => {

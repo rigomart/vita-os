@@ -196,7 +196,7 @@ describe("DashboardOverview", () => {
       within(row)
         .getAllByRole("link")
         .map((link) => link.textContent),
-    ).toEqual(["All1", "Notes1"]);
+    ).toEqual(["All2", "Notes1"]);
   });
 
   it("sets Notes apart after the Areas, then offers Edit areas", () => {
@@ -230,7 +230,7 @@ describe("DashboardOverview", () => {
         .getAllByRole("link")
         .map((link) => [link.textContent, link.getAttribute("href")]),
     ).toEqual([
-      ["All3", "/"],
+      ["All5", "/"],
       ["Health2", "/?area=health"],
       ["Home0", "/?area=home"],
       ["No area1", "/?area=none"],

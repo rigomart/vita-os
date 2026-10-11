@@ -27,6 +27,7 @@ After `bun run verify up` and `bun run verify signin`, run a flow with `bun run 
 | --- | --- |
 | [notes](../flows/notes.flow) | [Capture a note](./capture-note.md), [Note view](./note-view.md): header capture, live preview while typing, saved edits in place, Delete with Undo and persisted deletion. |
 | [notes-dashboard](../flows/notes-dashboard.flow) | [Notes on the Dashboard](./notes-on-the-dashboard.md): Notes filter, archive, archived body search in History, and unarchive. |
+| [dashboard-filter-counts](../flows/dashboard-filter-counts.flow) | [Dashboard board](./dashboard-board.md): All counts dated and undated Standalone Notes plus Threads; Area and Notes counts stay separate, on desktop and phone. |
 | [thread-notes](../flows/thread-notes.flow) | [Thread Notes](./thread-notes.md): desktop capture, edit, archive, unarchive, and deletion. |
 | [add-to-thread](../flows/add-to-thread.flow) | [Add a Note to a Thread](./add-to-thread.md): undated add to an existing Thread and New thread from note. Dated conversion stays in `dated-tasks.flow`. |
 | [areas](../flows/areas.flow) | [Manage areas](./manage-areas.md): create, rename, icon, reorder, and delete while Threads survive without the label. |
