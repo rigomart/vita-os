@@ -1,0 +1,64 @@
+# All counts every open Thread and Standalone Note, including dated and undated Notes.
+# Needs a fresh signed-in instance (up + signin). Checks Notes alone, mixed items, Area/Notes filters, and phone counts.
+open /
+see link "All 0"
+shot dashboard-counts-before
+browser -- find role button click --name "New note" --exact
+see textbox "Note body"
+browser -- find label "Note body" fill "Dated count note ${STAMP}"
+browser -- find role button click --name "Follow-up date" --exact
+browser -- find role button click --name "Pick a date…" --exact
+browser -- click 'xpath=//td[@data-today]//button'
+browser -- find role button click --name "Add" --exact
+browser -- wait --text "Note added"
+gone dialog
+browser -- reload
+see button "Open note: Dated count note ${STAMP}" --in 'section[aria-label="Today"]'
+see link "All 1"
+see link "Notes 1"
+shot dashboard-counts-note-after
+
+browser -- find role button click --name "New note" --exact
+see textbox "Note body"
+browser -- find label "Note body" fill "Undated count note ${STAMP}"
+browser -- find role button click --name "Add" --exact
+browser -- wait --text "Note added"
+gone dialog
+browser -- reload
+see button "Open note: Undated count note ${STAMP}"
+see link "All 2"
+see link "Notes 2"
+
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Count thread ${STAMP}"
+browser -- find role button click --name "Add area" --exact
+browser -- find role combobox fill "Home"
+browser -- find role option click --name "Create “Home”" --exact
+browser -- find role button click --name "Create" --exact
+browser -- wait --text "Thread created"
+see complementary "Count thread ${STAMP}"
+browser -- find role button click --name "Close thread" --exact
+gone complementary "Count thread ${STAMP}"
+browser -- reload
+see link "Count thread ${STAMP}"
+see link "All 3"
+see link "Home 1"
+see link "No area 0"
+see link "Notes 2"
+shot dashboard-counts-mixed-after
+
+browser -- find role link click --name "Home 1" --exact
+see link "Count thread ${STAMP}"
+gone button "Open note: Dated count note ${STAMP}"
+gone button "Open note: Undated count note ${STAMP}"
+see link "All 3"
+browser -- find role link click --name "Notes 2" --exact
+see button "Open note: Dated count note ${STAMP}"
+see button "Open note: Undated count note ${STAMP}"
+gone link "Count thread ${STAMP}"
+see link "All 3"
+browser -- find role link click --name "All 3" --exact
+browser -- set viewport 390 844
+see link "All 3"
+shot dashboard-counts-phone-after
+browser -- set viewport 1440 900

@@ -33,8 +33,9 @@ export interface DashboardFilterOption {
   /** Present on an Area's own option. */
   area?: AreaSummary;
   /**
-   * How many items this option shows: Open Threads for All and the Areas,
-   * open Standalone Notes for Notes.
+   * How many items this option shows: Open Threads and open Standalone Notes
+   * for All, Open Threads for the Areas and No area, open Standalone Notes
+   * for Notes.
    */
   count: number;
   /** An option with nothing open: still listed, drawn quietly. */
@@ -117,7 +118,7 @@ export function filterDashboard(input: {
       key: "all",
       search: {},
       label: "All",
-      count: input.threads.length,
+      count: input.threads.length + input.notes.length,
       muted: false,
       selected: filter.kind === "all",
       separated: false,
