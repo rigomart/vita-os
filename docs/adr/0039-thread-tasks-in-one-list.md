@@ -21,7 +21,7 @@ The text is what the person reads; the commands are what they reach for now and 
 
 ## Considered Options
 
-The decision came out of a prototype in the design lab, over the product's own commands and a scenario with long, dated, repeating Tasks. The prototype was removed once this shipped, so it would not drift from the product it copies. It is in the pull request that added this ADR (`git log` on this file finds it).
+The decision came out of a prototype in the design lab, over the product's own commands and a scenario with long, dated, repeating Tasks. The prototype was removed once this shipped, so it would not drift from the product it copies. It is commit `2dced3e` in the pull request that added this ADR (`git log` on this file finds it).
 
 - **Checklist**: the text with its date under it, and every other command behind a ⋯ menu. Clean, but each command took two clicks.
 - **Open to act**: closed rows showing complete, text and date; opening one spelled its commands out. It hid too much behind a step.
