@@ -3,11 +3,12 @@
 # first chosen day, a missed repeating Task as one Late card skipped and completed from the card, and Every N days in the drawer.
 # Needs a signed-in instance (up + signin). Add Tasks with Enter in "Add a task"; never press Enter to commit an edit of an existing Task (use Tab).
 # Dates are relative to today: day cells are td[data-day='<ISO date>'] and the flow steps to the next or previous month when the day
-# is not in the month shown, so it runs on any day. The time field is typed key by key. The missed Task is dated in the past
-# through the picker itself (it accepts past days); nothing is written to D1 by hand. Restores 1440x900 at the end.
+# is not in the month shown, behind the picker's "Pick a date…", so it runs on any day. Every choice in the picker saves as it is
+# made (ADR 0040). The missed Task is dated in the past through the picker itself (it accepts past days); nothing is written to
+# D1 by hand. Restores 1440x900 at the end.
 open /
 
-# A: one Task. Its picker shows the Repeat choices disabled until the Task has a day.
+# A: one Task. Its picker holds the time and the Repeat disabled until the Task has a day.
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Repeat A ${STAMP}"
 browser -- find role button click --name Create --exact
@@ -17,24 +18,24 @@ browser -- find label "Add a task" fill "R1 ${STAMP}"
 browser -- press Enter
 browser -- wait --text "R1 ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Set date"]'
-see group "Repeat"
-browser -- wait --fn "[...document.querySelectorAll('[role=group][aria-label=Repeat] button')].length === 4 && [...document.querySelectorAll('[role=group][aria-label=Repeat] button')].every(b => b.disabled) && document.querySelector('[role=group][aria-label=Repeat]').textContent.includes('a repeat needs a date')"
+see button "Repeat, Never"
+browser -- wait --fn "document.querySelector('button[aria-label=\"Repeat, Never\"]').disabled && [...document.querySelectorAll('[role=group][aria-label=Time] button')].every(b => b.disabled)"
 shot repeat-picker-no-date
 
-# Today at 9 PM, picked in the same picker, which stays open; then Daily, saved with Done.
-browser -- find role button click --name "Add time" --exact
-browser -- press 9
-browser -- press 0
-browser -- press 0
-browser -- press p
-browser -- wait --fn "document.querySelector('input[type=time]').value === '21:00'"
-browser -- click 'xpath=//td[@data-today]//button'
-browser -- wait --fn "!document.querySelector('[role=group][aria-label=Repeat] button').disabled"
-browser -- find role button click --name "Daily" --exact
-browser -- wait --fn "document.querySelector('[role=group][aria-label=Repeat]').textContent.includes('Every day at 9 PM, from ' + new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + '.')"
+# Today, then 9 PM typed under Other time, then Every day, in the same picker, which stays open on a row.
+browser -- click 'xpath=//*[@data-slot="popover-content"]//button[starts-with(@aria-label, "Today, ")]'
+browser -- wait --fn "!document.querySelector('button[aria-label=\"Repeat, Never\"]').disabled"
+browser -- find role button click --name "Other time" --exact
+browser -- keyboard type "9p"
+see button "9 PM"
+browser -- press Enter
+see button "Other time: 9 PM"
+browser -- find role button click --name "Repeat, Never" --exact
+browser -- find role button click --name "Every day" --exact
+see button "Repeat, Daily"
 shot repeat-picker-daily
-browser -- find role button click --name "Done" --exact
-gone group "Repeat"
+browser -- press Escape
+gone button "Pick a date…"
 
 # The row wears the repeat glyph on its date, the card before the Task's text; the card sits under Now, Today, at 9 PM.
 see image "Repeats daily" --in '[data-slot=thread-detail-pane]'
@@ -73,14 +74,17 @@ expect '"n": 1'
 
 # Weekly: it starts on the date's own weekday; choosing two days later instead says the date moves there, and it does.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[starts-with(@aria-label, "Change date:")]'
-see group "Repeat"
+browser -- find role button click --name "Repeat, Daily" --exact
+browser -- find role button click --name "Custom…" --exact
+see group "Custom repeat"
 browser -- find role button click --name "Weekly" --exact
-browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2); const day = d.toLocaleDateString('en-US', { weekday: 'long' }); return document.querySelector('[role=group][aria-label=Repeat] button[aria-label=\"' + day + '\"]').getAttribute('aria-pressed') === 'true'; })()"
-browser -- eval "(() => { const d = new Date(); d.setDate(d.getDate() + 2); const off = d.toLocaleDateString('en-US', { weekday: 'long' }); document.querySelector('[role=group][aria-label=Repeat] button[aria-label=\"' + off + '\"]').click(); })()"
-browser -- eval "(() => { const d = new Date(); d.setDate(d.getDate() + 4); const on = d.toLocaleDateString('en-US', { weekday: 'long' }); document.querySelector('[role=group][aria-label=Repeat] button[aria-label=\"' + on + '\"]').click(); })()"
-browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 4); return document.querySelector('[role=group][aria-label=Repeat]').textContent.includes('The date moves to ' + d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ', the first chosen day.'); })()"
+browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2); const day = d.toLocaleDateString('en-US', { weekday: 'long' }); return document.querySelector('[role=group][aria-label=\"Custom repeat\"] button[aria-label=\"' + day + '\"]').getAttribute('aria-pressed') === 'true'; })()"
+browser -- eval "(() => { const d = new Date(); d.setDate(d.getDate() + 2); const off = d.toLocaleDateString('en-US', { weekday: 'long' }); document.querySelector('[role=group][aria-label=\"Custom repeat\"] button[aria-label=\"' + off + '\"]').click(); })()"
+browser -- eval "(() => { const d = new Date(); d.setDate(d.getDate() + 4); const on = d.toLocaleDateString('en-US', { weekday: 'long' }); document.querySelector('[role=group][aria-label=\"Custom repeat\"] button[aria-label=\"' + on + '\"]').click(); })()"
+browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 4); return document.querySelector('[role=group][aria-label=\"Custom repeat\"]').textContent.includes('The date moves to ' + d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ', the first chosen day.'); })()"
 shot repeat-picker-weekly
-browser -- find role button click --name "Done" --exact
+browser -- find role button click --name "Save repeat" --exact
+browser -- press Escape
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 4); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { weekday: 'short' }) + ' · 9 PM\"]'); })()"
 browser -- wait 1500
 browser -- reload
@@ -103,12 +107,15 @@ browser -- find label "Add a task" fill "L1 ${STAMP}"
 browser -- press Enter
 browser -- wait --text "L1 ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="L1 ${STAMP}"]]//button[@aria-label="Set date"]'
+browser -- find role button click --name "Pick a date…" --exact
 browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() - 3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Previous Month']\").click(); })()"
 browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() - 3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"']\")"
 browser -- eval "document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() - 3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"'] button\").click()"
-browser -- wait --fn "!document.querySelector('[role=group][aria-label=Repeat] button').disabled"
-browser -- find role button click --name "Daily" --exact
-browser -- find role button click --name "Done" --exact
+browser -- wait --fn "!document.querySelector('button[aria-label=\"Repeat, Never\"]').disabled"
+browser -- find role button click --name "Repeat, Never" --exact
+browser -- find role button click --name "Every day" --exact
+see button "Repeat, Daily"
+browser -- press Escape
 browser -- wait 1500
 browser -- find role button click --name "Close thread" --exact
 gone complementary "Repeat L ${STAMP}"
@@ -136,19 +143,27 @@ d1 "SELECT l.type, COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t
 expect '"type": "move_completed"'
 expect '"n": 1'
 
-# Drawer (1024x768): the same picker sets Every N days with its stepper.
+# Drawer (1024x768): the same picker sets a custom Every N days with its stepper.
 browser -- set viewport 1024 768
 browser -- find role link click --name "Repeat L ${STAMP}"
 see dialog "Repeat L ${STAMP}"
 # The drawer's content exists before it stops sliding; a click before then lands elsewhere (issue #449).
 settled '[data-vaul-drawer]'
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="L1 ${STAMP}"]]//button[starts-with(@aria-label, "Change date:")]'
-see group "Repeat"
-browser -- find role button click --name "Every N days" --exact
+browser -- find role button click --name "Repeat, Daily" --exact
+browser -- find role button click --name "Custom…" --exact
+see group "Custom repeat"
 browser -- find role button click --name "More days" --exact
-see text "Every 3 days, from " --in '[role=group][aria-label=Repeat]'
+browser -- find role button click --name "More days" --exact
+see text "Every 3 days, from " --in '[role=group][aria-label="Custom repeat"]'
 shot repeat-picker-drawer
-browser -- find role button click --name "Done" --exact
+browser -- find role button click --name "Save repeat" --exact
+see button "Repeat, Every 3 days"
+# Escape closes the picker alone; the drawer stays.
+browser -- press Escape
+gone button "Pick a date…"
+browser -- wait 800
+see dialog "Repeat L ${STAMP}"
 see image "Repeats every 3 days" --in '[role=dialog]'
 browser -- wait 1500
 browser -- reload

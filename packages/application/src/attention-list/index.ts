@@ -3,9 +3,5 @@ export { AttentionCollapsed, AttentionEmpty } from "./attention-list";
 export { timeToken, whenTone, withTimeToken } from "./date-parts";
 export { followUpDateLabels, taskDateLabels } from "./follow-up-date";
 export { repeatLabel } from "./repeat";
-export {
-  type RepeatControl,
-  RowDeleteAction,
-  RowIconAction,
-  WhenPopover,
-} from "./row-parts";
+export { RowDeleteAction, RowIconAction } from "./row-parts";
+export { type RepeatControl, WhenPopover } from "./when-popover";

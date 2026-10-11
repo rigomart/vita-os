@@ -93,50 +93,72 @@ function setup(surface: "detail" | "card") {
 describe.each(["detail", "card"] as const)(
   "%s date picker gesture",
   (surface) => {
-    it.each(["weekly Friday", "Never"] as const)(
-      "waits for %s before saving a picked Wednesday under the new rule",
+    it.each(["weekly Friday", "Doesn't repeat"] as const)(
+      "holds the picker while %s saves, so a Wednesday picked next is judged by it",
       async (choice) => {
         const service = setup(surface);
         const user = userEvent.setup();
         // In Thread detail the date itself opens the picker; the card's button names no date.
-        await user.click(
+        const trigger = () =>
           screen.getByRole("button", {
             name: surface === "detail" ? /^Change date:/ : "Change date",
-          }),
+          });
+        await user.click(trigger());
+        await user.click(
+          await screen.findByRole("button", { name: "Repeat, Mon" }),
         );
-        const repeat = await screen.findByRole("group", { name: "Repeat" });
-        if (choice === "Never")
+        if (choice === "Doesn't repeat") {
           await user.click(
-            within(repeat).getByRole("button", { name: "Never" }),
+            screen.getByRole("button", { name: "Doesn't repeat" }),
           );
-        else {
+        } else {
+          await user.click(screen.getByRole("button", { name: "Custom…" }));
+          const custom = screen.getByRole("group", { name: "Custom repeat" });
           await user.click(
-            within(repeat).getByRole("button", { name: "Monday" }),
+            within(custom).getByRole("button", { name: "Monday" }),
           );
           await user.click(
-            within(repeat).getByRole("button", { name: "Friday" }),
+            within(custom).getByRole("button", { name: "Friday" }),
+          );
+          await user.click(
+            within(custom).getByRole("button", { name: "Save repeat" }),
           );
         }
+        await waitFor(() =>
+          expect(service.setTaskRepeat).toHaveBeenCalledTimes(1),
+        );
+        // Nothing can be picked until the Repeat lands: a row's picker is
+        // back on its menu, held; a card's has closed, and its date is held.
+        const pickDate = () =>
+          screen.queryByRole("button", { name: "Pick a date…" });
+        if (surface === "detail") expect(pickDate()).toBeDisabled();
+        else {
+          expect(pickDate()).toBeNull();
+          expect(trigger()).toBeDisabled();
+        }
+
+        await act(async () => service.repeatAnswer.resolve());
+        if (surface === "card") {
+          await waitFor(() => expect(trigger()).toBeEnabled());
+          await user.click(trigger());
+        }
+        await waitFor(() => expect(pickDate()).toBeEnabled());
+        await user.click(pickDate()!);
         await user.click(
           within(screen.getByRole("grid")).getByRole("button", {
             name: /Wednesday, August 5th, 2026/,
           }),
         );
         await waitFor(() =>
-          expect(service.setTaskRepeat).toHaveBeenCalledTimes(1),
-        );
-        const dateSentWhileRepeatPending =
-          service.setTaskDate.mock.calls.length;
-        await act(async () => service.repeatAnswer.resolve());
-        await waitFor(() =>
           expect(service.setTaskDate).toHaveBeenCalledTimes(1),
         );
         const saved = service.stored().tasks![0]!;
-        expect(saved.date).toBe(aug(choice === "Never" ? 5 : 7));
+        expect(saved.date).toBe(aug(choice === "Doesn't repeat" ? 5 : 7));
         expect(saved.repeat).toEqual(
-          choice === "Never" ? undefined : { kind: "weekly", weekdays: [5] },
+          choice === "Doesn't repeat"
+            ? undefined
+            : { kind: "weekly", weekdays: [5] },
         );
-        expect(dateSentWhileRepeatPending).toBe(0);
       },
     );
   },

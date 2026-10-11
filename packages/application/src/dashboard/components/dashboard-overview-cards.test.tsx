@@ -22,6 +22,7 @@ import {
   waitFor,
   within,
 } from "../../test/render-with-providers";
+import { pickCalendarDay } from "../../test/when-picker";
 import { DashboardOverview } from "./dashboard-overview";
 
 const currentDate = new Date(2026, 6, 17, 12).getTime();
@@ -56,15 +57,11 @@ async function pickThisMonth(
   day: number,
 ) {
   const month = new Date().toLocaleString("en-US", { month: "long" });
-  await user.click(
-    screen.getByRole("button", { name: new RegExp(`${month} ${day}`, "i") }),
-  );
+  await pickCalendarDay(user, new RegExp(`${month} ${day}`, "i"));
 }
 
 async function pickJuly(user: ReturnType<typeof userEvent.setup>, day: number) {
-  await user.click(
-    screen.getByRole("button", { name: new RegExp(`July ${day}`, "i") }),
-  );
+  await pickCalendarDay(user, new RegExp(`July ${day}`, "i"));
 }
 
 describe("a Dashboard card date control", () => {
@@ -93,6 +90,41 @@ describe("a Dashboard card date control", () => {
         date: dayOfThisMonth(28),
         timeZone: expect.any(String),
       }),
+    );
+  });
+
+  it("closes the card's picker on a time, as on a day", async () => {
+    const user = userEvent.setup();
+    const task = {
+      _id: "task1" as TaskId,
+      text: "Book the scan",
+      date: new Date(2026, 6, 20).getTime(),
+    };
+    const thread = aThread({ tasks: [task] });
+    const setTaskDate = vi.fn(async () => success(thread));
+    render(
+      <DashboardOverview
+        areas={[]}
+        threads={[thread]}
+        notes={[]}
+        currentDate={currentDate}
+      />,
+      { applicationClient: createQuietApplicationClient({ setTaskDate }) },
+    );
+
+    await user.click(screen.getByRole("button", { name: "Change date" }));
+    await user.click(await screen.findByRole("button", { name: "9 AM" }));
+
+    await waitFor(() =>
+      expect(setTaskDate).toHaveBeenCalledExactlyOnceWith({
+        threadId: "thread1",
+        taskId: "task1",
+        date: new Date(2026, 6, 20, 9).getTime(),
+        timeZone: expect.any(String),
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Pick a date…" })).toBeNull(),
     );
   });
 
@@ -379,7 +411,7 @@ describe("a Dashboard Note view", () => {
         name: "Change follow-up date",
       }),
     );
-    await user.click(screen.getByRole("button", { name: /July 18/i }));
+    await pickCalendarDay(user, /July 18/i);
     await waitFor(() =>
       expect(
         within(screen.getByRole("dialog")).getByRole("button", {

@@ -83,6 +83,41 @@ export function repeatLabel(repeat: Repeat): string {
     : `Repeats every ${repeat.every} days`;
 }
 
+/** The Repeat on a narrow row: "Never", "Daily", "Every 3 days", "Weekdays", "Mon, Thu". */
+export function repeatShortLabel(repeat: Repeat | undefined): string {
+  if (repeat === undefined) return "Never";
+  if (repeat.kind === "days") {
+    return repeat.every === 1 ? "Daily" : `Every ${repeat.every} days`;
+  }
+  return repeat.weekdays.join() === "1,2,3,4,5"
+    ? "Weekdays"
+    : weekdayNames(repeat.weekdays);
+}
+
+export interface RepeatPreset {
+  label: string;
+  /** `null` is no Repeat. */
+  repeat: Repeat | null;
+}
+
+/** The rhythms a Task's picker offers in one click, read from its date's weekday. */
+export function repeatPresets(when: number): RepeatPreset[] {
+  const weekday = WEEKDAYS[new Date(when).getDay()]!;
+  return [
+    { label: "Doesn't repeat", repeat: null },
+    { label: "Every day", repeat: { kind: "days", every: 1 } },
+    {
+      label: "Every weekday",
+      repeat: { kind: "weekly", weekdays: [1, 2, 3, 4, 5] },
+    },
+    {
+      label: `Every ${weekday.name}`,
+      repeat: { kind: "weekly", weekdays: [weekday.day] },
+    },
+    { label: "Every 2 weeks", repeat: { kind: "days", every: 14 } },
+  ];
+}
+
 const dayName = (when: number) => format(when, "EEE, MMM d");
 
 /**

@@ -35,7 +35,7 @@ import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 
 import { withTimeToken } from "../../attention-list/date-parts";
 import { followUpDateLabels } from "../../attention-list/follow-up-date";
-import { WhenPopover } from "../../attention-list/row-parts";
+import { WhenPopover } from "../../attention-list/when-popover";
 
 // CodeMirror is a large share of the bundle. It starts downloading with this
 // module, so it is usually ready before the first Note view opens.

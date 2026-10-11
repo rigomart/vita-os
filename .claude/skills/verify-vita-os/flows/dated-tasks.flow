@@ -1,9 +1,9 @@
 # Dated Tasks (ADR 0032): set a date with a time from a Task row, placement and the card's lead, reschedule from the
 # card token, two Tasks on one day, a card with no single Task, Thread detail order, and a dated Note added to a Thread.
 # Needs a signed-in instance (up + signin). Add Tasks with Enter in "Add a task"; never press Enter to commit an edit of an existing Task (use Tab).
-# Dates are picked relative to today by the calendar's data-day cells. When a day is not in the month the picker shows, the flow steps
-# to the next month first, so it runs on any day of the month. The time field is typed key by key (find ... fill leaves Chrome's
-# time input empty).
+# Dates are picked relative to today by the calendar's data-day cells, behind the picker's "Pick a date…". When a day is not in
+# the month the picker shows, the flow steps to the next month first, so it runs on any day of the month. Today is its quick pick.
+# A time no chip offers is typed under "Other time", once the Task has its day (ADR 0040).
 open /
 
 # A: a Thread with one Task; give the Task a date two days out and 3:30 PM from its row.
@@ -17,16 +17,17 @@ browser -- press Enter
 browser -- wait --text "A1 ${STAMP}"
 shot dated-a-before
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="A1 ${STAMP}"]]//button[@aria-label="Set date"]'
-browser -- find role button click --name "Add time" --exact
-browser -- press 3
-browser -- press 3
-browser -- press 0
-browser -- press p
-browser -- wait --fn "document.querySelector('input[type=time]').value === '15:30'"
+browser -- find role button click --name "Pick a date…" --exact
 browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() + 2); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click(); })()"
 browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 2); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"']\")"
 browser -- eval "document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 2); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"'] button\").click()"
-# A row's picker stays open after a day is picked (its Repeat can follow); Escape closes it (a toast can cover Done).
+# Back on the menu, which stays open on a row: 3:30 PM is no chip, so it is typed under Other time.
+browser -- find role button click --name "Other time" --exact
+browser -- keyboard type "330p"
+see button "3:30 PM"
+browser -- press Enter
+see button "Other time: 3:30 PM"
+# A row's picker stays open after a day is picked (its Repeat can follow); Escape closes it.
 browser -- press Escape
 browser -- wait --fn "!document.querySelector('[data-slot=popover-content]')"
 
@@ -39,6 +40,7 @@ shot dated-a-placed
 browser -- find role button click --name "Close thread" --exact
 gone complementary "Dated A ${STAMP}"
 browser -- click 'xpath=//li[.//a[normalize-space()="Dated A ${STAMP}"]]//button[@aria-label="Change date"]'
+browser -- find role button click --name "Pick a date…" --exact
 browser -- wait '[data-slot=popover-content] td[data-day]'
 browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() + 3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click(); })()"
 browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"']\")"
@@ -66,12 +68,12 @@ browser -- find label "Add a task" fill "C2 ${STAMP}"
 browser -- press Enter
 browser -- wait --text "C2 ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="C1 ${STAMP}"]]//button[@aria-label="Set date"]'
-browser -- click 'xpath=//td[@data-today]//button'
+browser -- click 'xpath=//*[@data-slot="popover-content"]//button[starts-with(@aria-label, "Today, ")]'
 browser -- press Escape
 browser -- wait --fn "!document.querySelector('[data-slot=popover-content]')"
 browser -- wait --fn "document.querySelectorAll('ul[aria-label=\"Tasks\"] > li button[aria-label^=\"Change date:\"]').length === 1"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="C2 ${STAMP}"]]//button[@aria-label="Set date"]'
-browser -- click 'xpath=//td[@data-today]//button'
+browser -- click 'xpath=//*[@data-slot="popover-content"]//button[starts-with(@aria-label, "Today, ")]'
 browser -- press Escape
 browser -- wait --fn "!document.querySelector('[data-slot=popover-content]')"
 see text "Dated C ${STAMP}" --in "section[aria-label='Today']"
@@ -99,6 +101,7 @@ open /
 browser -- wait --text "2 tasks · none focused"
 shot dated-b-before
 browser -- click 'xpath=//li[.//a[normalize-space()="Dated B ${STAMP}"]]//button[@aria-label="Set date"]'
+browser -- find role button click --name "Pick a date…" --exact
 browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() + 4); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click(); })()"
 browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 4); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"']\")"
 browser -- eval "document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 4); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"'] button\").click()"
@@ -129,6 +132,7 @@ browser -- find role option click --name "New note"
 see textbox "Note body" --in '[role=dialog]'
 browser -- find label "Note body" fill "## Note task ${STAMP}"
 browser -- find role button click --name "Follow-up date" --exact
+browser -- find role button click --name "Pick a date…" --exact
 browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() + 5); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click(); })()"
 browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 5); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"']\")"
 browser -- eval "document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() + 5); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"'] button\").click()"
