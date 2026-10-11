@@ -83,35 +83,44 @@ describe("ThreadAttention dated Tasks", () => {
   const sooner: Task = { ...callClinic, date: new Date(2026, 7, 14).getTime() };
   const loose: Task = { _id: "task-4" as TaskId, text: "Think about it" };
 
-  it("lists dated Tasks soonest first, then a No date divider, then undated Tasks in capture order", () => {
+  it("keeps dated and undated Tasks in one list, in capture order, with no divider", () => {
     renderAttention({ tasks: [loose, afternoon, sooner, dateOnly] });
 
-    const rows = taskRows();
-    expect(rows.map((row) => row.textContent)).toEqual([
+    expect(taskRows().map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Think about it"),
+      expect.stringContaining("Book the scan"),
       expect.stringContaining("Call the clinic"),
       expect.stringContaining("Collect the results"),
-      expect.stringContaining("Book the scan"),
-      expect.stringContaining("Think about it"),
     ]);
-    const divider = screen.getByText("No date");
-    expect(screen.getAllByText("No date")).toHaveLength(1);
-    expect(
-      rows[2]!.compareDocumentPosition(divider) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      divider.compareDocumentPosition(rows[3]!) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(screen.queryByText("No date")).toBeNull();
   });
 
-  it("shows the divider only when both groups exist", () => {
-    const { unmount } = renderAttention({ tasks: [sooner, afternoon] });
-    expect(screen.queryByText("No date")).toBeNull();
-    unmount();
+  it("names a near day in words and a far one by its date", () => {
+    const at = (day: number, hour = 0) =>
+      new Date(2026, 7, day, hour).getTime();
+    renderAttention({
+      tasks: [
+        { ...callClinic, date: at(13, 15) },
+        { ...bookScan, date: at(14) },
+        { ...collect, date: at(12) },
+        { ...loose, date: at(18) },
+        { _id: "task-5" as TaskId, text: "Renew", date: at(20) },
+      ],
+    });
 
-    renderAttention({ tasks: [loose, { ...loose, _id: "task-5" as TaskId }] });
-    expect(screen.queryByText("No date")).toBeNull();
+    expect(
+      taskRows().map((row) =>
+        within(row)
+          .getByRole("button", { name: /^Change date:/ })
+          .getAttribute("aria-label"),
+      ),
+    ).toEqual([
+      "Change date: Today · 3 PM",
+      "Change date: Tomorrow",
+      "Change date: Yesterday",
+      "Change date: Tue",
+      "Change date: Aug 20",
+    ]);
   });
 
   it("shows each dated row's date and time, and an undated row only a Set date button", () => {
@@ -134,7 +143,7 @@ describe("ThreadAttention dated Tasks", () => {
     });
 
     await user.click(
-      within(taskRows().at(-1)!).getByRole("button", { name: "Set date" }),
+      within(taskRows()[0]!).getByRole("button", { name: "Set date" }),
     );
     // The picker keeps its explanation.
     expect(
@@ -158,7 +167,7 @@ describe("ThreadAttention dated Tasks", () => {
     const { onSetTaskDate } = renderAttention({ tasks: [afternoon] });
 
     await user.click(
-      within(taskRows()[0]!).getByRole("button", { name: /^Change date/ }),
+      within(taskRows()[0]!).getByRole("button", { name: /^Change date:/ }),
     );
     await user.click(screen.getByRole("button", { name: "Clear date" }));
 
@@ -223,11 +232,6 @@ describe("ThreadAttention", () => {
     expect(
       taskRows().filter((row) => row.hasAttribute("data-focused")),
     ).toEqual([]);
-    expect(
-      screen.getByText(
-        "Focus one when you know it, or leave them all unfocused.",
-      ),
-    ).toBeVisible();
   });
 
   it("completes and removes any Task, focused or not", async () => {
@@ -260,6 +264,55 @@ describe("ThreadAttention", () => {
     expect(onEditTask).toHaveBeenCalledWith(callClinic._id, "Book appointment");
   });
 
+  it("shows two lines of a Task at rest and all of it while edited", async () => {
+    const user = userEvent.setup();
+    renderAttention({ tasks: [callClinic] });
+
+    expect(screen.getByText("Call the clinic")).toHaveClass("line-clamp-2");
+    await user.click(screen.getByText("Call the clinic"));
+    // A field that grows with the text, not a one-line input.
+    expect(screen.getByRole("textbox", { name: "Task" }).tagName).toBe(
+      "TEXTAREA",
+    );
+  });
+
+  it("keeps a Task one line: Enter saves, a line break becomes a space, blank text is never saved", async () => {
+    const user = userEvent.setup();
+    const { onEditTask } = renderAttention({ tasks: [callClinic] });
+
+    await user.click(screen.getByText("Call the clinic"));
+    const editor = screen.getByRole("textbox", { name: "Task" });
+    await user.clear(editor);
+    await user.click(editor);
+    await user.paste("Call the\nclinic again");
+    expect(editor).toHaveValue("Call the clinic again");
+    await user.keyboard("{Enter}");
+    expect(onEditTask).toHaveBeenCalledExactlyOnceWith(
+      callClinic._id,
+      "Call the clinic again",
+    );
+
+    await user.click(screen.getByText("Call the clinic"));
+    await user.clear(screen.getByRole("textbox", { name: "Task" }));
+    await user.keyboard("{Enter}");
+    expect(onEditTask).toHaveBeenCalledTimes(1);
+  });
+
+  it("puts the text back on Escape", async () => {
+    const user = userEvent.setup();
+    const { onEditTask } = renderAttention({ tasks: [callClinic] });
+
+    await user.click(screen.getByText("Call the clinic"));
+    await user.type(
+      screen.getByRole("textbox", { name: "Task" }),
+      " tomorrow{Escape}",
+    );
+
+    expect(screen.queryByRole("textbox", { name: "Task" })).toBeNull();
+    expect(screen.getByText("Call the clinic")).toBeVisible();
+    expect(onEditTask).not.toHaveBeenCalled();
+  });
+
   it("captures a Task on Enter and on blur, never asking about focus", async () => {
     const user = userEvent.setup();
     const { onAddTask, onFocusTask } = renderAttention();
@@ -282,10 +335,10 @@ describe("ThreadAttention", () => {
   it("keeps the row controls reachable on touch", () => {
     renderAttention({ tasks: [callClinic] });
 
-    // `xl` is THREAD_PANE_BREAKPOINT: the rail hides removal until the row is
-    // hovered or focused, the drawer never does.
+    // `xl` is THREAD_PANE_BREAKPOINT: the rail hides the commands until the row
+    // is hovered or focused, the drawer never does.
     expect(
-      within(taskRows()[0]!).getByRole("button", { name: "Remove task" }),
+      within(taskRows()[0]!).getByRole("toolbar", { name: "Task commands" }),
     ).toHaveClass("xl:opacity-0");
     expect(
       within(taskRows()[0]!).getByRole("button", { name: "Complete task" }),
@@ -303,7 +356,7 @@ describe("ThreadAttention", () => {
     });
 
     await user.click(
-      screen.getByRole("button", { name: "Change date: Aug 13" }),
+      screen.getByRole("button", { name: "Change date: Today" }),
     );
     expect(
       await screen.findByText("Bring this back into view around this date."),
@@ -330,7 +383,7 @@ describe("ThreadAttention", () => {
     });
 
     await user.click(
-      screen.getByRole("button", { name: "Change date: Aug 13" }),
+      screen.getByRole("button", { name: "Change date: Today" }),
     );
     await user.click(await screen.findByRole("button", { name: "Add time" }));
     const time = screen.getByLabelText("Time");
@@ -352,7 +405,7 @@ describe("ThreadAttention", () => {
     });
 
     await user.click(
-      screen.getByRole("button", { name: "Change date: Aug 13 · 9 AM" }),
+      screen.getByRole("button", { name: "Change date: Today · 9 AM" }),
     );
     await user.click(
       await screen.findByRole("button", { name: "Remove time" }),
@@ -396,7 +449,7 @@ describe("ThreadAttention repeating Tasks", () => {
   };
   const { repeat: _repeat, ...oneOff } = checkIn;
 
-  it("marks a repeating Task with the repeat glyph before its text, and offers skip on it alone", async () => {
+  it("marks a repeating Task with the repeat glyph on its date, and offers skip on it alone", async () => {
     const user = userEvent.setup();
     const { onSkipTask } = renderAttention({ tasks: [checkIn, bookScan] });
 
@@ -404,12 +457,9 @@ describe("ThreadAttention repeating Tasks", () => {
     const glyph = within(repeating!).getByRole("img", {
       name: "Repeats daily",
     });
-    // The glyph reads before the text.
     expect(
-      glyph.compareDocumentPosition(
-        within(repeating!).getByText(checkIn.text),
-      ) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+      within(repeating!).getByRole("button", { name: /^Change date:/ }),
+    ).toContainElement(glyph);
     expect(within(plain!).queryByRole("img")).toBeNull();
     expect(
       within(plain!).queryByRole("button", { name: "Skip task" }),
@@ -441,7 +491,7 @@ describe("ThreadAttention repeating Tasks", () => {
       tasks: [oneOff],
     });
 
-    await user.click(screen.getByRole("button", { name: /^Change date/ }));
+    await user.click(screen.getByRole("button", { name: /^Change date:/ }));
     const repeat = await screen.findByRole("group", { name: "Repeat" });
     expect(repeat).toHaveTextContent("Once, on Thu, Aug 13 at 9 PM.");
     await user.click(within(repeat).getByRole("button", { name: "Daily" }));
@@ -463,7 +513,7 @@ describe("ThreadAttention repeating Tasks", () => {
     const user = userEvent.setup();
     const { onSetTaskRepeat } = renderAttention({ tasks: [checkIn] });
 
-    await user.click(screen.getByRole("button", { name: /^Change date/ }));
+    await user.click(screen.getByRole("button", { name: /^Change date:/ }));
     const repeat = await screen.findByRole("group", { name: "Repeat" });
     await user.click(
       within(repeat).getByRole("button", { name: "Every N days" }),
@@ -482,7 +532,7 @@ describe("ThreadAttention repeating Tasks", () => {
     const user = userEvent.setup();
     const { onSetTaskRepeat } = renderAttention({ tasks: [checkIn] });
 
-    await user.click(screen.getByRole("button", { name: /^Change date/ }));
+    await user.click(screen.getByRole("button", { name: /^Change date:/ }));
     const repeat = await screen.findByRole("group", { name: "Repeat" });
     await user.click(within(repeat).getByRole("button", { name: "Weekly" }));
     // It starts from the date's own weekday, so nothing moves yet.
@@ -513,7 +563,7 @@ describe("ThreadAttention repeating Tasks", () => {
       tasks: [checkIn],
     });
 
-    await user.click(screen.getByRole("button", { name: /^Change date/ }));
+    await user.click(screen.getByRole("button", { name: /^Change date:/ }));
     await user.click(
       within(await screen.findByRole("group", { name: "Repeat" })).getByRole(
         "button",
@@ -523,7 +573,7 @@ describe("ThreadAttention repeating Tasks", () => {
     await user.click(screen.getByRole("button", { name: "Done" }));
     expect(onSetTaskRepeat).toHaveBeenCalledExactlyOnceWith(checkIn._id, null);
 
-    await user.click(screen.getByRole("button", { name: /^Change date/ }));
+    await user.click(screen.getByRole("button", { name: /^Change date:/ }));
     await user.click(await screen.findByRole("button", { name: "Clear date" }));
     // One command: clearing the date clears the Repeat with it.
     expect(onSetTaskDate).toHaveBeenCalledExactlyOnceWith(checkIn._id, null);
@@ -536,7 +586,7 @@ describe("ThreadAttention repeating Tasks", () => {
       tasks: [oneOff],
     });
 
-    await user.click(screen.getByRole("button", { name: /^Change date/ }));
+    await user.click(screen.getByRole("button", { name: /^Change date:/ }));
     await user.click(
       within(await screen.findByRole("group", { name: "Repeat" })).getByRole(
         "button",
@@ -587,7 +637,7 @@ describe("ThreadAttention repeating Tasks", () => {
     }
     render(<Stateful />);
 
-    // The second Task moves above the first once dated.
+    // Dated, the second Task stays where it was captured.
     await user.click(
       within(taskRows()[1]!).getByRole("button", { name: "Set date" }),
     );
@@ -612,7 +662,7 @@ describe("ThreadAttention repeating Tasks", () => {
       tasks: [oneOff],
     });
 
-    await user.click(screen.getByRole("button", { name: /^Change date/ }));
+    await user.click(screen.getByRole("button", { name: /^Change date:/ }));
     await user.click(
       within(await screen.findByRole("group", { name: "Repeat" })).getByRole(
         "button",

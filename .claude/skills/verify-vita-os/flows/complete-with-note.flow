@@ -77,14 +77,14 @@ browser -- wait --fn "document.querySelector('[data-slot=completion-note] textar
 browser -- fill '[data-slot=completion-note] textarea' "Slept well ${STAMP}"
 shot note-line-drawer
 browser -- press Enter
-browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); return !document.querySelector('[data-slot=completion-note]') && !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '\"]'); })()"
+browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); return !document.querySelector('[data-slot=completion-note]') && !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + 'Tomorrow' + '\"]'); })()"
 browser -- wait --text "Slept well ${STAMP}"
 shot note-completed-drawer
 browser -- wait 1500
 browser -- reload
 browser -- wait '[role=dialog] ul[aria-label="Tasks"]'
 browser -- wait --text "Slept well ${STAMP}"
-browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '\"]'); })()"
+browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + 'Tomorrow' + '\"]'); })()"
 d1 "SELECT COUNT(*) AS n FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Note R ${STAMP}'"
 expect '"n": 1'
 d1 "SELECT n.body FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Note R ${STAMP}'"

@@ -36,7 +36,7 @@ shot repeat-picker-daily
 browser -- find role button click --name "Done" --exact
 browser -- wait --fn "!document.querySelector('[role=group][aria-label=Repeat]')"
 
-# The row and the card wear the repeat glyph before the Task's text; the card sits under Now, Today, at 9 PM.
+# The row wears the repeat glyph on its date, the card before the Task's text; the card sits under Now, Today, at 9 PM.
 browser -- wait --fn "[...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('R1 ${STAMP}') && li.querySelector('[role=img][aria-label=\"Repeats daily\"]'))"
 browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Today'] li\")].some(li => li.textContent.includes('Repeat A ${STAMP}') && li.textContent.includes('R1 ${STAMP}') && li.textContent.includes('9 PM') && li.querySelector('[data-slot=repeat-glyph]'))"
 shot repeat-card-glyph
@@ -49,7 +49,7 @@ expect '"n": 0'
 
 # Complete from the row: the Task stays and comes back tomorrow at 9 PM; one move_completed is written.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Complete task"]'
-browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); const label = 'Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · 9 PM'; return [...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('R1 ${STAMP}') && li.querySelector('button[aria-label=\"' + label + '\"]')); })()"
+browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); const label = 'Change date: ' + 'Tomorrow' + ' · 9 PM'; return [...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('R1 ${STAMP}') && li.querySelector('button[aria-label=\"' + label + '\"]')); })()"
 browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Tomorrow'] li\")].some(li => li.textContent.includes('Repeat A ${STAMP}') && li.textContent.includes('R1 ${STAMP}'))"
 shot repeat-completed
 browser -- wait 1500
@@ -63,21 +63,21 @@ expect '"n": 1'
 # After a reload the server's Task is the one shown: tomorrow at 9 PM.
 browser -- reload
 browser -- wait 'ul[aria-label="Tasks"]'
-browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · 9 PM\"]'); })()"
+browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + 'Tomorrow' + ' · 9 PM\"]'); })()"
 
 # Skip from the row: the day after, and no Activity Log entry.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Skip task"]'
-browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · 9 PM\"]'); })()"
+browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { weekday: 'short' }) + ' · 9 PM\"]'); })()"
 shot repeat-skipped
 browser -- wait 1500
 browser -- reload
 browser -- wait 'ul[aria-label="Tasks"]'
-browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · 9 PM\"]'); })()"
+browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { weekday: 'short' }) + ' · 9 PM\"]'); })()"
 d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Repeat A ${STAMP}'"
 expect '"n": 1'
 
 # Weekly: it starts on the date's own weekday; choosing two days later instead says the date moves there, and it does.
-browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[starts-with(@aria-label, "Change date")]'
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[starts-with(@aria-label, "Change date:")]'
 browser -- wait '[role=group][aria-label=Repeat]'
 browser -- find role button click --name "Weekly" --exact
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2); const day = d.toLocaleDateString('en-US', { weekday: 'long' }); return document.querySelector('[role=group][aria-label=Repeat] button[aria-label=\"' + day + '\"]').getAttribute('aria-pressed') === 'true'; })()"
@@ -86,11 +86,11 @@ browser -- eval "(() => { const d = new Date(); d.setDate(d.getDate() + 4); cons
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 4); return document.querySelector('[role=group][aria-label=Repeat]').textContent.includes('The date moves to ' + d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ', the first chosen day.'); })()"
 shot repeat-picker-weekly
 browser -- find role button click --name "Done" --exact
-browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 4); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · 9 PM\"]'); })()"
+browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 4); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { weekday: 'short' }) + ' · 9 PM\"]'); })()"
 browser -- wait 1500
 browser -- reload
 browser -- wait 'ul[aria-label="Tasks"]'
-browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 4); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · 9 PM\"]') && !!document.querySelector('ul[aria-label=\"Tasks\"] [role=img][aria-label^=\"Repeats weekly on \"]'); })()"
+browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 4); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { weekday: 'short' }) + ' · 9 PM\"]') && !!document.querySelector('ul[aria-label=\"Tasks\"] [role=img][aria-label^=\"Repeats weekly on \"]'); })()"
 shot repeat-weekly-snapped
 d1 "SELECT json_extract(moves_json, '$[0].repeat.kind') AS kind, json_array_length(json_extract(moves_json, '$[0].repeat.weekdays')) AS days FROM threads WHERE title = 'Repeat A ${STAMP}'"
 expect '"kind": "weekly"'
@@ -151,7 +151,7 @@ expect '"tasks": 1'
 browser -- set viewport 1024 768
 browser -- find role link click --name "Repeat L ${STAMP}"
 browser -- wait '[role=dialog] ul[aria-label="Tasks"]'
-browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="L1 ${STAMP}"]]//button[starts-with(@aria-label, "Change date")]'
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="L1 ${STAMP}"]]//button[starts-with(@aria-label, "Change date:")]'
 browser -- wait '[role=group][aria-label=Repeat]'
 browser -- find role button click --name "Every N days" --exact
 browser -- find role button click --name "More days" --exact

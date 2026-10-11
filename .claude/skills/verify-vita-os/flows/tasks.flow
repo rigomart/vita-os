@@ -36,7 +36,7 @@ browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
 
 # Edit C: click its text, replace it, commit with Tab.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task C ${STAMP}"]]//button[normalize-space()="Task C ${STAMP}"]'
-browser -- fill 'xpath=//ul[@aria-label="Tasks"]//input' "Task C edited ${STAMP}"
+browser -- fill 'xpath=//ul[@aria-label="Tasks"]//textarea' "Task C edited ${STAMP}"
 browser -- press Tab
 browser -- wait --text "Task C edited ${STAMP}"
 shot tasks-edited

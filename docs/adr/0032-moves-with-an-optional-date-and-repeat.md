@@ -5,6 +5,8 @@ Terminology amended by ADR 0033: **Move** is renamed **Task** (Moves become Task
 **Status:** Accepted. Amended by #402: compatibility window closed, `threads.follow_up` dropped. Amended by #422: version reload replaces compatibility windows for browser tabs.
 **Date:** 2026-10-04
 
+Amended by [ADR 0039](./0039-thread-tasks-in-one-list.md): Thread detail lists Tasks in one list, in capture order, with no "No date" divider.
+
 Amended by [ADR 0034](./0034-plain-application-writes.md): current-state Task commands and independent optimistic writes replace client revision coordination; conversion destinations appear after confirmation without a Thread lock.
 
 A **Move** becomes text with an optional date and an optional repeat, the way a calendar event is a title with an optional time and repeat. A **Thread**'s own **Follow-up date** is folded into its Moves: a Thread comes back on the **Dashboard** at its soonest dated Move. Issue #397 is the specification.
