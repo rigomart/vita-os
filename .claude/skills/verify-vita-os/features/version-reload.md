@@ -45,10 +45,11 @@ bun run verify shot --instance reload-proof version-api-ahead
 Escape, open the saved Note, choose More actions and Delete note, and wait for Note deleted. Immediately change the web environment version to proof-b. Once /version.json serves proof-b, verify that the original document and Undo remain visible, then wait for the actual reload:
 
 ```bash
-bun run verify browser --instance reload-proof -- wait --fn 'performance.timeOrigin === Number(sessionStorage.getItem("versionProofOrigin")) && [...document.querySelectorAll("button")].some(x => x.textContent.trim() === "Undo")'
+bun run verify browser --instance reload-proof -- wait --fn 'performance.timeOrigin === Number(sessionStorage.getItem("versionProofOrigin"))'
+bun run verify see button Undo --instance reload-proof
 bun run verify shot --instance reload-proof version-save-pending
 bun run verify browser --instance reload-proof -- wait --fn 'performance.timeOrigin !== Number(sessionStorage.getItem("versionProofOrigin"))'
-bun run verify browser --instance reload-proof -- wait 'header[aria-label="Vita OS"]'
+bun run verify see banner "Vita OS" --instance reload-proof
 bun run verify d1 --instance reload-proof "SELECT COUNT(*) AS remaining FROM notes WHERE body = 'Reload proof saved note'"
 bun run verify shot --instance reload-proof version-reloaded-after-save
 ```

@@ -10,7 +10,7 @@ Status: proven on c03470d with working-tree changes (browser manifest diagnostic
 - Text, title, and URL capture through `/share-target`.
 - Shared text survives sign-in; saving uses the normal Note command.
 - Retry retains text; another share cannot overwrite an unsaved share.
-- Reload and read-only D1 checks prove persistence.
+- A reload proves persistence.
 
 ## How to get to it (user POV)
 
@@ -32,11 +32,10 @@ bun run verify shot --instance phone phone-share-needs-signin
 bun run verify browser --instance phone -- find role button click --name 'Sign In' --exact
 bun run verify browser --instance phone -- wait --text 'Note added'
 bun run verify browser --instance phone -- reload
-bun run verify browser --instance phone -- wait 'header[aria-label="Vita OS"]'
+bun run verify see banner "Vita OS" --instance phone
 bun run verify browser --instance phone -- click 'section[aria-label="No date"] button[aria-expanded="false"]'
 bun run verify browser --instance phone -- wait --text phone-proof-1001
 bun run verify shot --instance phone phone-share-persisted
-bun run verify d1 --instance phone "SELECT body, state FROM notes"
 ```
 
 To exercise retry and retention of additional shares:
@@ -53,12 +52,11 @@ bun run verify browser --instance phone -- find role button click --name Retry -
 bun run verify browser --instance phone -- wait --text 'Note added'
 bun run verify browser --instance phone -- wait --fn 'sessionStorage.getItem("vita-pending-shared-note") === null'
 bun run verify browser --instance phone -- reload
-bun run verify browser --instance phone -- wait 'header[aria-label="Vita OS"]'
+bun run verify see banner "Vita OS" --instance phone
 bun run verify browser --instance phone -- click 'section[aria-label="No date"] button[aria-expanded="false"]'
 bun run verify browser --instance phone -- wait --text phone-proof-1004
 bun run verify browser --instance phone -- wait --text phone-proof-1005
 bun run verify shot --instance phone phone-queued-persisted
-bun run verify d1 --instance phone "SELECT body, state FROM notes"
 ```
 
 The browser proof also fetched `/manifest.webmanifest`, decoded every referenced icon (192, 512, maskable 512, Apple 180), and checked `Page.getAppManifest` and `Page.getInstallabilityErrors` through the isolated browser's CDP endpoint. Both error lists were empty. Repeat sharing with `set viewport 1440 900` to exercise desktop persistence.

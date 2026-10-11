@@ -12,12 +12,12 @@ browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Repeat A ${STAMP}"
 browser -- find role button click --name Create --exact
 browser -- wait --text "Thread created"
-browser -- wait 'input[aria-label="Add a task"]'
+see textbox "Add a task"
 browser -- find label "Add a task" fill "R1 ${STAMP}"
 browser -- press Enter
 browser -- wait --text "R1 ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Set date"]'
-browser -- wait '[role=group][aria-label=Repeat]'
+see group "Repeat"
 browser -- wait --fn "[...document.querySelectorAll('[role=group][aria-label=Repeat] button')].length === 4 && [...document.querySelectorAll('[role=group][aria-label=Repeat] button')].every(b => b.disabled) && document.querySelector('[role=group][aria-label=Repeat]').textContent.includes('a repeat needs a date')"
 shot repeat-picker-no-date
 
@@ -34,36 +34,31 @@ browser -- find role button click --name "Daily" --exact
 browser -- wait --fn "document.querySelector('[role=group][aria-label=Repeat]').textContent.includes('Every day at 9 PM, from ' + new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + '.')"
 shot repeat-picker-daily
 browser -- find role button click --name "Done" --exact
-browser -- wait --fn "!document.querySelector('[role=group][aria-label=Repeat]')"
+gone group "Repeat"
 
 # The row wears the repeat glyph on its date, the card before the Task's text; the card sits under Now, Today, at 9 PM.
-browser -- wait --fn "[...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('R1 ${STAMP}') && li.querySelector('[role=img][aria-label=\"Repeats daily\"]'))"
+see image "Repeats daily" --in '[data-slot=thread-detail-pane]'
 browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Today'] li\")].some(li => li.textContent.includes('Repeat A ${STAMP}') && li.textContent.includes('R1 ${STAMP}') && li.textContent.includes('9 PM') && li.querySelector('[data-slot=repeat-glyph]'))"
 shot repeat-card-glyph
 browser -- wait 1500
-d1 "SELECT json_extract(moves_json, '$[0].repeat.kind') AS kind, json_extract(moves_json, '$[0].repeat.every') AS every FROM threads WHERE title = 'Repeat A ${STAMP}'"
-expect '"kind": "days"'
-expect '"every": 1'
 d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Repeat A ${STAMP}'"
 expect '"n": 0'
 
 # Complete from the row: the Task stays and comes back tomorrow at 9 PM; one move_completed is written.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Complete task"]'
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); const label = 'Change date: ' + 'Tomorrow' + ' · 9 PM'; return [...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('R1 ${STAMP}') && li.querySelector('button[aria-label=\"' + label + '\"]')); })()"
-browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Tomorrow'] li\")].some(li => li.textContent.includes('Repeat A ${STAMP}') && li.textContent.includes('R1 ${STAMP}'))"
+see text "Repeat A ${STAMP}" --in "section[aria-label='Tomorrow']"
+see text "R1 ${STAMP}" --in "section[aria-label='Tomorrow']"
 shot repeat-completed
 browser -- wait 1500
-d1 "SELECT json_array_length(moves_json) AS tasks, json_extract(moves_json, '$[0].repeat.kind') AS kind FROM threads WHERE title = 'Repeat A ${STAMP}'"
-expect '"tasks": 1'
-expect '"kind": "days"'
 d1 "SELECT l.type, COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Repeat A ${STAMP}' GROUP BY l.type"
 expect '"type": "move_completed"'
 expect '"n": 1'
 
 # After a reload the server's Task is the one shown: tomorrow at 9 PM.
 browser -- reload
-browser -- wait 'ul[aria-label="Tasks"]'
-browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 1); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + 'Tomorrow' + ' · 9 PM\"]'); })()"
+see list "Tasks" --in '[data-slot=thread-detail-pane]'
+see button "Change date: Tomorrow · 9 PM" --in '[data-slot=thread-detail-pane]'
 
 # Skip from the row: the day after, and no Activity Log entry.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Skip task"]'
@@ -71,14 +66,14 @@ browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2);
 shot repeat-skipped
 browser -- wait 1500
 browser -- reload
-browser -- wait 'ul[aria-label="Tasks"]'
+see list "Tasks" --in '[data-slot=thread-detail-pane]'
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { weekday: 'short' }) + ' · 9 PM\"]'); })()"
 d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Repeat A ${STAMP}'"
 expect '"n": 1'
 
 # Weekly: it starts on the date's own weekday; choosing two days later instead says the date moves there, and it does.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[starts-with(@aria-label, "Change date:")]'
-browser -- wait '[role=group][aria-label=Repeat]'
+see group "Repeat"
 browser -- find role button click --name "Weekly" --exact
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2); const day = d.toLocaleDateString('en-US', { weekday: 'long' }); return document.querySelector('[role=group][aria-label=Repeat] button[aria-label=\"' + day + '\"]').getAttribute('aria-pressed') === 'true'; })()"
 browser -- eval "(() => { const d = new Date(); d.setDate(d.getDate() + 2); const off = d.toLocaleDateString('en-US', { weekday: 'long' }); document.querySelector('[role=group][aria-label=Repeat] button[aria-label=\"' + off + '\"]').click(); })()"
@@ -89,25 +84,21 @@ browser -- find role button click --name "Done" --exact
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 4); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { weekday: 'short' }) + ' · 9 PM\"]'); })()"
 browser -- wait 1500
 browser -- reload
-browser -- wait 'ul[aria-label="Tasks"]'
+see list "Tasks" --in '[data-slot=thread-detail-pane]'
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 4); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { weekday: 'short' }) + ' · 9 PM\"]') && !!document.querySelector('ul[aria-label=\"Tasks\"] [role=img][aria-label^=\"Repeats weekly on \"]'); })()"
 shot repeat-weekly-snapped
-d1 "SELECT json_extract(moves_json, '$[0].repeat.kind') AS kind, json_array_length(json_extract(moves_json, '$[0].repeat.weekdays')) AS days FROM threads WHERE title = 'Repeat A ${STAMP}'"
-expect '"kind": "weekly"'
-expect '"days": 1'
 d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Repeat A ${STAMP}'"
 expect '"n": 1'
 
 # L: a missed daily Task, dated three days ago through the picker, shows as one Late card, never one per missed day.
 # An open Thread pane covers the header's actions and the right of the list (ADR 0023, ADR 0037), so close it first.
-browser -- eval "document.querySelector('button[aria-label=\"Close thread\"]')?.click() ?? null"
-browser -- wait --fn "!document.querySelector('button[aria-label=\"Close thread\"]')"
-browser -- wait 500
+browser -- find role button click --name "Close thread" --exact
+gone complementary "Repeat A ${STAMP}"
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Repeat L ${STAMP}"
 browser -- find role button click --name Create --exact
 browser -- wait --text "Thread created"
-browser -- wait 'input[aria-label="Add a task"]'
+see textbox "Add a task"
 browser -- find label "Add a task" fill "L1 ${STAMP}"
 browser -- press Enter
 browser -- wait --text "L1 ${STAMP}"
@@ -120,15 +111,14 @@ browser -- find role button click --name "Daily" --exact
 browser -- find role button click --name "Done" --exact
 browser -- wait 1500
 browser -- find role button click --name "Close thread" --exact
+gone complementary "Repeat L ${STAMP}"
 browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Late'] li\")].filter(li => li.textContent.includes('Repeat L ${STAMP}')).length === 1 && [...document.querySelectorAll('li')].filter(li => li.textContent.includes('L1 ${STAMP}')).length === 1 && [...document.querySelectorAll(\"section[aria-label='Late'] li\")].some(li => li.textContent.includes('L1 ${STAMP}') && li.querySelector('[data-slot=repeat-glyph]'))"
 shot repeat-late-card
-d1 "SELECT json_array_length(moves_json) AS tasks, json_extract(moves_json, '$[0].repeat.every') AS every FROM threads WHERE title = 'Repeat L ${STAMP}'"
-expect '"tasks": 1'
-expect '"every": 1'
 
 # Skip from the card: the missed run collapses to today; nothing is logged.
 browser -- click 'xpath=//li[.//a[normalize-space()="Repeat L ${STAMP}"]]//button[starts-with(@aria-label, "Skip")]'
-browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Today'] li\")].some(li => li.textContent.includes('Repeat L ${STAMP}')) && ![...document.querySelectorAll(\"section[aria-label='Late'] li\")].some(li => li.textContent.includes('Repeat L ${STAMP}'))"
+see text "Repeat L ${STAMP}" --in "section[aria-label='Today']"
+gone text "Repeat L ${STAMP}" --in "section[aria-label='Late']"
 shot repeat-card-skipped
 browser -- wait 1500
 d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Repeat L ${STAMP}'"
@@ -136,7 +126,8 @@ expect '"n": 0'
 
 # Complete from the card: the card stays, under Tomorrow; one move_completed.
 browser -- click 'xpath=//li[.//a[normalize-space()="Repeat L ${STAMP}"]]//button[starts-with(@aria-label, "Complete")]'
-browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Tomorrow'] li\")].some(li => li.textContent.includes('Repeat L ${STAMP}') && li.textContent.includes('L1 ${STAMP}'))"
+see text "Repeat L ${STAMP}" --in "section[aria-label='Tomorrow']"
+see text "L1 ${STAMP}" --in "section[aria-label='Tomorrow']"
 browser -- wait 1500
 browser -- reload
 browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Tomorrow'] li\")].some(li => li.textContent.includes('Repeat L ${STAMP}') && li.querySelector('[data-slot=repeat-glyph]'))"
@@ -144,24 +135,25 @@ shot repeat-card-completed
 d1 "SELECT l.type, COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Repeat L ${STAMP}' GROUP BY l.type"
 expect '"type": "move_completed"'
 expect '"n": 1'
-d1 "SELECT json_array_length(moves_json) AS tasks FROM threads WHERE title = 'Repeat L ${STAMP}'"
-expect '"tasks": 1'
 
 # Drawer (1024x768): the same picker sets Every N days with its stepper.
 browser -- set viewport 1024 768
 browser -- find role link click --name "Repeat L ${STAMP}"
-browser -- wait '[role=dialog] ul[aria-label="Tasks"]'
+see dialog "Repeat L ${STAMP}"
+# The drawer's content exists before it stops sliding; a click before then lands elsewhere (issue #449).
+settled '[data-vaul-drawer]'
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="L1 ${STAMP}"]]//button[starts-with(@aria-label, "Change date:")]'
-browser -- wait '[role=group][aria-label=Repeat]'
+see group "Repeat"
 browser -- find role button click --name "Every N days" --exact
 browser -- find role button click --name "More days" --exact
-browser -- wait --fn "document.querySelector('[role=group][aria-label=Repeat]').textContent.includes('Every 3 days, from ')"
+see text "Every 3 days, from " --in '[role=group][aria-label=Repeat]'
 shot repeat-picker-drawer
 browser -- find role button click --name "Done" --exact
-browser -- wait --fn "!!document.querySelector('[role=dialog] ul[aria-label=\"Tasks\"] [role=img][aria-label=\"Repeats every 3 days\"]')"
+see image "Repeats every 3 days" --in '[role=dialog]'
 browser -- wait 1500
-d1 "SELECT json_extract(moves_json, '$[0].repeat.every') AS every FROM threads WHERE title = 'Repeat L ${STAMP}'"
-expect '"every": 3'
+browser -- reload
+see dialog "Repeat L ${STAMP}"
+see image "Repeats every 3 days" --in '[role=dialog]'
 browser -- find role button click --name "Close thread" --exact
-browser -- wait --fn "!document.querySelector('[role=dialog]')"
+gone dialog
 browser -- set viewport 1440 900

@@ -26,13 +26,13 @@ expect '"n": 3'
 
 # Focus B, unfocus it, focus C instead.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task B ${STAMP}"]]//button[@aria-label="Focus this task"]'
-browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
+see button "Unfocus this task" --in '[data-slot=thread-detail-pane]'
 shot tasks-focused
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task B ${STAMP}"]]//button[@aria-label="Unfocus this task"]'
-browser -- wait --fn "document.querySelectorAll('ul[aria-label=\"Tasks\"] > li[data-focused]').length === 0"
+gone button "Unfocus this task" --in '[data-slot=thread-detail-pane]'
 shot tasks-unfocused
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task C ${STAMP}"]]//button[@aria-label="Focus this task"]'
-browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
+see button "Unfocus this task" --in '[data-slot=thread-detail-pane]'
 
 # Edit C: click its text, replace it, commit with Tab.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task C ${STAMP}"]]//button[normalize-space()="Task C ${STAMP}"]'
@@ -43,16 +43,17 @@ shot tasks-edited
 
 # Remove A (no Activity Log entry), complete B (unfocused; C keeps the focus).
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task A ${STAMP}"]]//button[@aria-label="Remove task"]'
-browser -- wait --fn "!document.querySelector('ul[aria-label=\"Tasks\"]').textContent.includes('Task A ${STAMP}')"
+gone button "Task A ${STAMP}" --in '[data-slot=thread-detail-pane]'
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Task B ${STAMP}"]]//button[@aria-label="Complete task"]'
-browser -- wait --fn "!document.querySelector('ul[aria-label=\"Tasks\"]').textContent.includes('Task B ${STAMP}')"
+gone button "Task B ${STAMP}" --in '[data-slot=thread-detail-pane]'
 shot tasks-completed
 
-# Activity Log shows the completion, and only that.
+# After a reload (the server's state): the edit and C's focus stuck, A and B are gone, and the Activity Log shows the completion.
+browser -- reload
+see button "Task C edited ${STAMP}" --in '[data-slot=thread-detail-pane]'
+see button "Unfocus this task" --in '[data-slot=thread-detail-pane]'
+gone button "Task A ${STAMP}" --in '[data-slot=thread-detail-pane]'
+gone button "Task B ${STAMP}" --in '[data-slot=thread-detail-pane]'
 browser -- find role tab click --name "Activity" --exact
-browser -- wait --text "Completed Task B ${STAMP}"
+see text "Completed Task B ${STAMP}"
 shot tasks-activity
-d1 "SELECT l.type, l.content FROM threads t JOIN activity_log_entries l ON l.thread_id = t.id WHERE t.title = 'Flow tasks ${STAMP}' AND l.type LIKE '%completed'"
-expect Completed
-d1 "SELECT moves_json, focused_move_id FROM threads WHERE title = 'Flow tasks ${STAMP}'"
-expect Task C edited ${STAMP}

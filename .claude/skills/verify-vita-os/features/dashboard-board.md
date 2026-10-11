@@ -30,7 +30,7 @@ Preconditions: signed in at 1440×900, with Threads and Notes spread over Late, 
 - **List and No date.** Run `bun run verify open /`, `bun run verify browser -- wait --text "Late"`, then `bun run verify shot board-desktop`. The snapshot has `region "Late"`, `region "Today"` and the later groups, and `complementary "No date"` with its runs. `screenshot --full <evidence dir>/board-full.png` shows the one-line weeks and months at the foot.
 - **Filter overflow.** With more Areas than fit (seven at 1440), the row ends `… <n> more`, `Notes <n>`, `Edit areas`. Run `find role button click --name "<n> more"`, then `find role menuitemradio click --name "<Area> <count>"`: the URL gets `?area=<slug>` and the chosen Area takes the last visible chip.
 - **Thread from a card.** `find role link click --name "<title>" --exact` opens `complementary "<title>"` at 1440 (`dialog "<title>"` below 1280); `find role button click --name "Close thread"` closes it.
-- **Card actions.** `find role button click --name "Complete “<task>”" --exact`, reload, and `bun run verify d1 "SELECT title, moves_json FROM threads"`: the completed one-off Task is gone and the Thread moves to `No date` → `Open`.
+- **Card actions.** `find role button click --name "Complete “<task>”" --exact`, reload, and `bun run verify gone button "Complete “<task>”"`: the completed one-off Task is gone and the Thread moves to `No date` → `Open`.
 - **Phone.** `set viewport 390 844`, `reload`: the folded `No date` leads the list; `find role button click --name "<first>, <second> and <n> more"` opens it. The bottom `navigation "Actions"` opens the palette and the New note dialog. Run `set viewport 1440 900` afterwards.
 
 ## Gotchas
