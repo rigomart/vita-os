@@ -11,18 +11,17 @@ This directory is the maintained source for verifying Vita OS's user-facing beha
 
 ## Driving conventions
 
-- Run browser actions as `bun run verify browser -- <agent-browser args>`.
+- Drive in batches with `bun run verify run -` and a heredoc (see Drive in `../SKILL.md`). Each line is `browser -- <agent-browser args>`, `open`, `shot`, `d1`, or `expect`.
 - Prefer ARIA roles and accessible names (`find role button click --name "Add" --exact`, `find label "Note body" fill ...`) over CSS selectors or refs from an old snapshot.
-- Use unique text for anything you create (append a timestamp) so a check cannot match leftovers. Generate the timestamp in a separate command (`date +%s`) and paste the literal text into later commands. Inline `$(...)` inside a `bun run verify` command can be refused by command guards.
-- Wait on the specific end state (`wait --text`, `wait --fn`, `wait '<selector>'`). Never use `wait --load networkidle` or bare sleeps as proof.
-
-- Prefer `bun run verify run <flow-file>` over step-by-step driving for anything longer than a few steps. Flows live in `../flows/` (`tasks`, `dashboard-tasks`, `dated-tasks`, `repeating-tasks`, `complete-with-note`, `resolve-reopen`, `thread-drawer`, `thread-edit-tasks`) and are built from the command blocks in these files; see Flows in `../SKILL.md` for the format. Add or update a flow when a feature file's recipe changes.
+- Use unique text for anything you create so a check cannot match leftovers: `${STAMP}` in a batch or flow becomes one timestamp per run.
+- Check and wait with `see <role> "<name>"` and `gone <role> "<name>"` (see Checking and waiting in `../SKILL.md`); keep `wait --fn` for values, focus, counts, order, and dates. Never use `wait --load networkidle`, `wait <ms>`, or `sleep` as proof.
+- Flows live in `../flows/`, one per feature area; each header says what it proves. Run the ones covering your change, or all of them with `bun run verify run .claude/skills/verify-vita-os/flows/*.flow`. Add or update a flow when a feature file's recipe changes.
 - Never `press Enter` to commit an edit of an existing Task's text (agent-browser 0.38.1 floods the browser with keydown events); use `press Tab` or a click. `press Enter` in `Add a task` is fine and is the capture path flows must keep proving.
 - Time-limit verification. If the same step fails twice, stop that item and report it `INCONCLUSIVE` with the failing command and its output.
 
 ## Scripted feature coverage
 
-Run each new flow below from a fresh instance: `bun run verify up`, `bun run verify signin`, then `bun run verify run .claude/skills/verify-vita-os/flows/<name>.flow`. Each flow checks visible behavior and persisted writes with read-only D1 queries. These flows supplement the existing Task and Thread flows listed above.
+After `bun run verify up` and `bun run verify signin`, run a flow with `bun run verify run .claude/skills/verify-vita-os/flows/<name>.flow`. A flow that needs an empty D1 says `Needs a fresh` in its header, and `run` resets the instance before it. Each flow checks visible behavior and persisted writes with read-only D1 queries. The Notes, Areas, History, and sign-in flows are listed here; the Task and Thread flows (`tasks`, `dashboard-tasks`, `dated-tasks`, `repeating-tasks`, `complete-with-note`, `resolve-reopen`, `thread-drawer`, `thread-edit-tasks`) are covered in [Tasks](./tasks.md).
 
 | Flow | Feature maps and scope |
 | --- | --- |
@@ -37,7 +36,7 @@ Run each new flow below from a fresh instance: `bun run verify up`, `bun run ver
 ## Proof and skip reporting
 
 - Capture the action and the resulting state: `bun run verify shot <feature>-before` and `bun run verify shot <feature>-after`.
-- Mutation proof needs the server confirmation (toast), a reload showing the change, and a read-only second view via `bun run verify d1 "SELECT ..."`. Vita renders mutations optimistically, so the UI alone before a reload proves nothing.
+- Mutation proof needs the server confirmation (toast) and a reload showing the change (`see`/`gone` after `browser -- reload`). Vita renders mutations optimistically, so the UI alone before a reload proves nothing. Add `bun run verify d1 "SELECT ..."` only for what the screen cannot show: duplicates, exact stored values, real deletion, Activity Log content.
 - Report the feature ID and entry point with every artifact.
 - An unreachable entry point is reported with the attempted command and the unmet precondition. Do not report it as verified through a different path.
 

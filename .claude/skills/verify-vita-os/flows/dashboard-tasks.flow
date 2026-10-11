@@ -14,9 +14,8 @@ browser -- wait --text "Only task ${STAMP}"
 
 # Thread Many: three Tasks, none focused.
 # An open Thread pane covers the header's actions and the right of the list (ADR 0023, ADR 0037), so close it first.
-browser -- eval "document.querySelector('button[aria-label=\"Close thread\"]')?.click() ?? null"
-browser -- wait --fn "!document.querySelector('button[aria-label=\"Close thread\"]')"
-browser -- wait 500
+browser -- find role button click --name "Close thread" --exact
+gone complementary "Card one ${STAMP}"
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Card many ${STAMP}"
 browser -- find role button click --name Create --exact
@@ -34,9 +33,8 @@ browser -- wait --text "Many 3 ${STAMP}"
 
 # Thread Focus: two Tasks, the second focused.
 # An open Thread pane covers the header's actions and the right of the list (ADR 0023, ADR 0037), so close it first.
-browser -- eval "document.querySelector('button[aria-label=\"Close thread\"]')?.click() ?? null"
-browser -- wait --fn "!document.querySelector('button[aria-label=\"Close thread\"]')"
-browser -- wait 500
+browser -- find role button click --name "Close thread" --exact
+gone complementary "Card many ${STAMP}"
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Card focus ${STAMP}"
 browser -- find role button click --name Create --exact
@@ -49,7 +47,7 @@ browser -- find label "Add a task" fill "Focus 2 ${STAMP}"
 browser -- press Enter
 browser -- wait --text "Focus 2 ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Focus 2 ${STAMP}"]]//button[@aria-label="Focus this task"]'
-browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
+see button "Unfocus this task" --in '[data-slot=thread-detail-pane]'
 
 browser -- wait 1500
 open /
@@ -60,14 +58,15 @@ shot dash-task-slots
 
 # Complete from the card: the focused Task, then the only Task.
 browser -- find role button click --name "Complete “Focus 2 ${STAMP}”" --exact
-browser -- wait --fn "!document.body.innerText.includes('Focus 2 ${STAMP}')"
+gone text "Focus 2 ${STAMP}"
 browser -- find role button click --name "Complete “Only task ${STAMP}”" --exact
-browser -- wait --fn "!document.body.innerText.includes('Only task ${STAMP}')"
+gone text "Only task ${STAMP}"
 shot dash-task-completed
 
 browser -- wait 1500
 open /
-browser -- wait --text "Card many ${STAMP}"
+see link "Card many ${STAMP}"
+see text "3 tasks · none focused"
+gone text "Focus 2 ${STAMP}"
+gone text "Only task ${STAMP}"
 shot dash-task-after-reload
-d1 "SELECT title, moves_json FROM threads WHERE title LIKE 'Card % ${STAMP}' ORDER BY title"
-expect Many 1 ${STAMP}

@@ -36,12 +36,27 @@ Commands:
                                      vita browser -- find role button click --name "New note"
   open <path>                        Open a web path (e.g. / or /threads/x) and wait for the app shell.
   shot <label>                       Save <label>.png (screenshot) and <label>.aria.txt (snapshot) as evidence.
+  see <role> ["<name>"] [--contains] [--in <css>] [--timeout S]
+                                     Wait until the accessibility tree (what a screen reader gets) has an
+                                     element with this role and exact accessible name, e.g.
+                                     see button "Open note: Dentist". --contains matches part of the name.
+                                     "text" instead of a role matches visible text, even across elements.
+                                     --in scopes to a CSS selector.
+                                     On failure, lists the names that role has on the page.
+  gone <role> ["<name>"] [...]       The same, waiting until no such element is left.
+  settled '<css>'                    Wait until the element exists and has stopped animating (a pane or
+                                     drawer that slides in). Click inside it only after this.
   d1 "<SELECT ...>"                  Read-only SQL against this instance's local D1 (SELECT only).
-  run <flow-file> [--step-timeout S] Run a flow file with no model in the loop: one command per line as you
+  run <flow-file>... [--step-timeout S]
+                                     Run flow files with no model in the loop: one command per line as you
                                      would type it after "bun run verify", # comments, \${STAMP} replaced by
                                      one timestamp per run, "expect <text>" asserts the previous output
-                                     contains <text>. Stops at the first failing step, prints it as JSON, exits
-                                     1. Default step timeout 20s. Flows live in flows/.
+                                     contains <text>. A flow stops at its first failing step, saves a
+                                     snapshot of the page, and exits 1. A flow whose header says "Needs a
+                                     fresh" instance gets down --purge, up, and signin first. Default step
+                                     timeout 30s. Flows live in flows/.
+  run -                              Run steps from stdin (a heredoc) and print each step's output: ad hoc
+                                     driving in one call, in flow syntax.
   env                                Print URLs, credentials, session name, and evidence dir.
   down [--dry-run] [--purge]         Stop only the processes this instance started, close its browser
                                      session. --purge also deletes its local D1. Evidence is kept.
@@ -100,7 +115,14 @@ function parseArgs(argv: string[]) {
       if (
         next !== undefined &&
         !next.startsWith("--") &&
-        ["instance", "web-port", "api-port", "step-timeout"].includes(key)
+        [
+          "instance",
+          "web-port",
+          "api-port",
+          "step-timeout",
+          "in",
+          "timeout",
+        ].includes(key)
       ) {
         flags[key] = next;
         i++;
@@ -265,6 +287,10 @@ function browserEnv(): NodeJS.ProcessEnv {
     ? existing
     : [existing, CHROME_ARGS].filter(Boolean).join(",");
   return { ...process.env, AGENT_BROWSER_ARGS: args };
+}
+
+function signedOut(url: string): boolean {
+  return new URL(url).pathname === "/sign-in";
 }
 
 function agentBrowser(
@@ -538,8 +564,18 @@ async function open(instance: string, path: string | undefined) {
     "open",
     `${state.webUrl}${path.startsWith("/") ? path : `/${path}`}`,
   ]);
-  agentBrowser(state, ["wait", 'header[aria-label="Vita OS"]']);
-  return { ok: true, url: agentBrowser(state, ["get", "url"]) };
+  agentBrowser(state, [
+    "wait",
+    "--fn",
+    `!!document.querySelector('header[aria-label="Vita OS"]') || location.pathname === "/sign-in"`,
+  ]);
+  const url = agentBrowser(state, ["get", "url"]);
+  if (signedOut(url) && !path.startsWith("/sign-in"))
+    throw new VitaError(
+      `landed on /sign-in: the browser session has no sign-in (agent-browser restarts a session idle for 1h, and a relaunch loses cookies)`,
+      "run: bun run verify signin (same user, data kept), then retry",
+    );
+  return { ok: true, url };
 }
 
 async function shot(instance: string, label: string | undefined) {
@@ -556,6 +592,110 @@ async function shot(instance: string, label: string | undefined) {
   const url = agentBrowser(state, ["get", "url"]);
   agentBrowser(state, ["screenshot", png]);
   return { ok: true, screenshot: png, snapshot: aria, url };
+}
+
+type TreeNode = { role: string; name?: string; line: string };
+
+/** Parse agent-browser's snapshot lines: `- button "Name \"quoted\"" [ref=e1]: value`. */
+function parseTree(snapshot: string): TreeNode[] {
+  return snapshot.split("\n").flatMap((line) => {
+    const match = /^\s*- (\S+)(?: "((?:[^"\\]|\\.)*)")?/.exec(line);
+    if (!match) return [];
+    const name = match[2]?.replace(/\\(.)/g, "$1");
+    return [{ role: match[1], name, line: line.trim() }];
+  });
+}
+
+async function seeOrGone(
+  instance: string,
+  want: "see" | "gone",
+  role: string | undefined,
+  name: string | undefined,
+  flags: Record<string, string | true>,
+) {
+  if (!role || (role === "text" && name === undefined))
+    throw new VitaError(
+      "missing role",
+      `usage: vita ${want} button "New note" (roles as snapshot prints them: button, link, dialog, complementary, heading, text, ...)`,
+    );
+  const state = requireState(instance);
+  // The snapshot prints ARIA's "img" as "image".
+  const snapshotRole = role === "img" ? "image" : role;
+  const contains = flags.contains === true;
+  const scope = typeof flags.in === "string" ? ["-s", flags.in] : [];
+  const timeoutMs =
+    (typeof flags.timeout === "string" ? Number(flags.timeout) : 15) * 1000;
+  const matches = (node: TreeNode) => {
+    if (node.role !== snapshotRole) return false;
+    if (name === undefined) return true;
+    return contains ? (node.name ?? "").includes(name) : node.name === name;
+  };
+  const label = `${role}${name === undefined ? "" : ` "${name}"`}`;
+  const deadline = Date.now() + timeoutMs;
+  let nodes: TreeNode[] = [];
+  while (true) {
+    let found: boolean;
+    if (role === "text") {
+      // Text can span several tree nodes ("3 tasks", " · ", "none focused"), so read the rendered text.
+      const root = scope.length
+        ? `document.querySelector(${JSON.stringify(scope[1])})`
+        : "document.body";
+      found =
+        agentBrowser(state, [
+          "eval",
+          `(${root}?.innerText ?? "").includes(${JSON.stringify(name ?? "")})`,
+        ]) === "true";
+    } else {
+      let snapshot = "";
+      try {
+        snapshot = agentBrowser(state, ["snapshot", ...scope]);
+      } catch (err) {
+        // A scope selector that matches nothing yet is an empty tree, not an error.
+        if (!scope.length) throw err;
+      }
+      nodes = parseTree(snapshot);
+      found = nodes.some(matches);
+    }
+    if (found === (want === "see")) return { ok: true, [want]: label };
+    if (Date.now() > deadline) break;
+    await Bun.sleep(250);
+  }
+  if (want === "gone")
+    throw new VitaError(
+      `${label} is still on the page after ${timeoutMs / 1000}s`,
+      "take a snapshot to see what keeps it there",
+    );
+  const seen = [
+    ...new Set(
+      nodes
+        .filter((n) => n.role === snapshotRole && n.name !== undefined)
+        .map((n) => `"${n.name}"`),
+    ),
+  ];
+  throw new VitaError(
+    `no ${label} after ${timeoutMs / 1000}s${scope.length ? ` in ${scope[1]}` : ""}`,
+    role === "text"
+      ? "take a snapshot to see the page"
+      : seen.length
+        ? `${role} names ${scope.length ? "there" : "on the page"}: ${seen.slice(0, 20).join(", ")}`
+        : `no ${role} ${scope.length ? "there" : "on the page"} at all`,
+  );
+}
+
+async function settled(instance: string, selector: string | undefined) {
+  if (!selector)
+    throw new VitaError(
+      "missing selector",
+      "usage: vita settled '[data-slot=thread-detail-pane]'",
+    );
+  const state = requireState(instance);
+  const element = `document.querySelector(${JSON.stringify(selector)})`;
+  agentBrowser(state, [
+    "wait",
+    "--fn",
+    `!!${element} && ${element}.getAnimations().length === 0`,
+  ]);
+  return { ok: true, settled: selector };
 }
 
 async function d1(instance: string, sql: string | undefined) {
@@ -627,8 +767,19 @@ async function down(
 
 // ---- flows: scripted runs with no model in the loop ----
 
-const FLOW_COMMANDS = ["open", "signin", "browser", "shot", "d1", "doctor"];
-const DEFAULT_STEP_TIMEOUT_SEC = 20;
+const FLOW_COMMANDS = [
+  "open",
+  "signin",
+  "browser",
+  "see",
+  "gone",
+  "settled",
+  "shot",
+  "d1",
+  "doctor",
+];
+// Above agent-browser's 25s action timeout, so a failing find or wait reports its own error.
+const DEFAULT_STEP_TIMEOUT_SEC = 30;
 
 /** Split a flow line into words, honouring '...' and "..." (backslash escapes inside double quotes). */
 function tokenize(line: string): string[] {
@@ -679,19 +830,19 @@ function parseFlow(source: string, stamp: string): FlowStep[] {
   return steps;
 }
 
+// A flow that needs an empty D1 says so in its header; `run` resets the instance before it.
+const NEEDS_FRESH = /^#.*Needs a fresh/m;
+
 async function runFlow(
   instance: string,
-  file: string | undefined,
-  opts: { timeoutSec?: number },
+  flow: string,
+  source: string,
+  opts: { timeoutSec: number; echo: boolean; quiet: boolean },
 ) {
-  if (!file)
-    throw new VitaError("missing flow file", "usage: vita run <flow-file>");
-  if (!existsSync(file))
-    throw new VitaError(`flow file not found: ${file}`, "pass a path");
   const state = requireState(instance);
-  const timeoutSec = opts.timeoutSec ?? DEFAULT_STEP_TIMEOUT_SEC;
+  const { timeoutSec } = opts;
   const stamp = String(Math.floor(Date.now() / 1000));
-  const steps = parseFlow(readFileSync(file, "utf8"), stamp);
+  const steps = parseFlow(source, stamp);
   const started = Date.now();
   const checkpoints: string[] = [];
   let previous = "";
@@ -733,17 +884,27 @@ async function runFlow(
       if (!failure && step.words[0] === "shot") checkpoints.push(step.words[1]);
     }
     previous = output;
-    process.stderr.write(
-      `${failure ? "FAIL" : "ok"} line ${step.line} (${Date.now() - t0}ms): ${step.text.slice(0, 100)}\n`,
-    );
+    if (failure || !opts.quiet)
+      process.stderr.write(
+        `${failure ? "FAIL" : "ok"} line ${step.line} (${Date.now() - t0}ms): ${step.text.slice(0, 100)}\n`,
+      );
+    if (
+      opts.echo &&
+      !failure &&
+      step.words[0] !== "expect" &&
+      output &&
+      output !== "✓ Done"
+    )
+      process.stderr.write(`${output.replace(/^/gm, "    ")}\n`);
     if (failure)
       return {
         ok: false,
-        flow: file,
+        flow,
         failedLine: step.line,
         command: step.text,
         error: failure,
         output: output.slice(-2000),
+        ...pageAtFailure(state, step.line),
         checkpoints,
         evidenceDir: state.evidenceDir,
         ms: Date.now() - started,
@@ -751,12 +912,87 @@ async function runFlow(
   }
   return {
     ok: true,
-    flow: file,
+    flow,
     stamp,
     steps: steps.length,
     checkpoints,
     evidenceDir: state.evidenceDir,
     ms: Date.now() - started,
+  };
+}
+
+/** Save what the page looked like when a step failed, so diagnosing it needs no re-drive. */
+function pageAtFailure(state: State, line: number) {
+  try {
+    const snapshot = join(state.evidenceDir, `failed-line-${line}.aria.txt`);
+    mkdirSync(state.evidenceDir, { recursive: true });
+    writeFileSync(snapshot, agentBrowser(state, ["snapshot", "-i"]));
+    return { url: agentBrowser(state, ["get", "url"]), snapshot };
+  } catch (err) {
+    return { snapshotError: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+async function runFlows(instance: string, files: string[], timeoutSec: number) {
+  if (files.length === 0)
+    throw new VitaError(
+      "missing flow file",
+      "usage: vita run <flow-file>... or vita run - (steps on stdin)",
+    );
+  if (files.includes("-")) {
+    if (files.length > 1)
+      throw new VitaError(
+        "run - reads one flow from stdin",
+        "usage: vita run -",
+      );
+    return runFlow(instance, "stdin", await Bun.stdin.text(), {
+      timeoutSec,
+      echo: true,
+      quiet: false,
+    });
+  }
+  for (const file of files)
+    if (!existsSync(file))
+      throw new VitaError(`flow file not found: ${file}`, "pass a path");
+  const results = [];
+  for (const file of files) {
+    const source = readFileSync(file, "utf8");
+    const reset = NEEDS_FRESH.test(source);
+    if (reset) {
+      await down(instance, { dryRun: false, purge: true, quiet: true });
+      await up(instance, {});
+      await signin(instance);
+    }
+    // A flow that failed midway may leave another viewport behind; start each one at signin's.
+    agentBrowser(requireState(instance), ["set", "viewport", "1440", "900"]);
+    const result = await runFlow(instance, file, source, {
+      timeoutSec,
+      echo: false,
+      quiet: files.length > 1,
+    });
+    if (files.length === 1) return { ...result, reset };
+    process.stderr.write(
+      `${result.ok ? "ok  " : "FAIL"} ${file} (${result.ms}ms${reset ? ", fresh instance" : ""})\n`,
+    );
+    results.push({ ...result, reset });
+  }
+  return {
+    ok: results.every((r) => r.ok),
+    passed: results.filter((r) => r.ok).map((r) => r.flow),
+    failed: results.flatMap((r) =>
+      r.ok
+        ? []
+        : [
+            {
+              flow: r.flow,
+              failedLine: r.failedLine,
+              command: r.command,
+              output: r.output,
+              url: r.url,
+              snapshot: r.snapshot,
+            },
+          ],
+    ),
   };
 }
 
@@ -782,15 +1018,23 @@ async function main() {
       return out(await open(instance, positional[0]));
     case "shot":
       return out(await shot(instance, positional[0]));
+    case "see":
+    case "gone":
+      return out(
+        await seeOrGone(instance, command, positional[0], positional[1], flags),
+      );
+    case "settled":
+      return out(await settled(instance, positional[0]));
     case "d1":
       return out(await d1(instance, positional[0]));
     case "run": {
-      const result = await runFlow(instance, positional[0], {
-        timeoutSec:
-          typeof flags["step-timeout"] === "string"
-            ? Number(flags["step-timeout"])
-            : undefined,
-      });
+      const result = await runFlows(
+        instance,
+        positional,
+        typeof flags["step-timeout"] === "string"
+          ? Number(flags["step-timeout"])
+          : DEFAULT_STEP_TIMEOUT_SEC,
+      );
       out(result);
       if (!result.ok) process.exit(1);
       return;

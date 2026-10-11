@@ -18,19 +18,21 @@ browser -- find label "Add a task" fill "Drawer B ${STAMP}"
 browser -- press Enter
 browser -- wait --text "Drawer B ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Drawer B ${STAMP}"]]//button[@aria-label="Focus this task"]'
-browser -- wait 'ul[aria-label="Tasks"] > li[data-focused]'
+see button "Unfocus this task" --in '[role=dialog]'
 shot drawer-tasks
 
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Drawer B ${STAMP}"]]//button[@aria-label="Complete task"]'
-browser -- wait --fn "!document.querySelector('ul[aria-label=\"Tasks\"]').textContent.includes('Drawer B ${STAMP}')"
+gone button "Drawer B ${STAMP}" --in '[role=dialog]'
 browser -- find role tab click --name "Activity" --exact
 browser -- wait --text "Completed Drawer B ${STAMP}"
 shot drawer-activity
 
 # Reload keeps the drawer open on the same Thread.
 browser -- reload
-browser -- wait 'ul[aria-label="Tasks"]'
+see dialog "Drawer ${STAMP}"
+see button "Drawer A ${STAMP}" --in '[role=dialog]'
+gone button "Drawer B ${STAMP}" --in '[role=dialog]'
 shot drawer-reloaded
 browser -- find role button click --name "Close thread" --exact
-browser -- wait --fn "!document.querySelector('[role=dialog]')"
+gone dialog
 browser -- set viewport 1440 900

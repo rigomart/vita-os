@@ -2,7 +2,7 @@
 # up creates a signup session without retaining its cookie; signin adds the browser session.
 # The signup session remains, so D1 counts are 2, then 1, then 2.
 open /
-browser -- wait 'header[aria-label="Vita OS"]'
+see banner "Vita OS"
 d1 "SELECT COUNT(*) AS signed_in_sessions FROM session"
 expect '"signed_in_sessions": 2'
 shot sign-in-before
@@ -19,10 +19,10 @@ browser -- wait --url '**/sign-in'
 browser -- wait --text "Sign in to your account to continue"
 # signin fills the real form with this instance's generated credentials and verifies /api/auth/get-session.
 signin
-browser -- wait 'header[aria-label="Vita OS"]'
+see banner "Vita OS"
 d1 "SELECT COUNT(*) AS new_signed_in_session FROM session"
 expect '"new_signed_in_session": 2'
 open /sign-in
 browser -- wait --url '**/'
-browser -- wait 'header[aria-label="Vita OS"]'
+see banner "Vita OS"
 shot sign-in-after

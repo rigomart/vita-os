@@ -11,7 +11,7 @@ browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Dated A ${STAMP}"
 browser -- find role button click --name Create --exact
 browser -- wait --text "Thread created"
-browser -- wait 'input[aria-label="Add a task"]'
+see textbox "Add a task"
 browser -- find label "Add a task" fill "A1 ${STAMP}"
 browser -- press Enter
 browser -- wait --text "A1 ${STAMP}"
@@ -32,13 +32,12 @@ browser -- wait --fn "!document.querySelector('[data-slot=popover-content]')"
 
 # The Thread leaves No date for the list, under that day's heading, and its card leads with A1 and its time.
 browser -- wait --fn "(() => { const d = new Date(); d.setDate(d.getDate() + 2); const day = d.toLocaleDateString('en-US', { weekday: 'long' }); return [...document.querySelectorAll(\"section[aria-label='\" + day + \"'] li\")].some(li => li.textContent.includes('Dated A ${STAMP}') && li.textContent.includes('A1 ${STAMP}') && li.textContent.includes('3:30 PM')); })()"
-browser -- wait --fn "![...document.querySelectorAll(\"aside[aria-label='No date'] li\")].some(li => li.textContent.includes('Dated A ${STAMP}'))"
+gone link "Dated A ${STAMP}" --in "aside[aria-label='No date']"
 shot dated-a-placed
 
 # Reschedule from the card's own token: one day later, the time kept.
-browser -- eval "document.querySelector('button[aria-label=\"Close thread\"]')?.click() ?? null"
-browser -- wait --fn "!document.querySelector('button[aria-label=\"Close thread\"]')"
-browser -- wait 500
+browser -- find role button click --name "Close thread" --exact
+gone complementary "Dated A ${STAMP}"
 browser -- click 'xpath=//li[.//a[normalize-space()="Dated A ${STAMP}"]]//button[@aria-label="Change date"]'
 browser -- wait '[data-slot=popover-content] td[data-day]'
 browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() + 3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click(); })()"
@@ -55,15 +54,11 @@ d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.
 expect '"n": 0'
 
 # C: two dated Tasks on the same day read as a count and never pick one.
-# An open Thread pane covers the header's actions and the right of the list (ADR 0023, ADR 0037), so close it first.
-browser -- eval "document.querySelector('button[aria-label=\"Close thread\"]')?.click() ?? null"
-browser -- wait --fn "!document.querySelector('button[aria-label=\"Close thread\"]')"
-browser -- wait 500
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Dated C ${STAMP}"
 browser -- find role button click --name Create --exact
 browser -- wait --text "Thread created"
-browser -- wait 'input[aria-label="Add a task"]'
+see textbox "Add a task"
 browser -- find label "Add a task" fill "C1 ${STAMP}"
 browser -- press Enter
 browser -- wait --text "C1 ${STAMP}"
@@ -79,19 +74,20 @@ browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()
 browser -- click 'xpath=//td[@data-today]//button'
 browser -- press Escape
 browser -- wait --fn "!document.querySelector('[data-slot=popover-content]')"
-browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Today'] li\")].some(li => li.textContent.includes('Dated C ${STAMP}') && li.textContent.includes('2 tasks today') && !li.textContent.includes('C1 ${STAMP}'))"
+see text "Dated C ${STAMP}" --in "section[aria-label='Today']"
+see text "2 tasks today" --in "section[aria-label='Today']"
+gone text "C1 ${STAMP}" --in "section[aria-label='Today']"
 shot dated-c-two-today
 
 # B: two undated Tasks, none focused: the card shows no single Task. Setting a date adds a Task named "Follow up".
 # An open Thread pane covers the header's actions and the right of the list (ADR 0023, ADR 0037), so close it first.
-browser -- eval "document.querySelector('button[aria-label=\"Close thread\"]')?.click() ?? null"
-browser -- wait --fn "!document.querySelector('button[aria-label=\"Close thread\"]')"
-browser -- wait 500
+browser -- find role button click --name "Close thread" --exact
+gone complementary "Dated C ${STAMP}"
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Dated B ${STAMP}"
 browser -- find role button click --name Create --exact
 browser -- wait --text "Thread created"
-browser -- wait 'input[aria-label="Add a task"]'
+see textbox "Add a task"
 browser -- find label "Add a task" fill "B1 ${STAMP}"
 browser -- press Enter
 browser -- wait --text "B1 ${STAMP}"
@@ -111,7 +107,7 @@ shot dated-b-after
 
 # Thread detail (ADR 0039): one list in capture order, so the dated Follow up stays last, and no No date divider.
 browser -- find role link click --name "Dated B ${STAMP}"
-browser -- wait 'ul[aria-label="Tasks"]'
+see list "Tasks"
 browser -- wait --fn "(() => { const t = document.querySelector(\"section[aria-label='Thread attention']\").innerText; const f = t.indexOf('Follow up'); const b1 = t.indexOf('B1 ${STAMP}'); const b2 = t.indexOf('B2 ${STAMP}'); return b1 >= 0 && b1 < b2 && b2 < f && !t.toLowerCase().includes('no date'); })()"
 shot dated-b-detail
 browser -- wait 1500
@@ -121,9 +117,8 @@ expect '"dated": 1'
 
 # D: a dated Standalone Note added to a Thread becomes a dated Task named by its first line (Markdown marker stripped).
 # An open Thread pane covers the header's actions and the right of the list (ADR 0023, ADR 0037), so close it first.
-browser -- eval "document.querySelector('button[aria-label=\"Close thread\"]')?.click() ?? null"
-browser -- wait --fn "!document.querySelector('button[aria-label=\"Close thread\"]')"
-browser -- wait 500
+browser -- find role button click --name "Close thread" --exact
+gone complementary "Dated B ${STAMP}"
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Dated D ${STAMP}"
 browser -- find role button click --name Create --exact
@@ -131,6 +126,7 @@ browser -- wait --text "Thread created"
 # D stays open in its pane, which covers the header's New note (ADR 0037): capture through the palette.
 browser -- press Meta+k
 browser -- find role option click --name "New note"
+see textbox "Note body" --in '[role=dialog]'
 browser -- find label "Note body" fill "## Note task ${STAMP}"
 browser -- find role button click --name "Follow-up date" --exact
 browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() + 5); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click(); })()"
@@ -145,8 +141,9 @@ browser -- find role option click --name "Dated D ${STAMP}"
 browser -- wait --text "Note added to thread"
 # During Undo the destination is not published, and ordinary Task capture remains usable.
 # D is already open from creation; its empty Dashboard card may be behind the pane.
-browser -- wait --fn "!!document.querySelector('[aria-label=\"Dated D ${STAMP}\"]')"
-browser -- wait --fn "![...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('Note task ${STAMP}')) && !document.querySelector('input[aria-label=\"Add a task\"]').disabled"
+see complementary "Dated D ${STAMP}"
+gone text "Note task ${STAMP}" --in 'ul[aria-label="Tasks"]'
+browser -- wait --fn "!document.querySelector('input[aria-label=\"Add a task\"]').disabled"
 browser -- find label "Add a task" fill "During conversion ${STAMP}"
 browser -- press Enter
 browser -- wait --text "During conversion ${STAMP}"
@@ -158,9 +155,7 @@ shot dated-d-usable
 browser -- wait 2000
 browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label] li:not(aside li)\")].some(li => li.textContent.includes('Dated D ${STAMP}') && li.textContent.includes('Note task ${STAMP}'))"
 shot dated-d-added
-d1 "SELECT json_extract(value, '$.text') AS text, json_extract(value, '$.date') IS NOT NULL AS dated, focused_move_id FROM threads, json_each(moves_json) WHERE title = 'Dated D ${STAMP}' AND json_extract(value, '$.text') = 'Note task ${STAMP}'"
-expect Note task ${STAMP}
-expect '"dated": 1'
+# One Thread Note and no Activity Log entry: counts the screen can't show.
 d1 "SELECT COUNT(*) AS n FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Dated D ${STAMP}' AND n.body = '## Note task ${STAMP}'"
 expect '"n": 1'
 d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title LIKE 'Dated % ${STAMP}'"
@@ -168,12 +163,11 @@ expect '"n": 0'
 
 # Completing the confirmed converted Task goes out once: it is gone and logged once; the unrelated Task remains.
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Note task ${STAMP}"]]//button[@aria-label="Complete task"]'
-browser -- wait --fn "![...document.querySelectorAll('ul[aria-label=\"Tasks\"] > li')].some(li => li.textContent.includes('Note task ${STAMP}'))"
+gone button "Note task ${STAMP}" --in '[data-slot=thread-detail-pane]'
 browser -- wait 1500
 shot dated-d-completed
-d1 "SELECT COALESCE(json_array_length(moves_json), 0) AS tasks FROM threads WHERE title = 'Dated D ${STAMP}'"
-expect '"tasks": 1'
-d1 "SELECT json_extract(value, '$.text') AS text FROM threads, json_each(moves_json) WHERE title = 'Dated D ${STAMP}'"
-expect During conversion ${STAMP}
+browser -- reload
+see button "During conversion ${STAMP}" --in '[data-slot=thread-detail-pane]'
+gone button "Note task ${STAMP}" --in '[data-slot=thread-detail-pane]'
 d1 "SELECT COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Dated D ${STAMP}'"
 expect '"n": 1'
