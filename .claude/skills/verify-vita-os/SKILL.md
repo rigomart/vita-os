@@ -105,7 +105,7 @@ bun run verify doctor           # read-only health check; run it first whenever 
 bun run verify down --purge     # stop this instance, close its browser, delete its D1 (do this when your task is done)
 ```
 
-`down` kills only the processes this instance started and closes only its own browser session. Evidence under `.verify/evidence/` and launch logs under `.verify/instances/<name>/logs/` (`migrate.log`, `api.log`, `web.log`) are never deleted. `buildMatchesHead: false` from `doctor` means you committed or switched branches since `up`. Vite still serves the working tree, so this only matters if you switched branches: then run `down` and `up`.
+`down` kills only the processes this instance started and closes only its own browser session. Evidence under `.verify/evidence/` and launch logs under `.verify/instances/<name>/logs/` (`migrate.log`, `api.log`, `web.log`) are never deleted. Committing does not affect a running instance: Vite and the API serve the working tree. `branchMatches: false` from `doctor` means you switched branches since `up`, and the other branch may need other migrations: run `down --purge` and `up`.
 
 ## Keeping the map current
 
