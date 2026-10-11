@@ -2,7 +2,7 @@
 
 A signed-in user writes a Note inside a Thread, edits it in the shared Note view, archives or unarchives it, and deletes it. Thread Notes have no independent Follow-up date. Archived Thread Notes stay in their Thread under `Archived notes`, never in the palette's History (ADR 0031).
 
-Status: proven on 84ce18f (desktop create, edit, complete, reopen, delete, completed-page read, reload and D1 persistence). Archive wording re-driven on 446055e at 1440×900: the card's `Archive note`, `Note archived`, `Archived notes 1`, the archived view's `Archived Oct 2` and `Unarchive`, `Note unarchived`, reload and D1 `state = 'open'`. Create, edit, and delete were not re-driven.
+Status: proven in #391 (84ce18f): create, edit, delete, reload, and D1 persistence; Archive and Unarchive re-driven in #394 (bb54a79) at 1440×900.
 
 ## Sub-features
 

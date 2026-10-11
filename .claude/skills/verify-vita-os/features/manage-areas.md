@@ -2,7 +2,7 @@
 
 A signed-in user adds, renames, reorders, and deletes areas from the `Manage areas` dialog. A new area shows up in the Dashboard's `Filter the board` row (or its `<n> more` menu when the row is full), followed, set apart, by the `Notes` filter and then the `Edit areas` button that opens the dialog.
 
-Status: `areas.flow` re-driven on the ADR 0037 working tree (base c5dc437), opening the dialog from `Edit areas`. Earlier: proven on 6ee2543 (with the Manage areas button moved to the filter row). Re-driven on b2bd91a with `areas.flow`: create, rename, Health icon, keyboard reorder, and deletion preserving an unlabeled Thread at 1440×900. Evidence: `.verify/evidence/areas426/2026-10-07T06-04-43-000Z/`.
+Status: proven in #437 (9bbf928) by `areas.flow` at 1440×900, opening the dialog from `Edit areas`: create, rename, Health icon, keyboard reorder, and deletion keeping an unlabeled Thread.
 
 ## Sub-features
 

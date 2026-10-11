@@ -2,7 +2,7 @@
 
 A signed-in user creates a thread with a title and an optional area. After the server confirms, a `Thread created` toast shows and the thread opens in place at `?thread=<slug>`, with a pane for its summary, Tasks, notes, and activity log. Adding and completing Tasks is its own feature, [Tasks](./tasks.md).
 
-Status: proven on a6805f5 plus the framed New thread dialog change (dock entry point with an area, Enter to submit, and the command palette entry point: `thread-open`, `thread-create`, `thread-area`, `thread-persist`).
+Status: proven in #382 (c55a9eb) from the dock with an area, Enter to submit, and the command palette (`thread-open`, `thread-create`, `thread-area`, `thread-persist`).
 
 ## Sub-features
 

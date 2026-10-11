@@ -2,7 +2,7 @@
 
 Standalone Notes have one optional Follow-up date, with the calendar-and-clock icon and the date picker. The date places a Note on the Dashboard; an optional time orders it within its day. A Thread has no Follow-up date of its own: it comes back at its soonest dated Task (ADR 0032), covered in [Tasks](./tasks.md). Thread Notes have no date.
 
-Status: Notes proven on 32224ed (Note compose, saved Note view, Notes card, Dashboard card actions, nested phone Note view at 390×844, Thread Note compose without a date). The Thread pane, drawer, resolve/reopen and Thread card steps this file once held moved to dated Tasks: proven on 3815ae6 by `flows/dated-tasks.flow` and `flows/resolve-reopen.flow`. Optional time entry on a Note was not re-driven.
+Status: Notes proven on 32224ed (#388): Note compose, the saved Note view, the Notes card, Dashboard card actions, the phone Note view at 390×844, and Thread Note compose without a date. A Thread's dates are dated Tasks, proven by `dated-tasks.flow` and `resolve-reopen.flow` (see [Tasks](./tasks.md)). Not driven: optional time entry on a Note.
 
 ## Sub-features
 

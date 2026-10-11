@@ -2,7 +2,7 @@
 
 Vita OS supplies a standalone web app manifest, Android icons including a maskable icon, an Apple touch icon, and phone metadata. An incoming text share automatically saves a standalone Note after sign-in. Failed saves retain their text and offer Retry; additional shares wait behind earlier unsaved ones.
 
-Status: proven on c03470d with working-tree changes (browser manifest diagnostics, share landing URL, sign-in, retry, queued shares, phone and desktop persistence). Re-driven on 446055e at 1440×900 while signed in: `/share-target` saves (`Note added`), lands on `/`, and the Note is on the Dashboard after a reload and in D1. The recipe's phone steps below were updated for the removed Notes button and are not re-driven. Native home-screen installation and the Android system share picker are not yet driven on physical devices.
+Status: proven on c03470d (#389); `/share-target` re-driven in #394 (bb54a79) at 1440×900 while signed in. Not driven: the phone steps below since the Notes button was removed, native home-screen installation, and the Android share picker on a physical device.
 
 ## Sub-features
 
