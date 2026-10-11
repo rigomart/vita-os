@@ -18,9 +18,9 @@ import {
  * A standalone Note on the board, in the same `BoardCard` as a Thread. The
  * frame the Note wears on the Notes page belongs to writing surfaces; here it
  * sits among Threads being triaged, so it takes their shape and tells itself
- * apart by what it says instead: the body in regular weight where a Thread
- * has a bold title, and a margin rule rather than a tag, since on this board a
- * pill always means an Area.
+ * apart by what it says and by its sheet: the body in regular weight where a
+ * Thread has a bold title, and a dog-eared corner rather than a tag, since on
+ * this board a pill always means an Area.
  *
  * The whole card opens the full Note view, except its footer controls.
  */
@@ -61,7 +61,7 @@ export function DashboardNote({
     <BoardCard
       late={isLate(when, currentDate)}
       onLateFill={onLateFill}
-      ruled
+      dogEared
       footer={
         <>
           {showsDate && followUp}
@@ -83,7 +83,7 @@ export function DashboardNote({
         onClick={() => onOpenNote(note)}
         // The overlay stretches the button over the whole card; the footer's
         // controls sit above it, so only they keep their own clicks.
-        className="line-clamp-2 min-h-0 rounded-sm py-0 text-left text-sm leading-snug whitespace-pre-line wrap-anywhere text-foreground/85 outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:ring-3 focus-visible:ring-ring/30"
+        className="line-clamp-2 min-h-0 rounded-sm py-0 pr-4 text-left text-sm leading-snug whitespace-pre-line wrap-anywhere text-foreground/85 outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:ring-3 focus-visible:ring-ring/30"
       >
         {markdownToPlainText(note.body)}
       </button>
