@@ -13,7 +13,7 @@ Status: `areas.flow` re-driven on the ADR 0037 working tree (base c5dc437), open
 - `areas-delete` removes the label from its Threads while keeping the Threads open.
 - `areas-reorder` reorders areas by dragging a row's `Reorder <name>` handle with the mouse, or by keyboard (Space, arrows, Space; Escape cancels and keeps the dialog open).
 - `areas-filter` shows the new area in `Filter the board`.
-- `areas-persist` keeps the area after a reload and in D1 (`areas`).
+- `areas-persist` keeps the area after a reload.
 
 ## How to get to it (user POV)
 
@@ -22,7 +22,7 @@ Status: `areas.flow` re-driven on the ADR 0037 working tree (base c5dc437), open
 
 ## Driving it with agent-browser
 
-Repeatable flow: `bun run verify run .claude/skills/verify-vita-os/flows/areas.flow`. Start with a fresh signed-in instance. It checks each write in D1 and ends with a reload showing the surviving Thread without its deleted Area.
+Repeatable flow: `bun run verify run .claude/skills/verify-vita-os/flows/areas.flow`. Start with a fresh signed-in instance. It reloads to prove the rename, order and icon stuck, checks in D1 that the deleted Area's row is gone, and ends with a reload showing the surviving Thread without its deleted Area.
 
 Preconditions:
 
@@ -35,7 +35,7 @@ Preconditions:
 - **Open from the filter row.** Run `bun run verify browser -- find role button click --name "Edit areas" --exact`. The same dialog opens.
 - **Drag to reorder.** Find a handle with `bun run verify browser -- get box '[aria-label="Reorder Work"]'` and aim at its centre (x + 16, y + 16). Run `mouse move <x> <y>`, `mouse down`, then `mouse move <x> <target y> --steps 10` in two steps past the target row, then `mouse up`. The dialog lists the rows in the new order.
 - **Keyboard reorder.** Run `bun run verify browser -- focus '[aria-label="Reorder Health"]'`, then `press Space`, `press ArrowUp`, `press Space`. To cancel, press `Escape` instead of the second `Space`: the row returns and the dialog stays open.
-- **Persist.** Run `bun run verify browser -- reload`, then `bun run verify d1 "SELECT name FROM areas"`.
+- **Persist.** Run `bun run verify browser -- reload`, reopen Manage areas from the palette, and `bun run verify see textbox "Name of <area>"`.
 - **Proof.** `bun run verify shot areas-after` after the reload.
 
 ## Gotchas
