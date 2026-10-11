@@ -3,6 +3,7 @@ import type {
   AreaIcon,
   AreaId,
   OperationResult,
+  Repeat,
   TaskId,
   Thread,
 } from "@vita-os/contracts";
@@ -35,6 +36,13 @@ export const scenarios = [
     seed: async () => {},
   },
   {
+    id: "long-tasks",
+    name: "Long tasks",
+    description:
+      "A Thread with many long Tasks: dated, repeating, late, focused.",
+    seed: (client) => seedLife(client, LONG_TASKS),
+  },
+  {
     id: "busy",
     name: "Busy",
     description: "Forty Threads and a full Notes pile, for density.",
@@ -52,7 +60,7 @@ interface SeedThread {
   title: string;
   summary?: string;
   area?: string;
-  tasks?: string[];
+  tasks?: (string | SeedTask)[];
   /** Index into `tasks` of the Focused Task. */
   focus?: number;
   /** A dated "Follow up" Task this many days from today. */
@@ -61,6 +69,15 @@ interface SeedThread {
   followUpAt?: string;
   notes?: { body: string; done?: boolean }[];
   resolution?: string;
+}
+
+/** A Task with a date this many days from today, and optionally a Repeat. */
+interface SeedTask {
+  text: string;
+  inDays: number;
+  /** Its time of day, `HH:mm`. */
+  at?: string;
+  repeat?: Repeat;
 }
 
 interface Life {
@@ -86,10 +103,25 @@ async function seedLife(client: ApplicationClient, life: Life) {
     );
     const threadId = thread._id;
     const taskIds: TaskId[] = [];
-    for (const text of spec.tasks ?? []) {
+    for (const task of spec.tasks ?? []) {
       const taskId = newRecordId() as TaskId;
       taskIds.push(taskId);
-      must(await client.addTask({ threadId, taskId, text }));
+      if (typeof task === "string") {
+        must(await client.addTask({ threadId, taskId, text: task }));
+        continue;
+      }
+      const date = dayFromToday(task.inDays, task.at);
+      must(await client.addTask({ threadId, taskId, text: task.text, date }));
+      if (task.repeat !== undefined) {
+        must(
+          await client.setTaskRepeat({
+            threadId,
+            taskId,
+            repeat: task.repeat,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          }),
+        );
+      }
     }
     if (spec.focus !== undefined) {
       must(await client.focusTask({ threadId, taskId: taskIds[spec.focus]! }));
@@ -243,6 +275,60 @@ const SAMPLE: Life = {
     { body: "Book club picks: The Overstory, Piranesi" },
     { body: "Guest wifi password is on the fridge" },
   ],
+};
+
+/**
+ * One Thread whose Tasks fill the pane: long text, dates near and far, a late
+ * one, two that repeat, and a focus. The rest are there to compare against.
+ */
+const LONG_TASKS: Life = {
+  areas: [
+    { name: "Health", icon: "HeartPulse" },
+    { name: "Home", icon: "Home" },
+  ],
+  threads: [
+    {
+      title: "Mum's hip recovery",
+      area: "Health",
+      summary:
+        "Home from hospital on the 2nd; six weeks of rehab before the follow-up X-ray.",
+      tasks: [
+        "Call the physio to move Thursday's session to the afternoon so I can drive her there",
+        {
+          text: "Evening check-in: ask how the pain was today and whether she did her exercises",
+          inDays: 0,
+          at: "19:00",
+          repeat: { kind: "days", every: 1 },
+        },
+        {
+          text: "Pick up the second box of painkillers from the pharmacy on Elm Street",
+          inDays: -1,
+        },
+        "Ask the surgeon whether she can sleep on her side yet",
+        {
+          text: "Physio session",
+          inDays: 1,
+          at: "15:00",
+          repeat: { kind: "weekly", weekdays: [2, 4] },
+        },
+        {
+          text: "Follow-up X-ray at St Mary's — bring the discharge letter and the medication list",
+          inDays: 12,
+          at: "09:30",
+        },
+        "Order a raised toilet seat and a grab rail for the bathroom",
+      ],
+      focus: 3,
+    },
+    {
+      title: "Fix the leaking kitchen tap",
+      area: "Home",
+      tasks: ["Buy a replacement cartridge"],
+      followUpInDays: 2,
+    },
+    { title: "Learn to bake sourdough" },
+  ],
+  notes: [],
 };
 
 /** The sample life, then many more of everything, spread across time. */
