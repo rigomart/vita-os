@@ -5,15 +5,15 @@ browser -- set viewport 1440 900
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Thread Notes ${STAMP}"
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
+see text "Thread created"
 browser -- find role button click --name "Write a note…" --exact
 see textbox "Note body" --in '[role=dialog]'
 browser -- find label "Note body" fill "Original Thread Note ${STAMP}"
 shot thread-note-create-before
 browser -- find role button click --name Add --exact
-browser -- wait --text "Note added"
+see text "Note added"
 browser -- reload
-browser -- wait --text "Original Thread Note ${STAMP}"
+see text "Original Thread Note ${STAMP}"
 shot thread-note-created
 
 browser -- find role button click --name "Open note: Original Thread Note ${STAMP}" --exact
@@ -22,31 +22,31 @@ see textbox "Note body" --in '[role=dialog]'
 browser -- click '[role=dialog] [aria-label="Note body"]'
 browser -- press Meta+a
 browser -- keyboard type "Edited Thread Note ${STAMP}"
-browser -- wait --text "Unsaved changes"
+see text "Unsaved changes"
 shot thread-note-edit-before
 browser -- find role button click --name Save --exact
-browser -- wait --text "Note saved"
+see text "Note saved"
 browser -- find role button click --name Close --exact
 browser -- reload
-browser -- wait --text "Edited Thread Note ${STAMP}"
+see text "Edited Thread Note ${STAMP}"
 shot thread-note-edited
 
 browser -- find role button click --name "Open note: Edited Thread Note ${STAMP}" --exact
 shot thread-note-archive-before
 browser -- find role button click --name Archive --exact
-browser -- wait --text "Note archived"
+see text "Note archived"
 browser -- find role button click --name Close --exact
 browser -- reload
 see button "Archived notes 1"
 browser -- find role button click --name "Archived notes 1" --exact
-browser -- wait --text "Edited Thread Note ${STAMP}"
+see text "Edited Thread Note ${STAMP}"
 shot thread-note-archived
 
 shot thread-note-unarchive-before
 browser -- find role button click --name "Unarchive note" --exact
-browser -- wait --text "Note unarchived"
+see text "Note unarchived"
 browser -- reload
-browser -- wait --text "Edited Thread Note ${STAMP}"
+see text "Edited Thread Note ${STAMP}"
 gone text "Archived notes"
 shot thread-note-unarchived
 
@@ -54,7 +54,7 @@ browser -- find role button click --name "Open note: Edited Thread Note ${STAMP}
 browser -- find role button click --name "More actions" --exact
 shot thread-note-delete-before
 browser -- find role menuitem click --name "Delete note" --exact
-browser -- wait --text "Note deleted"
+see text "Note deleted"
 gone button "Undo"
 browser -- reload
 see region "Thread Notes"

@@ -2,7 +2,7 @@
 
 A user with an email and password account signs in from `/sign-in` and lands on the Dashboard. A signed-out visit to any product route redirects to `/sign-in`, and a signed-in visit to `/sign-in` redirects to `/`.
 
-Status: proven on 1d2885d by an independent cold run (`bun run verify signin`). Re-driven on b2bd91a with `sign-in.flow`: menu sign-out, signed-out product-route gate, form sign-in with an API-recognized session, and signed-in `/sign-in` redirect. Evidence: `.verify/evidence/signin426/2026-10-07T06-08-48-371Z/`. Wrong-password errors were not re-driven in this flow.
+Status: proven on b2bd91a (#418) by `sign-in.flow`: menu sign-out, the signed-out gate, form sign-in with a session the API recognizes, and the signed-in `/sign-in` redirect. Not driven: wrong-password errors.
 
 ## Sub-features
 

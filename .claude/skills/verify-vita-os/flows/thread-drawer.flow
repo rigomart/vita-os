@@ -7,16 +7,16 @@ open /
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Drawer ${STAMP}"
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
-browser -- wait 'input[aria-label="Add a task"]'
+see text "Thread created"
+see textbox "Add a task"
 shot drawer-before
 
 browser -- find label "Add a task" fill "Drawer A ${STAMP}"
 browser -- press Enter
-browser -- wait --text "Drawer A ${STAMP}"
+see text "Drawer A ${STAMP}"
 browser -- find label "Add a task" fill "Drawer B ${STAMP}"
 browser -- press Enter
-browser -- wait --text "Drawer B ${STAMP}"
+see text "Drawer B ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Drawer B ${STAMP}"]]//button[@aria-label="Focus this task"]'
 see button "Unfocus this task" --in '[role=dialog]'
 shot drawer-tasks
@@ -24,7 +24,7 @@ shot drawer-tasks
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="Drawer B ${STAMP}"]]//button[@aria-label="Complete task"]'
 gone button "Drawer B ${STAMP}" --in '[role=dialog]'
 browser -- find role tab click --name "Activity" --exact
-browser -- wait --text "Completed Drawer B ${STAMP}"
+see text "Completed Drawer B ${STAMP}"
 shot drawer-activity
 
 # Reload keeps the drawer open on the same Thread.

@@ -45,22 +45,22 @@ browser -- find role button click --name "Add area" --exact
 browser -- find role combobox fill "Area renamed ${STAMP}"
 browser -- find role option click --name "Area renamed ${STAMP}" --exact
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
+see text "Thread created"
 see button "Area: Area renamed ${STAMP}"
 browser -- reload
 see button "Area: Area renamed ${STAMP}"
 browser -- find role button click --name "Close thread" --exact
 browser -- find role button click --name "Edit areas" --exact
 browser -- find role button click --name "Delete Area renamed ${STAMP}" --exact
-browser -- wait --text "1 open Thread will lose this label."
+see text "1 open Thread will lose this label."
 shot areas-delete-before
 browser -- find role button click --name "Delete area" --exact
-browser -- wait --text "Area deleted"
+see text "Area deleted"
 d1 "SELECT COUNT(*) AS deleted_area FROM areas WHERE name = 'Area renamed ${STAMP}'"
 expect '"deleted_area": 0'
 browser -- press Escape
 browser -- reload
-browser -- wait --text "Area survives ${STAMP}"
+see text "Area survives ${STAMP}"
 gone text "Area renamed ${STAMP}"
 browser -- find role link click --name "Area survives ${STAMP}" --exact
 see button "Add area"

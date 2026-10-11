@@ -43,7 +43,7 @@ After `bun run verify up` and `bun run verify signin`, run a flow with `bun run 
 
 ## Feature entry contract
 
-Each feature file has an H1 title, a one-paragraph description of the user-visible behavior, a `Status` line (`proven on <short sha>` or `mapped from source, not yet driven`; a partial proof names what was driven, e.g. `proven on <sha> (dock entry point). The command palette entry point is not yet driven.`), then exactly four H2 sections in order: `Sub-features`, `How to get to it (user POV)`, `Driving it with agent-browser`, `Gotchas`.
+Each feature file has an H1 title, a one-paragraph description of the user-visible behavior, a one-line `Status` (`proven on <short sha>` or `in #<PR>`, by which flow or by hand, then `Not driven:` and what was skipped; or `mapped from source, not yet driven`), then exactly four H2 sections in order: `Sub-features`, `How to get to it (user POV)`, `Driving it with agent-browser`, `Gotchas`. `Status` says what is true now: replace it on every proof instead of appending to it. Evidence paths and earlier proofs belong in the PR description, since `.verify/evidence/` exists only on the machine that made it.
 
 ## Features
 

@@ -2,7 +2,7 @@
 
 Vita OS supplies a standalone web app manifest, Android icons including a maskable icon, an Apple touch icon, and phone metadata. An incoming text share automatically saves a standalone Note after sign-in. Failed saves retain their text and offer Retry; additional shares wait behind earlier unsaved ones.
 
-Status: proven on c03470d with working-tree changes (browser manifest diagnostics, share landing URL, sign-in, retry, queued shares, phone and desktop persistence). Re-driven on 446055e at 1440×900 while signed in: `/share-target` saves (`Note added`), lands on `/`, and the Note is on the Dashboard after a reload and in D1. The recipe's phone steps below were updated for the removed Notes button and are not re-driven. Native home-screen installation and the Android system share picker are not yet driven on physical devices.
+Status: proven on c03470d (#389); `/share-target` re-driven in #394 (bb54a79) at 1440×900 while signed in. Not driven: the phone steps below since the Notes button was removed, native home-screen installation, and the Android share picker on a physical device.
 
 ## Sub-features
 
@@ -30,11 +30,11 @@ bun run verify browser --instance phone -- wait --url '**/sign-in'
 bun run verify shot --instance phone phone-share-needs-signin
 # Fill Email and Password with this instance's credentials, then:
 bun run verify browser --instance phone -- find role button click --name 'Sign In' --exact
-bun run verify browser --instance phone -- wait --text 'Note added'
+bun run verify see text 'Note added' --instance phone
 bun run verify browser --instance phone -- reload
 bun run verify see banner "Vita OS" --instance phone
 bun run verify browser --instance phone -- click 'section[aria-label="No date"] button[aria-expanded="false"]'
-bun run verify browser --instance phone -- wait --text phone-proof-1001
+bun run verify see text phone-proof-1001 --instance phone
 bun run verify shot --instance phone phone-share-persisted
 ```
 
@@ -43,19 +43,19 @@ To exercise retry and retention of additional shares:
 ```bash
 bun run verify browser --instance phone -- network route 'http://localhost:8891/v1/notes' --abort
 bun run verify browser --instance phone -- open 'http://localhost:5291/share-target?text=First+queued+phone-proof-1004'
-bun run verify browser --instance phone -- wait --text 'could not be saved'
+bun run verify see text 'could not be saved' --instance phone
 bun run verify browser --instance phone -- open 'http://localhost:5291/share-target?text=Second+queued+phone-proof-1005'
-bun run verify browser --instance phone -- wait --text 'First queued phone-proof-1004'
+bun run verify see text 'First queued phone-proof-1004' --instance phone
 bun run verify shot --instance phone phone-queued-before
 bun run verify browser --instance phone -- network unroute 'http://localhost:8891/v1/notes'
 bun run verify browser --instance phone -- find role button click --name Retry --exact
-bun run verify browser --instance phone -- wait --text 'Note added'
+bun run verify see text 'Note added' --instance phone
 bun run verify browser --instance phone -- wait --fn 'sessionStorage.getItem("vita-pending-shared-note") === null'
 bun run verify browser --instance phone -- reload
 bun run verify see banner "Vita OS" --instance phone
 bun run verify browser --instance phone -- click 'section[aria-label="No date"] button[aria-expanded="false"]'
-bun run verify browser --instance phone -- wait --text phone-proof-1004
-bun run verify browser --instance phone -- wait --text phone-proof-1005
+bun run verify see text phone-proof-1004 --instance phone
+bun run verify see text phone-proof-1005 --instance phone
 bun run verify shot --instance phone phone-queued-persisted
 ```
 

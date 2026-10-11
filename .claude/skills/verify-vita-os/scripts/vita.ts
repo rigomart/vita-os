@@ -83,6 +83,7 @@ type State = {
   password: string;
   pids: { api?: number; web?: number };
   gitSha: string;
+  branch: string;
   startedAt: string;
 };
 
@@ -405,6 +406,7 @@ async function up(instance: string, flags: Record<string, string | true>) {
     password: randomBytes(12).toString("base64url"),
     pids: {},
     gitSha: run(["git", "rev-parse", "--short", "HEAD"], ROOT).stdout.trim(),
+    branch: currentBranch(),
     startedAt: new Date().toISOString(),
   };
   for (const d of [state.persistDir, state.logsDir, state.evidenceDir])
@@ -490,6 +492,10 @@ function publicEnv(state: State) {
   };
 }
 
+function currentBranch() {
+  return run(["git", "rev-parse", "--abbrev-ref", "HEAD"], ROOT).stdout.trim();
+}
+
 async function doctor(instance: string) {
   const state = requireState(instance);
   const anon = await httpStatus(`${state.apiUrl}/v1/areas`);
@@ -499,9 +505,8 @@ async function doctor(instance: string) {
     apiAuthOk: await apiHealthy(state),
     apiRejectsAnonymous: anon?.status === 401,
     webServesShell: await webHealthy(state),
-    buildMatchesHead:
-      run(["git", "rev-parse", "--short", "HEAD"], ROOT).stdout.trim() ===
-      state.gitSha,
+    // Vite and wrangler serve the working tree, so a commit changes nothing; another branch may need other migrations.
+    branchMatches: currentBranch() === state.branch,
   };
   const healthy = Object.values(checks).every(Boolean);
   return {
@@ -511,7 +516,9 @@ async function doctor(instance: string) {
       ? {}
       : {
           error: "instance unhealthy",
-          hint: `read ${state.logsDir}/*.log, then run: bun run verify down && bun run verify up`,
+          hint: checks.branchMatches
+            ? `read ${state.logsDir}/*.log, then run: bun run verify down && bun run verify up`
+            : "you switched branches since up, and the other branch may need other migrations: run bun run verify down --purge && bun run verify up",
         }),
     ...publicEnv(state),
   };

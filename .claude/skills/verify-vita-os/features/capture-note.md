@@ -30,7 +30,7 @@ Preconditions:
 - **Open dialog.** Run `bun run verify browser -- find role button click --name "New note" --exact`. A dialog with heading `New note`, textbox `Note body`, button `Follow-up date`, and a disabled `Add` button appears.
 - **Enter body.** Run `bun run verify browser -- find label "Note body" fill "verify note 1727461234"`. `Add` becomes enabled.
 - **Before shot.** With the body filled and before clicking `Add`, run `bun run verify shot note-before`. The snapshot shows `dialog "New note"` with the text in the field.
-- **Save.** Run `bun run verify browser -- find role button click --name "Add" --exact`, then `bun run verify browser -- wait --text "Note added"`, then `bun run verify shot note-toast`. The wait prints `Note added`, the PNG shows the toast, and the dialog closes. The toast may be missing from `note-toast.aria.txt`. The wait output is the proof.
+- **Save.** Run `bun run verify browser -- find role button click --name "Add" --exact`, then `bun run verify see text "Note added"`, then `bun run verify shot note-toast`. The wait prints `Note added`, the PNG shows the toast, and the dialog closes. The toast may be missing from `note-toast.aria.txt`. The wait output is the proof.
 - **Persist.** Run `bun run verify browser -- reload`, then `bun run verify see button "Open note: verify note 1727461234"`. For a body with Markdown, `bun run verify d1 "SELECT body, state FROM notes"` shows the stored source, which the card renders.
 - **Proof.** Run `bun run verify shot note-after` after the reload. The after snapshot lists `button "Open note: verify note 1727461234"` on a card that also has `Set follow-up date` and `Archive note`.
 

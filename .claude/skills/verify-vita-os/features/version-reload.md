@@ -37,7 +37,7 @@ Change only the API version to proof-b and wait for Wrangler to restart. Trigger
 ```bash
 bun run verify browser --instance reload-proof -- press Meta+k
 bun run verify browser --instance reload-proof -- find role button click --name History --exact
-bun run verify browser --instance reload-proof -- wait --text "No resolved threads or archived notes yet."
+bun run verify see text "No resolved threads or archived notes yet." --instance reload-proof
 bun run verify browser --instance reload-proof -- eval 'performance.timeOrigin === Number(sessionStorage.getItem("versionProofOrigin"))'
 bun run verify shot --instance reload-proof version-api-ahead
 ```

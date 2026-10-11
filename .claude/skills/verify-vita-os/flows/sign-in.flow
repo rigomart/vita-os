@@ -9,14 +9,14 @@ shot sign-in-before
 browser -- find role button click --name "Verify Bot" --exact
 browser -- find role menuitem click --name "Sign out" --exact
 browser -- wait --url '**/sign-in'
-browser -- wait --text "Sign in to your account to continue"
+see text "Sign in to your account to continue"
 d1 "SELECT COUNT(*) AS signed_out_sessions FROM session"
 expect '"signed_out_sessions": 1'
 shot sign-in-signed-out
 # open waits for the signed-in header, so navigate within the browser while signed out.
 browser -- eval "location.assign('/')"
 browser -- wait --url '**/sign-in'
-browser -- wait --text "Sign in to your account to continue"
+see text "Sign in to your account to continue"
 # signin fills the real form with this instance's generated credentials and verifies /api/auth/get-session.
 signin
 see banner "Vita OS"

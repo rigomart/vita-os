@@ -92,7 +92,7 @@ bun run verify shot <label>     # <label>.aria.txt (accessibility snapshot) + <l
 - Drive the real user path. Never call internal setters, test-only endpoints, or write to D1 to fake a state.
 - Capture the action and the resulting state, not only the final screen: `shot` before and after.
 - Drive every path your change touched. The Thread pane is a side pane at 1280px wide and up, and a drawer below that, built from different components. A change to Thread pane, layout, or navigation code gets a second run in the drawer: `browser -- set viewport 1024 768`, drive it, then `browser -- set viewport 1440 900`. The snapshot tells you which one you are in: the side pane is `complementary "<title>"` (`aside[data-slot=thread-detail-pane]`), the drawer is `dialog "<title>"`. Below 768px the dashboard columns and the filter row (a dropdown) change too. Name any path you changed but did not drive in your report.
-- Toasts are transient and may not appear in the `.aria.txt` snapshot. The proof of a toast is the `wait --text "<toast>"` output. For an image, run `shot` right after that wait.
+- Toasts are transient and may not appear in the `.aria.txt` snapshot. The proof of a toast is the `see text "<toast>"` output. For an image, run `shot` right after that wait.
 - Vita updates optimistically. A new note or thread appears before the server confirms it. Prove a mutation with the server confirmation toast, then `browser -- reload` and `see` or `gone`: after a reload the page shows what the server stored.
 - Add a `d1` SELECT only for what the screen cannot show: no duplicate rows (`COUNT(*)` is exactly 1), an exact stored value (a time, Markdown source), a row really deleted rather than hidden, an Activity Log entry's stored content or count, sign-in sessions. Do not restate in SQL what the reloaded page already shows: it ties the check to the storage layout, which changes more often than the screen.
 - A check you could not run is `INCONCLUSIVE`, never a pass.
@@ -105,7 +105,7 @@ bun run verify doctor           # read-only health check; run it first whenever 
 bun run verify down --purge     # stop this instance, close its browser, delete its D1 (do this when your task is done)
 ```
 
-`down` kills only the processes this instance started and closes only its own browser session. Evidence under `.verify/evidence/` and launch logs under `.verify/instances/<name>/logs/` (`migrate.log`, `api.log`, `web.log`) are never deleted. `buildMatchesHead: false` from `doctor` means you committed or switched branches since `up`. Vite still serves the working tree, so this only matters if you switched branches: then run `down` and `up`.
+`down` kills only the processes this instance started and closes only its own browser session. Evidence under `.verify/evidence/` and launch logs under `.verify/instances/<name>/logs/` (`migrate.log`, `api.log`, `web.log`) are never deleted. Committing does not affect a running instance: Vite and the API serve the working tree. `branchMatches: false` from `doctor` means you switched branches since `up`, and the other branch may need other migrations: run `down --purge` and `up`.
 
 ## Keeping the map current
 
@@ -114,6 +114,7 @@ The feature map is only as good as its last update, and you are the one who upda
 - **The feature has no file in `features/`.** Explore its entry points with `snapshot -i`, find the table it writes in `apps/api/migrations`, and prove it once by the standards in [`features/README.md`](features/README.md). Then write `features/<feature>.md` in the entry contract (H1, one paragraph, `Status: proven on <short sha>`, the four H2s), using the exact commands that just worked, and add a line to the index in `features/README.md`. Commit it with the change that introduced or altered the feature.
 - **A documented step no longer matches the app.** Decide which side is wrong. If the app regressed, report the regression and leave the file alone. If the feature changed on purpose, fix the file in the same change and say so in your report.
 - **The file says `mapped from source, not yet driven`.** Correct every handle against a fresh snapshot while you drive it, then set `Status: proven on <short sha>`.
+- **You proved a feature that already has a `Status`.** Replace the line; never append to it. It names the latest proof and what it did not drive. Earlier proofs and evidence paths go in the PR description.
 - **Never mark a step proven that you did not run.** A sub-feature you skipped stays listed, and your report says it was skipped.
 
 ## Gotchas
