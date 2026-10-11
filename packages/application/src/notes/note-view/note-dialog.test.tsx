@@ -505,14 +505,7 @@ describe("NoteDialog dismissal", () => {
     const onOpenChange = vi.fn();
     render(<NoteDialog open onOpenChange={onOpenChange} onSubmit={vi.fn()} />);
     await user.click(screen.getByRole("button", { name: "Follow-up date" }));
-    const day = screen
-      .getAllByRole("button")
-      .find(
-        (button) =>
-          button.getAttribute("data-day") && !button.hasAttribute("disabled"),
-      );
-    expect(day).toBeDefined();
-    await user.click(day!);
+    await user.click(screen.getByRole("button", { name: /^Tomorrow, / }));
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(
       screen.getByRole("alertdialog", { name: discardQuestion }),

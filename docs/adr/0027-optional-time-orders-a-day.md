@@ -2,6 +2,8 @@
 
 Terminology amended by ADR 0028: Follow-up and Attention Date are one **Follow-up date** on Threads and standalone Notes. Existing behavior is retained.
 
+Picker amended by ADR 0040: the time is set from chips or a typed `Other…` time, and saves when chosen. The time still orders a day and never places it.
+
 **Status:** Accepted
 **Date:** 2026-10-01
 

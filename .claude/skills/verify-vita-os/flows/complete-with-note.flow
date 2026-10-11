@@ -52,15 +52,20 @@ settled '[data-vaul-drawer]'
 browser -- find label "Add a task" fill "R1 ${STAMP}"
 browser -- press Enter
 browser -- wait --text "R1 ${STAMP}"
-# At 1024 wide the "Thread created" toast covers the picker's Done button until it leaves.
+# At 1024 wide the "Thread created" toast covers the bottom of the picker until it leaves.
 browser -- wait --fn "!document.querySelector('li.cn-toast')"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Set date"]'
-see group "Repeat"
-browser -- click 'xpath=//td[@data-today]//button'
-browser -- wait --fn "!document.querySelector('[role=group][aria-label=Repeat] button').disabled"
-browser -- find role button click --name "Daily" --exact
-browser -- find role button click --name "Done" --exact
-gone group "Repeat"
+see button "Pick a date…"
+browser -- click 'xpath=//*[@data-slot="popover-content"]//button[starts-with(@aria-label, "Today, ")]'
+browser -- wait --fn "!document.querySelector('button[aria-label=\"Repeat, Never\"]').disabled"
+browser -- find role button click --name "Repeat, Never" --exact
+browser -- find role button click --name "Every day" --exact
+see button "Repeat, Daily"
+# Escape closes the picker alone; the drawer stays.
+browser -- press Escape
+gone button "Pick a date…"
+browser -- wait 800
+see dialog "Note R ${STAMP}"
 see image "Repeats daily" --in '[role=dialog]'
 browser -- wait 1500
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Complete with a note"]'
