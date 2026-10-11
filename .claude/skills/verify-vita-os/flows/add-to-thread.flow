@@ -6,7 +6,7 @@ browser -- set viewport 1440 900
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Add target ${STAMP}"
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
+see text "Thread created"
 browser -- find role button click --name "Close thread" --exact
 open /
 
@@ -15,23 +15,23 @@ browser -- find role button click --name "New note" --exact
 see textbox "Note body" --in '[role=dialog]'
 browser -- find label "Note body" fill "Added Note ${STAMP}"
 browser -- find role button click --name Add --exact
-browser -- wait --text "Note added"
+see text "Note added"
 browser -- reload
-browser -- wait --text "Added Note ${STAMP}"
+see text "Added Note ${STAMP}"
 browser -- find role button click --name "Open note: Added Note ${STAMP}" --exact
 browser -- find role button click --name "More actions" --exact
 shot add-commit-before-menu
 browser -- find role menuitem click --name "Add to thread…" --exact
-browser -- wait --text "Add target ${STAMP}"
+see text "Add target ${STAMP}"
 shot add-commit-before-picker
 browser -- find role option click --name "Add target ${STAMP}" --exact
-browser -- wait --text "Note added to thread"
+see text "Note added to thread"
 gone button "Undo"
 browser -- reload
-browser -- wait --text "Add target ${STAMP}"
+see text "Add target ${STAMP}"
 gone text "Added Note ${STAMP}"
 browser -- find role link click --name "Add target ${STAMP}" --exact
-browser -- wait --text "Added Note ${STAMP}"
+see text "Added Note ${STAMP}"
 d1 "SELECT COUNT(*) AS n FROM notes WHERE body = 'Added Note ${STAMP}'"
 expect '"n": 0'
 d1 "SELECT COUNT(*) AS n FROM thread_notes n JOIN threads t ON t.id = n.thread_id WHERE t.title = 'Add target ${STAMP}'"
@@ -48,18 +48,18 @@ browser -- find role button click --name "New note" --exact
 see textbox "Note body" --in '[role=dialog]'
 browser -- find label "Note body" fill "New from Note ${STAMP}"
 browser -- find role button click --name Add --exact
-browser -- wait --text "Note added"
+see text "Note added"
 browser -- reload
-browser -- wait --text "New from Note ${STAMP}"
+see text "New from Note ${STAMP}"
 browser -- find role button click --name "Open note: New from Note ${STAMP}" --exact
 browser -- find role button click --name "More actions" --exact
 shot new-thread-from-note-before
 browser -- find role menuitem click --name "New thread from note" --exact
 browser -- wait --fn "[...document.querySelectorAll('input')].some(input => input.value === 'New from Note ${STAMP}')"
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
+see text "Thread created"
 browser -- reload
-browser -- wait --text "New from Note ${STAMP}"
+see text "New from Note ${STAMP}"
 see complementary "New from Note ${STAMP}"
 see button "Open note: New from Note ${STAMP}" --in '[data-slot=thread-detail-pane]'
 d1 "SELECT COUNT(*) AS n FROM notes WHERE body = 'New from Note ${STAMP}'"

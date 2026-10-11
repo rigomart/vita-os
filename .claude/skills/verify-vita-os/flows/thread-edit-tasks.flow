@@ -7,17 +7,17 @@ open /
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Edit race ${STAMP}"
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
-browser -- wait 'input[aria-label="Add a task"]'
+see text "Thread created"
+see textbox "Add a task"
 browser -- find label "Add a task" fill "Task A ${STAMP}"
 browser -- press Enter
-browser -- wait --text "Task A ${STAMP}"
+see text "Task A ${STAMP}"
 browser -- find label "Add a task" fill "Task B ${STAMP}"
 browser -- press Enter
-browser -- wait --text "Task B ${STAMP}"
+see text "Task B ${STAMP}"
 browser -- find label "Add a task" fill "Task C ${STAMP}"
 browser -- press Enter
-browser -- wait --text "Task C ${STAMP}"
+see text "Task C ${STAMP}"
 # Let the Task saves land, then watch for any refusal toast from here on.
 browser -- wait 1500
 browser -- eval "window.__refused = false; new MutationObserver(() => { const text = document.body.textContent; if (text.includes('changed elsewhere') || text.includes('Could not save')) window.__refused = true; }).observe(document.body, { childList: true, subtree: true, characterData: true }); 'watching'"

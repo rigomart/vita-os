@@ -2,56 +2,56 @@
 open /
 browser -- press Meta+k
 browser -- find role button click --name History --exact
-browser -- wait --text "No resolved threads or archived notes yet."
+see text "No resolved threads or archived notes yet."
 shot history-empty
 browser -- press Escape
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "History older ${STAMP}"
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
+see text "Thread created"
 settled '[data-slot=thread-detail-pane]'
 browser -- find role button click --name "Thread actions" --exact
 browser -- find role menuitem click --name Resolve --exact
 shot history-resolve-before
 browser -- find role button click --name "Resolve thread" --exact
-browser -- wait --text "Thread resolved"
+see text "Thread resolved"
 gone alertdialog
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "History newer ${STAMP}"
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
+see text "Thread created"
 settled '[data-slot=thread-detail-pane]'
 browser -- find role button click --name "Thread actions" --exact
 browser -- find role menuitem click --name Resolve --exact
 browser -- find role button click --name "Resolve thread" --exact
-browser -- wait --text "Thread resolved"
+see text "Thread resolved"
 gone alertdialog
 # After a reload (the server's state), History lists both, newest first.
 browser -- reload
 see banner "Vita OS"
 browser -- press Meta+k
 browser -- find role button click --name History --exact
-browser -- wait --text "History newer ${STAMP}"
-browser -- wait --text "History older ${STAMP}"
+see text "History newer ${STAMP}"
+see text "History older ${STAMP}"
 browser -- wait --fn 'Array.from(document.querySelectorAll("[role=option]")).filter(element => element.textContent.includes("History ")).map(element => element.textContent.trim()).join("|").startsWith("History newer ${STAMP}")'
 shot history-list
 browser -- find role combobox fill "older ${STAMP}"
-browser -- wait --text "History older ${STAMP}"
+see text "History older ${STAMP}"
 gone text "History newer ${STAMP}"
 shot history-search
 browser -- find role combobox fill "unmatched ${STAMP}"
-browser -- wait --text "No results found."
+see text "No results found."
 browser -- find role button click --name History --exact
 browser -- wait --fn 'document.querySelector("[role=combobox]").value === ""'
 shot history-open-work
 browser -- find role button click --name History --exact
 browser -- find role option click --name "History newer ${STAMP}" --exact
 see complementary "History newer ${STAMP}"
-browser -- wait --text "while resolved"
+see text "while resolved"
 shot history-pane
 browser -- find role button click --name "Thread actions" --exact
 browser -- find role menuitem click --name Reopen --exact
-browser -- wait --text "Thread reopened"
+see text "Thread reopened"
 # Only an open Thread offers "Add a task", so after a reload it proves the reopen stuck.
 browser -- reload
 see textbox "Add a task"
@@ -65,11 +65,11 @@ browser -- find role button click --name History --exact
 browser -- find role combobox fill "older ${STAMP}"
 browser -- find role option click --name "History older ${STAMP}" --exact
 see dialog "History older ${STAMP}"
-browser -- wait --text "while resolved"
+see text "while resolved"
 shot history-drawer
 browser -- find role button click --name "Thread actions" --exact
 browser -- find role menuitem click --name Reopen --exact
-browser -- wait --text "Thread reopened"
+see text "Thread reopened"
 browser -- reload
 see textbox "Add a task"
 shot history-reopened-drawer
@@ -77,7 +77,7 @@ browser -- find role button click --name "Close thread" --exact
 open /
 browser -- press Meta+k
 browser -- find role button click --name History --exact
-browser -- wait --text "No resolved threads or archived notes yet."
+see text "No resolved threads or archived notes yet."
 shot history-after
 browser -- press Escape
 browser -- set viewport 1440 900

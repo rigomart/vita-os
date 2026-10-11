@@ -12,11 +12,11 @@ open /
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Repeat A ${STAMP}"
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
+see text "Thread created"
 see textbox "Add a task"
 browser -- find label "Add a task" fill "R1 ${STAMP}"
 browser -- press Enter
-browser -- wait --text "R1 ${STAMP}"
+see text "R1 ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Set date"]'
 see button "Repeat, Never"
 browser -- wait --fn "document.querySelector('button[aria-label=\"Repeat, Never\"]').disabled && [...document.querySelectorAll('[role=group][aria-label=Time] button')].every(b => b.disabled)"
@@ -101,11 +101,11 @@ gone complementary "Repeat A ${STAMP}"
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Repeat L ${STAMP}"
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
+see text "Thread created"
 see textbox "Add a task"
 browser -- find label "Add a task" fill "L1 ${STAMP}"
 browser -- press Enter
-browser -- wait --text "L1 ${STAMP}"
+see text "L1 ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="L1 ${STAMP}"]]//button[@aria-label="Set date"]'
 browser -- find role button click --name "Pick a date…" --exact
 browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() - 3); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Previous Month']\").click(); })()"

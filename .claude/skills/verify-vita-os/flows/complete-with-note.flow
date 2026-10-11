@@ -10,11 +10,11 @@ open /
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Note P ${STAMP}"
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
+see text "Thread created"
 settled '[data-slot=thread-detail-pane]'
 browser -- find label "Add a task" fill "P1 ${STAMP}"
 browser -- press Enter
-browser -- wait --text "P1 ${STAMP}"
+see text "P1 ${STAMP}"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="P1 ${STAMP}"]]//button[@aria-label="Complete with a note"]'
 see group "Complete “P1 ${STAMP}” with a note"
 gone dialog
@@ -24,7 +24,7 @@ shot note-line-pane
 browser -- press Enter
 gone group "with a note" --contains
 gone list "Tasks" --in '[data-slot=thread-detail-pane]'
-browser -- wait --text "Picked up at the counter ${STAMP}"
+see text "Picked up at the counter ${STAMP}"
 shot note-completed-pane
 browser -- wait 1500
 browser -- reload
@@ -46,12 +46,12 @@ browser -- set viewport 1024 768
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Note R ${STAMP}"
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
+see text "Thread created"
 see textbox "Add a task" --in '[role=dialog]'
 settled '[data-vaul-drawer]'
 browser -- find label "Add a task" fill "R1 ${STAMP}"
 browser -- press Enter
-browser -- wait --text "R1 ${STAMP}"
+see text "R1 ${STAMP}"
 # At 1024 wide the "Thread created" toast covers the bottom of the picker until it leaves.
 browser -- wait --fn "!document.querySelector('li.cn-toast')"
 browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="R1 ${STAMP}"]]//button[@aria-label="Set date"]'
@@ -84,7 +84,7 @@ shot note-line-drawer
 browser -- press Enter
 gone group "with a note" --contains
 see button "Change date: Tomorrow" --in '[role=dialog]'
-browser -- wait --text "Slept well ${STAMP}"
+see text "Slept well ${STAMP}"
 shot note-completed-drawer
 browser -- wait 1500
 browser -- reload
@@ -105,11 +105,11 @@ browser -- set viewport 1440 900
 browser -- find role button click --name "New thread" --exact
 browser -- find label "Thread title" fill "Note C ${STAMP}"
 browser -- find role button click --name Create --exact
-browser -- wait --text "Thread created"
+see text "Thread created"
 see textbox "Add a task"
 browser -- find label "Add a task" fill "C1 ${STAMP}"
 browser -- press Enter
-browser -- wait --text "C1 ${STAMP}"
+see text "C1 ${STAMP}"
 browser -- wait 1500
 browser -- find role button click --name "Close thread" --exact
 see button "Complete “C1 ${STAMP}”"

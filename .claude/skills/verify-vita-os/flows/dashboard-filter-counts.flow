@@ -10,7 +10,7 @@ browser -- find role button click --name "Follow-up date" --exact
 browser -- find role button click --name "Pick a date…" --exact
 browser -- click 'xpath=//td[@data-today]//button'
 browser -- find role button click --name "Add" --exact
-browser -- wait --text "Note added"
+see text "Note added"
 gone dialog
 browser -- reload
 see button "Open note: Dated count note ${STAMP}" --in 'section[aria-label="Today"]'
@@ -22,7 +22,7 @@ browser -- find role button click --name "New note" --exact
 see textbox "Note body"
 browser -- find label "Note body" fill "Undated count note ${STAMP}"
 browser -- find role button click --name "Add" --exact
-browser -- wait --text "Note added"
+see text "Note added"
 gone dialog
 browser -- reload
 see button "Open note: Undated count note ${STAMP}"
@@ -35,7 +35,7 @@ browser -- find role button click --name "Add area" --exact
 browser -- find role combobox fill "Home"
 browser -- find role option click --name "Create “Home”" --exact
 browser -- find role button click --name "Create" --exact
-browser -- wait --text "Thread created"
+see text "Thread created"
 see complementary "Count thread ${STAMP}"
 browser -- find role button click --name "Close thread" --exact
 gone complementary "Count thread ${STAMP}"
