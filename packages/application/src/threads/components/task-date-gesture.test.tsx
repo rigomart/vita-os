@@ -98,7 +98,12 @@ describe.each(["detail", "card"] as const)(
       async (choice) => {
         const service = setup(surface);
         const user = userEvent.setup();
-        await user.click(screen.getByRole("button", { name: /^Change date/ }));
+        // In Thread detail the date itself opens the picker; the card's button names no date.
+        await user.click(
+          screen.getByRole("button", {
+            name: surface === "detail" ? /^Change date:/ : "Change date",
+          }),
+        );
         const repeat = await screen.findByRole("group", { name: "Repeat" });
         if (choice === "Never")
           await user.click(

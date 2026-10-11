@@ -1,10 +1,17 @@
 import type { Repeat, Task, TaskId } from "@vita-os/contracts";
+import type { ComponentProps, ReactElement } from "react";
 
 import { Button } from "@vita-os/ui/components/button";
 import { Textarea } from "@vita-os/ui/components/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@vita-os/ui/components/tooltip";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
-import { format } from "date-fns";
+import { differenceInCalendarDays, format } from "date-fns";
 import {
   CalendarClock,
   Check,
@@ -12,7 +19,8 @@ import {
   Plus,
   Repeat as RepeatIcon,
   SkipForward,
-  X,
+  Target,
+  Trash2,
 } from "lucide-react";
 import { Fragment, useId, useState } from "react";
 
@@ -23,7 +31,7 @@ import {
   whenTone,
   withTimeToken,
 } from "../../attention-list";
-import { EditableField } from "../../ui/editable-field";
+import { TaskTextField } from "./task-text-field";
 
 interface ThreadAttentionProps {
   /** Every Task, in the order it was captured. */
@@ -54,24 +62,24 @@ interface ThreadAttentionProps {
 }
 
 /**
- * The Thread's live attention: its Tasks as one list of peers, each of which
- * may carry a date.
+ * The Thread's live attention: its Tasks as one list of peers, in the order
+ * they were captured. A date never moves a Task; it is shown on the row.
  *
- * Dated Tasks come first, soonest first (a date alone before the timed ones
- * of its day), then a quiet "No date" divider, then undated Tasks in capture
- * order. The divider shows only when both groups exist. Focus is a radio
- * down the left edge: pressing it focuses that Task, and pressing the filled
- * one unfocuses it. The Focused Task is tinted where it sits. Leaving every
- * Task unfocused is a fine answer — nothing here asks for a priority.
+ * Each row leads with Complete, one click. The text has the row's width for
+ * up to two lines, and all of it while edited. Under it, the date sits at the
+ * left and the row's commands at the right, named by tooltips: Skip when the
+ * Task repeats, the date, Focus, Complete with a note, and Remove. The Focused
+ * Task is tinted where it sits; leaving every Task unfocused is a fine answer.
  *
- * Complete is one click. Beside it, "Complete with a note" opens a line
- * under the row; completing from there also captures the text as a Thread
- * Note. The text is held here while it is written; once sent it is the
- * caller's, which hands it back in a toast if the completion fails.
+ * "Complete with a note" opens a line under the row; completing from there
+ * also captures the text as a Thread Note. The text is held here while it is
+ * written; once sent it is the caller's, which hands it back in a toast if the
+ * completion fails.
  *
  * `xl` is the Thread pane's breakpoint (THREAD_PANE_BREAKPOINT): from there up
- * the pane is a rail with room for hover affordances; below it the Thread is a
- * bottom drawer, so every control stays visible and finger-sized.
+ * the pane is a rail, and a row's commands wait for its hover or focus in room
+ * kept for them, so nothing shifts. Below it the Thread is a bottom drawer, so
+ * every command stays visible and finger-sized.
  */
 export function ThreadAttention({
   tasks,
@@ -110,48 +118,6 @@ export function ThreadAttention({
     else void onCompleteTaskWithNote(taskId, text);
   };
 
-  const dated = tasks
-    .filter((task) => task.date !== undefined)
-    .sort((a, b) => a.date! - b.date!);
-  const undated = tasks.filter((task) => task.date === undefined);
-  const renderTask = (task: Task) => (
-    <Fragment key={task._id}>
-      <TaskRow
-        task={task}
-        now={now}
-        focused={task._id === focusedTaskId}
-        disabled={busy(task._id)}
-        noteDisabled={busy(task._id)}
-        noting={noting === task._id}
-        onEdit={(text) => onEditTask(task._id, text)}
-        onRemove={() => onRemoveTask(task._id)}
-        onComplete={() => onCompleteTask(task._id)}
-        onToggleNote={() =>
-          setNoting((current) => (current === task._id ? null : task._id))
-        }
-        onSetDate={(date) => onSetTaskDate(task._id, date)}
-        onSetRepeat={(repeat) => onSetTaskRepeat(task._id, repeat)}
-        onSkip={() => onSkipTask(task._id)}
-        onToggleFocus={() =>
-          onFocusTask(task._id === focusedTaskId ? null : task._id)
-        }
-      />
-      {noting === task._id && (
-        <CompletionNoteLine
-          taskText={task.text}
-          text={notes.get(task._id) ?? ""}
-          disabled={busy(task._id)}
-          onChange={(text) => keepNote(task._id, text)}
-          onComplete={() => completeWithNote(task._id)}
-          onCancel={() => {
-            setNoting(null);
-            keepNote(task._id, undefined);
-          }}
-        />
-      )}
-    </Fragment>
-  );
-
   return (
     <section
       role="region"
@@ -171,35 +137,49 @@ export function ThreadAttention({
         <span aria-hidden className="h-px flex-1 bg-border/50" />
       </div>
 
-      {tasks.length > 1 && (
-        <p className="px-0.5 pb-1 text-xs text-muted-foreground/65">
-          Focus one when you know it, or leave them all unfocused.
-        </p>
-      )}
-
       {tasks.length > 0 && (
-        <ul aria-label="Tasks" className="flex flex-col gap-0.5">
-          {/* One keyed list, so a row that gains or loses its date moves
-              rather than remounts, and its open date picker stays open. */}
-          {[
-            ...dated.map(renderTask),
-            ...(dated.length > 0 && undated.length > 0
-              ? [
-                  <li
-                    key="no-date"
-                    role="presentation"
-                    className="flex items-center gap-2 px-1.5 pt-1.5 pb-0.5"
-                  >
-                    <span className="text-2xs font-medium tracking-wide text-muted-foreground/60 uppercase">
-                      No date
-                    </span>
-                    <span aria-hidden className="h-px flex-1 bg-border/40" />
-                  </li>,
-                ]
-              : []),
-            ...undated.map(renderTask),
-          ]}
-        </ul>
+        <TooltipProvider delay={300}>
+          <ul aria-label="Tasks" className="flex flex-col gap-0.5">
+            {tasks.map((task) => (
+              <Fragment key={task._id}>
+                <TaskRow
+                  task={task}
+                  now={now}
+                  focused={task._id === focusedTaskId}
+                  disabled={busy(task._id)}
+                  noting={noting === task._id}
+                  onEdit={(text) => onEditTask(task._id, text)}
+                  onRemove={() => onRemoveTask(task._id)}
+                  onComplete={() => onCompleteTask(task._id)}
+                  onToggleNote={() =>
+                    setNoting((current) =>
+                      current === task._id ? null : task._id,
+                    )
+                  }
+                  onSetDate={(date) => onSetTaskDate(task._id, date)}
+                  onSetRepeat={(repeat) => onSetTaskRepeat(task._id, repeat)}
+                  onSkip={() => onSkipTask(task._id)}
+                  onToggleFocus={() =>
+                    onFocusTask(task._id === focusedTaskId ? null : task._id)
+                  }
+                />
+                {noting === task._id && (
+                  <CompletionNoteLine
+                    taskText={task.text}
+                    text={notes.get(task._id) ?? ""}
+                    disabled={busy(task._id)}
+                    onChange={(text) => keepNote(task._id, text)}
+                    onComplete={() => completeWithNote(task._id)}
+                    onCancel={() => {
+                      setNoting(null);
+                      keepNote(task._id, undefined);
+                    }}
+                  />
+                )}
+              </Fragment>
+            ))}
+          </ul>
+        </TooltipProvider>
       )}
 
       <AddTask onAdd={onAddTask} />
@@ -208,8 +188,8 @@ export function ThreadAttention({
 }
 
 /**
- * One Task: a line, not a card. The radio says whether it is the one; the
- * focused line is tinted in place so the list never reorders to show it. A
+ * One Task: a line, not a card. Complete leads; the text and, under it, the
+ * date and the commands follow. The focused line is tinted in place. A
  * pending Task is dimmed and says so; a disabled one takes no command.
  */
 function TaskRow({
@@ -217,7 +197,6 @@ function TaskRow({
   now,
   focused,
   disabled,
-  noteDisabled,
   noting,
   onEdit,
   onRemove,
@@ -231,9 +210,8 @@ function TaskRow({
   task: Task;
   now: number;
   focused: boolean;
+  /** Whether it takes a command now: not while it is being completed. */
   disabled: boolean;
-  /** Whether it takes a note now: not while it is being completed. */
-  noteDisabled: boolean;
   /** Whether its note line is open beneath it. */
   noting: boolean;
   onEdit: (text: string) => unknown;
@@ -257,182 +235,223 @@ function TaskRow({
     action.isPending ||
     dateAction.isPending ||
     repeatAction.isPending;
-  const dateLabel =
-    task.date === undefined
-      ? undefined
-      : withTimeToken(format(task.date, "MMM d"), task.date);
+  const act = (run: () => unknown) => void action.run(run);
+  const when = task.date === undefined ? undefined : taskWhen(task.date, now);
   const tone = whenTone(task.date, now);
+  // The date token and the date command open the same picker.
+  const datePicker = (trigger: ReactElement) => (
+    <WhenPopover
+      busy={busy}
+      when={task.date}
+      clearLabel={taskDateLabels.clear}
+      keepOpenOnPick
+      onSetWhen={(next) => dateAction.run(next ?? null)}
+      repeat={{
+        value: task.repeat,
+        onChange: (repeat) => repeatAction.run(repeat),
+      }}
+      trigger={trigger}
+    />
+  );
 
   return (
     <li
       data-focused={focused || undefined}
       aria-busy={busy || undefined}
       className={cn(
-        "group/task flex min-h-10 items-center gap-2 rounded-lg px-1.5 py-1 transition-colors motion-reduce:transition-none xl:min-h-9",
-        focused
-          ? "bg-brand-accent/12 font-medium"
-          : "text-foreground/90 hover:bg-muted/50",
+        "group/task flex items-start gap-1.5 rounded-lg px-1 pt-1 pb-0.5 transition-colors motion-reduce:transition-none",
+        focused ? "bg-brand-accent/12" : "text-foreground/90 hover:bg-muted/50",
       )}
     >
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => void action.run(onToggleFocus)}
-        aria-pressed={focused}
-        aria-label={focused ? "Unfocus this task" : "Focus this task"}
-        title={focused ? "Unfocus this task" : "Focus this task"}
-        className="group/radio flex size-8 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none xl:size-6"
-      >
-        <span
-          aria-hidden
-          className={cn(
-            "flex size-3.5 items-center justify-center rounded-full border-[1.5px] transition-colors motion-reduce:transition-none",
-            focused
-              ? "border-brand-accent-strong"
-              : "border-muted-foreground/50 group-hover/radio:border-brand-accent-strong",
-          )}
-        >
-          {focused && (
-            <span className="size-1.5 rounded-full bg-brand-accent-strong" />
-          )}
-        </span>
-      </button>
-
-      {task.repeat !== undefined && (
-        <span
-          role="img"
-          aria-label={repeatLabel(task.repeat)}
-          title={repeatLabel(task.repeat)}
-          data-slot="repeat-glyph"
-          className={cn(
-            "flex shrink-0 items-center",
-            tone === "overdue"
-              ? "text-condition-attention"
-              : "text-muted-foreground/70",
-          )}
-        >
-          <RepeatIcon aria-hidden className="size-3" />
-        </span>
-      )}
-
-      <span className="min-w-0 flex-1">
-        <EditableField
-          value={task.text}
-          onSave={(text) => {
-            if (text) void action.run(() => onEdit(text));
-          }}
-          inputAriaLabel="Task"
+      <Command label="Complete">
+        <button
+          type="button"
           disabled={busy}
-          className="min-h-0 py-0.5 text-sm leading-snug"
-          displayClassName="border-transparent hover:bg-transparent"
-        />
-      </span>
+          onClick={() => act(onComplete)}
+          aria-label="Complete task"
+          className="group/complete flex size-8 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 xl:size-6"
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "flex size-[18px] items-center justify-center rounded-full border-[1.5px] transition-colors group-hover/complete:border-condition-healthy group-hover/complete:bg-condition-healthy/10 motion-reduce:transition-none",
+              tone === "overdue"
+                ? "border-condition-attention/70"
+                : "border-muted-foreground/45",
+            )}
+          >
+            <Check
+              strokeWidth={3}
+              className="size-2.5 text-transparent group-hover/complete:text-condition-healthy"
+            />
+          </span>
+        </button>
+      </Command>
 
-      {/* Always reachable on touch; on the wide rail the row stays clean until
-          it is hovered or focused. */}
-      <span className="flex shrink-0 items-center gap-0.5">
-        <WhenPopover
-          busy={busy}
-          when={task.date}
-          clearLabel={taskDateLabels.clear}
-          keepOpenOnPick
-          onSetWhen={(when) => dateAction.run(when ?? null)}
-          repeat={{
-            value: task.repeat,
-            onChange: (repeat) => repeatAction.run(repeat),
-          }}
-          trigger={
-            dateLabel === undefined ? (
-              <Button
-                variant="ghost"
-                disabled={busy}
-                size="icon-xs"
-                aria-label={taskDateLabels.set}
-                title={taskDateLabels.set}
-                className="size-7 text-muted-foreground/50 transition-opacity hover:text-foreground motion-reduce:transition-none xl:size-6 xl:opacity-0 xl:group-focus-within/task:opacity-100 xl:group-hover/task:opacity-100"
-              >
-                <CalendarClock />
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                disabled={busy}
-                size="xs"
-                aria-label={`${taskDateLabels.change}: ${dateLabel}`}
-                title={taskDateLabels.change}
-                className="h-7 gap-1 px-1.5 font-normal xl:h-6"
-              >
-                <CalendarClock
-                  aria-hidden
-                  className="size-3 text-muted-foreground/70"
-                />
-                <span
+      <div className="min-w-0 flex-1 pt-1 xl:pt-0">
+        <TaskTextField
+          value={task.text}
+          onSave={(text) => act(() => onEdit(text))}
+          disabled={busy}
+          className={focused ? "font-medium" : undefined}
+        />
+        <div className="flex min-h-8 items-center gap-2 xl:min-h-7">
+          <div className="-ml-1 flex min-w-0 flex-1 items-center">
+            {when !== undefined &&
+              datePicker(
+                <button
+                  type="button"
+                  disabled={busy}
+                  aria-label={`${taskDateLabels.change}: ${when}`}
                   className={cn(
-                    "tabular-nums",
+                    "inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-xs tabular-nums outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50",
                     tone ? DATE_TONE[tone] : "text-muted-foreground",
                   )}
                 >
-                  {dateLabel}
-                </span>
-              </Button>
-            )
-          }
-        />
-        <Button
-          variant="ghost"
-          disabled={busy}
-          size="icon-xs"
-          onClick={() => void action.run(onRemove)}
-          aria-label="Remove task"
-          title="Remove"
-          className="size-7 text-muted-foreground/50 transition-opacity hover:text-destructive motion-reduce:transition-none xl:size-6 xl:opacity-0 xl:group-focus-within/task:opacity-100 xl:group-hover/task:opacity-100"
-        >
-          <X />
-        </Button>
-        {task.repeat !== undefined && (
-          <Button
-            variant="ghost"
-            disabled={busy}
-            size="icon-xs"
-            onClick={() => void action.run(onSkip)}
-            aria-label="Skip task"
-            title="Skip to the next date"
-            className="size-7 text-muted-foreground/60 transition-opacity hover:text-foreground motion-reduce:transition-none xl:size-6 xl:opacity-0 xl:group-focus-within/task:opacity-100 xl:group-hover/task:opacity-100"
+                  {task.repeat !== undefined && (
+                    <span
+                      role="img"
+                      aria-label={repeatLabel(task.repeat)}
+                      data-slot="repeat-glyph"
+                      className="flex shrink-0 items-center"
+                    >
+                      <RepeatIcon aria-hidden className="size-3" />
+                    </span>
+                  )}
+                  {when}
+                </button>,
+              )}
+          </div>
+
+          <div
+            role="toolbar"
+            aria-label="Task commands"
+            className="-mr-1 flex shrink-0 items-center gap-0.5 transition-opacity motion-reduce:transition-none xl:opacity-0 xl:group-focus-within/task:opacity-100 xl:group-hover/task:opacity-100 xl:has-data-popup-open:opacity-100"
           >
-            <SkipForward />
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          disabled={noteDisabled || busy}
-          size="icon-xs"
-          onClick={onToggleNote}
-          aria-label="Complete with a note"
-          aria-expanded={noting}
-          title="Complete with a note"
-          className={cn(
-            "size-7 transition-opacity hover:text-foreground motion-reduce:transition-none xl:size-6",
-            noting
-              ? "bg-muted text-foreground"
-              : "text-muted-foreground/60 xl:opacity-0 xl:group-focus-within/task:opacity-100 xl:group-hover/task:opacity-100",
-          )}
-        >
-          <MessageSquarePlus />
-        </Button>
-        <Button
-          variant="ghost"
-          disabled={busy}
-          size="icon-xs"
-          onClick={() => void action.run(onComplete)}
-          aria-label="Complete task"
-          title="Complete"
-          className="size-8 shrink-0 rounded-full border border-condition-healthy/40 text-transparent hover:bg-condition-healthy/10 hover:text-condition-healthy focus-visible:text-condition-healthy xl:size-6"
-        >
-          <Check />
-        </Button>
-      </span>
+            {/* Skip leads, so the other commands keep their places from row to row. */}
+            {task.repeat !== undefined && (
+              <Command label="Skip to the next date">
+                <CommandButton
+                  aria-label="Skip task"
+                  disabled={busy}
+                  onClick={() => act(onSkip)}
+                >
+                  <SkipForward />
+                </CommandButton>
+              </Command>
+            )}
+            <Tooltip>
+              {datePicker(
+                <TooltipTrigger
+                  render={
+                    <CommandButton
+                      aria-label={
+                        when === undefined
+                          ? taskDateLabels.set
+                          : taskDateLabels.change
+                      }
+                      disabled={busy}
+                    >
+                      <CalendarClock />
+                    </CommandButton>
+                  }
+                />,
+              )}
+              <TooltipContent>
+                {when === undefined
+                  ? taskDateLabels.set
+                  : taskDateLabels.change}
+              </TooltipContent>
+            </Tooltip>
+            <Command label={focused ? "Unfocus" : "Focus"}>
+              <CommandButton
+                disabled={busy}
+                onClick={() => act(onToggleFocus)}
+                aria-label={focused ? "Unfocus this task" : "Focus this task"}
+                aria-pressed={focused}
+                className={focused ? "text-brand-accent-text" : undefined}
+              >
+                <Target />
+              </CommandButton>
+            </Command>
+            <Command label="Complete with a note">
+              <CommandButton
+                disabled={busy}
+                onClick={() => void onToggleNote()}
+                aria-label="Complete with a note"
+                aria-expanded={noting}
+                className={noting ? "bg-muted text-foreground" : undefined}
+              >
+                <MessageSquarePlus />
+              </CommandButton>
+            </Command>
+            <span aria-hidden className="mx-0.5 h-3.5 w-px bg-border" />
+            <Command label="Remove">
+              <CommandButton
+                disabled={busy}
+                onClick={() => act(onRemove)}
+                aria-label="Remove task"
+                className="hover:text-destructive"
+              >
+                <Trash2 />
+              </CommandButton>
+            </Command>
+          </div>
+        </div>
+      </div>
     </li>
   );
+}
+
+/** Names the command it wraps in a tooltip; the button carries the rest. */
+function Command({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactElement;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={children} />
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function CommandButton({
+  className,
+  children,
+  ...props
+}: ComponentProps<"button">) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "flex size-8 items-center justify-center rounded-full text-muted-foreground/70 outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 data-popup-open:bg-muted data-popup-open:text-foreground motion-reduce:transition-none xl:size-7 [&_svg]:size-3.5",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** A Task's day as a word when it is near (Today, Tue) and a date when it is not, with its time. */
+function taskWhen(when: number, now: number): string {
+  const days = differenceInCalendarDays(when, now);
+  const day =
+    days === 0
+      ? "Today"
+      : days === 1
+        ? "Tomorrow"
+        : days === -1
+          ? "Yesterday"
+          : days > 1 && days < 7
+            ? format(when, "EEE")
+            : format(when, "MMM d");
+  return withTimeToken(day, when);
 }
 
 /**
@@ -459,7 +478,7 @@ function CompletionNoteLine({
   const hintId = useId();
 
   return (
-    <li className="pb-1.5 pl-10 xl:pl-8">
+    <li className="pb-1.5 pl-[2.625rem] xl:pl-[2.125rem]">
       <div
         role="group"
         aria-label={`Complete “${taskText}” with a note`}
