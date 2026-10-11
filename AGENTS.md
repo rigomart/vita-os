@@ -56,4 +56,4 @@ Project skills live in `.claude/skills/<name>/`. Each is symlinked into `.agents
 
 - `verify-vita-os` drives the real app locally and captures proof.
 - `ship-changes` packages work into a branch, commits, and a PR using this repo's conventions.
-- `validate-idea` tests a raw product idea against real cases and the app's model and principles, then files a spec issue and a proposed ADR.
+- `validate-idea` shapes a raw product idea: drafts a direction on stated defaults, settles look and behavior with a design lab prototype, then lands the prototype with a proposed ADR and files a spec issue and its slices.
