@@ -1,12 +1,15 @@
 import { EditorView } from "@codemirror/view";
 import { act, screen } from "@testing-library/react";
+// The Note view loads the editor lazily. Loading it with the test file keeps a
+// cold import on a slow machine from running out a test's wait for the editor.
+import "@vita-os/ui/components/markdown-editor";
 
 /**
  * Drives the Note view's editor. It is CodeMirror, which reads keystrokes from
  * DOM mutations jsdom does not produce, so tests dispatch what a keystroke would.
  */
 
-/** The editor loads on its own, so it appears a moment after the view. */
+/** The editor mounts through Suspense, so it appears just after the view. */
 export const findNoteEditor = () =>
   screen.findByRole("textbox", { name: "Note body" });
 
