@@ -21,43 +21,55 @@ export const concealed =
   "transition-opacity group-focus-within/card:opacity-0 group-hover/card:opacity-0";
 
 /**
- * The one shape every item on the board takes, Thread or Note: a quiet row
- * with no frame, filled only on hover, in three rows that never trade places.
- * The first two carry the words — the headline, then what is next — each with
- * the full width to itself. The third is the footer: when and where on the
- * left, the controls on the right.
+ * The one shape every item on the board takes, Thread or Note: a sheet with an
+ * edge of its own, filed on its group's fill like a sheet in a folder, in
+ * three rows that never trade places. The first two carry the words — the
+ * headline, then what is next — each with the full width to itself. The third
+ * is the footer: when and where on the left, the controls on the right.
+ *
+ * A card fills the height of its row, with the footer held to the bottom, so
+ * two cards side by side end together and their footers line up.
  *
  * A late card carries a faint warm tint, unless it sits on Late's fill
  * (`onLateFill`), which already says so.
  *
- * A `ruled` card carries a short margin rule inside its left padding: the mark
- * of a thing someone wrote, where a pill would read as one more Area.
+ * A `dogEared` card has its top right corner folded over: the mark of a scrap
+ * someone wrote, where a pill would read as one more Area.
  */
 export function BoardCard({
   children,
   footer,
   late = false,
   onLateFill = false,
-  ruled = false,
+  dogEared = false,
 }: {
   children: ReactNode;
   footer: ReactNode;
   late?: boolean;
   onLateFill?: boolean;
-  ruled?: boolean;
+  dogEared?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "group/card relative flex flex-col gap-1 rounded-xl px-3 py-2.5 transition-colors",
-        "hover:bg-muted/60 has-focus-visible:bg-muted/60",
-        late && !onLateFill && "bg-condition-attention/[0.06]",
-        ruled &&
-          "before:absolute before:inset-y-3 before:left-1 before:w-0.5 before:rounded-full before:bg-muted-foreground/45",
+        "group/card relative flex h-full flex-col gap-1 rounded-xl border border-border/80 bg-card px-3 py-2.5 transition-colors",
+        "hover:border-foreground/15 has-focus-visible:border-ring/50",
+        late &&
+          !onLateFill &&
+          "bg-[color-mix(in_oklab,var(--color-condition-attention)_7%,var(--color-card))]",
+        // The corner is cut away, and the fold drawn over the cut.
+        dogEared &&
+          "[clip-path:polygon(0_0,calc(100%-18px)_0,100%_18px,100%_100%,0_100%)]",
       )}
     >
+      {dogEared && (
+        <span
+          aria-hidden
+          className="absolute top-0 right-0 size-[18px] rounded-bl-[4px] bg-[linear-gradient(to_bottom_left,transparent_calc(50%-0.5px),var(--color-border)_50%,var(--color-surface-3)_calc(50%+0.5px))]"
+        />
+      )}
       {children}
-      <div className="mt-0.5 flex min-h-6 items-center gap-1.5 text-[12px] leading-snug text-muted-foreground/75">
+      <div className="mt-auto flex min-h-6 items-center gap-1.5 pt-0.5 text-[12px] leading-snug text-muted-foreground/75">
         {footer}
       </div>
     </div>

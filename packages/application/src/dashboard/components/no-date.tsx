@@ -110,7 +110,7 @@ function Runs({ board, scope }: { board: AttentionBoard; scope: BoardScope }) {
           {run.items.length}
         </span>
       </h3>
-      <ul className="-mx-3 flex flex-col">
+      <ul className="-mx-3 flex flex-col gap-1.5">
         {run.items.map((item) => (
           <li key={itemId(item)}>
             <DashboardItem item={item} scope={scope} />

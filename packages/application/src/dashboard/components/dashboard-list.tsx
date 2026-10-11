@@ -68,7 +68,7 @@ export function DashboardList({
             {look.oneLine ? (
               <Lines items={group.items} scope={scope} />
             ) : (
-              <ul className="grid gap-x-1 @2xl:grid-cols-2">
+              <ul className="grid gap-1.5 @2xl:grid-cols-2">
                 {group.items.map((item) => (
                   <li key={itemId(item)}>
                     <DashboardItem
