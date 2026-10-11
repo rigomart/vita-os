@@ -221,7 +221,7 @@ export function WhenPopover({
         {page === "repeat" && repeat !== undefined && when !== undefined && (
           <>
             <PageHeader title="Repeat" onBack={() => setPage("menu")} />
-            {repeatPresets(when).map((preset) => {
+            {repeatPresets(when, repeat.value).map((preset) => {
               const lands =
                 preset.repeat === null
                   ? when
@@ -246,7 +246,7 @@ export function WhenPopover({
               label="Custom…"
               chosen={
                 repeat.value !== undefined &&
-                !repeatPresets(when).some((preset) =>
+                !repeatPresets(when, repeat.value).some((preset) =>
                   sameRepeat(preset.repeat, repeat.value),
                 )
               }
@@ -492,7 +492,7 @@ function CustomRepeat({
   value: Repeat | undefined;
   when: number;
 }) {
-  const initial = repeatDraft(value);
+  const initial = repeatDraft(value?.kind === "monthly" ? undefined : value);
   const [draft, setDraft] = useState<RepeatDraft>(
     initial.mode === "never"
       ? { mode: "everyN", every: 2 }

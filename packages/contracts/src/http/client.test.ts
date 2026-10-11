@@ -175,6 +175,12 @@ describe("createHttpApplicationClient", () => {
       date: 1,
       repeat: { kind: "weekly", weekdays: [4, 2] },
     },
+    {
+      _id: "task/1",
+      text: "Check",
+      date: 1,
+      repeat: { kind: "monthly", day: 31 },
+    },
   ])(
     "preserves shared-shape Repeat values without core validation: %j",
     async (task) => {

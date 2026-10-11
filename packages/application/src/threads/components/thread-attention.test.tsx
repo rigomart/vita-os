@@ -565,6 +565,51 @@ describe("ThreadAttention repeating Tasks", () => {
     ).toBeVisible();
   });
 
+  it("offers every month on the date's day, and marks a monthly Task with it", async () => {
+    const user = userEvent.setup();
+    const { onSetTaskRepeat } = renderAttention({ tasks: [oneOff] });
+
+    await user.click(screen.getByRole("button", { name: /^Change date:/ }));
+    await user.click(
+      await screen.findByRole("button", { name: "Repeat, Never" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Every month on the 13th" }),
+    );
+    expect(onSetTaskRepeat).toHaveBeenCalledExactlyOnceWith(oneOff._id, {
+      kind: "monthly",
+      day: 13,
+    });
+  });
+
+  it("shows a monthly Task's own day where a short month stands in for it", async () => {
+    const user = userEvent.setup();
+    renderAttention({
+      tasks: [
+        {
+          ...oneOff,
+          date: new Date(2026, 8, 30, 21).getTime(),
+          repeat: { kind: "monthly", day: 31 },
+        },
+      ],
+    });
+
+    expect(
+      within(taskRows()[0]!).getByRole("img", {
+        name: "Repeats monthly on the 31st",
+      }),
+    ).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /^Change date:/ }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Repeat, Monthly on the 31st",
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Every month on the 31st" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("steps a custom every N days and saves the rhythm", async () => {
     const user = userEvent.setup();
     const { onSetTaskRepeat } = renderAttention({ tasks: [checkIn] });

@@ -53,6 +53,7 @@ export const CompleteTaskBody = v.strictObject({
 export const RequestRepeatSchema = v.union([
   v.strictObject(RepeatSchema.options[0].entries),
   v.strictObject(RepeatSchema.options[1].entries),
+  v.strictObject(RepeatSchema.options[2].entries),
 ]);
 export const SetTaskRepeatBody = v.strictObject({
   repeat: v.nullable(RequestRepeatSchema),

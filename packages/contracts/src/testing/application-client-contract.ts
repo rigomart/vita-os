@@ -513,6 +513,75 @@ export function describeApplicationClient(
           }),
         ).resolves.toMatchObject({ ok: false, error: { code: "conflict" } });
       });
+
+      it("repeats monthly on the date's day, falling to a short month's end and following a changed date", async () => {
+        const client = await newClient();
+        const jan31 = Date.UTC(2031, 0, 31, 9);
+        const taskId = "task-pay-rent" as TaskId;
+        const thread = await value(client.createThread({ title: "Home" }));
+        await value(
+          client.addTask({
+            threadId: thread._id,
+            taskId,
+            text: "Pay rent",
+            date: jan31,
+          }),
+        );
+        for (const day of [0, 32, 1.5]) {
+          await expect(
+            client.setTaskRepeat({
+              threadId: thread._id,
+              taskId,
+              repeat: { kind: "monthly", day },
+              timeZone: "UTC",
+            }),
+          ).resolves.toMatchObject({
+            ok: false,
+            error: { code: "validation" },
+          });
+        }
+        const repeating = await value(
+          client.setTaskRepeat({
+            threadId: thread._id,
+            taskId,
+            repeat: { kind: "monthly", day: 31 },
+            timeZone: "UTC",
+          }),
+        );
+        expect(repeating.tasks?.[0]).toEqual({
+          _id: taskId,
+          text: "Pay rent",
+          date: jan31,
+          repeat: { kind: "monthly", day: 31 },
+        });
+
+        const skipped = await value(
+          client.skipTask({
+            threadId: thread._id,
+            taskId,
+            expectedOccurrence: jan31,
+            timeZone: "UTC",
+          }),
+        );
+        expect(skipped.tasks?.[0]?.date).toBe(Date.UTC(2031, 1, 28, 9));
+        const moved = await value(
+          client.setTaskDate({
+            threadId: thread._id,
+            taskId,
+            date: Date.UTC(2031, 2, 12, 9),
+            timeZone: "UTC",
+          }),
+        );
+        expect(moved.tasks?.[0]).toEqual({
+          _id: taskId,
+          text: "Pay rent",
+          date: Date.UTC(2031, 2, 12, 9),
+          repeat: { kind: "monthly", day: 12 },
+        });
+        await expect(
+          client.getThreadDetail({ slug: thread.slug }),
+        ).resolves.toMatchObject({ ok: true, value: { thread: moved } });
+      });
     });
   });
 }

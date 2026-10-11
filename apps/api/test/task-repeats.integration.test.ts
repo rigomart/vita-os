@@ -163,6 +163,94 @@ describe("repeating Tasks over HTTP", () => {
     );
   });
 
+  it("stores a monthly Repeat, falls to a short month's last day, and returns to the chosen day", async () => {
+    const owner = await createSession("repeat-monthly");
+    const jan31 = Date.parse("2027-01-31T15:30Z");
+    const before = await dated(owner, true, jan31);
+    const set = await command(owner, before, "repeat", {
+      repeat: { kind: "monthly", day: 31 },
+      timeZone: "UTC",
+    });
+    expect(set.status).toBe(200);
+    const thread = set.body as Thread;
+    expect(thread.tasks?.[0]).toEqual({
+      _id: "a",
+      text: "Check",
+      date: jan31,
+      repeat: { kind: "monthly", day: 31 },
+    });
+    expect(await read(owner, thread)).toEqual(thread);
+    const stored = await env.DB.prepare(
+      "SELECT moves_json FROM threads WHERE id = ?",
+    )
+      .bind(thread._id)
+      .first<{ moves_json: string }>();
+    expect(JSON.parse(stored!.moves_json)[0].repeat).toEqual({
+      kind: "monthly",
+      day: 31,
+    });
+
+    const feb = await advance(owner, thread, "complete", "UTC", jan31);
+    expect(feb.tasks?.[0]?.date).toBe(Date.parse("2027-02-28T15:30Z"));
+    const mar = await advance(
+      owner,
+      feb,
+      "complete",
+      "UTC",
+      feb.tasks![0]!.date!,
+    );
+    expect(mar.tasks?.[0]).toEqual({
+      ...thread.tasks![0],
+      date: Date.parse("2027-03-31T15:30Z"),
+    });
+    expect(await activity(owner, thread)).toHaveLength(2);
+  });
+
+  it("moves a monthly Repeat to a changed date's day in the caller's zone", async () => {
+    const owner = await createSession("repeat-monthly-redate");
+    const nov5 = Date.parse("2026-11-05T15:30Z");
+    const before = await dated(owner, true, nov5);
+    const thread = (
+      await command(owner, before, "repeat", {
+        repeat: { kind: "monthly", day: 5 },
+        timeZone: "UTC",
+      })
+    ).body as Thread;
+    const late = await advance(
+      owner,
+      thread,
+      "complete",
+      "UTC",
+      Date.parse("2026-11-09T20:00Z"),
+    );
+    expect(late.tasks?.[0]?.date).toBe(Date.parse("2026-12-05T15:30Z"));
+
+    const dec12 = Date.parse("2026-12-12T15:30Z");
+    expectError(
+      await command(owner, late, "date", { date: dec12 }),
+      validation,
+    );
+    const changed = await command(owner, late, "date", {
+      date: dec12,
+      timeZone: "UTC",
+    });
+    expect(changed.status).toBe(200);
+    expect((changed.body as Thread).tasks?.[0]).toEqual({
+      _id: "a",
+      text: "Check",
+      date: dec12,
+      repeat: { kind: "monthly", day: 12 },
+    });
+    const next = await advance(
+      owner,
+      changed.body as Thread,
+      "complete",
+      "UTC",
+      dec12,
+    );
+    expect(next.tasks?.[0]?.date).toBe(Date.parse("2027-01-12T15:30Z"));
+  });
+
   it("clearing a date also clears its Repeat without a zone", async () => {
     const owner = await createSession("repeat-clear-date");
     const thread = await repeating(owner);
@@ -455,6 +543,12 @@ describe("repeating Tasks over HTTP", () => {
     { kind: "weekly", weekdays: [7] },
     { kind: "weekly", weekdays: [1.5] },
     { kind: "monthly", every: 1 },
+    { kind: "monthly" },
+    { kind: "monthly", day: 0 },
+    { kind: "monthly", day: 32 },
+    { kind: "monthly", day: 1.5 },
+    { kind: "monthly", day: "5" },
+    { kind: "monthly", day: 5, every: 1 },
   ])("refuses invalid Repeat %j in the HTTP schema", async (repeat) => {
     const owner = await createSession("repeat-shape");
     const thread = await dated(owner);
@@ -480,6 +574,13 @@ describe("stored Repeats", () => {
     },
   );
 
+  it("round-trips a monthly Repeat", () => {
+    const stored =
+      '[{"id":"a","text":"Check","date":1,"repeat":{"kind":"monthly","day":31}}]';
+    expect(JSON.parse(serializeTasks(parseTasks(stored))!)).toEqual(
+      JSON.parse(stored),
+    );
+  });
   it("round-trips and sorts a valid Repeat", () => {
     const stored =
       '[{"id":"a","text":"Check","date":1,"repeat":{"kind":"weekly","weekdays":[4,2]}}]';
@@ -494,6 +595,8 @@ describe("stored Repeats", () => {
     { kind: "days", every: 0 },
     { kind: "weekly", weekdays: [1, 1] },
     { kind: "weekly", weekdays: [] },
+    { kind: "monthly", day: 0 },
+    { kind: "monthly", day: 32 },
     null,
     "daily",
   ])("rejects malformed stored Repeat %j", (repeat) => {
