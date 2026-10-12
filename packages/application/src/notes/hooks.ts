@@ -4,9 +4,16 @@ import type {
   CommandAcknowledgement,
   Note,
   NoteId,
+  Repeat,
 } from "@vita-os/contracts";
 
-import { boundNoteSearch, newRecordId } from "@vita-os/core";
+import {
+  boundNoteSearch,
+  decideCompleteNote,
+  decideSetNoteFollowUp,
+  decideSetNoteRepeat,
+  newRecordId,
+} from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
 import type { PagedResult } from "../cache/use-paged-application-query";
@@ -22,6 +29,7 @@ import {
   noteKeys,
   settleCapturedNote,
   showCapturedNote,
+  showNoteDates,
   showNoteEdit,
   showNoteLeavingOpenNotes,
   showUnarchivedNote,
@@ -129,26 +137,96 @@ export function useUpdateNoteBody(): ApplicationMutationResult<
   });
 }
 
-/** The Follow-up date, set or cleared. */
+/**
+ * The Follow-up date, set or cleared. Clearing it clears its Repeat; a weekly
+ * Repeat snaps a new date to a chosen day, in `timeZone`.
+ */
 export function useUpdateNoteFollowUp(): ApplicationMutationResult<
-  { noteId: NoteId; followUp: number | null },
+  { noteId: NoteId; followUp: number | null; timeZone: string },
   Note
 > {
   return useApplicationMutation<
-    { noteId: NoteId; followUp: number | null },
+    { noteId: NoteId; followUp: number | null; timeZone: string },
     Note
   >({
     run: (client, input) => client.updateNoteFollowUp(input),
     affected: () => noteKeys(),
     optimistic: (cache, input) =>
-      changeRecords<Note>(cache, noteKeys(), [input.noteId], ["followUp"], () =>
-        showNoteEdit(
-          cache,
-          input.noteId,
-          input.followUp === null
-            ? { followUp: undefined }
-            : { followUp: input.followUp },
-        ),
+      changeRecords<Note>(
+        cache,
+        noteKeys(),
+        [input.noteId],
+        ["followUp", "repeat"],
+        () =>
+          showNoteDates(cache, input.noteId, (note) =>
+            decideSetNoteFollowUp(note, input.followUp, input.timeZone),
+          ),
+      ),
+  });
+}
+
+/** A Standalone Note's Repeat, set or (with `null`) cleared. It needs a date. */
+export function useSetNoteRepeat(): ApplicationMutationResult<
+  { noteId: NoteId; repeat: Repeat | null; timeZone: string },
+  Note
+> {
+  return useApplicationMutation<
+    { noteId: NoteId; repeat: Repeat | null; timeZone: string },
+    Note
+  >({
+    run: (client, input) => client.setNoteRepeat(input),
+    affected: () => noteKeys(),
+    optimistic: (cache, input) =>
+      changeRecords<Note>(
+        cache,
+        noteKeys(),
+        [input.noteId],
+        ["followUp", "repeat"],
+        () =>
+          showNoteDates(cache, input.noteId, (note) =>
+            decideSetNoteRepeat(note, input.repeat, input.timeZone),
+          ),
+      ),
+  });
+}
+
+/**
+ * Completing names the occurrence the person acted on: the date the Note
+ * showed then. A Note that has moved on since — a duplicate activation behind
+ * the first, or a change from elsewhere — is not moved again here, and the
+ * service refuses it. The zone and the current time are taken once, when the
+ * command is issued, so optimism computes the same next date as the service.
+ */
+export interface CompleteNoteVariables {
+  noteId: NoteId;
+  expectedOccurrence: number;
+  timeZone: string;
+  now: number;
+}
+
+export const completeNoteKey = ["complete-note"] as const;
+
+/** A repeating Note moves to its next occurrence; nothing is recorded. */
+export function useCompleteNote(): ApplicationMutationResult<
+  CompleteNoteVariables,
+  Note
+> {
+  return useApplicationMutation<CompleteNoteVariables, Note>({
+    mutationKey: completeNoteKey,
+    run: (client, { now: _now, ...input }) => client.completeNote(input),
+    affected: () => noteKeys(),
+    optimistic: (cache, input) =>
+      changeRecords<Note>(
+        cache,
+        noteKeys(),
+        [input.noteId],
+        ["followUp", "repeat"],
+        () =>
+          showNoteDates(cache, input.noteId, (note) =>
+            note.followUp === input.expectedOccurrence
+              ? decideCompleteNote(note, input)
+              : null,
+          ),
       ),
   });
 }

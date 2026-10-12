@@ -8,6 +8,13 @@
       "when": 1791417600000,
       "tag": "0007_drop_thread_follow_up",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791761377810,
+      "tag": "0008_repeating_notes",
+      "breakpoints": true
     }
   ]
 }

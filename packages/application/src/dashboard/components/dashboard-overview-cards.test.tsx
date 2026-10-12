@@ -423,6 +423,146 @@ describe("a Dashboard Note view", () => {
     expect(updateNoteFollowUp).toHaveBeenCalledExactlyOnceWith({
       noteId: "note1",
       followUp: nextDate,
+      timeZone: expect.any(String),
     });
+  });
+
+  it("completes a repeating Note from its view, which stays open beside Archive", async () => {
+    const user = userEvent.setup();
+    const occurrence = new Date(2026, 6, 17).getTime();
+    const next = new Date(2026, 7, 17).getTime();
+    const repeating: Note = {
+      ...saved,
+      followUp: occurrence,
+      repeat: { kind: "monthly", day: 17 },
+    };
+    const completeNote = vi.fn(async () =>
+      success({ ...repeating, followUp: next }),
+    );
+    render(
+      <DashboardOverview
+        areas={[]}
+        threads={[]}
+        notes={[repeating]}
+        currentDate={currentDate}
+      />,
+      { applicationClient: createQuietApplicationClient({ completeNote }) },
+    );
+    await user.click(
+      screen.getByRole("button", { name: /Open note: Consultation/ }),
+    );
+    const view = within(screen.getByRole("dialog"));
+    expect(view.getByRole("button", { name: "Archive" })).toBeVisible();
+    await user.click(view.getByRole("button", { name: /^Complete · back / }));
+
+    await waitFor(() =>
+      expect(
+        view.getByRole("button", { name: "Change follow-up date" }),
+      ).toHaveTextContent("Aug 17"),
+    );
+    expect(screen.getByRole("dialog")).toBeVisible();
+    expect(completeNote).toHaveBeenCalledExactlyOnceWith({
+      noteId: "note1",
+      expectedOccurrence: occurrence,
+      timeZone: expect.any(String),
+    });
+  });
+
+  it("shows a Note completed elsewhere as it now is, and completes that one next", async () => {
+    const user = userEvent.setup();
+    const shown = new Date(2026, 6, 17).getTime();
+    const current = new Date(2026, 7, 17).getTime();
+    const repeat = { kind: "monthly", day: 17 } as const;
+    const stale: Note = { ...saved, followUp: shown, repeat };
+    const moved: Note = { ...stale, followUp: current };
+    const completeNote = vi
+      .fn<() => Promise<OperationResult<Note>>>()
+      .mockResolvedValueOnce({
+        ok: false,
+        error: { code: "conflict", message: "Moved.", retryable: false },
+      })
+      .mockResolvedValueOnce(
+        success({ ...moved, followUp: new Date(2026, 8, 17).getTime() }),
+      );
+    const { feedback } = render(
+      <DashboardOverview
+        areas={[]}
+        threads={[]}
+        notes={[stale]}
+        currentDate={currentDate}
+      />,
+      {
+        applicationClient: createQuietApplicationClient({
+          completeNote,
+          listOpenNotes: async () => success([moved]),
+        }),
+      },
+    );
+    await user.click(
+      screen.getByRole("button", { name: /Open note: Consultation/ }),
+    );
+    const view = within(screen.getByRole("dialog"));
+    await user.click(view.getByRole("button", { name: /^Complete · back / }));
+
+    await waitFor(() =>
+      expect(feedback.error).toHaveBeenCalledWith(
+        "This note changed elsewhere. It has been refreshed.",
+      ),
+    );
+    expect(
+      view.getByRole("button", { name: "Change follow-up date" }),
+    ).toHaveTextContent("Aug 17");
+
+    await user.click(view.getByRole("button", { name: /^Complete · back / }));
+    await waitFor(() => expect(completeNote).toHaveBeenCalledTimes(2));
+    expect(completeNote).toHaveBeenLastCalledWith({
+      noteId: "note1",
+      expectedOccurrence: current,
+      timeZone: expect.any(String),
+    });
+  });
+
+  it("says a Note whose Repeat was removed elsewhere no longer repeats", async () => {
+    const user = userEvent.setup();
+    const followUp = new Date(2026, 6, 17).getTime();
+    const repeating: Note = {
+      ...saved,
+      followUp,
+      repeat: { kind: "monthly", day: 17 },
+    };
+    const { feedback } = render(
+      <DashboardOverview
+        areas={[]}
+        threads={[]}
+        notes={[repeating]}
+        currentDate={currentDate}
+      />,
+      {
+        applicationClient: createQuietApplicationClient({
+          completeNote: async () => ({
+            ok: false,
+            error: {
+              code: "validation",
+              message: "Only a repeating Note can be completed",
+              retryable: false,
+            },
+          }),
+          listOpenNotes: async () => success([{ ...saved, followUp }]),
+        }),
+      },
+    );
+    await user.click(
+      screen.getByRole("button", { name: /Open note: Consultation/ }),
+    );
+    const view = within(screen.getByRole("dialog"));
+    await user.click(view.getByRole("button", { name: /^Complete · back / }));
+
+    await waitFor(() =>
+      expect(feedback.error).toHaveBeenCalledWith(
+        "This note no longer repeats.",
+      ),
+    );
+    expect(view.queryByRole("button", { name: /^Complete/ })).toBeNull();
+    expect(view.getByRole("button", { name: "Archive" })).toBeVisible();
   });
 });

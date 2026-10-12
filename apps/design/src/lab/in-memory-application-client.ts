@@ -16,7 +16,7 @@ import type {
   ThreadNote,
   ThreadNoteId,
 } from "@vita-os/contracts";
-import type { ThreadUpdateDecision } from "@vita-os/core";
+import type { NoteRepeatState, ThreadUpdateDecision } from "@vita-os/core";
 
 import { clock } from "@vita-os/application";
 import { commandAcknowledged } from "@vita-os/contracts";
@@ -25,10 +25,13 @@ import {
   ConflictError,
   decideAddNoteToThread,
   decideAddTask,
+  decideCompleteNote,
   decideCompleteTask,
   decideEditTask,
   decideFocusTask,
   decideRemoveTask,
+  decideSetNoteFollowUp,
+  decideSetNoteRepeat,
   decideSetTaskDate,
   decideSetTaskRepeat,
   decideSkipTask,
@@ -201,6 +204,16 @@ export function createInMemoryApplicationClient(
     return threadNotes
       .filter((note) => note.threadId === threadId && note.state === state)
       .map(({ threadId: _, ...note }) => note);
+  }
+
+  /** Write a decided date and Repeat, replacing both. */
+  function schedule(note: Note, next: NoteRepeatState): Note {
+    delete note.followUp;
+    delete note.repeat;
+    if (next.followUp !== undefined) note.followUp = next.followUp;
+    if (next.repeat !== undefined) note.repeat = next.repeat;
+    note.updatedAt = clock.now();
+    return note;
   }
 
   function editNote<T extends Note | ThreadNote>(
@@ -541,13 +554,33 @@ export function createInMemoryApplicationClient(
       );
     },
 
-    async updateNoteFollowUp({ noteId, followUp }) {
+    async updateNoteFollowUp({ noteId, followUp, timeZone }) {
       return ok(
-        editNote(findNote(noteId), "Note", (note) => {
-          if (followUp === null) delete note.followUp;
-          else note.followUp = followUp;
-          note.updatedAt = clock.now();
-        }),
+        editNote(findNote(noteId), "Note", (note) =>
+          schedule(note, decideSetNoteFollowUp(note, followUp, timeZone)),
+        ),
+      );
+    },
+
+    async setNoteRepeat({ noteId, repeat, timeZone }) {
+      return ok(
+        editNote(findNote(noteId), "Note", (note) =>
+          schedule(note, decideSetNoteRepeat(note, repeat, timeZone)),
+        ),
+      );
+    },
+
+    async completeNote({ noteId, expectedOccurrence, timeZone }) {
+      const note = findNote(noteId);
+      if (note === undefined || note.state !== "open")
+        return fail(notFound("Note"));
+      if (note.repeat !== undefined && note.followUp !== expectedOccurrence)
+        return fail(noteOccurrenceChanged);
+      return ok(
+        schedule(
+          note,
+          decideCompleteNote(note, { timeZone, now: clock.now() }),
+        ),
       );
     },
 
@@ -751,6 +784,12 @@ function notFound(noun: string): ApplicationError {
 const tasksChanged: ApplicationError = {
   code: "conflict",
   message: "The Thread's Tasks have changed.",
+  retryable: false,
+};
+
+const noteOccurrenceChanged: ApplicationError = {
+  code: "conflict",
+  message: "The Note's date has changed.",
   retryable: false,
 };
 

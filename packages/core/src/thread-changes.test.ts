@@ -316,6 +316,19 @@ describe("decideAddNoteToThread", () => {
     ).toEqual({ tasks: [{ _id: newId, text: "Old", date: past }] });
   });
 
+  it("carries a repeating Note's Repeat onto the Task", () => {
+    const repeat = { kind: "monthly", day: 1 } as const;
+    expect(
+      decideAddNoteToThread(
+        makeThread(),
+        { body: "Pay rent", followUp: jun1, repeat },
+        newId,
+      ).patch,
+    ).toEqual({
+      tasks: [{ _id: newId, text: "Pay rent", date: jun1, repeat }],
+    });
+  });
+
   it("keeps the Thread's own dated Tasks beside the new one", () => {
     const dated = { ...callClinic, date: may20 };
     const decision = decideAddNoteToThread(
@@ -332,12 +345,12 @@ describe("decideAddNoteToThread", () => {
 });
 
 describe("a Note dated outside the range a Task date may take", () => {
-  it("becomes an undated Task, and the Note is unchanged", () => {
+  it("becomes an undated Task without a Repeat, and the Note is unchanged", () => {
     for (const followUp of [-1, 253_402_300_800_000, Number.MAX_SAFE_INTEGER]) {
       expect(
         decideAddNoteToThread(
           makeThread(),
-          { body: "Old", followUp },
+          { body: "Old", followUp, repeat: { kind: "days", every: 2 } },
           "t" as TaskId,
         ).patch.tasks,
       ).toEqual([{ _id: "t", text: "Old" }]);

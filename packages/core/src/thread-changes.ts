@@ -1,4 +1,10 @@
-import type { AreaId, Task, TaskId, ThreadState } from "@vita-os/contracts";
+import type {
+  AreaId,
+  Repeat,
+  Task,
+  TaskId,
+  ThreadState,
+} from "@vita-os/contracts";
 
 import {
   type AutoActivityLogEntry,
@@ -237,32 +243,38 @@ export const FOLLOW_UP_TASK_TEXT = "Follow up";
 
 /**
  * The Task a Note becomes when it joins a Thread, or `undefined` for an undated
- * Note. A Note date outside the range a Task date may take (it was stored
- * before the range existed) gives an undated Task, and the Note is unchanged.
+ * Note. The Task carries the Note's date and its Repeat. A Note date outside
+ * the range a Task date may take (it was stored before the range existed)
+ * gives an undated Task without a Repeat, and the Note is unchanged.
  */
 export function taskFromNote(
-  note: { body: string; followUp?: number },
+  note: { body: string; followUp?: number; repeat?: Repeat },
   taskId: TaskId,
 ): Task | undefined {
   if (note.followUp === undefined) return undefined;
   return {
     _id: taskId,
     text: taskTextFromNote(note.body),
-    ...(isTaskDate(note.followUp) ? { date: note.followUp } : {}),
+    ...(isTaskDate(note.followUp)
+      ? {
+          date: note.followUp,
+          ...(note.repeat === undefined ? {} : { repeat: note.repeat }),
+        }
+      : {}),
   };
 }
 
 /**
  * What adding a Standalone Note to a Thread does to the Thread's Tasks. A dated
  * Note adds a Task named by its first line and carrying its date, time of day
- * included and even when that date has already passed, appended to the end
+ * included and even when that date has already passed, and its Repeat, appended to the end
  * unfocused; the whole Note joins the Thread's Notes as well, so nothing is
  * dropped. An undated Note adds no Task. Neither writes an Activity Log entry.
  * `taskId` names the Task that may be added.
  */
 export function decideAddNoteToThread(
   thread: ThreadChangeState,
-  note: { body: string; followUp?: number },
+  note: { body: string; followUp?: number; repeat?: Repeat },
   taskId: TaskId,
 ): ThreadUpdateDecision {
   const task = taskFromNote(note, taskId);

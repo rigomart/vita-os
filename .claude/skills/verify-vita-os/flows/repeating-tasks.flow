@@ -1,6 +1,7 @@
 # Repeating Tasks (ADR 0032, issue #404): set a daily Repeat with a time from a Task row's picker, complete it and see it come
 # back at the next occurrence (one move_completed), skip it (no Activity Log entry), switch to weekly and see the date move to the
-# first chosen day, a missed repeating Task as one Late card skipped and completed from the card, and Every N days in the drawer.
+# first chosen day, a missed repeating Task as one Late card skipped and completed from the card, Every N days in the drawer,
+# and monthly (issue #457): the 31st through a shorter month and back, a missed monthly Task as one Late card, a date change.
 # Needs a signed-in instance (up + signin). Add Tasks with Enter in "Add a task"; never press Enter to commit an edit of an existing Task (use Tab).
 # Dates are relative to today: day cells are td[data-day='<ISO date>'] and the flow steps to the next or previous month when the day
 # is not in the month shown, behind the picker's "Pick a date…", so it runs on any day. Every choice in the picker saves as it is
@@ -172,3 +173,126 @@ see image "Repeats every 3 days" --in '[role=dialog]'
 browser -- find role button click --name "Close thread" --exact
 gone dialog
 browser -- set viewport 1440 900
+
+# M (issue #457): Every month on the 31st, on the first 31st (today or later) whose next month is shorter. The preset names
+# the day; completing lands on the shorter month's last day, then back on the 31st. Missed monthly runs collapse to one Late
+# card; changing the date moves the monthly day with it.
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Repeat M ${STAMP}"
+browser -- find role button click --name Create --exact
+see text "Thread created"
+see textbox "Add a task"
+browser -- find label "Add a task" fill "M1 ${STAMP}"
+browser -- press Enter
+see text "M1 ${STAMP}"
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="M1 ${STAMP}"]]//button[@aria-label="Set date"]'
+browser -- find role button click --name "Pick a date…" --exact
+browser -- wait '[data-slot=popover-content] td[data-day]'
+# window.__m31 is the ISO day of that 31st; set once here and read by the next steps.
+browser -- eval "(() => { const t = new Date(); for (let i = 0; i < 12; i++) { const d = new Date(t.getFullYear(), t.getMonth() + i, 31); if (d.getDate() === 31 && d >= new Date(t.getFullYear(), t.getMonth(), t.getDate()) && new Date(d.getFullYear(), d.getMonth() + 2, 0).getDate() < 31) { window.__m31 = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-31'; return window.__m31; } } })()"
+browser -- eval "if (!document.querySelector(\"td[data-day='\" + window.__m31 + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click()"
+browser -- eval "if (!document.querySelector(\"td[data-day='\" + window.__m31 + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click()"
+browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + window.__m31 + \"']\")"
+browser -- eval "document.querySelector(\"td[data-day='\" + window.__m31 + \"'] button\").click()"
+browser -- wait --fn "!document.querySelector('button[aria-label=\"Repeat, Never\"]').disabled"
+browser -- find role button click --name "Repeat, Never" --exact
+see button "Every month on the 31st"
+shot repeat-picker-monthly
+browser -- find role button click --name "Every month on the 31st" --exact
+see button "Repeat, Monthly on the 31st"
+browser -- press Escape
+gone button "Pick a date…"
+see image "Repeats monthly on the 31st" --in '[data-slot=thread-detail-pane]'
+browser -- wait 1500
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="M1 ${STAMP}"]]//button[@aria-label="Complete task"]'
+browser -- wait --fn "(() => { const [y, m] = window.__m31.split('-').map(Number); const d = new Date(y, m + 1, 0); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '\"]'); })()"
+browser -- wait 1500
+browser -- reload
+see list "Tasks" --in '[data-slot=thread-detail-pane]'
+browser -- eval "(() => { const t = new Date(); for (let i = 0; i < 12; i++) { const d = new Date(t.getFullYear(), t.getMonth() + i, 31); if (d.getDate() === 31 && d >= new Date(t.getFullYear(), t.getMonth(), t.getDate()) && new Date(d.getFullYear(), d.getMonth() + 2, 0).getDate() < 31) { window.__m31 = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-31'; return window.__m31; } } })()"
+browser -- wait --fn "(() => { const [y, m] = window.__m31.split('-').map(Number); const d = new Date(y, m + 1, 0); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '\"]'); })()"
+see image "Repeats monthly on the 31st" --in '[data-slot=thread-detail-pane]'
+shot repeat-monthly-short-month
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="M1 ${STAMP}"]]//button[@aria-label="Complete task"]'
+browser -- wait --fn "(() => { const [y, m] = window.__m31.split('-').map(Number); const d = new Date(y, m + 1, 31); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '\"]'); })()"
+browser -- wait 1500
+browser -- reload
+see list "Tasks" --in '[data-slot=thread-detail-pane]'
+browser -- eval "(() => { const t = new Date(); for (let i = 0; i < 12; i++) { const d = new Date(t.getFullYear(), t.getMonth() + i, 31); if (d.getDate() === 31 && d >= new Date(t.getFullYear(), t.getMonth(), t.getDate()) && new Date(d.getFullYear(), d.getMonth() + 2, 0).getDate() < 31) { window.__m31 = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-31'; return window.__m31; } } })()"
+browser -- wait --fn "(() => { const [y, m] = window.__m31.split('-').map(Number); const d = new Date(y, m + 1, 31); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '\"]'); })()"
+see image "Repeats monthly on the 31st" --in '[data-slot=thread-detail-pane]'
+shot repeat-monthly-back-on-31st
+d1 "SELECT json_extract(moves_json, '$[0].repeat') AS repeat FROM threads WHERE title = 'Repeat M ${STAMP}'"
+expect '{\"kind\":\"monthly\",\"day\":31}'
+settled '[data-slot=thread-detail-pane]'
+browser -- find role button click --name "Close thread" --exact
+gone complementary "Repeat M ${STAMP}"
+
+# ML: a monthly Task dated six days ago is one Late card; Complete moves it a month on from its date.
+browser -- find role button click --name "New thread" --exact
+browser -- find label "Thread title" fill "Repeat ML ${STAMP}"
+browser -- find role button click --name Create --exact
+see text "Thread created"
+see textbox "Add a task"
+browser -- find label "Add a task" fill "ML1 ${STAMP}"
+browser -- press Enter
+see text "ML1 ${STAMP}"
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="ML1 ${STAMP}"]]//button[@aria-label="Set date"]'
+browser -- find role button click --name "Pick a date…" --exact
+browser -- wait '[data-slot=popover-content] td[data-day]'
+browser -- eval "(() => { const k = (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(); if (!document.querySelector(\"td[data-day='\" + k + \"']\")) document.querySelector(\"button[aria-label*='Previous Month']\").click(); })()"
+browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"']\")"
+browser -- eval "document.querySelector(\"td[data-day='\" + (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() + \"'] button\").click()"
+browser -- wait --fn "!document.querySelector('button[aria-label=\"Repeat, Never\"]').disabled"
+browser -- find role button click --name "Repeat, Never" --exact
+browser -- click 'xpath=//*[@data-slot="popover-content"]//button[starts-with(@aria-label, "Every month on the")]'
+see button "Repeat, Monthly on the" --contains
+browser -- press Escape
+gone button "Pick a date…"
+browser -- wait 1500
+settled '[data-slot=thread-detail-pane]'
+browser -- find role button click --name "Close thread" --exact
+gone complementary "Repeat ML ${STAMP}"
+browser -- reload
+see link "Repeat ML ${STAMP}"
+browser -- wait --fn "[...document.querySelectorAll(\"section[aria-label='Late'] li\")].filter(li => li.textContent.includes('Repeat ML ${STAMP}')).length === 1 && [...document.querySelectorAll('li')].filter(li => li.textContent.includes('ML1 ${STAMP}')).length === 1 && [...document.querySelectorAll(\"section[aria-label='Late'] li\")].some(li => li.textContent.includes('ML1 ${STAMP}') && li.querySelector('[data-slot=repeat-glyph]'))"
+shot repeat-monthly-late
+browser -- click 'xpath=//li[.//a[normalize-space()="Repeat ML ${STAMP}"]]//button[starts-with(@aria-label, "Complete")]'
+gone text "Repeat ML ${STAMP}" --in "section[aria-label='Late']"
+browser -- wait 1500
+browser -- reload
+see link "Repeat ML ${STAMP}" --contains
+gone text "Repeat ML ${STAMP}" --in "section[aria-label='Late']"
+browser -- find role link click --name "Repeat ML ${STAMP}"
+see complementary "Repeat ML ${STAMP}"
+see list "Tasks" --in '[data-slot=thread-detail-pane]'
+browser -- wait --fn "(() => { const l = new Date(); l.setDate(l.getDate() - 6); const n = new Date(l.getFullYear(), l.getMonth() + 1, 1); n.setDate(Math.min(l.getDate(), new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate())); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + n.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '\"]'); })()"
+shot repeat-monthly-late-completed
+
+# Change the date a week later: the monthly day follows it, and the next Complete lands a month after the new date.
+settled '[data-slot=thread-detail-pane]'
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="ML1 ${STAMP}"]]//button[starts-with(@aria-label, "Change date:")]'
+browser -- find role button click --name "Pick a date…" --exact
+browser -- wait '[data-slot=popover-content] td[data-day]'
+# window.__mn is the new date: a week after the occurrence the late Complete landed on.
+browser -- eval "(() => { const l = new Date(); l.setDate(l.getDate() - 6); const n = new Date(l.getFullYear(), l.getMonth() + 1, 1); n.setDate(Math.min(l.getDate(), new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate())); n.setDate(n.getDate() + 7); window.__mn = n; window.__mnKey = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0'); if (!document.querySelector(\"td[data-day='\" + window.__mnKey + \"']\")) document.querySelector(\"button[aria-label*='Next Month']\").click(); return window.__mnKey; })()"
+browser -- wait --fn "!!document.querySelector(\"td[data-day='\" + window.__mnKey + \"']\")"
+browser -- eval "document.querySelector(\"td[data-day='\" + window.__mnKey + \"'] button\").click()"
+browser -- wait --fn "(() => { const d = window.__mn.getDate(); const s = ['th', 'st', 'nd', 'rd'][(d % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][d % 100] || 'th'; return !!document.querySelector('button[aria-label=\"Repeat, Monthly on the ' + d + s + '\"]'); })()"
+shot repeat-monthly-date-changed
+browser -- press Escape
+gone button "Pick a date…"
+browser -- wait 1500
+browser -- reload
+see list "Tasks" --in '[data-slot=thread-detail-pane]'
+browser -- click 'xpath=//ul[@aria-label="Tasks"]/li[.//button[normalize-space()="ML1 ${STAMP}"]]//button[@aria-label="Complete task"]'
+browser -- wait 1500
+browser -- reload
+see list "Tasks" --in '[data-slot=thread-detail-pane]'
+browser -- wait --fn "(() => { const l = new Date(); l.setDate(l.getDate() - 6); const at = (b, k) => { const t = new Date(b.getFullYear(), b.getMonth() + k, 1); t.setDate(Math.min(b.getDate(), new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate())); return t; }; const n = at(l, 1); n.setDate(n.getDate() + 7); return !!document.querySelector('ul[aria-label=\"Tasks\"] button[aria-label=\"Change date: ' + at(n, 1).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '\"]'); })()"
+shot repeat-monthly-changed-completed
+d1 "SELECT l.type, COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.title = 'Repeat ML ${STAMP}' GROUP BY l.type"
+expect '"n": 2'
+settled '[data-slot=thread-detail-pane]'
+browser -- find role button click --name "Close thread" --exact
+gone complementary "Repeat ML ${STAMP}"

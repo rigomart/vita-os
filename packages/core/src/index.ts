@@ -29,6 +29,12 @@ export {
 } from "./attention";
 export { clearedToAbsent } from "./clearable";
 export {
+  decideCompleteNote,
+  decideSetNoteFollowUp,
+  decideSetNoteRepeat,
+  type NoteRepeatState,
+} from "./note-repeat";
+export {
   boundNoteSearch,
   matchesNoteSearch,
   NOTE_SEARCH_MAX_LENGTH,

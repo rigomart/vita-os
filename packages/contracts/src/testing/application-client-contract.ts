@@ -583,6 +583,278 @@ export function describeApplicationClient(
         ).resolves.toMatchObject({ ok: true, value: { thread: moved } });
       });
     });
+
+    describe("Repeating Notes", () => {
+      const nov5 = Date.UTC(2030, 10, 5, 9);
+      const monthly5 = { kind: "monthly", day: 5 } as const;
+
+      it("sets a Repeat on a dated Note, snapping and following its date, and clearing the date clears it", async () => {
+        const client = await newClient();
+        const undated = await value(
+          client.createNote({ body: "Pay the utility bill" }),
+        );
+        await expect(
+          client.setNoteRepeat({
+            noteId: undated._id,
+            repeat: monthly5,
+            timeZone: "UTC",
+          }),
+        ).resolves.toMatchObject({ ok: false, error: { code: "validation" } });
+
+        const note = await value(
+          client.createNote({ body: "Pay the utility bill", followUp: nov5 }),
+        );
+        expect(note).not.toHaveProperty("repeat");
+        const weekly = await value(
+          client.setNoteRepeat({
+            noteId: note._id,
+            repeat: { kind: "weekly", weekdays: [4] },
+            timeZone: "UTC",
+          }),
+        );
+        expect(weekly).toMatchObject({
+          followUp: Date.UTC(2030, 10, 7, 9),
+          repeat: { kind: "weekly", weekdays: [4] },
+        });
+        await expect(
+          client.updateNoteFollowUp({ noteId: note._id, followUp: nov5 }),
+        ).resolves.toMatchObject({ ok: false, error: { code: "validation" } });
+
+        const snapped = await value(
+          client.updateNoteFollowUp({
+            noteId: note._id,
+            followUp: nov5,
+            timeZone: "UTC",
+          }),
+        );
+        expect(snapped.followUp).toBe(Date.UTC(2030, 10, 7, 9));
+        await value(
+          client.setNoteRepeat({
+            noteId: note._id,
+            repeat: null,
+            timeZone: "UTC",
+          }),
+        );
+        await value(
+          client.updateNoteFollowUp({ noteId: note._id, followUp: nov5 }),
+        );
+        const repeating = await value(
+          client.setNoteRepeat({
+            noteId: note._id,
+            repeat: monthly5,
+            timeZone: "UTC",
+          }),
+        );
+        expect(repeating).toMatchObject({ followUp: nov5, repeat: monthly5 });
+        const moved = await value(
+          client.updateNoteFollowUp({
+            noteId: note._id,
+            followUp: Date.UTC(2030, 10, 12, 9),
+            timeZone: "UTC",
+          }),
+        );
+        expect(moved).toMatchObject({
+          followUp: Date.UTC(2030, 10, 12, 9),
+          repeat: { kind: "monthly", day: 12 },
+        });
+        expect(await value(client.listOpenNotes())).toContainEqual(moved);
+
+        const cleared = await value(
+          client.updateNoteFollowUp({ noteId: note._id, followUp: null }),
+        );
+        expect(cleared).not.toHaveProperty("followUp");
+        expect(cleared).not.toHaveProperty("repeat");
+
+        await value(
+          client.updateNoteFollowUp({ noteId: note._id, followUp: nov5 }),
+        );
+        await value(
+          client.setNoteRepeat({
+            noteId: note._id,
+            repeat: monthly5,
+            timeZone: "UTC",
+          }),
+        );
+        const oneOff = await value(
+          client.setNoteRepeat({
+            noteId: note._id,
+            repeat: null,
+            timeZone: "UTC",
+          }),
+        );
+        expect(oneOff.followUp).toBe(nov5);
+        expect(oneOff).not.toHaveProperty("repeat");
+      });
+
+      it("completes to the next occurrence, once, recording nothing", async () => {
+        const client = await newClient();
+        const note = await value(
+          client.createNote({ body: "Pay the utility bill", followUp: nov5 }),
+        );
+        await value(
+          client.setNoteRepeat({
+            noteId: note._id,
+            repeat: monthly5,
+            timeZone: "UTC",
+          }),
+        );
+
+        const completed = await value(
+          client.completeNote({
+            noteId: note._id,
+            expectedOccurrence: nov5,
+            timeZone: "UTC",
+          }),
+        );
+        expect(completed).toMatchObject({
+          _id: note._id,
+          state: "open",
+          followUp: Date.UTC(2030, 11, 5, 9),
+          repeat: monthly5,
+        });
+        expect(completed).not.toHaveProperty("completedAt");
+        await expect(
+          client.completeNote({
+            noteId: note._id,
+            expectedOccurrence: nov5,
+            timeZone: "UTC",
+          }),
+        ).resolves.toMatchObject({ ok: false, error: { code: "conflict" } });
+        await expect(client.listOpenNotes()).resolves.toMatchObject({
+          ok: true,
+          value: [{ _id: note._id, followUp: Date.UTC(2030, 11, 5, 9) }],
+        });
+
+        const oneOff = await value(
+          client.createNote({ body: "Call the bank", followUp: nov5 }),
+        );
+        await expect(
+          client.completeNote({
+            noteId: oneOff._id,
+            expectedOccurrence: nov5,
+            timeZone: "UTC",
+          }),
+        ).resolves.toMatchObject({ ok: false, error: { code: "validation" } });
+      });
+
+      it("collapses missed occurrences into the first not before today", async () => {
+        const client = await newClient();
+        const missed = Date.UTC(2020, 0, 5, 9);
+        const note = await value(
+          client.createNote({ body: "Replace the filter", followUp: missed }),
+        );
+        await value(
+          client.setNoteRepeat({
+            noteId: note._id,
+            repeat: monthly5,
+            timeZone: "UTC",
+          }),
+        );
+        const day = 24 * 60 * 60 * 1000;
+        const today = Math.floor(Date.now() / day) * day;
+
+        const completed = await value(
+          client.completeNote({
+            noteId: note._id,
+            expectedOccurrence: missed,
+            timeZone: "UTC",
+          }),
+        );
+        const next = new Date(completed.followUp!);
+        expect(next.getUTCDate()).toBe(5);
+        expect(next.getUTCHours()).toBe(9);
+        expect(completed.followUp).toBeGreaterThanOrEqual(today);
+        expect(completed.followUp).toBeLessThan(today + 32 * day);
+      });
+
+      it("keeps the date and Repeat while archived, and refuses to complete an archived Note", async () => {
+        const client = await newClient();
+        const note = await value(
+          client.createNote({ body: "Pay the utility bill", followUp: nov5 }),
+        );
+        await value(
+          client.setNoteRepeat({
+            noteId: note._id,
+            repeat: monthly5,
+            timeZone: "UTC",
+          }),
+        );
+
+        const archived = await value(client.markNoteDone({ noteId: note._id }));
+        expect(archived).toMatchObject({
+          state: "done",
+          followUp: nov5,
+          repeat: monthly5,
+        });
+        await expect(
+          client.completeNote({
+            noteId: note._id,
+            expectedOccurrence: nov5,
+            timeZone: "UTC",
+          }),
+        ).resolves.toMatchObject({ ok: false, error: { code: "not_found" } });
+
+        const unarchived = await value(
+          client.markNoteOpen({ noteId: note._id }),
+        );
+        expect(unarchived).toMatchObject({
+          state: "open",
+          followUp: nov5,
+          repeat: monthly5,
+        });
+      });
+
+      it("gives a Thread a Task carrying the Repeat, added or started from the Note", async () => {
+        const client = await newClient();
+        const thread = await value(client.createThread({ title: "Home" }));
+        const bill = await value(
+          client.createNote({
+            body: "Pay the utility bill\nAccount 0042",
+            followUp: nov5,
+          }),
+        );
+        await value(
+          client.setNoteRepeat({
+            noteId: bill._id,
+            repeat: monthly5,
+            timeZone: "UTC",
+          }),
+        );
+        const added = await value(
+          client.addNoteToThread({ noteId: bill._id, threadId: thread._id }),
+        );
+        expect(added.thread.tasks).toEqual([
+          {
+            _id: expect.any(String),
+            text: "Pay the utility bill",
+            date: nov5,
+            repeat: monthly5,
+          },
+        ]);
+
+        const filter = await value(
+          client.createNote({ body: "Water filter", followUp: nov5 }),
+        );
+        await value(
+          client.setNoteRepeat({
+            noteId: filter._id,
+            repeat: { kind: "days", every: 90 },
+            timeZone: "UTC",
+          }),
+        );
+        const started = await value(
+          client.createThreadFromNote({ noteId: filter._id, title: "Filter" }),
+        );
+        expect(started.thread.tasks).toEqual([
+          {
+            _id: expect.any(String),
+            text: "Water filter",
+            date: nov5,
+            repeat: { kind: "days", every: 90 },
+          },
+        ]);
+      });
+    });
   });
 }
 

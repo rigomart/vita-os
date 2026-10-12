@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@vita-os/ui/lib/utils";
-import { CalendarClock, Check } from "lucide-react";
+import { CalendarClock, Check, Repeat as RepeatIcon } from "lucide-react";
 
 import {
   followUpDateLabels,
   type RepeatControl,
+  repeatLabel,
   timeToken,
   WhenPopover,
   withTimeToken,
@@ -94,6 +95,10 @@ export function BoardTag({ icon, label }: { icon: ReactNode; label: string }) {
  * a heading that already names its day, with no time to add — it is only a
  * revealed control, so `BoardCard` footers place it with the other controls.
  * Under such a heading a time is all the token says.
+ *
+ * With `showsRepeat`, a repeating date wears the repeat glyph in place of the
+ * calendar, and is always a token, so the rhythm shows under any heading. A
+ * Task card marks its repeat beside the Task instead.
  */
 export function BoardDate({
   busy,
@@ -102,6 +107,7 @@ export function BoardDate({
   labels = followUpDateLabels,
   onSetWhen,
   repeat,
+  showsRepeat = false,
   when,
 }: {
   busy?: boolean;
@@ -110,10 +116,13 @@ export function BoardDate({
   /** What the control is called: a Note's Follow-up date, or a Task's date. */
   labels?: { set: string; change: string; clear: string };
   onSetWhen: (when: number | undefined) => unknown;
-  /** A Task's Repeat, held in the same picker. */
+  /** The Repeat, held in the same picker. */
   repeat?: RepeatControl;
+  /** The token wears the Repeat's glyph. */
+  showsRepeat?: boolean;
   when?: number;
 }) {
+  const glyph = showsRepeat ? repeat?.value : undefined;
   return (
     <WhenPopover
       busy={busy}
@@ -122,7 +131,8 @@ export function BoardDate({
       clearLabel={labels.clear}
       onSetWhen={onSetWhen}
       trigger={
-        when === undefined || !showsBoardDate(when, inHeading) ? (
+        when === undefined ||
+        (glyph === undefined && !showsBoardDate(when, inHeading)) ? (
           <BoardControl
             disabled={busy}
             className={revealed}
@@ -140,7 +150,18 @@ export function BoardDate({
               dateToneClassName(when, currentDate),
             )}
           >
-            <CalendarClock aria-hidden className="size-3" />
+            {glyph === undefined ? (
+              <CalendarClock aria-hidden className="size-3" />
+            ) : (
+              <span
+                role="img"
+                aria-label={repeatLabel(glyph)}
+                data-slot="repeat-glyph"
+                className="flex shrink-0 items-center"
+              >
+                <RepeatIcon aria-hidden className="size-3" />
+              </span>
+            )}
             {inHeading
               ? timeToken(when)
               : withTimeToken(dateToken(when, currentDate), when)}

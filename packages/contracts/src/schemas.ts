@@ -101,6 +101,8 @@ export const NoteSchema = v.object({
   _id: NoteIdSchema,
   body: v.string(),
   followUp: v.optional(Timestamp),
+  /** Present only with `followUp`. */
+  repeat: v.optional(RepeatSchema),
   state: NoteStateSchema,
   completedAt: v.optional(Timestamp),
   createdAt: Timestamp,

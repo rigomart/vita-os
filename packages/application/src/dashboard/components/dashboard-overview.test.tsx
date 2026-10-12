@@ -59,6 +59,13 @@ vi.mock("../../threads/use-update-thread", () => ({
 vi.mock("../../notes/use-archive-note", () => ({
   useArchiveNote: () => vi.fn(),
 }));
+vi.mock("../../notes/use-complete-note", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../notes/use-complete-note")>()),
+  useCompleteNote: () => vi.fn(),
+}));
+vi.mock("../../notes/use-set-note-repeat", () => ({
+  useSetNoteRepeat: () => vi.fn(),
+}));
 vi.mock("../../notes/use-update-note-body", () => ({
   useUpdateNoteBody: () => vi.fn(),
 }));

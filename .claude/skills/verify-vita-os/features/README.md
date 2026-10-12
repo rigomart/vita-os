@@ -27,6 +27,7 @@ After `bun run verify up` and `bun run verify signin`, run a flow with `bun run 
 | --- | --- |
 | [notes](../flows/notes.flow) | [Capture a note](./capture-note.md), [Note view](./note-view.md): header capture, live preview while typing, saved edits in place, Delete with Undo and persisted deletion. |
 | [notes-dashboard](../flows/notes-dashboard.flow) | [Notes on the Dashboard](./notes-on-the-dashboard.md): Notes filter, archive, archived body search in History, and unarchive. |
+| [repeating-notes](../flows/repeating-notes.flow) | [Follow-up dates](./follow-up-dates.md), [Notes on the Dashboard](./notes-on-the-dashboard.md): a monthly Repeat on a Note card, Complete (no Activity Log entry), one Late item, the Note view's Complete, Archive to History and Unarchive keeping the Repeat, Clear, Add to thread carrying the Repeat, and the card at 1024×768. |
 | [dashboard-filter-counts](../flows/dashboard-filter-counts.flow) | [Dashboard board](./dashboard-board.md): All counts dated and undated Standalone Notes plus Threads; Area and Notes counts stay separate, on desktop and phone. |
 | [thread-notes](../flows/thread-notes.flow) | [Thread Notes](./thread-notes.md): desktop capture, edit, archive, unarchive, and deletion. |
 | [add-to-thread](../flows/add-to-thread.flow) | [Add a Note to a Thread](./add-to-thread.md): undated add to an existing Thread and New thread from note. Dated conversion stays in `dated-tasks.flow`. |
@@ -55,9 +56,9 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 - [Create a thread](./create-thread.md) covers the New thread dialog and the thread pane it opens.
 - [Resolved Threads](./resolved-threads.md) covers the Resolved threads group of the palette's History chip, its search and resolution ordering, opening in place, and Reopen in the pane and drawer.
 - [Notes on the Dashboard](./notes-on-the-dashboard.md) covers the Dashboard's Notes filter and its URL, the old Notes addresses, Archive and Unarchive, and finding Archived Notes in History by searching their bodies.
-- [Tasks](./tasks.md) covers adding, focusing, and completing a Task in the thread pane, the drawer, and the Dashboard card, dated Tasks, repeating Tasks (Repeat, Skip, Late), and completing a Task with a note.
+- [Tasks](./tasks.md) covers adding, focusing, and completing a Task in the thread pane, the drawer, and the Dashboard card, dated Tasks, repeating Tasks (Repeat including monthly, Skip, Late), and completing a Task with a note.
 - [Dashboard board](./dashboard-board.md) covers the one dated list on file tabs, No date beside it or folded above it, the shared Thread and Note card, the filter overflow, and the phone layout.
-- [Follow-up dates](./follow-up-dates.md) covers the Follow-up date on standalone Notes and their Dashboard placement. A Thread comes back at its soonest dated Task, covered in [Tasks](./tasks.md).
+- [Follow-up dates](./follow-up-dates.md) covers the Follow-up date on standalone Notes, their Repeat and Complete, and their Dashboard placement. A Thread comes back at its soonest dated Task, covered in [Tasks](./tasks.md).
 - [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter the board row.
 - [Phone installation and sharing](./phone-installation.md) covers manifest/icons, shared Note capture through sign-in, retry, and persistence.
 

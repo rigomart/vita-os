@@ -585,6 +585,63 @@ describe("contention", () => {
     ).toBeNull();
   });
 
+  it("carries the Repeat the Note holds when it changes under the decision", async () => {
+    const scope = scopeFor();
+    const thread = value(
+      await run(threads.createThread(scope, { title: "Racing repeat" })),
+    );
+    const note = value(
+      await run(notes.createNote(scope, { body: "Bill", followUp: jun1 })),
+    );
+    value(
+      await run(
+        notes.setNoteRepeat(scope, {
+          noteId: note._id,
+          repeat: { kind: "days", every: 7 },
+          timeZone: "UTC",
+        }),
+      ),
+    );
+    const batch = env.DB.batch.bind(env.DB);
+    vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
+      // Another device changes the Repeat while this request decides.
+      value(
+        await run(
+          notes.setNoteRepeat(scope, {
+            noteId: note._id,
+            repeat: { kind: "days", every: 30 },
+            timeZone: "UTC",
+          }),
+        ),
+      );
+      return batch(statements);
+    });
+
+    const added = value(
+      await run(
+        adding.addNoteToThread(scope, {
+          noteId: note._id,
+          threadId: thread._id,
+        }),
+      ),
+    );
+
+    expect(added.thread.tasks).toEqual([
+      {
+        _id: expect.any(String),
+        text: "Bill",
+        date: jun1,
+        repeat: { kind: "days", every: 30 },
+      },
+    ]);
+    const copies = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM thread_notes WHERE thread_id = ?",
+    )
+      .bind(thread._id)
+      .first<{ n: number }>();
+    expect(copies?.n).toBe(1);
+  });
+
   it("writes nothing when the Note is completed under the decision", async () => {
     const scope = scopeFor();
     const thread = value(

@@ -520,6 +520,57 @@ describe("createHttpApplicationClient", () => {
     }
   });
 
+  it("transports repeating Note commands and preserves Repeat in decoded Notes", async () => {
+    const repeat = { kind: "monthly" as const, day: 5 };
+    const note = {
+      _id: "note/1",
+      body: "Pay the utility bill",
+      followUp: 1_700_000_000_000,
+      repeat,
+      state: "open" as const,
+      createdAt: 1,
+    };
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => jsonResponse(note));
+    const client = createHttpApplicationClient({
+      apiBaseUrl: "https://api.test",
+      fetchImpl,
+    });
+    const noteId = "note/1" as NoteId;
+    const timeZone = "America/New_York";
+
+    await expect(
+      client.setNoteRepeat({ noteId, repeat, timeZone }),
+    ).resolves.toEqual({ ok: true, value: note });
+    await expect(
+      client.completeNote({
+        noteId,
+        expectedOccurrence: note.followUp,
+        timeZone,
+      }),
+    ).resolves.toEqual({ ok: true, value: note });
+    await expect(
+      client.updateNoteFollowUp({ noteId, followUp: note.followUp, timeZone }),
+    ).resolves.toEqual({ ok: true, value: note });
+    await client.updateNoteFollowUp({ noteId, followUp: null });
+    for (const [index, action, method, body] of [
+      [1, "repeat", "PUT", { repeat, timeZone }],
+      [2, "complete", "POST", { expectedOccurrence: note.followUp, timeZone }],
+      [3, "follow-up", "PATCH", { followUp: note.followUp, timeZone }],
+      [4, "follow-up", "PATCH", { followUp: null }],
+    ] as const) {
+      expect(fetchImpl).toHaveBeenNthCalledWith(
+        index,
+        `https://api.test/v1/notes/note%2F1/${action}`,
+        expect.objectContaining({ method, credentials: "include" }),
+      );
+      expect(
+        JSON.parse(fetchImpl.mock.calls[index - 1]![1]!.body as string),
+      ).toEqual(body);
+    }
+  });
+
   it.each([
     null,
     { kind: "monthly", every: 1 },

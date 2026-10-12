@@ -25,7 +25,7 @@ export const TaskDateSchema = v.pipe(
   v.minValue(MIN_TASK_DATE),
   v.maxValue(MAX_TASK_DATE),
 );
-const TimeZoneSchema = v.pipe(
+export const TimeZoneSchema = v.pipe(
   v.string(),
   v.check((value) => {
     try {

@@ -1,3 +1,4 @@
+import type { Repeat } from "@vita-os/contracts";
 import type { MarkdownChangeCause } from "@vita-os/ui/components/markdown-editor";
 
 import { Button } from "@vita-os/ui/components/button";
@@ -23,10 +24,12 @@ import {
   ArchiveIcon,
   ArchiveRestoreIcon,
   CalendarClock,
+  CheckIcon,
   CopyIcon,
   EllipsisIcon,
   MessageSquareIcon,
   MessageSquarePlusIcon,
+  Repeat as RepeatIcon,
   Trash2Icon,
   TriangleAlertIcon,
   XIcon,
@@ -35,7 +38,10 @@ import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 
 import { withTimeToken } from "../../attention-list/date-parts";
 import { followUpDateLabels } from "../../attention-list/follow-up-date";
+import { repeatLabel } from "../../attention-list/repeat";
 import { WhenPopover } from "../../attention-list/when-popover";
+import { clock } from "../../lib/clock";
+import { completeNoteFailure, completeNoteLabel } from "../use-complete-note";
 
 // CodeMirror is a large share of the bundle. It starts downloading with this
 // module, so it is usually ready before the first Note view opens.
@@ -68,6 +74,12 @@ export interface NoteDialogProps {
   onNewThread?: () => void;
   followUp?: number;
   onSetWhen?: (when: number | undefined) => Promise<void> | void;
+  /** The Follow-up date's Repeat, on a saved Standalone Note. */
+  repeat?: Repeat;
+  /** Offered in the picker of a saved Standalone Note only. */
+  onSetRepeat?: (repeat: Repeat | null) => Promise<void> | void;
+  /** Offered on an Open repeating Note: move it to its next date. */
+  onComplete?: () => Promise<void> | void;
 }
 
 const isApple =
@@ -97,6 +109,9 @@ export function NoteDialog({
   onNewThread,
   followUp,
   onSetWhen,
+  repeat,
+  onSetRepeat,
+  onComplete,
 }: NoteDialogProps) {
   const feedback = useFeedback();
   const isCompose = note === undefined;
@@ -138,12 +153,20 @@ export function NoteDialog({
   const changeWhen = useGuardedAsyncAction(async (value: number | undefined) =>
     onSetWhen?.(value),
   );
+  const changeRepeat = useGuardedAsyncAction(async (value: Repeat | null) =>
+    onSetRepeat?.(value),
+  );
+  const complete = useGuardedAsyncAction(async () => onComplete?.(), {
+    getErrorMessage: completeNoteFailure,
+  });
   const isPending =
     submit.isPending ||
     save.isPending ||
     saveTask.isPending ||
     toggle.isPending ||
-    changeWhen.isPending;
+    changeWhen.isPending ||
+    changeRepeat.isPending ||
+    complete.isPending;
   const error = isCompose ? submit.error : save.error;
   const isDirty = isCompose
     ? body !== "" || when !== followUp
@@ -237,6 +260,16 @@ export function NoteDialog({
     : undefined;
 
   const shownWhen = isCompose ? when : followUp;
+  // A new Note takes its Repeat once saved, from the card or this view.
+  const shownRepeat = isCompose || shownWhen === undefined ? undefined : repeat;
+  const canComplete =
+    note?.state === "open" &&
+    followUp !== undefined &&
+    repeat !== undefined &&
+    onComplete !== undefined;
+  const completeLabel = canComplete
+    ? completeNoteLabel({ followUp, repeat }, clock.now())
+    : undefined;
   const attentionPicker =
     threadTitle === undefined && (isCompose || onSetWhen) ? (
       <WhenPopover
@@ -246,6 +279,14 @@ export function NoteDialog({
           if (isCompose) setWhen(value);
           else void changeWhen.run(value);
         }}
+        {...(isCompose || onSetRepeat === undefined
+          ? {}
+          : {
+              repeat: {
+                value: repeat,
+                onChange: (value: Repeat | null) => changeRepeat.run(value),
+              },
+            })}
         trigger={
           <Button
             type="button"
@@ -264,7 +305,18 @@ export function NoteDialog({
               shownWhen !== undefined && "text-brand-accent-text",
             )}
           >
-            <CalendarClock className="size-3.5" />
+            {shownRepeat === undefined ? (
+              <CalendarClock className="size-3.5" />
+            ) : (
+              <span
+                role="img"
+                aria-label={repeatLabel(shownRepeat)}
+                data-slot="repeat-glyph"
+                className="flex shrink-0 items-center"
+              >
+                <RepeatIcon aria-hidden className="size-3.5" />
+              </span>
+            )}
             {shownWhen === undefined
               ? followUpDateLabels.name
               : withTimeToken(format(shownWhen, "MMM d"), shownWhen)}
@@ -460,6 +512,25 @@ export function NoteDialog({
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
               <div className="flex items-center gap-1.5">
                 {attentionPicker}
+                {/* Archive stays beside it: archiving ends the rhythm. */}
+                {canComplete ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isPending}
+                    aria-busy={complete.isPending}
+                    aria-label={completeLabel}
+                    title={completeLabel}
+                    className="rounded-full"
+                    onClick={() => {
+                      void complete.run();
+                    }}
+                  >
+                    <CheckIcon />
+                    Complete
+                  </Button>
+                ) : null}
                 {note && onToggleArchived ? (
                   <Button
                     type="button"

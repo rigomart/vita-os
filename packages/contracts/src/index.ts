@@ -3,6 +3,7 @@ export type {
   AddNoteToThreadInput,
   ApplicationClient,
   Clearable,
+  CompleteNoteInput,
   CompleteTaskInput,
   CreateAreaInput,
   CreateThreadFromNoteInput,
@@ -12,10 +13,12 @@ export type {
   FocusTaskInput,
   PageRequest,
   RemoveTaskInput,
+  SetNoteRepeatInput,
   SetTaskDateInput,
   SetTaskRepeatInput,
   SkipTaskInput,
   UpdateAreaInput,
+  UpdateNoteFollowUpInput,
   UpdateThreadInput,
 } from "./application-client";
 export {

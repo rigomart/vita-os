@@ -54,11 +54,11 @@ The unordered set of peer **Tasks** a **Thread** holds. They are shown in the or
 _Avoid_: Up Next, queue, next moves, action queue, checklist.
 
 **Repeat**:
-An optional rhythm on a dated **Task**: every N days or weekly on chosen weekdays. Completing a repeating Task moves it to its next occurrence instead of removing it (ADR 0032). It is set in the Task's date picker; a repeating Task wears a repeat glyph on its date.
+An optional rhythm on a dated **Task** or a **Standalone Note**'s **Follow-up date**: every N days, weekly on chosen weekdays, or monthly on the date's day of month. Completing a repeating Task or Note moves it to its next occurrence instead of removing or archiving it (ADR 0032, ADR 0041). It is set in the date picker; a repeating Task or Note wears a repeat glyph on its date.
 _Avoid_: Recurrence, routine, habit.
 
 **Skip**:
-Moving a repeating **Task** to its next occurrence without completing it: the occurrence passes and nothing is recorded. Only a repeating Task can be skipped.
+Moving a repeating **Task** to its next occurrence without completing it: the occurrence passes and nothing is recorded. Only a repeating Task can be skipped; a repeating **Standalone Note** has no Skip.
 _Avoid_: Postpone, snooze, dismiss.
 
 **Focused Task**:
@@ -66,7 +66,7 @@ The one **Task** the user has singled out on a **Thread**, when they have. Focus
 _Avoid_: Focused Move (former name), Next Move, priority.
 
 **Follow-up date**:
-A soft resurfacing point on a **Standalone Note** that brings it back into awareness around a chosen time: a day, optionally with a time of day that orders it within that day (ADR 0027). A **Thread** has none of its own: it comes back at its soonest dated **Task** (ADR 0032).
+A soft resurfacing point on a **Standalone Note** that brings it back into awareness around a chosen time: a day, optionally with a time of day that orders it within that day (ADR 0027). It may carry a **Repeat** (ADR 0041). A **Thread** has none of its own: it comes back at its soonest dated **Task** (ADR 0032).
 _Avoid_: Due date, deadline, reminder.
 
 **Activity Log**:
@@ -85,7 +85,7 @@ _Avoid_: Task, item, todo, ticket.
 The dialog where a **Note** is written, read, edited, archived, unarchived, and deleted.
 
 **Standalone Note**:
-A **Note** that belongs to no **Area** or **Thread** and requires no classification. While open it appears on the **Dashboard**, and it may have a **Follow-up date**.
+A **Note** that belongs to no **Area** or **Thread** and requires no classification. While open it appears on the **Dashboard**, and it may have a **Follow-up date**. A repeating one is completed rather than archived; Archive ends its **Repeat** (ADR 0041).
 _Avoid_: Inbox item, task.
 
 **Thread Note**:
@@ -117,6 +117,7 @@ _Avoid_: Archive (as a place), trash, completed list.
 - A **Thread** has zero or one **Summary**, zero or more **Tasks**, zero or one **Focused Task**, zero or more **Thread Notes**, and one **Activity Log**.
 - A **Focused Task** is always one of its **Thread**'s **Tasks**. Capturing a **Task** never focuses it; focusing is a separate choice, and every **Task** may stay unfocused.
 - A **Task** may have a date and a **Repeat**; a Repeat requires a date, and clearing the date clears the Repeat. It has no done state, no nesting, and no manual order. "Look at this again in two weeks" is a dated **Task**. A **Thread**'s resurfacing is its soonest dated **Task**, and it has no **Follow-up date** of its own.
+- A monthly **Repeat** repeats on its date's day of month; a month without that day uses its last day, and the next month returns to the chosen day. Changing the date moves the Repeat to the new date's day.
 - A weekly **Repeat** snaps a Task's date to the first chosen weekday on or after it. Repeats count calendar days in the caller's time zone and keep the local time of day, except that a time skipped by a daylight-saving change moves to the first valid time and stays there. Completing or skipping advances to the first occurrence after the current date that is not before today; missed occurrences collapse into one Task, shown once under Late until it is completed or skipped. Completing or skipping acts on the occurrence on screen, so a double activation moves it once.
 - A **Resolved Thread** holds no **Tasks** and gains none.
 - A **Thread** is either **Open** or **Resolved**.
@@ -127,7 +128,7 @@ _Avoid_: Archive (as a place), trash, completed list.
 - A visible **Note** is either **Open** or **Archived**.
 - A **Standalone Note** has zero or one **Follow-up date**; a **Thread Note** has none, because a **Thread** comes back at its dated **Tasks**.
 - Adding an Open **Standalone Note** to an Open **Thread** makes it a **Thread Note** there, with its body and creation time; it leaves the **Dashboard**. An **Archived Note**, a **Thread Note**, and a **Resolved Thread** take no part. Adding is one-way.
-- When a dated **Standalone Note** is added to a **Thread**, or starts one, its first non-blank line, with any leading Markdown markers removed, becomes a dated **Task** carrying the Note's **Follow-up date**, time included. The **Task** joins the end of the list, unfocused, and the whole Note joins the **Thread**'s Notes. A line with nothing left gives a **Task** named "Follow up". An undated Note adds no **Task**.
+- When a dated **Standalone Note** is added to a **Thread**, or starts one, its first non-blank line, with any leading Markdown markers removed, becomes a dated **Task** carrying the Note's **Follow-up date**, time included. The **Task** joins the end of the list, unfocused, and the whole Note joins the **Thread**'s Notes. A line with nothing left gives a **Task** named "Follow up". An undated Note adds no **Task**. A repeating Note's **Task** carries its **Repeat** too.
 - Archiving a **Note** changes nothing about it but where it is shown; unarchiving returns a **Standalone Note** to the **Dashboard** where its **Follow-up date** puts it. Resolving a **Thread** does more (see Activity Rules), so the two actions keep their own words.
 - **History** lists archived **Standalone Notes** most recently archived first, and searches every one of them by body.
 
@@ -153,7 +154,7 @@ _Avoid_: Archive (as a place), trash, completed list.
 - The page's header is the sky at the current hour, with the date, and from `lg` search, New note, New thread and the account menu; below `lg` those actions sit in a bar at the bottom and the header keeps only the account menu. The sky is ambient: it carries no items and no times, so on the board colour still belongs to time (ADR 0037).
 - One pill group at the top of the list filters it: **All** with its total count of **Open Threads** and open **Standalone Notes**, each Area with its Open Thread count, then **No area**, in the user's Area order, then **Notes** with its open **Standalone Note** count, set apart from the Areas, then Edit areas, which opens **Manage areas**. Options with nothing open stay, muted; **No area** is left out while there are no Areas. The group never wraps or scrolls: options that do not fit fold, in order, into a More menu that also offers Edit areas, and the selected option and **Notes** always stay in view. Choosing an Area shows only its **Open Threads** across every group and run, and any Area filter hides **Standalone Notes**; **No area** shows only unlabeled Threads; **Notes** shows only open **Standalone Notes**, laid out by the same rules. The filter lives in the URL as one of two parameters, never both: `?area=<slug>` or `?area=none`, or `?show=notes`, which no Area slug can collide with. It survives the in-place Thread pane and the **Note view**, and falls back to All for an unknown value. `1..9` select the matching Area and `0` returns to All (ADR 0021, ADR 0031).
 - A **Thread** card has two fixed rows that never trade places. The first is always the **Thread** title. The second is the task slot. On the list the dated **Task** that placed the **Thread** leads, even when another **Task** is focused, and two dated **Tasks** on the same day read "2 tasks today" and never pick one. In **No date** it is the **Focused Task**, else the only **Task**, else — with several **Tasks** and none focused — "N tasks · none focused", because the card must not invent a headline the user never chose. Beside a **Focused Task**, a quiet count of pips, the focused one filled, says how many **Tasks** there are. A **Thread** with no **Tasks** is its title alone. A labeled Thread shows its **Area** as a small neutral tag, icon and name; an unlabeled Thread shows none. Colour on the board belongs to time: a late card carries a faint warm tint, which it drops on Late's warm fill. Dates are compact tokens rather than phrases, and a card under a heading that names its day (Today, Tomorrow, or a weekday) leaves the date to the heading, showing only its time when it has one.
-- The Dashboard **can act on attention in place**: a card's rail — shown on hover or keyboard focus — completes the **Task** the card shows, and only that one, skips it when it repeats, or sets, changes, and clears that **Task**'s date and **Repeat**; on a card that shows no single **Task**, setting a date adds a **Task** named "Follow up" with it. A **Standalone Note** offers Archive and its **Follow-up date**. Focusing, removing, and choosing among **Tasks**, changing a **Thread**'s **Area**, editing its text, and resolving it still happen in **Thread** detail, where the Area is a chip in the header.
+- The Dashboard **can act on attention in place**: a card's rail — shown on hover or keyboard focus — completes the **Task** the card shows, and only that one, skips it when it repeats, or sets, changes, and clears that **Task**'s date and **Repeat**; on a card that shows no single **Task**, setting a date adds a **Task** named "Follow up" with it. A **Standalone Note** offers Archive and its **Follow-up date**, or Complete when it repeats. Focusing, removing, and choosing among **Tasks**, changing a **Thread**'s **Area**, editing its text, and resolving it still happen in **Thread** detail, where the Area is a chip in the header.
 - **Thread** detail lists every **Task** in one list, in capture order, dated or not; a date never moves a **Task** (ADR 0039). Each row leads with Complete, one click. Its text shows up to two lines, and all of it while edited. Under the text, the date sits at the left and the row's commands at the right, each named by a tooltip: **Skip** when the **Task** repeats, the date, Focus, Complete with a note, and Remove. The date and the date command set, change, or clear that **Task**'s date and, once it has a day, its **Repeat**; capturing a **Task** never asks for either. Complete with a note opens a note line under the row, and completing from there also captures the text as a **Thread Note**. A Dashboard card completes in one click and never asks for a note. Focus is a toggle: pressing it focuses that **Task**, and pressing it on the **Focused Task** unfocuses it. The **Focused Task** is tinted where it sits.
 - Opening a card summons **Thread** detail in place; opening a **Note** opens the **Note view** over the current page.
 - When nothing is open at all the board is replaced by a single line saying nothing is asking.
@@ -215,6 +216,6 @@ Old names survive in stored data, code, and older ADRs. Each line maps one to th
 - "Health status", "Condition", "Standard": removed from **Area** (issue 371, ADR 0021). A part of life that needs a periodic look gets a **Thread** with a dated **Task**.
 - "Definition of Done": project-management language, not a **Thread** concept; use **Summary** or the **Activity Log**.
 - "Move a Note to a Thread": former action name; use **Add to thread** (ADR 0030). "Convert", "process", and "attach" stay out of the interface.
-- "Done", "completed" for a **Note**: former words; use **archived** (ADR 0031). **Threads** keep **Resolve**. Stored values keep `done`.
+- "Done", "completed" for a **Note**: former words; use **archived** (ADR 0031). Completing names only what a repeating **Standalone Note** does. **Threads** keep **Resolve**. Stored values keep `done`.
 - "Stale Thread": not part of the domain language; use the plain **Open Thread** group.
 - "Now", "This week", "Later", "the margin": former **Dashboard** columns and the unscheduled margin beside them (ADR 0017). The list's groups (Late, Today, each day, weeks, months) and **No date** replace them (ADR 0037). The code's attention board still sorts dated items into `now`, `week` and `later` buckets before grouping them.
