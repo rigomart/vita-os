@@ -17,8 +17,10 @@ import {
   useArchivedNotes,
   useArchiveNote,
   useCaptureNote,
+  useCompleteNote,
   useDiscardNote,
   useOpenNotes,
+  useSetNoteRepeat,
   useUnarchiveNote,
   useUpdateNoteFollowUp,
   useUpdateNoteBody,
@@ -189,19 +191,182 @@ describe("editing a Note", () => {
       wrapper,
     });
 
-    act(() => result.current.mutate({ noteId: note._id, followUp: 5_000 }));
+    act(() =>
+      result.current.mutate({
+        noteId: note._id,
+        followUp: 5_000,
+        timeZone: "UTC",
+      }),
+    );
     await waitFor(() =>
       expect(
         cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]?.followUp,
       ).toBe(5_000),
     );
 
-    act(() => result.current.mutate({ noteId: note._id, followUp: null }));
+    act(() =>
+      result.current.mutate({
+        noteId: note._id,
+        followUp: null,
+        timeZone: "UTC",
+      }),
+    );
     await waitFor(() =>
       expect(
         cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]?.followUp,
       ).toBeUndefined(),
     );
+  });
+});
+
+describe("a repeating Note", () => {
+  // Thursday, Nov 5 2026, 9 AM UTC, and the next month's 5th.
+  const nov5 = Date.UTC(2026, 10, 5, 9);
+  const dec5 = Date.UTC(2026, 11, 5, 9);
+  const monthly = { kind: "monthly", day: 5 } as const;
+  const repeating = aNote({ followUp: nov5, repeat: monthly });
+
+  it("clears its Repeat with its date, open or archived", async () => {
+    const archived = aNote({
+      _id: "note-done" as NoteId,
+      state: "done",
+      completedAt: 9,
+      followUp: nov5,
+      repeat: monthly,
+    });
+    const pending = deferred<ReturnType<typeof success<Note>>>();
+    const client = createFakeApplicationClient({
+      updateNoteFollowUp: () => pending.promise,
+    });
+    const doneKey = queryKeys.notes.done(20, "");
+    const { wrapper, cache } = createHarness(client, (seeded) => {
+      seeded.setQueryData(queryKeys.notes.open(), [repeating]);
+      seeded.setQueryData(doneKey, {
+        pages: [{ entries: [archived] }],
+        pageParams: [undefined],
+      });
+    });
+    const { result } = renderHook(() => useUpdateNoteFollowUp(), { wrapper });
+
+    act(() => {
+      result.current.mutate({
+        noteId: repeating._id,
+        followUp: null,
+        timeZone: "UTC",
+      });
+      result.current.mutate({
+        noteId: archived._id,
+        followUp: null,
+        timeZone: "UTC",
+      });
+    });
+
+    await waitFor(() => {
+      const open = cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0];
+      expect(open).not.toHaveProperty("followUp");
+      expect(open).not.toHaveProperty("repeat");
+    });
+    const done =
+      cache.getQueryData<InfiniteData<Page<Note>>>(doneKey)?.pages[0]
+        ?.entries[0];
+    expect(done).not.toHaveProperty("followUp");
+    expect(done).not.toHaveProperty("repeat");
+    pending.resolve(success(aNote()));
+  });
+
+  it("sets a Repeat on the dated Note", async () => {
+    const requests: unknown[] = [];
+    const pending = deferred<ReturnType<typeof success<Note>>>();
+    const client = createFakeApplicationClient({
+      setNoteRepeat: (request) => {
+        requests.push(request);
+        return pending.promise;
+      },
+    });
+    const dated = aNote({ followUp: nov5 });
+    const { wrapper, cache } = createHarness(client, seedOpenNotes([dated]));
+    const { result } = renderHook(() => useSetNoteRepeat(), { wrapper });
+
+    act(() =>
+      result.current.mutate({
+        noteId: dated._id,
+        repeat: monthly,
+        timeZone: "UTC",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]).toEqual({
+        ...dated,
+        repeat: monthly,
+      }),
+    );
+    expect(requests).toEqual([
+      { noteId: dated._id, repeat: monthly, timeZone: "UTC" },
+    ]);
+    pending.resolve(success({ ...dated, repeat: monthly }));
+  });
+
+  it("completes to its next date at once, naming the date it showed", async () => {
+    const requests: unknown[] = [];
+    const pending = deferred<ReturnType<typeof success<Note>>>();
+    const client = createFakeApplicationClient({
+      completeNote: (request) => {
+        requests.push(request);
+        return pending.promise;
+      },
+    });
+    const { wrapper, cache } = createHarness(
+      client,
+      seedOpenNotes([repeating]),
+    );
+    const { result } = renderHook(() => useCompleteNote(), { wrapper });
+
+    act(() =>
+      result.current.mutate({
+        noteId: repeating._id,
+        expectedOccurrence: nov5,
+        timeZone: "UTC",
+        now: nov5,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(cache.getQueryData<Note[]>(queryKeys.notes.open())?.[0]).toEqual({
+        ...repeating,
+        followUp: dec5,
+      }),
+    );
+    expect(requests).toEqual([
+      { noteId: repeating._id, expectedOccurrence: nov5, timeZone: "UTC" },
+    ]);
+    pending.resolve(success({ ...repeating, followUp: dec5 }));
+  });
+
+  it("leaves a Note that has moved on since where it is", async () => {
+    const pending = deferred<{ ok: false; error: ApplicationError }>();
+    const client = createFakeApplicationClient({
+      completeNote: () => pending.promise,
+    });
+    const moved = { ...repeating, followUp: dec5 };
+    const { wrapper, cache } = createHarness(client, seedOpenNotes([moved]));
+    const { result } = renderHook(() => useCompleteNote(), { wrapper });
+
+    act(() =>
+      result.current.mutate({
+        noteId: repeating._id,
+        expectedOccurrence: nov5,
+        timeZone: "UTC",
+        now: nov5,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.isPending).toBe(true));
+    expect(cache.getQueryData(queryKeys.notes.open())).toEqual([moved]);
+    pending.resolve({
+      ok: false,
+      error: { code: "conflict", message: "Moved.", retryable: false },
+    });
   });
 });
 

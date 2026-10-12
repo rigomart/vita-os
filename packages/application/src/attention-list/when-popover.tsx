@@ -48,7 +48,8 @@ import {
 } from "./repeat";
 
 /**
- * A Task's Repeat, edited in its date picker. `onChange(null)` clears it.
+ * A Task's or Standalone Note's Repeat, edited in its date picker.
+ * `onChange(null)` clears it.
  */
 export interface RepeatControl {
   value: Repeat | undefined;
@@ -64,7 +65,7 @@ const timeLabel = (time: string) =>
 /**
  * The picker every When shares (ADR 0040): a menu of the days a When is most
  * often set to, each with the day it lands on, then Pick a date…, the time as
- * chips, and for a Task its Repeat. The calendar, a typed time, and the
+ * chips, and for a Task or a saved Standalone Note its Repeat. The calendar, a typed time, and the
  * Repeat's choices replace the menu in place and come back with ←, so the
  * picker is never taller than a calendar.
  *
@@ -93,7 +94,7 @@ export function WhenPopover({
    */
   keepOpenOnPick?: boolean;
   onSetWhen?: (when: number | undefined) => unknown;
-  /** A Task's Repeat; without it the picker holds a date alone. */
+  /** The date's Repeat; without it the picker holds a date alone. */
   repeat?: RepeatControl;
   trigger: ReactElement;
   when?: number;
@@ -478,7 +479,7 @@ function TimePage({
 
 /**
  * A Repeat the presets don't hold: every N days with a stepper, or weekly on
- * chosen weekdays, with the line saying what the Task will do, and where a
+ * chosen weekdays, with the line saying what it will do, and where a
  * weekly one moves its date, before Save.
  */
 function CustomRepeat({

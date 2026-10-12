@@ -115,6 +115,8 @@ const client = {
       ...(input.followUp === null ? {} : { followUp: input.followUp }),
     },
   }),
+  setNoteRepeat: async () => ({ ok: true, value: note }),
+  completeNote: async () => ({ ok: true, value: note }),
   markNoteDone: async () => ({
     ok: true,
     value: { ...note, state: "done" as const, completedAt: 9 },

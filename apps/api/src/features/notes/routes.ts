@@ -13,6 +13,7 @@ import { validate } from "../../platform/http/decode";
 import { refusalResponse, respond } from "../../platform/http/errors";
 import { pageRequest } from "../../platform/http/schemas";
 import {
+  completeNote,
   countOpenNotes,
   createNote,
   getDoneNotePage,
@@ -20,10 +21,18 @@ import {
   markNoteDone,
   markNoteOpen,
   removeNote,
+  setNoteRepeat,
   updateNoteBody,
   updateNoteFollowUp,
 } from "./operations";
-import { CreateNoteBody, NOTE_PAGE_SIZE, NoteFollowUp } from "./requests";
+import {
+  CompleteNoteBody,
+  CreateNoteBody,
+  normalizeSetNoteRepeat,
+  NOTE_PAGE_SIZE,
+  NoteFollowUp,
+  SetNoteRepeatBody,
+} from "./requests";
 
 const NoteParams = v.object({ noteId: NoteIdSchema });
 
@@ -73,6 +82,30 @@ export const notesRoutes = new Hono<ApiEnv>()
     async (c) =>
       respond(
         await updateNoteFollowUp(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...c.req.valid("json"),
+        }),
+      ),
+  )
+  .put(
+    "/notes/:noteId/repeat",
+    validate("param", NoteParams, "Invalid Note change."),
+    validate("json", SetNoteRepeatBody, "Invalid Note change."),
+    async (c) =>
+      respond(
+        await setNoteRepeat(c.get("scope"), {
+          ...c.req.valid("param"),
+          ...normalizeSetNoteRepeat(c.req.valid("json")),
+        }),
+      ),
+  )
+  .post(
+    "/notes/:noteId/complete",
+    validate("param", NoteParams, "Invalid Note change."),
+    validate("json", CompleteNoteBody, "Invalid Note change."),
+    async (c) =>
+      respond(
+        await completeNote(c.get("scope"), {
           ...c.req.valid("param"),
           ...c.req.valid("json"),
         }),

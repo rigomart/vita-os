@@ -117,6 +117,8 @@ export const notes = sqliteTable(
     completed_at: integer(),
     created_at: integer().notNull(),
     updated_at: integer(),
+    /** A Follow-up date's Repeat, as a Task holds one in `moves_json`. */
+    repeat: text(),
   },
   (table) => [
     check("notes_state", sql`${table.state} IN ('open', 'done')`),

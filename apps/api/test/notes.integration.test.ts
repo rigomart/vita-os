@@ -1,11 +1,17 @@
-import type { Note, NotePage } from "@vita-os/contracts";
+import type { Note, NotePage, Repeat } from "@vita-os/contracts";
 
+import { Result } from "better-result";
 import { env } from "cloudflare:test";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { RequestScope } from "../src/platform/request-scope";
 import type { Session } from "./sessions";
 
+import { completeNote } from "../src/features/notes/operations";
+import { noteStorage } from "../src/features/notes/storage";
 import { call, createSession, expectError, succeed } from "./sessions";
+
+afterEach(() => vi.restoreAllMocks());
 
 async function capture(
   session: Session,
@@ -505,6 +511,257 @@ describe("discarding a Note", () => {
       _id: theirs._id,
       body: "Private",
       state: "open",
+    });
+  });
+});
+
+/**
+ * Run `competing` just before the first statement matching `pattern` reaches
+ * the database: another device's write landing between a read and its write.
+ */
+function raceBeforeFirst(pattern: RegExp, competing: () => Promise<unknown>) {
+  const prepare = env.DB.prepare.bind(env.DB);
+  let raced = false;
+  const delayed = (statement: D1PreparedStatement): D1PreparedStatement =>
+    new Proxy(statement, {
+      get(target, key) {
+        const member: unknown = Reflect.get(target, key);
+        if (typeof member !== "function") return member;
+        if (key === "bind")
+          return (...values: unknown[]) => delayed(target.bind(...values));
+        if (key === "all" || key === "raw" || key === "first" || key === "run")
+          return async (...args: unknown[]) => {
+            await competing();
+            return (member as (...args: unknown[]) => unknown).apply(
+              target,
+              args,
+            );
+          };
+        return (member as (...args: unknown[]) => unknown).bind(target);
+      },
+    });
+  vi.spyOn(env.DB, "prepare").mockImplementation((query: string) => {
+    const statement = prepare(query);
+    if (raced || !pattern.test(query)) return statement;
+    raced = true;
+    return delayed(statement);
+  });
+}
+
+describe("repeating Notes", () => {
+  const nov5 = Date.UTC(2030, 10, 5, 9);
+  const monthly5 = { kind: "monthly", day: 5 } as const;
+  const scopeFor = (session: Session): RequestScope => ({
+    db: env.DB,
+    clock: { now: () => Date.now(), newId: () => crypto.randomUUID() },
+    actorId: session.actorId,
+  });
+
+  async function repeating(session: Session, repeat: Repeat = monthly5) {
+    const note = await capture(session, "Pay the utility bill", nov5);
+    return succeed<Note>(`/v1/notes/${note._id}/repeat`, {
+      method: "PUT",
+      session,
+      body: { repeat, timeZone: "UTC" },
+    });
+  }
+
+  async function storedRepeat(noteId: string) {
+    return env.DB.prepare(
+      "SELECT attention_date, repeat FROM notes WHERE id = ?",
+    )
+      .bind(noteId)
+      .first<{ attention_date: number | null; repeat: string | null }>();
+  }
+
+  it("stores the Repeat as a Task's canonical JSON and clears it with the date", async () => {
+    const owner = await createSession("note-repeat-storage");
+    const note = await repeating(owner, { kind: "weekly", weekdays: [4, 1] });
+
+    expect(note).toMatchObject({
+      followUp: Date.UTC(2030, 10, 7, 9),
+      repeat: { kind: "weekly", weekdays: [1, 4] },
+    });
+    expect(await storedRepeat(note._id)).toEqual({
+      attention_date: Date.UTC(2030, 10, 7, 9),
+      repeat: '{"kind":"weekly","weekdays":[1,4]}',
+    });
+
+    await succeed(`/v1/notes/${note._id}/follow-up`, {
+      method: "PATCH",
+      session: owner,
+      body: { followUp: null },
+    });
+    expect(await storedRepeat(note._id)).toEqual({
+      attention_date: null,
+      repeat: null,
+    });
+  });
+
+  it("reads a Repeat beside a NULL date as no Repeat, as an older API may leave it", async () => {
+    const owner = await createSession("note-repeat-tolerant");
+    const note = await repeating(owner);
+    // An API from before Repeats on Notes clears only the date.
+    await env.DB.prepare("UPDATE notes SET attention_date = NULL WHERE id = ?")
+      .bind(note._id)
+      .run();
+
+    const [read] = await openNotes(owner);
+    expect(read).not.toHaveProperty("followUp");
+    expect(read).not.toHaveProperty("repeat");
+    const redated = await succeed<Note>(`/v1/notes/${note._id}/follow-up`, {
+      method: "PATCH",
+      session: owner,
+      body: { followUp: nov5 },
+    });
+    expect(redated).not.toHaveProperty("repeat");
+    expect(await storedRepeat(note._id)).toEqual({
+      attention_date: nov5,
+      repeat: null,
+    });
+    expectError(
+      await call(`/v1/notes/${note._id}/complete`, {
+        method: "POST",
+        session: owner,
+        body: { expectedOccurrence: nov5, timeZone: "UTC" },
+      }),
+      { status: 400, code: "validation" },
+    );
+  });
+
+  it("completes once when two completions of the same occurrence race", async () => {
+    const owner = await createSession("note-repeat-double-complete");
+    const note = await repeating(owner);
+    const complete = () =>
+      call(`/v1/notes/${note._id}/complete`, {
+        method: "POST",
+        session: owner,
+        body: { expectedOccurrence: nov5, timeZone: "UTC" },
+      });
+
+    const answers = await Promise.all([complete(), complete()]);
+
+    expect(answers.map((answer) => answer.status).sort()).toEqual([200, 409]);
+    expect(answers.find((answer) => answer.status === 409)?.body).toEqual({
+      error: {
+        code: "conflict",
+        message: "The Note's date has changed.",
+        retryable: false,
+      },
+    });
+    expect(await storedRepeat(note._id)).toEqual({
+      attention_date: Date.UTC(2030, 11, 5, 9),
+      repeat: '{"kind":"monthly","day":5}',
+    });
+  });
+
+  it("writes a decision only while the Note holds what it read", async () => {
+    const owner = await createSession("note-repeat-guard");
+    const note = await repeating(owner);
+    const storage = noteStorage(scopeFor(owner));
+    const read = (await storage.find(note._id))!;
+
+    // Another device changes the Repeat after this request read the Note.
+    await succeed(`/v1/notes/${note._id}/repeat`, {
+      method: "PUT",
+      session: owner,
+      body: { repeat: { kind: "days", every: 3 }, timeZone: "UTC" },
+    });
+    expect(
+      await storage.schedule(read, { followUp: nov5 + 86_400_000 }),
+    ).toBeNull();
+    // ...and archives it.
+    const fresh = (await storage.find(note._id))!;
+    await succeed(`/v1/notes/${note._id}/state`, {
+      method: "PATCH",
+      session: owner,
+      body: { state: "done" },
+    });
+    expect(await storage.schedule(fresh, {})).toBeNull();
+    expect(await storedRepeat(note._id)).toEqual({
+      attention_date: nov5,
+      repeat: '{"kind":"days","every":3}',
+    });
+  });
+
+  it("decides again when the Note changes under a completion", async () => {
+    const owner = await createSession("note-repeat-retry");
+    const note = await repeating(owner);
+    raceBeforeFirst(/^update "notes"/i, () =>
+      env.DB.prepare("UPDATE notes SET repeat = ? WHERE id = ?")
+        .bind('{"kind":"days","every":3}', note._id)
+        .run(),
+    );
+
+    const result = await completeNote(scopeFor(owner), {
+      noteId: note._id,
+      expectedOccurrence: nov5,
+      timeZone: "UTC",
+    });
+
+    expect(Result.isOk(result) && result.value).toMatchObject({
+      followUp: nov5 + 3 * 86_400_000,
+      repeat: { kind: "days", every: 3 },
+    });
+  });
+
+  it("refuses a Repeat or completion it cannot read", async () => {
+    const owner = await createSession("note-repeat-refusals");
+    const note = await repeating(owner);
+    const methods = {
+      repeat: "PUT",
+      complete: "POST",
+      "follow-up": "PATCH",
+    } as const;
+    for (const [path, body] of [
+      ["repeat", { repeat: monthly5 }],
+      ["repeat", { repeat: monthly5, timeZone: "Mars/Olympus" }],
+      ["repeat", { repeat: { kind: "monthly", day: 32 }, timeZone: "UTC" }],
+      ["repeat", { repeat: { ...monthly5, extra: 1 }, timeZone: "UTC" }],
+      ["complete", { expectedOccurrence: nov5 }],
+      ["complete", { expectedOccurrence: "today", timeZone: "UTC" }],
+      ["follow-up", { followUp: nov5, timeZone: "+02:00" }],
+    ] as const) {
+      expectError(
+        await call(`/v1/notes/${note._id}/${path}`, {
+          method: methods[path],
+          session: owner,
+          body,
+        }),
+        { status: 400, code: "validation" },
+      );
+    }
+    expectError(
+      await call(`/v1/notes/${note._id}/follow-up`, {
+        method: "PATCH",
+        session: owner,
+        body: { followUp: nov5 + 86_400_000 },
+      }),
+      { status: 400, code: "validation", message: "Invalid time zone" },
+    );
+  });
+
+  it("refuses another owner's Note as not found", async () => {
+    const owner = await createSession("note-repeat-privacy-owner");
+    const other = await createSession("note-repeat-privacy-other");
+    const theirs = await repeating(other);
+
+    for (const [method, path, body] of [
+      ["PUT", "repeat", { repeat: null, timeZone: "UTC" }],
+      ["POST", "complete", { expectedOccurrence: nov5, timeZone: "UTC" }],
+    ] as const) {
+      expectError(
+        await call(`/v1/notes/${theirs._id}/${path}`, {
+          method,
+          session: owner,
+          body,
+        }),
+        { status: 404, code: "not_found", message: "Note not found." },
+      );
+    }
+    expect(await storedRepeat(theirs._id)).toEqual({
+      attention_date: nov5,
+      repeat: '{"kind":"monthly","day":5}',
     });
   });
 });

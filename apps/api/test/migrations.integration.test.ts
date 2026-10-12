@@ -93,6 +93,39 @@ const cleanupTables = [
 let beforeCleanup: Record<string, Record<string, unknown>[]>;
 let columnsBeforeCleanup: Record<string, unknown>[];
 let schemaBeforeCleanup: Record<string, unknown>[];
+let afterCleanup: Record<string, Record<string, unknown>[]>;
+let columnsAfterCleanup: Record<string, unknown>[];
+let schemaAfterCleanup: Record<string, unknown>[];
+let repeater: { actorId: string; cookie: string };
+let notesBeforeRepeat: Record<string, unknown>[];
+let noteColumnsBeforeRepeat: Record<string, unknown>[];
+let schemaBeforeRepeat: Record<string, unknown>[];
+
+async function readSchema() {
+  return (
+    await database
+      .prepare(
+        "SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY name",
+      )
+      .all<Record<string, unknown>>()
+  ).results;
+}
+
+async function readColumns(table: string) {
+  return (
+    await database
+      .prepare(`PRAGMA table_info(${table})`)
+      .all<Record<string, unknown>>()
+  ).results;
+}
+
+async function readNotes() {
+  return (
+    await database
+      .prepare("SELECT * FROM notes ORDER BY id")
+      .all<Record<string, unknown>>()
+  ).results;
+}
 
 async function cleanupSnapshot() {
   return Object.fromEntries(
@@ -275,6 +308,78 @@ beforeAll(async () => {
       .all<Record<string, unknown>>()
   ).results;
   await applyD1Migrations(database, migrationsThrough(7));
+  afterCleanup = await cleanupSnapshot();
+  columnsAfterCleanup = await readColumns("threads");
+  schemaAfterCleanup = await readSchema();
+
+  // Notes as an API without Repeats on Notes saves them, before 0008.
+  repeater = await signUp("repeat-migration-owner");
+  await database.batch(
+    [
+      ["repeat-open-dated", "Pay the utility bill", NOTE_DATE, "open", null],
+      ["repeat-open-undated", "Gift ideas", null, "open", null],
+      ["repeat-done-dated", "Renew insurance", NOTE_DATE, "done", NOTE_DATE],
+    ].map(([id, body, date, state, completedAt]) =>
+      database
+        .prepare(
+          `INSERT INTO notes (id, user_id, body, attention_date, state, completed_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 1700000000000, 1700000000000)`,
+        )
+        .bind(id, repeater.actorId, body, date, state, completedAt),
+    ),
+  );
+  notesBeforeRepeat = await readNotes();
+  noteColumnsBeforeRepeat = await readColumns("notes");
+  schemaBeforeRepeat = await readSchema();
+  await applyD1Migrations(database, migrationsThrough(8));
+});
+
+const NOTE_DATE = Date.UTC(2030, 10, 5, 9);
+
+describe("0008: Standalone Notes gain a Repeat", () => {
+  it("adds only a nullable repeat column, keeping every saved Note", async () => {
+    expect(notesBeforeRepeat.length).toBeGreaterThan(3);
+    expect(await readNotes()).toEqual(
+      notesBeforeRepeat.map((row) => ({ ...row, repeat: null })),
+    );
+    const columns = await readColumns("notes");
+    expect(columns.slice(0, -1)).toEqual(noteColumnsBeforeRepeat);
+    expect(columns.at(-1)).toMatchObject({
+      name: "repeat",
+      type: "TEXT",
+      notnull: 0,
+      dflt_value: null,
+      pk: 0,
+    });
+    const unrelated = (rows: Record<string, unknown>[]) =>
+      rows.filter((row) => row.name !== "notes");
+    expect(unrelated(await readSchema())).toEqual(
+      unrelated(schemaBeforeRepeat),
+    );
+  });
+
+  it("reads every existing Note as not repeating", async () => {
+    const open = await read<Note[]>("/v1/notes", repeater.cookie);
+    expect(open).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          body: "Pay the utility bill",
+          followUp: NOTE_DATE,
+        }),
+        expect.objectContaining({ body: "Gift ideas" }),
+      ]),
+    );
+    const done = await read<{ entries: Note[] }>(
+      "/v1/notes/done",
+      repeater.cookie,
+    );
+    expect(done.entries).toEqual([
+      expect.objectContaining({ body: "Renew insurance", followUp: NOTE_DATE }),
+    ]);
+    for (const note of [...open, ...done.entries]) {
+      expect(note).not.toHaveProperty("repeat");
+    }
+  });
 });
 
 // Check preservation before the workflow tests below change these rows.
@@ -288,12 +393,8 @@ describe("0007: remove the retired Thread Follow-up column", () => {
     );
     expect(retainedFollowUps.some((row) => row.follow_up !== null)).toBe(true);
     expect(beforeCleanup.notes.length).toBeGreaterThan(0);
-    expect(await cleanupSnapshot()).toEqual(beforeCleanup);
-    const columns = (
-      await database
-        .prepare("PRAGMA table_info(threads)")
-        .all<Record<string, unknown>>()
-    ).results;
+    expect(afterCleanup).toEqual(beforeCleanup);
+    const columns = columnsAfterCleanup;
     // SQLite renumbers column positions after a drop; every other attribute stays.
     expect(columns.map(({ cid: _position, ...column }) => column)).toEqual(
       columnsBeforeCleanup
@@ -307,14 +408,9 @@ describe("0007: remove the retired Thread Follow-up column", () => {
         (row) => !/\bfollow_up\b/.test(String(row.sql)),
       ),
     ).toBe(true);
-    const schema = (
-      await database
-        .prepare(
-          "SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY name",
-        )
-        .all<Record<string, unknown>>()
-    ).results;
-    expect(unrelated(schema)).toEqual(unrelated(schemaBeforeCleanup));
+    expect(unrelated(schemaAfterCleanup)).toEqual(
+      unrelated(schemaBeforeCleanup),
+    );
     expect(
       (await database.prepare("PRAGMA foreign_key_check").all()).results,
     ).toEqual([]);

@@ -1,4 +1,6 @@
 import type { Note, NotePage, PageRequest } from "@vita-os/contracts";
+import type { NoteRepeatState } from "@vita-os/core";
+import type { SQL } from "drizzle-orm";
 
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -11,7 +13,7 @@ import {
   toPage,
 } from "../../platform/d1/page-cursor";
 import { notes } from "../../platform/d1/schema";
-import { NOTE_FIELDS, toNote } from "./rows";
+import { NOTE_FIELDS, serializeRepeat, toNote } from "./rows";
 
 /** Match every term literally; SQLite LIKE ignores ASCII case. */
 export function bodyContainsAll(terms: readonly string[]) {
@@ -31,11 +33,12 @@ export function noteStorage({ db, clock, actorId }: RequestScope) {
   async function update(
     noteId: string,
     columns: Partial<typeof notes.$inferInsert>,
+    guard?: SQL,
   ): Promise<Note | null> {
     const [row] = await database
       .update(notes)
       .set(columns)
-      .where(and(owned, eq(notes.id, noteId)))
+      .where(and(owned, eq(notes.id, noteId), guard))
       .returning(NOTE_FIELDS);
     return row === undefined ? null : toNote(row);
   }
@@ -120,11 +123,29 @@ export function noteStorage({ db, clock, actorId }: RequestScope) {
       return update(noteId, { body, updated_at: clock.now() });
     },
 
-    setFollowUp(noteId: string, followUp: number | null): Promise<Note | null> {
-      return update(noteId, {
-        attention_date: followUp,
-        updated_at: clock.now(),
-      });
+    /**
+     * Write a decided date and Repeat, only while the Note still holds the
+     * state, date and Repeat the decision read; `null` means it changed (or
+     * is gone) and the caller reads it again. A Repeat beside a NULL date is
+     * not compared: it reads as none, and this write replaces it.
+     */
+    schedule(read: Note, next: NoteRepeatState): Promise<Note | null> {
+      return update(
+        read._id,
+        {
+          attention_date: next.followUp ?? null,
+          repeat:
+            next.followUp === undefined ? null : serializeRepeat(next.repeat),
+          updated_at: clock.now(),
+        },
+        and(
+          eq(notes.state, read.state),
+          sql`${notes.attention_date} IS ${read.followUp ?? null}`,
+          read.followUp === undefined
+            ? undefined
+            : sql`${notes.repeat} IS ${serializeRepeat(read.repeat)}`,
+        ),
+      );
     },
 
     markDone(noteId: string): Promise<Note | null> {

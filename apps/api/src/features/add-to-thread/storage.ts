@@ -18,6 +18,7 @@ import {
   threadNotes,
   threads as threadTable,
 } from "../../platform/d1/schema";
+import { serializeRepeat } from "../notes/rows";
 import { THREAD_NOTE_FIELDS, toThreadNote } from "../thread-notes/rows";
 import { threadStorage } from "../threads/storage";
 
@@ -31,7 +32,11 @@ export function addToThreadStorage(scope: RequestScope) {
   const database = drizzle(db);
   const threads = threadStorage(scope);
 
-  /** Match the source date and body that were used to decide the change. */
+  /**
+   * Match the source date, Repeat and body that were used to decide the
+   * change. An undated Note adds no Task, so a Repeat stored beside a NULL
+   * date (read as none) is not compared.
+   */
   function noteUnchanged(note: Note): SQL {
     return exists(
       database
@@ -43,6 +48,9 @@ export function addToThreadStorage(scope: RequestScope) {
             eq(notes.user_id, actorId),
             eq(notes.state, "open"),
             sql`${notes.attention_date} IS ${note.followUp ?? null}`,
+            note.followUp === undefined
+              ? undefined
+              : sql`${notes.repeat} IS ${serializeRepeat(note.repeat)}`,
             eq(notes.body, note.body),
           ),
         ),

@@ -311,7 +311,24 @@ export function createHttpApplicationClient({
       send(
         "PATCH",
         `${path("notes", input.noteId)}/follow-up`,
-        { followUp: input.followUp },
+        {
+          followUp: input.followUp,
+          ...(input.timeZone === undefined ? {} : { timeZone: input.timeZone }),
+        },
+        NoteSchema,
+      ),
+    setNoteRepeat: ({ noteId, repeat, timeZone }) =>
+      send(
+        "PUT",
+        `${path("notes", noteId)}/repeat`,
+        { repeat, timeZone },
+        NoteSchema,
+      ),
+    completeNote: ({ noteId, expectedOccurrence, timeZone }) =>
+      send(
+        "POST",
+        `${path("notes", noteId)}/complete`,
+        { expectedOccurrence, timeZone },
         NoteSchema,
       ),
     markNoteDone: (input) =>

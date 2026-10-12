@@ -6,12 +6,14 @@ import {
   ApplicationErrorSchema,
   AreaSummarySchema,
   CommandAckSchema,
+  CompleteNoteBody,
   CompleteTaskBody,
   CreateNoteBody,
   FocusTaskBody,
   NoteFollowUp,
   NoteSchema,
   PageQuery,
+  SetNoteRepeatBody,
   SetTaskRepeatBody,
   SkipTaskBody,
   TaskSchema,
@@ -137,6 +139,27 @@ describe("shared request shapes", () => {
     expect(v.parse(NoteFollowUp, { followUp: null })).toEqual({
       followUp: null,
     });
+    expect(
+      v.parse(NoteFollowUp, { followUp: 1, timeZone: "Europe/Madrid" }),
+    ).toEqual({ followUp: 1, timeZone: "Europe/Madrid" });
+    expect(
+      v.parse(SetNoteRepeatBody, { repeat: null, timeZone: "UTC" }),
+    ).toEqual({ repeat: null, timeZone: "UTC" });
+    expect(
+      v.safeParse(SetNoteRepeatBody, {
+        repeat: { kind: "days", every: 1, private: true },
+        timeZone: "UTC",
+      }).success,
+    ).toBe(false);
+    expect(
+      v.safeParse(CompleteNoteBody, { expectedOccurrence: 1 }).success,
+    ).toBe(false);
+    expect(
+      v.safeParse(CompleteNoteBody, {
+        expectedOccurrence: null,
+        timeZone: "UTC",
+      }).success,
+    ).toBe(false);
     expect(
       v.safeParse(CreateNoteBody, { body: "Call", followUp: null }).success,
     ).toBe(false);

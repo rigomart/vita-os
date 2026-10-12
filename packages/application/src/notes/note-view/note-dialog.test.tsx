@@ -408,6 +408,140 @@ describe("NoteDialog saved note", () => {
   });
 });
 
+describe("NoteDialog repeating note", () => {
+  // Today, with no time, and the 17th of every month.
+  const today = new Date(2026, 6, 17).getTime();
+  const monthly = { kind: "monthly", day: 17 } as const;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 6, 17, 12) });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("holds the Repeat in the picker of a saved Note", async () => {
+    const user = userEvent.setup();
+    const onSetRepeat = vi.fn(async () => undefined);
+    render(
+      <NoteDialog
+        open
+        onOpenChange={vi.fn()}
+        note={savedNote}
+        followUp={today}
+        onSetWhen={vi.fn()}
+        onSetRepeat={onSetRepeat}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Change follow-up date" }),
+    );
+    await user.click(screen.getByRole("button", { name: /^Repeat, Never/ }));
+    await user.click(
+      screen.getByRole("button", { name: "Every month on the 17th" }),
+    );
+
+    expect(onSetRepeat).toHaveBeenCalledExactlyOnceWith(monthly);
+  });
+
+  it("offers no Repeat while composing a new Note", async () => {
+    const user = userEvent.setup();
+    render(
+      <NoteDialog
+        open
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onSetRepeat={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Follow-up date" }));
+    await user.click(screen.getByRole("button", { name: /^Tomorrow, / }));
+    await user.click(screen.getByRole("button", { name: "Follow-up date" }));
+
+    expect(screen.queryByRole("button", { name: /^Repeat/ })).toBeNull();
+  });
+
+  it("offers Complete beside Archive, naming where it goes back to", async () => {
+    const user = userEvent.setup();
+    const pending = deferred();
+    const onComplete = vi.fn(() => pending.promise);
+    render(
+      <NoteDialog
+        open
+        onOpenChange={vi.fn()}
+        note={savedNote}
+        followUp={today}
+        repeat={monthly}
+        onSetWhen={vi.fn()}
+        onToggleArchived={vi.fn()}
+        onComplete={onComplete}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Archive" })).toBeVisible();
+    expect(
+      screen.getByRole("img", { name: "Repeats monthly on the 17th" }),
+    ).toBeInTheDocument();
+    const complete = screen.getByRole("button", {
+      name: "Complete · back Aug 17",
+    });
+    await user.click(complete);
+    await user.click(complete);
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(complete).toBeDisabled();
+    pending.resolve();
+    await waitFor(() => expect(complete).toBeEnabled());
+  });
+
+  it("says so when completing fails", async () => {
+    const user = userEvent.setup();
+    const { feedback } = render(
+      <NoteDialog
+        open
+        onOpenChange={vi.fn()}
+        note={savedNote}
+        followUp={today}
+        repeat={monthly}
+        onComplete={vi.fn(() => Promise.reject(new Error("offline")))}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /^Complete/ }));
+
+    await waitFor(() =>
+      expect(feedback.error).toHaveBeenCalledWith(
+        "Could not complete the note. Please try again.",
+      ),
+    );
+  });
+
+  it.each([
+    ["a one-off Note", savedNote, undefined],
+    [
+      "an Archived repeating Note",
+      { ...savedNote, state: "done" as const, completedAt: 1 },
+      monthly,
+    ],
+  ])("offers no Complete on %s", (_label, note, repeat) => {
+    render(
+      <NoteDialog
+        open
+        onOpenChange={vi.fn()}
+        note={note}
+        followUp={today}
+        {...(repeat === undefined ? {} : { repeat })}
+        onToggleArchived={vi.fn()}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /^Complete/ })).toBeNull();
+  });
+});
+
 describe("NoteDialog dismissal", () => {
   it("closes an empty compose draft without asking", async () => {
     const user = userEvent.setup();

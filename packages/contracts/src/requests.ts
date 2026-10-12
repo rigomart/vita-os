@@ -82,7 +82,18 @@ export const CreateNoteBody = v.strictObject({
   followUp: v.optional(Timestamp),
 });
 export const NoteBody = v.strictObject({ body: v.string() });
-export const NoteFollowUp = v.strictObject({ followUp: v.nullable(Timestamp) });
+export const NoteFollowUp = v.strictObject({
+  followUp: v.nullable(Timestamp),
+  timeZone: v.optional(v.string()),
+});
+export const SetNoteRepeatBody = v.strictObject({
+  repeat: v.nullable(RequestRepeatSchema),
+  timeZone: v.string(),
+});
+export const CompleteNoteBody = v.strictObject({
+  expectedOccurrence: TaskOccurrenceSchema,
+  timeZone: v.string(),
+});
 export const NoteStateBody = v.strictObject({ state: NoteStateSchema });
 export const ThreadNoteBody = v.strictObject({ body: v.string() });
 export const ThreadNoteStateBody = v.strictObject({ state: NoteStateSchema });

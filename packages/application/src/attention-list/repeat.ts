@@ -115,8 +115,8 @@ export interface RepeatPreset {
 }
 
 /**
- * The rhythms a Task's picker offers in one click, read from its date's
- * weekday and day of month. A monthly Task keeps its own day, which a short
+ * The rhythms a date's picker offers in one click, read from its date's
+ * weekday and day of month. A monthly Repeat keeps its own day, which a short
  * month's date stands in for: Feb 28 still offers the 31st it returns to.
  */
 export function repeatPresets(
@@ -148,9 +148,9 @@ export function repeatPresets(
 const dayName = (when: number) => format(when, "EEE, MMM d");
 
 /**
- * The picker's one line under its Repeat choices: what the Task will do, from
- * which day, at what time. A weekly choice that moves the date says where to,
- * before it happens.
+ * The picker's one line under its Repeat choices: what the Task or Note will
+ * do, from which day, at what time. A weekly choice that moves the date says
+ * where to, before it happens.
  */
 export function repeatSummary(
   when: number | undefined,
@@ -158,7 +158,7 @@ export function repeatSummary(
   timeZone: string,
 ): string {
   if (when === undefined) {
-    return "No date. The Task stays in the list without one, and a repeat needs a date.";
+    return "No date. A repeat needs a date.";
   }
   const time = timeToken(when);
   const at = time === undefined ? "" : ` at ${time}`;

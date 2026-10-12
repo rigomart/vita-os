@@ -5,6 +5,7 @@ import {
   repeatLabel,
   repeatPresets,
   repeatShortLabel,
+  repeatSummary,
 } from "./repeat";
 
 describe("monthly Repeat in the picker", () => {
@@ -59,6 +60,14 @@ describe("monthly Repeat in the picker", () => {
     );
     expect(repeatShortLabel({ kind: "monthly", day: 22 })).toBe(
       "Monthly on the 22nd",
+    );
+  });
+});
+
+describe("the Repeat's summary line", () => {
+  it("names neither a Task nor a Note, so it fits both", () => {
+    expect(repeatSummary(undefined, { mode: "daily" }, "UTC")).toBe(
+      "No date. A repeat needs a date.",
     );
   });
 });

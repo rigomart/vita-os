@@ -133,6 +133,27 @@ export interface CreateThreadFromNoteInput {
   taskId?: TaskId;
 }
 
+export interface UpdateNoteFollowUpInput {
+  noteId: NoteId;
+  /** Sets or changes the date; `null` clears it and its Repeat. */
+  followUp: Clearable<number>;
+  /** Required when the Note repeats weekly or monthly, as for a Task. */
+  timeZone?: string;
+}
+
+export interface SetNoteRepeatInput {
+  noteId: NoteId;
+  repeat: Clearable<Repeat>;
+  timeZone: string;
+}
+
+export interface CompleteNoteInput {
+  noteId: NoteId;
+  /** The displayed date; refuses if it has already advanced. */
+  expectedOccurrence: number;
+  timeZone: string;
+}
+
 export interface PageRequest {
   limit: number;
   cursor?: string;
@@ -215,10 +236,17 @@ export interface ApplicationClient {
     noteId: NoteId;
     body: string;
   }): Promise<OperationResult<Note>>;
-  updateNoteFollowUp(input: {
-    noteId: NoteId;
-    followUp: Clearable<number>;
-  }): Promise<OperationResult<Note>>;
+  /** Sets, changes or clears the date; clearing it clears its Repeat too. */
+  updateNoteFollowUp(
+    input: UpdateNoteFollowUpInput,
+  ): Promise<OperationResult<Note>>;
+  /** A Repeat needs a date; weekly and monthly ones snap the date forward. */
+  setNoteRepeat(input: SetNoteRepeatInput): Promise<OperationResult<Note>>;
+  /**
+   * Moves a repeating Note to its next occurrence, collapsing missed ones.
+   * Records nothing; the Note stays open.
+   */
+  completeNote(input: CompleteNoteInput): Promise<OperationResult<Note>>;
   markNoteDone(input: { noteId: NoteId }): Promise<OperationResult<Note>>;
   markNoteOpen(input: { noteId: NoteId }): Promise<OperationResult<Note>>;
   removeNote(input: {

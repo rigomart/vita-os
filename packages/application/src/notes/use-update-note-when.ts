@@ -1,5 +1,6 @@
 import type { NoteId } from "@vita-os/contracts";
 
+import { browserTimeZone } from "../lib/time-zone";
 import { useUpdateNoteFollowUp } from "./hooks";
 
 /**
@@ -12,5 +13,9 @@ export function useUpdateNoteWhen() {
   const updateFollowUp = useUpdateNoteFollowUp();
 
   return (noteId: NoteId, when: number | undefined) =>
-    updateFollowUp.mutateAsync({ noteId, followUp: when ?? null });
+    updateFollowUp.mutateAsync({
+      noteId,
+      followUp: when ?? null,
+      timeZone: browserTimeZone(),
+    });
 }

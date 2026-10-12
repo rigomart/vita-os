@@ -1,5 +1,6 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type { Note, NoteId } from "@vita-os/contracts";
+import type { NoteRepeatState } from "@vita-os/core";
 
 import {
   insertNewestFirst,
@@ -53,6 +54,41 @@ export function showNoteEdit(
   patchPagedEntries<Note>(cache, queryKeys.notes.doneAll(), (notes) =>
     patchById(notes, noteId, patch),
   );
+}
+
+/**
+ * A change to a Note's date and Repeat, shown the way the service is about to
+ * decide it: the same rule runs here, so clearing the date clears the Repeat
+ * on screen too, and a weekly Repeat snaps the date the same way. A change
+ * the rule would refuse leaves the Note as it is; the service's refusal then
+ * rolls back the rest.
+ */
+export function showNoteDates(
+  cache: QueryClient,
+  noteId: NoteId,
+  decide: (note: Note) => NoteRepeatState | null,
+): void {
+  const patch = (notes: Note[]) =>
+    notes.map((note) =>
+      note._id === noteId ? withNoteDates(note, decide) : note,
+    );
+  patchOpenNotes(cache, patch);
+  patchPagedEntries<Note>(cache, queryKeys.notes.doneAll(), patch);
+}
+
+function withNoteDates(
+  note: Note,
+  decide: (note: Note) => NoteRepeatState | null,
+): Note {
+  let dates: NoteRepeatState | null;
+  try {
+    dates = decide(note);
+  } catch {
+    return note;
+  }
+  if (dates === null) return note;
+  const { followUp: _followUp, repeat: _repeat, ...rest } = note;
+  return { ...rest, ...dates };
 }
 
 /**
