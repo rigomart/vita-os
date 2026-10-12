@@ -2,7 +2,7 @@
 
 Standalone Notes have no panel of their own: they live on the Dashboard, and the filter's `Notes` link (after the Areas, set apart, before `Edit areas`) shows them alone, with the open Note count. The filter is `?show=notes`, never `?area=`, so an Area named "Notes" cannot collide with it; choosing either clears the other, and both survive the Thread pane and the Note view. `/notes`, `/inbox`, and `?inbox=true` land on the Dashboard filtered to Notes. Notes are archived rather than marked done: `Archive` and `Unarchive` everywhere, `Archived <date>` in the Note view. The palette's History chip lists `Resolved threads` and `Archived notes`; a search reaches every Archived Note by body on the service, not just the first page. Choosing one opens the Note view over the page, without Add to thread actions (ADR 0031).
 
-Status: `notes-dashboard.flow` proven in #437 (9bbf928). The filter and phone steps below were updated for #437 from source and are not yet driven by hand; the rest was proven in #394 (bb54a79) at 1440×900, 1024×768 and 390×844.
+Status: `notes-dashboard.flow` re-run on c85a32e plus the uncommitted #458 working tree; a repeating Note's Archive, History search and Unarchive proven by `repeating-notes.flow`. The filter and phone steps below were updated for #437 from source and are not yet driven by hand; the rest was proven in #394 (bb54a79) at 1440×900, 1024×768 and 390×844.
 
 ## Sub-features
 
@@ -14,6 +14,7 @@ Pagination follow-up: proven with the PR 394 fix at 1440×900 and 390×844. Crea
 - `notes-filter-survives`: opening a Note keeps `?show=notes`; opening a Thread from the palette gives `?show=notes&thread=<slug>`, and closing it returns to `?show=notes`.
 - `notes-redirects`: `/notes` and `/inbox` land on `/?show=notes`; `/threads/<slug>?inbox=true` lands on `/?thread=<slug>&show=notes`.
 - `notes-archive`: a card's `Archive note` and the Note view's `Archive` both answer `Note archived` and take the Note off the board; the view stays open with `Archived <Mon d>` and `Unarchive`. D1 stores `state = 'done'` and `completed_at`.
+- `notes-archive-repeating`: a repeating Note's card offers `Complete · back <Mmm d>` instead of `Archive note` (see [Follow-up dates](./follow-up-dates.md)); Archive is in its Note view, where it ends the rhythm. An archived repeating Note keeps its date and Repeat (`notes.repeat`), is found in History by its body, and `Unarchive` returns it at that date with its glyph and Complete.
 - `history-archived`: the palette's `History` chip shows `group "Resolved threads"` then `group "Archived notes"`, the latter 20 most recently archived first, each `option "<one-line preview> <Mon d>"`. A search narrows both groups; Archived notes come from the service, so an older Note past the first page is found by a word of its body.
 - `history-more-matches`: a nonempty search with more matches shows `button "Load more archived notes"`. Activating it appends the next page and returns focus to the search, preserving the query. Every matching Note is reachable even when more than 20 share the same body. An empty search stays bounded to one page.
 - `history-open-note`: choosing an Archived note opens `dialog "Note"` over the page with `Archived <Mon d>`, `Unarchive`, and a ⋯ menu of only Copy Markdown and Delete note. `Unarchive` answers `Note unarchived` and returns the Note to the board.
