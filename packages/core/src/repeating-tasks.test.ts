@@ -212,6 +212,11 @@ describe("repeating Tasks", () => {
     { kind: "weekly", weekdays: [7] },
     { kind: "weekly", weekdays: [1.5] },
     { kind: "monthly" },
+    { kind: "monthly", day: 0 },
+    { kind: "monthly", day: 32 },
+    { kind: "monthly", day: 1.5 },
+    { kind: "monthly", day: "5" },
+    { kind: "monthly", every: 1 },
     null,
   ])("refuses malformed Repeat %j in core", (repeat) => {
     expect(() => rules.requireRepeat(repeat)).toThrow(ValidationError);
@@ -442,5 +447,191 @@ describe("repeating Tasks", () => {
         )?.patch.tasks?.[0]?.date,
       ).toBe(ms(next!));
     }
+  });
+});
+
+describe("monthly Repeats", () => {
+  const monthly = (day: number): Repeat => ({ kind: "monthly", day });
+  /** Complete each occurrence on its own day, as a person keeping up would. */
+  function occurrences(
+    date: string,
+    repeat: Repeat,
+    count: number,
+    timeZone = "UTC",
+  ) {
+    let current: rules.TaskState = thread(date, repeat);
+    const dates: number[] = [];
+    for (let i = 0; i < count; i++) {
+      const decision = rules.decideCompleteTask(current, id, {
+        timeZone,
+        now: current.tasks![0]!.date!,
+      });
+      current = { ...current, ...decision!.patch };
+      dates.push(current.tasks![0]!.date!);
+    }
+    return dates;
+  }
+
+  it("falls to a short month's last day and returns to the chosen day", () => {
+    expect(occurrences("2027-01-31T09:15Z", monthly(31), 4)).toEqual(
+      ["2027-02-28", "2027-03-31", "2027-04-30", "2027-05-31"].map((day) =>
+        ms(`${day}T09:15Z`),
+      ),
+    );
+    expect(occurrences("2026-12-30T09:15Z", monthly(30), 3)).toEqual(
+      ["2027-01-30", "2027-02-28", "2027-03-30"].map((day) =>
+        ms(`${day}T09:15Z`),
+      ),
+    );
+  });
+
+  it("lands on Feb 29 in a leap year", () => {
+    expect(occurrences("2028-01-31T00:00Z", monthly(31), 2)).toEqual([
+      ms("2028-02-29T00:00Z"),
+      ms("2028-03-31T00:00Z"),
+    ]);
+    expect(occurrences("2028-01-29T00:00Z", monthly(29), 2)).toEqual([
+      ms("2028-02-29T00:00Z"),
+      ms("2028-03-29T00:00Z"),
+    ]);
+  });
+
+  it.each([
+    ["2026-11-05T12:00Z", "2026-12-05T15:30Z"],
+    ["2026-11-09T12:00Z", "2026-12-05T15:30Z"],
+    ["2027-02-10T12:00Z", "2027-03-05T15:30Z"],
+    ["2027-02-05T23:00Z", "2027-02-05T15:30Z"],
+    ["2027-02-04T12:00Z", "2027-02-05T15:30Z"],
+  ])("collapses missed occurrences: completed at %s, next %s", (now, next) => {
+    for (const command of [rules.decideCompleteTask, rules.decideSkipTask]) {
+      const decision = command(thread("2026-11-05T15:30Z", monthly(5)), id, {
+        timeZone: "UTC",
+        now: ms(now),
+      });
+      expect(decision?.patch.tasks?.[0]?.date).toBe(ms(next));
+    }
+  });
+
+  it.each([
+    [
+      "America/New_York",
+      "2026-02-10T09:00-05:00",
+      ["2026-03-10T09:00-04:00", "2026-04-10T09:00-04:00"],
+    ],
+    [
+      "America/New_York",
+      "2026-10-31T00:00-04:00",
+      ["2026-11-30T00:00-05:00", "2026-12-31T00:00-05:00"],
+    ],
+    [
+      "Europe/Berlin",
+      "2026-09-25T02:30+02:00",
+      ["2026-10-25T02:30+02:00", "2026-11-25T02:30+01:00"],
+    ],
+    [
+      "America/Santiago",
+      "2026-08-06T00:00-04:00",
+      ["2026-09-06T01:00-03:00", "2026-10-06T00:00-03:00"],
+    ],
+  ])("keeps local time across DST in %s from %s", (timeZone, date, next) => {
+    const day = Number(date.slice(8, 10));
+    expect(occurrences(date, monthly(day), 2, timeZone)).toEqual(next.map(ms));
+  });
+
+  it("uses the caller's day near midnight", () => {
+    // Jan 31 in Auckland is still Jan 30 in UTC.
+    const decision = rules.decideCompleteTask(
+      thread("2027-01-31T09:00+13:00", monthly(31)),
+      id,
+      { timeZone: "Pacific/Auckland", now: ms("2027-01-31T09:00+13:00") },
+    );
+    expect(decision?.patch.tasks?.[0]?.date).toBe(ms("2027-02-28T09:00+13:00"));
+  });
+
+  it.each([
+    ["2026-03-12T15:30Z", 12, "2026-03-12T15:30Z"],
+    ["2026-03-05T15:30Z", 12, "2026-03-12T15:30Z"],
+    ["2026-03-15T15:30Z", 12, "2026-04-12T15:30Z"],
+    ["2027-02-28T15:30Z", 31, "2027-02-28T15:30Z"],
+    ["2026-04-30T15:30Z", 31, "2026-04-30T15:30Z"],
+  ])(
+    "sets a Repeat on %s monthly on day %i, snapping to %s",
+    (date, day, snapped) => {
+      const original = thread(date, daily);
+      const decision = rules.decideSetTaskRepeat(
+        original,
+        id,
+        monthly(day),
+        "UTC",
+      );
+      expect(decision?.patch.tasks?.[0]).toEqual({
+        ...original.tasks[0],
+        date: ms(snapped),
+        repeat: monthly(day),
+      });
+    },
+  );
+
+  it("moves the Repeat to a changed date's day, in the caller's zone", () => {
+    const original = thread("2026-12-05T15:30Z", monthly(5));
+    expect(() =>
+      rules.decideSetTaskDate(original, id, ms("2026-12-12T15:30Z"), undefined),
+    ).toThrow(ValidationError);
+    const moved = rules.decideSetTaskDate(
+      original,
+      id,
+      ms("2026-12-12T15:30Z"),
+      "UTC",
+    );
+    expect(moved?.patch.tasks?.[0]).toEqual({
+      ...original.tasks[0],
+      date: ms("2026-12-12T15:30Z"),
+      repeat: monthly(12),
+    });
+    expect(
+      rules.decideCompleteTask({ ...original, ...moved!.patch }, id, {
+        timeZone: "UTC",
+        now: ms("2026-12-12T16:00Z"),
+      })?.patch.tasks?.[0]?.date,
+    ).toBe(ms("2027-01-12T15:30Z"));
+    // 02:00 UTC on Dec 12 is still Dec 11 in New York.
+    expect(
+      rules.decideSetTaskDate(
+        original,
+        id,
+        ms("2026-12-12T02:00Z"),
+        "America/New_York",
+      )?.patch.tasks?.[0]?.repeat,
+    ).toEqual(monthly(11));
+  });
+
+  it("keeps the chosen day when only the time changes, and clears it with the date", () => {
+    const original = thread("2027-02-28T09:00Z", monthly(31));
+    expect(
+      rules.decideSetTaskDate(original, id, ms("2027-02-28T10:00Z"), "UTC")
+        ?.patch.tasks?.[0],
+    ).toEqual({
+      ...original.tasks[0],
+      date: ms("2027-02-28T10:00Z"),
+      repeat: monthly(31),
+    });
+    expect(
+      rules.decideSetTaskDate(
+        original,
+        id,
+        original.tasks[0]!.date!,
+        undefined,
+      ),
+    ).toEqual({ patch: {}, logs: [] });
+    expect(
+      rules.decideSetTaskDate(original, id, null, undefined)?.patch.tasks,
+    ).toEqual([{ _id: id, text: "Check" }]);
+  });
+
+  it("accepts days 1 through 31", () => {
+    expect(rules.requireRepeat(monthly(1))).toEqual(monthly(1));
+    expect(rules.requireRepeat({ ...monthly(31), extra: true })).toEqual(
+      monthly(31),
+    );
   });
 });

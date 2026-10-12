@@ -5,6 +5,7 @@ import type { ThreadUpdateDecision } from "./thread-changes";
 import { soonestTaskDate, startOfLocalDay } from "./attention";
 import { ConflictError, ValidationError } from "./errors";
 import {
+  movedRepeat,
   nextTaskDate,
   requireRepeat,
   requireTimeZone,
@@ -197,8 +198,9 @@ export function decideCompleteTask(
  * Log. Setting the date a Task already has changes nothing.
  *
  * Every caller passes the zone, which may be absent where no calendar date is
- * computed: clearing a date, or dating a Task that does not repeat weekly. A
- * weekly Task's new date snaps to a chosen weekday in the zone.
+ * computed: clearing a date, or dating a Task that repeats every N days or not
+ * at all. A weekly Task's new date snaps to a chosen weekday in the zone; a
+ * monthly Task's Repeat moves to the new date's day of month.
  */
 export function decideSetTaskDate(
   thread: TaskState,
@@ -224,7 +226,11 @@ export function decideSetTaskDate(
   )
     return { patch: {}, logs: [] };
 
-  const { date: _previous, repeat, ...undated } = task;
+  let { repeat } = task;
+  if (date !== null && repeat?.kind === "monthly") {
+    repeat = movedRepeat(repeat, task.date, date, requireTimeZone(timeZone));
+  }
+  const { date: _previous, repeat: _repeat, ...undated } = task;
   const changed: Task =
     date === null
       ? undated
@@ -274,7 +280,10 @@ export function decideSkipTask(
   return task === undefined ? null : advancedTask(thread, task, clock);
 }
 
-/** A Repeat needs a date; weekly choices snap forward, keeping the wall time. */
+/**
+ * A Repeat needs a date; weekly and monthly choices snap forward to their
+ * first day, keeping the wall time.
+ */
 export function decideSetTaskRepeat(
   thread: TaskState,
   taskId: TaskId,

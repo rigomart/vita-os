@@ -71,6 +71,7 @@ export const AreaSummarySchema = v.object({
 export const RepeatSchema = v.union([
   v.object({ kind: v.literal("days"), every: v.number() }),
   v.object({ kind: v.literal("weekly"), weekdays: v.array(v.number()) }),
+  v.object({ kind: v.literal("monthly"), day: v.number() }),
 ]);
 export const TaskSchema = v.object({
   _id: TaskIdSchema,

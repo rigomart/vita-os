@@ -159,6 +159,18 @@ describe("shared request shapes", () => {
         timeZone: "UTC",
       }).success,
     ).toBe(false);
+    expect(
+      v.safeParse(SetTaskRepeatBody, {
+        repeat: { kind: "monthly", day: 5, every: 1 },
+        timeZone: "UTC",
+      }).success,
+    ).toBe(false);
+    expect(
+      v.safeParse(SetTaskRepeatBody, {
+        repeat: { kind: "monthly", day: 5 },
+        timeZone: "UTC",
+      }).success,
+    ).toBe(true);
   });
 
   it("keeps occurrence identity safe and permits legacy occurrence dates", () => {

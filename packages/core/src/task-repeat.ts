@@ -39,6 +39,16 @@ export function requireRepeat(value: unknown): Repeat {
         };
       }
     }
+    if ("kind" in value && value.kind === "monthly" && "day" in value) {
+      if (
+        typeof value.day === "number" &&
+        Number.isInteger(value.day) &&
+        value.day >= 1 &&
+        value.day <= 31
+      ) {
+        return { kind: "monthly", day: value.day };
+      }
+    }
   }
   throw new ValidationError("Invalid Repeat");
 }
@@ -160,6 +170,46 @@ function chosenDay(day: number, weekdays: readonly number[]): number {
   );
 }
 
+/**
+ * The day a monthly Repeat lands on in the month `months` after January 1970:
+ * its chosen day, or the month's last day when the month is shorter.
+ */
+function monthlyDay(months: number, chosen: number): number {
+  const length = new Date(Date.UTC(1970, months + 1, 0)).getUTCDate();
+  return Date.UTC(1970, months, Math.min(chosen, length)) / DAY;
+}
+
+function monthOf(day: number): number {
+  const date = new Date(day * DAY);
+  return (date.getUTCFullYear() - 1970) * 12 + date.getUTCMonth();
+}
+
+/** The first day on or after `from` a monthly Repeat lands on. */
+function chosenMonthDay(from: number, chosen: number): number {
+  const month = monthOf(from);
+  const day = monthlyDay(month, chosen);
+  return day >= from ? day : monthlyDay(month + 1, chosen);
+}
+
+/**
+ * A monthly Repeat follows its Task to a new day: Dec 12 repeats on the 12th.
+ * A new time on the same day keeps it, so Feb 28 at 10:00 still returns to
+ * the 31st it stood in for.
+ */
+export function movedRepeat(
+  repeat: Extract<Repeat, { kind: "monthly" }>,
+  previous: number | undefined,
+  date: number,
+  timeZone: string,
+): Repeat {
+  const zone = calendar(timeZone);
+  const fields = localFields(date, zone);
+  return previous !== undefined &&
+    dayOf(localFields(previous, zone)) === dayOf(fields)
+    ? repeat
+    : { kind: "monthly", day: new Date(fields).getUTCDate() };
+}
+
 export function snapTaskDate(
   date: number,
   repeat: Repeat,
@@ -169,7 +219,10 @@ export function snapTaskDate(
   if (repeat.kind === "days") return date;
   const fields = localFields(date, zone);
   const day = dayOf(fields);
-  const snapped = chosenDay(day, repeat.weekdays);
+  const snapped =
+    repeat.kind === "weekly"
+      ? chosenDay(day, repeat.weekdays)
+      : chosenMonthDay(day, repeat.day);
   // Keep an existing instant on a chosen day, even in a fall-back overlap.
   return snapped === day
     ? date
@@ -191,10 +244,13 @@ export function nextTaskDate(
   const fields = localFields(date, zone);
   const current = dayOf(fields);
   const today = dayOf(localFields(now, zone));
+  const from = Math.max(current + 1, today);
   const next =
     repeat.kind === "days"
       ? current +
         Math.max(1, Math.ceil((today - current) / repeat.every)) * repeat.every
-      : chosenDay(Math.max(current + 1, today), repeat.weekdays);
+      : repeat.kind === "weekly"
+        ? chosenDay(from, repeat.weekdays)
+        : chosenMonthDay(from, repeat.day);
   return repeatedDate(date, current, next, fields, zone);
 }

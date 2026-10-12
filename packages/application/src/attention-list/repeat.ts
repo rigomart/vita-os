@@ -30,7 +30,10 @@ export type RepeatDraft =
   | { mode: "everyN"; every: number }
   | { mode: "weekly"; weekdays: number[] };
 
-export function repeatDraft(repeat: Repeat | undefined): RepeatDraft {
+/** Custom holds every N days and weekly; a monthly Repeat is a preset alone. */
+export function repeatDraft(
+  repeat: Exclude<Repeat, { kind: "monthly" }> | undefined,
+): RepeatDraft {
   if (repeat === undefined) return { mode: "never" };
   if (repeat.kind === "weekly") {
     return { mode: "weekly", weekdays: [...repeat.weekdays] };
@@ -73,22 +76,33 @@ function weekdayNames(weekdays: readonly number[]): string {
     .join(", ");
 }
 
+/** A day of month as people say it: 1st, 2nd, 3rd, 11th, 22nd, 31st. */
+export function ordinal(day: number): string {
+  const teen = day % 100 >= 11 && day % 100 <= 13;
+  const suffix = teen ? "th" : (["th", "st", "nd", "rd"][day % 10] ?? "th");
+  return `${day}${suffix}`;
+}
+
 /** The rhythm in a few words, for the glyph's label: "Repeats every 3 days". */
 export function repeatLabel(repeat: Repeat): string {
   if (repeat.kind === "weekly") {
     return `Repeats weekly on ${weekdayNames(repeat.weekdays)}`;
+  }
+  if (repeat.kind === "monthly") {
+    return `Repeats monthly on the ${ordinal(repeat.day)}`;
   }
   return repeat.every === 1
     ? "Repeats daily"
     : `Repeats every ${repeat.every} days`;
 }
 
-/** The Repeat on a narrow row: "Never", "Daily", "Every 3 days", "Weekdays", "Mon, Thu". */
+/** The Repeat on a narrow row: "Never", "Daily", "Every 3 days", "Weekdays", "Mon, Thu", "Monthly on the 31st". */
 export function repeatShortLabel(repeat: Repeat | undefined): string {
   if (repeat === undefined) return "Never";
   if (repeat.kind === "days") {
     return repeat.every === 1 ? "Daily" : `Every ${repeat.every} days`;
   }
+  if (repeat.kind === "monthly") return `Monthly on the ${ordinal(repeat.day)}`;
   return repeat.weekdays.join() === "1,2,3,4,5"
     ? "Weekdays"
     : weekdayNames(repeat.weekdays);
@@ -100,9 +114,18 @@ export interface RepeatPreset {
   repeat: Repeat | null;
 }
 
-/** The rhythms a Task's picker offers in one click, read from its date's weekday. */
-export function repeatPresets(when: number): RepeatPreset[] {
+/**
+ * The rhythms a Task's picker offers in one click, read from its date's
+ * weekday and day of month. A monthly Task keeps its own day, which a short
+ * month's date stands in for: Feb 28 still offers the 31st it returns to.
+ */
+export function repeatPresets(
+  when: number,
+  current: Repeat | undefined,
+): RepeatPreset[] {
   const weekday = WEEKDAYS[new Date(when).getDay()]!;
+  const day =
+    current?.kind === "monthly" ? current.day : new Date(when).getDate();
   return [
     { label: "Doesn't repeat", repeat: null },
     { label: "Every day", repeat: { kind: "days", every: 1 } },
@@ -115,6 +138,10 @@ export function repeatPresets(when: number): RepeatPreset[] {
       repeat: { kind: "weekly", weekdays: [weekday.day] },
     },
     { label: "Every 2 weeks", repeat: { kind: "days", every: 14 } },
+    {
+      label: `Every month on the ${ordinal(day)}`,
+      repeat: { kind: "monthly", day },
+    },
   ];
 }
 
