@@ -2,7 +2,7 @@
 
 A signed-in user writes a Note inside a Thread, edits it in the shared Note view, archives or unarchives it, and deletes it. Thread Notes have no independent Follow-up date. Archived Thread Notes stay in their Thread under `Archived notes`, never in the palette's History (ADR 0031).
 
-Status: proven in #391 (84ce18f): create, edit, delete, reload, and D1 persistence; Archive and Unarchive re-driven in #394 (bb54a79) at 1440×900.
+Status: proven in #462 by `thread-notes.spec.ts` at 1440×900: capture, edit, archive and unarchive, and deletion after the Undo offer, each checked after a reload and in D1.
 
 ## Sub-features
 

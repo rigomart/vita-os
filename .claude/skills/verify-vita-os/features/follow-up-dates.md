@@ -2,7 +2,7 @@
 
 Standalone Notes have one optional Follow-up date, with the calendar-and-clock icon and the date picker. The date places a Note on the Dashboard; an optional time orders it within its day. A Thread has no Follow-up date of its own: it comes back at its soonest dated Task (ADR 0032), covered in [Tasks](./tasks.md). Thread Notes have no date. A saved Standalone Note's date can carry a Repeat (ADR 0041), set from the same picker's `Repeat, <rhythm>` row as a Task's; see `follow-up-repeat` below.
 
-Status: Notes proven on 32224ed (#388): Note compose, the saved Note view, the Notes card, Dashboard card actions, the phone Note view at 390×844, and Thread Note compose without a date. Repeating Notes proven on c85a32e plus the uncommitted #458 working tree by `repeating-notes.flow` and by hand at 1440×900 and 1024×768. A Thread's dates are dated Tasks, proven by `dated-tasks.flow` and `resolve-reopen.flow` (see [Tasks](./tasks.md)). Not driven: optional time entry on a Note, a repeating Note on the phone (390×844), Custom… repeats on a Note.
+Status: repeating Notes (monthly Repeat, Complete, Late, Archive and Unarchive keeping the Repeat, Clear, Add to thread) proven in #462 by `repeating-notes.spec.ts` at 1440×900 and 1024×768; a Thread's dated Tasks by `dated-tasks.spec.ts` and `resolve-reopen.spec.ts` (see [Tasks](./tasks.md)). The rest of the Notes recipe was proven on 32224ed (#388). Not driven: optional time entry on a Note, a repeating Note on the phone (390×844), Custom… repeats on a Note.
 
 ## Sub-features
 

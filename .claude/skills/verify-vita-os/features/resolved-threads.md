@@ -2,7 +2,7 @@
 
 The palette starts with open work. Its History chip (named Resolved before ADR 0031) switches to history: a `Resolved threads` group with all resolved Threads, newest resolution first, without typing, then an `Archived notes` group covered in [Notes on the Dashboard](./notes-on-the-dashboard.md). Search filters that history by title or Area. Clicking the chip again returns to open work and clears the query. Selecting a result opens the existing Thread pane, where Thread actions → Reopen returns it to open work without restoring discarded Tasks, focus, or a Follow-up date.
 
-Status: proven on b2bd91a (#418) by `history.flow` at 1440×900 and 1024×768: empty history, newest first, title search, no match, search cleared on mode switch, and Reopen from the pane and the drawer. `resolve-reopen.flow` covers discarded Tasks. Not driven: keyboard chip activation, Area search, and the full step-by-step recipe below since the History rename.
+Status: proven in #462 by `history.spec.ts` at 1440×900 and 1024×768 (empty History, newest first, title search, no match, search cleared on mode switch, Reopen from the pane and the drawer) and `resolve-reopen.spec.ts` (discarded Tasks in the Activity Log). Not driven: keyboard chip activation, Area search, and the full step-by-step recipe below.
 
 ## Sub-features
 

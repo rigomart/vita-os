@@ -2,7 +2,7 @@
 
 Standalone Notes have no panel of their own: they live on the Dashboard, and the filter's `Notes` link (after the Areas, set apart, before `Edit areas`) shows them alone, with the open Note count. The filter is `?show=notes`, never `?area=`, so an Area named "Notes" cannot collide with it; choosing either clears the other, and both survive the Thread pane and the Note view. `/notes`, `/inbox`, and `?inbox=true` land on the Dashboard filtered to Notes. Notes are archived rather than marked done: `Archive` and `Unarchive` everywhere, `Archived <date>` in the Note view. The palette's History chip lists `Resolved threads` and `Archived notes`; a search reaches every Archived Note by body on the service, not just the first page. Choosing one opens the Note view over the page, without Add to thread actions (ADR 0031).
 
-Status: `notes-dashboard.flow` re-run on c85a32e plus the uncommitted #458 working tree; a repeating Note's Archive, History search and Unarchive proven by `repeating-notes.flow`. The filter and phone steps below were updated for #437 from source and are not yet driven by hand; the rest was proven in #394 (bb54a79) at 1440×900, 1024×768 and 390×844.
+Status: proven in #462 by `notes-dashboard.spec.ts` (Notes filter and its URL, Archive from the card and the Note view, History body search, Unarchive) and `repeating-notes.spec.ts` (a repeating Note's Archive, History search and Unarchive) at 1440×900. Not driven: the phone steps below, and the old Notes addresses.
 
 ## Sub-features
 

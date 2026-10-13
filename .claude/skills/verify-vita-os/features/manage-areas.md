@@ -2,7 +2,7 @@
 
 A signed-in user adds, renames, reorders, and deletes areas from the `Manage areas` dialog. A new area shows up in the Dashboard's `Filter the board` row (or its `<n> more` menu when the row is full), followed, set apart, by the `Notes` filter and then the `Edit areas` button that opens the dialog.
 
-Status: proven in #437 (9bbf928) by `areas.flow` at 1440×900, opening the dialog from `Edit areas`: create, rename, Health icon, keyboard reorder, and deletion keeping an unlabeled Thread.
+Status: proven in #462 by `areas.spec.ts` at 1440×900: create, rename, Health icon and keyboard reorder from the palette's Manage areas, and deletion from `Edit areas` keeping an unlabeled Thread.
 
 ## Sub-features
 

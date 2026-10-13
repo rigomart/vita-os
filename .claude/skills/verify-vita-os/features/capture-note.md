@@ -2,7 +2,7 @@
 
 A signed-in user captures a standalone note from the header's `New note` (the bottom bar's `Note` below `lg`), the `Q` shortcut, or the command palette. After the server confirms, a `Note added` toast shows, the note appears under `No date` → `Notes` on the Dashboard, and it survives a reload.
 
-Status: proven on 1d2885d by an independent cold run (dock entry point, body only).
+Status: proven in #462 by `notes.spec.ts` (header New note, live preview while typing, persistence after reload). Not driven: the Q shortcut and the command palette entry points.
 
 ## Sub-features
 

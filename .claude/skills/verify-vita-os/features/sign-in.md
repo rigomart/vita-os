@@ -2,7 +2,7 @@
 
 A user with an email and password account signs in from `/sign-in` and lands on the Dashboard. A signed-out visit to any product route redirects to `/sign-in`, and a signed-in visit to `/sign-in` redirects to `/`.
 
-Status: proven on b2bd91a (#418) by `sign-in.flow`: menu sign-out, the signed-out gate, form sign-in with a session the API recognizes, and the signed-in `/sign-in` redirect. Not driven: wrong-password errors.
+Status: proven in #462 by `sign-in.spec.ts`: the signed-out gate, form sign-in with a session the API recognizes, the signed-in `/sign-in` redirect, and menu sign-out. Not driven: wrong-password errors.
 
 ## Sub-features
 
