@@ -57,6 +57,7 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 - [Resolved Threads](./resolved-threads.md) covers the Resolved threads group of the palette's History chip, its search and resolution ordering, opening in place, and Reopen in the pane and drawer.
 - [Notes on the Dashboard](./notes-on-the-dashboard.md) covers the Dashboard's Notes filter and its URL, the old Notes addresses, Archive and Unarchive, and finding Archived Notes in History by searching their bodies.
 - [Tasks](./tasks.md) covers adding, focusing, and completing a Task in the thread pane, the drawer, and the Dashboard card, dated Tasks, repeating Tasks (Repeat including monthly, Skip, Late), and completing a Task with a note.
+- [Activity Log](./activity-log.md) covers a Thread's Activity tab: full-sentence entries on one rail, wrapping, a resolution's note and dropped Tasks, day headings, and Show earlier.
 - [Dashboard board](./dashboard-board.md) covers the one dated list on file tabs, No date beside it or folded above it, the shared Thread and Note card, the filter overflow, and the phone layout.
 - [Follow-up dates](./follow-up-dates.md) covers the Follow-up date on standalone Notes, their Repeat and Complete, and their Dashboard placement. A Thread comes back at its soonest dated Task, covered in [Tasks](./tasks.md).
 - [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter the board row.

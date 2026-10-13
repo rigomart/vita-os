@@ -271,11 +271,7 @@ function ThreadDetailContent({ thread }: ThreadDetailContentProps) {
         <ThreadAttentionSection thread={thread} />
       )}
 
-      <ThreadBodyTabs
-        threadTitle={thread.title}
-        threadId={thread._id}
-        lastActivityAt={thread.lastActivityAt}
-      />
+      <ThreadBodyTabs threadTitle={thread.title} threadId={thread._id} />
     </div>
   );
 }

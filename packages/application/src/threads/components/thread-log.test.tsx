@@ -26,21 +26,45 @@ const followUp = {
   createdAt: now - 60_000,
 } satisfies ActivityLogEntry;
 
+const resolution = {
+  _id: "log3" as ActivityLogEntryId,
+  type: "state_change",
+  content:
+    'Resolved thread: Deposit is back in full. — discarded tasks: "Cancel the broadband", "Redirect post"',
+  previousValue: "open",
+  newValue: "resolved",
+  createdAt: now - 120_000,
+} satisfies ActivityLogEntry;
+
+/** The sentence an entry reads as, however its parts are styled. */
+function sentence(text: string) {
+  return screen.getByText(
+    (_, element) =>
+      element?.tagName === "P" && element.textContent?.endsWith(text) === true,
+  );
+}
+
 describe("ActivityLog", () => {
-  it("renders only automatic changes and offers no manual entry controls", () => {
+  it("reads each automatic change as a sentence and offers no manual entry controls", () => {
     render(<ActivityLog logs={[areaMove, followUp]} />);
 
-    expect(
-      screen.queryByRole("heading", { name: "Activity log" }),
-    ).not.toBeInTheDocument();
     expect(screen.getByLabelText("Activity log")).toBeVisible();
-    expect(screen.getByText("Health → Finances")).toHaveClass(
-      "text-muted-foreground/80",
+    expect(sentence("Moved to Finances, from Health")).toHaveTextContent(
+      "Area: Moved to Finances, from Health",
     );
-    expect(screen.getByText("Set to May 20, 2026")).toBeVisible();
-    expect(screen.getByText("Area")).toHaveClass("sr-only");
+    expect(sentence("Set the Follow-up for May 20, 2026")).toBeVisible();
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.queryByRole("button", { name: "Add note" })).toBeNull();
+  });
+
+  it("shows what a resolution carried: its note and the Tasks it dropped", () => {
+    render(<ActivityLog logs={[resolution]} />);
+
+    expect(sentence("Resolved the Thread")).toBeVisible();
+    expect(screen.getByText("Deposit is back in full.")).toBeVisible();
+    expect(screen.getByText("Dropped 2 open Tasks")).toBeVisible();
+    expect(screen.getByText("Cancel the broadband")).toBeVisible();
+    expect(screen.getByText("Redirect post")).toBeVisible();
   });
 
   it("writes a recorded Follow-up in the reader's time zone, time and all", () => {
@@ -60,7 +84,9 @@ describe("ActivityLog", () => {
       />,
     );
 
-    expect(screen.getByText("May 20, 2026 → Jun 1, 2026 · 3 PM")).toBeVisible();
+    expect(
+      sentence("Moved the Follow-up to Jun 1, 2026 · 3 PM, from May 20, 2026"),
+    ).toBeVisible();
   });
 
   it("groups automatic changes by day", () => {
@@ -90,21 +116,6 @@ describe("ActivityLog", () => {
         "Automatic Thread changes will appear here as they happen.",
       ),
     ).toBeInTheDocument();
-  });
-
-  it("captions the timeline origin with how long the Thread has been still", () => {
-    const { rerender } = render(<ActivityLog logs={[]} />);
-
-    expect(screen.getByText("No activity yet")).toBeVisible();
-
-    rerender(
-      <ActivityLog
-        logs={[areaMove]}
-        lastActivityAt={subDays(new Date(), 3).getTime()}
-      />,
-    );
-
-    expect(screen.getByText("Updated 3 days ago")).toBeVisible();
   });
 
   it("loads earlier automatic changes on request", async () => {
