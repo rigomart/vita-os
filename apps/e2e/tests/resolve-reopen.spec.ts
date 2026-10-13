@@ -1,7 +1,4 @@
-// Resolve a Thread that has open Tasks (one of them focused): its resolution entry in the Activity Log names the
-// discarded Tasks, it shows in History, opens there with no Tasks while resolved, and Reopen returns it to open work
-// with the Tasks and the focus still discarded. The Activity tab shows only "open → resolved", so the entry's content is
-// read from D1.
+// The Activity tab shows only "open → resolved", so the entry's content is read from D1.
 import {
   addTask,
   createThread,
@@ -53,8 +50,6 @@ test("resolving discards open Tasks and focus, names them in the log, and Reopen
     },
   ]);
 
-  // After a reload (the server's state), find it in History and open it: no Tasks while resolved, the log is the
-  // record.
   await page.reload();
   const palette = await openHistory(page);
   await palette.getByRole("option", { name: title, exact: true }).click();
@@ -66,7 +61,6 @@ test("resolving discards open Tasks and focus, names them in the log, and Reopen
   await expect(pane.getByText("open → resolved")).toBeVisible();
   await shot("resolve-history");
 
-  // Reopen from Thread actions: open again, with the Tasks and the focus still discarded.
   await reopenThread(pane);
   await shot("resolve-reopened");
 

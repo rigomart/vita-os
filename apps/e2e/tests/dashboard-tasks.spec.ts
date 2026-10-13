@@ -1,6 +1,3 @@
-// Dashboard card task slot: one Task is shown as is, several unfocused read "N tasks · none focused", and a focused one
-// is shown among several. The card completes its Task in one click (the focused one, then the only one), and a reload
-// keeps the result.
 import {
   addTask,
   closeThread,
@@ -23,18 +20,15 @@ test("a card shows its one Task, a count, or the focused Task, and completes it 
 
   await page.goto("/");
 
-  // One: a single Task, shown without asking for a focus.
   const onePane = await createThread(page, one);
   await addTask(onePane, only);
-  // An open Thread pane covers the header's actions and the right of the list (ADR 0023, ADR 0037), so close it first.
+  // An open Thread pane covers the header's actions and the right of the list (ADR 0023, ADR 0037).
   await closeThread(onePane);
 
-  // Many: three Tasks, none focused.
   const manyPane = await createThread(page, many);
   for (const n of [1, 2, 3]) await addTask(manyPane, `Many ${n} ${stamp}`);
   await closeThread(manyPane);
 
-  // Focus: two Tasks, the second focused.
   const focusPane = await createThread(page, focus);
   await addTask(focusPane, `Focus 1 ${stamp}`);
   await addTask(focusPane, focus2);
@@ -54,7 +48,6 @@ test("a card shows its one Task, a count, or the focused Task, and completes it 
   await expect(threadCard(page, focus)).toContainText(focus2);
   await shot("dash-task-slots");
 
-  // Complete from the card: the focused Task, then the only Task.
   await sent(page, /\/complete$/, () =>
     page
       .getByRole("button", { name: `Complete “${focus2}”`, exact: true })

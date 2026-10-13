@@ -1,13 +1,9 @@
-// Manage areas (#437): in the Manage areas dialog, create Areas, rename one on blur, give it the Health icon (shown
-// pressed when the picker reopens), and reorder by keyboard (Space, ArrowUp, Space on a Reorder handle); after a reload
-// the name, order and icon stuck. Deleting an Area from Edit areas in the filter row names the one open Thread that
-// loses the label, removes the Area's row (D1), and keeps that Thread open without its label.
+// #437.
 import type { Page } from "@playwright/test";
 
 import { closeThread, createThread, openPalette } from "../src/app.ts";
 import { expect, sent, settled, test } from "../src/fixtures.ts";
 
-/** Opens Manage areas from the command palette on the Dashboard and waits for its dialog to stop sliding. */
 async function openManageAreas(page: Page) {
   const palette = await openPalette(page);
   await palette
@@ -40,12 +36,10 @@ test("create, rename, change the icon of and reorder Areas; all of it survives a
     await expect(dialog.getByLabel(`Name of ${name}`)).toBeVisible();
   }
 
-  // Rename on blur.
   await dialog.getByLabel(`Name of ${first}`).fill(renamed);
   await sent(page, /\/v1\/areas\/[^/]+$/, () => page.keyboard.press("Tab"));
   await expect(dialog.getByLabel(`Name of ${renamed}`)).toBeVisible();
 
-  // Health icon; reopening the picker shows it pressed.
   const changeIcon = dialog.getByRole("button", {
     name: `Change icon for ${renamed}`,
     exact: true,
@@ -60,7 +54,6 @@ test("create, rename, change the icon of and reorder Areas; all of it survives a
   await expect(health).toBeHidden();
   await expect(dialog).toBeVisible();
 
-  // Keyboard reorder: the second Area moves above the first.
   const order = `
     - list "Areas":
       - listitem:
@@ -73,8 +66,8 @@ test("create, rename, change the icon of and reorder Areas; all of it survives a
     exact: true,
   });
   await handle.focus();
-  // dnd-kit drops a key that comes before the row is held, and an arrow that comes before it has measured the rows
-  // (no handle shows that), so the arrow is pressed until the move is announced. At the top, another ArrowUp is a no-op.
+  // dnd-kit drops an ArrowUp pressed before it has measured the rows, so retry until the move is announced
+  // (another ArrowUp at the top is a no-op).
   await page.keyboard.press("Space");
   await expect(handle).toHaveAttribute("aria-pressed", "true");
   await expect(async () => {
@@ -130,7 +123,6 @@ test("deleting an Area keeps its Thread open without the label", async ({
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
 
-  // A Thread labeled with the Area, from the New thread dialog.
   const pane = await createThread(page, title, { area });
   const label = pane.getByRole("button", {
     name: `Area: ${area}`,
@@ -141,7 +133,6 @@ test("deleting an Area keeps its Thread open without the label", async ({
   await expect(label).toBeVisible();
   await closeThread(pane);
 
-  // Delete it from Edit areas at the end of the filter row.
   await page.getByRole("button", { name: "Edit areas", exact: true }).click();
   await settled(dialog);
   await dialog

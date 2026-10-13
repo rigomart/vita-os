@@ -1,13 +1,8 @@
-// Standalone Notes on the Dashboard: the `Notes` filter (`?show=notes`) counts the open Notes, Archive works from the
-// card and from the Note view (which stays open and offers Unarchive), History finds an Archived Note by a word of its
-// body and leaves out the other, and Unarchive puts it back on the board. Reloads prove saved writes; D1 tells
-// archived (`state = 'done'`) from deleted, which the board can't.
 import type { Page } from "@playwright/test";
 
 import { captureNote, noteCard, openHistory, openNote } from "../src/app.ts";
 import { expect, sent, test } from "../src/fixtures.ts";
 
-/** Archives the board card for `body` with its own Archive button. */
 async function archiveCard(page: Page, body: string) {
   await sent(page, /\/notes\/[^/]+\/state$/, () =>
     noteCard(page, body)
@@ -40,7 +35,6 @@ test("the Notes filter counts open Notes; Archive from the card and from the Not
   await expect(page).toHaveURL(onNotesFilter);
   await shot("notes-dashboard-before");
 
-  // Archive the named card; after a reload only the other Note remains, and the count follows.
   await archiveCard(page, board);
   await expect(page.getByText("Note archived")).toBeVisible();
   await page.reload();
@@ -50,7 +44,6 @@ test("the Notes filter counts open Notes; Archive from the card and from the Not
   await expect(page).toHaveURL(onNotesFilter);
   await shot("notes-board-archived-after");
 
-  // Archive from the view: it stays open over the emptied board and offers Unarchive.
   await openNote(page, kept).click();
   const view = page.getByRole("dialog");
   await expect(view.getByRole("textbox", { name: "Note body" })).toBeVisible();
@@ -63,7 +56,7 @@ test("the Notes filter counts open Notes; Archive from the card and from the Not
   await expect(
     view.getByRole("button", { name: "Unarchive", exact: true }),
   ).toBeVisible();
-  // Archived, not deleted: the board can't tell the two apart.
+  // D1, since the board can't tell archived from deleted.
   expect(
     await d1(
       `SELECT body, state, completed_at IS NOT NULL AS has_completed_at FROM notes WHERE user_id = '${account.id}' ORDER BY body`,
@@ -94,7 +87,6 @@ test("History finds an Archived Note by body and Unarchive puts it back on the b
   await archiveCard(page, board);
   await archiveCard(page, other);
 
-  // Search Archived notes by body: the matching Note shows, the other doesn't.
   const palette = await openHistory(page);
   await palette.getByRole("combobox").fill(`needlealpha${stamp}`);
   const match = palette.getByRole("option", { name: new RegExp(board) });

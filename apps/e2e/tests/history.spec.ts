@@ -1,7 +1,3 @@
-// History in the palette (resolved Threads): empty before anything is resolved, then every resolved Thread newest
-// resolution first, searchable by title, "No results found." for no match, and the chip switches back to open work with
-// the query cleared. A Thread chosen from History opens in the side pane (1440x900) or the drawer (1024x768), where
-// Thread actions → Reopen returns it to open work: after a reload it offers "Add a task" again and is gone from History.
 import type { Page } from "@playwright/test";
 
 import {
@@ -13,7 +9,6 @@ import {
 } from "../src/app.ts";
 import { expect, settled, test } from "../src/fixtures.ts";
 
-/** Creates the Thread `title` in the side pane and resolves it. */
 async function createResolved(
   page: Page,
   title: string,
@@ -22,7 +17,6 @@ async function createResolved(
   await resolveThread(await createThread(page, title), before);
 }
 
-/** History no longer holds `title`: searching for it finds nothing. */
 async function goneFromHistory(page: Page, title: string) {
   const palette = await openHistory(page);
   await palette.getByRole("combobox").fill(title);
@@ -52,7 +46,6 @@ test("History starts empty, then lists resolved Threads newest first and searche
   await createResolved(page, older, () => shot("history-resolve-before"));
   await createResolved(page, newer);
 
-  // After a reload (the server's state), History lists both, newest first.
   await page.reload();
   await expect(page.getByRole("banner", { name: "Vita OS" })).toBeVisible();
   palette = await openHistory(page);
@@ -70,7 +63,6 @@ test("History starts empty, then lists resolved Threads newest first and searche
   await expect(palette.getByText("No results found.")).toBeVisible();
   await expect(resolved).toHaveCount(0);
 
-  // The chip switches back to open work and clears the query.
   const chip = palette.getByRole("button", { name: "History", exact: true });
   await chip.click();
   await expect(chip).toHaveAttribute("aria-pressed", "false");
@@ -101,7 +93,7 @@ test("a Thread chosen from History reopens in the side pane", async ({
   await shot("history-pane");
 
   await reopenThread(pane);
-  // Only an open Thread offers "Add a task", so after a reload it proves the reopen stuck.
+  // Only an open Thread offers "Add a task".
   await page.reload();
   await expect(pane.getByRole("textbox", { name: "Add a task" })).toBeVisible();
   await shot("history-reopened-pane");
@@ -132,7 +124,7 @@ test("a Thread chosen from History reopens in the drawer", async ({
   await shot("history-drawer");
 
   await reopenThread(drawer);
-  // Only an open Thread offers "Add a task", so after a reload it proves the reopen stuck.
+  // Only an open Thread offers "Add a task".
   await page.reload();
   await expect(
     drawer.getByRole("textbox", { name: "Add a task" }),

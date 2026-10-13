@@ -1,8 +1,4 @@
-// Dashboard filter counts (issue #446): All counts every open Thread and Standalone Note, dated or not; an Area and No
-// area count only their Open Threads, Notes only open Standalone Notes. A dated Note alone reads All 1, an undated Note
-// makes All 2, and a Thread labeled with a new Home Area makes All 3, Home 1, No area 0, Notes 2. The Home and Notes
-// filters show only their own items, and All 3 still reads on a phone (390x844). Each count is read after a reload.
-// One test: every count builds on the items before it, on a user that starts with nothing.
+// #446. One test, since every count builds on the items before it.
 import {
   captureNote,
   closeThread,
@@ -29,7 +25,6 @@ test("All counts every open Thread and Standalone Note; Area and Notes filters k
   await expect(count("All 0")).toBeVisible();
   await shot("dashboard-counts-before");
 
-  // A Note with a Follow-up date of today, picked in the calendar: it counts, and sits under Today.
   await captureNote(page, datedNote, async () => {
     await datePicker(page)
       .getByRole("button", { name: "Pick a date…", exact: true })
@@ -47,14 +42,12 @@ test("All counts every open Thread and Standalone Note; Area and Notes filters k
   await expect(count("Notes 1")).toBeVisible();
   await shot("dashboard-counts-note-after");
 
-  // An undated Note counts too.
   await captureNote(page, undatedNote);
   await page.reload();
   await expect(openNote(page, undatedNote)).toBeVisible();
   await expect(count("All 2")).toBeVisible();
   await expect(count("Notes 2")).toBeVisible();
 
-  // A Thread labeled with a new Area: All and the Area count it, No area and Notes do not.
   await closeThread(
     await createThread(page, title, { area: "Home", newArea: true }),
   );
@@ -66,7 +59,6 @@ test("All counts every open Thread and Standalone Note; Area and Notes filters k
   await expect(count("Notes 2")).toBeVisible();
   await shot("dashboard-counts-mixed-after");
 
-  // Home shows the Thread alone; Notes shows the Notes alone; All keeps its count under both.
   await count("Home 1").click();
   await expect(threadCard).toBeVisible();
   await expect(openNote(page, datedNote)).toBeHidden();

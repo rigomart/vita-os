@@ -1,5 +1,4 @@
-// The isolated local stack behind a verify instance: a private local D1, the API on `wrangler dev`, and the web app on
-// Vite. No browser. Used by the `bun run verify` CLI and by Playwright's global setup, so it runs on Bun and on Node.
+// Used by the verify CLI (Bun) and Playwright's global setup (Node), so it runs on both.
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, openSync, rmSync, writeFileSync } from "node:fs";
@@ -21,10 +20,7 @@ import {
   WEB_DIR,
 } from "./instance.ts";
 
-/**
- * Whether the group led by `pid` still runs one of our processes (wrangler, workerd, vite). Every recorded pid leads its
- * own group; after a reboot the same pid may lead someone else's group, which counts as gone and is never signalled.
- */
+/** A pid recorded before a reboot may lead someone else's group: that counts as gone and is never signalled. */
 function groupAlive(pid: number | undefined): boolean {
   if (!pid) return false;
   const ps = run(["ps", "-A", "-o", "pgid=,command="], ROOT);
@@ -39,7 +35,6 @@ function groupAlive(pid: number | undefined): boolean {
   });
 }
 
-/** Signals the process group led by `pid`, never a bare pid. A group that is already gone is fine. */
 function signalGroup(pid: number | undefined, signal: NodeJS.Signals): void {
   if (!pid) return;
   try {
@@ -120,7 +115,7 @@ function run(cmd: string[], cwd: string, env: Record<string, string> = {}) {
   };
 }
 
-/** Starts `cmd` as the leader of its own process group, so `down` can stop it and everything it spawned. */
+/** Leads its own process group, so `down` can stop it and everything it spawned. */
 function startDetached(
   cmd: string[],
   cwd: string,
@@ -157,7 +152,6 @@ function currentBranch() {
   return run(["git", "rev-parse", "--abbrev-ref", "HEAD"], ROOT).stdout.trim();
 }
 
-/** Applies the migrations the instance's local D1 lacks (none on a current one), logging to migrate.log. */
 function migrate(state: Pick<State, "persistDir" | "logsDir">): void {
   const res = run(
     [
@@ -193,7 +187,7 @@ export function publicEnv(state: State) {
 
 export type UpOptions = { webPort?: number; apiPort?: number };
 
-/** Starts the instance, or reuses it when it is already up and healthy, with any new migrations applied. */
+/** Reuses a healthy instance, applying any new migrations. */
 export async function up(instance: string, opts: UpOptions = {}) {
   const existing = loadState(instance);
   // Vite and wrangler serve the working tree, so a commit changes nothing; another branch may need other migrations.
@@ -318,7 +312,7 @@ export async function doctor(instance: string) {
   };
 }
 
-/** Stops the process groups this instance started. `purge` also deletes its local D1. Evidence is kept. */
+/** `purge` also deletes the local D1. Evidence is kept. */
 export async function down(
   instance: string,
   opts: { dryRun: boolean; purge: boolean },
@@ -350,7 +344,7 @@ export async function down(
   for (const [, pid] of groups)
     if (groupAlive(pid)) signalGroup(pid, "SIGKILL");
 
-  // Only for instances started by the old agent-browser CLI, which kept a browser per instance; delete after the transition.
+  // Only for instances of the old agent-browser CLI; delete after the transition.
   if (state.session)
     spawnSync("agent-browser", ["--session", state.session, "close"], {
       stdio: "ignore",

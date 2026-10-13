@@ -1,5 +1,3 @@
-// Thread detail as a drawer (1024x768): Tasks, focus, completion, Activity, reload, close. Below 1280px the Thread opens
-// as dialog "<title>" (the 1440px side pane is complementary). Not driven: Thread Notes.
 import { addTask, closeThread, createThread, taskRow } from "../src/app.ts";
 import { expect, sent, test } from "../src/fixtures.ts";
 
@@ -38,7 +36,6 @@ test("a Thread in the drawer adds, focuses and completes Tasks, logs the complet
   await expect(drawer.getByText(`Completed ${b}`)).toBeVisible();
   await shot("drawer-activity");
 
-  // Reload keeps the drawer open on the same Thread.
   await page.reload();
   await expect(drawer).toBeVisible();
   await expect(

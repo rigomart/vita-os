@@ -1,7 +1,4 @@
-// Sign in and out through the real UI (issue #418): a signed-out visit to a product route lands on /sign-in, the form
-// signs in to the Dashboard with a session the API recognizes, a signed-in visit to /sign-in goes back to /, and Sign
-// out in the user menu ends that session and gates the Dashboard again. Every test starts signed out; D1 counts the
-// user's sessions before and after, since sign-up left one of its own.
+// #418. Sign-up leaves a session of its own, so D1 counts sessions against before.
 import type { Page } from "@playwright/test";
 
 import type { Account, D1 } from "../src/fixtures.ts";
@@ -17,7 +14,6 @@ const sessionsOf = async (d1: D1, account: Account) =>
     )
   )[0]!.n;
 
-/** On /sign-in, signed out: fills the real form and waits for the Dashboard. */
 async function signInWithForm(page: Page, account: Account) {
   await expect(
     page.getByText("Sign in to your account to continue"),
@@ -53,7 +49,6 @@ test("a signed-out visit is gated to /sign-in, and the form signs in to the Dash
     ((await session.json()) as { user: { email: string } }).user.email,
   ).toBe(account.email);
 
-  // Signed in, /sign-in sends you back to the Dashboard.
   await page.goto("/sign-in");
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("banner", { name: "Vita OS" })).toBeVisible();

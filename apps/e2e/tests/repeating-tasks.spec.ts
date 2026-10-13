@@ -1,12 +1,4 @@
-// Repeating Tasks (ADR 0032, issue #404): set a daily Repeat with a time from a Task row's picker, complete it and see it
-// come back at the next occurrence (one move_completed), skip it (no Activity Log entry), switch to weekly and see the
-// date move to the first chosen day, a missed repeating Task as one Late card skipped and completed from the card,
-// Every N days in the drawer, and monthly (issue #457): the 31st through a shorter month and back, a missed monthly Task
-// as one Late card, a date change.
-//
-// Dates are relative to today, computed here the way the app labels them, so the spec runs on any day (but not across
-// midnight). Every choice in the picker saves as it is made (ADR 0040). A missed Task is dated in the past through the
-// picker itself (it accepts past days); nothing is written to D1 by hand.
+// ADR 0032, ADR 0040, #404; monthly #457.
 import type { Page } from "@playwright/test";
 
 import {
@@ -27,13 +19,12 @@ import {
 } from "../src/app.ts";
 import { expect, sent, settled, test } from "../src/fixtures.ts";
 
-/** A day of month as the app says it: 1st, 2nd, 11th, 31st. */
 function ordinal(day: number): string {
   const teen = day % 100 >= 11 && day % 100 <= 13;
   return `${day}${teen ? "th" : (["th", "st", "nd", "rd"][day % 10] ?? "th")}`;
 }
 
-/** A Task row's date token as the app names it: Today, Tomorrow, Yesterday, a short weekday up to six days out, else Oct 22. */
+/** A row's date token: Today, Tomorrow, Yesterday, a short weekday up to six days out, else "Oct 22". */
 function taskWhen(day: Date): string {
   const days = Math.round(
     (day.getTime() - fromToday(0).getTime()) / 86_400_000,
@@ -46,7 +37,6 @@ function taskWhen(day: Date): string {
   return day.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-/** Creates a Thread with one Task in the side pane (1440x900) and returns the pane. */
 async function threadWithTask(page: Page, title: string, task: string) {
   await page.goto("/");
   const pane = await createThread(page, title);
@@ -70,7 +60,6 @@ test("a daily Repeat at 9 PM from a row: complete, skip, then weekly on another 
     exact: true,
   });
 
-  // The picker holds the time and the Repeat, disabled until the Task has a day.
   await taskRow(pane, task).getByRole("button", { name: "Set date" }).click();
   await expect(repeatNever).toBeDisabled();
   const timeChips = picker
@@ -80,7 +69,6 @@ test("a daily Repeat at 9 PM from a row: complete, skip, then weekly on another 
   for (const chip of await timeChips.all()) await expect(chip).toBeDisabled();
   await shot("repeat-picker-no-date");
 
-  // Today, then 9 PM typed under Other time, then Every day, in the same picker, which stays open on a row.
   await sent(page, /\/date$/, () => quickPick(page, "Today"));
   await expect(repeatNever).toBeEnabled();
   await picker.getByRole("button", { name: "Other time", exact: true }).click();
@@ -96,7 +84,6 @@ test("a daily Repeat at 9 PM from a row: complete, skip, then weekly on another 
   await shot("repeat-picker-daily");
   await closeDatePicker(page);
 
-  // The row wears the repeat glyph on its date, the card before the Task's text; the card sits under Now, Today, at 9 PM.
   await expect(
     taskRow(pane, task).getByRole("img", {
       name: "Repeats daily",
@@ -113,7 +100,6 @@ test("a daily Repeat at 9 PM from a row: complete, skip, then weekly on another 
   await shot("repeat-card-glyph");
   expect(await logOf(d1, account, title)).toEqual([]);
 
-  // Complete from the row: the Task stays and comes back tomorrow at 9 PM; one move_completed is written.
   await sent(page, /\/complete$/, () =>
     taskRow(pane, task).getByRole("button", { name: "Complete task" }).click(),
   );
@@ -128,11 +114,9 @@ test("a daily Repeat at 9 PM from a row: complete, skip, then weekly on another 
     { type: "move_completed", n: 1 },
   ]);
 
-  // After a reload the server's Task is the one shown: tomorrow at 9 PM.
   await page.reload();
   await expect(dateToken(pane, task, "Tomorrow · 9 PM")).toBeVisible();
 
-  // Skip from the row: the day after, and no Activity Log entry.
   const inTwoDays = `${taskWhen(fromToday(2))} · 9 PM`;
   await sent(page, /\/skip$/, () =>
     taskRow(pane, task).getByRole("button", { name: "Skip task" }).click(),
@@ -145,7 +129,6 @@ test("a daily Repeat at 9 PM from a row: complete, skip, then weekly on another 
     { type: "move_completed", n: 1 },
   ]);
 
-  // Weekly: it starts on the date's own weekday; choosing two days later instead says the date moves there, and it does.
   const weekday = (day: Date) =>
     day.toLocaleDateString("en-US", { weekday: "long" });
   await dateToken(pane, task, inTwoDays).click();
@@ -202,13 +185,12 @@ test("a missed daily Task is one Late card, skipped and completed from the card,
   const pane = await threadWithTask(page, title, task);
   const picker = datePicker(page);
 
-  // Dated three days ago through the picker, every day.
   await taskRow(pane, task).getByRole("button", { name: "Set date" }).click();
   await sent(page, /\/date$/, () => pickDate(page, fromToday(-3)));
   await setRepeat(page, "Every day", "Daily");
   await closeDatePicker(page);
 
-  // One Late card, never one per missed day. An open Thread pane covers the right of the list (ADR 0023, ADR 0037).
+  // An open Thread pane covers the right of the list (ADR 0023, ADR 0037).
   await closeThread(pane);
   const late = page.getByRole("region", { name: "Late", exact: true });
   await expect(threadCard(late, title)).toHaveCount(1);
@@ -221,7 +203,6 @@ test("a missed daily Task is one Late card, skipped and completed from the card,
   ).toBeVisible();
   await shot("repeat-late-card");
 
-  // Skip from the card: the missed run collapses to today; nothing is logged.
   await sent(page, /\/skip$/, () =>
     threadCard(late, title)
       .getByRole("button", {
@@ -236,7 +217,6 @@ test("a missed daily Task is one Late card, skipped and completed from the card,
   await shot("repeat-card-skipped");
   expect(await logOf(d1, account, title)).toEqual([]);
 
-  // Complete from the card: the card stays, under Tomorrow; one move_completed.
   await sent(page, /\/complete$/, () =>
     threadCard(today, title)
       .getByRole("button", { name: `Complete “${task}”`, exact: true })
@@ -254,12 +234,11 @@ test("a missed daily Task is one Late card, skipped and completed from the card,
     { type: "move_completed", n: 1 },
   ]);
 
-  // Drawer (1024x768): the same picker sets a custom Every N days with its stepper.
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.getByRole("link", { name: title, exact: true }).click();
   const drawer = page.getByRole("dialog", { name: title });
   await expect(drawer).toBeVisible();
-  // The drawer's content exists before it stops sliding; a click before then lands elsewhere (issue #449).
+  // The drawer's content is there before it stops sliding; a click before then lands elsewhere (#449).
   await settled(drawer);
   await dateToken(drawer, task, "Tomorrow").click();
   await picker
@@ -278,7 +257,6 @@ test("a missed daily Task is one Late card, skipped and completed from the card,
     picker.getByRole("button", { name: "Repeat, Every 3 days", exact: true }),
   ).toBeVisible();
 
-  // Escape closes the picker alone; the drawer stays.
   await closeDatePicker(page);
   await settled(drawer);
   await expect(drawer).toHaveAttribute("data-state", "open");
@@ -343,7 +321,6 @@ test("monthly on the 31st falls on a shorter month's last day, then back on the 
   await closeDatePicker(page);
   await expect(glyph).toBeVisible();
 
-  // Complete: the shorter month's last day.
   const shortMonth = taskWhen(monthsOn(first, 1));
   await sent(page, /\/complete$/, () =>
     taskRow(pane, task).getByRole("button", { name: "Complete task" }).click(),
@@ -354,7 +331,6 @@ test("monthly on the 31st falls on a shorter month's last day, then back on the 
   await expect(glyph).toBeVisible();
   await shot("repeat-monthly-short-month");
 
-  // Complete again: back on the 31st.
   const back = taskWhen(
     new Date(first.getFullYear(), first.getMonth() + 2, 31),
   );
@@ -389,7 +365,6 @@ test("a missed monthly Task is one Late card; Complete moves it a month on, and 
   const pane = await threadWithTask(page, title, task);
   const picker = datePicker(page);
 
-  // Dated six days ago through the picker, every month on that day.
   await taskRow(pane, task).getByRole("button", { name: "Set date" }).click();
   await sent(page, /\/date$/, () => pickDate(page, missed));
   const day = ordinal(missed.getDate());
@@ -397,7 +372,6 @@ test("a missed monthly Task is one Late card; Complete moves it a month on, and 
   await closeDatePicker(page);
   await closeThread(pane);
 
-  // One Late card, with the glyph.
   await page.reload();
   await expect(
     page.getByRole("link", { name: title, exact: true }),
@@ -413,7 +387,6 @@ test("a missed monthly Task is one Late card; Complete moves it a month on, and 
   ).toBeVisible();
   await shot("repeat-monthly-late");
 
-  // Complete from the card: a month on from its date.
   await sent(page, /\/complete$/, () =>
     threadCard(late, title)
       .getByRole("button", { name: `Complete “${task}”`, exact: true })
@@ -430,7 +403,6 @@ test("a missed monthly Task is one Late card; Complete moves it a month on, and 
   await expect(dateToken(pane, task, taskWhen(next))).toBeVisible();
   await shot("repeat-monthly-late-completed");
 
-  // Change the date a week later: the monthly day follows it, and the next Complete lands a month after the new date.
   const moved = new Date(next);
   moved.setDate(moved.getDate() + 7);
   await settled(pane);

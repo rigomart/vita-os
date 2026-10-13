@@ -1,7 +1,4 @@
-// Add an undated Standalone Note to a Thread through the Note view (1440x900): "Add to thread…" commits when the Undo
-// offer lapses, and "New thread from note" suggests the Note's first line as the title and keeps its body. Dated
-// conversion is covered by dated-tasks. Reloads prove the saved move; D1 proves what the screen can't: the standalone
-// Note row is gone, one open Thread Note holds the body, and no Activity Log entry was written.
+// Undated Notes only; dated conversion is in dated-tasks.spec.ts.
 import type { Page } from "@playwright/test";
 
 import type { Account, D1 } from "../src/fixtures.ts";
@@ -16,7 +13,6 @@ import {
 } from "../src/app.ts";
 import { expect, sent, test } from "../src/fixtures.ts";
 
-/** Opens the Note view of the board card for `body` and its "More actions" menu. */
 async function openNoteActions(page: Page, body: string) {
   await openNote(page, body).click();
   await noteView(page)
@@ -24,7 +20,6 @@ async function openNoteActions(page: Page, body: string) {
     .click();
 }
 
-/** What the move left behind: standalone rows with `body`, the Thread's Notes, and its Activity Log size. */
 async function stored(d1: D1, account: Account, title: string, body: string) {
   return {
     standalone: await d1<{ n: number }>(

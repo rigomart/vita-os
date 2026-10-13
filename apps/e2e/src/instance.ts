@@ -1,5 +1,4 @@
-// A verify instance: its name, its state file, and read-only SQL against its private local D1. Shared by the stack CLI
-// (Bun) and the Playwright fixtures (Node), so it uses only node: APIs and has no side effects on import.
+// Shared by the CLI (Bun) and the Playwright fixtures (Node): node: APIs only, no side effects on import.
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -25,10 +24,7 @@ export type State = {
   gitSha: string;
   branch: string;
   startedAt: string;
-  /**
-   * Only in state files written by the old agent-browser CLI: its browser session, closed by `down`. It exists only for
-   * instances started by that CLI; delete it after the transition.
-   */
+  /** Only in state files of the old agent-browser CLI, closed by `down`; delete after the transition. */
   session?: string;
 };
 
@@ -42,7 +38,6 @@ export class VitaError extends Error {
   }
 }
 
-/** The instance to use: an explicit `--instance`, else VITA_INSTANCE, else "main". */
 export function instanceName(flag?: string): string {
   const name = flag ?? process.env.VITA_INSTANCE ?? "main";
   if (!/^[a-z0-9-]+$/.test(name))
@@ -81,7 +76,6 @@ export function requireState(name: string): State {
   return state;
 }
 
-/** The `bun run verify <args>` command line for instance `name`; `main` needs no `--instance`. */
 export function verifyCommand(name: string, args: string): string {
   return `bun run verify ${args}${name === "main" ? "" : ` --instance ${name}`}`;
 }
@@ -94,10 +88,7 @@ export function saveState(state: State): void {
 
 const D1_TIMEOUT_MS = 30_000;
 
-/**
- * Read-only SQL against the instance's local D1: one SELECT statement. Use it only for what the screen cannot show.
- * Two queries against one instance at the same moment fail with "internal error", so run them one at a time.
- */
+/** Concurrent queries against one instance fail with "internal error", so run them one at a time. */
 export async function d1<Row = Record<string, unknown>>(
   sql: string,
   name: string = instanceName(),

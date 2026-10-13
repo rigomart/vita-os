@@ -1,10 +1,4 @@
-// Dated Tasks (ADR 0032): set a date with a time from a Task row, placement and the card's lead, reschedule from the
-// card token, two Tasks on one day, a card with no single Task, Thread detail order (ADR 0039), and a dated Note added to
-// a Thread. Setting a date never writes an Activity Log entry.
-//
-// Days are picked relative to today in the picker's calendar, behind "Pick a date…", by their `td[data-day]` cell; when
-// the day is not in the month shown, the calendar steps to the next month first, so this runs on any day of the month.
-// Today is a quick pick. A time no chip offers is typed under "Other time", once the Task has its day (ADR 0040).
+// ADR 0032, ADR 0039, ADR 0040.
 import type { Page } from "@playwright/test";
 
 import {
@@ -47,7 +41,7 @@ test("a date and time set from a row place the Thread and lead its card; the car
 
   await taskRow(pane, task).getByRole("button", { name: "Set date" }).click();
   await sent(page, /\/date$/, () => pickDate(page, fromToday(2)));
-  // Back on the menu, which stays open on a row: 3:30 PM is no chip, so it is typed under Other time.
+  // 3:30 PM has no chip, so it is typed under Other time.
   await datePicker(page)
     .getByRole("button", { name: "Other time", exact: true })
     .click();
@@ -62,10 +56,8 @@ test("a date and time set from a row place the Thread and lead its card; the car
       exact: true,
     }),
   ).toBeVisible();
-  // A row's picker stays open after a day is picked (its Repeat can follow); Escape closes it.
   await closeDatePicker(page);
 
-  // The Thread leaves No date for the list, under that day's heading, and its card leads with A1 and its time.
   const placed = threadCard(heading(page, weekday(fromToday(2))), title);
   await expect(placed).toContainText(task);
   await expect(placed).toContainText("3:30 PM");
@@ -73,7 +65,6 @@ test("a date and time set from a row place the Thread and lead its card; the car
   await expect(noDate(page).getByRole("link", { name: title })).toHaveCount(0);
   await shot("dated-a-placed");
 
-  // Reschedule from the card's own token: one day later, the time kept.
   await closeThread(pane);
   await threadCard(page, title)
     .getByRole("button", { name: "Change date", exact: true })
@@ -84,7 +75,6 @@ test("a date and time set from a row place the Thread and lead its card; the car
   await expect(moved).toContainText("3:30 PM");
   await shot("dated-a-rescheduled");
 
-  // The date sits inside the Task JSON with its time; setting dates writes no Activity Log entry.
   const at = fromToday(3);
   at.setHours(15, 30);
   expect(
@@ -159,7 +149,7 @@ test("a date set on a card with no single Task adds a Follow up, last in Thread 
   await expect(noDate(page).getByRole("link", { name: title })).toHaveCount(0);
   await shot("dated-b-after");
 
-  // Thread detail (ADR 0039): one list in capture order, so the dated Follow up stays last, and no No date divider.
+  // ADR 0039: one list in capture order, so the dated Follow up stays last, with no No date divider.
   await page.getByRole("link", { name: title, exact: true }).click();
   await expect(
     pane.getByRole("list", { name: "Tasks" }).getByRole("listitem"),
@@ -191,7 +181,7 @@ test("a dated Note added to a Thread becomes a dated Task named by its first lin
 
   await page.goto("/");
   const pane = await createThread(page, title);
-  // D stays open in its pane, which covers the header's New note (ADR 0037): capture through the palette.
+  // The open pane covers the header's New note (ADR 0037), so capture through the palette.
   const palette = await openPalette(page);
   await palette.getByRole("option", { name: "New note" }).click();
   const compose = page.getByRole("dialog");
@@ -220,7 +210,7 @@ test("a dated Note added to a Thread becomes a dated Task named by its first lin
   await page.getByRole("option", { name: title }).click();
   await expect(page.getByText("Note added to thread")).toBeVisible();
 
-  // During Undo the destination is not published, and ordinary Task capture remains usable.
+  // While Undo is up the Task isn't in the Thread yet, and capture still works.
   await expect(pane).toBeVisible();
   const tasks = pane.getByRole("list", { name: "Tasks" });
   await expect(tasks.getByRole("button", { name: task })).toHaveCount(0);
@@ -228,7 +218,6 @@ test("a dated Note added to a Thread becomes a dated Task named by its first lin
   await addTask(pane, during);
   await shot("dated-d-pending");
 
-  // The confirmed dated Task appears after Undo and save finish.
   expect((await added).ok()).toBe(true);
   const converted = taskRow(pane, task);
   await expect(converted).toBeVisible();
@@ -243,7 +232,6 @@ test("a dated Note added to a Thread becomes a dated Task named by its first lin
   await expect(noDate(page).getByRole("link", { name: title })).toHaveCount(0);
   await shot("dated-d-added");
 
-  // One Thread Note and no Activity Log entry: counts the screen can't show.
   expect(
     await d1(
       `SELECT body FROM thread_notes WHERE thread_id IN (${threadId(account, title)})`,
@@ -251,7 +239,6 @@ test("a dated Note added to a Thread becomes a dated Task named by its first lin
   ).toEqual([{ body }]);
   expect(await logOf(d1, account, title)).toEqual([]);
 
-  // Completing the confirmed converted Task goes out once: it is gone and logged once; the unrelated Task remains.
   await sent(page, /\/complete$/, () =>
     converted.getByRole("button", { name: "Complete task" }).click(),
   );

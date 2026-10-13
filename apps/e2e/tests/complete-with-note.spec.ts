@@ -1,8 +1,4 @@
-// Complete a Task with a note (ADR 0032, issue #405): in Thread detail, "Complete with a note" opens a note line under
-// the row; Enter completes the Task and captures the text as one Thread Note, in one command. A plain Task is removed
-// (side pane, 1440x900), a repeating Task moves to its next occurrence (drawer, 1024x768, where Escape closes the note
-// line and not the drawer), and a Dashboard card still completes in one click with no note. Each mutation is proven by
-// a reload and D1: one Thread Note, one move_completed.
+// ADR 0032, #405.
 import type { Account, D1 } from "../src/fixtures.ts";
 
 import {
@@ -88,7 +84,7 @@ test("a repeating Task completed with a note in the drawer moves to its next occ
   const drawer = await createThread(page, title);
   await addTask(drawer, task);
 
-  // Today, repeating daily. At 1024 wide the "Thread created" toast covers the bottom of the picker until it leaves.
+  // At 1024 wide the "Thread created" toast covers the bottom of the picker until it leaves.
   const row = taskRow(drawer, task);
   await expect(page.getByText("Thread created")).toBeHidden();
   await row.getByRole("button", { name: "Set date" }).click();
@@ -98,7 +94,6 @@ test("a repeating Task completed with a note in the drawer moves to its next occ
   await sent(page, /\/date$/, () => quickPick(page, "Today"));
   await setRepeat(page, "Every day", "Daily");
 
-  // Escape closes the picker alone; the drawer stays.
   await closeDatePicker(page);
   await settled(drawer);
   await expect(drawer).toHaveAttribute("data-state", "open");
@@ -106,7 +101,7 @@ test("a repeating Task completed with a note in the drawer moves to its next occ
     drawer.getByRole("img", { name: "Repeats daily" }),
   ).toBeVisible();
 
-  // Escape in the note line drops the draft and closes the line, not the drawer.
+  // Escape closes the note line and drops its draft, never the drawer.
   const completeWithNote = row.getByRole("button", {
     name: "Complete with a note",
   });

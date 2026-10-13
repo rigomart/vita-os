@@ -1,12 +1,5 @@
-// Playwright's `test`, extended for Vita OS. Every spec file gets its own throwaway user (and every repeat of a file,
-// with --repeat-each, another one), so no spec sees another's data. Every test starts signed in as that user with a
-// session of its own, so signing out in one test leaves the next one signed in.
-//
-//   import { expect, sent, settled, test } from "../src/fixtures.ts";
-//   test("…", async ({ page, account, stamp, d1, shot }) => { … });
-//
-// To start signed out (to drive /sign-in with `account.email` and `account.password`):
-//   test.use({ storageState: { cookies: [], origins: [] } });
+// One throwaway user per spec file (and per --repeat-each repeat); each test signs in with a session of its own.
+// To start signed out: test.use({ storageState: { cookies: [], origins: [] } });
 import {
   type APIRequestContext,
   test as base,
@@ -24,31 +17,27 @@ import { d1, instanceName, requireState, type State } from "./instance.ts";
 
 export { expect };
 
-/** The throwaway user a spec file runs as. `id` is `user.id`, the `user_id` of every row the user owns. */
+/** `id` is the `user_id` of every row the user owns. */
 export type Account = { id: string; email: string; password: string };
 
 type StorageState = Awaited<ReturnType<APIRequestContext["storageState"]>>;
 
-/** Read-only SQL (one SELECT) against the instance's local D1; the `d1` fixture. */
 export type D1 = <Row = Record<string, unknown>>(sql: string) => Promise<Row[]>;
 
 type Fixtures = {
-  /** This spec file's throwaway user. */
   account: Account;
-  /** Unique text for this test, so repeated runs never match each other's rows. */
+  /** Unique per test, so repeated runs never match each other's rows. */
   stamp: string;
-  /** Read-only SQL (one SELECT) against the instance's local D1. Scope it with `WHERE user_id = '${account.id}'`. */
+  /** Scope it with `WHERE user_id = '${account.id}'`. */
   d1: D1;
-  /** Saves `<label>.png` of the page to the instance's evidence dir, attaches it to the test, returns its path. */
+  /** Saves `<label>.png` to the evidence dir and attaches it to the test. */
   shot: (label: string) => Promise<string>;
 };
 
 type WorkerFixtures = {
-  /** The running verify instance (VITA_INSTANCE, default main): URLs, ports, evidence and logs dirs. */
   instance: State;
 };
 
-// One user per spec file and repeat, for as long as this worker lives.
 const accounts = new Map<string, Promise<Account>>();
 
 async function apiContext(
@@ -144,17 +133,14 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
   },
 });
 
-/** Waits until a pane, drawer, or picker has stopped sliding. Click inside it only after this. */
+/** Waits until it stops sliding: its content is there before then, and an early click lands elsewhere (#449). */
 export async function settled(element: Locator) {
   await expect
     .poll(() => element.evaluate((el) => el.getAnimations().length))
     .toBe(0);
 }
 
-/**
- * Runs `action` and waits until the API answers the write it sends (a non-GET request whose path matches `path`),
- * and checks that the answer is a success. The reload that proves a mutation has to come after this.
- */
+/** Runs `action` and expects a successful answer to the write it sends to `path`. Reload only after this. */
 export async function sent(
   page: Page,
   path: RegExp,

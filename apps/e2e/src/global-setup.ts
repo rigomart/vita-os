@@ -1,4 +1,3 @@
-// Brings the instance up before any spec runs, or reuses it when it is already up. It stays up afterwards.
 import { instanceName, VitaError } from "./instance.ts";
 import { up } from "./stack.ts";
 

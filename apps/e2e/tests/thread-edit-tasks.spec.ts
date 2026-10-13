@@ -1,7 +1,3 @@
-// Thread edits beside independent Task commands: complete a Task and rename the Thread right away, then focus another
-// Task in the same gesture; then rename and complete a Task in one gesture, while the rename is in flight. Neither order
-// may end in "This Thread changed elsewhere" (or any refusal), and everything sticks: two completions logged, the final
-// title, B alone and focused after a reload. The title edit is committed by the click that blurs it, never Enter.
 import { addTask, createThread, taskRow } from "../src/app.ts";
 import { expect, sent, test } from "../src/fixtures.ts";
 
@@ -21,7 +17,7 @@ test("renaming a Thread while its Tasks are completed and focused is never refus
 
   await page.goto("/");
   await createThread(page, title);
-  // Not the pane `createThread` returns, which is found by title: renaming the Thread would lose it.
+  // Not `createThread`'s pane: it is found by title, which the rename changes.
   const pane = page.locator("[data-slot=thread-detail-pane]");
   for (const task of [a, b, c]) await addTask(pane, task);
 
@@ -47,8 +43,7 @@ test("renaming a Thread while its Tasks are completed and focused is never refus
   });
   await shot("edit-race-before");
 
-  // Order 1: complete A, then rename and focus B in one gesture: clicking Focus blurs the title field, which saves the
-  // rename, and the click focuses B, so the rename and the focus are issued together (A may still be in flight).
+  // Clicking Focus blurs the title, so the rename and the focus go out together, A's completion maybe still in flight.
   await sent(page, /\/complete$/, async () => {
     await taskRow(pane, a)
       .getByRole("button", { name: "Complete task" })
@@ -73,7 +68,7 @@ test("renaming a Thread while its Tasks are completed and focused is never refus
   await expect(pane.getByRole("button", { name: a, exact: true })).toBeHidden();
   await shot("edit-race-order-1");
 
-  // Order 2: rename, and complete C in the same gesture, while the rename is in flight.
+  // Completing C blurs the title, so it goes out while the rename is in flight.
   await pane.getByRole("button", { name: edited, exact: true }).click();
   await pane
     .getByRole("textbox", { name: "Click to edit...", exact: true })
@@ -87,21 +82,18 @@ test("renaming a Thread while its Tasks are completed and focused is never refus
   await expect(pane.getByRole("button", { name: c, exact: true })).toBeHidden();
   await shot("edit-race-order-2");
 
-  // No refusal was shown at any point, and every write succeeded.
   expect(
     await page.evaluate(
       () => (window as unknown as { __refused: boolean }).__refused,
     ),
   ).toBe(false);
   expect(failedWrites).toEqual([]);
-  // Each completion is recorded once.
   expect(
     await d1(
       `SELECT l.type, COUNT(*) AS n FROM activity_log_entries l JOIN threads t ON t.id = l.thread_id WHERE t.user_id = '${account.id}' AND t.title = '${final}' GROUP BY l.type`,
     ),
   ).toEqual([{ type: "move_completed", n: 2 }]);
 
-  // After a reload the pane shows the final title, B alone and focused.
   await page.reload();
   await expect(page.getByRole("complementary", { name: final })).toBeVisible();
   await expect(

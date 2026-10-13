@@ -1,5 +1,3 @@
-// Capture a Standalone Note, edit it in place in the live-preview editor, then delete it with Undo and with the offer
-// lapsing. Reloads prove saved writes; D1 checks the stored Markdown source and the committed deletion.
 import type { Page } from "@playwright/test";
 
 import type { Account, D1 } from "../src/fixtures.ts";
@@ -13,10 +11,6 @@ import {
 } from "../src/app.ts";
 import { expect, sent, test } from "../src/fixtures.ts";
 
-/**
- * Replaces the whole body of the Note view's editor (CodeMirror, loaded lazily: `fill` waits for it). Playwright's
- * `fill` selects all before inserting, so it replaces; agent-browser's inserted at the caret.
- */
 async function replaceBody(page: Page, text: string) {
   const body = noteView(page).getByRole("textbox", { name: "Note body" });
   await body.fill(text);
@@ -43,7 +37,7 @@ test("a captured Note keeps its Markdown source and edits in place", async ({
   const body = noteView(page).getByRole("textbox", { name: "Note body" });
   await expect(body).toBeVisible();
   await replaceBody(page, typed);
-  // Formatting renders while typing: the bold text is drawn bold in the editor itself.
+  // Live preview: the bold renders in the editor itself.
   await expect(
     body
       .locator(".cm-atomic-strong")
@@ -54,7 +48,6 @@ test("a captured Note keeps its Markdown source and edits in place", async ({
     noteView(page).getByRole("button", { name: "Add", exact: true }).click(),
   );
   await expect(page.getByText("Note added")).toBeVisible();
-  // The Markdown source is stored as typed, which the rendered card cannot show.
   expect(await notesWith(d1, account, stamp)).toEqual([
     { body: typed, state: "open" },
   ]);
@@ -62,8 +55,7 @@ test("a captured Note keeps its Markdown source and edits in place", async ({
   await expect(openNote(page, `Verify Note ${stamp}`)).toBeVisible();
   await shot("notes-captured-after");
 
-  // A saved Note opens rendered, with no Read/Write switch and no caret. Editing marks it unsaved; Escape from the
-  // discard question keeps the edit.
+  // A saved Note opens rendered: no Read/Write tabs, no caret.
   await openNote(page, `Verify Note ${stamp}`).click();
   await expect(body).toBeVisible();
   await expect(noteView(page).getByRole("tab")).toHaveCount(0);
@@ -106,13 +98,12 @@ test("Delete hides the card, Undo keeps the Note, and a lapsed offer deletes the
     if (r.method() === "DELETE") deletes.push(new URL(r.url()).pathname);
   });
 
-  // A controllable clock, so the five-second Undo offer can lapse without a sleep. It starts at the real time.
+  // Lets the five-second Undo offer lapse without a sleep.
   await page.clock.install();
   await page.goto("/");
   await captureNote(page, `**${text}**`);
   await page.reload();
 
-  // Delete closes the view and hides the card at once; Undo restores it and nothing reaches the service.
   await openNote(page, text).click();
   await noteView(page).getByRole("button", { name: "More actions" }).click();
   await shot("notes-delete-before");
@@ -126,7 +117,6 @@ test("Delete hides the card, Undo keeps the Note, and a lapsed offer deletes the
   await toast.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(openNote(page, text)).toBeVisible();
   await expect(page.getByText("Note deleted")).toBeHidden();
-  // Past the five-second offer, no delete was sent; the reload proves Undo lasted.
   await page.clock.fastForward(6_000);
   expect(deletes).toEqual([]);
   await page.reload();
@@ -136,7 +126,6 @@ test("Delete hides the card, Undo keeps the Note, and a lapsed offer deletes the
   ]);
   await shot("notes-delete-undone-after");
 
-  // A second deletion commits when the offer lapses: the row is really deleted, not hidden.
   const notes = await notesCount(page);
   await openNote(page, text).click();
   await noteView(page).getByRole("button", { name: "More actions" }).click();

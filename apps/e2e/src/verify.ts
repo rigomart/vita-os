@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-// `bun run verify`: start, check, and stop an isolated local Vita OS stack. Specs drive it with `bun run test:e2e`.
 import { d1, instanceName, requireState, VitaError } from "./instance.ts";
 import { doctor, down, publicEnv, up } from "./stack.ts";
 

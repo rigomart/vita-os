@@ -1,12 +1,4 @@
-// Repeating Standalone Notes (ADR 0041, issue #458): a saved dated Note takes a monthly Repeat from its card's picker
-// (compose has no Repeat row), wears the repeat glyph on its date and offers Complete in place of Archive; Complete moves
-// it to the same day next month and writes no Activity Log entry; a missed one shows once under Late and Complete moves
-// it to its next date; the Note view offers Complete beside Archive, Archive takes it off the board into History and
-// Unarchive brings it back with its date and Repeat; clearing the date clears the Repeat and brings Archive back; adding
-// a repeating Note to a Thread gives a dated Task carrying the Repeat; the card again at 1024x768. A one-off Note keeps
-// Archive. Dates are relative to today (the real clock): quick picks by their prefix ("Today, ", "Tomorrow, "), a past
-// day by its td[data-day] behind "Pick a date…", the monthly preset by its prefix "Every month on the". Completing a
-// Note has no toast; each write is proven by a reload.
+// ADR 0041, #458. Completing a Note shows no toast, so reloads prove each write.
 import type { Locator, Page } from "@playwright/test";
 
 import type { Account, D1 } from "../src/fixtures.ts";
@@ -41,7 +33,6 @@ const glyph = (scope: Locator) =>
 const completeButton = (scope: Locator) =>
   scope.getByRole("button", { name: /^Complete · back / });
 
-/** Opens the date picker that `open` reveals, then sets the monthly preset on the Note's date. The picker closes. */
 async function setMonthly(page: Page, open: () => Promise<void>) {
   await open();
   await datePicker(page)
@@ -55,7 +46,7 @@ async function setMonthly(page: Page, open: () => Promise<void>) {
   await expect(datePicker(page)).toBeHidden();
 }
 
-/** Sets the monthly Repeat from the Note's card picker (its date control shows on hover). */
+/** The card's date control shows only on hover. */
 async function setMonthlyFromCard(page: Page, text: string) {
   await setMonthly(page, async () => {
     await noteCard(page, text).hover();
@@ -101,14 +92,12 @@ test("a Today Note takes a monthly Repeat from its card and Complete moves it to
   await expect(page.getByText("Note added")).toBeVisible();
   await page.reload();
 
-  // One-off: Archive, no Complete.
   await expect(openNote(today(page), body)).toBeVisible();
   await expect(
     noteCard(page, body).getByRole("button", { name: "Archive note" }),
   ).toBeVisible();
   await expect(completeButton(today(page))).toHaveCount(0);
 
-  // The card's picker: Repeat, Never, then the monthly preset on today's day.
   await noteCard(page, body).hover();
   await noteCard(page, body)
     .getByRole("button", { name: "Change follow-up date", exact: true })
@@ -148,7 +137,6 @@ test("a Today Note takes a monthly Repeat from its card and Complete moves it to
     },
   ]);
 
-  // Complete from the card: it leaves Today for the same day next month; no Activity Log entry names it.
   await sent(page, /\/complete$/, () =>
     completeButton(noteCard(page, body)).click(),
   );
@@ -195,8 +183,6 @@ test("a missed repeating Note shows once under Late and Complete moves it to its
   await expect(openNote(page, body)).toBeVisible();
   await expect(openNote(lateSection, body)).toHaveCount(0);
 
-  // The Note view: its date wears the glyph and Complete sits beside Archive; the next date is a month after the
-  // late one.
   await openNote(page, body).click();
   const view = noteView(page);
   await expect(view.getByText(body)).toBeVisible();

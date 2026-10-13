@@ -1,5 +1,3 @@
-// Thread Notes in the side pane (1440x900): capture, edit, archive, unarchive, and a deletion that reaches D1 once the
-// Undo offer has lapsed. Every write is proven by a reload and checked in D1.
 import type { Page } from "@playwright/test";
 
 import type { Account, D1 } from "../src/fixtures.ts";
@@ -7,14 +5,12 @@ import type { Account, D1 } from "../src/fixtures.ts";
 import { createThread, noteView, openNote } from "../src/app.ts";
 import { expect, sent, test } from "../src/fixtures.ts";
 
-/** Creates a Thread and captures one Thread Note in its side pane; returns the pane. */
 async function threadWithNote(page: Page, title: string, body: string) {
   await page.goto("/");
   const pane = await createThread(page, title);
   await pane
     .getByRole("button", { name: "Write a note…", exact: true })
     .click();
-  // The editor is CodeMirror and loads lazily; `fill` waits for it and replaces its text.
   await noteView(page).getByRole("textbox", { name: "Note body" }).fill(body);
   return pane;
 }
@@ -145,7 +141,7 @@ test("a deleted Thread Note is gone from D1 once the Undo offer lapses", async (
   await openNote(pane, text).click();
   await noteView(page).getByRole("button", { name: "More actions" }).click();
   await shot("thread-note-delete-before");
-  // The delete is sent when the five-second Undo offer closes; reloading earlier would cancel it.
+  // Sent when the five-second Undo offer closes; reloading earlier would cancel it.
   await sent(page, /\/thread-notes\/[^/]+$/, async () => {
     await page
       .getByRole("menuitem", { name: "Delete note", exact: true })
@@ -158,7 +154,6 @@ test("a deleted Thread Note is gone from D1 once the Undo offer lapses", async (
     pane.getByRole("region", { name: "Thread Notes" }),
   ).toBeVisible();
   await expect(pane.getByText(text)).toHaveCount(0);
-  // The row is really deleted, not hidden.
   expect(await notesOf(d1, account, title)).toEqual([]);
   await shot("thread-note-deleted");
 });
