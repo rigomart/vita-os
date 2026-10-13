@@ -12,7 +12,7 @@ Proof that a change works is a Playwright spec in `apps/e2e` that drives the rea
 
 Specs run in the installed Google Chrome (`channel: "chrome"` in `apps/e2e/playwright.config.ts`). Without it, install it with `bunx playwright install chrome`.
 
-Read [`features/README.md`](features/README.md) first. It maps each feature to its entry points, locators, covering spec, and the end state that proves it.
+[`features/README.md`](features/README.md) maps each feature to its specs and to what no spec drives yet.
 
 ## Isolation
 
@@ -35,7 +35,7 @@ bun run test:e2e tests/tasks.spec.ts --repeat-each 5  # is it flaky?
 bun run test:e2e                                      # every spec in apps/e2e/tests
 ```
 
-When a change touches a feature, run its spec (the table in `features/README.md`). When it adds or changes a path, add or update a test in that spec, or write `tests/<feature>.spec.ts`. If a spec fails because the feature changed on purpose, fix the spec in the same change.
+When a change touches a feature, run its specs (the table in `features/README.md`). When it adds or changes a path, add or update a test in that spec, or write `tests/<feature>.spec.ts`, and update the feature's row. If a spec fails because the feature changed on purpose, fix the spec in the same change.
 
 A failure prints the failing line, the locator it waited for, and `Error Context: …/error-context.md`: the page's ARIA snapshot at that moment, with the roles and names actually on screen. Read it before changing anything. The screenshot and trace sit beside it under `.verify/instances/<name>/playwright/results/`, the HTML report under `…/playwright/report/`.
 
@@ -66,9 +66,9 @@ test("a captured Note survives a reload", async ({ page, account, stamp, d1, sho
 
 To see what a surface offers, print its ARIA snapshot: `console.log(await page.getByRole("dialog").ariaSnapshot())`.
 
-The fixtures (`src/fixtures.ts`): `page` is signed in as the spec file's user at 1440×900 and blank until you call `page.goto("/")`; `account` is `{ id, email, password }`; `stamp` is unique text per test; `d1` runs one read-only SELECT; `shot` saves a PNG; `instance` holds the URLs (`webUrl`, `apiUrl`). `sent` and `settled` come from `src/fixtures.ts`. To start signed out, `test.use({ storageState: { cookies: [], origins: [] } })`.
+The fixtures (`src/fixtures.ts`): `page` is signed in as the spec file's user at 1440×900 and blank until you call `page.goto("/")`; `account` is `{ id, email, password }`; `stamp` is unique text per test; `d1` runs one read-only SELECT; `shot` saves a PNG; `instance` holds the URLs (`webUrl`, `apiUrl`). To start signed out, `test.use({ storageState: { cookies: [], origins: [] } })`.
 
-`src/app.ts` holds the actions specs share, for Threads, Tasks, the date picker, Notes, the palette, and D1 subqueries. Read it before writing your own. For example, `createThread(page, title)` creates a Thread through the New thread dialog, waits for the server write and the `Thread created` toast, and returns the Thread's side pane or drawer once it has stopped sliding; `addTask(pane, text)` and `taskRow(pane, text)` add and find a Task in it.
+`src/app.ts` holds the actions specs share, for Threads, Tasks, the date picker, Notes, the palette, and D1 subqueries. Read it before writing your own. For example, `createThread(page, title)` returns the new Thread's side pane or drawer once its write is confirmed and it has stopped sliding; `addTask(pane, text)` and `taskRow(pane, text)` add and find a Task in it.
 
 ## Driving
 
@@ -81,15 +81,13 @@ The fixtures (`src/fixtures.ts`): `page` is signed in as the spec file's user at
 ## Proof standards
 
 - Drive the real user path. Never call internal setters, test-only endpoints, or the API in place of the user (a `page.request` write, a `page.evaluate` that clicks or sets values), and never write to D1 to fake a state.
-- Capture the action and the result, not only the final screen: `shot("<feature>-before")` and `shot("<feature>-after")`. `shot` saves `<label>.png` to `.verify/evidence/<instance>/<started>/<spec>/`, attaches it to the HTML report, and returns the path. Read the PNG to look at it. `<started>` is fixed when the instance comes up, not per run, so a later run or `--repeat-each` repeat overwrites the same `<label>.png`; the copy attached to the HTML report belongs to its own run.
-- Vita updates optimistically: a new Note or Thread appears before the server confirms it. Prove a mutation by wrapping its action in `sent(page, /<path>$/, action)`, which waits for the write's response and asserts it succeeded, then `page.reload()` and assert what the server stored.
-- Query D1 only for what the screen cannot show: no duplicate rows (`COUNT(*)` is exactly 1), an exact stored value (a time, Markdown source), a row really deleted rather than hidden, an Activity Log entry's stored content or count, sessions. Scope every query to `account.id` and assert exact typed rows (`toEqual([{ n: 1 }])`). Do not restate in SQL what the reloaded page shows: that ties the spec to the storage layout, which changes more often than the screen. Table and column names are in `apps/api/migrations`.
+- Capture the action and the result, not only the final screen: `shot("<feature>-before")` and `shot("<feature>-after")`. `shot` saves `<label>.png` to `.verify/evidence/<instance>/<started>/<spec>/`, attaches it to the HTML report, and returns the path. `<started>` is fixed when the instance comes up, so a later run or repeat overwrites the PNG; the HTML report keeps each run's copy.
+- Vita updates optimistically. Prove a mutation by wrapping its action in `sent(page, /<path>$/, action)`, which waits for the write's response and asserts it succeeded, then `page.reload()` and assert what the server stored.
+- Query D1 only for what the screen cannot show: no duplicate rows (`COUNT(*)` is exactly 1), an exact stored value (a time, Markdown source), a row really deleted rather than hidden, an Activity Log entry's stored content or count, sessions. Scope every query to `account.id` and assert exact typed rows (`toEqual([{ n: 1 }])`). Do not restate in SQL what the reloaded page shows: storage changes more often than the screen. Table and column names are in `apps/api/migrations`.
 - Drive every path your change touched. The Thread pane is a side pane from 1280px (`complementary "<title>"`) and a drawer below (`dialog "<title>"`), built from different components. A change to Thread pane, layout, or navigation code gets a test at `page.setViewportSize({ width: 1024, height: 768 })` too. A change to the Dashboard or the chrome gets one below 768px (`390×844`). Name any path you changed but did not drive in your report.
-- Report the feature ID and entry point with every artifact. Report an unreachable entry point with the step you attempted and the unmet precondition; do not report it as verified through a different path.
+- Report the feature and entry point with every artifact. Report an unreachable entry point with the step you attempted and the unmet precondition; do not report it as verified through a different path.
 - A check you could not run is `INCONCLUSIVE`, never a pass.
 - Time-limit verification. If the same step fails twice, stop that item, report it `INCONCLUSIVE` with the failing step and its error context, and move on. Do not retry in a loop.
-
-After driving, update the feature map as [Keeping the map current](features/README.md#keeping-the-map-current) says.
 
 ## Doctor and cleanup
 
@@ -102,11 +100,14 @@ bun run verify down --purge    # stop this instance and delete its D1 (do this w
 
 ## Gotchas
 
-- **Animations.** Panes, drawers, dialogs, and pickers slide, and their content is on the page before they stop moving. A click during the slide lands on whatever is under that spot, or outside the drawer, which closes it. Before clicking inside one that just opened, `await settled(page.locator("[data-slot=thread-detail-pane]"))` (side pane) or `settled(page.locator("[data-vaul-drawer]"))` (drawer); `createThread` already does this for the surface it returns. After confirming a dialog, wait for it to be hidden before the next click. `fill` focuses rather than clicking at a position, so it is safe sooner.
+- **Animations.** Panes, drawers, dialogs, and pickers slide, and their content is on the page before they stop moving. A click during the slide can land outside the drawer, which closes it. Before clicking inside one that just opened, `await settled(page.locator("[data-slot=thread-detail-pane]"))` (side pane) or `settled(page.locator("[data-vaul-drawer]"))` (drawer); `createThread` already does this for the surface it returns. After confirming a dialog, wait for it to be hidden before the next click. `fill` is safe sooner: it focuses rather than clicks.
 - **"… intercepts pointer events".** An open pane, drawer, dialog, or toast sits over the target, and the click retries until it times out. From 1280px an open Thread pane covers the header's actions: close it (`Close thread`) or use the palette (`ControlOrMeta+k`). A toast can cover a picker's bottom edge: wait for the toast to be hidden. The TanStack Router devtools toggle floats in a corner in dev.
 - The Note editor (`Note body`) is CodeMirror and loads lazily. `fill` waits for it and replaces the whole body. To type at the caret (to watch the live preview), click into it and use `page.keyboard.type`. Saved Notes are preview buttons named `Open note: <plain-text preview>`.
 - A time no chip offers is typed under `Other time` into `textbox "Time"`, which is not a native time input: type `330p`, press Enter, and assert `button "Other time: 3:30 PM"`.
 - Use `localhost`, never `127.0.0.1`. CORS allows exactly the instance's `http://localhost:<webPort>` origin; the fixtures' `baseURL` already uses it.
 - "Continue with GitHub" and "Continue with Google" render but have no local credentials. Do not click them.
-- Keep the desktop viewport unless you are testing another width. Below 1024px (`lg`) the header's actions move to the bottom `navigation "Actions"` bar and `No date` leads the list folded to one line. Below 768px the Dashboard's columns and filter row change too (see [Dashboard board](features/dashboard-board.md)).
-- Toasts are transient. Assert a toast right after the action that raises it, and do not use one as the only proof of a write. An earlier action's toast with the same text may still be up: match with `.first()`.
+- Keep the desktop viewport unless you are testing another width. Below 1024px (`lg`) the header's actions move to the bottom `navigation "Actions"` bar and `No date` leads the list folded to one line: unfold it with its `button` (`expanded: false`). Below 768px the Dashboard's columns and filter row change too.
+- Toasts are transient. Assert a toast right after the action that raises it, and do not use one as the only proof of a write. An earlier action's toast with the same text may still be up: match with `.first()`. Task, date and Repeat commands raise none.
+- Delete note and Add to thread write only after the five-second Undo offer: wait for `Undo` to be hidden before a reload (which cancels a queued delete) or a D1 check.
+- Items a week or more out are one-line rows without card controls. Pick days relative to today (`pickDate(page, fromToday(n))`); a past day sets up a Late item.
+- In D1 a Note's Follow-up date is `notes.attention_date`, Archived is `state = 'done'`, and a Thread's Tasks are JSON in `threads.moves_json`.

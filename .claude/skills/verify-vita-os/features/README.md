@@ -1,61 +1,33 @@
-# Vita OS verification map
+# Feature map
 
-This directory is the maintained source for verifying Vita OS's user-facing behavior. Read this index before driving the app, then use the matching feature file as the recipe and its spec as the working example.
+Each user-visible feature, the specs in `apps/e2e/tests/` that drive it, and what no spec drives yet. A spec's test names say what it proves; read the spec for how.
 
-How to run specs, which user and data a test starts with, how to drive, and what counts as proof are in [`../SKILL.md`](../SKILL.md). This directory holds what is specific to each feature.
+| Feature | Behavior | Specs | Not covered |
+| --- | --- | --- | --- |
+| Sign in | Email and password sign-in lands on the Dashboard; signed out, every product route goes to `/sign-in`; Sign out ends the session. | [sign-in](../../../../apps/e2e/tests/sign-in.spec.ts) | Wrong-password error |
+| Create a thread | The New thread dialog creates a Thread, optionally in a new or existing Area, and opens it in the side pane or drawer. | Every Thread spec, through `createThread` in [src/app.ts](../../../../apps/e2e/src/app.ts); with an Area: [areas](../../../../apps/e2e/tests/areas.spec.ts), [dashboard-filter-counts](../../../../apps/e2e/tests/dashboard-filter-counts.spec.ts) | Palette's New thread; bottom bar below `lg`; Area defaulting to the Dashboard filter |
+| Capture a note | New note captures a Standalone Note, optionally with a Follow-up date, and it stays on the Dashboard after a reload. | [notes](../../../../apps/e2e/tests/notes.spec.ts) (header), [dated-tasks](../../../../apps/e2e/tests/dated-tasks.spec.ts) (palette) | `Q` shortcut; bottom bar below `lg` |
+| Note view | One live-preview Markdown editor for every Note: edit in place, discard prompt for unsaved changes, Delete with Undo. | [notes](../../../../apps/e2e/tests/notes.spec.ts), [thread-notes](../../../../apps/e2e/tests/thread-notes.spec.ts), [repeating-notes](../../../../apps/e2e/tests/repeating-notes.spec.ts) | Task checkboxes; link icon; list continuation and Tab nesting; Control+B/I; Copy Markdown; phone drawer, nested over a Thread drawer, and its swipe |
+| Thread Notes | Notes inside a Thread: capture, edit, Archive to the Thread's Archived notes, Unarchive, delete. | [thread-notes](../../../../apps/e2e/tests/thread-notes.spec.ts) | Drawer and phone; Archived notes paging |
+| Add a Note to a Thread | An Open Standalone Note moves into a Thread (or a new one) after a five-second Undo offer; a dated Note becomes a dated Task carrying its Repeat. | [add-to-thread](../../../../apps/e2e/tests/add-to-thread.spec.ts), [dated-tasks](../../../../apps/e2e/tests/dated-tasks.spec.ts), [repeating-notes](../../../../apps/e2e/tests/repeating-notes.spec.ts) | Undo restoring the Note; the toast's Open thread; `Brings this thread back` in the picker; picker search; phone |
+| Tasks | Add, Focus, edit, remove, date, Repeat, Skip and complete Tasks (with a note in Thread detail), in the side pane, the drawer and the Dashboard card. | [tasks](../../../../apps/e2e/tests/tasks.spec.ts), [thread-drawer](../../../../apps/e2e/tests/thread-drawer.spec.ts), [dashboard-tasks](../../../../apps/e2e/tests/dashboard-tasks.spec.ts), [dated-tasks](../../../../apps/e2e/tests/dated-tasks.spec.ts), [repeating-tasks](../../../../apps/e2e/tests/repeating-tasks.spec.ts), [complete-with-note](../../../../apps/e2e/tests/complete-with-note.spec.ts), [thread-edit-tasks](../../../../apps/e2e/tests/thread-edit-tasks.spec.ts), [resolve-reopen](../../../../apps/e2e/tests/resolve-reopen.spec.ts) | Monthly Repeat in the drawer; failure toasts (application tests cover them); row layout; `Add a task` committing on blur |
+| Follow-up dates | A Standalone Note's optional Follow-up date places it on the Dashboard; a dated Note can Repeat, and Complete moves it to its next date. | [repeating-notes](../../../../apps/e2e/tests/repeating-notes.spec.ts), [dated-tasks](../../../../apps/e2e/tests/dated-tasks.spec.ts) | A time on a Note; Custom… Repeat on a Note; phone; Thread Note compose having no date; old `follow_up_change` entries |
+| Dashboard | One list of dated Threads and Standalone Notes grouped by when they come due, No date beside it, shared cards, and the filter row's counts. | [dashboard-filter-counts](../../../../apps/e2e/tests/dashboard-filter-counts.spec.ts), [dashboard-tasks](../../../../apps/e2e/tests/dashboard-tasks.spec.ts), [dated-tasks](../../../../apps/e2e/tests/dated-tasks.spec.ts), [repeating-tasks](../../../../apps/e2e/tests/repeating-tasks.spec.ts) | Empty board; one-line rows from `In 1 week`; filter overflow (`<n> more`); No date folded below `lg`; bottom Actions bar; dark mode |
+| Notes on the Dashboard | The Notes filter (`?show=notes`) shows open Standalone Notes alone; Archive and Unarchive; History finds Archived Notes by body. | [notes-dashboard](../../../../apps/e2e/tests/notes-dashboard.spec.ts), [repeating-notes](../../../../apps/e2e/tests/repeating-notes.spec.ts) | Old addresses (`/notes`, `/inbox`, `?inbox=true`); an Area named Notes; the filter surviving the Thread pane; Load more archived notes; palette Go to → Notes; phone |
+| Resolved Threads | The palette's History lists Resolved Threads newest first and searches them; Reopen from the pane or drawer returns one to open work without its discarded Tasks. | [history](../../../../apps/e2e/tests/history.spec.ts), [resolve-reopen](../../../../apps/e2e/tests/resolve-reopen.spec.ts) | Keyboard chip activation; Area search |
+| Activity Log | A Thread's Activity tab: one full sentence per entry (`Completed <Task>`, `Resolved the Thread`, …) under day headings, newest first; a resolution quotes its note and lists the Tasks it dropped. | [tasks](../../../../apps/e2e/tests/tasks.spec.ts), [resolve-reopen](../../../../apps/e2e/tests/resolve-reopen.spec.ts) | `Show earlier` (unit-tested); Area entries; legacy Next move and Follow-up date entries; long-text wrapping; phone |
+| Manage areas | The Manage areas dialog adds, renames, re-icons, reorders and deletes Areas; a deleted Area's Threads stay open without the label. | [areas](../../../../apps/e2e/tests/areas.spec.ts) | Mouse drag reorder; phone drawer |
+| Phone installation and sharing | A web app manifest and icons make Vita OS installable; text shared to `/share-target` becomes a Standalone Note, through sign-in if needed, with Retry on failure. | None | All of it |
+| Reload an outdated tab | When the API's version differs from the tab's web build, the tab waits for pending writes and the matching build, then reloads. | None | All of it |
 
-## Spec coverage
+## Features without a spec
 
-Run a spec with `bun run test:e2e tests/<name>.spec.ts`. Each spec file runs as one user, whose data its tests share in order ([Users and test data](../SKILL.md#users-and-test-data)). Each checks visible behavior after reloads and persisted writes with read-only D1 queries. Its header comment says what it proves. Run the specs covering your change; add or update a test when a feature file's recipe changes.
+**Phone installation and sharing.** At 390×844, signed out (`test.use({ storageState: { cookies: [], origins: [] } })`), visit `/share-target?title=…&text=…<stamp>`: it lands on `/sign-in`, signing in shows `Note added`, and the text is on the Dashboard after a reload (unfold No date first). For Retry, signed in, abort `**/v1/notes` with `page.route` and share twice: the first share's text stays with Retry and the second waits behind it; unroute, Retry, and both survive a reload. For installability, fetch `/manifest.webmanifest` and every icon it lists, and expect `Page.getInstallabilityErrors` (CDP) to be empty. A real Android share picker and home-screen install stay manual.
 
-| Spec | Feature maps and scope |
-| --- | --- |
-| [notes](../../../../apps/e2e/tests/notes.spec.ts) | [Capture a note](./capture-note.md), [Note view](./note-view.md): header capture, live preview while typing, saved edits in place, Delete with Undo and persisted deletion. |
-| [notes-dashboard](../../../../apps/e2e/tests/notes-dashboard.spec.ts) | [Notes on the Dashboard](./notes-on-the-dashboard.md): Notes filter, archive, archived body search in History, and unarchive. |
-| [repeating-notes](../../../../apps/e2e/tests/repeating-notes.spec.ts) | [Follow-up dates](./follow-up-dates.md), [Notes on the Dashboard](./notes-on-the-dashboard.md): a monthly Repeat on a Note card, Complete (no Activity Log entry), one Late item, the Note view's Complete, Archive to History and Unarchive keeping the Repeat, Clear, Add to thread carrying the Repeat, and the card at 1024×768. |
-| [dashboard-filter-counts](../../../../apps/e2e/tests/dashboard-filter-counts.spec.ts) | [Dashboard board](./dashboard-board.md): All counts dated and undated Standalone Notes plus Threads; Area and Notes counts stay separate, on desktop and phone. |
-| [thread-notes](../../../../apps/e2e/tests/thread-notes.spec.ts) | [Thread Notes](./thread-notes.md): desktop capture, edit, archive, unarchive, and deletion. |
-| [add-to-thread](../../../../apps/e2e/tests/add-to-thread.spec.ts) | [Add a Note to a Thread](./add-to-thread.md): undated add to an existing Thread and New thread from note. Dated conversion stays in `dated-tasks.spec.ts`. |
-| [areas](../../../../apps/e2e/tests/areas.spec.ts) | [Manage areas](./manage-areas.md): create, rename, icon, reorder, and delete while Threads survive without the label. |
-| [history](../../../../apps/e2e/tests/history.spec.ts) | [Resolved Threads](./resolved-threads.md): palette browsing and search, opening and reopening in the pane and drawer. |
-| [resolve-reopen](../../../../apps/e2e/tests/resolve-reopen.spec.ts) | [Resolved Threads](./resolved-threads.md), [Tasks](./tasks.md): resolving a Thread with open Tasks, the resolution entry naming them, and Reopen without them. |
-| [sign-in](../../../../apps/e2e/tests/sign-in.spec.ts) | [Sign in](./sign-in.md): menu sign-out, the signed-out gate, and sign-in through the real form. |
-| [tasks](../../../../apps/e2e/tests/tasks.spec.ts) | [Tasks](./tasks.md): add, focus, unfocus, edit, remove, and complete in the Thread pane, and the Activity Log. |
-| [dashboard-tasks](../../../../apps/e2e/tests/dashboard-tasks.spec.ts) | [Tasks](./tasks.md), [Dashboard board](./dashboard-board.md): the card's Task slot (one Task, several unfocused, one focused) and completing from the card. |
-| [dated-tasks](../../../../apps/e2e/tests/dated-tasks.spec.ts) | [Tasks](./tasks.md), [Dashboard board](./dashboard-board.md): a date with a time from a Task row, placement and the card's lead, rescheduling from the card, two Tasks on one day, a card with no single Task, and a dated Note added to a Thread. |
-| [repeating-tasks](../../../../apps/e2e/tests/repeating-tasks.spec.ts) | [Tasks](./tasks.md): daily, weekly, Every N days (drawer), and monthly Repeats, Complete and Skip from the row and the card, and Late. |
-| [complete-with-note](../../../../apps/e2e/tests/complete-with-note.spec.ts) | [Tasks](./tasks.md): Complete with a note in the side pane and the drawer, and a Dashboard card completing in one click. |
-| [thread-drawer](../../../../apps/e2e/tests/thread-drawer.spec.ts) | [Tasks](./tasks.md): Thread detail as a drawer at 1024×768: Tasks, focus, completion, Activity, reload, close. |
-| [thread-edit-tasks](../../../../apps/e2e/tests/thread-edit-tasks.spec.ts) | [Tasks](./tasks.md): renaming a Thread right beside Task commands, in both orders, without a conflict. |
+**Reload an outdated tab.** Give the API's `APP_VERSION` (Wrangler var) and the web's `VITE_APP_VERSION` (`apps/web/.env.local`) one value, and start a named instance with `VITA_VERIFY_DISABLE_HMR=1 bun run verify up --instance <name>` so HMR cannot fake the reload. The scratch spec changes the versions itself and restores them in a `finally`. Changing only the API version and reading the API must not reload the tab; changing the web version while a deleted Note's Undo offer is up must wait for that write. Proof: `performance.timeOrigin` changes without a `page.reload()`, the deletion is in D1, and a Note captured afterwards saves. `down --purge` the instance afterwards.
 
-## Feature entry contract
+## Keeping it current
 
-Each feature file has an H1 title, a one-paragraph description of the user-visible behavior, a one-line `Status` (`proven on <short sha>` or `in #<PR>`, by which spec or by hand, then `Not driven:` and what was skipped; or `mapped from source, not yet driven`), then exactly four H2 sections in order: `Sub-features`, `How to get to it (user POV)`, `Driving it` (Playwright locators and the spec that drives it), `Gotchas`. `Status` says what is true now: replace it on every proof instead of appending to it. Evidence paths and earlier proofs belong in the PR description, since `.verify/evidence/` exists only on the machine that made it.
-
-## Keeping the map current
-
-The feature map is only as good as its last update, and you are the one who updates it. After driving the app, before you report:
-
-- **The feature has no file here.** Explore its entry points with a scratch spec (print `ariaSnapshot()` of the surface), find the table it writes in `apps/api/migrations`, and prove it once by the standards in `../SKILL.md`. Then write `<feature>.md` in the entry contract, using the locators that just worked, add a line to the index below, and move the spec to `apps/e2e/tests/`. Commit it with the change that introduced or altered the feature.
-- **A documented step no longer matches the app.** Decide which side is wrong. If the app regressed, report the regression and leave the file and the spec alone. If the feature changed on purpose, fix the file and the spec in the same change and say so in your report.
-- **The file says `mapped from source, not yet driven`.** Correct every handle against the page while you drive it, then set `Status: proven on <short sha>`.
-- **You proved a feature that already has a `Status`.** Replace the line; never append to it. It names the latest proof and what it did not drive. Earlier proofs and evidence paths go in the PR description.
-- **Never mark a step proven that you did not run.** A sub-feature you skipped stays listed, and your report says it was skipped.
-
-## Features
-
-- [Sign in](./sign-in.md) covers the email and password form, the session check, and the signed-out redirect.
-- [Capture a note](./capture-note.md) covers the header button, the Q shortcut, and the command palette, plus persistence.
-- [Note view](./note-view.md) covers the live-preview editor, task checkboxes, inline discard, Delete with Undo, previews, and nested phone drawers.
-- [Thread Notes](./thread-notes.md) covers capture, editing, archiving and its history, unarchiving, and persisted deletion inside a Thread.
-- [Add a Note to a Thread](./add-to-thread.md) covers Add to thread… with its date preview, Undo and Open thread, and New thread from note.
-- [Create a thread](./create-thread.md) covers the New thread dialog and the thread pane it opens.
-- [Resolved Threads](./resolved-threads.md) covers the Resolved threads group of the palette's History chip, its search and resolution ordering, opening in place, and Reopen in the pane and drawer.
-- [Notes on the Dashboard](./notes-on-the-dashboard.md) covers the Dashboard's Notes filter and its URL, the old Notes addresses, Archive and Unarchive, and finding Archived Notes in History by searching their bodies.
-- [Tasks](./tasks.md) covers adding, focusing, and completing a Task in the thread pane, the drawer, and the Dashboard card, dated Tasks, repeating Tasks (Repeat including monthly, Skip, Late), and completing a Task with a note.
-- [Activity Log](./activity-log.md) covers a Thread's Activity tab: full-sentence entries on one rail, wrapping, a resolution's note and dropped Tasks, day headings, and Show earlier.
-- [Dashboard board](./dashboard-board.md) covers the one dated list on file tabs, No date beside it or folded above it, the shared Thread and Note card, the filter overflow, and the phone layout.
-- [Follow-up dates](./follow-up-dates.md) covers the Follow-up date on standalone Notes, their Repeat and Complete, and their Dashboard placement. A Thread comes back at its soonest dated Task, covered in [Tasks](./tasks.md).
-- [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter the board row.
-- [Phone installation and sharing](./phone-installation.md) covers manifest/icons, shared Note capture through sign-in, retry, and persistence.
-- [Reload an outdated tab](./version-reload.md) covers API/web version mismatch, web readiness, pending saves, and preserved stored results.
+- A new or changed user-visible feature gets a spec, or an updated one, and its row here updated in the same change.
+- "Not covered" lists what no spec drives. Never list something as covered that no spec drives; when a spec starts driving it, remove it from "Not covered".
+- A passing spec is the proof. Evidence paths and one-off manual proofs go in the PR description.
