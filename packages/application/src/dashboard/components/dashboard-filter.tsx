@@ -104,18 +104,22 @@ export function DashboardFilter({
 
   return (
     <div ref={frame} className="relative w-full min-w-0">
-      {/* The ruler: every chip at its natural width, never seen. */}
+      {/* The ruler: every chip at its natural width, never seen. Clipped to
+          the frame, or on a phone its full width widens the page, and the
+          browser's wider layout viewport pushes fixed surfaces such as the
+          Thread drawer off screen. */}
       <div
-        ref={ruler}
         aria-hidden
-        className="pointer-events-none invisible absolute top-0 left-0 flex"
+        className="pointer-events-none invisible absolute inset-0 overflow-hidden"
       >
-        {options.map((option) => (
-          <span key={option.key} className={chip(option)}>
-            <ChipContent option={option} />
-          </span>
-        ))}
-        <span className="inline-flex size-8 shrink-0" />
+        <div ref={ruler} className="flex w-max">
+          {options.map((option) => (
+            <span key={option.key} className={chip(option)}>
+              <ChipContent option={option} />
+            </span>
+          ))}
+          <span className="inline-flex size-8 shrink-0" />
+        </div>
       </div>
 
       <nav
