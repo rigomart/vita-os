@@ -1,4 +1,4 @@
-// The Activity tab shows only "open → resolved", so the entry's content is read from D1.
+// #463. D1 proves the stored content; the Activity tab shows it as sentences.
 import {
   addTask,
   createThread,
@@ -58,7 +58,10 @@ test("resolving discards open Tasks and focus, names them in the log, and Reopen
     pane.getByRole("button", { name: taskA, exact: true }),
   ).toHaveCount(0);
   await pane.getByRole("tab", { name: "Activity", exact: true }).click();
-  await expect(pane.getByText("open → resolved")).toBeVisible();
+  await expect(pane.getByText("Resolved the Thread")).toBeVisible();
+  await expect(pane.getByText("Dropped 2 open Tasks")).toBeVisible();
+  await expect(pane.getByText(taskA)).toBeVisible();
+  await expect(pane.getByText(taskB)).toBeVisible();
   await shot("resolve-history");
 
   await reopenThread(pane);
