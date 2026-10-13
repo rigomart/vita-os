@@ -14,7 +14,6 @@ import { ThreadNotesSection } from "./thread-notes-section";
 interface ThreadBodyTabsProps {
   threadId: ThreadId;
   threadTitle: string;
-  lastActivityAt?: number;
 }
 
 /**
@@ -22,11 +21,7 @@ interface ThreadBodyTabsProps {
  * away. One scroll container wraps both panels rather than each owning its
  * own, so the pane keeps exactly one scrolling region either way.
  */
-export function ThreadBodyTabs({
-  threadId,
-  threadTitle,
-  lastActivityAt,
-}: ThreadBodyTabsProps) {
+export function ThreadBodyTabs({ threadId, threadTitle }: ThreadBodyTabsProps) {
   // The same read ThreadNotesSection observes, so the count costs nothing
   // beyond what the panel already pays.
   const notes = useThreadNotes(threadId).data;
@@ -52,10 +47,7 @@ export function ThreadBodyTabs({
           <ThreadNotesSection threadId={threadId} threadTitle={threadTitle} />
         </TabsContent>
         <TabsContent value="activity">
-          <ActivityLogSection
-            threadId={threadId}
-            lastActivityAt={lastActivityAt}
-          />
+          <ActivityLogSection threadId={threadId} />
         </TabsContent>
       </div>
     </Tabs>

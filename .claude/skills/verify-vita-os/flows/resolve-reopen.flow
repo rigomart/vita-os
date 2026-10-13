@@ -1,5 +1,5 @@
 # Resolve a Thread that has open Tasks, check its resolution entry names them, find it in History, reopen it.
-# The Activity Log shows only "open → resolved"; the entry's content is read from D1.
+# The Activity Log shows the resolution with the Tasks it dropped; D1 proves the stored content.
 # Needs a signed-in instance (up + signin). Add Tasks with Enter in "Add a task"; never press Enter to commit an edit of an existing Task (use Tab).
 open /
 browser -- find role button click --name "New thread" --exact
@@ -35,7 +35,10 @@ see text "Resolve me ${STAMP}"
 browser -- find role option click --name "Resolve me ${STAMP}"
 see text "while resolved"
 browser -- find role tab click --name "Activity" --exact
-see text "open → resolved"
+see text "Resolved the Thread"
+see text "Dropped 2 open Tasks"
+see text "Discard A ${STAMP}"
+see text "Discard B ${STAMP}"
 shot resolve-history
 
 # Reopen from Thread actions: open again, Tasks and focus stay discarded.

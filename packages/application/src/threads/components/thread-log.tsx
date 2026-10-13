@@ -1,224 +1,168 @@
 import type { ActivityLogEntry } from "@vita-os/contracts";
-import type { LucideIcon } from "lucide-react";
 
 import { Button } from "@vita-os/ui/components/button";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
-import { cn } from "@vita-os/ui/lib/utils";
-import { format, formatDistance, isSameDay, subDays } from "date-fns";
-import {
-  ArrowRight,
-  Bell,
-  CircleCheck,
-  Loader2,
-  MapPin,
-  SquareCheck,
-} from "lucide-react";
+import { format, isSameDay, isSameYear, subDays } from "date-fns";
+import { Loader2 } from "lucide-react";
 
-import { withTimeToken } from "../../attention-list/date-parts";
 import { clock } from "../../lib/clock";
-import { getActivityLogEntryLabel } from "../activity-log-entry";
+import {
+  type ActivityLogEntryReading,
+  readActivityLogEntry,
+} from "../activity-log-entry";
 
 interface ActivityLogProps {
   logs: ActivityLogEntry[] | undefined;
-  /** Drives the timeline's origin caption — when this Thread last moved. */
-  lastActivityAt?: number;
   canLoadMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
 }
 
-type AutomaticActivityLogEntry = ActivityLogEntry;
-
-const ACTIVITY_LOG_ICONS: Record<
-  AutomaticActivityLogEntry["type"],
-  LucideIcon
-> = {
-  next_move_change: ArrowRight,
-  move_completed: SquareCheck,
-  state_change: CircleCheck,
-  follow_up_change: Bell,
-  area_move: MapPin,
-};
-
-// Rail geometry: the 1px line spans left 11–12px, so its center is 11.5px.
-// Nodes use NODE_LEFT with -translate-x-1/2 to center exactly on the line.
-const RAIL_LEFT = "left-[11px]";
-const NODE_LEFT = "left-[11.5px]";
-const ENTRY_PAD = "pl-9";
-
 /**
- * The Thread's continuity record, written entirely by the system: a rail from
- * "now" back through every automatic entry.
+ * The Thread's continuity record, written entirely by the system: one rail
+ * behind every day, each entry a full sentence on it with its kind's icon as
+ * the node. Nothing is cut off: long Task text wraps, and a resolution shows
+ * its note and the Tasks it dropped.
  */
 export function ActivityLog({
   logs,
-  lastActivityAt,
   canLoadMore,
   isLoadingMore,
   onLoadMore,
 }: ActivityLogProps) {
-  return (
-    <section aria-label="Activity log" className="flex flex-col gap-2">
-      <div className="relative pb-6">
-        <div
-          aria-hidden
-          className={cn(
-            "absolute top-1 bottom-0 w-px",
-            RAIL_LEFT,
-            "bg-gradient-to-b from-transparent via-border to-transparent",
-          )}
-        />
-
-        <TimelineOrigin lastActivityAt={lastActivityAt} />
-
-        <ActivityLogTimeline
-          logs={logs}
-          canLoadMore={canLoadMore}
-          isLoadingMore={isLoadingMore}
-          onLoadMore={onLoadMore}
-        />
-      </div>
-    </section>
-  );
-}
-
-/**
- * The rail's origin is "now": the node the newest entry hangs from, captioned
- * with how long this Thread has been standing still.
- */
-function TimelineOrigin({ lastActivityAt }: { lastActivityAt?: number }) {
-  return (
-    <div className={cn("relative pb-4", ENTRY_PAD)}>
-      <span
-        aria-hidden
-        className={cn(
-          "absolute top-0.5 size-2.5 -translate-x-1/2 rounded-full",
-          NODE_LEFT,
-          "border border-(--brand-accent) bg-background",
-        )}
-      >
-        <span className="absolute inset-[3px] rounded-full bg-(--brand-accent)" />
-      </span>
-      <p className="text-2xs font-medium tracking-wide text-muted-foreground/80 uppercase">
-        {lastActivityAt === undefined
-          ? "No activity yet"
-          : `Updated ${formatDistance(lastActivityAt, clock.now(), {
-              addSuffix: true,
-            })}`}
-      </p>
-    </div>
-  );
-}
-
-function ActivityLogTimeline({
-  logs,
-  canLoadMore,
-  isLoadingMore,
-  onLoadMore,
-}: {
-  logs: AutomaticActivityLogEntry[] | undefined;
-  canLoadMore?: boolean;
-  isLoadingMore?: boolean;
-  onLoadMore?: () => void;
-}) {
   if (logs === undefined) return <ActivityLogSkeleton />;
 
   if (logs.length === 0) {
     return (
-      <div className={cn("relative pb-2", ENTRY_PAD)}>
-        <span
-          aria-hidden
-          className={cn(
-            "absolute top-1 size-2 -translate-x-1/2 rounded-full border border-border bg-background",
-            NODE_LEFT,
-          )}
-        />
-        <p className="text-sm leading-snug text-muted-foreground">
+      <section aria-label="Activity log">
+        <p className="text-sm text-muted-foreground">
           Automatic Thread changes will appear here as they happen.
         </p>
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {groupLogsByDay(logs).map((group) => (
-        <section
-          key={group.key}
-          aria-label={group.label}
-          className="flex flex-col"
-        >
-          <DayMarker label={group.label} />
-          {group.logs.map((log) => (
-            <AutomaticChange key={log._id} log={log} />
-          ))}
-        </section>
-      ))}
-      {(canLoadMore || isLoadingMore) && (
-        <div className={cn("flex justify-center pt-1", ENTRY_PAD)}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground"
-            disabled={isLoadingMore}
-            aria-busy={isLoadingMore || undefined}
-            onClick={onLoadMore}
+    <section aria-label="Activity log" className="flex flex-col gap-4 pb-6">
+      <div className="relative flex flex-col gap-4">
+        {/* Drawn once behind every day, so it runs unbroken past their headings. */}
+        <span
+          aria-hidden
+          className="absolute inset-y-0 left-[11.5px] w-px bg-border [mask-image:linear-gradient(to_bottom,transparent,black_1.5rem,black_calc(100%_-_1.5rem),transparent)]"
+        />
+        {groupLogsByDay(logs).map((group) => (
+          <section
+            key={group.key}
+            aria-label={group.label}
+            className="flex flex-col"
           >
-            {isLoadingMore ? (
-              <>
-                <Loader2
-                  data-icon="inline-start"
-                  className="size-3.5 animate-spin"
-                />
-                Loading…
-              </>
-            ) : (
-              "Show earlier"
-            )}
-          </Button>
+            <h3 className="py-1 pl-9 text-xs font-medium text-muted-foreground">
+              {group.label}
+            </h3>
+            <ol>
+              {group.logs.map((log) => (
+                <ActivityLogItem key={log._id} log={log} />
+              ))}
+            </ol>
+          </section>
+        ))}
+      </div>
+      {(canLoadMore || isLoadingMore) && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="self-center"
+          disabled={isLoadingMore}
+          aria-busy={isLoadingMore || undefined}
+          onClick={onLoadMore}
+        >
+          {isLoadingMore ? (
+            <>
+              <Loader2 data-icon="inline-start" className="animate-spin" />
+              Loading…
+            </>
+          ) : (
+            "Show earlier"
+          )}
+        </Button>
+      )}
+    </section>
+  );
+}
+
+function ActivityLogItem({ log }: { log: ActivityLogEntry }) {
+  const reading = readActivityLogEntry(log);
+  const Icon = reading.icon;
+
+  return (
+    <li className="relative flex gap-3 py-2">
+      <span className="relative flex size-6 shrink-0 items-center justify-center rounded-full border bg-popover text-muted-foreground">
+        <Icon aria-hidden className="size-3.5" />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-2 pt-0.5">
+        <div className="flex items-baseline gap-3">
+          <p className="min-w-0 flex-1 text-sm leading-snug wrap-anywhere">
+            <span className="sr-only">{reading.label}: </span>
+            <Sentence reading={reading} />
+          </p>
+          <ActivityLogTimestamp createdAt={log.createdAt} />
+        </div>
+        <Carried reading={reading} />
+      </div>
+    </li>
+  );
+}
+
+/** The action quiet, what it happened to in full, what it replaced after. */
+function Sentence({ reading }: { reading: ActivityLogEntryReading }) {
+  return (
+    <>
+      <span className="text-muted-foreground">{reading.action}</span>
+      {reading.subject !== undefined && (
+        <>
+          {" "}
+          <span className="text-foreground">{reading.subject}</span>
+        </>
+      )}
+      {reading.from !== undefined && (
+        <span className="text-muted-foreground">, from {reading.from}</span>
+      )}
+    </>
+  );
+}
+
+/** What a resolution carried: its note, and the Tasks it dropped. */
+function Carried({ reading }: { reading: ActivityLogEntryReading }) {
+  if (reading.note === undefined && reading.dropped.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      {reading.note !== undefined && (
+        <p className="border-l-2 pl-3 text-sm leading-relaxed whitespace-pre-line wrap-anywhere text-foreground">
+          {reading.note}
+        </p>
+      )}
+      {reading.dropped.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <p className="text-xs text-muted-foreground">
+            Dropped{" "}
+            {reading.dropped.length === 1
+              ? "an open Task"
+              : `${reading.dropped.length} open Tasks`}
+          </p>
+          <ul className="flex flex-col gap-1">
+            {reading.dropped.map((task, index) => (
+              <li
+                key={index}
+                className="flex gap-2 text-sm leading-snug wrap-anywhere text-muted-foreground"
+              >
+                <span aria-hidden>–</span>
+                {task}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
-    </div>
-  );
-}
-
-/** Day label to the right of the rail, directly above its log items; the
- *  rail runs through uninterrupted. Group separation comes from the parent
- *  column's gap, not from padding here. */
-function DayMarker({ label }: { label: string }) {
-  return (
-    <div className={cn("pb-1.5", ENTRY_PAD)}>
-      <h3 className="text-2xs font-medium tracking-wide text-muted-foreground/80 uppercase">
-        {label}
-      </h3>
-    </div>
-  );
-}
-
-/** An automatic change: tiny hollow node, single compact muted line. */
-function AutomaticChange({ log }: { log: AutomaticActivityLogEntry }) {
-  const Icon = ACTIVITY_LOG_ICONS[log.type];
-
-  return (
-    <div className={cn("relative py-1", ENTRY_PAD)}>
-      <span
-        aria-hidden
-        className={cn(
-          "absolute top-[9px] size-1.5 -translate-x-1/2 rounded-full border border-muted-foreground/40 bg-background",
-          NODE_LEFT,
-        )}
-      />
-      <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-        <Icon className="size-3.5 shrink-0 text-muted-foreground/60" />
-        <span className="sr-only">{getActivityLogEntryLabel(log.type)}</span>
-        <span className="truncate text-muted-foreground/80">
-          {getAutomaticChangeSummary(log)}
-        </span>
-        <span className="ml-auto shrink-0 pl-2">
-          <ActivityLogTimestamp createdAt={log.createdAt} />
-        </span>
-      </div>
     </div>
   );
 }
@@ -230,7 +174,7 @@ function ActivityLogTimestamp({ createdAt }: { createdAt: number }) {
     <time
       dateTime={date.toISOString()}
       title={format(date, "PPpp")}
-      className="shrink-0 text-2xs text-muted-foreground/60"
+      className="shrink-0 text-xs whitespace-nowrap text-muted-foreground"
     >
       {format(date, "h:mm a")}
     </time>
@@ -241,22 +185,17 @@ function ActivityLogSkeleton() {
   return (
     <div className="flex flex-col gap-3" aria-label="Loading activity log">
       {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className={cn("relative", ENTRY_PAD)}>
-          <Skeleton
-            className={cn(
-              "absolute top-1 size-2 -translate-x-1/2 rounded-full",
-              NODE_LEFT,
-            )}
-          />
-          <Skeleton className={index % 2 === 0 ? "h-12 w-full" : "h-4 w-2/3"} />
+        <div key={index} className="flex gap-3">
+          <Skeleton className="size-6 shrink-0 rounded-full" />
+          <Skeleton className={index % 2 === 0 ? "h-10 w-full" : "h-4 w-2/3"} />
         </div>
       ))}
     </div>
   );
 }
 
-function groupLogsByDay(logs: AutomaticActivityLogEntry[]) {
-  const groups = new Map<string, AutomaticActivityLogEntry[]>();
+function groupLogsByDay(logs: ActivityLogEntry[]) {
+  const groups = new Map<string, ActivityLogEntry[]>();
 
   for (const log of [...logs].sort((a, b) => b.createdAt - a.createdAt)) {
     const key = format(new Date(log.createdAt), "yyyy-MM-dd");
@@ -273,44 +212,11 @@ function groupLogsByDay(logs: AutomaticActivityLogEntry[]) {
 }
 
 function getDayLabel(createdAt: number) {
-  const date = new Date(createdAt);
   const today = clock.now();
-  if (isSameDay(date, today)) return "Today";
-  if (isSameDay(date, subDays(today, 1))) return "Yesterday";
-  return format(date, "MMMM d, yyyy");
-}
-
-function getAutomaticChangeSummary(log: AutomaticActivityLogEntry) {
-  const previousValue = displayValue(log, log.previousValue);
-  const newValue = displayValue(log, log.newValue);
-
-  if (previousValue && newValue) {
-    return `${previousValue} → ${newValue}`;
-  }
-
-  if (newValue) return `Set to ${newValue}`;
-
-  if (previousValue) {
-    const completed =
-      log.type === "move_completed" ||
-      (log.type === "next_move_change" && log.content.startsWith("Completed"));
-    return completed
-      ? `Completed ${previousValue}`
-      : `Cleared ${previousValue}`;
-  }
-
-  return log.content;
-}
-
-/**
- * A Follow-up change records the raw timestamp, written here in the reader's
- * own time zone. Entries recorded before that hold their date already
- * written, and read as they are.
- */
-function displayValue(log: AutomaticActivityLogEntry, value?: string) {
-  if (log.type !== "follow_up_change" || !value || !/^\d+$/.test(value)) {
-    return value;
-  }
-  const when = Number(value);
-  return withTimeToken(format(when, "MMM d, yyyy"), when);
+  if (isSameDay(createdAt, today)) return "Today";
+  if (isSameDay(createdAt, subDays(today, 1))) return "Yesterday";
+  return format(
+    createdAt,
+    isSameYear(createdAt, today) ? "EEEE, MMMM d" : "MMMM d, yyyy",
+  );
 }
