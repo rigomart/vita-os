@@ -6,6 +6,7 @@ import type {
   Repeat,
   TaskId,
   Thread,
+  UpdateThreadInput,
 } from "@vita-os/contracts";
 
 import { clock } from "@vita-os/application";
@@ -41,6 +42,13 @@ export const scenarios = [
     description:
       "A Thread with many long Tasks: dated, repeating, late, focused.",
     seed: (client) => seedLife(client, LONG_TASKS),
+  },
+  {
+    id: "long-activity",
+    name: "Long activity",
+    description:
+      "A Thread with weeks of history: long Tasks done, Area changes, a resolution with a note and dropped Tasks, a reopening.",
+    seed: seedLongActivity,
   },
   {
     id: "busy",
@@ -330,6 +338,201 @@ const LONG_TASKS: Life = {
   ],
   notes: [],
 };
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * One Thread lived through over six weeks, so its Activity Log runs past a
+ * page and holds every entry the product still writes, at its longest: long
+ * Task text, Area moves, a resolution with a note and the Tasks it dropped,
+ * a reopening. Each step runs at its own past moment by setting the clock,
+ * which is put back afterwards.
+ *
+ * The clock is shared, and StrictMode seeds a scenario twice at once, so one
+ * seed waits for the other to put it back before it starts.
+ */
+async function seedLongActivity(client: ApplicationClient) {
+  const previous = travelling;
+  let release = () => {};
+  travelling = new Promise((resolve) => {
+    release = resolve;
+  });
+  await previous;
+  const start = clock.now();
+  const offset = start - Date.now();
+  const at = (daysAgo: number, time: string) => {
+    const [hours, minutes] = time.split(":").map(Number);
+    const date = new Date(start - daysAgo * DAY);
+    date.setHours(hours!, minutes!, 0, 0);
+    clock.set(date.getTime());
+  };
+  // Today's steps count back from now, so they never land in the future.
+  const ago = (minutes: number) => clock.set(start - minutes * 60 * 1000);
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  try {
+    at(46, "09:12");
+    const areas = new Map<string, AreaId>();
+    for (const area of [
+      { name: "Home", icon: "Home" },
+      { name: "Money", icon: "WalletCards" },
+      { name: "Family", icon: "HeartPulse" },
+    ] as const) {
+      areas.set(area.name, must(await client.createArea(area))._id);
+    }
+    const area = (name: string) => areas.get(name)!;
+
+    let thread: Thread = must(
+      await client.createThread({
+        title: "Move to the flat on Carrow Road",
+        summary:
+          "Keys on the 1st. Old place handed back by the 30th, deposit back in full.",
+        areaId: area("Home"),
+      }),
+    );
+    const threadId = thread._id;
+    const add = async (text: string, date?: number) => {
+      const taskId = newRecordId() as TaskId;
+      thread = must(
+        await client.addTask({
+          threadId,
+          taskId,
+          text,
+          ...(date === undefined ? {} : { date }),
+        }),
+      );
+      return taskId;
+    };
+    const complete = async (taskId: TaskId) => {
+      const task = thread.tasks?.find((each) => each._id === taskId);
+      thread = must(
+        await client.completeTask({
+          threadId,
+          taskId,
+          expectedOccurrence: task?.date ?? null,
+          timeZone,
+        }),
+      );
+    };
+    const update = async (patch: Omit<UpdateThreadInput, "threadId">) => {
+      thread = must(await client.updateThread({ threadId, ...patch }));
+    };
+
+    const quotes = await add(
+      "Get three quotes from removal companies and ask whether they pack the kitchen too, or only move boxes",
+    );
+    const alcove = await add(
+      "Measure the bedroom alcove to see whether the wardrobe fits, otherwise list it on Marketplace before the move",
+    );
+    // Still open at the resolution, so it names them as dropped.
+    await add(
+      "Cancel the old broadband contract — check the notice period first, it might be 30 days and they charge for the router",
+    );
+    await add("Redirect post at the Post Office for six months");
+    const meter = await add("Read the meters");
+
+    at(45, "18:40");
+    await complete(quotes);
+    at(44, "11:20");
+    await complete(await add("Book the van for the 1st"));
+    at(41, "08:05");
+    await complete(alcove);
+    at(38, "21:17");
+    await complete(meter);
+    at(37, "12:30");
+    await update({ areaId: area("Money") });
+    at(33, "10:02");
+    const deposit = await add(
+      "Email the letting agent with the move-in inventory and the photos of the carpet in the second bedroom, and ask for the deposit to be released through the DPS portal rather than by cheque",
+    );
+    at(32, "16:45");
+    await complete(deposit);
+    at(30, "19:20");
+    await update({
+      state: "resolved",
+      resolutionNote:
+        "Keys handed back and the deposit claim is with the agency. If they deduct for the carpet in the second bedroom I'll dispute it with the move-in photos; otherwise this is done.",
+    });
+
+    at(22, "09:48");
+    await update({ state: "open" });
+    at(22, "09:50");
+    await update({ areaId: null });
+    at(21, "14:05");
+    await update({ areaId: area("Home") });
+
+    const portal = await add(
+      "Check the deposit portal for a decision",
+      start - 21 * DAY,
+    );
+    must(
+      await client.setTaskRepeat({
+        threadId,
+        taskId: portal,
+        repeat: { kind: "days", every: 7 },
+        timeZone,
+      }),
+    );
+    for (const daysAgo of [21, 14, 7]) {
+      at(daysAgo, "08:30");
+      await complete(portal);
+    }
+
+    at(12, "13:15");
+    const dispute = await add(
+      "Open a dispute: agency wants £340 for 'carpet replacement' but the inventory already lists two stains and a burn mark by the window",
+    );
+    const photos = await add(
+      "Find the move-in photos — they're in the shared album named 'Flat 2B Sept' or on the old phone",
+    );
+    at(16, "15:40");
+    await complete(
+      await add("Ask the agency for a written breakdown of the deductions"),
+    );
+    at(11, "20:30");
+    await complete(photos);
+    at(9, "11:00");
+    await complete(dispute);
+    at(5, "17:25");
+    const keys = await add("Return the spare keys to Dad");
+    await update({ areaId: area("Family") });
+    at(3, "10:10");
+    await complete(keys);
+    at(1, "09:00");
+    const tv = await add(
+      "Wall-mount the TV: https://www.example.com/guides/how-to-mount-a-tv-on-a-plasterboard-wall-without-finding-a-stud",
+    );
+    await complete(tv);
+    at(1, "19:30");
+    await complete(await add("Hang the bathroom mirror"));
+    ago(35);
+    await update({ areaId: area("Home") });
+    const boxes = await add(
+      "Flatten the last boxes and put them out for recycling",
+    );
+    ago(5);
+    await complete(boxes);
+
+    at(10, "12:00");
+    const { _id: tyres } = must(
+      await client.createThread({ title: "Replace the car tyres" }),
+    );
+    must(
+      await client.updateThread({
+        threadId: tyres,
+        state: "resolved",
+        resolutionNote: "Done at the garage on the high street.",
+      }),
+    );
+    at(2, "12:00");
+    must(await client.createThread({ title: "Learn to bake sourdough" }));
+  } finally {
+    clock.set(Date.now() + offset);
+    release();
+  }
+}
+
+let travelling = Promise.resolve();
 
 /** The sample life, then many more of everything, spread across time. */
 function busyLife(): Life {
