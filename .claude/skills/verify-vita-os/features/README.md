@@ -1,50 +1,46 @@
 # Vita OS verification map
 
-This directory is the maintained source for verifying Vita OS's user-facing behavior. Read this index before driving the app, then use the matching feature file as the recipe.
+This directory is the maintained source for verifying Vita OS's user-facing behavior. Read this index before driving the app, then use the matching feature file as the recipe and its spec as the working example.
 
-## Baseline preconditions
+How to run specs, which user and data a test starts with, how to drive, and what counts as proof are in [`../SKILL.md`](../SKILL.md). This directory holds what is specific to each feature.
 
-- `bun run verify up` reported `"ok": true` for your instance, and `bun run verify doctor` reports every check `true`.
-- `bun run verify signin` reported `signedInAs` equal to the instance's throwaway email, unless the feature file says to start signed out.
-- The instance's D1 starts empty apart from that user. Run `bun run verify down --purge`, then `bun run verify up`, to restore it.
-- Never drive an instance this verification run did not start.
+## Spec coverage
 
-## Driving conventions
+Run a spec with `bun run test:e2e tests/<name>.spec.ts`. Each spec file runs as one user, whose data its tests share in order ([Users and test data](../SKILL.md#users-and-test-data)). Each checks visible behavior after reloads and persisted writes with read-only D1 queries. Its header comment says what it proves. Run the specs covering your change; add or update a test when a feature file's recipe changes.
 
-- Drive in batches with `bun run verify run -` and a heredoc (see Drive in `../SKILL.md`). Each line is `browser -- <agent-browser args>`, `open`, `shot`, `d1`, or `expect`.
-- Prefer ARIA roles and accessible names (`find role button click --name "Add" --exact`, `find label "Note body" fill ...`) over CSS selectors or refs from an old snapshot.
-- Use unique text for anything you create so a check cannot match leftovers: `${STAMP}` in a batch or flow becomes one timestamp per run.
-- Check and wait with `see <role> "<name>"` and `gone <role> "<name>"` (see Checking and waiting in `../SKILL.md`); keep `wait --fn` for values, focus, counts, order, and dates. Never use `wait --load networkidle`, `wait <ms>`, or `sleep` as proof.
-- Flows live in `../flows/`, one per feature area; each header says what it proves. Run the ones covering your change, or all of them with `bun run verify run .claude/skills/verify-vita-os/flows/*.flow`. Add or update a flow when a feature file's recipe changes.
-- Never `press Enter` to commit an edit of an existing Task's text (agent-browser 0.38.1 floods the browser with keydown events); use `press Tab` or a click. `press Enter` in `Add a task` is fine and is the capture path flows must keep proving.
-- Time-limit verification. If the same step fails twice, stop that item and report it `INCONCLUSIVE` with the failing command and its output.
-
-## Scripted feature coverage
-
-After `bun run verify up` and `bun run verify signin`, run a flow with `bun run verify run .claude/skills/verify-vita-os/flows/<name>.flow`. A flow that needs an empty D1 says `Needs a fresh` in its header, and `run` resets the instance before it. Each flow checks visible behavior and persisted writes with read-only D1 queries. The Notes, Areas, History, and sign-in flows are listed here; the Task and Thread flows (`tasks`, `dashboard-tasks`, `dated-tasks`, `repeating-tasks`, `complete-with-note`, `resolve-reopen`, `thread-drawer`, `thread-edit-tasks`) are covered in [Tasks](./tasks.md).
-
-| Flow | Feature maps and scope |
+| Spec | Feature maps and scope |
 | --- | --- |
-| [notes](../flows/notes.flow) | [Capture a note](./capture-note.md), [Note view](./note-view.md): header capture, live preview while typing, saved edits in place, Delete with Undo and persisted deletion. |
-| [notes-dashboard](../flows/notes-dashboard.flow) | [Notes on the Dashboard](./notes-on-the-dashboard.md): Notes filter, archive, archived body search in History, and unarchive. |
-| [repeating-notes](../flows/repeating-notes.flow) | [Follow-up dates](./follow-up-dates.md), [Notes on the Dashboard](./notes-on-the-dashboard.md): a monthly Repeat on a Note card, Complete (no Activity Log entry), one Late item, the Note view's Complete, Archive to History and Unarchive keeping the Repeat, Clear, Add to thread carrying the Repeat, and the card at 1024×768. |
-| [dashboard-filter-counts](../flows/dashboard-filter-counts.flow) | [Dashboard board](./dashboard-board.md): All counts dated and undated Standalone Notes plus Threads; Area and Notes counts stay separate, on desktop and phone. |
-| [thread-notes](../flows/thread-notes.flow) | [Thread Notes](./thread-notes.md): desktop capture, edit, archive, unarchive, and deletion. |
-| [add-to-thread](../flows/add-to-thread.flow) | [Add a Note to a Thread](./add-to-thread.md): undated add to an existing Thread and New thread from note. Dated conversion stays in `dated-tasks.flow`. |
-| [areas](../flows/areas.flow) | [Manage areas](./manage-areas.md): create, rename, icon, reorder, and delete while Threads survive without the label. |
-| [history](../flows/history.flow) | [Resolved Threads](./resolved-threads.md): palette browsing and search, opening and reopening in the pane and drawer. |
-| [sign-in](../flows/sign-in.flow) | [Sign in](./sign-in.md): menu sign-out, the signed-out gate, and sign-in through the real form. |
-
-## Proof and skip reporting
-
-- Capture the action and the resulting state: `bun run verify shot <feature>-before` and `bun run verify shot <feature>-after`.
-- Mutation proof needs the server confirmation (toast) and a reload showing the change (`see`/`gone` after `browser -- reload`). Vita renders mutations optimistically, so the UI alone before a reload proves nothing. Add `bun run verify d1 "SELECT ..."` only for what the screen cannot show: duplicates, exact stored values, real deletion, Activity Log content.
-- Report the feature ID and entry point with every artifact.
-- An unreachable entry point is reported with the attempted command and the unmet precondition. Do not report it as verified through a different path.
+| [notes](../../../../apps/e2e/tests/notes.spec.ts) | [Capture a note](./capture-note.md), [Note view](./note-view.md): header capture, live preview while typing, saved edits in place, Delete with Undo and persisted deletion. |
+| [notes-dashboard](../../../../apps/e2e/tests/notes-dashboard.spec.ts) | [Notes on the Dashboard](./notes-on-the-dashboard.md): Notes filter, archive, archived body search in History, and unarchive. |
+| [repeating-notes](../../../../apps/e2e/tests/repeating-notes.spec.ts) | [Follow-up dates](./follow-up-dates.md), [Notes on the Dashboard](./notes-on-the-dashboard.md): a monthly Repeat on a Note card, Complete (no Activity Log entry), one Late item, the Note view's Complete, Archive to History and Unarchive keeping the Repeat, Clear, Add to thread carrying the Repeat, and the card at 1024×768. |
+| [dashboard-filter-counts](../../../../apps/e2e/tests/dashboard-filter-counts.spec.ts) | [Dashboard board](./dashboard-board.md): All counts dated and undated Standalone Notes plus Threads; Area and Notes counts stay separate, on desktop and phone. |
+| [thread-notes](../../../../apps/e2e/tests/thread-notes.spec.ts) | [Thread Notes](./thread-notes.md): desktop capture, edit, archive, unarchive, and deletion. |
+| [add-to-thread](../../../../apps/e2e/tests/add-to-thread.spec.ts) | [Add a Note to a Thread](./add-to-thread.md): undated add to an existing Thread and New thread from note. Dated conversion stays in `dated-tasks.spec.ts`. |
+| [areas](../../../../apps/e2e/tests/areas.spec.ts) | [Manage areas](./manage-areas.md): create, rename, icon, reorder, and delete while Threads survive without the label. |
+| [history](../../../../apps/e2e/tests/history.spec.ts) | [Resolved Threads](./resolved-threads.md): palette browsing and search, opening and reopening in the pane and drawer. |
+| [resolve-reopen](../../../../apps/e2e/tests/resolve-reopen.spec.ts) | [Resolved Threads](./resolved-threads.md), [Tasks](./tasks.md): resolving a Thread with open Tasks, the resolution entry naming them, and Reopen without them. |
+| [sign-in](../../../../apps/e2e/tests/sign-in.spec.ts) | [Sign in](./sign-in.md): menu sign-out, the signed-out gate, and sign-in through the real form. |
+| [tasks](../../../../apps/e2e/tests/tasks.spec.ts) | [Tasks](./tasks.md): add, focus, unfocus, edit, remove, and complete in the Thread pane, and the Activity Log. |
+| [dashboard-tasks](../../../../apps/e2e/tests/dashboard-tasks.spec.ts) | [Tasks](./tasks.md), [Dashboard board](./dashboard-board.md): the card's Task slot (one Task, several unfocused, one focused) and completing from the card. |
+| [dated-tasks](../../../../apps/e2e/tests/dated-tasks.spec.ts) | [Tasks](./tasks.md), [Dashboard board](./dashboard-board.md): a date with a time from a Task row, placement and the card's lead, rescheduling from the card, two Tasks on one day, a card with no single Task, and a dated Note added to a Thread. |
+| [repeating-tasks](../../../../apps/e2e/tests/repeating-tasks.spec.ts) | [Tasks](./tasks.md): daily, weekly, Every N days (drawer), and monthly Repeats, Complete and Skip from the row and the card, and Late. |
+| [complete-with-note](../../../../apps/e2e/tests/complete-with-note.spec.ts) | [Tasks](./tasks.md): Complete with a note in the side pane and the drawer, and a Dashboard card completing in one click. |
+| [thread-drawer](../../../../apps/e2e/tests/thread-drawer.spec.ts) | [Tasks](./tasks.md): Thread detail as a drawer at 1024×768: Tasks, focus, completion, Activity, reload, close. |
+| [thread-edit-tasks](../../../../apps/e2e/tests/thread-edit-tasks.spec.ts) | [Tasks](./tasks.md): renaming a Thread right beside Task commands, in both orders, without a conflict. |
 
 ## Feature entry contract
 
-Each feature file has an H1 title, a one-paragraph description of the user-visible behavior, a one-line `Status` (`proven on <short sha>` or `in #<PR>`, by which flow or by hand, then `Not driven:` and what was skipped; or `mapped from source, not yet driven`), then exactly four H2 sections in order: `Sub-features`, `How to get to it (user POV)`, `Driving it with agent-browser`, `Gotchas`. `Status` says what is true now: replace it on every proof instead of appending to it. Evidence paths and earlier proofs belong in the PR description, since `.verify/evidence/` exists only on the machine that made it.
+Each feature file has an H1 title, a one-paragraph description of the user-visible behavior, a one-line `Status` (`proven on <short sha>` or `in #<PR>`, by which spec or by hand, then `Not driven:` and what was skipped; or `mapped from source, not yet driven`), then exactly four H2 sections in order: `Sub-features`, `How to get to it (user POV)`, `Driving it` (Playwright locators and the spec that drives it), `Gotchas`. `Status` says what is true now: replace it on every proof instead of appending to it. Evidence paths and earlier proofs belong in the PR description, since `.verify/evidence/` exists only on the machine that made it.
+
+## Keeping the map current
+
+The feature map is only as good as its last update, and you are the one who updates it. After driving the app, before you report:
+
+- **The feature has no file here.** Explore its entry points with a scratch spec (print `ariaSnapshot()` of the surface), find the table it writes in `apps/api/migrations`, and prove it once by the standards in `../SKILL.md`. Then write `<feature>.md` in the entry contract, using the locators that just worked, add a line to the index below, and move the spec to `apps/e2e/tests/`. Commit it with the change that introduced or altered the feature.
+- **A documented step no longer matches the app.** Decide which side is wrong. If the app regressed, report the regression and leave the file and the spec alone. If the feature changed on purpose, fix the file and the spec in the same change and say so in your report.
+- **The file says `mapped from source, not yet driven`.** Correct every handle against the page while you drive it, then set `Status: proven on <short sha>`.
+- **You proved a feature that already has a `Status`.** Replace the line; never append to it. It names the latest proof and what it did not drive. Earlier proofs and evidence paths go in the PR description.
+- **Never mark a step proven that you did not run.** A sub-feature you skipped stays listed, and your report says it was skipped.
 
 ## Features
 
@@ -62,5 +58,4 @@ Each feature file has an H1 title, a one-paragraph description of the user-visib
 - [Follow-up dates](./follow-up-dates.md) covers the Follow-up date on standalone Notes, their Repeat and Complete, and their Dashboard placement. A Thread comes back at its soonest dated Task, covered in [Tasks](./tasks.md).
 - [Manage areas](./manage-areas.md) covers adding an area and seeing it in the Filter the board row.
 - [Phone installation and sharing](./phone-installation.md) covers manifest/icons, shared Note capture through sign-in, retry, and persistence.
-
 - [Reload an outdated tab](./version-reload.md) covers API/web version mismatch, web readiness, pending saves, and preserved stored results.

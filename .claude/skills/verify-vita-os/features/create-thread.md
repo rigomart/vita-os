@@ -13,22 +13,17 @@ Status: proven in #382 (c55a9eb) from the dock with an area, Enter to submit, an
 
 ## How to get to it (user POV)
 
-- Choose `New thread` in the header (`header[aria-label="Vita OS"]`) from `lg`, or in the bottom `navigation "Actions"` below it. An open Thread pane covers the header's button at 1280px and up: close it first, or use the palette.
-- Open the command palette with `Meta+k`, then choose `New thread` under `Create`: `bun run verify browser -- press Meta+k`, then `bun run verify browser -- find role option click --name "New thread"`.
+- Choose `New thread` in the header (`banner "Vita OS"`) from `lg`, or in the bottom `navigation "Actions"` below it. An open Thread pane covers the header's button at 1280px and up: close it first, or use the palette.
+- Open the command palette with `ControlOrMeta+k`, then choose `New thread` under `Create`: `page.getByRole("option", { name: "New thread" })`.
 
-## Driving it with agent-browser
+## Driving it
 
-Preconditions:
+No spec of its own: `createThread(page, title)` in `apps/e2e/src/app.ts` drives the dialog at the start of every Thread spec. Use `stamp` in the title and the area name.
 
-- Signed in on the Dashboard.
-- Pick a unique title, for example `Verify thread 1727461234`, and for `thread-area` a unique area name, for example `Verify area 1727461234`.
-
-- **Open dialog.** Run `bun run verify browser -- find role button click --name "New thread" --exact`. A framed `dialog "New thread"` (the same surface as `New note`) shows a borderless `Thread title` textbox (placeholder `What's going on?`), a `Close` button, an area picker button `Add area`, and a disabled `Create` button. `Create` enables once the title has text. There is no `Cancel`; `Close` and `Escape` are the exits.
-- **Enter title.** Run `bun run verify browser -- find label "Thread title" fill "Verify thread 1727461234"`, then `bun run verify shot thread-before`.
-- **Create.** Run `bun run verify browser -- find role button click --name "Create" --exact` (or `find label "Thread title" click` then `press Enter`), then `bun run verify see text "Thread created"`, then `bun run verify shot thread-toast`. The wait prints `Thread created`. The URL becomes `/?thread=<title-slug>-<8 hex>` (for example `?thread=verify-thread-1727461234-59d3f6b0`). The pane is `complementary "<title>"` with a `Thread controls` group (`Thread actions`, `Close thread`), a `Thread header` banner (`Add area`, `Open`, a button named after the title, `Add a summary…`), the `Thread attention` region (`MOVES` label, `Set follow-up date` button, `Add a task` textbox), and `Notes` and `Activity` tabs.
-- **Area (optional, `thread-area`).** Before clicking `Create`: run `bun run verify browser -- find role button click --name "Add area" --exact`, then `bun run verify browser -- find role combobox fill "Verify area 1727461234"`. With no areas the listbox `Suggestions` says `Type a name to create an area.`; after typing it offers `option "Create “Verify area 1727461234”"` (curly quotes). Run `bun run verify browser -- find role option click --name "Create “Verify area 1727461234”" --exact`. The picker button becomes `Area: Verify area 1727461234`. Then create as above. The pane header shows `button "Area: Verify area 1727461234"`.
-- **Persist.** Run `bun run verify browser -- reload`, then `bun run verify see text "Verify thread 1727461234"`. The URL keeps `?thread=<slug>` and the pane reopens: `bun run verify see complementary "Verify thread 1727461234"`. With an area chosen, `bun run verify see button "Area: <name>"`; without one, `see button "Add area"`.
-- **Proof.** `bun run verify shot thread-after` after the reload. The after snapshot lists `complementary "<title>"` with `Close thread` and `textbox "Add a task"`, and for `thread-area` `button "Area: <area>"` in its header.
+- **Open dialog.** `page.getByRole("button", { name: "New thread", exact: true }).click()`. A framed `dialog "New thread"` (the same surface as `New note`) shows a borderless `textbox "Thread title"` (placeholder `What's going on?`), a `Close` button, an area picker `button "Add area"`, and a disabled `Create`. `Create` enables once the title has text. There is no `Cancel`; `Close` and `Escape` are the exits.
+- **Create.** `page.getByLabel("Thread title").fill(title)`, `shot("thread-before")`, then click `button "Create"` (`exact: true`) or press Enter in the title, and expect `page.getByText("Thread created")`. The URL becomes `/?thread=<title-slug>-<8 hex>`. The pane is `complementary "<title>"` with a `Thread controls` group (`Thread actions`, `Close thread`), a `Thread header` banner (`Add area`, `Open`, a button named after the title, `Add a summary…`), the `Thread attention` region (`MOVES` label, `Set follow-up date` button, `Add a task` textbox), and `Notes` and `Activity` tabs.
+- **Area (optional, `thread-area`).** Before `Create`, click `button "Add area"`, then `dialog.getByRole("combobox").fill(area)`. With no areas the `listbox "Suggestions"` says `Type a name to create an area.`; after typing it offers `option "Create “<area>”"` (curly quotes). Click it with `exact: true`. The picker button becomes `Area: <area>`, and after `Create` the pane header shows `button "Area: <area>"`.
+- **Persist.** `page.reload()`, then `getByRole("complementary", { name: title })` is visible and the URL keeps `?thread=<slug>`. With an area, its header has `button "Area: <area>"`; without one, `button "Add area"`. `shot("thread-after")`.
 
 ## Gotchas
 
@@ -36,6 +31,6 @@ Preconditions:
 - There is no visible `Thread summary` element on a new thread. `Thread summary` is only the accessible name of the summary editor, which opens after clicking `Add a summary…`.
 - `threads.area_id` is nullable since migration `0004_area_labels.sql`. A thread without an area has `area_id` null.
 - Choosing `Create “…”` in the area picker writes the `areas` row right away, before `Create` is clicked. Cancelling the dialog afterwards leaves the area behind.
-- The area picker's combobox has no accessible name. Reach it with `find role combobox`, which works because the dialog has only one.
+- The area picker's combobox has no accessible name. Reach it with `dialog.getByRole("combobox")`, which works because the dialog has only one.
 - Pressing `Escape` with the area picker open closes the picker, not the dialog.
-- On the Dashboard the new thread's row under `No date` → `Open` is `link "<title>"` and, once it has a Task, `Set date`. `see text "<title>"` after a reload can match that row before the pane renders, so the pane proof is `see complementary "<title>"`.
+- On the Dashboard the new thread's row under `No date` → `Open` is `link "<title>"` and, once it has a Task, `Set date`. `getByText(title)` after a reload can match that row before the pane renders, so the pane proof is `getByRole("complementary", { name: title })`.

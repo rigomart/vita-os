@@ -14,29 +14,23 @@ Status: proven on 1d2885d by an independent cold run (dock entry point, body onl
 
 ## How to get to it (user POV)
 
-- Choose `New note` in the header (`header[aria-label="Vita OS"]`) from `lg`, or `Note` in the bottom `navigation "Actions"` below it. Both are `button "New note"`.
+- Choose `New note` in the header (`banner "Vita OS"`) from `lg`, or `Note` in the bottom `navigation "Actions"` below it. Both are `button "New note"`.
 - Press `Q` while focus is outside a text field.
 - Open the command palette with `Meta+k`, then choose `New note` under `Create`.
 
-## Driving it with agent-browser
+## Driving it
 
-Repeatable dock-capture smoke: run `bun run verify run .claude/skills/verify-vita-os/flows/notes.flow` after `up` and `signin` on a fresh instance. Proven on c8cc3f5 plus the live-preview editor change at 1440×900; it captures a body, checks that its bold renders in the editor while typing, and checks the saved body in D1 and after reload. Other capture entry points and date picking are outside this flow.
+Spec: `apps/e2e/tests/notes.spec.ts` captures from the header's `New note` at 1440×900, checks that bold renders in the editor while typing, and checks the saved body after a reload and in D1. Other entry points and date picking are outside it. Use `stamp` in the body.
 
-Preconditions:
-
-- Signed in (`bun run verify signin`) on the Dashboard (`bun run verify open /`).
-- Pick unique text, for example `verify note 1727461234`.
-
-- **Open dialog.** Run `bun run verify browser -- find role button click --name "New note" --exact`. A dialog with heading `New note`, textbox `Note body`, button `Follow-up date`, and a disabled `Add` button appears.
-- **Enter body.** Run `bun run verify browser -- find label "Note body" fill "verify note 1727461234"`. `Add` becomes enabled.
-- **Before shot.** With the body filled and before clicking `Add`, run `bun run verify shot note-before`. The snapshot shows `dialog "New note"` with the text in the field.
-- **Save.** Run `bun run verify browser -- find role button click --name "Add" --exact`, then `bun run verify see text "Note added"`, then `bun run verify shot note-toast`. The wait prints `Note added`, the PNG shows the toast, and the dialog closes. The toast may be missing from `note-toast.aria.txt`. The wait output is the proof.
-- **Persist.** Run `bun run verify browser -- reload`, then `bun run verify see button "Open note: verify note 1727461234"`. For a body with Markdown, `bun run verify d1 "SELECT body, state FROM notes"` shows the stored source, which the card renders.
-- **Proof.** Run `bun run verify shot note-after` after the reload. The after snapshot lists `button "Open note: verify note 1727461234"` on a card that also has `Set follow-up date` and `Archive note`.
+- **Open dialog.** `page.getByRole("button", { name: "New note", exact: true }).click()`. `dialog "New note"` shows `textbox "Note body"`, `button "Follow-up date"`, and a disabled `button "Add"`.
+- **Enter body.** `getByRole("textbox", { name: "Note body" }).fill(body)`. `Add` becomes enabled. Run `shot("note-before")`: the dialog with the text in the field.
+- **Save.** Inside `sent(page, /\/notes$/, …)`, click the dialog's `Add` (`exact: true`) or press `ControlOrMeta+Enter`. `page.getByText("Note added")` shows and the dialog closes. `shot("note-toast")` right away if the toast is the point.
+- **Persist.** `page.reload()`, then `getByRole("button", { name: `Open note: ${body}` })` is visible, on a card that also has `Set follow-up date` and `Archive note`. For a body with Markdown, `SELECT body, state FROM notes WHERE user_id = '${account.id}'` shows the stored source, which the card renders. `shot("note-after")`.
+- **Other entry points.** `page.keyboard.press("q")` with focus outside a text field, or `ControlOrMeta+k` then `getByRole("option", { name: "New note" })`.
 
 ## Gotchas
 
 - The note shows up with a pending client id before the server answers. Only the `Note added` toast plus a reload proves it saved.
 - Saved bodies are read-only previews. Click their `Open note: …` button to read or edit in the [Note view](./note-view.md).
 - `Q` types a `q` when a text field has focus. Press `Escape` or click empty space first.
-- `Meta+Enter` inside `Note body` also submits.
+- `ControlOrMeta+Enter` inside `Note body` also submits.

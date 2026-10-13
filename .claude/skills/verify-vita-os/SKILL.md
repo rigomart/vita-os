@@ -1,130 +1,112 @@
 ---
 name: verify-vita-os
-description: Drive the real Vita OS web app locally, the way a user does, and capture proof that a change works. Launches an isolated local stack (Hono HTTP API on wrangler dev with its own D1, Vite web app), signs in a throwaway user through the real /sign-in form, and drives features with agent-browser. Use to verify any user-visible change, reproduce a bug in the browser, or prove a feature before opening a PR.
+description: Prove a user-visible Vita OS change in the real app with Playwright e2e specs (apps/e2e), run against an isolated local stack with its own D1 as a throwaway user per spec file. Use to verify a change before a PR, run or add the spec for a feature you touched, reproduce a bug in the browser, or explore a feature with a throwaway spec.
 ---
 
 # Verify Vita OS
 
-Everything goes through one CLI, `bun run verify <command>`, run from the repo root. Every command prints one JSON object: `{"ok":true,...}` or `{"ok":false,"error":...,"hint":...}`. Follow the `hint` on failure. `bun run verify --help` lists every command.
+Proof that a change works is a Playwright spec in `apps/e2e` that drives the real app the way a person does. Two commands, run from the repo root:
 
-The examples below drive the default instance, `main`. When more than one agent may run in this checkout, add `--instance <name>` after the command on every call (`bun run verify up --instance a`, `bun run verify run - --instance a`), before the `--` for `browser` (`bun run verify browser --instance a -- snapshot -i`), or prefix each command with `VITA_INSTANCE=a`.
+- `bun run test:e2e [file] [-g "<title>"] [--repeat-each N]` runs specs. It starts the instance first, or reuses a healthy one, and leaves it up. If it reports that `up` failed, `bun run verify doctor` names the check that failed.
+- `bun run verify <command>` manages the stack alone: `up`, `doctor`, `env`, `d1 "<SELECT>"`, `down [--purge] [--dry-run]`. Each prints one JSON object, `{"ok":true,...}` or `{"ok":false,"error":...,"hint":...}`. Follow the `hint`. `bun run verify --help` lists them.
 
-Read [`features/README.md`](features/README.md) before driving. It maps each user-facing feature to its entry points, exact driving commands, and the end state that proves it.
+Specs run in the installed Google Chrome (`channel: "chrome"` in `apps/e2e/playwright.config.ts`). Without it, install it with `bunx playwright install chrome`.
 
-## Launch
+Read [`features/README.md`](features/README.md) first. It maps each feature to its entry points, locators, covering spec, and the end state that proves it.
 
-```bash
-bun run verify up           # a few seconds warm, up to ~40s cold
-bun run verify signin
-```
+## Isolation
 
-`up` migrates a private local D1, starts the API (`wrangler dev`) and the web app (`vite --strictPort`), waits for both, then signs up a throwaway user. It prints the URLs, the credentials, and the evidence directory. Re-running `up` on a healthy instance reuses it. Vite serves the working tree with HMR, so code edits show up without restarting.
+An instance has its own ports, D1, logs, and Playwright output under `.verify/instances/<name>/`. The default is `main`. When another agent may run in this checkout, name yours on every call: `VITA_INSTANCE=a bun run test:e2e …`, `bun run verify doctor --instance a`. Never drive a server this CLI did not start or the developer's account, including `bun run dev`.
 
-`signin` fills the real `/sign-in` form, pins a 1440×900 viewport, and confirms via `GET /api/auth/get-session` that the browser holds the throwaway user's session.
+Vite and the API serve the working tree, so code edits show up without restarting, and committing does not affect a running instance. Nothing needs a fresh instance.
 
-**Isolation.** Each instance has its own ports, its own D1 under `.verify/instances/<name>/d1`, and its own agent-browser session. Never drive a server or browser session this CLI did not start, including the developer's own `bun run dev`.
+## Users and test data
 
-## Drive
+Each spec file runs as one throwaway user (`account`), and each `--repeat-each` repeat as another. The tests in a file share that user and run in order, so a later test sees what earlier tests created. When a test fails, Playwright restarts the worker and the rest of the file runs as a new user. So a test must not rely on data an earlier test created, nor on an empty board or History unless it is the file's first test.
 
-Batch your steps. `bun run verify run -` reads steps from a heredoc, runs them in order, prints each step's output, and stops at the first failure:
+Every test gets its own session, so signing out in one test leaves the next signed in. Other users share the instance's D1: scope every query to `account.id`.
 
-```bash
-bun run verify run - <<'EOF'
-open /
-browser -- find role button click --name "New note" --exact
-see textbox "Note body"
-browser -- keyboard type "Dentist on Friday ${STAMP}"
-browser -- press Meta+Enter
-see text "Note added"
-gone dialog
-browser -- reload
-see button "Open note: Dentist on Friday ${STAMP}"
-shot note-added
-EOF
-```
-
-Each line is a `verify` subcommand, exactly as typed after `bun run verify`: `open <path>`, `browser -- <agent-browser args>`, `see`, `gone`, `settled`, `shot <label>`, `d1 "<SELECT>"`, `signin`, `doctor`. `expect <text>` fails unless the previous step's output contains `<text>`. `${STAMP}` becomes one timestamp per run, for unique text. `#` comments and blank lines are ignored. On failure it prints `failedLine`, the agent-browser error, the URL, and a `snapshot` file showing the page at that moment. Read that file before re-driving anything.
-
-Single commands work too (`bun run verify browser -- snapshot -i`), but one call per step is slow and noisy. Never put a command in a shell variable (`V="bun run verify browser --"; $V ...`): zsh does not split it, so it fails with "command not found". Shell functions and variables do not persist between your calls either. Use `run -`.
-
-**Acting.** Prefer accessible roles, labels, and visible text (`find role button click --name "Add" --exact`, `find label "Thread title" fill ...`) over CSS selectors. The app has no `data-testid` handles. `snapshot -i` lists interactive elements with `@e` refs. Scope it to what you are looking at with a CSS selector (`-s '[role=dialog]'`, `-s '[data-slot=thread-detail-pane]'`) instead of grepping the whole page. A scoped snapshot can list nested nodes twice; that is agent-browser, not the app. Take a fresh snapshot after anything changes the page.
-
-**Checking and waiting.** Check what a person would see, in the words they would use, and wait for it rather than for time:
-
-```
-see button "Open note: Dentist on Friday"     # waits until the accessibility tree has it
-see complementary "Dentist"                   # the side pane titled Dentist; the drawer is: see dialog "Dentist"
-see text "3 tasks · none focused"             # visible text, even when it spans several elements
-gone dialog                                   # waits until no dialog is left
-gone button "Task A" --in '[data-slot=thread-detail-pane]'
-see option "needle" --contains                # part of the name
-```
-
-`see` and `gone` read the accessibility tree, so hidden elements do not count. The role is the one `snapshot` prints (`button`, `link`, `textbox`, `dialog`, `alertdialog`, `complementary`, `region`, `list`, `group`, `option`, `menuitem`, `tab`, `heading`, `image`), and the name is exact unless you add `--contains`. `--in '<css>'` limits the check to part of the page. On failure, `see` lists the names that role has on the page. Put a `see` before a `gone` after a reload, so `gone` cannot pass on a page that has not loaded.
-
-Use `browser -- wait --fn "<js>"` only for facts the tree does not hold: an input's value, which element has focus, a count, an order, the URL, a date computed from today. It must return a boolean (`!!document.querySelector(...)`, not the element).
-
-**Animations.** Panes, drawers, dialogs, and pickers slide, and their content is on the page before they stop moving. A click during the slide lands on whatever is under that spot, or outside the drawer, which closes it. Before clicking inside a pane or drawer that just opened, run `settled '[data-slot=thread-detail-pane]'` (side pane) or `settled '[data-vaul-drawer]'` (drawer). After confirming a dialog, `gone alertdialog` or `gone dialog` before the next click. `fill` focuses instead of clicking at a position, so it is safe sooner.
-
-**Reading storage.** `d1 "SELECT ..."` reads this instance's D1. Use it only for what the screen cannot show (see Evidence). Table and column names are in `apps/api/migrations`. A query is also a pause of about a second: removing one can expose a click that only worked because of it, which `settled` or `gone` fixes. `browser -- eval "<js>"` reads layout facts a snapshot cannot show (computed styles, sizes). Never use `eval` to click, set values, or call the API in place of the user.
-
-## Flows
-
-A flow is the same step syntax saved as `flows/<name>.flow`. It runs against the current instance with no model in the loop and takes seconds. Each flow's header comment says what it proves.
+## Run specs
 
 ```bash
-bun run verify run .claude/skills/verify-vita-os/flows/tasks.flow
-bun run verify run .claude/skills/verify-vita-os/flows/*.flow    # the whole suite, about 3 minutes
+bun run test:e2e tests/tasks.spec.ts                  # one feature
+bun run test:e2e tests/tasks.spec.ts -g "complete"    # tests whose title matches
+bun run test:e2e tests/tasks.spec.ts --repeat-each 5  # is it flaky?
+bun run test:e2e                                      # every spec in apps/e2e/tests
 ```
 
-A flow whose header says `Needs a fresh` instance (it counts rows in D1) gets `down --purge`, `up`, and `signin` before it runs, so flows can run in any order and in one call. With several files, `run` prints one line per flow and a summary listing each failure with its line, error, and page snapshot. Each step times out after 30 s (`--step-timeout <seconds>`).
+When a change touches a feature, run its spec (the table in `features/README.md`). When it adds or changes a path, add or update a test in that spec, or write `tests/<feature>.spec.ts`. If a spec fails because the feature changed on purpose, fix the spec in the same change.
 
-When a change touches a feature that has a flow, run that flow. When you drive a new path by hand with `run -`, save the steps that worked as a flow. A flow proves what its lines assert. Mutations follow the rule below: a reload, then `see` or `gone`, not the optimistic UI alone. If a flow fails because the feature changed on purpose, fix the flow in the same change.
+A failure prints the failing line, the locator it waited for, and `Error Context: …/error-context.md`: the page's ARIA snapshot at that moment, with the roles and names actually on screen. Read it before changing anything. The screenshot and trace sit beside it under `.verify/instances/<name>/playwright/results/`, the HTML report under `…/playwright/report/`.
 
-## Evidence
+## Explore with a scratch spec
 
-```bash
-bun run verify shot <label>     # <label>.aria.txt (accessibility snapshot) + <label>.png
+To explore a feature, reproduce a bug, or prove a new path, write a throwaway spec in `apps/e2e/scratch/` (gitignored, not type-checked), run it, read the failure's `error-context.md`, and iterate. Once it proves something worth keeping, move it to `apps/e2e/tests/`.
+
+```ts
+// apps/e2e/scratch/try.spec.ts — run: bun run test:e2e scratch/try.spec.ts
+import { expect, sent, test } from "../src/fixtures.ts";
+
+test("a captured Note survives a reload", async ({ page, account, stamp, d1, shot }) => {
+  const body = `Dentist on Friday ${stamp}`;
+  await page.goto("/");
+  await page.getByRole("button", { name: "New note", exact: true }).click();
+  await page.getByRole("textbox", { name: "Note body" }).fill(body); // waits for the lazy editor
+  await shot("note-before");
+  await sent(page, /\/notes$/, () =>
+    page.getByRole("dialog").getByRole("button", { name: "Add", exact: true }).click(),
+  );
+  await expect(page.getByText("Note added")).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: `Open note: ${body}` })).toBeVisible();
+  expect(await d1(`SELECT state FROM notes WHERE user_id = '${account.id}'`)).toEqual([{ state: "open" }]);
+  await shot("note-after");
+});
 ```
 
-`shot` prints the PNG path. Read the PNG to look at it. Files land in `.verify/evidence/<instance>/<run>/`. Proof standards:
+To see what a surface offers, print its ARIA snapshot: `console.log(await page.getByRole("dialog").ariaSnapshot())`.
 
-- Drive the real user path. Never call internal setters, test-only endpoints, or write to D1 to fake a state.
-- Capture the action and the resulting state, not only the final screen: `shot` before and after.
-- Drive every path your change touched. The Thread pane is a side pane at 1280px wide and up, and a drawer below that, built from different components. A change to Thread pane, layout, or navigation code gets a second run in the drawer: `browser -- set viewport 1024 768`, drive it, then `browser -- set viewport 1440 900`. The snapshot tells you which one you are in: the side pane is `complementary "<title>"` (`aside[data-slot=thread-detail-pane]`), the drawer is `dialog "<title>"`. Below 768px the dashboard columns and the filter row (a dropdown) change too. Name any path you changed but did not drive in your report.
-- Toasts are transient and may not appear in the `.aria.txt` snapshot. The proof of a toast is the `see text "<toast>"` output. For an image, run `shot` right after that wait.
-- Vita updates optimistically. A new note or thread appears before the server confirms it. Prove a mutation with the server confirmation toast, then `browser -- reload` and `see` or `gone`: after a reload the page shows what the server stored.
-- Add a `d1` SELECT only for what the screen cannot show: no duplicate rows (`COUNT(*)` is exactly 1), an exact stored value (a time, Markdown source), a row really deleted rather than hidden, an Activity Log entry's stored content or count, sign-in sessions. Do not restate in SQL what the reloaded page already shows: it ties the check to the storage layout, which changes more often than the screen.
+The fixtures (`src/fixtures.ts`): `page` is signed in as the spec file's user at 1440×900 and blank until you call `page.goto("/")`; `account` is `{ id, email, password }`; `stamp` is unique text per test; `d1` runs one read-only SELECT; `shot` saves a PNG; `instance` holds the URLs (`webUrl`, `apiUrl`). `sent` and `settled` come from `src/fixtures.ts`. To start signed out, `test.use({ storageState: { cookies: [], origins: [] } })`.
+
+`src/app.ts` holds the actions specs share, for Threads, Tasks, the date picker, Notes, the palette, and D1 subqueries. Read it before writing your own. For example, `createThread(page, title)` creates a Thread through the New thread dialog, waits for the server write and the `Thread created` toast, and returns the Thread's side pane or drawer once it has stopped sliding; `addTask(pane, text)` and `taskRow(pane, text)` add and find a Task in it.
+
+## Driving
+
+- Locate by role and accessible name, label, or visible text: `getByRole("button", { name: "Add", exact: true })`, `getByLabel("Thread title")`. Use `exact: true` whenever another control's name contains this one. The app has no `data-testid`.
+- Narrow by chaining from a container (`pane.getByRole(…)`, `taskRow(pane, text)`, `page.getByRole("listitem").filter({ has: … })`), not with XPath. Use CSS only for `data-slot` hooks no role reaches (`[data-slot=thread-detail-pane]`, `[data-vaul-drawer]`, `[data-slot=popover-content]`).
+- Wait with web-first assertions (`toBeVisible`, `toBeHidden`, `toHaveCount`, `toHaveValue`, `toHaveURL`). For a fact no locator holds (an order, a URL query, a date computed from today, a computed style, focus across a reload), use `expect.poll`. `waitForTimeout` is never proof.
+- After a reload, assert something visible before asserting something hidden, so `toBeHidden` cannot pass on a page that has not rendered yet.
+- Put `stamp` in every text you create, so a check cannot match another test's rows.
+
+## Proof standards
+
+- Drive the real user path. Never call internal setters, test-only endpoints, or the API in place of the user (a `page.request` write, a `page.evaluate` that clicks or sets values), and never write to D1 to fake a state.
+- Capture the action and the result, not only the final screen: `shot("<feature>-before")` and `shot("<feature>-after")`. `shot` saves `<label>.png` to `.verify/evidence/<instance>/<started>/<spec>/`, attaches it to the HTML report, and returns the path. Read the PNG to look at it. `<started>` is fixed when the instance comes up, not per run, so a later run or `--repeat-each` repeat overwrites the same `<label>.png`; the copy attached to the HTML report belongs to its own run.
+- Vita updates optimistically: a new Note or Thread appears before the server confirms it. Prove a mutation by wrapping its action in `sent(page, /<path>$/, action)`, which waits for the write's response and asserts it succeeded, then `page.reload()` and assert what the server stored.
+- Query D1 only for what the screen cannot show: no duplicate rows (`COUNT(*)` is exactly 1), an exact stored value (a time, Markdown source), a row really deleted rather than hidden, an Activity Log entry's stored content or count, sessions. Scope every query to `account.id` and assert exact typed rows (`toEqual([{ n: 1 }])`). Do not restate in SQL what the reloaded page shows: that ties the spec to the storage layout, which changes more often than the screen. Table and column names are in `apps/api/migrations`.
+- Drive every path your change touched. The Thread pane is a side pane from 1280px (`complementary "<title>"`) and a drawer below (`dialog "<title>"`), built from different components. A change to Thread pane, layout, or navigation code gets a test at `page.setViewportSize({ width: 1024, height: 768 })` too. A change to the Dashboard or the chrome gets one below 768px (`390×844`). Name any path you changed but did not drive in your report.
+- Report the feature ID and entry point with every artifact. Report an unreachable entry point with the step you attempted and the unmet precondition; do not report it as verified through a different path.
 - A check you could not run is `INCONCLUSIVE`, never a pass.
-- Time-limit verification. If the same step fails twice, stop that item, report it `INCONCLUSIVE` with the failing command and its output, and move on. Do not retry in a loop.
+- Time-limit verification. If the same step fails twice, stop that item, report it `INCONCLUSIVE` with the failing step and its error context, and move on. Do not retry in a loop.
+
+After driving, update the feature map as [Keeping the map current](features/README.md#keeping-the-map-current) says.
 
 ## Doctor and cleanup
 
 ```bash
-bun run verify doctor           # read-only health check; run it first whenever anything looks off
-bun run verify down --purge     # stop this instance, close its browser, delete its D1 (do this when your task is done)
+bun run verify doctor          # read-only health check; run it first whenever anything looks off
+bun run verify down --purge    # stop this instance and delete its D1 (do this when your task is done)
 ```
 
-`down` kills only the processes this instance started and closes only its own browser session. Evidence under `.verify/evidence/` and launch logs under `.verify/instances/<name>/logs/` (`migrate.log`, `api.log`, `web.log`) are never deleted. Committing does not affect a running instance: Vite and the API serve the working tree. `branchMatches: false` from `doctor` means you switched branches since `up`, and the other branch may need other migrations: run `down --purge` and `up`.
-
-## Keeping the map current
-
-The feature map is only as good as its last update, and you are the one who updates it. After driving the app, before you report:
-
-- **The feature has no file in `features/`.** Explore its entry points with `snapshot -i`, find the table it writes in `apps/api/migrations`, and prove it once by the standards in [`features/README.md`](features/README.md). Then write `features/<feature>.md` in the entry contract (H1, one paragraph, `Status: proven on <short sha>`, the four H2s), using the exact commands that just worked, and add a line to the index in `features/README.md`. Commit it with the change that introduced or altered the feature.
-- **A documented step no longer matches the app.** Decide which side is wrong. If the app regressed, report the regression and leave the file alone. If the feature changed on purpose, fix the file in the same change and say so in your report.
-- **The file says `mapped from source, not yet driven`.** Correct every handle against a fresh snapshot while you drive it, then set `Status: proven on <short sha>`.
-- **You proved a feature that already has a `Status`.** Replace the line; never append to it. It names the latest proof and what it did not drive. Earlier proofs and evidence paths go in the PR description.
-- **Never mark a step proven that you did not run.** A sub-feature you skipped stays listed, and your report says it was skipped.
+`down` stops only the processes this instance started. Evidence under `.verify/evidence/` and logs under `.verify/instances/<name>/logs/` (`migrate.log`, `api.log`, `web.log`) are kept. `branchMatches: false` from `doctor` means you switched branches since `up`, and the other branch may need other migrations: run `down --purge`, then `up`.
 
 ## Gotchas
 
-- **Landed on `/sign-in`.** The browser lost its cookies: agent-browser stops a session idle for an hour, and relaunches it whenever its environment changes. `open` fails fast with this message. Run `bun run verify signin` (same user, data kept) and carry on. Drive the browser only through `bun run verify`. A raw `agent-browser --session ...` call with different `AGENT_BROWSER_*` variables relaunches the browser and signs it out.
-- **"Element is covered by …".** An open pane, drawer, dialog, or toast sits over the target. From 1280px an open Thread pane covers the header's actions. Close it (`find role button click --name "Close thread" --exact`, then `gone complementary "<title>"`) or use the palette (`press Meta+k`). The TanStack Router devtools toggle floats in a corner in dev and can cover a corner control.
-- Never `press Enter` to commit an edit of an existing Task's text (an EditableField). On agent-browser 0.38.1 it starts a nonstop stream of keydown events, so whatever button has focus is activated over and over and floods the API. Commit the edit with `press Tab` or a click. `press Enter` in `Add a task` is fine: it is the capture path, and flows keep proving it.
-- The Note editor (`Note body`) is CodeMirror and loads lazily. Wait for it with `see textbox "Note body"` before typing. `fill` inserts at the caret instead of replacing the text: to replace, click it, `press Meta+a`, then `keyboard type`. Saved Notes are preview buttons named `Open note: <plain-text preview>`.
-- Native time inputs ignore `fill`. Focus the field and type it key by key (`press 3`, `press 3`, `press 0`, `press p` for 3:30 PM), then check its value with `wait --fn`.
-- On a Mac whose display is asleep or locked, Chrome stops producing frames and screenshots hang. The CLI launches every browser session with `--disable-frame-rate-limit`, which avoids it. Snapshots, `eval`, and `pdf` never need a frame.
-- Use `localhost`, never `127.0.0.1`. CORS allows exactly the instance's `http://localhost:<webPort>` origin.
+- **Animations.** Panes, drawers, dialogs, and pickers slide, and their content is on the page before they stop moving. A click during the slide lands on whatever is under that spot, or outside the drawer, which closes it. Before clicking inside one that just opened, `await settled(page.locator("[data-slot=thread-detail-pane]"))` (side pane) or `settled(page.locator("[data-vaul-drawer]"))` (drawer); `createThread` already does this for the surface it returns. After confirming a dialog, wait for it to be hidden before the next click. `fill` focuses rather than clicking at a position, so it is safe sooner.
+- **"… intercepts pointer events".** An open pane, drawer, dialog, or toast sits over the target, and the click retries until it times out. From 1280px an open Thread pane covers the header's actions: close it (`Close thread`) or use the palette (`ControlOrMeta+k`). A toast can cover a picker's bottom edge: wait for the toast to be hidden. The TanStack Router devtools toggle floats in a corner in dev.
+- The Note editor (`Note body`) is CodeMirror and loads lazily. `fill` waits for it and replaces the whole body. To type at the caret (to watch the live preview), click into it and use `page.keyboard.type`. Saved Notes are preview buttons named `Open note: <plain-text preview>`.
+- A time no chip offers is typed under `Other time` into `textbox "Time"`, which is not a native time input: type `330p`, press Enter, and assert `button "Other time: 3:30 PM"`.
+- Use `localhost`, never `127.0.0.1`. CORS allows exactly the instance's `http://localhost:<webPort>` origin; the fixtures' `baseURL` already uses it.
 - "Continue with GitHub" and "Continue with Google" render but have no local credentials. Do not click them.
-- Keep a desktop viewport unless you are testing another width. Below 1024px (`lg`) the header's actions move to the bottom `navigation "Actions"` bar and `No date` leads the list folded to one line.
+- Keep the desktop viewport unless you are testing another width. Below 1024px (`lg`) the header's actions move to the bottom `navigation "Actions"` bar and `No date` leads the list folded to one line. Below 768px the Dashboard's columns and filter row change too (see [Dashboard board](features/dashboard-board.md)).
+- Toasts are transient. Assert a toast right after the action that raises it, and do not use one as the only proof of a write. An earlier action's toast with the same text may still be up: match with `.first()`.

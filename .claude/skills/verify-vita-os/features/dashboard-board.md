@@ -21,24 +21,24 @@ Status: proven in #437 (9bbf928) at 1440×900, 1024×768 and 390×844, dark and 
 ## How to get to it (user POV)
 
 - Sign in. The Dashboard at `/` is the landing page.
-- Create Threads per [Create a thread](./create-thread.md), give them Tasks per [Tasks](./tasks.md), and capture Notes per [Capture a note](./capture-note.md). Date a Thread by giving one of its Tasks a date and a Note with `Follow-up date` in the `New note` dialog. `flows/dated-tasks.flow` drives this end to end.
+- Create Threads per [Create a thread](./create-thread.md), give them Tasks per [Tasks](./tasks.md), and capture Notes per [Capture a note](./capture-note.md). Date a Thread by giving one of its Tasks a date and a Note with `Follow-up date` in the `New note` dialog. `dated-tasks.spec.ts` drives this end to end.
 
-## Driving it with agent-browser
+## Driving it
 
-Preconditions: signed in at 1440×900, with Threads and Notes spread over Late, Today, the coming days, weeks out and undated.
+Specs: `dashboard-filter-counts.spec.ts` (filter counts), `dashboard-tasks.spec.ts` (the card's Task slot and completing from it), and `dated-tasks.spec.ts` (placement on the list, times, rescheduling from the card), in `apps/e2e/tests/`. For the rest, give the spec's user Threads and Notes spread over Late, Today, the coming days, weeks out and undated, at 1440×900.
 
-- **Filter counts.** Run `bun run verify run .claude/skills/verify-vita-os/flows/dashboard-filter-counts.flow` on a fresh signed-in instance. Proven on the issue #446 working tree (base a1a959b): a dated Note alone reads All 1, adding an undated Note reads All 2, and adding a Home Thread reads All 3, Home 1, No area 0, Notes 2. Area and Notes filters keep their own contents; All 3 also stays visible at 390×844.
-- **List and No date.** Run `bun run verify open /`, `bun run verify see text "Late"`, then `bun run verify shot board-desktop`. The snapshot has `region "Late"`, `region "Today"` and the later groups, and `complementary "No date"` with its runs. `screenshot --full <evidence dir>/board-full.png` shows the one-line weeks and months at the foot.
-- **Filter overflow.** With more Areas than fit (seven at 1440), the row ends `… <n> more`, `Notes <n>`, `Edit areas`. Run `find role button click --name "<n> more"`, then `find role menuitemradio click --name "<Area> <count>"`: the URL gets `?area=<slug>` and the chosen Area takes the last visible chip.
-- **Thread from a card.** `find role link click --name "<title>" --exact` opens `complementary "<title>"` at 1440 (`dialog "<title>"` below 1280); `find role button click --name "Close thread"` closes it.
-- **Card actions.** `find role button click --name "Complete “<task>”" --exact`, reload, and `bun run verify gone button "Complete “<task>”"`: the completed one-off Task is gone and the Thread moves to `No date` → `Open`.
-- **Phone.** `set viewport 390 844`, `reload`: the folded `No date` leads the list; `find role button click --name "<first>, <second> and <n> more"` opens it. The bottom `navigation "Actions"` opens the palette and the New note dialog. Run `set viewport 1440 900` afterwards.
+- **Filter counts.** `dashboard-filter-counts.spec.ts`: a dated Note alone reads All 1, adding an undated Note reads All 2, and adding a Home Thread reads All 3, Home 1, No area 0, Notes 2. Area and Notes filters keep their own contents; All 3 also stays visible at 390×844.
+- **List and No date.** `page.goto("/")`, expect `getByRole("region", { name: "Late" })`, then `shot("board-desktop")`. The page has `region "Late"`, `region "Today"` and the later groups, and `complementary "No date"` with its runs. `page.screenshot({ path, fullPage: true })` shows the one-line weeks and months at the foot.
+- **Filter overflow.** With more Areas than fit (seven at 1440), the row ends `… <n> more`, `Notes <n>`, `Edit areas`. Click `getByRole("button", { name: "<n> more" })`, then `getByRole("menuitemradio", { name: "<Area> <count>" })`: the URL gets `?area=<slug>` and the chosen Area takes the last visible chip.
+- **Thread from a card.** `getByRole("link", { name: title, exact: true })` opens `complementary "<title>"` at 1440 (`dialog "<title>"` below 1280); `button "Close thread"` closes it.
+- **Card actions.** Click `button "Complete “<task>”"` (`exact: true`) inside `sent`, reload, and expect it hidden: the completed one-off Task is gone and the Thread moves to `No date` → `Open`.
+- **Phone.** `page.setViewportSize({ width: 390, height: 844 })`, reload: the folded `No date` leads the list; click `button "<first>, <second> and <n> more"` to open it. The bottom `navigation "Actions"` opens the palette and the New note dialog.
 
 ## Gotchas
 
 - The open Thread pane covers the header's right-hand actions and the right of the list at 1280px and up (ADR 0023, ADR 0037). Close it (`Close thread`) before clicking `New thread`, `New note`, or a card in the right column, or use the palette.
-- Below `lg` the header's actions are hidden and the bottom bar's are shown; both share names (`New note`, `New thread`, `Search, Command K`), so `find role button --exact` matches whichever is on screen.
-- A time is a chip (`9 AM`, `12 PM`, `3 PM`, `6 PM`) or typed under `Other time` (`keyboard type "330p"`, then Enter); the chip that holds it is `aria-pressed`, and a typed one shows as `Other time: 3:30 PM`.
-- Card controls only show on hover or focus. They still exist in the accessibility snapshot, so `find role button` reaches them without a hover.
-- `Archive note` with `--exact` matches the first note card on the board. Scope with XPath when several Notes are open: `click 'xpath=//li[.//button[starts-with(@aria-label,"Open note: <text>")]]//button[@aria-label="Archive note"]'`.
+- Below `lg` the header's actions are hidden and the bottom bar's are shown; both share names (`New note`, `New thread`, `Search, Command K`), and `getByRole` skips hidden elements, so one locator reaches whichever is on screen.
+- A time is a chip (`9 AM`, `12 PM`, `3 PM`, `6 PM`) or typed under `Other time` (type `330p`, then Enter); the chip that holds it is `aria-pressed`, and a typed one shows as `Other time: 3:30 PM`.
+- Card controls only show on hover or focus. They are still in the accessibility tree, so `getByRole` reaches them without a hover.
+- `Archive note` matches every Note card on the board. Scope to one card when several Notes are open: `page.getByRole("listitem").filter({ has: page.getByRole("button", { name: /^Open note: <text>/ }) }).getByRole("button", { name: "Archive note" })`.
 - The sky follows the browser's clock; there is no override to preview another hour in the product (the lab prototype takes `?hour=`).

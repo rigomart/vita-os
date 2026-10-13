@@ -35,4 +35,6 @@ dist-ssr
 
 # Local verification instances and evidence (verify-vita-os skill)
 .verify/
+# Throwaway Playwright specs (apps/e2e/playwright.config.ts)
+apps/e2e/scratch/
 .claude/settings.local.json

@@ -57,7 +57,7 @@ CI (`.github/workflows/verify.yml`) runs `lint:check`, `typecheck`, `build`, a c
 
 ## Check a change in the real app
 
-`bun run verify up` starts an isolated local stack (its own ports and D1) and signs up a throwaway user. It needs no `.dev.vars` or `.env.local`. `bun run verify --help` lists the other commands, and `.claude/skills/verify-vita-os/SKILL.md` documents them.
+`bun run test:e2e` runs the Playwright specs in `apps/e2e/tests` against an isolated local stack (its own ports and D1), each spec file as a throwaway user. It starts the stack, or reuses it, and needs no `.dev.vars` or `.env.local`. `bun run verify --help` lists the stack commands (`up`, `down`, `doctor`, `env`, `d1`), and `.claude/skills/verify-vita-os/SKILL.md` documents the workflow.
 
 ## Deploy
 

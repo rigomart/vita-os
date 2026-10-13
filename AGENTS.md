@@ -19,13 +19,14 @@ ownership checks hold, and failures are visible, never silent.
 
 1. `bun run lint` (auto-fixes lint, format, import order) and `bun run build` (type-check + build) pass.
 2. `bun run test:run` passes when the touched code has tests.
-3. A user-visible change is proven in the real app with the `verify-vita-os` skill (`.claude/skills/verify-vita-os/SKILL.md`, run as `bun run verify <command>`). Lint and tests don't substitute for it.
+3. A user-visible change is proven in the real app: run the specs for the features you touched (`bun run test:e2e tests/<feature>.spec.ts`) and add or update a spec for a new path, per the `verify-vita-os` skill (`.claude/skills/verify-vita-os/SKILL.md`). Lint and unit tests don't substitute for it.
 
 ## Where things live
 
 - `packages/application` is the product: routes, every authenticated screen, the reads and commands behind them, the TanStack Query cache, optimistic updates. Its modules import each other by relative path, never by the package name.
 - `apps/web` is only the host: Better Auth in the browser, configuration of the shared HTTP application client (`@vita-os/contracts/http`), session gating, auth routes. `@` maps to `apps/web/src`.
 - `apps/api` is the Hono HTTP API Worker over Cloudflare D1. Migrations are in `apps/api/migrations`. Background: `docs/migrations/cloudflare-application.md`.
+- `apps/e2e` holds the Playwright e2e specs (`tests/`, each file run as its own throwaway user) and the stack-only `bun run verify` CLI (`up`, `down`, `doctor`, `env`, `d1`). Throwaway specs for exploring go in `scratch/` (gitignored).
 - `packages/contracts` (shared types and the application contract), `packages/core` (domain rules, no framework code), `packages/ui` (shadcn components).
 - `apps/design` is the lab (`bunx turbo run dev --filter=@vita-os/design`, :5174): the real product on an in-memory `ApplicationClient` with switchable scenarios, latency, and date and time, prototypes in `apps/design/src/prototypes/<name>/index.tsx` (served at `/lab/<name>`; `variants` are stepped with `[`/`]`; `shell: true` renders inside the product's chrome, `shell: "without-chrome"` keeps the Thread pane, palette, dialogs and shortcuts but draws no chrome), and the `packages/ui` preview at `/lab/system`. The lab composes the product through its public entries (`@vita-os/application`, `@vita-os/application/shell`); prototypes may also reach any product module through `@vita-os/application/internal/*`; the product never imports the lab. Scenarios seed through the same commands a person runs, so a rule change that breaks one fails its test. The in-memory client and the HTTP API run one contract suite (`@vita-os/contracts/testing`), so the two can't drift apart unnoticed.
 - Domain language is in `CONTEXT.md`, decisions in `docs/adr/`. Use the glossary's terms for its concepts; plain words are fine around them (see Naming in `CONTEXT.md`). Say so when a change contradicts an ADR.
@@ -36,7 +37,7 @@ ownership checks hold, and failures are visible, never silent.
 - After two review rounds with new findings in the same area, stop patching and propose a simpler design.
 - Add shadcn components from `apps/web/` with `bunx shadcn@latest add <component>`. Never `--overwrite`: components in `packages/ui/src/components/` carry local changes.
 - Scope a command to one package with `bunx turbo run <task> --filter=@vita-os/<name>`.
-- Don't use the shared dev server (`bun run dev`, Vite on :5173) or the owner's account for verification. `bun run verify` starts an isolated stack with a throwaway user.
+- Don't use the shared dev server (`bun run dev`, Vite on :5173) or the owner's account for verification. `bun run test:e2e` and `bun run verify up` start an isolated stack with its own D1, and each spec file runs as a throwaway user.
 - API changes ship without compatibility aliases for old browser tabs. The host reloads an old tab after pending writes settle and the matching web build is available.
 - Data migrations must support the API still serving during deployment: migrations run before the new API deploys. Never remove or change storage that the serving API still needs.
 - Never deploy by hand. Deploys go through `.github/workflows/deploy-*.yml`, which migrate D1 and deploy the API before the web app. The `deploy:*` scripts in `apps/web` ship the web Worker alone.
@@ -54,6 +55,6 @@ ownership checks hold, and failures are visible, never silent.
 
 Project skills live in `.claude/skills/<name>/`. Each is symlinked into `.agents/skills/` for agents that read that directory. Add new skills the same way.
 
-- `verify-vita-os` drives the real app locally and captures proof.
+- `verify-vita-os` proves a change in the real app with Playwright specs on an isolated local stack, and maps each feature to its spec.
 - `ship-changes` packages work into a branch, commits, and a PR using this repo's conventions.
 - `validate-idea` shapes a raw product idea: drafts a direction on stated defaults, settles look and behavior with a design lab prototype, then lands the prototype with a proposed ADR and files a spec issue and its slices.
