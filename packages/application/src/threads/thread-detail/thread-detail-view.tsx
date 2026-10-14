@@ -11,6 +11,7 @@ import {
   DrawerDescription,
   DrawerTitle,
 } from "@vita-os/ui/components/drawer";
+import { cn } from "@vita-os/ui/lib/utils";
 import { X } from "lucide-react";
 import { useMemo } from "react";
 
@@ -67,7 +68,10 @@ export function ThreadDetailView({
     <ThreadNotFound onClose={onClose} />
   ) : (
     <ThreadPaneNavContext.Provider value={paneNav}>
-      <ThreadDetailContent thread={detail.thread} />
+      <ThreadDetailContent
+        thread={detail.thread}
+        scrollsWhole={!showDesktopPane}
+      />
     </ThreadPaneNavContext.Provider>
   );
 
@@ -152,7 +156,9 @@ function ThreadDetailDrawer({
           showActions={showActions}
           onRequestClose={requestClose}
         />
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+        {/* On a phone the whole Thread scrolls as one, so Tasks never crowd
+            Notes and Activity out of the little height a drawer has. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 pt-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
           {children}
         </div>
       </DrawerContent>
@@ -238,17 +244,30 @@ function ThreadControls({
 
 interface ThreadDetailContentProps {
   thread: Thread;
+  /**
+   * The drawer scrolls the whole Thread as one; the pane keeps identity and
+   * attention put and scrolls only the body beneath them.
+   */
+  scrollsWhole: boolean;
 }
 
 /**
- * Identity and attention are stated at the top and stay put; beneath them the
- * body is a pair of tabs, so only one of the two ever occupies the pane.
+ * Identity and attention are stated at the top; beneath them the body is a
+ * pair of tabs, so only one of the two ever occupies the pane.
  */
-function ThreadDetailContent({ thread }: ThreadDetailContentProps) {
+function ThreadDetailContent({
+  thread,
+  scrollsWhole,
+}: ThreadDetailContentProps) {
   const isResolved = thread.state === "resolved";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div
+      className={cn(
+        "flex flex-col gap-4",
+        scrollsWhole ? "shrink-0" : "min-h-0 flex-1",
+      )}
+    >
       <header
         role="banner"
         aria-label="Thread header"
@@ -271,7 +290,11 @@ function ThreadDetailContent({ thread }: ThreadDetailContentProps) {
         <ThreadAttentionSection thread={thread} />
       )}
 
-      <ThreadBodyTabs threadTitle={thread.title} threadId={thread._id} />
+      <ThreadBodyTabs
+        threadTitle={thread.title}
+        threadId={thread._id}
+        scrolls={!scrollsWhole}
+      />
     </div>
   );
 }
