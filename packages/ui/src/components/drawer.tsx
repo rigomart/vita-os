@@ -28,17 +28,38 @@ export function useDrawerPortalContainer() {
   return use(DrawerPortalContainer);
 }
 
+/*
+ * vaul's `repositionInputs` lifts the drawer by the keyboard's height when a
+ * field takes focus. The host's viewport asks for `interactive-widget=
+ * resizes-content`, so the browser already shrinks the page above the
+ * keyboard: lifting it again leaves a gap the keyboard's height between
+ * them, and vaul then pins the drawer at its keyboard-open height.
+ */
 function Drawer({
+  repositionInputs = false,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-  return <DrawerPrimitive.Root data-slot="drawer" {...props} />;
+  return (
+    <DrawerPrimitive.Root
+      data-slot="drawer"
+      repositionInputs={repositionInputs}
+      {...props}
+    />
+  );
 }
 
 /** A drawer opened from inside another drawer; stacks instead of clashing. */
 function DrawerNested({
+  repositionInputs = false,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.NestedRoot>) {
-  return <DrawerPrimitive.NestedRoot data-slot="drawer" {...props} />;
+  return (
+    <DrawerPrimitive.NestedRoot
+      data-slot="drawer"
+      repositionInputs={repositionInputs}
+      {...props}
+    />
+  );
 }
 
 function DrawerTrigger({

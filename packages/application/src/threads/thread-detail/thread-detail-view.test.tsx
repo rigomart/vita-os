@@ -685,6 +685,27 @@ describe("ThreadDetailView", () => {
     expect(header.closest(".overflow-y-auto")).toBeNull();
   });
 
+  it("scrolls the whole Thread as one in the drawer", async () => {
+    renderThreadDetail();
+
+    const drawer = await screen.findByRole("dialog", {
+      name: "Sister's front teeth",
+    });
+
+    // Exactly one region in the drawer scrolls, and it holds everything.
+    const scrollRegions = drawer.querySelectorAll(".overflow-y-auto");
+    expect(scrollRegions).toHaveLength(1);
+    const scrollRegion = scrollRegions[0]!;
+    for (const part of [
+      screen.getByRole("banner", { name: "Thread header" }),
+      screen.getByRole("region", { name: "Thread attention" }),
+      screen.getByRole("tab", { name: /Notes/ }),
+      screen.getByRole("button", { name: "Write a note…" }),
+    ]) {
+      expect(scrollRegion.contains(part)).toBe(true);
+    }
+  });
+
   it("keeps a Resolved Thread oriented without active attention controls", async () => {
     mocks.showDesktopPane = true;
     mocks.threadState = "resolved";

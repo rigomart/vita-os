@@ -49,3 +49,41 @@ test("a Thread in the drawer adds, focuses and completes Tasks, logs the complet
   await closeThread(drawer);
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test.describe("on a phone", () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+
+  test("the drawer scrolls the whole Thread as one, so many Tasks never crowd out Notes", async ({
+    page,
+    stamp,
+    shot,
+  }) => {
+    await page.goto("/");
+    const drawer = await createThread(page, `Phone drawer ${stamp}`);
+    const tasks = Array.from(
+      { length: 8 },
+      (_, index) => `Phone task ${index + 1} ${stamp}`,
+    );
+    for (const task of tasks) await addTask(drawer, task);
+    await shot("phone-drawer-top");
+
+    const writeNote = drawer.getByRole("button", { name: "Write a note…" });
+    await expect(writeNote).not.toBeInViewport();
+
+    // Swiping over the Tasks scrolls the drawer: they are not a fixed block.
+    await taskRow(drawer, tasks[0]!).hover();
+    await page.mouse.wheel(0, 2000);
+    await expect(writeNote).toBeInViewport();
+    await expect(
+      drawer.getByRole("banner", { name: "Thread header" }),
+    ).not.toBeInViewport();
+    await expect(drawer).toBeVisible();
+    await shot("phone-drawer-scrolled");
+
+    await closeThread(drawer);
+  });
+});
