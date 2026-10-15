@@ -3,6 +3,7 @@ import {
   CreateThreadFromNoteBody,
   NoteIdSchema,
 } from "@vita-os/contracts";
+import { addNoteToThread, createThreadFromNote } from "@vita-os/operations";
 import { Hono } from "hono";
 import * as v from "valibot";
 
@@ -10,7 +11,6 @@ import type { ApiEnv } from "../../platform/env";
 
 import { validate } from "../../platform/http/decode";
 import { respond } from "../../platform/http/errors";
-import { addNoteToThread, createThreadFromNote } from "./operations";
 
 const NoteParams = v.object({ noteId: NoteIdSchema });
 export const addToThreadRoutes = new Hono<ApiEnv>()

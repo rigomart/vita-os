@@ -1,9 +1,9 @@
 import type { ApplicationError, PageRequest } from "@vita-os/contracts";
 
+import { invalidPagination, type PageSize } from "@vita-os/operations";
 import { Result } from "better-result";
 
-import { invalidPagination } from "../d1/page-cursor";
-import { decodeLimit, type PageSize } from "./decode";
+import { decodeLimit } from "./decode";
 import { RequestRefusal } from "./errors";
 
 export function pageRequest(

@@ -9,18 +9,18 @@ import type {
   ThreadDetail,
   ThreadNote,
 } from "@vita-os/contracts";
+import type { Operation, RequestScope } from "@vita-os/operations";
 
+import * as adding from "@vita-os/operations/internal/features/add-to-thread/operations";
+import * as notes from "@vita-os/operations/internal/features/notes/operations";
+import * as threads from "@vita-os/operations/internal/features/threads/operations";
 import { Result } from "better-result";
 import { env } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { Operation } from "../src/platform/operation";
-import type { RequestScope } from "../src/platform/request-scope";
 import type { Session } from "./sessions";
 
-import * as adding from "../src/features/add-to-thread/operations";
-import * as notes from "../src/features/notes/operations";
-import * as threads from "../src/features/threads/operations";
+import { d1Database } from "../src/platform/d1/database";
 import { toRefusal } from "../src/platform/http/errors";
 import { call, createSession, expectError, succeed } from "./sessions";
 
@@ -480,7 +480,7 @@ describe("contention", () => {
     return result.value;
   }
   const scopeFor = (): RequestScope => ({
-    db: env.DB,
+    db: d1Database(env.DB),
     clock,
     actorId: crypto.randomUUID(),
   });

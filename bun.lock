@@ -17,6 +17,7 @@
         "@hono/standard-validator": "0.4.0",
         "@vita-os/contracts": "workspace:*",
         "@vita-os/core": "workspace:*",
+        "@vita-os/operations": "workspace:*",
         "better-auth": "1.6.25",
         "better-result": "3.0.1",
         "drizzle-orm": "0.45.3",
@@ -157,6 +158,19 @@
       "devDependencies": {
         "typescript": "catalog:",
         "vitest": "4.1.7",
+      },
+    },
+    "packages/operations": {
+      "name": "@vita-os/operations",
+      "version": "0.0.0",
+      "dependencies": {
+        "@vita-os/contracts": "workspace:*",
+        "@vita-os/core": "workspace:*",
+        "better-result": "3.0.1",
+        "drizzle-orm": "0.45.3",
+      },
+      "devDependencies": {
+        "typescript": "catalog:",
       },
     },
     "packages/ui": {
@@ -906,6 +920,8 @@
     "@vita-os/design": ["@vita-os/design@workspace:apps/design"],
 
     "@vita-os/e2e": ["@vita-os/e2e@workspace:apps/e2e"],
+
+    "@vita-os/operations": ["@vita-os/operations@workspace:packages/operations"],
 
     "@vita-os/ui": ["@vita-os/ui@workspace:packages/ui"],
 

@@ -45,7 +45,7 @@ import { attempt, database } from "../../platform/operation";
 import { areaNotFound } from "../areas/errors";
 import { areaStorage } from "../areas/storage";
 import { moveConflict, threadNotFound } from "./errors";
-import { isThreadSlugTaken, threadStorage } from "./storage";
+import { threadStorage } from "./storage";
 
 /** Re-read and recompute whole-JSON Task writes after losing a storage race. */
 const CHANGE_ATTEMPTS = 3;
@@ -93,7 +93,7 @@ export function createThread(
       const slug = generateSlug(title);
       const inserted = await database(
         () => threads.insert({ ...input, title, slug }),
-        isThreadSlugTaken,
+        threads.isSlugTaken,
       );
       if (Result.isError(inserted)) {
         if (inserted.error._tag === "SlugTaken") continue;
@@ -357,7 +357,7 @@ function changeThread(
             change,
             completionNote: change.completionNote,
           }),
-        isThreadSlugTaken,
+        threads.isSlugTaken,
       );
       if (Result.isError(saved)) {
         if (saved.error._tag === "SlugTaken") continue;

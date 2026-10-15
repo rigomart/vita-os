@@ -110,6 +110,28 @@ describe("Area labels", () => {
     );
   });
 
+  it("refuses an unknown icon with the route's words, before any operation", async () => {
+    const owner = await createSession("areas-icon");
+    const area = await createArea(owner);
+
+    expectError(
+      await call("/v1/areas", {
+        method: "POST",
+        session: owner,
+        body: { name: "A", icon: "NotAnIcon" },
+      }),
+      { status: 400, code: "validation", message: "Invalid Area." },
+    );
+    expectError(
+      await call(`/v1/areas/${area._id}`, {
+        method: "PATCH",
+        session: owner,
+        body: { icon: "NotAnIcon" },
+      }),
+      { status: 400, code: "validation", message: "Invalid Area change." },
+    );
+  });
+
   it("no longer accepts a Condition or a Standard, and never returns one", async () => {
     const owner = await createSession("areas-no-condition");
     const area = await createArea(owner);

@@ -1,3 +1,5 @@
+import type { ApplicationError } from "@vita-os/contracts";
+
 import { TaggedError } from "better-result";
 
 /** A missing record and another actor's record have the same public refusal. */
@@ -30,3 +32,27 @@ export const operationFailures = [
   Unexpected,
 ] as const;
 export type OperationFailure = InstanceType<(typeof operationFailures)[number]>;
+
+export const unexpectedFailure: ApplicationError = {
+  code: "unexpected",
+  message: "Unexpected error.",
+  retryable: false,
+};
+
+/** What a caller is told about a failure; an unexpected one keeps its cause private. */
+export function toApplicationError(
+  failure: OperationFailure,
+): ApplicationError {
+  switch (failure._tag) {
+    case "NotFound":
+      return { code: "not_found", message: failure.message, retryable: false };
+    case "InvalidInput":
+      return { code: "validation", message: failure.message, retryable: false };
+    case "RefusedByState":
+      return { code: "conflict", message: failure.message, retryable: false };
+    case "ChangeConflict":
+      return { code: "conflict", message: failure.message, retryable: true };
+    case "Unexpected":
+      return unexpectedFailure;
+  }
+}

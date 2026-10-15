@@ -1,14 +1,15 @@
 import type { Note, NotePage, Repeat } from "@vita-os/contracts";
+import type { RequestScope } from "@vita-os/operations";
 
+import { completeNote } from "@vita-os/operations";
+import { noteStorage } from "@vita-os/operations/internal/features/notes/storage";
 import { Result } from "better-result";
 import { env } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { RequestScope } from "../src/platform/request-scope";
 import type { Session } from "./sessions";
 
-import { completeNote } from "../src/features/notes/operations";
-import { noteStorage } from "../src/features/notes/storage";
+import { d1Database } from "../src/platform/d1/database";
 import { call, createSession, expectError, succeed } from "./sessions";
 
 afterEach(() => vi.restoreAllMocks());
@@ -62,6 +63,21 @@ describe("capturing a Note", () => {
       }),
       { status: 400, code: "validation", message: "Note body cannot be empty" },
     );
+  });
+
+  it("refuses an impossible Follow-up date with the route's words", async () => {
+    const owner = await createSession("note-capture-date");
+    for (const followUp of [1.5, -5e15]) {
+      expectError(
+        await call("/v1/notes", {
+          method: "POST",
+          session: owner,
+          body: { body: "Pay rent", followUp },
+        }),
+        { status: 400, code: "validation", message: "Invalid Note." },
+      );
+    }
+    expect(await openNotes(owner)).toEqual([]);
   });
 
   it("requires authentication", async () => {
@@ -552,7 +568,7 @@ describe("repeating Notes", () => {
   const nov5 = Date.UTC(2030, 10, 5, 9);
   const monthly5 = { kind: "monthly", day: 5 } as const;
   const scopeFor = (session: Session): RequestScope => ({
-    db: env.DB,
+    db: d1Database(env.DB),
     clock: { now: () => Date.now(), newId: () => crypto.randomUUID() },
     actorId: session.actorId,
   });

@@ -4,17 +4,16 @@ import type {
   ThreadNoteId,
   Thread,
 } from "@vita-os/contracts";
+import type { Operation, RequestScope } from "@vita-os/operations";
 
+import { createNote } from "@vita-os/operations";
+import * as threads from "@vita-os/operations/internal/features/threads/operations";
+import { threadStorage } from "@vita-os/operations/internal/features/threads/storage";
 import { Result } from "better-result";
 import { env } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { Operation } from "../src/platform/operation";
-import type { RequestScope } from "../src/platform/request-scope";
-
-import { createNote } from "../src/features/notes/operations";
-import * as threads from "../src/features/threads/operations";
-import { threadStorage } from "../src/features/threads/storage";
+import { d1Database } from "../src/platform/d1/database";
 import { toRefusal } from "../src/platform/http/errors";
 
 describe("explicit-scope operations", () => {
@@ -26,7 +25,7 @@ describe("explicit-scope operations", () => {
       await run(
         create(
           {
-            db: env.DB,
+            db: d1Database(env.DB),
             actorId: firstActor,
             clock: { now: () => 100, newId: () => crypto.randomUUID() },
           },
@@ -38,7 +37,7 @@ describe("explicit-scope operations", () => {
       await run(
         create(
           {
-            db: env.DB,
+            db: d1Database(env.DB),
             actorId: secondActor,
             clock: { now: () => 200, newId: () => crypto.randomUUID() },
           },
@@ -63,7 +62,7 @@ describe("explicit-scope operations", () => {
     const actorId = crypto.randomUUID();
     const result = await createNote(
       {
-        db: env.DB,
+        db: d1Database(env.DB),
         actorId,
         clock: { now: () => 100, newId: () => crypto.randomUUID() },
       },
@@ -103,7 +102,7 @@ function value<T>(result: OperationResult<T>): T {
 }
 async function tasksScope(repeats = false) {
   const scope: RequestScope = {
-    db: env.DB,
+    db: d1Database(env.DB),
     actorId: crypto.randomUUID(),
     clock: {
       now: () => Date.parse("2026-10-10T20:00Z"),

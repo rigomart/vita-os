@@ -2,7 +2,7 @@ import type { Note, NoteId, Repeat } from "@vita-os/contracts";
 
 import { requireRepeat } from "@vita-os/core";
 
-import { notes } from "../../platform/d1/schema";
+import { notes } from "../../platform/sqlite/schema";
 
 /**
  * Where a stored Standalone Note becomes a Vita OS value.

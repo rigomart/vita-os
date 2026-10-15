@@ -4,6 +4,13 @@ import {
   CreateAreaBody,
   UpdateAreaBody,
 } from "@vita-os/contracts";
+import {
+  createArea,
+  listAreas,
+  removeArea,
+  reorderAreas,
+  updateArea,
+} from "@vita-os/operations";
 import { Hono } from "hono";
 import * as v from "valibot";
 
@@ -11,13 +18,6 @@ import type { ApiEnv } from "../../platform/env";
 
 import { validate } from "../../platform/http/decode";
 import { respond } from "../../platform/http/errors";
-import {
-  createArea,
-  listAreas,
-  removeArea,
-  reorderAreas,
-  updateArea,
-} from "./operations";
 import { normalizeAreaChange } from "./requests";
 
 const AreaParams = v.object({ areaId: AreaIdSchema });

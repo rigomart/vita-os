@@ -4,6 +4,20 @@ import {
   NoteIdSchema,
   NoteStateBody,
 } from "@vita-os/contracts";
+import {
+  completeNote,
+  countOpenNotes,
+  createNote,
+  getDoneNotePage,
+  listOpenNotes,
+  markNoteDone,
+  markNoteOpen,
+  NOTE_PAGE_SIZE,
+  removeNote,
+  setNoteRepeat,
+  updateNoteBody,
+  updateNoteFollowUp,
+} from "@vita-os/operations";
 import { Hono } from "hono";
 import * as v from "valibot";
 
@@ -13,23 +27,9 @@ import { validate } from "../../platform/http/decode";
 import { refusalResponse, respond } from "../../platform/http/errors";
 import { pageRequest } from "../../platform/http/schemas";
 import {
-  completeNote,
-  countOpenNotes,
-  createNote,
-  getDoneNotePage,
-  listOpenNotes,
-  markNoteDone,
-  markNoteOpen,
-  removeNote,
-  setNoteRepeat,
-  updateNoteBody,
-  updateNoteFollowUp,
-} from "./operations";
-import {
   CompleteNoteBody,
   CreateNoteBody,
   normalizeSetNoteRepeat,
-  NOTE_PAGE_SIZE,
   NoteFollowUp,
   SetNoteRepeatBody,
 } from "./requests";

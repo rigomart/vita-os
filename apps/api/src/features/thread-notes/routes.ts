@@ -5,26 +5,26 @@ import {
   ThreadNoteIdSchema,
   ThreadNoteStateBody,
 } from "@vita-os/contracts";
+import {
+  createThreadNote,
+  getDoneThreadNotePage,
+  invalidPagination,
+  listOpenThreadNotes,
+  markThreadNoteDone,
+  markThreadNoteOpen,
+  NOTE_PAGE_SIZE,
+  removeThreadNote,
+  updateThreadNoteBody,
+} from "@vita-os/operations";
 import { Hono } from "hono";
 import * as v from "valibot";
 
 import type { ApiEnv } from "../../platform/env";
 
-import { invalidPagination } from "../../platform/d1/page-cursor";
 import { validate } from "../../platform/http/decode";
 import { refusalResponse, respond } from "../../platform/http/errors";
 import { pageRequest } from "../../platform/http/schemas";
-import {
-  createThreadNote,
-  getDoneThreadNotePage,
-  listOpenThreadNotes,
-  markThreadNoteDone,
-  markThreadNoteOpen,
-  removeThreadNote,
-  updateThreadNoteBody,
-} from "./operations";
 
-const NOTE_PAGE_SIZE = { fallback: 20, maximum: 50 };
 const ThreadParams = v.object({ threadId: ThreadIdSchema });
 const ThreadNoteParams = v.object({ threadNoteId: ThreadNoteIdSchema });
 

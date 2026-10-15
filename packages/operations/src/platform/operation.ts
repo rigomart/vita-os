@@ -3,13 +3,13 @@ import { Result } from "better-result";
 
 import type { OperationFailure } from "./failures";
 
-import { InvalidPageCursorError } from "./d1/page-cursor";
 import {
   InvalidInput,
   RefusedByState,
   SlugTaken,
   Unexpected,
 } from "./failures";
+import { InvalidPageCursorError } from "./sqlite/page-cursor";
 
 /** A use case starts when called, with its authenticated scope supplied explicitly. */
 export type Operation<A> = Promise<Result<A, OperationFailure>>;
@@ -29,7 +29,7 @@ export function attempt<T>(
   }
 }
 
-/** Classify one D1 round trip; retry decisions stay in the owning operation. */
+/** Classify one database round trip; retry decisions stay in the owning operation. */
 export function database<T>(
   evaluate: () => Promise<T>,
 ): Promise<Result<T, InvalidInput | Unexpected>>;

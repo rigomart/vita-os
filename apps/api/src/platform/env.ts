@@ -11,7 +11,7 @@ export type WorkerEnv = Pick<
   | "GOOGLE_CLIENT_SECRET"
 >;
 
-import type { RequestScope } from "./request-scope";
+import type { RequestScope } from "@vita-os/operations";
 
 export type ApiEnv = {
   Bindings: WorkerEnv;

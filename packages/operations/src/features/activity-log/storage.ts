@@ -1,7 +1,6 @@
 import type { ActivityLogPage, PageRequest } from "@vita-os/contracts";
 
 import { and, desc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 
 import type { RequestScope } from "../../platform/request-scope";
 
@@ -9,8 +8,8 @@ import {
   createPageCursorCodec,
   pageBoundary,
   toPage,
-} from "../../platform/d1/page-cursor";
-import { activityLogEntries } from "../../platform/d1/schema";
+} from "../../platform/sqlite/page-cursor";
+import { activityLogEntries } from "../../platform/sqlite/schema";
 import { invalidActivityPagination } from "./errors";
 import { ACTIVITY_FIELDS, toActivityLogEntry } from "./rows";
 
@@ -21,7 +20,7 @@ const activityCursor = createPageCursorCodec("createdAt", {
 
 /** One Thread's Activity Log, newest first, in one owner-scoped statement. */
 export function activityLogStorage({ db, actorId }: RequestScope) {
-  const database = drizzle(db);
+  const database = db.drizzle;
   return {
     async readPage(
       threadId: string,

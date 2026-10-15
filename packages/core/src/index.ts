@@ -8,6 +8,7 @@ export {
   areaIconLabels,
   DEFAULT_AREA_ICON,
   isAreaIcon,
+  requireAreaIcon,
 } from "./area-icon";
 /**
  * The enumeration's own type, re-exported beside its values.

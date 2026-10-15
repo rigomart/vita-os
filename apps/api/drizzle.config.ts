@@ -4,7 +4,7 @@ import { defineConfig } from "drizzle-kit";
 // there are deliberately no connection credentials for push/migrate here.
 export default defineConfig({
   dialect: "sqlite",
-  schema: "./src/platform/d1/schema.ts",
+  schema: "../../packages/operations/src/platform/sqlite/schema.ts",
   out: "./migrations",
   tablesFilter: [
     "areas",

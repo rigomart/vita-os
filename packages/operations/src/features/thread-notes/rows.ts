@@ -1,6 +1,6 @@
 import type { ThreadNote, ThreadNoteId } from "@vita-os/contracts";
 
-import { threadNotes } from "../../platform/d1/schema";
+import { threadNotes } from "../../platform/sqlite/schema";
 
 /**
  * Where a stored Thread Note becomes a Vita OS value.

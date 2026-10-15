@@ -1,0 +1,27 @@
+{
+  "name": "@vita-os/operations",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "oxlint --fix --deny-warnings . && oxfmt --write .",
+    "lint:check": "oxlint --deny-warnings . && oxfmt --check .",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@vita-os/contracts": "workspace:*",
+    "@vita-os/core": "workspace:*",
+    "better-result": "3.0.1",
+    "drizzle-orm": "0.45.3"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./internal/*": "./src/*.ts"
+  }
+}
