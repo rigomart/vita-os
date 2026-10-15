@@ -98,7 +98,7 @@ Run `typecheck` separately: the application build excludes tests, but CI type-ch
 bun run test:run
 ```
 
-A user-visible change also needs proof in the real app with the `verify-vita-os` skill: the specs for the touched features pass (`bun run test:e2e tests/<feature>.spec.ts`), and a new path has a spec. Lint and unit tests don't substitute for it. In a stack, verify each PR at its own head.
+A user-visible change also needs proof in the real app with the `verify-vita-os` skill: a Playwright spec, usually a throwaway one in `apps/e2e/scratch/`, drives every path the change touched and passes. Lint and unit tests don't substitute for it. In a stack, verify each PR at its own head.
 
 ## PR Format
 
@@ -126,7 +126,7 @@ One to three sentences: what this touches, what could go wrong, and how it would
 
 ## Verification
 - `bun run lint:check`, `bun run typecheck`, `bun run build`, chunk check, `bun run test:run`
-- `bun run test:e2e ...`: which specs ran, what they drove, and what they showed
+- `bun run test:e2e ...`: each test's title, what it drove (entry point, widths), and what it showed, with screenshots; a scratch spec isn't in the diff, so this is the reviewer's only view of it
 
 Closes #123
 ```

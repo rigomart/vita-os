@@ -1,6 +1,6 @@
 # Feature map
 
-Each user-visible feature, the specs in `apps/e2e/tests/` that drive it, and what no spec drives yet. A spec's test names say what it proves; read the spec for how.
+Each user-visible feature, the committed specs in `apps/e2e/tests/` that drive it, and what no committed spec drives yet. Use them as examples to copy when you write the spec that proves your change. A spec's test names say what it drives; read the spec for how.
 
 | Feature | Behavior | Specs | Not covered |
 | --- | --- | --- | --- |
@@ -28,6 +28,6 @@ Each user-visible feature, the specs in `apps/e2e/tests/` that drive it, and wha
 
 ## Keeping it current
 
-- A new or changed user-visible feature gets a spec, or an updated one, and its row here updated in the same change.
-- "Not covered" lists what no spec drives. Never list something as covered that no spec drives; when a spec starts driving it, remove it from "Not covered".
-- A passing spec is the proof. Evidence paths and one-off manual proofs go in the PR description.
+- When you add, move into `tests/`, or delete a spec, update its row in the same change. Nothing else needs a row change.
+- "Not covered" lists what no committed spec drives. Never list something as covered that no spec drives. A path missing from this table still gets proven by your own spec.
+- The proof of a change is the spec that drove it, reported in the PR description with its screenshots.
