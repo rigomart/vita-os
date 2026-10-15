@@ -1,5 +1,7 @@
 import type { AreaIcon } from "@vita-os/contracts";
 
+import { ValidationError } from "./errors";
+
 export const AREA_ICONS = [
   "Compass",
   "HeartPulse",
@@ -44,4 +46,9 @@ export const areaIconLabels: Record<AreaIcon, string> = {
 
 export function isAreaIcon(value: unknown): value is AreaIcon {
   return typeof value === "string" && AREA_ICONS.includes(value as AreaIcon);
+}
+
+export function requireAreaIcon(value: unknown): AreaIcon {
+  if (!isAreaIcon(value)) throw new ValidationError("Invalid Area icon");
+  return value;
 }

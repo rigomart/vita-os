@@ -1,6 +1,6 @@
 # Drizzle queries over D1
 
-**Status:** Accepted. Amends the native-query implementation in [ADR 0020](./0020-api-layering-operations-and-one-round-trip-storage.md), retained by [ADR 0035](./0035-hono-valibot-result-api.md).
+**Status:** Accepted. Amends the native-query implementation in [ADR 0020](./0020-api-layering-operations-and-one-round-trip-storage.md), retained by [ADR 0035](./0035-hono-valibot-result-api.md). Amended by [ADR 0042](./0042-local-desktop-app-on-shared-operations.md): the scope carries a database seam instead of the raw D1 binding, and Wrangler is no longer the only migration runner.
 **Date:** 2026-10-08
 
 Issue [#369](https://github.com/rigomart/vita-os/issues/369) replaces hand-maintained SQL column lists, row interfaces, and update builders with Drizzle's typed schema and queries. The existing feature storage boundary already isolates this change from operations, routes, domain rules, and the browser contract.

@@ -17,24 +17,36 @@ retirement in [#364](https://github.com/rigomart/vita-os/issues/364)).
 ```text
 packages/contracts     shared schemas, models, inputs, outputs, errors, ApplicationClient, HTTP client
 packages/core          the domain rules, framework-free
+packages/operations    operations and storage over any Drizzle SQLite database, the product schema
 packages/application   Vita OS as an application: routes, screens, cache, commands
-apps/api               Hono routes and Result operations, Better Auth, canonical D1 storage
+apps/api               Hono routes, Better Auth, the D1 database for the operations
 apps/web               the browser host: auth, HTTP client configuration, session gate
 ```
 
-Inside `apps/api/src`, code is organized by feature
+Code is organized by feature
 ([ADR 0020](../adr/0020-api-layering-operations-and-one-round-trip-storage.md),
-with its runtime amended by [ADR 0035](../adr/0035-hono-valibot-result-api.md)):
+with its runtime amended by [ADR 0035](../adr/0035-hono-valibot-result-api.md)
+and its storage seam by [ADR 0042](../adr/0042-local-desktop-app-on-shared-operations.md)).
+Inside `packages/operations/src`:
+
+```text
+platform/database      the seam: a Drizzle SQLite database with batch, rows changed, unique violations
+platform/request-scope { db, clock, actorId }, what every operation is handed
+platform/sqlite        Drizzle product schema and page cursors
+platform/operation     Result boundaries for domain rules and database round trips
+features/<feature>     areas, threads, activity-log, notes, thread-notes, add-to-thread:
+                       Result operations, storage, rows, and errors
+```
+
+Inside `apps/api/src`:
 
 ```text
 worker.ts              builds the app once per isolate
 app.ts                 middleware and mounting
 platform/http          Hono composition, Valibot validation, CORS, guards, and error responses
 platform/auth          Better Auth, and the middleware that builds the request scope
-platform/d1            Drizzle product schema, page cursors, unique-violation detection
-platform/request-scope { db, clock, actorId }, built once per request after authentication
-features/<feature>     areas, threads, activity-log, notes, thread-notes:
-                       request schemas, routes, Result operations, storage, and rows
+platform/d1            the operations' database on the request's D1 binding
+features/<feature>     request schemas and routes that call `@vita-os/operations`
 ```
 
 The shared application imports no API runtime, database, Cloudflare, or Better
@@ -62,7 +74,7 @@ valid and new records get application-generated ones.
 
 The API now queries those tables through Drizzle's D1 driver
 ([ADR 0036](../adr/0036-drizzle-d1-storage.md)).
-`apps/api/src/platform/d1/schema.ts` defines the product tables and supplies
+`packages/operations/src/platform/sqlite/schema.ts` defines the product tables and supplies
 inferred storage row types. Explicit adapters still translate database values
 to contract models and validate stored Task JSON. Better Auth uses native D1
 and owns its separate tables.

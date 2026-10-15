@@ -6,13 +6,6 @@ import {
   ThreadIdSchema,
   UpdateThreadBody,
 } from "@vita-os/contracts";
-import { Hono } from "hono";
-import * as v from "valibot";
-
-import type { ApiEnv } from "../../platform/env";
-
-import { validate } from "../../platform/http/decode";
-import { respond } from "../../platform/http/errors";
 import {
   addTask,
   completeTask,
@@ -28,7 +21,14 @@ import {
   setTaskRepeat,
   skipTask,
   updateThread,
-} from "./operations";
+} from "@vita-os/operations";
+import { Hono } from "hono";
+import * as v from "valibot";
+
+import type { ApiEnv } from "../../platform/env";
+
+import { validate } from "../../platform/http/decode";
+import { respond } from "../../platform/http/errors";
 import {
   AddTaskBody,
   CompleteTaskBody,

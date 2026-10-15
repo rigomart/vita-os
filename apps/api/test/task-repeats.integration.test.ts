@@ -1,11 +1,14 @@
 import type { ActivityLogPage, Repeat, Thread } from "@vita-os/contracts";
 
+import {
+  parseTasks,
+  serializeTasks,
+} from "@vita-os/operations/internal/features/threads/rows";
 import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "./sessions";
 
-import { parseTasks, serializeTasks } from "../src/features/threads/rows";
 import { createTestApp } from "./app";
 import { call, createSession, expectError, succeed } from "./sessions";
 

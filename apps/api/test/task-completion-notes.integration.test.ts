@@ -1,13 +1,14 @@
 import type { ActivityLogPage, Thread, ThreadNote } from "@vita-os/contracts";
 
 import { newRecordId } from "@vita-os/core";
+import { threadStorage } from "@vita-os/operations/internal/features/threads/storage";
 import { env } from "cloudflare:test";
 import { drizzle } from "drizzle-orm/d1";
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "./sessions";
 
-import { threadStorage } from "../src/features/threads/storage";
+import { d1Database } from "../src/platform/d1/database";
 import { createTestApp } from "./app";
 import { call, createSession, expectError, succeed } from "./sessions";
 
@@ -68,17 +69,19 @@ async function complete(
   const app = createTestApp({
     createScope: (authenticated) => ({
       ...authenticated,
-      db: new Proxy(authenticated.db, {
-        get(target, key) {
-          if (key === "batch")
-            return async (statements: D1PreparedStatement[]) => {
-              await beforeBatch?.();
-              return target.batch(statements);
-            };
-          const value = Reflect.get(target, key);
-          return typeof value === "function" ? value.bind(target) : value;
-        },
-      }),
+      db: d1Database(
+        new Proxy(env.DB, {
+          get(target, key) {
+            if (key === "batch")
+              return async (statements: D1PreparedStatement[]) => {
+                await beforeBatch?.();
+                return target.batch(statements);
+              };
+            const value = Reflect.get(target, key);
+            return typeof value === "function" ? value.bind(target) : value;
+          },
+        }),
+      ),
       clock: {
         now: () => now,
         newId: () => {
@@ -157,7 +160,7 @@ describe("completing a Task with a Thread Note", () => {
   it("does not clear the activity quote when prepareChange captures no Note", async () => {
     const { session, thread } = await setup();
     const storage = threadStorage({
-      db: env.DB,
+      db: d1Database(env.DB),
       actorId: session.actorId,
       clock: { now: () => now, newId: () => newRecordId() },
     });

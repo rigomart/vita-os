@@ -1,7 +1,6 @@
+import { isSqliteUniqueViolation as isUniqueViolation } from "@vita-os/operations";
 import { DrizzleQueryError } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-
-import { isUniqueViolation } from "../src/platform/d1/statements";
 
 describe("D1 unique violations", () => {
   it("recognizes a slug collision wrapped by Drizzle", () => {

@@ -1,6 +1,6 @@
 import type { AreaId, AreaSummary } from "@vita-os/contracts";
 
-import { areas } from "../../platform/d1/schema";
+import { areas } from "../../platform/sqlite/schema";
 
 /**
  * Where a stored Area becomes a Vita OS value.

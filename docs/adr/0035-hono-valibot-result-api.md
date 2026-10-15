@@ -1,6 +1,7 @@
 # Hono, Valibot, and Result operations in the API
 
 **Status:** Accepted. Amends the Effect runtime, layers, and lazy-operation decisions in [ADR 0020](./0020-api-layering-operations-and-one-round-trip-storage.md).
+Amended by [ADR 0042](./0042-local-desktop-app-on-shared-operations.md): operations and storage live in `@vita-os/operations`, and a scope is also built on desktop for one fixed local owner, without authentication.
 **Date:** 2026-10-07
 
 Issue [#423](https://github.com/rigomart/vita-os/issues/423) replaces the API's Effect runtime with Hono routing, Valibot request schemas, and better-result operations. During the fast-iteration phase, explicit request scopes and ordinary asynchronous functions make this small API easier to change and delete. The application contract, authenticated ownership, domain rules, and stored-data guarantees remain.

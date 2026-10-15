@@ -14,7 +14,7 @@ from pathlib import Path
 API = Path(__file__).resolve().parents[1]
 ROOT = API.parents[1]
 MIGRATIONS = API / "migrations"
-SCHEMA = API / "src/platform/d1/schema.ts"
+SCHEMA = ROOT / "packages/operations/src/platform/sqlite/schema.ts"
 KIT = API / "node_modules/drizzle-kit/bin.cjs"
 PRODUCT_TABLES = {"areas", "threads", "activity_log_entries", "notes", "thread_notes"}
 

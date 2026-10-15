@@ -1,9 +1,12 @@
 import type { ApplicationError } from "@vita-os/contracts";
+import type { OperationFailure } from "@vita-os/operations";
 import type { Result } from "better-result";
 
-import type { OperationFailure } from "../failures";
-
-import { operationFailures } from "../failures";
+import {
+  operationFailures,
+  toApplicationError,
+  unexpectedFailure,
+} from "@vita-os/operations";
 
 export const STATUS_BY_CODE: Record<ApplicationError["code"], number> = {
   unauthorized: 401,
@@ -23,11 +26,6 @@ export const jsonRequestRequired: ApplicationError = {
   message: "JSON request body required.",
   retryable: false,
 };
-export const unexpectedFailure: ApplicationError = {
-  code: "unexpected",
-  message: "Unexpected error.",
-  retryable: false,
-};
 export function invalidRequest(message: string): ApplicationError {
   return { code: "validation", message, retryable: false };
 }
@@ -45,26 +43,11 @@ export class RequestRefusal extends Error {
   }
 }
 
-function publicError(failure: OperationFailure): ApplicationError {
-  switch (failure._tag) {
-    case "NotFound":
-      return { code: "not_found", message: failure.message, retryable: false };
-    case "InvalidInput":
-      return { code: "validation", message: failure.message, retryable: false };
-    case "RefusedByState":
-      return { code: "conflict", message: failure.message, retryable: false };
-    case "ChangeConflict":
-      return { code: "conflict", message: failure.message, retryable: true };
-    case "Unexpected":
-      return unexpectedFailure;
-  }
-}
-
 export function toRefusal(cause: unknown): RequestRefusal {
   if (cause instanceof RequestRefusal) return cause;
   if (operationFailures.some((failure) => cause instanceof failure)) {
     return new RequestRefusal(
-      publicError(cause as OperationFailure),
+      toApplicationError(cause as OperationFailure),
       undefined,
       cause,
     );

@@ -7,7 +7,12 @@ import type {
 } from "@vita-os/contracts";
 
 import { commandAcknowledged } from "@vita-os/contracts";
-import { generateSlug, slugify, validateAreaName } from "@vita-os/core";
+import {
+  generateSlug,
+  requireAreaIcon,
+  slugify,
+  validateAreaName,
+} from "@vita-os/core";
 import { Result } from "better-result";
 
 import type { Operation } from "../../platform/operation";
@@ -17,7 +22,7 @@ import type { AreaChanges } from "./storage";
 import { ChangeConflict } from "../../platform/failures";
 import { attempt, database } from "../../platform/operation";
 import { areaNotFound, areaOrderMismatch } from "./errors";
-import { areaStorage, isAreaSlugTaken } from "./storage";
+import { areaStorage } from "./storage";
 
 /**
  * How many times a create or change re-mints a slug, or re-reads an Area that
@@ -45,6 +50,7 @@ export function createArea(
   return Result.gen(async function* () {
     const areas = areaStorage(scope);
     const name = yield* attempt(() => validateAreaName(input.name));
+    const icon = yield* attempt(() => requireAreaIcon(input.icon));
 
     const base = slugify(name);
     const listed = yield* Result.await(database(() => areas.list()));
@@ -54,8 +60,8 @@ export function createArea(
     for (let execution = 0; execution < ATTEMPTS; execution += 1) {
       const slug = generateSlug(name);
       const inserted = await database(
-        () => areas.insert({ name, icon: input.icon, slug }),
-        isAreaSlugTaken,
+        () => areas.insert({ name, icon, slug }),
+        areas.isSlugTaken,
       );
       if (Result.isError(inserted)) {
         if (inserted.error._tag === "SlugTaken") continue;
@@ -81,6 +87,10 @@ export function updateArea(
 ): Operation<AreaSummary> {
   return Result.gen(async function* () {
     const areas = areaStorage(scope);
+    const icon =
+      requested.icon === undefined
+        ? undefined
+        : yield* attempt(() => requireAreaIcon(requested.icon));
 
     for (let execution = 0; execution < ATTEMPTS; execution += 1) {
       const existing = yield* Result.await(database(() => areas.find(areaId)));
@@ -95,13 +105,13 @@ export function updateArea(
         ...(name !== undefined && name !== existing.name
           ? { slug: generateSlug(name) }
           : {}),
-        ...(requested.icon === undefined ? {} : { icon: requested.icon }),
+        ...(icon === undefined ? {} : { icon }),
       };
       if (Object.keys(changes).length === 0) return Result.ok(existing);
 
       const updated = await database(
         () => areas.update(areaId, existing.name, changes),
-        isAreaSlugTaken,
+        areas.isSlugTaken,
       );
       if (Result.isError(updated)) {
         if (updated.error._tag === "SlugTaken") continue;

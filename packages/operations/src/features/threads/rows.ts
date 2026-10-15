@@ -8,7 +8,7 @@ import type {
 
 import { requireRepeat } from "@vita-os/core";
 
-import { threads } from "../../platform/d1/schema";
+import { threads } from "../../platform/sqlite/schema";
 
 /**
  * Where a stored Thread becomes a Vita OS value.

@@ -28,7 +28,7 @@ export const invalidPagination: ApplicationError = {
 };
 
 /**
- * A cursor this Worker did not mint. It carries the words its history refuses
+ * A cursor these operations did not mint. It carries the words its history refuses
  * with, so the error handler needs no knowledge of which read it was.
  */
 export class InvalidPageCursorError extends Error {

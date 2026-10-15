@@ -16,6 +16,8 @@ import type { Operation } from "../../platform/operation";
 import type { RequestScope } from "../../platform/request-scope";
 
 import { attempt, database } from "../../platform/operation";
+import { requirePageLimit } from "../../platform/page-size";
+import { NOTE_PAGE_SIZE } from "../notes/operations";
 import { threadNotFound } from "../threads/errors";
 import { threadStorage } from "../threads/storage";
 import { threadNoteNotFound } from "./errors";
@@ -55,6 +57,7 @@ export function getDoneThreadNotePage(
   { threadId, ...page }: { threadId: ThreadId } & PageRequest,
 ): Operation<ThreadNotePage> {
   return Result.gen(async function* () {
+    yield* requirePageLimit(page.limit, NOTE_PAGE_SIZE);
     if (
       !(yield* Result.await(
         database(() => threadStorage(scope).exists(threadId)),

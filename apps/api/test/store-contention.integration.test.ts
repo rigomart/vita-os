@@ -1,16 +1,15 @@
 import type { OperationResult, ThreadId } from "@vita-os/contracts";
+import type { Operation, RequestScope } from "@vita-os/operations";
 
+import { getThreadActivityPage } from "@vita-os/operations";
+import * as areas from "@vita-os/operations/internal/features/areas/operations";
+import * as threads from "@vita-os/operations/internal/features/threads/operations";
 import { Result } from "better-result";
 import { env } from "cloudflare:test";
 import { DrizzleQueryError } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { Operation } from "../src/platform/operation";
-import type { RequestScope } from "../src/platform/request-scope";
-
-import { getThreadActivityPage } from "../src/features/activity-log/operations";
-import * as areas from "../src/features/areas/operations";
-import * as threads from "../src/features/threads/operations";
+import { d1Database } from "../src/platform/d1/database";
 import { toRefusal } from "../src/platform/http/errors";
 
 const clock = { now: () => Date.now(), newId: () => crypto.randomUUID() };
@@ -27,7 +26,7 @@ async function result<T>(operation: Operation<T>): Promise<OperationResult<T>> {
 
 async function setup() {
   const scope: RequestScope = {
-    db: env.DB,
+    db: d1Database(env.DB),
     clock,
     actorId: crypto.randomUUID(),
   };

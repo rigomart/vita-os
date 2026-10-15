@@ -1,12 +1,10 @@
 import type { AreaIcon, AreaSummary } from "@vita-os/contracts";
 
 import { and, asc, eq, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 
 import type { RequestScope } from "../../platform/request-scope";
 
-import { areas, threads } from "../../platform/d1/schema";
-import { isUniqueViolation } from "../../platform/d1/statements";
+import { areas, threads } from "../../platform/sqlite/schema";
 import { AREA_FIELDS, toAreaSummary } from "./rows";
 
 /** What an Area change writes. An absent field is left alone. */
@@ -16,20 +14,20 @@ export interface AreaChanges {
   icon?: AreaIcon;
 }
 
-/** A create or rename lost its slug to another of the owner's Areas. */
-export function isAreaSlugTaken(error: unknown): boolean {
-  return isUniqueViolation(error, "areas.user_id, areas.slug");
-}
-
 /**
- * The owner's Areas, one D1 round trip per function.
+ * The owner's Areas, one round trip per function.
  * Every statement is scoped by the owner, so missing and foreign Areas read alike.
  */
 export function areaStorage({ db, clock, actorId }: RequestScope) {
-  const database = drizzle(db);
+  const database = db.drizzle;
   const owned = eq(areas.user_id, actorId);
 
   return {
+    /** A create or rename lost its slug to another of the owner's Areas. */
+    isSlugTaken(error: unknown): boolean {
+      return db.isUniqueViolation(error, "areas.user_id, areas.slug");
+    },
+
     async list(): Promise<AreaSummary[]> {
       const rows = await database
         .select(AREA_FIELDS)
@@ -107,7 +105,7 @@ export function areaStorage({ db, clock, actorId }: RequestScope) {
           ),
         database.delete(areas).where(and(owned, eq(areas.id, areaId))),
       ]);
-      return removal.meta.changes > 0;
+      return db.changes(removal) > 0;
     },
   };
 }

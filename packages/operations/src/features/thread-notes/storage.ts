@@ -5,7 +5,6 @@ import type {
 } from "@vita-os/contracts";
 
 import { and, desc, eq, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 
 import type { RequestScope } from "../../platform/request-scope";
 
@@ -13,13 +12,13 @@ import {
   doneCursor,
   pageBoundary,
   toPage,
-} from "../../platform/d1/page-cursor";
-import { threadNotes, threads } from "../../platform/d1/schema";
+} from "../../platform/sqlite/page-cursor";
+import { threadNotes, threads } from "../../platform/sqlite/schema";
 import { THREAD_NOTE_FIELDS, toThreadNote } from "./rows";
 
 /** Thread Notes, with one owner-scoped statement or atomic batch per function. */
 export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
-  const database = drizzle(db);
+  const database = db.drizzle;
   const owned = eq(threadNotes.user_id, actorId);
 
   /** A guarded capture that can join a Thread command's atomic batch. */
@@ -83,7 +82,7 @@ export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
       return rows.map(toThreadNote);
     },
 
-    /** Throws before reading when the cursor is not one this Worker minted. */
+    /** Throws before reading when the cursor is not one these operations minted. */
     async readDonePage(
       threadId: string,
       page: PageRequest,

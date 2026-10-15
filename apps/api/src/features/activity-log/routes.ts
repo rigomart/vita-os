@@ -1,4 +1,9 @@
 import { PageQuery, ThreadIdSchema } from "@vita-os/contracts";
+import {
+  ACTIVITY_PAGE_SIZE,
+  getThreadActivityPage,
+  invalidActivityPagination,
+} from "@vita-os/operations";
 import { Hono } from "hono";
 import * as v from "valibot";
 
@@ -7,10 +12,7 @@ import type { ApiEnv } from "../../platform/env";
 import { validate } from "../../platform/http/decode";
 import { refusalResponse, respond } from "../../platform/http/errors";
 import { pageRequest } from "../../platform/http/schemas";
-import { invalidActivityPagination } from "./errors";
-import { getThreadActivityPage } from "./operations";
 
-const ACTIVITY_PAGE_SIZE = { fallback: 20, maximum: 50 };
 const ThreadParams = v.object({ threadId: ThreadIdSchema });
 
 /** A Thread's Activity Log, a page at a time. */

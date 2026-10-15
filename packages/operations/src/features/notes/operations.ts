@@ -17,6 +17,7 @@ import {
   decideSetNoteRepeat,
   noteSearchTerms,
   requireNonBlankText,
+  requireTaskDate,
 } from "@vita-os/core";
 import { Result } from "better-result";
 
@@ -26,6 +27,7 @@ import type { RequestScope } from "../../platform/request-scope";
 
 import { ChangeConflict } from "../../platform/failures";
 import { attempt, database } from "../../platform/operation";
+import { requirePageLimit, type PageSize } from "../../platform/page-size";
 import { noteNotFound, noteOccurrenceChanged } from "./errors";
 import { noteStorage } from "./storage";
 
@@ -41,6 +43,9 @@ export function countOpenNotes(scope: RequestScope): Operation<number> {
   return database(() => noteStorage(scope).countOpen());
 }
 
+/** Done Notes only grow, so both kinds of Note page them at this size. */
+export const NOTE_PAGE_SIZE: PageSize = { fallback: 20, maximum: 50 };
+
 /** Archived Notes, newest archive first; `query` searches their bodies. */
 export function getDoneNotePage(
   scope: RequestScope,
@@ -48,6 +53,7 @@ export function getDoneNotePage(
 ): Operation<NotePage> {
   return Result.gen(async function* () {
     const { query, ...page } = input;
+    yield* requirePageLimit(page.limit, NOTE_PAGE_SIZE);
     const terms = yield* attempt(() => noteSearchTerms(query ?? ""));
     return await database(() => noteStorage(scope).readDonePage(page, terms));
   });
@@ -64,6 +70,10 @@ export function createNote(
     const body = yield* attempt(() =>
       requireNonBlankText(input.body, "Note body"),
     );
+    if (input.followUp !== undefined) {
+      const followUp = input.followUp;
+      yield* attempt(() => requireTaskDate(followUp));
+    }
     return found(
       yield* Result.await(
         database(() => noteStorage(scope).insert({ ...input, body })),

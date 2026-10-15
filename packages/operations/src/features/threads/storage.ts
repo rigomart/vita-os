@@ -15,7 +15,6 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 
 import type { RequestScope } from "../../platform/request-scope";
 import type { ThreadRow } from "./rows";
@@ -25,8 +24,7 @@ import {
   areas,
   threadNotes,
   threads,
-} from "../../platform/d1/schema";
-import { isUniqueViolation } from "../../platform/d1/statements";
+} from "../../platform/sqlite/schema";
 import { AREA_FIELDS, toAreaSummary } from "../areas/rows";
 import { threadNoteStorage } from "../thread-notes/storage";
 import { serializeTasks, THREAD_FIELDS, toThread } from "./rows";
@@ -52,11 +50,6 @@ export type ThreadChangeInput = {
   stampActivity?: boolean;
 };
 
-/** A create or rename lost its slug to another of the owner's Threads. */
-export function isThreadSlugTaken(error: unknown): boolean {
-  return isUniqueViolation(error, "threads.user_id, threads.slug");
-}
-
 /**
  * The statements of one Thread change, not yet sent. A fresh token guards
  * every dependent write, so a lost revision race creates no orphan entries.
@@ -66,7 +59,7 @@ function prepareThreadChange(
   input: ThreadChangeInput,
   activityContent?: { content: null },
 ) {
-  const database = drizzle(db);
+  const database = db.drizzle;
   const { patch, logs } = input.change;
   const changedAt = clock.now();
   const changeToken = clock.newId();
@@ -160,10 +153,10 @@ function prepareThreadChange(
     inserts,
     changeToken,
     changedAt,
-    settle(writtenRows: ThreadRow[], insertResults: D1Result[]): Thread | null {
+    settle(writtenRows: ThreadRow[], insertResults: unknown[]): Thread | null {
       const written = writtenRows.at(0);
       if (written === undefined) return null;
-      if (insertResults.some((insert) => insert.meta.changes !== 1)) {
+      if (insertResults.some((insert) => db.changes(insert) !== 1)) {
         throw new Error(
           "Thread change wrote an unexpected number of log entries",
         );
@@ -176,10 +169,10 @@ function prepareThreadChange(
 /** Prepared queries for a workflow sharing this Thread change's atomic batch. */
 export type PreparedThreadChange = ReturnType<typeof prepareThreadChange>;
 
-/** The owner's Threads, one D1 round trip per function. */
+/** The owner's Threads, one round trip per function. */
 export function threadStorage(scope: RequestScope) {
   const { db, clock, actorId } = scope;
-  const database = drizzle(db);
+  const database = db.drizzle;
 
   /** The Area check, order allocation and insert form one guarded statement. */
   function prepareInsert(thread: NewThread, guard?: SQL) {
@@ -219,6 +212,11 @@ export function threadStorage(scope: RequestScope) {
   }
 
   return {
+    /** A create or rename lost its slug to another of the owner's Threads. */
+    isSlugTaken(error: unknown): boolean {
+      return db.isUniqueViolation(error, "threads.user_id, threads.slug");
+    },
+
     async listOpen(): Promise<Thread[]> {
       const rows = await database
         .select(THREAD_FIELDS)
@@ -353,7 +351,7 @@ export function threadStorage(scope: RequestScope) {
           ),
         ]);
         const written = prepared.settle(writtenRows, inserts.slice(0, -1));
-        if (written !== null && inserts.at(-1)?.meta.changes !== 1) {
+        if (written !== null && db.changes(inserts.at(-1)) !== 1) {
           throw new Error(
             "Task completion wrote an unexpected number of Thread Notes",
           );
@@ -361,7 +359,7 @@ export function threadStorage(scope: RequestScope) {
         return written;
       } catch (error) {
         // Reusing a client ID rolls back the complete batch, including Task and log.
-        if (isUniqueViolation(error, "thread_notes.id")) return null;
+        if (db.isUniqueViolation(error, "thread_notes.id")) return null;
         throw error;
       }
     },
@@ -391,7 +389,7 @@ export function threadStorage(scope: RequestScope) {
           .delete(threads)
           .where(and(eq(threads.user_id, actorId), eq(threads.id, threadId))),
       ]);
-      return removal.meta.changes > 0;
+      return db.changes(removal) > 0;
     },
   };
 }

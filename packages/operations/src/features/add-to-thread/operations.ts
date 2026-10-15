@@ -23,7 +23,7 @@ import { areaStorage } from "../areas/storage";
 import { noteNotFound } from "../notes/errors";
 import { noteStorage } from "../notes/storage";
 import { threadNotFound } from "../threads/errors";
-import { isThreadSlugTaken, threadStorage } from "../threads/storage";
+import { threadStorage } from "../threads/storage";
 import { addToThreadStorage } from "./storage";
 
 /** The caller's Task ID, checked like every other; the service mints one when absent. */
@@ -96,6 +96,7 @@ export function createThreadFromNote(
 ): Operation<NoteAddedToThread> {
   return Result.gen(async function* () {
     const notes = noteStorage(scope);
+    const threads = threadStorage(scope);
     const storage = addToThreadStorage(scope);
     const title = yield* attempt(() =>
       requireNonBlankText(input.title, "Thread title"),
@@ -125,7 +126,7 @@ export function createThreadFromNote(
             },
             change,
           }),
-        isThreadSlugTaken,
+        threads.isSlugTaken,
       );
       if (Result.isError(started)) {
         if (started.error._tag === "SlugTaken") continue;

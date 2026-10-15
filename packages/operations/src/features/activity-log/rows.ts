@@ -1,6 +1,6 @@
 import type { ActivityLogEntry, ActivityLogEntryId } from "@vita-os/contracts";
 
-import { activityLogEntries } from "../../platform/d1/schema";
+import { activityLogEntries } from "../../platform/sqlite/schema";
 
 /**
  * Where a stored Activity Log entry becomes a Vita OS value.

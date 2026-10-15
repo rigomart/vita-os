@@ -2,7 +2,6 @@ import type { Note, NoteAddedToThread, ThreadNote } from "@vita-os/contracts";
 import type { SQL } from "drizzle-orm";
 
 import { and, eq, exists, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 
 import type { RequestScope } from "../../platform/request-scope";
 import type { ThreadNoteRow } from "../thread-notes/rows";
@@ -17,19 +16,19 @@ import {
   notes,
   threadNotes,
   threads as threadTable,
-} from "../../platform/d1/schema";
+} from "../../platform/sqlite/schema";
 import { serializeRepeat } from "../notes/rows";
 import { THREAD_NOTE_FIELDS, toThreadNote } from "../thread-notes/rows";
 import { threadStorage } from "../threads/storage";
 
 /**
- * A Standalone Note becoming a Thread Note, in one guarded atomic D1 batch.
+ * A Standalone Note becoming a Thread Note, in one guarded atomic batch.
  * The Thread changes only while the source Note matches the decision. Its
  * fresh token guards copying the Note; the copy then guards source deletion.
  */
 export function addToThreadStorage(scope: RequestScope) {
   const { db, clock, actorId } = scope;
-  const database = drizzle(db);
+  const database = db.drizzle;
   const threads = threadStorage(scope);
 
   /**
@@ -149,14 +148,14 @@ export function addToThreadStorage(scope: RequestScope) {
   function settle(
     change: PreparedThreadChange,
     writtenRows: ThreadRow[],
-    insertResults: D1Result[],
+    insertResults: unknown[],
     copyRows: ThreadNoteRow[],
-    removal: D1Result,
+    removal: unknown,
   ): NoteAddedToThread | null {
     const thread = change.settle(writtenRows, insertResults);
     if (thread === null) return null;
     const threadNote = copyRows.at(0);
-    if (threadNote === undefined || removal.meta.changes !== 1) {
+    if (threadNote === undefined || db.changes(removal) !== 1) {
       throw new Error("Adding a Note to a Thread wrote an inconsistent batch");
     }
     return { thread, threadNote: toThreadNote(threadNote) };

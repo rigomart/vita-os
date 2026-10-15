@@ -1,11 +1,13 @@
 import type { ApplicationError } from "@vita-os/contracts";
 import type { MiddlewareHandler } from "hono";
 
+import { attempt, database } from "@vita-os/operations";
+
 import type { ApiEnv } from "../env";
 import type { CreateScope } from "../request-scope";
 
+import { d1Database } from "../d1/database";
 import { RequestRefusal, refusalResponse, toRefusal } from "../http/errors";
-import { attempt, database } from "../operation";
 import { createAuth } from "./auth";
 
 export const authenticationRequired: ApplicationError = {
@@ -29,7 +31,10 @@ export function authenticatedScope(
     if (!session.value)
       return refusalResponse(new RequestRefusal(authenticationRequired));
     const scope = attempt(() =>
-      createScope({ db: c.env.DB, actorId: session.value!.user.id }),
+      createScope({
+        db: d1Database(c.env.DB),
+        actorId: session.value!.user.id,
+      }),
     );
     if (scope.status === "error")
       return refusalResponse(toRefusal(scope.error));

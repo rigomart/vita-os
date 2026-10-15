@@ -3,7 +3,6 @@ import type { NoteRepeatState } from "@vita-os/core";
 import type { SQL } from "drizzle-orm";
 
 import { and, count, desc, eq, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 
 import type { RequestScope } from "../../platform/request-scope";
 
@@ -11,8 +10,8 @@ import {
   doneCursor,
   pageBoundary,
   toPage,
-} from "../../platform/d1/page-cursor";
-import { notes } from "../../platform/d1/schema";
+} from "../../platform/sqlite/page-cursor";
+import { notes } from "../../platform/sqlite/schema";
 import { NOTE_FIELDS, serializeRepeat, toNote } from "./rows";
 
 /** Match every term literally; SQLite LIKE ignores ASCII case. */
@@ -27,7 +26,7 @@ export function bodyContainsAll(terms: readonly string[]) {
 
 /** Standalone Notes, with one owner-scoped statement per function. */
 export function noteStorage({ db, clock, actorId }: RequestScope) {
-  const database = drizzle(db);
+  const database = db.drizzle;
   const owned = eq(notes.user_id, actorId);
 
   async function update(
