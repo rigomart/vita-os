@@ -19,9 +19,9 @@ Commands:
                                      its local D1. Evidence is kept.
 
 Drive the app with Playwright specs in apps/e2e (bun run test:e2e starts the instance itself):
-  VITA_INSTANCE=a bun run test:e2e                     # every spec in apps/e2e/tests
-  bun run test:e2e tests/complete-with-note.spec.ts   # one spec
   bun run test:e2e scratch/try.spec.ts                # a throwaway spec (apps/e2e/scratch is gitignored)
+  bun run test:e2e tests/complete-with-note.spec.ts   # a worked example
+  VITA_INSTANCE=a bun run test:e2e                     # every spec in tests/ and scratch/, on instance "a"
 
 Examples:
   bun run verify up && bun run verify doctor

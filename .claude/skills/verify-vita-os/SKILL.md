@@ -1,18 +1,20 @@
 ---
 name: verify-vita-os
-description: Prove a user-visible Vita OS change in the real app with Playwright e2e specs (apps/e2e), run against an isolated local stack with its own D1 as a throwaway user per spec file. Use to verify a change before a PR, run or add the spec for a feature you touched, reproduce a bug in the browser, or explore a feature with a throwaway spec.
+description: Prove a user-visible Vita OS change in the real app with a Playwright spec (apps/e2e) that drives what you changed, against an isolated local stack with its own D1 as a throwaway user. Use to verify a change before a PR, reproduce a bug in the browser, explore a feature, or take a quick look at the app with agent-browser.
 ---
 
 # Verify Vita OS
 
-Proof that a change works is a Playwright spec in `apps/e2e` that drives the real app the way a person does. Two commands, run from the repo root:
+Proof that a change works is a Playwright spec that drives what you changed in the real app, the way a person does. Usually it is a throwaway spec in `apps/e2e/scratch/`: write it, run it, report what it showed. The specs in `apps/e2e/tests/` are worked examples to copy from, not a suite to keep green.
+
+Two commands, run from the repo root:
 
 - `bun run test:e2e [file] [-g "<title>"] [--repeat-each N]` runs specs. It starts the instance first, or reuses a healthy one, and leaves it up. If it reports that `up` failed, `bun run verify doctor` names the check that failed.
 - `bun run verify <command>` manages the stack alone: `up`, `doctor`, `env`, `d1 "<SELECT>"`, `down [--purge] [--dry-run]`. Each prints one JSON object, `{"ok":true,...}` or `{"ok":false,"error":...,"hint":...}`. Follow the `hint`. `bun run verify --help` lists them.
 
 Specs run in the installed Google Chrome (`channel: "chrome"` in `apps/e2e/playwright.config.ts`). Without it, install it with `bunx playwright install chrome`.
 
-[`features/README.md`](features/README.md) maps each feature to its specs and to what no spec drives yet.
+[`features/README.md`](features/README.md) lists, per feature, the committed specs that show how to drive it.
 
 ## Isolation
 
@@ -26,22 +28,23 @@ Each spec file runs as one throwaway user (`account`), and each `--repeat-each` 
 
 Every test gets its own session, so signing out in one test leaves the next signed in. Other users share the instance's D1: scope every query to `account.id`.
 
-## Run specs
+## Prove a change
+
+1. Find the closest example: the feature's row in `features/README.md` points at specs that already drive it, and `src/app.ts` holds the shared actions.
+2. Write `apps/e2e/scratch/<change>.spec.ts` (gitignored, not type-checked) that drives every path your change touched, per the proof standards below.
+3. Run it, read the failure's `error-context.md`, fix the spec or the code, and rerun. A rerun reuses the instance and takes seconds.
+4. Report what it drove and what it showed, with its screenshots (see Proof standards).
 
 ```bash
-bun run test:e2e tests/tasks.spec.ts                  # one feature
-bun run test:e2e tests/tasks.spec.ts -g "complete"    # tests whose title matches
-bun run test:e2e tests/tasks.spec.ts --repeat-each 5  # is it flaky?
-bun run test:e2e                                      # every spec in apps/e2e/tests
+bun run test:e2e scratch/note-repeat.spec.ts                  # your spec
+bun run test:e2e scratch/note-repeat.spec.ts -g "complete"    # tests whose title matches
+bun run test:e2e scratch/note-repeat.spec.ts --repeat-each 5  # is it flaky?
+bun run test:e2e tests/repeating-notes.spec.ts                # a committed example
 ```
 
-When a change touches a feature, run its specs (the table in `features/README.md`). When it adds or changes a path, add or update a test in that spec, or write `tests/<feature>.spec.ts`, and update the feature's row. If a spec fails because the feature changed on purpose, fix the spec in the same change.
+Running the committed specs is optional. Run the one closest to your change if it is cheap insurance. If it fails because the feature changed on purpose, fix it when that is quick; otherwise delete it, update its row in `features/README.md`, and say so in your report. Move a scratch spec into `apps/e2e/tests/` only when its path is worth replaying later: a race, a bug that came back, a flow that took effort to drive.
 
 A failure prints the failing line, the locator it waited for, and `Error Context: …/error-context.md`: the page's ARIA snapshot at that moment, with the roles and names actually on screen. Read it before changing anything. The screenshot and trace sit beside it under `.verify/instances/<name>/playwright/results/`, the HTML report under `…/playwright/report/`.
-
-## Explore with a scratch spec
-
-To explore a feature, reproduce a bug, or prove a new path, write a throwaway spec in `apps/e2e/scratch/` (gitignored, not type-checked), run it, read the failure's `error-context.md`, and iterate. Once it proves something worth keeping, move it to `apps/e2e/tests/`.
 
 ```ts
 // apps/e2e/scratch/try.spec.ts — run: bun run test:e2e scratch/try.spec.ts
@@ -70,6 +73,13 @@ The fixtures (`src/fixtures.ts`): `page` is signed in as the spec file's user at
 
 `src/app.ts` holds the actions specs share, for Threads, Tasks, the date picker, Notes, the palette, and D1 subqueries. Read it before writing your own. For example, `createThread(page, title)` returns the new Thread's side pane or drawer once its write is confirmed and it has stopped sliding; `addTask(pane, text)` and `taskRow(pane, text)` add and find a Task in it.
 
+## Look around with agent-browser
+
+For a quick look (what a screen shows now, how a layout reads, what to drive next), point agent-browser at your instance: `bun run verify up`, take `webUrl` from its output, open `<webUrl>/sign-up`, and sign up with a throwaway email such as `look-<anything>@vita.test`. The same isolation rules apply.
+
+Looking is not proof. What you saw in agent-browser does not count as verified; drive it in a spec. When agent-browser and a spec disagree about how the app behaves, trust the spec: under agent-browser, pressing Enter to commit a Task edit looked broken and became a "never press Enter" rule, while Playwright shows it sends exactly one write.
+
+
 ## Driving
 
 - Locate by role and accessible name, label, or visible text: `getByRole("button", { name: "Add", exact: true })`, `getByLabel("Thread title")`. Use `exact: true` whenever another control's name contains this one. The app has no `data-testid`.
@@ -85,7 +95,7 @@ The fixtures (`src/fixtures.ts`): `page` is signed in as the spec file's user at
 - Vita updates optimistically. Prove a mutation by wrapping its action in `sent(page, /<path>$/, action)`, which waits for the write's response and asserts it succeeded, then `page.reload()` and assert what the server stored.
 - Query D1 only for what the screen cannot show: no duplicate rows (`COUNT(*)` is exactly 1), an exact stored value (a time, Markdown source), a row really deleted rather than hidden, an Activity Log entry's stored content or count, sessions. Scope every query to `account.id` and assert exact typed rows (`toEqual([{ n: 1 }])`). Do not restate in SQL what the reloaded page shows: storage changes more often than the screen. Table and column names are in `apps/api/migrations`.
 - Drive every path your change touched. The Thread pane is a side pane from 1280px (`complementary "<title>"`) and a drawer below (`dialog "<title>"`), built from different components. A change to Thread pane, layout, or navigation code gets a test at `page.setViewportSize({ width: 1024, height: 768 })` too. A change to the Dashboard or the chrome gets one below 768px (`390×844`). Name any path you changed but did not drive in your report.
-- Report the feature and entry point with every artifact. Report an unreachable entry point with the step you attempted and the unmet precondition; do not report it as verified through a different path.
+- A scratch spec is not committed, so your report carries it: each test's title, the entry point and widths it drove, its pass line, and its screenshots. Report the feature and entry point with every artifact. Report an unreachable entry point with the step you attempted and the unmet precondition; do not report it as verified through a different path.
 - A check you could not run is `INCONCLUSIVE`, never a pass.
 - Time-limit verification. If the same step fails twice, stop that item, report it `INCONCLUSIVE` with the failing step and its error context, and move on. Do not retry in a loop.
 
