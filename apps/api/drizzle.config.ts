@@ -1,7 +1,7 @@
 import { defineConfig } from "drizzle-kit";
 
-// Generate reviewed SQL only. Wrangler remains the sole migration runner;
-// there are deliberately no connection credentials for push/migrate here.
+// Generate reviewed SQL only. Wrangler applies it to D1 and `@vita-os/local`
+// to a desktop file; there are deliberately no credentials for push/migrate here.
 export default defineConfig({
   dialect: "sqlite",
   schema: "../../packages/operations/src/platform/sqlite/schema.ts",
