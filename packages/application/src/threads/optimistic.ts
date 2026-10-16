@@ -17,7 +17,6 @@ import {
   decideAddTask,
   decideCompleteTask,
   decideEditTask,
-  decideFocusTask,
   decideRemoveTask,
   decideSetTaskDate,
   decideSetTaskRepeat,
@@ -41,14 +40,13 @@ import { queryKeys } from "../query-keys";
 type TaskFields = {
   state: Thread["state"];
   tasks?: Task[];
-  focusedTaskId?: TaskId;
 };
 
 /**
  * One Task command, shown the way the service is about to decide it: the same
- * rule runs here, so completing the Focused Task leaves the Thread unfocused on
- * screen too, and nothing is promoted. A command the rule would refuse changes
- * nothing locally; the service's refusal then rolls back the rest.
+ * rule runs here, so what the screen shows is what the service will store. A
+ * command the rule would refuse changes nothing locally; the service's refusal
+ * then rolls back the rest.
  */
 function applyTaskDecision<T extends TaskFields>(
   thread: T,
@@ -84,7 +82,6 @@ export type TaskChange =
   | { kind: "remove"; taskId: TaskId }
   | ({ kind: "complete" } & OccurrenceCommand)
   | ({ kind: "skip" } & OccurrenceCommand)
-  | { kind: "focus"; taskId: TaskId | null }
   | { kind: "setDate"; taskId: TaskId; date: number | null; timeZone: string }
   | {
       kind: "setRepeat";
@@ -122,8 +119,7 @@ function decideTaskChange(
       return atOccurrence(thread, change)
         ? decideSkipTask(thread, change.taskId, change)
         : null;
-    case "focus":
-      return decideFocusTask(thread, change.taskId);
+
     case "setDate":
       return decideSetTaskDate(
         thread,
@@ -250,12 +246,10 @@ export function showThreadChange(
   const { threadId, resolutionNote: _resolutionNote, ...requested } = input;
   const patch = clearedToAbsent(requested);
   // Resolving takes the whole attention state with it: the Tasks, dated ones
-  // included, and the focus. It has to travel in the patch, because reads are
-  // patched field by field, not replaced with the Thread the caller handed us.
+  // included. It has to travel in the patch, because reads are patched field
+  // by field, not replaced with the Thread the caller handed us.
   const attentionPatch: Partial<Thread> =
-    patch.state === "resolved"
-      ? { tasks: undefined, focusedTaskId: undefined }
-      : {};
+    patch.state === "resolved" ? { tasks: undefined } : {};
   const threadPatch: Partial<Thread> = { ...patch, ...attentionPatch };
   const next = withoutAbsent({ ...context.thread, ...threadPatch });
   const resolved = threadPatch.state === "resolved";
@@ -354,7 +348,6 @@ export function settleTaskChange(cache: QueryClient, settled: Thread): void {
     withoutAbsent({
       ...thread,
       tasks: settled.tasks,
-      focusedTaskId: settled.focusedTaskId,
       lastActivityAt: settled.lastActivityAt,
       lastActivityContent: settled.lastActivityContent,
     }),
@@ -443,18 +436,13 @@ export function optimisticallyChangeTasks(
   threadId: ThreadId,
   change: TaskChange,
 ): { rollback(): void } {
-  const taskId =
-    change.kind === "add"
-      ? change.task._id
-      : change.kind === "focus"
-        ? undefined
-        : change.taskId;
+  const taskId = change.kind === "add" ? change.task._id : change.taskId;
   return changeThread(
     cache,
     threadId,
-    ["tasks", "focusedTaskId", "state"],
+    ["tasks", "state"],
     () => showTaskChange(cache, threadId, change),
-    taskId === undefined ? [] : [taskId],
+    [taskId],
   );
 }
 

@@ -39,8 +39,7 @@ export const scenarios = [
   {
     id: "long-tasks",
     name: "Long tasks",
-    description:
-      "A Thread with many long Tasks: dated, repeating, late, focused.",
+    description: "A Thread with many long Tasks: dated, repeating, late.",
     seed: (client) => seedLife(client, LONG_TASKS),
   },
   {
@@ -76,8 +75,6 @@ interface SeedThread {
   summary?: string;
   area?: string;
   tasks?: (string | SeedTask)[];
-  /** Index into `tasks` of the Focused Task. */
-  focus?: number;
   /** A dated "Follow up" Task this many days from today. */
   followUpInDays?: number;
   /** The Follow-up's time of day, `HH:mm`. */
@@ -117,10 +114,8 @@ async function seedLife(client: ApplicationClient, life: Life) {
       }),
     );
     const threadId = thread._id;
-    const taskIds: TaskId[] = [];
     for (const task of spec.tasks ?? []) {
       const taskId = newRecordId() as TaskId;
-      taskIds.push(taskId);
       if (typeof task === "string") {
         must(await client.addTask({ threadId, taskId, text: task }));
         continue;
@@ -137,9 +132,6 @@ async function seedLife(client: ApplicationClient, life: Life) {
           }),
         );
       }
-    }
-    if (spec.focus !== undefined) {
-      must(await client.focusTask({ threadId, taskId: taskIds[spec.focus]! }));
     }
     if (spec.followUpInDays !== undefined) {
       must(
@@ -216,7 +208,6 @@ const SAMPLE: Life = {
       area: "Health",
       summary: "Crown on the lower left molar still feels high.",
       tasks: ["Call the clinic to reschedule", "Ask about a night guard"],
-      focus: 0,
       followUpInDays: -3,
       notes: [
         {
@@ -241,7 +232,6 @@ const SAMPLE: Life = {
       title: "File quarterly taxes",
       area: "Money",
       tasks: ["Gather Q3 receipts", "Send the summary to the accountant"],
-      focus: 0,
       followUpInDays: 0,
       followUpAt: "10:00",
     },
@@ -294,7 +284,7 @@ const SAMPLE: Life = {
 
 /**
  * One Thread whose Tasks fill the pane: long text, dates near and far, a late
- * one, two that repeat, and a focus. The rest are there to compare against.
+ * one, and two that repeat. The rest are there to compare against.
  */
 const LONG_TASKS: Life = {
   areas: [
@@ -333,7 +323,6 @@ const LONG_TASKS: Life = {
         },
         "Order a raised toilet seat and a grab rail for the bathroom",
       ],
-      focus: 3,
     },
     {
       title: "Fix the leaking kitchen tap",
@@ -572,7 +561,6 @@ function busyLife(): Life {
         ? {}
         : { area: areaNames[index % areaNames.length] }),
       tasks: [`Next step for ${subject.toLowerCase()}`, "Check in again"],
-      ...(index % 3 === 0 ? { focus: 0 } : {}),
       ...(index % 4 === 3 ? {} : { followUpInDays: (index % 9) * 3 - 6 }),
     });
   }

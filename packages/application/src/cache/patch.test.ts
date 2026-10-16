@@ -138,10 +138,9 @@ describe("the Task rules applied locally", () => {
   const open = {
     state: "open" as const,
     tasks: [callClinic, bookSlot],
-    focusedTaskId: callClinic._id,
   };
 
-  it("completing the Focused Task leaves the Thread unfocused, promoting nothing", () => {
+  it("completing a one-off Task takes it off the list", () => {
     expect(changeTasksLocally(open, complete(callClinic._id))).toEqual({
       state: "open",
       tasks: [bookSlot],
@@ -157,7 +156,7 @@ describe("the Task rules applied locally", () => {
     ).toEqual({ state: "open" });
   });
 
-  it("adding joins the end of the list, unfocused", () => {
+  it("adding joins the end of the list", () => {
     const payBill = { _id: "task-3" as TaskId, text: "Pay bill" };
 
     expect(changeTasksLocally(open, { kind: "add", task: payBill })).toEqual({
@@ -169,9 +168,13 @@ describe("the Task rules applied locally", () => {
   it("a command the service would refuse changes nothing on screen", () => {
     const resolved = { state: "resolved" as const };
 
-    expect(changeTasksLocally(resolved, { kind: "focus", taskId: null })).toBe(
-      resolved,
-    );
+    expect(
+      changeTasksLocally(resolved, {
+        kind: "edit",
+        taskId: callClinic._id,
+        text: "Call the clinic",
+      }),
+    ).toBe(resolved);
     expect(changeTasksLocally(open, complete("gone" as TaskId))).toBe(open);
   });
 });

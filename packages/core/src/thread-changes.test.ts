@@ -35,13 +35,13 @@ describe("sanitizeThreadPatch", () => {
   it("keeps only patchable fields, presence and all", () => {
     const patch = sanitizeThreadPatch({
       title: "New",
-      focusedTaskId: undefined,
+      summary: undefined,
       id: "client-thread-id",
       key: "dashboard-row-key",
     } as never);
 
-    expect(Object.keys(patch).sort()).toEqual(["focusedTaskId", "title"]);
-    expect(patch).toEqual({ title: "New", focusedTaskId: undefined });
+    expect(Object.keys(patch).sort()).toEqual(["summary", "title"]);
+    expect(patch).toEqual({ title: "New", summary: undefined });
   });
 
   it("leaves a field absent when the caller never named it", () => {
@@ -54,7 +54,6 @@ describe("buildThreadPatchLogEntries", () => {
     expect(
       buildThreadPatchLogEntries(makeThread(), {
         tasks: [callClinic],
-        focusedTaskId: callClinic._id,
       }),
     ).toEqual([]);
   });
@@ -137,21 +136,14 @@ describe("buildThreadPatchLogEntries", () => {
 describe("buildThreadLifecyclePatch", () => {
   it("resolving clears the attention state and records the note", () => {
     expect(
-      buildThreadLifecyclePatch(
-        makeThread({
-          tasks: [callClinic],
-          focusedTaskId: callClinic._id,
-        }),
-        {
-          state: "resolved",
-          resolutionNote: "Clinic confirmed no further action",
-        },
-      ),
+      buildThreadLifecyclePatch(makeThread({ tasks: [callClinic] }), {
+        state: "resolved",
+        resolutionNote: "Clinic confirmed no further action",
+      }),
     ).toEqual({
       patch: {
         state: "resolved",
         tasks: undefined,
-        focusedTaskId: undefined,
       },
       log: {
         type: "state_change",
@@ -208,10 +200,7 @@ describe("buildThreadLifecyclePatch", () => {
 describe("decideThreadUpdate", () => {
   it("resolves, clears the attention state, and logs every field it cleared", () => {
     const decision = decideThreadUpdate({
-      thread: makeThread({
-        tasks: [callClinic, bookSlot],
-        focusedTaskId: callClinic._id,
-      }),
+      thread: makeThread({ tasks: [callClinic, bookSlot] }),
       patch: { state: "resolved" },
       resolutionNote: "Done for good",
     });
@@ -219,7 +208,6 @@ describe("decideThreadUpdate", () => {
     expect(decision.patch).toEqual({
       state: "resolved",
       tasks: undefined,
-      focusedTaskId: undefined,
     });
     expect(decision.logs).toEqual([
       {
@@ -283,13 +271,10 @@ describe("decideAddNoteToThread", () => {
     ).toEqual({ patch: {}, logs: [] });
   });
 
-  it("appends a dated Task from the Note's first line, time included, unfocused", () => {
+  it("appends a dated Task from the Note's first line, time included", () => {
     const afternoon = new Date("2026-05-20T15:30:00").getTime();
     const decision = decideAddNoteToThread(
-      makeThread({
-        tasks: [callClinic, bookSlot],
-        focusedTaskId: bookSlot._id,
-      }),
+      makeThread({ tasks: [callClinic, bookSlot] }),
       { body: "\n  Bring the referral\nand the scan", followUp: afternoon },
       newId,
     );
@@ -301,7 +286,6 @@ describe("decideAddNoteToThread", () => {
         { _id: newId, text: "Bring the referral", date: afternoon },
       ],
     });
-    expect(decision.patch).not.toHaveProperty("focusedTaskId");
     expect(decision.logs).toEqual([]);
   });
 

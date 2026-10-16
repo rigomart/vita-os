@@ -119,6 +119,17 @@ async function readColumns(table: string) {
   ).results;
 }
 
+/**
+ * The stored Focused Task. The API no longer reads it (ADR 0044), so what the
+ * earlier migrations wrote is checked in the column itself.
+ */
+async function storedFocus(threadId: string) {
+  return database
+    .prepare("SELECT focused_move_id FROM threads WHERE id = ?")
+    .bind(threadId)
+    .first<string | null>("focused_move_id");
+}
+
 async function readNotes() {
   return (
     await database
@@ -464,11 +475,13 @@ describe("0004: Areas become optional labels", () => {
         { _id: expect.any(String), text: "Book appointment" },
         { _id: expect.any(String), text: "Follow up", date: 1_800_000_000_000 },
       ],
-      focusedTaskId: checkup.thread.tasks?.[0]?._id,
       lastActivityAt: 1_700_000_000_000,
       lastActivityContent: "Next move set",
       createdAt: 1_600_000_000_000,
     });
+    expect(await storedFocus(checkup.thread._id)).toBe(
+      checkup.thread.tasks?.[0]?._id,
+    );
     expect(
       await env.MIGRATION_DB.prepare(
         "SELECT revision FROM threads WHERE id = ?",
@@ -598,7 +611,7 @@ describe("0005: Next Move and Up Next become peer Tasks", () => {
       "Pay bill",
       "Collect results",
     ]);
-    expect(thread.focusedTaskId).toBe(thread.tasks?.[0]?._id);
+    expect(await storedFocus(thread._id)).toBe(thread.tasks?.[0]?._id);
     expect(new Set(thread.tasks?.map((task) => task._id)).size).toBe(4);
     expect(
       await env.MIGRATION_DB.prepare(
@@ -615,14 +628,14 @@ describe("0005: Next Move and Up Next become peer Tasks", () => {
     expect(thread.tasks).toEqual([
       { _id: expect.any(String), text: "Email the landlord" },
     ]);
-    expect(thread.focusedTaskId).toBe(thread.tasks?.[0]?._id);
+    expect(await storedFocus(thread._id)).toBe(thread.tasks?.[0]?._id);
   });
 
   it("brings a Thread with neither through with no Tasks and no focus", async () => {
     for (const slug of ["plain-00000000", "finished-00000000"]) {
       const thread = await threadOf(slug);
       expect(thread).not.toHaveProperty("tasks");
-      expect(thread).not.toHaveProperty("focusedTaskId");
+      expect(await storedFocus(thread._id)).toBeNull();
     }
   });
 
@@ -761,7 +774,7 @@ describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
       },
     ]);
     // Not focused: the Focused Task is the one it was.
-    expect(thread.focusedTaskId).toBe("call");
+    expect(await storedFocus(thread._id)).toBe("call");
     expect(thread.tasks?.[2]?._id).toMatch(/^[0-9a-f]{32}$/);
     // Changed Threads move to a new revision; untouched ones keep theirs.
     expect(
@@ -779,7 +792,7 @@ describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
     expect(thread.tasks).toEqual([
       { _id: expect.any(String), text: "Follow up", date: FOLLOW_UP_DAY },
     ]);
-    expect(thread).not.toHaveProperty("focusedTaskId");
+    expect(await storedFocus(thread._id)).toBeNull();
     expect(
       await env.MIGRATION_DB.prepare(
         "SELECT revision FROM threads WHERE id = ?",
@@ -795,7 +808,7 @@ describe("0006: a Thread's Follow-up date folds into its Tasks", () => {
     expect(thread.tasks).toEqual([
       { _id: "email", text: "Email the landlord" },
     ]);
-    expect(thread.focusedTaskId).toBe("email");
+    expect(await storedFocus(thread._id)).toBe("email");
     expect(thread).not.toHaveProperty("followUp");
     expect(
       await env.MIGRATION_DB.prepare(

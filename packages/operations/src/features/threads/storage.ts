@@ -78,9 +78,6 @@ function prepareThreadChange(
     ...(Object.hasOwn(patch, "state")
       ? { state: patch.state ?? sql`NULL` }
       : {}),
-    ...(Object.hasOwn(patch, "focusedTaskId")
-      ? { focused_move_id: patch.focusedTaskId ?? null }
-      : {}),
     ...(Object.hasOwn(patch, "tasks")
       ? { moves_json: serializeTasks(patch.tasks) }
       : {}),

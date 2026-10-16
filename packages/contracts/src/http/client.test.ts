@@ -24,7 +24,6 @@ const detail = {
       { _id: "task/1", text: "Call clinic" },
       { _id: "task-2", text: "Book appointment" },
     ],
-    focusedTaskId: "task/1",
     lastActivityAt: 1_700_000_000_000,
     lastActivityContent: "Captured next move",
     createdAt: 1_600_000_000_000,
@@ -618,7 +617,6 @@ describe("createHttpApplicationClient", () => {
       .mockResolvedValueOnce(jsonResponse(detail))
       .mockResolvedValueOnce(jsonResponse(activityPage))
       .mockResolvedValueOnce(jsonResponse(detail.thread))
-      .mockResolvedValueOnce(jsonResponse(detail.thread))
       .mockResolvedValueOnce(jsonResponse(detail.thread));
     const client = createHttpApplicationClient({
       apiBaseUrl: "https://api.test/",
@@ -640,12 +638,6 @@ describe("createHttpApplicationClient", () => {
         expectedOccurrence: null,
         threadId: "thread/with/slashes" as ThreadId,
         taskId: "task/1" as TaskId,
-      }),
-    ).resolves.toEqual({ ok: true, value: detail.thread });
-    await expect(
-      client.focusTask({
-        threadId: "thread/with/slashes" as ThreadId,
-        taskId: null,
       }),
     ).resolves.toEqual({ ok: true, value: detail.thread });
     await expect(
@@ -677,15 +669,6 @@ describe("createHttpApplicationClient", () => {
     );
     expect(fetchImpl).toHaveBeenNthCalledWith(
       4,
-      "https://api.test/v1/threads/thread%2Fwith%2Fslashes/focus",
-      expect.objectContaining({
-        method: "PUT",
-        credentials: "include",
-        body: JSON.stringify({ taskId: null }),
-      }),
-    );
-    expect(fetchImpl).toHaveBeenNthCalledWith(
-      5,
       "https://api.test/v1/threads/thread%2Fwith%2Fslashes/tasks/task%2F1/date",
       expect.objectContaining({
         method: "PUT",

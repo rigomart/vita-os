@@ -24,7 +24,7 @@ export type AreaIcon = v.InferOutput<typeof AreaIconSchema>;
 export type AreaSummary = v.InferOutput<typeof AreaSummarySchema>;
 export type ThreadState = v.InferOutput<typeof ThreadStateSchema>;
 export type Thread = v.InferOutput<typeof ThreadSchema>;
-/** One useful action, optionally dated; focus is emphasis within its Thread. */
+/** One useful action of a Thread, optionally dated and repeating. */
 export type Task = v.InferOutput<typeof TaskSchema>;
 /** A calendar rhythm on a dated Task; Sunday is weekday 0. */
 export type Repeat = v.InferOutput<typeof RepeatSchema>;

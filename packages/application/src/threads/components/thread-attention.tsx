@@ -19,7 +19,6 @@ import {
   Plus,
   Repeat as RepeatIcon,
   SkipForward,
-  Target,
   Trash2,
 } from "lucide-react";
 import { Fragment, useId, useState } from "react";
@@ -36,7 +35,6 @@ import { TaskTextField } from "./task-text-field";
 interface ThreadAttentionProps {
   /** Every Task, in the order it was captured. */
   tasks: readonly Task[];
-  focusedTaskId?: TaskId;
   /** The shared attention clock, so lateness matches every other surface. */
   now: number;
   onAddTask: (text: string) => unknown;
@@ -51,8 +49,6 @@ interface ThreadAttentionProps {
    * caller's to report, text included: this surface has let it go.
    */
   onCompleteTaskWithNote: (taskId: TaskId, body: string) => unknown;
-  /** `null` unfocuses; a Task replaces any earlier focus. */
-  onFocusTask: (taskId: TaskId | null) => unknown;
   /** Sets, changes or (with `null`) clears one Task's date, and its Repeat with it. */
   onSetTaskDate: (taskId: TaskId, date: number | null) => unknown;
   /** Sets, changes or (with `null`) clears one dated Task's Repeat. */
@@ -68,8 +64,7 @@ interface ThreadAttentionProps {
  * Each row leads with Complete, one click. The text has the row's width for
  * up to two lines, and all of it while edited. Under it, the date sits at the
  * left and the row's commands at the right, named by tooltips: Skip when the
- * Task repeats, the date, Focus, Complete with a note, and Remove. The Focused
- * Task is tinted where it sits; leaving every Task unfocused is a fine answer.
+ * Task repeats, the date, Complete with a note, and Remove.
  *
  * "Complete with a note" opens a line under the row; completing from there
  * also captures the text as a Thread Note. The text is held here while it is
@@ -83,7 +78,6 @@ interface ThreadAttentionProps {
  */
 export function ThreadAttention({
   tasks,
-  focusedTaskId,
   now,
   onAddTask,
   onEditTask,
@@ -91,7 +85,6 @@ export function ThreadAttention({
   completingTaskIds,
   onCompleteTask,
   onCompleteTaskWithNote,
-  onFocusTask,
   onSetTaskDate,
   onSetTaskRepeat,
   onSkipTask,
@@ -145,7 +138,6 @@ export function ThreadAttention({
                 <TaskRow
                   task={task}
                   now={now}
-                  focused={task._id === focusedTaskId}
                   disabled={busy(task._id)}
                   noting={noting === task._id}
                   onEdit={(text) => onEditTask(task._id, text)}
@@ -159,9 +151,6 @@ export function ThreadAttention({
                   onSetDate={(date) => onSetTaskDate(task._id, date)}
                   onSetRepeat={(repeat) => onSetTaskRepeat(task._id, repeat)}
                   onSkip={() => onSkipTask(task._id)}
-                  onToggleFocus={() =>
-                    onFocusTask(task._id === focusedTaskId ? null : task._id)
-                  }
                 />
                 {noting === task._id && (
                   <CompletionNoteLine
@@ -189,13 +178,12 @@ export function ThreadAttention({
 
 /**
  * One Task: a line, not a card. Complete leads; the text and, under it, the
- * date and the commands follow. The focused line is tinted in place. A
- * pending Task is dimmed and says so; a disabled one takes no command.
+ * date and the commands follow. A pending Task is dimmed and says so; a
+ * disabled one takes no command.
  */
 function TaskRow({
   task,
   now,
-  focused,
   disabled,
   noting,
   onEdit,
@@ -205,11 +193,9 @@ function TaskRow({
   onSetDate,
   onSetRepeat,
   onSkip,
-  onToggleFocus,
 }: {
   task: Task;
   now: number;
-  focused: boolean;
   /** Whether it takes a command now: not while it is being completed. */
   disabled: boolean;
   /** Whether its note line is open beneath it. */
@@ -221,7 +207,6 @@ function TaskRow({
   onSetDate: (date: number | null) => unknown;
   onSetRepeat: (repeat: Repeat | null) => unknown;
   onSkip: () => unknown;
-  onToggleFocus: () => unknown;
 }) {
   const action = useGuardedAsyncAction((run: () => unknown) => run(), {
     errorToast: false,
@@ -256,12 +241,8 @@ function TaskRow({
 
   return (
     <li
-      data-focused={focused || undefined}
       aria-busy={busy || undefined}
-      className={cn(
-        "group/task flex items-start gap-1.5 rounded-lg px-1 pt-1 pb-0.5 transition-colors motion-reduce:transition-none",
-        focused ? "bg-brand-accent/12" : "text-foreground/90 hover:bg-muted/50",
-      )}
+      className="group/task flex items-start gap-1.5 rounded-lg px-1 pt-1 pb-0.5 text-foreground/90 transition-colors hover:bg-muted/50 motion-reduce:transition-none"
     >
       <Command label="Complete">
         <button
@@ -293,7 +274,6 @@ function TaskRow({
           value={task.text}
           onSave={(text) => act(() => onEdit(text))}
           disabled={busy}
-          className={focused ? "font-medium" : undefined}
         />
         <div className="flex min-h-8 items-center gap-2 xl:min-h-7">
           <div className="-ml-1 flex min-w-0 flex-1 items-center">
@@ -363,17 +343,7 @@ function TaskRow({
                   : taskDateLabels.change}
               </TooltipContent>
             </Tooltip>
-            <Command label={focused ? "Unfocus" : "Focus"}>
-              <CommandButton
-                disabled={busy}
-                onClick={() => act(onToggleFocus)}
-                aria-label={focused ? "Unfocus this task" : "Focus this task"}
-                aria-pressed={focused}
-                className={focused ? "text-brand-accent-text" : undefined}
-              >
-                <Target />
-              </CommandButton>
-            </Command>
+
             <Command label="Complete with a note">
               <CommandButton
                 disabled={busy}

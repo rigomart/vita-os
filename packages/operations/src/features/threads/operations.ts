@@ -4,7 +4,6 @@ import type {
   CompleteTaskInput,
   CreateThreadInput,
   EditTaskInput,
-  FocusTaskInput,
   RemoveTaskInput,
   SetTaskDateInput,
   SetTaskRepeatInput,
@@ -22,7 +21,6 @@ import {
   decideAddTask,
   decideCompleteTask,
   decideEditTask,
-  decideFocusTask,
   decideRemoveTask,
   decideSetTaskDate,
   decideSetTaskRepeat,
@@ -168,7 +166,7 @@ export function updateThread(
   });
 }
 
-/** A new Task joins the end of the Thread's Tasks, unfocused. */
+/** A new Task joins the end of the Thread's Tasks. */
 export function addTask(
   scope: RequestScope,
   input: AddTaskInput,
@@ -207,7 +205,7 @@ export function removeTask(
 }
 
 /**
- * Complete one Task, focused or not. Its Activity Log entry is written with the
+ * Complete one Task. Its Activity Log entry is written with the
  * change or not at all, and two competing completions of the same Task record
  * one: the loser finds the occurrence changed.
  */
@@ -232,15 +230,6 @@ export function completeTask(
       });
     },
     input.note,
-  );
-}
-
-export function focusTask(
-  scope: RequestScope,
-  input: FocusTaskInput,
-): Operation<Thread> {
-  return changeTasks(scope, input, (thread) =>
-    decideFocusTask(thread, input.taskId),
   );
 }
 

@@ -13,7 +13,6 @@ const thread = (date: string | undefined, repeat: Repeat = daily) => ({
   tasks: [
     { _id: id, text: "Check", ...(date ? { date: ms(date) } : {}), repeat },
   ],
-  focusedTaskId: id,
 });
 
 describe("repeating Tasks", () => {
@@ -51,7 +50,6 @@ describe("repeating Tasks", () => {
         expect(decision?.patch.tasks).toEqual([
           { ...original.tasks[0], date: ms(next) },
         ]);
-        expect(decision?.patch).not.toHaveProperty("focusedTaskId");
         expect(decision?.logs).toHaveLength(
           command === rules.decideCompleteTask ? 1 : 0,
         );
@@ -300,7 +298,6 @@ describe("repeating Tasks", () => {
     const original = {
       state: "open" as const,
       tasks: [{ _id: id, text: "Check" }],
-      focusedTaskId: id,
     };
     expect(() =>
       rules.decideSkipTask(original, id, {
@@ -311,10 +308,7 @@ describe("repeating Tasks", () => {
     expect(
       rules.decideCompleteTask(original, id, { timeZone: undefined, now: 0 })
         ?.patch,
-    ).toEqual({
-      tasks: undefined,
-      focusedTaskId: undefined,
-    });
+    ).toEqual({ tasks: undefined });
     expect(
       rules.decideSkipTask(original, "missing" as TaskId, {
         timeZone: "UTC",

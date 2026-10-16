@@ -24,7 +24,7 @@ async function logOf(session: Session, thread: Thread) {
 }
 
 describe("Task HTTP contract", () => {
-  it("adds, edits, focuses, completes and removes a Task", async () => {
+  it("adds, edits, completes and removes a Task", async () => {
     const owner = await createSession("tasks-routes");
     const created = await createThread(owner);
     const base = `/v1/threads/${created._id}`;
@@ -47,24 +47,11 @@ describe("Task HTTP contract", () => {
       session: owner,
       body: { text: "Book a slot" },
     });
-    thread = await succeed<Thread>(`${base}/focus`, {
-      method: "PUT",
-      session: owner,
-      body: { taskId: "b" },
-    });
     expect(thread.tasks).toEqual([
       { _id: "a", text: "Call clinic" },
       { _id: "b", text: "Book a slot" },
     ]);
-    expect(thread.focusedTaskId).toBe("b");
-
-    thread = await succeed<Thread>(`${base}/focus`, {
-      method: "PUT",
-      session: owner,
-      body: { taskId: null },
-    });
     expect(thread).not.toHaveProperty("focusedTaskId");
-    expect(thread).not.toHaveProperty("focusedMoveId");
 
     thread = await succeed<Thread>(`${base}/tasks/a/complete`, {
       method: "POST",
@@ -120,21 +107,11 @@ describe("Task HTTP contract", () => {
       session: owner,
       body: { taskId: "a", text: "Call clinic" },
     });
-    await succeed(`/v1/threads/${created._id}/focus`, {
-      method: "PUT",
-      session: owner,
-      body: { taskId: "a" },
-    });
 
     expect(
-      await env.DB.prepare(
-        "SELECT moves_json, focused_move_id FROM threads WHERE id = ?",
-      )
+      await env.DB.prepare("SELECT moves_json FROM threads WHERE id = ?")
         .bind(created._id)
         .first(),
-    ).toEqual({
-      moves_json: '[{"id":"a","text":"Call clinic"}]',
-      focused_move_id: "a",
-    });
+    ).toEqual({ moves_json: '[{"id":"a","text":"Call clinic"}]' });
   });
 });

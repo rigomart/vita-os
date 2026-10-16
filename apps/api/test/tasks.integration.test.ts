@@ -10,8 +10,7 @@ import { call, createSession, expectError, succeed } from "./sessions";
 
 /**
  * Tasks, driven through the Worker the way the browser drives them: peers in
- * capture order, one optional Focused Task, and completion as the only change
- * the Activity Log records.
+ * capture order, and completion as the only change the Activity Log records.
  */
 
 const taskConflict = {
@@ -73,14 +72,6 @@ function complete(session: Session, thread: Thread, taskId: string) {
   });
 }
 
-function focus(session: Session, thread: Thread, taskId: string | null) {
-  return call(`/v1/threads/${thread._id}/focus`, {
-    method: "PUT",
-    session,
-    body: { taskId },
-  });
-}
-
 function remove(session: Session, thread: Thread, taskId: string) {
   return call(`/v1/threads/${thread._id}/tasks/${taskId}`, {
     method: "DELETE",
@@ -105,15 +96,20 @@ async function activityOf(session: Session, thread: Thread) {
 }
 
 async function storedTasks(thread: Thread) {
-  return env.DB.prepare(
-    "SELECT moves_json, focused_move_id FROM threads WHERE id = ?",
-  )
+  return env.DB.prepare("SELECT moves_json FROM threads WHERE id = ?")
     .bind(thread._id)
-    .first<{ moves_json: string | null; focused_move_id: string | null }>();
+    .first<{ moves_json: string | null }>();
+}
+
+/** A Focused Task stored before Focus was retired (ADR 0044). */
+async function storeRetiredFocus(thread: Thread, taskId: string) {
+  await env.DB.prepare("UPDATE threads SET focused_move_id = ? WHERE id = ?")
+    .bind(taskId, thread._id)
+    .run();
 }
 
 describe("capturing Tasks", () => {
-  it("keeps Tasks in capture order, unfocused, and writes no Activity Log", async () => {
+  it("keeps Tasks in capture order and writes no Activity Log", async () => {
     const owner = await createSession("tasks-capture");
     const thread = await threadWith(owner, ["  Call clinic ", "Book slot"]);
 
@@ -121,7 +117,6 @@ describe("capturing Tasks", () => {
       { _id: "task-1", text: "Call clinic" },
       { _id: "task-2", text: "Book slot" },
     ]);
-    expect(thread).not.toHaveProperty("focusedTaskId");
 
     expect(await activityOf(owner, thread)).toEqual([]);
     expect(thread).not.toHaveProperty("lastActivityAt");
@@ -167,7 +162,7 @@ describe("capturing Tasks", () => {
     expect((await read(owner, thread)).tasks).toHaveLength(1);
   });
 
-  it("refuses adding, editing, and focusing on a resolved Thread", async () => {
+  it("refuses adding and editing on a resolved Thread", async () => {
     const owner = await createSession("tasks-resolved");
     const thread = await threadWith(owner, ["Call clinic"]);
     const resolved = await succeed<Thread>(`/v1/threads/${thread._id}`, {
@@ -185,53 +180,19 @@ describe("capturing Tasks", () => {
       }),
       resolvedRefusal,
     );
-    expectError(await focus(owner, resolved, null), resolvedRefusal);
-  });
-});
-
-describe("focus", () => {
-  it("focuses one Task, replaces an earlier focus, and unfocuses, all silently", async () => {
-    const owner = await createSession("tasks-focus");
-    const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
-
-    const first = await focus(owner, thread, "task-1");
-    expect(first.status).toBe(200);
-    expect((first.body as Thread).focusedTaskId).toBe("task-1");
-
-    const second = await focus(owner, first.body as Thread, "task-2");
-    expect((second.body as Thread).focusedTaskId).toBe("task-2");
-
-    const cleared = await focus(owner, second.body as Thread, null);
-    expect(cleared.body).not.toHaveProperty("focusedTaskId");
-    // Focus never reorders the list.
-    expect((cleared.body as Thread).tasks?.map((task) => task._id)).toEqual([
-      "task-1",
-      "task-2",
-    ]);
-    expect(await activityOf(owner, thread)).toEqual([]);
-  });
-
-  it("refuses to focus a Task the Thread does not hold", async () => {
-    const owner = await createSession("tasks-focus-missing");
-    const thread = await threadWith(owner, ["Call clinic"]);
-
-    expectError(await focus(owner, thread, "task-9"), taskConflict);
-    expect(await read(owner, thread)).toEqual(thread);
   });
 });
 
 describe("completing and removing", () => {
-  it("completes a Task that is not focused, logging it and stamping last activity", async () => {
-    const owner = await createSession("tasks-complete-unfocused");
+  it("completes a Task, logging it and stamping last activity", async () => {
+    const owner = await createSession("tasks-complete");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
-    const focused = (await focus(owner, thread, "task-1")).body as Thread;
 
-    const answer = await complete(owner, focused, "task-2");
+    const answer = await complete(owner, thread, "task-2");
 
     expect(answer.status).toBe(200);
     const completed = answer.body as Thread;
     expect(completed.tasks).toEqual([{ _id: "task-1", text: "Call clinic" }]);
-    expect(completed.focusedTaskId).toBe("task-1");
     const [entry] = await activityOf(owner, thread);
     expect(entry).toMatchObject({
       type: "move_completed",
@@ -243,15 +204,26 @@ describe("completing and removing", () => {
     expect(completed.lastActivityAt).toBe(entry?.createdAt);
   });
 
-  it("leaves the Thread unfocused after completing the Focused Task: nothing is promoted", async () => {
-    const owner = await createSession("tasks-complete-focused");
-    const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
-    const focused = (await focus(owner, thread, "task-1")).body as Thread;
+  it("ignores a stored Focused Task, before and after that Task is completed or removed", async () => {
+    const owner = await createSession("tasks-retired-focus");
+    const thread = await threadWith(owner, ["Call clinic", "Book slot", "Pay"]);
+    await storeRetiredFocus(thread, "task-1");
 
-    const completed = (await complete(owner, focused, "task-1")).body as Thread;
+    const stored = await read(owner, thread);
+    expect(stored).not.toHaveProperty("focusedTaskId");
 
-    expect(completed.tasks).toEqual([{ _id: "task-2", text: "Book slot" }]);
+    const completed = (await complete(owner, stored, "task-1")).body as Thread;
+    expect(completed.tasks).toEqual([
+      { _id: "task-2", text: "Book slot" },
+      { _id: "task-3", text: "Pay" },
+    ]);
     expect(completed).not.toHaveProperty("focusedTaskId");
+
+    await storeRetiredFocus(thread, "task-2");
+    const removed = (await remove(owner, completed, "task-2")).body as Thread;
+    expect(removed.tasks).toEqual([{ _id: "task-3", text: "Pay" }]);
+    // The stored value names a Task the Thread no longer holds; reads ignore it.
+    expect(await read(owner, thread)).toEqual(removed);
   });
 
   it("leaves the Thread open once every Task is complete", async () => {
@@ -262,25 +234,20 @@ describe("completing and removing", () => {
 
     expect(completed.state).toBe("open");
     expect(completed).not.toHaveProperty("tasks");
-    expect(await storedTasks(thread)).toEqual({
-      moves_json: null,
-      focused_move_id: null,
-    });
+    expect(await storedTasks(thread)).toEqual({ moves_json: null });
     expect((await read(owner, thread))._id).toBe(thread._id);
   });
 
-  it("removes a Task without a trace, and removing the Focused Task unfocuses", async () => {
+  it("removes a Task without a trace", async () => {
     const owner = await createSession("tasks-remove");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
-    const focused = (await focus(owner, thread, "task-2")).body as Thread;
 
-    const answer = await remove(owner, focused, "task-2");
+    const answer = await remove(owner, thread, "task-2");
 
     expect(answer.status).toBe(200);
     expect((answer.body as Thread).tasks).toEqual([
       { _id: "task-1", text: "Call clinic" },
     ]);
-    expect(answer.body).not.toHaveProperty("focusedTaskId");
     expect(await activityOf(owner, thread)).toEqual([]);
   });
 });
@@ -389,8 +356,6 @@ describe("request shape", () => {
       "tasks/task-1/complete",
       { expectedOccurrence: null, expectedRevision: 0 },
     ],
-    ["PUT", "focus", {}],
-    ["PUT", "focus", { taskId: 3 }],
   ] as const)("refuses %s %s with %j", async (method, route, body) => {
     const owner = await createSession("tasks-shape");
     const thread = await threadWith(owner, ["Call clinic"]);

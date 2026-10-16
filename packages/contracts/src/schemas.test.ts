@@ -9,7 +9,6 @@ import {
   CompleteNoteBody,
   CompleteTaskBody,
   CreateNoteBody,
-  FocusTaskBody,
   NoteFollowUp,
   NoteSchema,
   PageQuery,
@@ -134,8 +133,6 @@ describe("shared request shapes", () => {
       areaId: null,
       summary: null,
     });
-    expect(v.parse(FocusTaskBody, { taskId: null })).toEqual({ taskId: null });
-    expect(v.safeParse(FocusTaskBody, {}).success).toBe(false);
     expect(v.parse(NoteFollowUp, { followUp: null })).toEqual({
       followUp: null,
     });

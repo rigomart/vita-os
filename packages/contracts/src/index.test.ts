@@ -28,7 +28,6 @@ const thread = {
   order: 0,
   state: "open" as const,
   tasks: [{ _id: "task-1" as TaskId, text: "Call clinic" }],
-  focusedTaskId: "task-1" as TaskId,
   createdAt: 2,
 };
 
@@ -81,14 +80,7 @@ const client = {
   removeTask: async () => ({ ok: true, value: thread }),
   completeTask: async () => ({
     ok: true,
-    value: { ...thread, tasks: [], focusedTaskId: undefined },
-  }),
-  focusTask: async (input) => ({
-    ok: true,
-    value:
-      input.taskId === null
-        ? { ...thread, focusedTaskId: undefined }
-        : { ...thread, focusedTaskId: input.taskId },
+    value: { ...thread, tasks: [] },
   }),
 
   setTaskDate: async () => ({ ok: true, value: thread }),
@@ -163,16 +155,6 @@ describe("the application contract", () => {
         ...thread,
         tasks: [...thread.tasks, { _id: "task-2", text: "Book slot" }],
       },
-    });
-
-    await expect(
-      contract.focusTask({
-        threadId: thread._id,
-        taskId: null,
-      }),
-    ).resolves.toEqual({
-      ok: true,
-      value: { ...thread, focusedTaskId: undefined },
     });
   });
 

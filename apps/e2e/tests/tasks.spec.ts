@@ -1,7 +1,7 @@
 import { addTask, createThread, logOf, taskRow } from "../src/app.ts";
 import { expect, sent, test } from "../src/fixtures.ts";
 
-test("add, focus, unfocus, edit, remove, and complete Tasks in the Thread pane", async ({
+test("add, edit, remove, and complete Tasks in the Thread pane", async ({
   page,
   account,
   stamp,
@@ -33,27 +33,6 @@ test("add, focus, unfocus, edit, remove, and complete Tasks in the Thread pane",
     ),
   ).toEqual([{ n: 3 }]);
 
-  const unfocus = pane.getByRole("button", { name: "Unfocus this task" });
-  await sent(page, /\/focus$/, () =>
-    taskRow(pane, b).getByRole("button", { name: "Focus this task" }).click(),
-  );
-  await expect(
-    taskRow(pane, b).getByRole("button", { name: "Unfocus this task" }),
-  ).toBeVisible();
-  await expect(unfocus).toHaveCount(1);
-  await shot("tasks-focused");
-  await sent(page, /\/focus$/, () =>
-    taskRow(pane, b).getByRole("button", { name: "Unfocus this task" }).click(),
-  );
-  await expect(unfocus).toHaveCount(0);
-  await shot("tasks-unfocused");
-  await sent(page, /\/focus$/, () =>
-    taskRow(pane, c).getByRole("button", { name: "Focus this task" }).click(),
-  );
-  await expect(
-    taskRow(pane, c).getByRole("button", { name: "Unfocus this task" }),
-  ).toBeVisible();
-
   await taskRow(pane, c).getByRole("button", { name: c, exact: true }).click();
   const editor = pane
     .getByRole("list", { name: "Tasks" })
@@ -71,16 +50,11 @@ test("add, focus, unfocus, edit, remove, and complete Tasks in the Thread pane",
     taskRow(pane, b).getByRole("button", { name: "Complete task" }).click(),
   );
   await expect(pane.getByRole("button", { name: b, exact: true })).toBeHidden();
-  await expect(
-    taskRow(pane, edited).getByRole("button", { name: "Unfocus this task" }),
-  ).toBeVisible();
+  await expect(taskRow(pane, edited)).toBeVisible();
   await shot("tasks-completed");
 
   await page.reload();
-  await expect(
-    taskRow(pane, edited).getByRole("button", { name: "Unfocus this task" }),
-  ).toBeVisible();
-  await expect(unfocus).toHaveCount(1);
+  await expect(taskRow(pane, edited)).toBeVisible();
   await expect(
     pane.getByRole("list", { name: "Tasks" }).getByRole("listitem"),
   ).toHaveCount(1);

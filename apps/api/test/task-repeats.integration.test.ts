@@ -346,19 +346,13 @@ describe("repeating Tasks over HTTP", () => {
     },
   );
 
-  it("completion keeps the Task and focus, collapses missed dates using the service clock, and writes one entry", async () => {
+  it("completion keeps the Task, collapses missed dates using the service clock, and writes one entry", async () => {
     const owner = await createSession("repeat-complete");
     const thread = await repeating(owner);
-    const focused = await succeed<Thread>(`/v1/threads/${thread._id}/focus`, {
-      method: "PUT",
-      session: owner,
-      body: { taskId: "a" },
-    });
-    const completed = await advance(owner, focused, "complete");
+    const completed = await advance(owner, thread, "complete");
     expect(completed.tasks).toEqual([
       { ...thread.tasks![0], date: Date.parse("2026-10-10T15:30Z") },
     ]);
-    expect(completed.focusedTaskId).toBe("a");
 
     expect(await activity(owner, thread)).toMatchObject([
       { type: "move_completed", previousValue: "Check" },
@@ -366,14 +360,13 @@ describe("repeating Tasks over HTTP", () => {
     expect(completed.lastActivityAt).toBe(Date.parse("2026-10-10T20:00Z"));
     expect(await read(owner, thread)).toEqual(completed);
     expectError(
-      await command(owner, focused, "complete", { timeZone: "UTC" }),
+      await command(owner, thread, "complete", { timeZone: "UTC" }),
       conflict,
     );
     expect(await activity(owner, thread)).toHaveLength(1);
     const skipped = await advance(owner, completed, "skip");
     expect(skipped.lastActivityAt).toBe(completed.lastActivityAt);
     expect(skipped.lastActivityContent).toBe(completed.lastActivityContent);
-    expect(skipped.focusedTaskId).toBe("a");
 
     expect(await activity(owner, thread)).toHaveLength(1);
   });

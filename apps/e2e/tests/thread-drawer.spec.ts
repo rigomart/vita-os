@@ -3,7 +3,7 @@ import { expect, sent, test } from "../src/fixtures.ts";
 
 test.use({ viewport: { width: 1024, height: 768 } });
 
-test("a Thread in the drawer adds, focuses and completes Tasks, logs the completion, and stays open on reload", async ({
+test("a Thread in the drawer adds and completes Tasks, logs the completion, and stays open on reload", async ({
   page,
   stamp,
   shot,
@@ -18,12 +18,7 @@ test("a Thread in the drawer adds, focuses and completes Tasks, logs the complet
 
   await addTask(drawer, a);
   await addTask(drawer, b);
-  await sent(page, /\/focus$/, () =>
-    taskRow(drawer, b).getByRole("button", { name: "Focus this task" }).click(),
-  );
-  await expect(
-    taskRow(drawer, b).getByRole("button", { name: "Unfocus this task" }),
-  ).toBeVisible();
+  await expect(taskRow(drawer, b)).toBeVisible();
   await shot("drawer-tasks");
 
   await sent(page, /\/complete$/, () =>

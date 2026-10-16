@@ -153,7 +153,7 @@ export function useUpdateThread(
       const fields = Object.keys(change).filter(
         (field) => field !== "resolutionNote",
       ) as (keyof Thread)[];
-      if (change.state === "resolved") fields.push("tasks", "focusedTaskId");
+      if (change.state === "resolved") fields.push("tasks");
       return changeThread(
         cache,
         thread._id,

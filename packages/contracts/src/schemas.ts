@@ -88,7 +88,6 @@ export const ThreadSchema = v.object({
   order: Timestamp,
   state: ThreadStateSchema,
   tasks: v.optional(v.array(TaskSchema)),
-  focusedTaskId: v.optional(TaskIdSchema),
   lastActivityAt: v.optional(Timestamp),
   lastActivityContent: v.optional(v.string()),
   createdAt: Timestamp,

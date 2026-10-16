@@ -12,8 +12,8 @@ export interface ThreadAttentionInput {
 }
 
 /**
- * A Thread with Tasks and no dated one is ready to move. Focus and the number
- * of Tasks never decide a group: timing belongs to dated Tasks.
+ * A Thread with Tasks and no dated one is ready to move. The number of Tasks
+ * never decides a group: timing belongs to dated Tasks.
  */
 export interface ThreadAttentionGroups<TThread> {
   open: TThread[];

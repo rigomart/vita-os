@@ -71,7 +71,6 @@ export function createLocalApplicationClient({
     editTask: command(operations.editTask),
     removeTask: command(operations.removeTask),
     completeTask: command(operations.completeTask),
-    focusTask: command(operations.focusTask),
     setTaskDate: command(operations.setTaskDate),
     setTaskRepeat: command(operations.setTaskRepeat),
     skipTask: command(operations.skipTask),

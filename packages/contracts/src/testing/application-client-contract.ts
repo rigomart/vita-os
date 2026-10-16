@@ -160,14 +160,6 @@ export function describeApplicationClient(
             text: "Book appointment",
           }),
         );
-        const focused = await value(
-          client.focusTask({
-            threadId: thread._id,
-            taskId: callClinic,
-          }),
-        );
-        expect(focused.focusedTaskId).toBe(callClinic);
-
         const dated = await value(
           client.setTaskDate({
             threadId: thread._id,
@@ -193,7 +185,6 @@ export function describeApplicationClient(
         expect(completed.tasks).toEqual([
           { _id: bookSlot, text: "Book appointment", date: 1_800_000_000_000 },
         ]);
-        expect(completed).not.toHaveProperty("focusedTaskId");
 
         const removed = await value(
           client.removeTask({
@@ -391,7 +382,6 @@ export function describeApplicationClient(
         expect(added.thread.tasks).toEqual([
           { _id: expect.any(String), text: "Call back", date: jun1 },
         ]);
-        expect(added.thread).not.toHaveProperty("focusedTaskId");
         expect(added.threadNote).toMatchObject({
           body: "# Call back\nabout the scan",
           createdAt: note.createdAt,

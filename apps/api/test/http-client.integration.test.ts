@@ -82,6 +82,7 @@ async function seedThread(owner: Session): Promise<{
       1,
       "open",
       '[{"id":"task-1","text":"Call clinic"}]',
+      // A Focused Task stored before ADR 0044 retired Focus; nothing reads it.
       "task-1",
       1_600_000_000_001,
       0,
@@ -185,7 +186,6 @@ describe("HTTP ApplicationClient against the Worker", () => {
     expect(reopened.ok).toBe(true);
     expect(reopened.ok && reopened.value).not.toHaveProperty("followUp");
     expect(reopened.ok && reopened.value).not.toHaveProperty("tasks");
-    expect(reopened.ok && reopened.value).not.toHaveProperty("focusedTaskId");
     await expect(client.listResolvedThreads()).resolves.toEqual({
       ok: true,
       value: [],
@@ -200,19 +200,20 @@ describe("HTTP ApplicationClient against the Worker", () => {
       fetchImpl: authenticatedWorkerFetch(owner.cookie),
     });
 
-    await expect(
-      client.getThreadDetail({ slug: thread.slug }),
-    ).resolves.toEqual({
+    const detail = await client.getThreadDetail({ slug: thread.slug });
+    expect(detail).toEqual({
       ok: true,
       value: {
         thread: expect.objectContaining({
           _id: thread.id,
           tasks: [{ _id: "task-1", text: "Call clinic" }],
-          focusedTaskId: "task-1",
         }),
         area: expect.objectContaining({ name: "Family Health" }),
       },
     });
+    expect(detail.ok && detail.value.thread).not.toHaveProperty(
+      "focusedTaskId",
+    );
     await expect(
       client.getThreadActivityPage({ threadId: thread.id, limit: 1 }),
     ).resolves.toEqual({
