@@ -43,7 +43,7 @@ export function SkyHeader({
   onNewThread,
   onOpenPalette,
 }: ChromeActions) {
-  const { viewer, signOut } = useViewer();
+  const { viewer, signOut, downloadData } = useViewer();
   const { theme, setTheme } = useTheme();
   const today = useAttentionClock();
   const hour = hourOf(useMinuteClock());
@@ -116,6 +116,7 @@ export function SkyHeader({
               theme={theme}
               onThemeChange={setTheme}
               onSignOut={signOut}
+              onDownloadData={downloadData}
             />
           </div>
         </div>

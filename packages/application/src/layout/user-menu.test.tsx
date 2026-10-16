@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  createFeedbackMock,
   fireEvent,
   render,
   screen,
@@ -43,6 +44,70 @@ describe("UserMenu", () => {
       expect(
         screen.queryByRole("menuitem", { name: "Sign out" }),
       ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("offers Download my data only when the host provides it", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <UserMenu
+        user={{ name: "Jane Doe" }}
+        theme="system"
+        onThemeChange={vi.fn()}
+        onSignOut={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Jane Doe/ }));
+    await screen.findByRole("menuitem", { name: "Sign out" });
+    expect(
+      screen.queryByRole("menuitem", { name: "Download my data" }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    const downloadData = vi.fn(async () => {});
+    const feedback = createFeedbackMock();
+    render(
+      <UserMenu
+        user={{ name: "Jane Doe" }}
+        theme="system"
+        onThemeChange={vi.fn()}
+        onSignOut={vi.fn()}
+        onDownloadData={downloadData}
+      />,
+      { feedback },
+    );
+    await user.click(screen.getByRole("button", { name: /Jane Doe/ }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Download my data" }),
+    );
+
+    expect(downloadData).toHaveBeenCalledOnce();
+    expect(feedback.error).not.toHaveBeenCalled();
+  });
+
+  it("says so when the download fails", async () => {
+    const user = userEvent.setup();
+    const feedback = createFeedbackMock();
+    render(
+      <UserMenu
+        user={{ name: "Jane Doe" }}
+        theme="system"
+        onThemeChange={vi.fn()}
+        onSignOut={vi.fn()}
+        onDownloadData={() => Promise.reject(new Error("500"))}
+      />,
+      { feedback },
+    );
+
+    await user.click(screen.getByRole("button", { name: /Jane Doe/ }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Download my data" }),
+    );
+
+    await waitFor(() =>
+      expect(feedback.error).toHaveBeenCalledWith(
+        "Your data was not downloaded. Please try again.",
+      ),
     );
   });
 
