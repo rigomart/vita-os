@@ -667,6 +667,64 @@ describe("DashboardOverview", () => {
     expect(ringed()).toHaveLength(0);
   });
 
+  const kitchen = () =>
+    thread("Kitchen", {
+      tasks: [
+        dated("Buy a washer", today),
+        dated("Call the plumber", today + 2 * DAY),
+      ],
+    });
+  const ringedCopies = () =>
+    document.querySelectorAll("[data-slot=thread-copy][data-ringed]");
+
+  it("keeps the ring while a copy holds keyboard focus, after the pointer passes over and leaves it", async () => {
+    const user = userEvent.setup();
+    renderOverview({ threads: [kitchen()] });
+    const washer = screen.getByText("Buy a washer");
+    const [link] = screen.getAllByRole("link", { name: "Kitchen" });
+
+    act(() => link!.focus());
+    await user.hover(washer);
+    await user.unhover(washer);
+    expect(ringedCopies()).toHaveLength(2);
+
+    act(() => link!.blur());
+    expect(ringedCopies()).toHaveLength(0);
+  });
+
+  it("drops the ring of a focused copy the filter takes away, so it comes back at rest", () => {
+    const board = (filter: OverviewProps["filter"]) => (
+      <FeedbackProvider feedback={createFeedbackMock()}>
+        <DashboardOverview
+          areas={areas}
+          currentDate={currentDate}
+          filter={filter}
+          notes={[]}
+          threads={[
+            kitchen(),
+            thread("Fix the gate", {
+              areaId: "home" as Thread["areaId"],
+              followUp: today,
+              order: 1,
+            }),
+          ]}
+        />
+      </FeedbackProvider>
+    );
+    const { rerender } = render(board({}));
+
+    act(() => screen.getAllByRole("link", { name: "Kitchen" })[0]!.focus());
+    expect(ringedCopies()).toHaveLength(2);
+
+    rerender(board({ area: "home" }));
+    expect(screen.queryByRole("link", { name: "Kitchen" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Fix the gate" })).toBeVisible();
+
+    rerender(board({}));
+    expect(screen.getAllByRole("link", { name: "Kitchen" })).toHaveLength(2);
+    expect(ringedCopies()).toHaveLength(0);
+  });
+
   it("leads the list with No date folded to one line, which opens in place", async () => {
     renderOverview({
       threads: [

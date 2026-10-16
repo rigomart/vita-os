@@ -1,37 +1,54 @@
 import type { Thread, ThreadId } from "@vita-os/contracts";
-import type { ReactNode } from "react";
+import type { FocusEvent, ReactNode } from "react";
 
 import { cn } from "@vita-os/ui/lib/utils";
-import { createContext, use, useMemo, useState } from "react";
+import {
+  createContext,
+  use,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+} from "react";
 
 import { datedTasks } from "./attention-board-model";
 
-interface PointedThread {
-  /** The Thread whose copy the pointer or keyboard is on. */
-  threadId: ThreadId | null;
-  enter: (threadId: ThreadId) => void;
-  leave: (threadId: ThreadId) => void;
+interface PointedCopies {
+  /** The Threads with a copy under the pointer or holding keyboard focus. */
+  pointed: ReadonlySet<ThreadId>;
+  /** Marks one copy as pointed at; the returned function unmarks it. */
+  point: (copy: string, threadId: ThreadId) => () => void;
 }
 
-const PointedThreadContext = createContext<PointedThread>({
-  threadId: null,
-  enter: () => {},
-  leave: () => {},
+const PointedCopiesContext = createContext<PointedCopies>({
+  pointed: new Set(),
+  point: () => () => {},
 });
 
-/** Holds which Thread is pointed at, so its copies across the board can ring. */
+/**
+ * Holds which copies are pointed at, so every copy of their Threads across
+ * the board can ring. A copy unmarks itself when it is no longer hovered or
+ * focused, and when it leaves the board, so nothing stays ringed at rest.
+ */
 export function ThreadCopies({ children }: { children: ReactNode }) {
-  const [threadId, setThreadId] = useState<ThreadId | null>(null);
-  const value = useMemo<PointedThread>(
-    () => ({
-      threadId,
-      enter: setThreadId,
-      leave: (left) =>
-        setThreadId((current) => (current === left ? null : current)),
-    }),
-    [threadId],
+  const [copies, setCopies] = useState<ReadonlyMap<string, ThreadId>>(
+    new Map(),
   );
-  return <PointedThreadContext value={value}>{children}</PointedThreadContext>;
+  const point = useCallback((copy: string, threadId: ThreadId) => {
+    setCopies((current) => new Map(current).set(copy, threadId));
+    return () =>
+      setCopies((current) => {
+        const next = new Map(current);
+        next.delete(copy);
+        return next;
+      });
+  }, []);
+  const value = useMemo<PointedCopies>(
+    () => ({ pointed: new Set(copies.values()), point }),
+    [copies, point],
+  );
+  return <PointedCopiesContext value={value}>{children}</PointedCopiesContext>;
 }
 
 /**
@@ -49,17 +66,27 @@ export function ThreadCopy({
   className?: string;
   thread: Thread;
 }) {
-  const pointed = use(PointedThreadContext);
-  const ringed =
-    pointed.threadId === thread._id && datedTasks(thread).length > 1;
+  const { pointed, point } = use(PointedCopiesContext);
+  const copy = useId();
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const engaged = hovered || focused;
+  useEffect(
+    () => (engaged ? point(copy, thread._id) : undefined),
+    [engaged, point, copy, thread._id],
+  );
+  const ringed = pointed.has(thread._id) && datedTasks(thread).length > 1;
   return (
     <div
       data-slot="thread-copy"
       data-ringed={ringed || undefined}
-      onPointerEnter={() => pointed.enter(thread._id)}
-      onPointerLeave={() => pointed.leave(thread._id)}
-      onFocus={() => pointed.enter(thread._id)}
-      onBlur={() => pointed.leave(thread._id)}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={(event: FocusEvent<HTMLDivElement>) => {
+        if (!event.currentTarget.contains(event.relatedTarget))
+          setFocused(false);
+      }}
       className={cn(
         "transition-shadow motion-reduce:transition-none",
         ringed && "ring-2 ring-brand-accent/60",
