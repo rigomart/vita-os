@@ -6,22 +6,36 @@ import {
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
+  Menu,
+  nativeTheme,
+  screen,
   shell,
   type WebContents,
 } from "electron";
 import { join } from "node:path";
 
-import { CALL_CHANNEL } from "../bridge.ts";
+import {
+  CALL_CHANNEL,
+  COMMAND_CHANNEL,
+  isThemeSource,
+  type MenuCommand,
+  THEME_CHANNEL,
+} from "../bridge.ts";
 import {
   APP_ORIGIN,
   registerAppScheme,
   serveRenderer,
 } from "./app-protocol.ts";
 import { callApplication } from "./application-calls.ts";
+import { applicationMenuTemplate } from "./application-menu.ts";
+import { contextMenuTemplate } from "./context-menu.ts";
 import { opensExternally, originOf } from "./links.ts";
+import { preferencesStore } from "./preferences.ts";
 import { startupFailure } from "./startup-failure.ts";
+import { placementOnScreen } from "./window-placement.ts";
 
 /*
  * The desktop host: one window on the product, its data in a SQLite file in the
@@ -39,6 +53,11 @@ const devServerUrl = app.isPackaged
 const rendererOrigin = devServerUrl ? originOf(devServerUrl) : APP_ORIGIN;
 
 const appPath = app.getAppPath();
+const preferences = preferencesStore(
+  join(app.getPath("userData"), "preferences.json"),
+);
+/** `--surface-1` in packages/ui's globals.css, light and dark, so a resize never flashes another colour. */
+const BACKGROUND = { light: "#f6f6f8", dark: "#0e0f11" };
 let local: LocalDatabase | undefined;
 let window: BrowserWindow | null = null;
 /** Work main has started and not finished: opening the data, answering calls. Quitting waits for it. */
@@ -75,6 +94,20 @@ function track<T>(work: Promise<T>): Promise<T> {
 }
 
 async function start() {
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate(
+      applicationMenuTemplate({
+        isPackaged: app.isPackaged,
+        send: sendCommand,
+      }),
+    ),
+  );
+  app.setAboutPanelOptions({ applicationVersion: app.getVersion() });
+  // A packaged app takes its icon from the bundle.
+  if (!app.isPackaged) app.dock?.setIcon(join(appPath, "assets/icon.png"));
+  nativeTheme.themeSource = preferences.get().theme;
+  nativeTheme.on("updated", () => window?.setBackgroundColor(background()));
+
   local = await track(
     openLocalDatabase({
       databasePath: join(app.getPath("userData"), "vita.db"),
@@ -95,6 +128,11 @@ async function start() {
     }
     return track(callApplication(client, method, input));
   });
+  ipcMain.on(THEME_CHANNEL, (event, theme: unknown) => {
+    if (!isRendererUrl(event.senderFrame?.url) || !isThemeSource(theme)) return;
+    nativeTheme.themeSource = theme;
+    if (preferences.get().theme !== theme) preferences.update({ theme });
+  });
 
   if (!devServerUrl) serveRenderer(join(appPath, "dist/renderer"));
   app.on("activate", showWindow);
@@ -105,13 +143,23 @@ async function start() {
 }
 
 async function openWindow() {
+  const placement = placementOnScreen(
+    preferences.get().window,
+    screen.getAllDisplays().map((display) => display.workArea),
+  );
   const created = new BrowserWindow({
-    width: 1280,
-    height: 860,
+    ...(placement
+      ? {
+          x: placement.x,
+          y: placement.y,
+          width: placement.width,
+          height: placement.height,
+        }
+      : { width: 1280, height: 892 }),
     minWidth: 360,
     minHeight: 480,
-    useContentSize: true,
     show: false,
+    backgroundColor: background(),
     title: "Vita OS",
     webPreferences: {
       preload: join(appPath, "dist/preload/preload.cjs"),
@@ -121,6 +169,15 @@ async function openWindow() {
     },
   });
   window = created;
+  if (placement?.maximized) created.maximize();
+  created.on("close", () =>
+    preferences.update({
+      window: {
+        ...created.getNormalBounds(),
+        maximized: created.isMaximized(),
+      },
+    }),
+  );
   created.on("closed", () => {
     if (window === created) window = null;
   });
@@ -137,6 +194,23 @@ function showWindow() {
   }
   if (window.isMinimized()) window.restore();
   window.focus();
+}
+
+/**
+ * The menu bar's commands go to the window's page. With the window closed
+ * (macOS keeps the app running), the command reopens it and goes no further:
+ * the page isn't listening yet.
+ */
+function sendCommand(command: MenuCommand) {
+  if (window === null) {
+    showWindow();
+    return;
+  }
+  window.webContents.send(COMMAND_CHANNEL, command);
+}
+
+function background(): string {
+  return nativeTheme.shouldUseDarkColors ? BACKGROUND.dark : BACKGROUND.light;
 }
 
 /** Never swallowed: the person sees why, then the app quits. */
@@ -163,6 +237,16 @@ function guard(contents: WebContents) {
     return { action: "deny" };
   });
   contents.on("will-attach-webview", (event) => event.preventDefault());
+  contents.on("context-menu", (_event, params) => {
+    const template = contextMenuTemplate(params, {
+      replaceMisspelling: (word) => contents.replaceMisspelling(word),
+      addToDictionary: (word) =>
+        contents.session.addWordToSpellCheckerDictionary(word),
+      openLink: openExternally,
+      copyLink: (url) => clipboard.writeText(url),
+    });
+    if (template.length > 0) Menu.buildFromTemplate(template).popup();
+  });
 }
 
 function openExternally(url: string) {

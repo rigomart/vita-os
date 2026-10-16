@@ -16,6 +16,11 @@ export {
 } from "./application-client-provider";
 export { SessionGateProvider, type SessionGate } from "./viewer/session-gate";
 export {
+  HostCommandsProvider,
+  type HostCommand,
+  type HostCommands,
+} from "./layout/host-commands";
+export {
   useViewer,
   ViewerProvider,
   type Viewer,

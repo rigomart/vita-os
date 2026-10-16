@@ -1,5 +1,6 @@
 // Packages the built app (dist/) into an ad-hoc signed macOS app and a .dmg in out/, for this
 // Mac's architecture. Run `bun run package` here, or `bun run package:desktop` from the repo root.
+import { FuseV1Options, FuseVersion, flipFuses } from "@electron/fuses";
 import { packager } from "@electron/packager";
 import { existsSync, realpathSync } from "node:fs";
 import { cp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
@@ -64,6 +65,8 @@ const [appDir] = await packager({
   name: desktop.productName,
   appBundleId: "com.vita-os.desktop",
   appCategoryType: "public.app-category.productivity",
+  // Rendered from assets/icon.svg; see the README.
+  icon: join(root, "assets/icon.icns"),
   platform: "darwin",
   arch: process.arch,
   electronVersion,
@@ -73,6 +76,19 @@ const [appDir] = await packager({
 });
 if (!appDir) throw new Error("The packager produced no app.");
 const app = join(appDir, `${desktop.productName}.app`);
+
+// Nothing but the app's own archive runs in its binary: no Node from ELECTRON_RUN_AS_NODE or
+// NODE_OPTIONS, no code outside app.asar, and app.asar as packaged. The node inspector stays,
+// because Playwright drives the packaged app through it (apps/e2e/tests/desktop).
+await flipFuses(app, {
+  version: FuseVersion.V1,
+  [FuseV1Options.RunAsNode]: false,
+  [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+  [FuseV1Options.EnableNodeCliInspectArguments]: true,
+  [FuseV1Options.OnlyLoadAppFromAsar]: true,
+  [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
+  [FuseV1Options.GrantFileProtocolExtraPrivileges]: false,
+});
 
 // Ad-hoc signed as one bundle, so an unquarantined copy opens and a quarantined one gets
 // macOS's "Open Anyway" instead of "damaged".

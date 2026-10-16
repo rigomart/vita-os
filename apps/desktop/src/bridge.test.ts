@@ -43,7 +43,7 @@ async function localClient(): Promise<ApplicationClient> {
 }
 
 /** What IPC does: a structured clone each way, with main answering. */
-function overIpc(client: ApplicationClient): VitaBridge {
+function overIpc(client: ApplicationClient): Pick<VitaBridge, "call"> {
   return {
     call: async (method, input) =>
       structuredClone(
@@ -66,7 +66,7 @@ describe("the desktop bridge", () => {
     }
 
     const onFailure = vi.fn();
-    const refusing: VitaBridge = {
+    const refusing: Pick<VitaBridge, "call"> = {
       call: (method) => callApplication(client, `${method}Elsewhere`, {}),
     };
     await expect(

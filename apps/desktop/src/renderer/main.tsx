@@ -4,6 +4,7 @@ import {
   AppErrorBoundary,
   ApplicationClientProvider,
   authenticatedRouteTree,
+  HostCommandsProvider,
   initializeTheme,
   productRootRoute,
   RouteErrorFallback,
@@ -14,7 +15,7 @@ import {
 } from "@vita-os/application";
 import { Toaster } from "@vita-os/ui/components/sonner";
 import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
-import { type PropsWithChildren, StrictMode } from "react";
+import { type PropsWithChildren, StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 
 import type { VitaBridge } from "../bridge.ts";
@@ -38,7 +39,8 @@ onlineManager.setOnline(true);
 /**
  * The desktop host's composition: the product's own route tree and screens, as
  * the browser host mounts them, over the local client in main. There is no
- * account, so the gate lets everyone through and there is no Sign out.
+ * account, so the gate lets everyone through and there is no Sign out. The
+ * menu bar's File commands reach the shell as the header's buttons do.
  */
 const client = createBridgeClient(window.vita);
 
@@ -62,6 +64,13 @@ function ThemeAwareToaster() {
   return <Toaster theme={resolvedTheme} />;
 }
 
+/** The window's background and native controls follow the product's theme. */
+function NativeTheme() {
+  const { theme } = useTheme();
+  useEffect(() => window.vita.setTheme(theme), [theme]);
+  return null;
+}
+
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element not found");
 
@@ -69,13 +78,16 @@ createRoot(root).render(
   <StrictMode>
     <AppErrorBoundary>
       <ThemeProvider>
+        <NativeTheme />
         <ApplicationClientProvider client={client}>
           <ViewerProvider viewer={{}}>
             <SessionGateProvider gate={LocalSessionGate}>
-              <FeedbackProvider>
-                <RouterProvider router={router} />
-                <ThemeAwareToaster />
-              </FeedbackProvider>
+              <HostCommandsProvider subscribe={window.vita.onCommand}>
+                <FeedbackProvider>
+                  <RouterProvider router={router} />
+                  <ThemeAwareToaster />
+                </FeedbackProvider>
+              </HostCommandsProvider>
             </SessionGateProvider>
           </ViewerProvider>
         </ApplicationClientProvider>

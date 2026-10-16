@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- The Vita OS logo (apps/web/public/vita-logo.svg) on macOS's icon grid: an 824 px tile with 100 px of margin. -->
+  <defs>
+    <linearGradient id="tile" x1="8" y1="5" x2="40" y2="43" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#30261d"/>
+      <stop offset="1" stop-color="#1c1713"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="13" y1="12" x2="34" y2="36" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffe08a"/>
+      <stop offset="1" stop-color="#e99a2e"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="0.5" stdDeviation="0.6" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <g transform="translate(62.55 62.55) scale(18.727)">
+    <rect x="2" y="2" width="44" height="44" rx="9.9" fill="url(#tile)" filter="url(#shadow)"/>
+    <path d="M10.75 13.25c7.48 1.52 12.2 7.14 13.25 18.87-7.8-2.18-12.49-8.42-13.25-18.87Z" fill="url(#leaf)"/>
+    <path d="M37.25 13.25C29.77 14.77 25.05 20.39 24 32.12c7.8-2.18 12.49-8.42 13.25-18.87Z" fill="url(#leaf)"/>
+    <circle cx="24" cy="12" r="3" fill="#ffe8a6"/>
+    <path d="M24 31.5v5" stroke="#ffe8a6" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+</svg>

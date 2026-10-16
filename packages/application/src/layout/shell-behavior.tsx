@@ -2,7 +2,13 @@ import type { Note } from "@vita-os/contracts";
 import type { CSSProperties, ReactNode } from "react";
 
 import { useMatch, useNavigate, useSearch } from "@tanstack/react-router";
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useEffectEvent,
+  useState,
+} from "react";
 
 import type { ProductSearch } from "../navigation/search-params";
 
@@ -22,6 +28,7 @@ import { NewThreadDialog } from "../threads/new-thread/new-thread-dialog";
 import { ThreadDetailView } from "../threads/thread-detail/thread-detail-view";
 import { useCreateThread } from "../threads/use-create-thread";
 import { CommandPalette } from "./command-palette";
+import { type HostCommand, useHostCommands } from "./host-commands";
 
 // Matches the thread pane's width in ThreadDetailPane.
 const RAIL_WIDTH = "clamp(28rem,34vw,34rem)";
@@ -44,8 +51,9 @@ export function useShellActions(): ShellActions {
 
 /**
  * The shell's behavior without its chrome: the Thread pane over `?thread=`,
- * the palette on ⌘K, a new Note on Q, `1..9` for the Areas, and the create
- * and Manage areas dialogs. `AppShell` draws the product's chrome inside it;
+ * the palette on ⌘K, a new Note on Q, `1..9` for the Areas, the create and
+ * Manage areas dialogs, and the commands a host's own chrome sends, like the
+ * desktop's menu bar. `AppShell` draws the product's chrome inside it;
  * anything else that draws chrome reaches the same actions with
  * `useShellActions`.
  */
@@ -143,6 +151,14 @@ export function ShellBehavior({ children }: { children: ReactNode }) {
     onOpenPalette: () => setPaletteOpen(true),
     onManageAreas: dialogs.openManageAreas,
   };
+
+  const subscribeToHost = useHostCommands();
+  const runHostCommand = useEffectEvent((command: HostCommand) => {
+    if (command === "new-note") actions.onNewNote();
+    else if (command === "new-thread") actions.onNewThread();
+    else actions.onOpenPalette();
+  });
+  useEffect(() => subscribeToHost?.(runHostCommand), [subscribeToHost]);
 
   return (
     <ShellActionsContext value={actions}>
