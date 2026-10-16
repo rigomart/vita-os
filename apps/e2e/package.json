@@ -10,7 +10,8 @@
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:desktop": "playwright test -c playwright.desktop.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",

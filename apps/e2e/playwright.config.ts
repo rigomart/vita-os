@@ -9,6 +9,8 @@ const out = instancePaths(instanceName()).playwrightDir;
 export default defineConfig({
   testDir: ".",
   testMatch: ["tests/**/*.spec.ts", "scratch/**/*.spec.ts"],
+  // Desktop specs run without the web stack: playwright.desktop.config.ts.
+  testIgnore: ["tests/desktop/**", "scratch/desktop/**"],
   globalSetup: "./src/global-setup.ts",
   outputDir: `${out}/results`,
   reporter: [
