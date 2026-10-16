@@ -1,6 +1,7 @@
 // The desktop app (apps/desktop), built, on a throwaway user-data folder per test. No web stack, no account.
 // Launches in one test share the folder, so `quit()` then `launch()` reopens the same data.
 // No native error dialog is shown (src/desktop-dialog-stub.cjs), and teardown kills whatever didn't quit.
+// `test.use({ packaged: true })` launches the packaged macOS app instead (apps/desktop/scripts/package.ts).
 import {
   _electron,
   test as base,
@@ -8,7 +9,7 @@ import {
   type ElectronApplication,
   type Page,
 } from "@playwright/test";
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
   existsSync,
@@ -44,6 +45,43 @@ const dialogLog = (userData: string) => join(userData, "dialogs.log");
  * and its preloads run before `electron` can be required.)
  */
 const DESKTOP_ARGS = ["--require", DIALOG_STUB, DESKTOP_DIR];
+
+/** Where apps/desktop/scripts/package.ts puts the app's executable for this Mac. */
+const PACKAGED_EXECUTABLE = join(
+  DESKTOP_DIR,
+  `out/Vita OS-darwin-${process.arch}/Vita OS.app/Contents/MacOS/Vita OS`,
+);
+
+let packagedOnce = false;
+
+/** Packages the app on first use in this worker, from the current code. */
+function packagedExecutable(): string {
+  if (!packagedOnce) {
+    const result = spawnSync("bun", ["run", "package"], {
+      cwd: DESKTOP_DIR,
+      stdio: "inherit",
+    });
+    if (result.status !== 0)
+      throw new Error(
+        `packaging the desktop app failed (exit ${result.status}); run: bun run package:desktop`,
+      );
+    packagedOnce = true;
+  }
+  return PACKAGED_EXECUTABLE;
+}
+
+/**
+ * The packaged app is the bundle's own executable and takes no `--require` (only Electron's
+ * default app does), so it runs without the dialog stub.
+ */
+function command(packaged: boolean): {
+  executablePath: string;
+  args: string[];
+} {
+  return packaged
+    ? { executablePath: packagedExecutable(), args: [] }
+    : { executablePath: electronPath, args: DESKTOP_ARGS };
+}
 
 /** A host shell may set ELECTRON_RUN_AS_NODE, which turns Electron into Node, so it is dropped. */
 function desktopEnv(
@@ -109,12 +147,17 @@ export type Desktop = {
   quit(): Promise<void>;
   /** Starts the app on this folder outside Playwright, e.g. a second launch or a failing start. */
   spawn(options?: { env?: Record<string, string> }): DesktopProcess;
-  /** The error dialogs main would have shown, each as `<title>\n<content>\n`. */
+  /** The error dialogs main would have shown, each as `<title>\n<content>\n`. Always empty when packaged. */
   dialogs(): string;
   /** The running app, for a look into main. */
   app(): ElectronApplication;
   /** Every URL a window requested, across launches. */
   requests: string[];
+};
+
+type Options = {
+  /** Launch the packaged macOS app, packaged once per run, instead of the built one. */
+  packaged: boolean;
 };
 
 type Fixtures = {
@@ -125,9 +168,10 @@ type Fixtures = {
   shot: (label: string) => Promise<string>;
 };
 
-export const test = base.extend<Fixtures>({
-  // oxlint-disable-next-line no-empty-pattern -- Playwright requires the destructuring pattern
-  desktop: async ({}, use) => {
+export const test = base.extend<Options & Fixtures>({
+  packaged: [false, { option: true }],
+  desktop: async ({ packaged }, use) => {
+    const { executablePath, args } = command(packaged);
     const userData = mkdtempSync(join(tmpdir(), "vita-desktop-"));
     let running: ElectronApplication | undefined;
     const spawned: ChildProcess[] = [];
@@ -138,8 +182,8 @@ export const test = base.extend<Fixtures>({
       async launch(options = {}) {
         if (running) throw new Error("the desktop app is already running");
         const app = await _electron.launch({
-          executablePath: electronPath,
-          args: DESKTOP_ARGS,
+          executablePath,
+          args,
           cwd: DESKTOP_DIR,
           env: desktopEnv(userData, options.env),
         });
@@ -164,7 +208,7 @@ export const test = base.extend<Fixtures>({
           );
       },
       spawn(options = {}) {
-        const child = spawn(electronPath, DESKTOP_ARGS, {
+        const child = spawn(executablePath, args, {
           cwd: DESKTOP_DIR,
           env: desktopEnv(userData, options.env),
           stdio: ["ignore", "ignore", "pipe"],

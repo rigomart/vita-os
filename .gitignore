@@ -40,3 +40,5 @@ apps/e2e/scratch/
 .claude/settings.local.json
 # Desktop app data in dev (apps/desktop/scripts/dev.ts)
 apps/desktop/.dev-user-data/
+# Packaged desktop app (apps/desktop/scripts/package.ts)
+apps/desktop/out/
