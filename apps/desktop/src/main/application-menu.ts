@@ -6,6 +6,7 @@ export interface ApplicationMenuOptions {
   /** Developer tools and Reload only where the app runs from source. */
   isPackaged: boolean;
   send(command: MenuCommand): void;
+  showLogs(): void;
   backUpNow(): void;
   showBackups(): void;
   downloadData(): void;
@@ -22,6 +23,7 @@ export interface ApplicationMenuOptions {
 export function applicationMenuTemplate({
   isPackaged,
   send,
+  showLogs,
   backUpNow,
   showBackups,
   downloadData,
@@ -72,5 +74,6 @@ export function applicationMenuTemplate({
       ],
     },
     { role: "windowMenu" },
+    { role: "help", submenu: [{ label: "Show Logs", click: showLogs }] },
   ];
 }

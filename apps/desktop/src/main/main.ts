@@ -36,6 +36,7 @@ import { contextMenuTemplate } from "./context-menu.ts";
 import { dataActions } from "./data-actions.ts";
 import { listBackups } from "./data-files.ts";
 import { opensExternally, originOf } from "./links.ts";
+import { captureConsole, openLog } from "./log.ts";
 import { preferencesStore } from "./preferences.ts";
 import { startupFailure } from "./startup-failure.ts";
 import { placementOnScreen } from "./window-placement.ts";
@@ -47,7 +48,20 @@ import { placementOnScreen } from "./window-placement.ts";
 
 // Tests and dev keep their data out of the person's real folder.
 const userDataOverride = process.env.VITA_DESKTOP_USER_DATA;
-if (userDataOverride) app.setPath("userData", userDataOverride);
+if (userDataOverride) {
+  app.setPath("userData", userDataOverride);
+  app.setAppLogsPath(join(userDataOverride, "logs"));
+}
+
+// ~/Library/Logs/Vita OS/main.log: what main says, the window's warnings and errors, and crashes.
+const log = openLog(app.getPath("logs"));
+captureConsole(log);
+process.on("uncaughtExceptionMonitor", (error) =>
+  console.error("Vita OS main process: uncaught exception", error),
+);
+process.on("unhandledRejection", (reason) =>
+  console.error("Vita OS main process: unhandled rejection", reason),
+);
 
 // Only an unpackaged app loads a dev server; a packaged one loads its own files.
 const devServerUrl = app.isPackaged
@@ -81,6 +95,10 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on("second-instance", showWindow);
   app.on("web-contents-created", (_event, contents) => guard(contents));
+  app.on("child-process-gone", (_event, { type, reason, exitCode }) => {
+    if (reason !== "clean-exit")
+      console.error(`Vita OS ${type} process stopped: ${reason} (${exitCode})`);
+  });
   // Registered before the data opens, so a quit during the open still waits and closes it.
   app.on("before-quit", () => {
     quitting = true;
@@ -109,6 +127,7 @@ async function start() {
       applicationMenuTemplate({
         isPackaged: app.isPackaged,
         send: sendCommand,
+        showLogs: () => shell.showItemInFolder(log.path),
         backUpNow: () => void data.backUpNow(),
         showBackups: () => void data.showBackups(),
         downloadData: () =>
@@ -275,6 +294,31 @@ function guard(contents: WebContents) {
     return { action: "deny" };
   });
   contents.on("will-attach-webview", (event) => event.preventDefault());
+  contents.on("console-message", ({ level, message, lineNumber, sourceId }) => {
+    const where = sourceId ? ` (${sourceId}:${lineNumber})` : "";
+    if (level === "error") console.error(`Window: ${message}${where}`);
+    else if (level === "warning") console.warn(`Window: ${message}${where}`);
+  });
+  contents.on("unresponsive", () =>
+    console.warn("Vita OS's window stopped responding"),
+  );
+  contents.on("render-process-gone", (_event, { reason, exitCode }) => {
+    console.error(`Vita OS's window stopped: ${reason} (${exitCode})`);
+    if (reason === "clean-exit" || quitting) return;
+    void dialog
+      .showMessageBox({
+        type: "error",
+        message: "Vita OS's window stopped working",
+        detail:
+          "Everything Vita OS had saved is kept. Text you were still typing may be lost.",
+        buttons: ["Reload", "Quit"],
+        defaultId: 0,
+      })
+      .then(({ response }) => {
+        if (response === 0) contents.reload();
+        else app.quit();
+      });
+  });
   contents.on("context-menu", (_event, params) => {
     const template = contextMenuTemplate(params, {
       replaceMisspelling: (word) => contents.replaceMisspelling(word),

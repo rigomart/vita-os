@@ -5,6 +5,7 @@ Vita OS as an Electron app with its data in a SQLite file on the computer: no ac
 - `src/main/`: the main process. It opens and migrates `vita.db` in the user-data folder, then serves the local `ApplicationClient` over IPC (`vita:call`) and the built renderer from `app://vita/`, under a Content Security Policy that allows only the app's own files. A migration or open failure shows an error dialog, then the app quits.
   - The menu bar (`application-menu.ts`) has the product's actions in File and sends them to the page on `vita:command`. Developer Tools and Reload are only in an unpackaged build.
   - Right-click (`context-menu.ts`) offers spelling, a link's actions and editing.
+  - The log (`log.ts`): main's console, the window's warnings and errors, and crashed processes go to `~/Library/Logs/Vita OS/main.log`, which rolls over to `main.old.log` past 5 MB. Help → Show Logs reveals it. A crashed window says so and offers Reload or Quit. Nothing is uploaded.
   - Your data (`data-actions.ts`, `data-files.ts`): a backup of `vita.db` in `backups/` beside it at launch when the newest is a day old and hourly checks after, keeping the newest ten; File → Back Up Now, Show Backups in Finder, and Download My Data…, which saves the same file as the web's Download my data (also in the product's own menu, over `vita:download-data`). Before migrating, `@vita-os/local` checks the file with `PRAGMA quick_check`, and a damaged one opens nothing; the error names the newest backup.
   - `preferences.json` in the user-data folder keeps the window's place (`window-placement.ts` drops one that is off today's displays) and the theme, which the page sends on `vita:theme` so the window's background and native controls follow it.
 - `src/preload/`: exposes `window.vita`: `call(method, input)`, `onCommand(listener)` and `setTheme(theme)`, and nothing else.
@@ -20,7 +21,7 @@ Run from the repo root.
 - `bun run package:desktop`: builds the app and packages it for this Mac's architecture (`scripts/package.ts`, with `@electron/packager` and macOS's `hdiutil`) into `apps/desktop/out/`: `Vita OS-darwin-<arch>/Vita OS.app` and `Vita OS-<version>-<arch>.dmg`. The app carries only `dist/` and the `@libsql/client` tree, including the native binding bun installed for this Mac. It is ad-hoc signed, not notarized. Its Electron fuses are flipped so its binary can't be run as plain Node or take `NODE_OPTIONS`, and loads only its own, unaltered `app.asar`; the node inspector stays on for Playwright.
 - `bun run test:e2e:desktop [file]`: builds the app and drives it with Playwright (`apps/e2e/playwright.desktop.config.ts`), each test on a throwaway user-data folder. Examples are in `apps/e2e/tests/desktop/`; `packaged-app.spec.ts` packages the app and launches the `.app` itself.
 
-`VITA_DESKTOP_USER_DATA` points the app at another user-data folder. If your shell sets `ELECTRON_RUN_AS_NODE` (some Electron-based editors do), unset it before running `electron` yourself; the dev script and the Playwright fixture already do.
+`VITA_DESKTOP_USER_DATA` points the app at another user-data folder, and its log at `logs/` inside it. If your shell sets `ELECTRON_RUN_AS_NODE` (some Electron-based editors do), unset it before running `electron` yourself; the dev script and the Playwright fixture already do.
 
 ## Install on macOS
 
