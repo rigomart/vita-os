@@ -51,7 +51,7 @@ createRoot(root).render(
           downloadData={() =>
             downloadData({
               apiBaseUrl: API_BASE_URL,
-              fetchImpl: versionAwareFetch.fetch,
+              monitor: versionAwareFetch,
             })
           }
         >

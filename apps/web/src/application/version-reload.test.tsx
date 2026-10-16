@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createVersionAwareFetch } from "../lib/version-aware-fetch";
+import { downloadData } from "./download-data";
 import { VersionReload } from "./version-reload";
 
 function deferred<T>() {
@@ -179,6 +180,69 @@ describe("version reload", () => {
     });
     expect(test.reload).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    ["saved", 200],
+    ["refused", 500],
+  ])(
+    "holds the reload while a download is in flight, then reloads once it is %s",
+    async (outcome, status) => {
+      vi.useFakeTimers();
+      vi.stubGlobal("URL", {
+        createObjectURL: () => "blob:export",
+        revokeObjectURL: () => {},
+      });
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(() => {});
+      const exported = deferred<Response>();
+      const monitor = createVersionAwareFetch("old", async (input) =>
+        String(input).endsWith("/v1/export")
+          ? exported.promise
+          : new Response(null, { headers: { "X-Vita-Version": "new" } }),
+      );
+      const test = setup();
+      render(
+        <QueryClientProvider client={test.queryClient}>
+          <VersionReload
+            monitor={monitor}
+            fetchManifest={test.fetchManifest}
+            reload={test.reload}
+          />
+        </QueryClientProvider>,
+      );
+
+      const download = downloadData({
+        apiBaseUrl: "http://api.test",
+        monitor,
+      }).then(
+        () => "saved",
+        () => "refused",
+      );
+      // Another request names the new version, and the manifest is ready.
+      await act(async () => {
+        await monitor.fetch("http://api.test/v1/threads");
+      });
+      await tick();
+      expect(test.fetchManifest).toHaveBeenCalled();
+      expect(test.reload).not.toHaveBeenCalled();
+
+      await act(async () => {
+        exported.resolve(
+          new Response("{}", {
+            status,
+            headers: { "X-Vita-Version": "new" },
+          }),
+        );
+        await download;
+      });
+      await expect(download).resolves.toBe(outcome);
+      expect(click).toHaveBeenCalledTimes(status === 200 ? 1 : 0);
+      expect(test.reload).toHaveBeenCalledTimes(1);
+      click.mockRestore();
+      vi.unstubAllGlobals();
+    },
+  );
 
   it("uses the newest API target when an older manifest request is outstanding", async () => {
     vi.useFakeTimers();

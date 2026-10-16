@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { createVersionAwareFetch } from "../lib/version-aware-fetch";
 import { downloadData } from "./download-data";
 
 afterEach(() => {
@@ -30,7 +31,7 @@ describe("downloadData", () => {
 
     await downloadData({
       apiBaseUrl: "http://api.test/",
-      fetchImpl,
+      monitor: createVersionAwareFetch("old", fetchImpl),
       now: new Date(2026, 9, 5, 23, 30),
     });
 
@@ -51,7 +52,10 @@ describe("downloadData", () => {
     await expect(
       downloadData({
         apiBaseUrl: "http://api.test",
-        fetchImpl: async () => new Response("{}", { status: 500 }),
+        monitor: createVersionAwareFetch(
+          "old",
+          async () => new Response("{}", { status: 500 }),
+        ),
       }),
     ).rejects.toThrow("500");
     expect(click).not.toHaveBeenCalled();

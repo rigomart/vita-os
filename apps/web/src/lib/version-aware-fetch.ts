@@ -12,16 +12,23 @@ export function createVersionAwareFetch(
     for (const listener of listeners) listener();
   };
 
+  /** Holds a reload until `work` settles, as an active write does. */
+  async function hold<T>(work: () => Promise<T>): Promise<T> {
+    activeWrites++;
+    notify();
+    try {
+      return await work();
+    } finally {
+      activeWrites--;
+      notify();
+    }
+  }
+
   const versionFetch: typeof fetch = async (input, init) => {
     const method = (
       init?.method ?? (input instanceof Request ? input.method : "GET")
     ).toUpperCase();
-    const isWrite = method !== "GET" && method !== "HEAD";
-    if (isWrite) {
-      activeWrites++;
-      notify();
-    }
-    try {
+    const request = async () => {
       const response = await fetchImpl(input, init);
       const version = response.headers.get("X-Vita-Version")?.trim();
       if (bundledVersion && version && version !== bundledVersion) {
@@ -29,16 +36,13 @@ export function createVersionAwareFetch(
         notify();
       }
       return response;
-    } finally {
-      if (isWrite) {
-        activeWrites--;
-        notify();
-      }
-    }
+    };
+    return method === "GET" || method === "HEAD" ? request() : hold(request);
   };
 
   return {
     fetch: versionFetch,
+    hold,
     getState: () => ({ targetVersion, activeWrites, reloadStarted }),
     subscribe(listener: () => void) {
       listeners.add(listener);
