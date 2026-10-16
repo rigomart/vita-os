@@ -108,6 +108,12 @@ async function storeRetiredFocus(thread: Thread, taskId: string) {
     .run();
 }
 
+async function storedFocus(thread: Thread) {
+  return env.DB.prepare("SELECT focused_move_id FROM threads WHERE id = ?")
+    .bind(thread._id)
+    .first<string | null>("focused_move_id");
+}
+
 describe("capturing Tasks", () => {
   it("keeps Tasks in capture order and writes no Activity Log", async () => {
     const owner = await createSession("tasks-capture");
@@ -204,7 +210,7 @@ describe("completing and removing", () => {
     expect(completed.lastActivityAt).toBe(entry?.createdAt);
   });
 
-  it("ignores a stored Focused Task, before and after that Task is completed or removed", async () => {
+  it("ignores a stored Focused Task and clears it with any Task change, so older builds can still read the Thread", async () => {
     const owner = await createSession("tasks-retired-focus");
     const thread = await threadWith(owner, ["Call clinic", "Book slot", "Pay"]);
     await storeRetiredFocus(thread, "task-1");
@@ -218,12 +224,22 @@ describe("completing and removing", () => {
       { _id: "task-3", text: "Pay" },
     ]);
     expect(completed).not.toHaveProperty("focusedTaskId");
+    expect(await storedFocus(thread)).toBeNull();
 
     await storeRetiredFocus(thread, "task-2");
     const removed = (await remove(owner, completed, "task-2")).body as Thread;
     expect(removed.tasks).toEqual([{ _id: "task-3", text: "Pay" }]);
-    // The stored value names a Task the Thread no longer holds; reads ignore it.
+    expect(await storedFocus(thread)).toBeNull();
     expect(await read(owner, thread)).toEqual(removed);
+
+    // Even a change that keeps every Task clears it.
+    await storeRetiredFocus(thread, "task-3");
+    await succeed<Thread>(`/v1/threads/${thread._id}/tasks/task-3`, {
+      method: "PATCH",
+      session: owner,
+      body: { text: "Pay the bill" },
+    });
+    expect(await storedFocus(thread)).toBeNull();
   });
 
   it("leaves the Thread open once every Task is complete", async () => {
