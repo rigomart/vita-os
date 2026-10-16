@@ -1,9 +1,10 @@
 import type { Client } from "@libsql/client";
 
-import { access, open, readdir, readFile, rm } from "node:fs/promises";
+import { readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { openConnection } from "./connection.ts";
+import { exists, flush } from "./files.ts";
 
 /*
  * Applies `apps/api/migrations` to a local file the way
@@ -163,7 +164,6 @@ async function readAppliedMigrations(client: Client): Promise<string[] | null> {
   return rows.rows.map((row) => String(row.name));
 }
 
-/** `VACUUM INTO` snapshots consistently but doesn't fsync, so we do. */
 async function copyBeforeMigrating(
   client: Client,
   databasePath: string,
@@ -183,22 +183,6 @@ async function copyBeforeMigrating(
     throw error;
   }
   return backupPath;
-}
-
-async function exists(path: string): Promise<boolean> {
-  return access(path).then(
-    () => true,
-    () => false,
-  );
-}
-
-async function flush(path: string): Promise<void> {
-  const handle = await open(path, "r");
-  try {
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
 }
 
 /** The file and its history row commit together, as on D1. */

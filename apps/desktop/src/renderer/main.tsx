@@ -80,7 +80,7 @@ createRoot(root).render(
       <ThemeProvider>
         <NativeTheme />
         <ApplicationClientProvider client={client}>
-          <ViewerProvider viewer={{}}>
+          <ViewerProvider viewer={{}} downloadData={window.vita.downloadData}>
             <SessionGateProvider gate={LocalSessionGate}>
               <HostCommandsProvider subscribe={window.vita.onCommand}>
                 <FeedbackProvider>

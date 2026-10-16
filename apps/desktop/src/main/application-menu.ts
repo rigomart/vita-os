@@ -6,10 +6,14 @@ export interface ApplicationMenuOptions {
   /** Developer tools and Reload only where the app runs from source. */
   isPackaged: boolean;
   send(command: MenuCommand): void;
+  backUpNow(): void;
+  showBackups(): void;
+  downloadData(): void;
 }
 
 /**
- * The menu bar: macOS's own menus, with the product's actions in File.
+ * The menu bar: macOS's own menus, with the product's actions and the data
+ * file's in File.
  *
  * Search and New Note show the page's own shortcuts without registering them,
  * so a key press still reaches the page as it does on the web, and the page
@@ -18,6 +22,9 @@ export interface ApplicationMenuOptions {
 export function applicationMenuTemplate({
   isPackaged,
   send,
+  backUpNow,
+  showBackups,
+  downloadData,
 }: ApplicationMenuOptions): MenuItemConstructorOptions[] {
   return [
     { role: "appMenu" },
@@ -38,6 +45,10 @@ export function applicationMenuTemplate({
           registerAccelerator: false,
           click: () => send("search"),
         },
+        { type: "separator" },
+        { label: "Back Up Now", click: backUpNow },
+        { label: "Show Backups in Finder", click: showBackups },
+        { label: "Download My Data…", click: downloadData },
         { type: "separator" },
         { role: "close" },
       ],
