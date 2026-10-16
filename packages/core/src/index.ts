@@ -61,14 +61,11 @@ export {
   requireTaskDate,
   requireRepeat,
   requireTimeZone,
-  leadTask,
   requireTaskId,
   requireTaskText,
   requireOpenForTasks,
   snapTaskDate,
-  taskSlot,
   type TaskClock,
-  type TaskSlot,
   type TaskState,
 } from "./tasks";
 export {
