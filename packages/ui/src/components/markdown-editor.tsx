@@ -36,8 +36,8 @@ import {
 } from "@codemirror/view";
 import { type CSSProperties, useEffect, useEffectEvent, useRef } from "react";
 
+import { safeLink } from "../lib/safe-link";
 import { cn } from "../lib/utils";
-import { safeLink } from "./markdown";
 
 /** Why the text changed: typing, or ticking a rendered task checkbox. */
 export type MarkdownChangeCause = "edit" | "task";

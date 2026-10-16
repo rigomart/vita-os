@@ -7,14 +7,11 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 
+import { safeLink } from "../lib/safe-link";
 import { cn } from "../lib/utils";
 import { Separator } from "./separator";
 
 const linkClassName = "text-primary underline underline-offset-2 break-words";
-
-export function safeLink(url: string) {
-  return /^(https?:|mailto:)/i.test(url) ? url : undefined;
-}
 
 const components: Components = {
   h1: ({ children }) => (

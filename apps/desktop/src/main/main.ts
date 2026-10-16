@@ -20,6 +20,7 @@ import {
   serveRenderer,
 } from "./app-protocol.ts";
 import { callApplication } from "./application-calls.ts";
+import { opensExternally, originOf } from "./links.ts";
 import { startupFailure } from "./startup-failure.ts";
 
 /*
@@ -40,8 +41,9 @@ const rendererOrigin = devServerUrl ? originOf(devServerUrl) : APP_ORIGIN;
 const appPath = app.getAppPath();
 let local: LocalDatabase | undefined;
 let window: BrowserWindow | null = null;
-/** Calls main has started and not answered; quitting waits for them. */
+/** Work main has started and not finished: opening the data, answering calls. Quitting waits for it. */
 const inFlight = new Set<Promise<unknown>>();
+let quitting = false;
 
 registerAppScheme();
 
@@ -50,14 +52,35 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on("second-instance", showWindow);
   app.on("web-contents-created", (_event, contents) => guard(contents));
+  // Registered before the data opens, so a quit during the open still waits and closes it.
+  app.on("before-quit", () => {
+    quitting = true;
+  });
+  app.on("will-quit", (event) => {
+    if (inFlight.size > 0) {
+      event.preventDefault();
+      void Promise.allSettled(inFlight).then(() => app.quit());
+      return;
+    }
+    local?.close();
+  });
   app.whenReady().then(start).catch(failStartup);
 }
 
+function track<T>(work: Promise<T>): Promise<T> {
+  inFlight.add(work);
+  const done = () => inFlight.delete(work);
+  work.then(done, done);
+  return work;
+}
+
 async function start() {
-  local = await openLocalDatabase({
-    databasePath: join(app.getPath("userData"), "vita.db"),
-    migrationsDirectory: join(appPath, "dist/migrations"),
-  });
+  local = await track(
+    openLocalDatabase({
+      databasePath: join(app.getPath("userData"), "vita.db"),
+      migrationsDirectory: join(appPath, "dist/migrations"),
+    }),
+  );
   const { applied, backupPath } = local.migration;
   if (applied.length > 0) {
     console.info(
@@ -70,11 +93,7 @@ async function start() {
     if (!isRendererUrl(event.senderFrame?.url)) {
       throw new Error("Vita OS refused a call from outside the app.");
     }
-    const call = callApplication(client, method, input);
-    inFlight.add(call);
-    const done = () => inFlight.delete(call);
-    call.then(done, done);
-    return call;
+    return track(callApplication(client, method, input));
   });
 
   if (!devServerUrl) serveRenderer(join(appPath, "dist/renderer"));
@@ -82,15 +101,7 @@ async function start() {
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin") app.quit();
   });
-  app.on("will-quit", (event) => {
-    if (inFlight.size > 0) {
-      event.preventDefault();
-      void Promise.allSettled(inFlight).then(() => app.quit());
-      return;
-    }
-    local?.close();
-  });
-  await openWindow();
+  if (!quitting) await openWindow();
 }
 
 async function openWindow() {
@@ -131,12 +142,16 @@ function showWindow() {
 /** Never swallowed: the person sees why, then the app quits. */
 function failStartup(error: unknown) {
   console.error("Vita OS couldn't start", error);
-  const { title, content } = startupFailure(error);
+  const { title, content } = startupFailure(
+    error,
+    local?.migration.backupPath ?? null,
+  );
   dialog.showErrorBox(title, content);
+  local?.close();
   app.exit(1);
 }
 
-/** The app's pages stay on the app; web links open in the browser. */
+/** The app's pages stay on the app; web and email links open in their own apps. */
 function guard(contents: WebContents) {
   contents.on("will-navigate", (event, url) => {
     if (isRendererUrl(url)) return;
@@ -151,19 +166,10 @@ function guard(contents: WebContents) {
 }
 
 function openExternally(url: string) {
-  const protocol = URL.parse(url)?.protocol;
-  if (protocol === "https:" || protocol === "http:") {
-    void shell.openExternal(url);
-  }
+  if (opensExternally(url)) void shell.openExternal(url);
 }
 
 function isRendererUrl(url: string | undefined): boolean {
   const origin = url === undefined ? null : originOf(url);
   return origin !== null && origin === rendererOrigin;
-}
-
-/** `URL.origin` is "null" for a custom scheme like `app:`, so build it. */
-function originOf(url: string): string | null {
-  const parsed = URL.parse(url);
-  return parsed ? `${parsed.protocol}//${parsed.host}` : null;
 }

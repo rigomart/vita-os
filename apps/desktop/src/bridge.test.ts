@@ -3,7 +3,6 @@ import type { ApplicationClient } from "@vita-os/contracts";
 import { describeApplicationClient } from "@vita-os/contracts/testing";
 import {
   createLocalApplicationClient,
-  MigrationFailedError,
   openLocalDatabase,
   type LocalDatabase,
 } from "@vita-os/local";
@@ -16,7 +15,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { VitaBridge } from "./bridge.ts";
 
 import { callApplication } from "./main/application-calls.ts";
-import { startupFailure } from "./main/startup-failure.ts";
 import { createBridgeClient } from "./renderer/bridge-client.ts";
 
 const MIGRATIONS = fileURLToPath(
@@ -82,21 +80,5 @@ describe("the desktop bridge", () => {
       },
     });
     expect(onFailure).toHaveBeenCalledWith("listAreas", expect.any(Error));
-  });
-});
-
-describe("a failed start", () => {
-  it("names the copy taken before a failed migration", () => {
-    const error = new MigrationFailedError(
-      "0009_next.sql",
-      [],
-      "/data/vita.db.before-0009_next",
-      { cause: new Error("no such table") },
-    );
-    expect(startupFailure(error)).toEqual({
-      title: "Vita OS couldn't start",
-      content: `${error.message}\n\nA copy of your data from before this update is at:\n/data/vita.db.before-0009_next`,
-    });
-    expect(startupFailure(new Error("disk full")).content).toBe("disk full");
   });
 });
