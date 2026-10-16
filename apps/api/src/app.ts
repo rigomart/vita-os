@@ -8,6 +8,7 @@ import type { CreateScope } from "./platform/request-scope";
 import { activityLogRoutes } from "./features/activity-log/routes";
 import { addToThreadRoutes } from "./features/add-to-thread/routes";
 import { areasRoutes } from "./features/areas/routes";
+import { exportRoutes } from "./features/export/routes";
 import { notesRoutes } from "./features/notes/routes";
 import { threadNotesRoutes } from "./features/thread-notes/routes";
 import { threadsRoutes } from "./features/threads/routes";
@@ -57,6 +58,7 @@ export function createApp({
   api.route("/", threadNotesRoutes);
   api.route("/", activityLogRoutes);
   api.route("/", addToThreadRoutes);
+  api.route("/", exportRoutes);
   app.route("/v1", api);
 
   const auth = new Hono<ApiEnv>({ strict: true });
