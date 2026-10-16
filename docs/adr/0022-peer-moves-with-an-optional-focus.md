@@ -2,7 +2,7 @@
 
 Terminology amended by ADR 0033: **Move** is renamed **Task**, and **Focused Move** is **Focused Task**. Existing behavior is retained.
 
-**Status:** Accepted. Amended by ADR 0032: a Task gains an optional date and Repeat; completing a repeating Task moves it to its next occurrence instead of removing it, and completing may carry a note captured as a Thread Note.
+**Status:** Accepted. Amended by ADR 0032: a Task gains an optional date and Repeat; completing a repeating Task moves it to its next occurrence instead of removing it, and completing may carry a note captured as a Thread Note. Amended by [ADR 0044](./0044-a-card-for-every-dated-task.md): the Focused Task is retired, and Tasks are peers with no focus.
 **Date:** 2026-09-26
 
 Amended by [ADR 0034](./0034-plain-application-writes.md): current-state Task commands and independent optimistic writes replace client revision coordination; conversion destinations appear after confirmation without a Thread lock.
