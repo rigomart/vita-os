@@ -9,6 +9,7 @@
     "start:dev": "bun scripts/dev.ts",
     "build": "tsc -b && vite build && bun scripts/build-main.ts",
     "start": "electron .",
+    "package": "bun scripts/package.ts",
     "lint": "oxlint --fix --deny-warnings . && oxfmt --write .",
     "lint:check": "oxlint --deny-warnings . && oxfmt --check .",
     "format": "oxfmt --write .",
@@ -29,6 +30,7 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@electron/packager": "20.3.0",
     "@rolldown/plugin-babel": "0.2.3",
     "@tailwindcss/vite": "4.3.0",
     "@types/node": "^24.13.3",
