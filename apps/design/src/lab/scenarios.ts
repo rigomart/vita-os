@@ -44,6 +44,13 @@ export const scenarios = [
     seed: (client) => seedLife(client, LONG_TASKS),
   },
   {
+    id: "dated-tasks",
+    name: "Several dated Tasks",
+    description:
+      "Eight Threads, most with two to four dated Tasks: a daily Repeat beside one-offs, two Tasks on one day, a late one, one far out.",
+    seed: (client) => seedLife(client, SEVERAL_DATED),
+  },
+  {
     id: "long-activity",
     name: "Long activity",
     description:
@@ -579,3 +586,92 @@ function busyLife(): Life {
     notes: [...SAMPLE.notes, ...notes],
   };
 }
+
+/**
+ * Threads that each hold several dated Tasks and little else, so a board
+ * that places a Thread by more than its soonest Task can be judged without
+ * noise. One Thread with a single Task and one with none dated are there to
+ * compare against.
+ */
+const SEVERAL_DATED: Life = {
+  areas: [
+    { name: "Health", icon: "HeartPulse" },
+    { name: "Home", icon: "Home" },
+    { name: "Money", icon: "WalletCards" },
+  ],
+  threads: [
+    {
+      title: "Recovery after a knee operation",
+      area: "Health",
+      tasks: [
+        {
+          text: "Evening check-in",
+          inDays: 0,
+          at: "19:00",
+          repeat: { kind: "days", every: 1 },
+        },
+        { text: "Pick up the second prescription", inDays: 1 },
+        { text: "Follow-up appointment", inDays: 4, at: "09:30" },
+      ],
+    },
+    {
+      title: "Moving flat",
+      area: "Home",
+      tasks: [
+        { text: "Book the van", inDays: 0 },
+        { text: "Ask about the deposit return", inDays: 2 },
+        { text: "Hand back the keys", inDays: 6, at: "10:00" },
+        { text: "Change the address at the bank", inDays: 9 },
+      ],
+    },
+    {
+      title: "Kitchen tap",
+      area: "Home",
+      tasks: [
+        { text: "Call the plumber", inDays: 0 },
+        { text: "Buy a replacement cartridge", inDays: 0 },
+      ],
+    },
+    {
+      title: "Dog's medication",
+      tasks: [
+        {
+          text: "Give the evening tablet",
+          inDays: 0,
+          at: "20:00",
+          repeat: { kind: "days", every: 1 },
+        },
+        { text: "Book the vet check", inDays: -1 },
+      ],
+    },
+    {
+      title: "Tax return",
+      area: "Money",
+      tasks: [
+        { text: "Send the receipts to the accountant", inDays: 3 },
+        { text: "Sign and file the return", inDays: 12 },
+      ],
+    },
+    {
+      title: "Learn Spanish",
+      tasks: [
+        {
+          text: "Practice session",
+          inDays: 1,
+          repeat: { kind: "weekly", weekdays: [1, 4] },
+        },
+        { text: "Sit the A2 exam", inDays: 25, at: "09:00" },
+      ],
+    },
+    {
+      title: "Choose between two cars",
+      tasks: [{ text: "Test drive the second one", inDays: 5 }],
+    },
+    {
+      title: "Garden shed",
+      area: "Home",
+      tasks: ["Measure the space", "Compare three kits"],
+    },
+  ],
+  notes: [],
+};

@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { AttentionBoard } from "./attention-board-model";
 import type { BoardScope } from "./dashboard-item";
 
-import { itemId, unscheduledRuns } from "./attention-board-model";
+import { itemKey, unscheduledRuns } from "./attention-board-model";
 import { DashboardItem } from "./dashboard-item";
 import { Count, FileTab } from "./dashboard-list";
 import { foldedNoDateSummary, NO_DATE_FILL } from "./dashboard-list-model";
@@ -112,7 +112,7 @@ function Runs({ board, scope }: { board: AttentionBoard; scope: BoardScope }) {
       </h3>
       <ul className="-mx-3 flex flex-col gap-1.5">
         {run.items.map((item) => (
-          <li key={itemId(item)}>
+          <li key={itemKey(item)}>
             <DashboardItem item={item} scope={scope} />
           </li>
         ))}

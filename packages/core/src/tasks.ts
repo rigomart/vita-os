@@ -2,7 +2,6 @@ import type { Repeat, Task, TaskId, ThreadState } from "@vita-os/contracts";
 
 import type { ThreadUpdateDecision } from "./thread-changes";
 
-import { soonestTaskDate, startOfLocalDay } from "./attention";
 import { ConflictError, ValidationError } from "./errors";
 import {
   movedRepeat,
@@ -334,65 +333,6 @@ export function decideFocusTask(
   return { patch: { focusedTaskId }, logs: [] };
 }
 
-/**
- * The Task a card leads with: the Focused Task, else the only Task. With
- * several Tasks and none focused there is no lead — the card must not invent
- * a headline the person never chose.
- */
-export function leadTask(thread: {
-  tasks?: readonly Task[];
-  focusedTaskId?: TaskId;
-}): Task | undefined {
-  const tasks = thread.tasks ?? [];
-  const focused = tasks.find((task) => task._id === thread.focusedTaskId);
-  if (focused) return focused;
-  return tasks.length === 1 ? tasks[0] : undefined;
-}
-
 export function hasTasks(thread: { tasks?: readonly Task[] }): boolean {
   return (thread.tasks?.length ?? 0) > 0;
-}
-
-/**
- * What a Thread's card shows in its Task slot.
- *
- * With dated Tasks the one that placed the Thread leads, even when another is
- * focused; two on the soonest day lead with no single Task, because the card
- * must not pick between them. Without a dated Task the slot is today's rule:
- * the Focused Task, else the only Task, else a count.
- */
-export type TaskSlot =
-  | { kind: "none" }
-  | { kind: "task"; task: Task; focused: boolean }
-  | { kind: "sameDay"; count: number; date: number }
-  | { kind: "unfocused"; count: number };
-
-export function taskSlot(thread: {
-  tasks?: readonly Task[];
-  focusedTaskId?: TaskId;
-}): TaskSlot {
-  const tasks = thread.tasks ?? [];
-  if (tasks.length === 0) return { kind: "none" };
-
-  const soonest = soonestTaskDate(tasks);
-  if (soonest !== undefined) {
-    const day = startOfLocalDay(soonest);
-    const sameDay = tasks.filter(
-      (task) => task.date !== undefined && startOfLocalDay(task.date) === day,
-    );
-    if (sameDay.length > 1) {
-      return { kind: "sameDay", count: sameDay.length, date: soonest };
-    }
-    const lead = sameDay[0]!;
-    return {
-      kind: "task",
-      task: lead,
-      focused: lead._id === thread.focusedTaskId,
-    };
-  }
-
-  const lead = leadTask(thread);
-  return lead === undefined
-    ? { kind: "unfocused", count: tasks.length }
-    : { kind: "task", task: lead, focused: lead._id === thread.focusedTaskId };
 }

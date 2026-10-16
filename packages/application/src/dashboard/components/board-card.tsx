@@ -17,10 +17,6 @@ import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
 export const revealed =
   "opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100";
 
-/** The other half of `revealed`: shown at rest, handing its place to controls. */
-export const concealed =
-  "transition-opacity group-focus-within/card:opacity-0 group-hover/card:opacity-0";
-
 /**
  * The one shape every item on the board takes, Thread or Note: a sheet with an
  * edge of its own, filed on its group's fill like a sheet in a folder, in

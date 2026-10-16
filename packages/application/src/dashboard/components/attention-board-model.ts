@@ -1,7 +1,6 @@
 import type { Note, Task, Thread } from "@vita-os/contracts";
-import type { TaskSlot } from "@vita-os/core";
 
-import { attentionDate, hasTasks, taskSlot } from "@vita-os/core";
+import { hasTasks } from "@vita-os/core";
 import { addDays, format } from "date-fns";
 
 import { dayDelta, startOfLocalDay } from "./dashboard-model";
@@ -13,13 +12,16 @@ import { dayDelta, startOfLocalDay } from "./dashboard-model";
  * Three buckets carry the dates (Now · This week · Later), which the
  * Dashboard reads as one list from now outward, and a single unscheduled
  * group carries what is not on the calendar at all: Threads whose Tasks are
- * all undated (ready to move), Threads simply open, and standalone Notes. A
- * Thread sits at its soonest dated Task, and focus never moves it between
- * groups. A Note's Follow-up date is the same kind of signal, so a Note due
- * tomorrow sits beside a Thread due tomorrow.
+ * all undated (ready to move), Threads simply open, and standalone Notes.
+ * Every dated Task places a copy of its Thread at its date, so a Thread with
+ * three dated Tasks stands three times; a repeating Task is one Task with one
+ * date, so it places one copy, at its next occurrence. A Note's Follow-up
+ * date is the same kind of signal, so a Note due tomorrow sits beside a Task
+ * due tomorrow.
  *
- * A dated item never appears in the unscheduled group and vice versa, so every
- * open Thread and open Note lands in exactly one place.
+ * A Thread with a dated Task is never in the unscheduled group, and its
+ * undated Tasks are not on the board: every dated Task and dated Note lands
+ * in exactly one group, and every undated item in exactly one run.
  */
 export interface AttentionBoard {
   later: BoardItem[];
@@ -37,7 +39,13 @@ export interface AttentionBoard {
 
 export type BoardItem =
   | { kind: "note"; note: Note; when?: number }
-  | { kind: "thread"; thread: Thread; when?: number };
+  | {
+      kind: "thread";
+      thread: Thread;
+      /** The dated Task that placed this copy; none in No date. */
+      task?: Task;
+      when?: number;
+    };
 
 /** The last six days of "soon" — day 7 and beyond reads as Later. */
 const WEEK_HORIZON = 6;
@@ -74,12 +82,15 @@ export function buildAttentionBoard(
   currentDate: number,
 ): AttentionBoard {
   const items: BoardItem[] = [
-    ...threads.map(
-      (thread): BoardItem => ({
-        kind: "thread",
-        thread,
-        when: attentionDate(thread),
-      }),
+    ...threads.flatMap((thread) =>
+      datedTasks(thread).map(
+        (task): BoardItem => ({
+          kind: "thread",
+          thread,
+          task,
+          when: task.date,
+        }),
+      ),
     ),
     ...notes.map(
       (note): BoardItem => ({
@@ -91,6 +102,7 @@ export function buildAttentionBoard(
   ];
 
   const dated = items.filter((item) => item.when !== undefined);
+  const undated = threads.filter((thread) => datedTasks(thread).length === 0);
   const inDays = (item: BoardItem) => dayDelta(item.when ?? 0, currentDate);
 
   return {
@@ -100,16 +112,12 @@ export function buildAttentionBoard(
       .sort(bySoonest),
     later: dated.filter((item) => inDays(item) > WEEK_HORIZON).sort(bySoonest),
     unscheduled: {
-      moves: threads
-        .filter(
-          (thread) => attentionDate(thread) === undefined && hasTasks(thread),
-        )
+      moves: undated
+        .filter((thread) => hasTasks(thread))
         .sort(byThreadOrder)
         .map((thread) => ({ kind: "thread", thread })),
-      open: threads
-        .filter(
-          (thread) => attentionDate(thread) === undefined && !hasTasks(thread),
-        )
+      open: undated
+        .filter((thread) => !hasTasks(thread))
         .sort(byThreadOrder)
         .map((thread) => ({ kind: "thread", thread })),
       notes: notes
@@ -216,46 +224,36 @@ function span(start: Date, end: Date) {
 }
 
 /**
- * What a Thread card's second row shows and what its rail offers on it.
- *
- * `task` is the one Task the card acts on, when the slot shows one. The
- * marker before its text is the repeat glyph when that Task repeats — focused
- * or not — else a dot, filled for the Focused Task; a count has its own
- * marker. Skip is offered only on a repeating Task: a one-off has no next
- * occurrence to move to. A missed repeating Task is still one Task with one
- * date, so it shows once, under Late.
+ * The Tasks that place a Thread on the list, in capture order: one copy each.
+ * A Thread with more than one stands more than once.
  */
-export interface CardTask {
-  slot: TaskSlot;
-  task?: Task;
-  focused: boolean;
-  marker: "count" | "focused" | "none" | "repeat" | "task";
-  canSkip: boolean;
+export function datedTasks(thread: Thread): (Task & { date: number })[] {
+  return (thread.tasks ?? []).filter(
+    (task): task is Task & { date: number } => task.date !== undefined,
+  );
 }
 
-export function cardTask(thread: Thread): CardTask {
-  const slot = taskSlot(thread);
-  if (slot.kind !== "task") {
-    return {
-      slot,
-      focused: false,
-      marker: slot.kind === "none" ? "none" : "count",
-      canSkip: false,
-    };
-  }
-  const repeats = slot.task.repeat !== undefined;
-  return {
-    slot,
-    task: slot.task,
-    focused: slot.focused,
-    marker: repeats ? "repeat" : slot.focused ? "focused" : "task",
-    canSkip: repeats,
-  };
+/**
+ * The one Task a Thread's card names and acts on: the Task that placed its
+ * copy, or in No date the Thread's only Task. With several undated Tasks
+ * there is none, as the card must not pick a headline the person never chose.
+ */
+export function cardTask(thread: Thread, placedBy?: Task): Task | undefined {
+  if (placedBy !== undefined) return placedBy;
+  const tasks = thread.tasks ?? [];
+  return tasks.length === 1 ? tasks[0] : undefined;
 }
 
 /** The Thread or Note behind an item, whichever it is. */
 export function itemId(item: BoardItem) {
   return item.kind === "thread" ? item.thread._id : item.note._id;
+}
+
+/** One copy among its Thread's: the Thread with the Task that placed it. */
+export function itemKey(item: BoardItem) {
+  return item.kind === "thread" && item.task !== undefined
+    ? `${item.thread._id}:${item.task._id}`
+    : itemId(item);
 }
 
 export function itemAreaId(item: BoardItem) {

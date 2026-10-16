@@ -8,6 +8,7 @@ import {
   cardTask,
   groupByWhen,
   itemId,
+  itemKey,
   unscheduledRuns,
 } from "./attention-board-model";
 import { DAY } from "./dashboard-model";
@@ -139,18 +140,13 @@ describe("buildAttentionBoard", () => {
     expect(board.unscheduled.moves.map(itemId)).toEqual(["actionable"]);
   });
 
-  it("makes every Thread with a Task ready to move, whether or not one is focused", () => {
-    const focused = task("Send the sheet");
+  it("makes every Thread whose Tasks are all undated ready to move, once", () => {
     const board = buildAttentionBoard(
       [
         thread("no-tasks"),
-        thread("unfocused", {
-          tasks: [task("Call"), task("Email")],
-          order: 1,
-        }),
-        thread("focused", {
-          tasks: [focused, task("Print")],
-          focusedTaskId: focused._id,
+        thread("one", { tasks: [task("Call")], order: 1 }),
+        thread("several", {
+          tasks: [task("Send the sheet"), task("Print")],
           order: 2,
         }),
       ],
@@ -158,29 +154,48 @@ describe("buildAttentionBoard", () => {
       currentDate,
     );
 
-    expect(board.unscheduled.moves.map(itemId)).toEqual([
-      "unfocused",
-      "focused",
-    ]);
+    expect(board.unscheduled.moves.map(itemId)).toEqual(["one", "several"]);
     expect(board.unscheduled.open.map(itemId)).toEqual(["no-tasks"]);
+    expect(
+      board.unscheduled.moves.map(
+        (item) => item.kind === "thread" && item.task,
+      ),
+    ).toEqual([undefined, undefined]);
   });
 
-  it("never moves a Thread between columns for focus", () => {
-    const focused = task("Send the sheet");
-    const dated = { followUp: day(2), tasks: [focused, task("Print")] };
-    const unfocused = buildAttentionBoard(
-      [thread("dated", dated)],
-      [],
-      currentDate,
-    );
-    const withFocus = buildAttentionBoard(
-      [thread("dated", { ...dated, focusedTaskId: focused._id })],
+  it("places a copy of a Thread at every dated Task, and leaves its undated Tasks off the board", () => {
+    const at = (offset: number, text: string) => ({
+      _id: text as TaskId,
+      text,
+      date: day(offset),
+    });
+    const board = buildAttentionBoard(
+      [
+        thread("kitchen", {
+          tasks: [
+            at(4, "Call the plumber"),
+            task("Find the receipt"),
+            at(1, "Buy a washer"),
+            at(1, "Return the old tap"),
+          ],
+        }),
+      ],
       [],
       currentDate,
     );
 
-    expect(withFocus.week.map(itemId)).toEqual(unfocused.week.map(itemId));
-    expect(withFocus.week.map(itemId)).toEqual(["dated"]);
+    expect(board.week.map(itemKey)).toEqual([
+      "kitchen:Buy a washer",
+      "kitchen:Return the old tap",
+      "kitchen:Call the plumber",
+    ]);
+    expect(board.week.map((item) => item.when)).toEqual([
+      day(1),
+      day(1),
+      day(4),
+    ]);
+    expect(boardItems(board)).toHaveLength(3);
+    expect(unscheduledRuns(board)).toEqual([]);
   });
 
   it("collects undated Notes newest first", () => {
@@ -196,11 +211,13 @@ describe("buildAttentionBoard", () => {
     expect(board.unscheduled.notes.map(itemId)).toEqual(["newer", "older"]);
   });
 
-  it("lands every item in exactly one place", () => {
+  it("lands every dated Task and Note in one group, and every undated item in one run", () => {
     const threads = [
       thread("late", { followUp: day(-2) }),
-      thread("soon", { followUp: day(2) }),
-      thread("far", { followUp: day(30) }),
+      thread("soon", {
+        followUp: day(2),
+        tasks: [{ _id: "far" as TaskId, text: "Far", date: day(30) }],
+      }),
       thread("task", { tasks: [task("Do the thing")] }),
       thread("idle"),
     ];
@@ -209,10 +226,11 @@ describe("buildAttentionBoard", () => {
       note("loose-note"),
     ];
     const board = buildAttentionBoard(threads, notes, currentDate);
-    const ids = boardItems(board).map(itemId);
+    const keys = boardItems(board).map(itemKey);
 
-    expect(ids).toHaveLength(threads.length + notes.length);
-    expect(new Set(ids).size).toBe(ids.length);
+    // "soon" stands twice, once per dated Task.
+    expect(keys).toHaveLength(threads.length + 1 + notes.length);
+    expect(new Set(keys).size).toBe(keys.length);
     expect(
       unscheduledRuns(board).map((run) => [run.title, run.items.length]),
     ).toEqual([
@@ -327,67 +345,39 @@ describe("a repeating Task on the board", () => {
     ).toEqual([{ key: "late", items: ["recovery"] }]);
   });
 
-  it("marks the Task the card shows with the repeat glyph and offers skip", () => {
+  it("places one copy at the next occurrence, beside the Thread's other dated Tasks", () => {
     const recovery = thread("recovery", {
-      tasks: [{ ...daily, date: day(0) }, task("Call the nurse")],
-    });
-
-    expect(cardTask(recovery)).toMatchObject({
-      task: { _id: daily._id },
-      marker: "repeat",
-      canSkip: true,
-    });
-  });
-
-  it("keeps the glyph on a focused repeating Task", () => {
-    const recovery = thread("recovery", {
-      tasks: [{ ...daily, date: day(0) }],
-      focusedTaskId: daily._id,
-    });
-
-    expect(cardTask(recovery)).toMatchObject({
-      marker: "repeat",
-      focused: true,
-      canSkip: true,
-    });
-  });
-
-  it("offers no skip on a one-off Task, dated or not", () => {
-    const dated = thread("dated", {
-      tasks: [{ _id: "book" as TaskId, text: "Book", date: day(2) }],
-    });
-    const undated = thread("undated", { tasks: [task("Call")] });
-    const focused = thread("focused", {
-      tasks: [task("A"), task("B")],
-      focusedTaskId: "A" as TaskId,
-    });
-
-    expect(cardTask(dated)).toMatchObject({ marker: "task", canSkip: false });
-    expect(cardTask(undated)).toMatchObject({ marker: "task", canSkip: false });
-    expect(cardTask(focused)).toMatchObject({
-      marker: "focused",
-      canSkip: false,
-    });
-  });
-
-  it("offers no skip where the card shows no single Task", () => {
-    const sameDay = thread("same-day", {
       tasks: [
-        { ...daily, date: day(0) },
-        { _id: "other" as TaskId, text: "Other", date: day(0) + 3_600_000 },
+        { ...daily, date: day(0) + 21 * 3_600_000 },
+        { _id: "pickup" as TaskId, text: "Pickup", date: day(1) },
       ],
     });
-    const none = thread("none", { tasks: [task("A"), task("B")] });
+    const board = buildAttentionBoard([recovery], [], currentDate);
 
-    expect(cardTask(sameDay)).toMatchObject({
-      marker: "count",
-      canSkip: false,
-    });
-    expect(cardTask(sameDay).task).toBeUndefined();
-    expect(cardTask(none)).toMatchObject({ marker: "count", canSkip: false });
-    expect(cardTask(thread("empty"))).toMatchObject({
-      marker: "none",
-      canSkip: false,
-    });
+    // A daily Repeat is one Task with one date: no copy for each day ahead.
+    expect(boardItems(board).map(itemKey)).toEqual([
+      "recovery:check-in",
+      "recovery:pickup",
+    ]);
+  });
+});
+
+describe("cardTask", () => {
+  const dated = { _id: "book" as TaskId, text: "Book", date: day(2) };
+
+  it("names the Task that placed the copy, whatever else the Thread holds", () => {
+    const busy = thread("busy", { tasks: [task("Call"), dated] });
+
+    expect(cardTask(busy, dated)).toBe(dated);
+  });
+
+  it("names a No date card's only Task, and none of several", () => {
+    const only = task("Call");
+
+    expect(cardTask(thread("one", { tasks: [only] }))).toBe(only);
+    expect(
+      cardTask(thread("several", { tasks: [task("A"), task("B")] })),
+    ).toBeUndefined();
+    expect(cardTask(thread("empty"))).toBeUndefined();
   });
 });

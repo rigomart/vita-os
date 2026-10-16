@@ -1,7 +1,7 @@
 import type { AreaSummary, TaskId, Note, Thread } from "@vita-os/contracts";
 import type { ComponentProps, ComponentPropsWithoutRef } from "react";
 
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
 import { describe, expect, it, vi } from "vitest";
@@ -419,8 +419,9 @@ describe("DashboardOverview", () => {
       // The thread pane opens over this page (the mocked Link keeps `.`).
       ".?thread=distant",
     );
+    // A Thread's row reads "Task · Thread", so its rows in a week read apart.
     expect(within(month).getByRole("link")).toHaveTextContent(
-      /^DistantAug 16$/,
+      /^Follow up · DistantAug 16$/,
     );
   });
 
@@ -429,9 +430,9 @@ describe("DashboardOverview", () => {
       threads: [thread("Overdue", { followUp: today - DAY })],
     });
 
-    const lateCard = card("Overdue").firstElementChild;
-    expect(lateCard).toHaveClass("group/card");
-    expect(lateCard).not.toHaveClass("bg-condition-attention/[0.06]");
+    const sheet = card("Overdue").querySelector('[class*="group/card"]');
+    expect(sheet).not.toBeNull();
+    expect(sheet!.className).not.toMatch(/condition-attention\)_7%/);
   });
 
   it("heads each group with when it comes due, and leaves an exact day to its heading", () => {
@@ -554,7 +555,7 @@ describe("DashboardOverview", () => {
     ).toBeVisible();
   });
 
-  it("leads a time column's card with the dated Task that placed it, even beside a focused one", () => {
+  it("leads a dated card with its Task, the Thread's title under it, and leaves undated Tasks off the board", () => {
     renderOverview({
       threads: [
         thread("Checkup", {
@@ -562,54 +563,166 @@ describe("DashboardOverview", () => {
             ...tasks("Pick a clinic"),
             dated("Book the scan", today + 2 * DAY),
           ],
-          focusedTaskId: "Pick a clinic" as TaskId,
         }),
       ],
     });
 
+    const sunday = screen.getByRole("region", { name: "Sunday" });
     const checkup = within(card("Checkup"));
-    expect(checkup.getByText("Book the scan")).toBeVisible();
-    expect(checkup.queryByText("Pick a clinic")).toBeNull();
-    expect(
-      within(screen.getByRole("region", { name: "Sunday" })).getByText(
-        "Checkup",
-      ),
-    ).toBeVisible();
+    expect(card("Checkup")).toHaveTextContent(/^Task: Book the scanCheckup/);
+    expect(checkup.getByRole("link", { name: "Checkup" })).toBeVisible();
+    expect(screen.queryByText("Pick a clinic")).toBeNull();
+    expect(within(sunday).getAllByRole("listitem")).toHaveLength(1);
     expect(
       checkup.getByRole("button", { name: "Complete “Book the scan”" }),
     ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("complementary", { name: "No date" })).getByText(
+        "Everything open has a date.",
+      ),
+    ).toBeVisible();
   });
 
-  it("reads two dated Tasks on one day as a count and never picks one", () => {
+  it("stands a Thread once per dated Task: two on one day are two cards, each acting on its own Task", () => {
     renderOverview({
       threads: [
         thread("Recovery", {
           tasks: [
             dated("Morning check", today),
             dated("Evening check", today + 20 * 3_600_000),
-            dated("Next week", today + 7 * DAY),
+            dated("Plan the week", today + 7 * DAY),
           ],
         }),
       ],
     });
 
-    const recovery = within(card("Recovery"));
-    expect(recovery.getByText("2 tasks today")).toBeVisible();
-    expect(recovery.queryByText("Morning check")).toBeNull();
-    expect(recovery.queryByRole("button", { name: /^Complete/ })).toBeNull();
+    const todayGroup = screen.getByRole("region", { name: "Today" });
+    // The heading counts cards, not Threads.
+    expect(todayGroup).toHaveTextContent(/^Today2/);
+    const [morning, evening] = within(todayGroup).getAllByRole("listitem");
+    expect(morning).toHaveTextContent(/^Task: Morning checkRecovery/);
+    expect(evening).toHaveTextContent(/^Task: Evening checkRecovery/);
+    expect(
+      within(morning!).getByRole("button", {
+        name: "Complete “Morning check”",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(evening!).getByRole("button", {
+        name: "Complete “Evening check”",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/tasks today/)).toBeNull();
+    expect(
+      within(screen.getByRole("region", { name: "In 1 week" })).getByRole(
+        "link",
+      ),
+    ).toHaveTextContent(/^Plan the week · Recovery7d$/);
   });
 
-  it("keeps No date's slot rule when a card has undated Tasks only", () => {
-    const [a, b] = tasks("A", "B");
+  it("rings every copy of a Thread while one is hovered or focused, and never a Thread that stands once", async () => {
+    const user = userEvent.setup();
     renderOverview({
-      threads: [thread("Tray", { tasks: [a!, b!], focusedTaskId: b!._id })],
+      threads: [
+        thread("Kitchen", {
+          tasks: [
+            dated("Buy a washer", today),
+            dated("Call the plumber", today + 2 * DAY),
+            dated("Repaint", today + 9 * DAY),
+          ],
+        }),
+        thread("Dentist", { followUp: today, order: 1 }),
+      ],
     });
 
-    const tray = within(card("Tray"));
-    expect(tray.getByText("B")).toBeVisible();
-    expect(
-      tray.getByRole("img", { name: "2 tasks, one focused" }),
-    ).toBeVisible();
+    const copies = () =>
+      screen
+        .getAllByRole("link", { name: /Kitchen/ })
+        .map((link) => link.closest("[data-slot=thread-copy]"));
+    const ringed = () =>
+      document.querySelectorAll("[data-slot=thread-copy][data-ringed]");
+    expect(copies()).toHaveLength(3);
+    expect(ringed()).toHaveLength(0);
+
+    await user.hover(screen.getByText("Buy a washer"));
+    expect([...ringed()]).toEqual(copies());
+    for (const copy of copies()) {
+      expect(copy).toHaveClass("ring-2", "ring-brand-accent/60");
+    }
+
+    await user.unhover(screen.getByText("Buy a washer"));
+    expect(ringed()).toHaveLength(0);
+
+    // The one-line row in the weeks rings its card copies too, by keyboard.
+    act(() =>
+      within(screen.getByRole("region", { name: "In 1 week" }))
+        .getByRole("link")
+        .focus(),
+    );
+    expect([...ringed()]).toEqual(copies());
+
+    act(() => screen.getByRole("link", { name: "Dentist" }).focus());
+    expect(ringed()).toHaveLength(0);
+    await user.hover(screen.getByRole("link", { name: "Dentist" }));
+    expect(ringed()).toHaveLength(0);
+  });
+
+  const kitchen = () =>
+    thread("Kitchen", {
+      tasks: [
+        dated("Buy a washer", today),
+        dated("Call the plumber", today + 2 * DAY),
+      ],
+    });
+  const ringedCopies = () =>
+    document.querySelectorAll("[data-slot=thread-copy][data-ringed]");
+
+  it("keeps the ring while a copy holds keyboard focus, after the pointer passes over and leaves it", async () => {
+    const user = userEvent.setup();
+    renderOverview({ threads: [kitchen()] });
+    const washer = screen.getByText("Buy a washer");
+    const [link] = screen.getAllByRole("link", { name: "Kitchen" });
+
+    act(() => link!.focus());
+    await user.hover(washer);
+    await user.unhover(washer);
+    expect(ringedCopies()).toHaveLength(2);
+
+    act(() => link!.blur());
+    expect(ringedCopies()).toHaveLength(0);
+  });
+
+  it("drops the ring of a focused copy the filter takes away, so it comes back at rest", () => {
+    const board = (filter: OverviewProps["filter"]) => (
+      <FeedbackProvider feedback={createFeedbackMock()}>
+        <DashboardOverview
+          areas={areas}
+          currentDate={currentDate}
+          filter={filter}
+          notes={[]}
+          threads={[
+            kitchen(),
+            thread("Fix the gate", {
+              areaId: "home" as Thread["areaId"],
+              followUp: today,
+              order: 1,
+            }),
+          ]}
+        />
+      </FeedbackProvider>
+    );
+    const { rerender } = render(board({}));
+
+    act(() => screen.getAllByRole("link", { name: "Kitchen" })[0]!.focus());
+    expect(ringedCopies()).toHaveLength(2);
+
+    rerender(board({ area: "home" }));
+    expect(screen.queryByRole("link", { name: "Kitchen" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Fix the gate" })).toBeVisible();
+
+    rerender(board({}));
+    expect(screen.getAllByRole("link", { name: "Kitchen" })).toHaveLength(2);
+    expect(ringedCopies()).toHaveLength(0);
   });
 
   it("leads the list with No date folded to one line, which opens in place", async () => {
@@ -666,49 +779,22 @@ describe("DashboardOverview", () => {
   });
 });
 
-describe("a Thread card", () => {
-  it("heads every card with the Thread's title, and never trades it for a Task", () => {
-    const focusedTasks = tasks("Call the clinic", "Book the scan", "Pay");
+describe("a No date Thread card", () => {
+  it("heads every card with the Thread's title", () => {
     renderOverview({
       threads: [
-        thread("Focused", {
-          tasks: focusedTasks,
-          focusedTaskId: focusedTasks[1]!._id,
-        }),
-        thread("Only task", { tasks: tasks("Email the landlord"), order: 1 }),
-        thread("Unfocused", { tasks: tasks("A", "B", "C"), order: 2 }),
-        thread("No tasks", { order: 3 }),
+        thread("Only task", { tasks: tasks("Email the landlord") }),
+        thread("Several", { tasks: tasks("A", "B", "C"), order: 1 }),
+        thread("No tasks", { order: 2 }),
       ],
     });
 
-    for (const title of ["Focused", "Only task", "Unfocused", "No tasks"]) {
-      expect(screen.getByRole("link", { name: title })).toBeVisible();
+    for (const title of ["Only task", "Several", "No tasks"]) {
+      expect(card(title)).toHaveTextContent(new RegExp(`^${title}`));
     }
   });
 
-  it("puts the Focused Task in the task slot, with a quiet count of the others", () => {
-    const focusedTasks = tasks("Call the clinic", "Book the scan", "Pay");
-    renderOverview({
-      threads: [
-        thread("Checkup", {
-          tasks: focusedTasks,
-          focusedTaskId: focusedTasks[1]!._id,
-        }),
-      ],
-    });
-
-    const checkup = within(card("Checkup"));
-    expect(checkup.getByText("Book the scan")).toBeVisible();
-    expect(checkup.queryByText("Call the clinic")).toBeNull();
-    expect(
-      checkup.getByRole("img", { name: "3 tasks, one focused" }),
-    ).toBeVisible();
-    expect(
-      checkup.getByRole("button", { name: "Complete “Book the scan”" }),
-    ).toBeInTheDocument();
-  });
-
-  it("shows the only Task without asking for a focus", () => {
+  it("shows the only Task under the title, and completes it", () => {
     renderOverview({
       threads: [thread("Deposit", { tasks: tasks("Email the landlord") })],
     });
@@ -721,16 +807,20 @@ describe("a Thread card", () => {
     ).toBeInTheDocument();
   });
 
-  it("counts several unfocused Tasks instead of inventing a headline, and offers nothing to complete", () => {
+  it("counts several Tasks instead of inventing a headline, and offers nothing to complete", () => {
     renderOverview({
       threads: [thread("Birthday", { tasks: tasks("A", "B", "C") })],
     });
 
     const birthday = within(card("Birthday"));
-    expect(birthday.getByText("3 tasks · none focused")).toBeVisible();
-    // The task slot already gives the count; pips would only repeat it.
+    expect(birthday.getByText("3 tasks")).toBeVisible();
+    expect(birthday.queryByText("A")).toBeNull();
     expect(birthday.queryByRole("img")).toBeNull();
     expect(birthday.queryByRole("button", { name: /^Complete/ })).toBeNull();
+    // A date set here adds a Follow up rather than pick one of the three.
+    expect(
+      birthday.getByRole("button", { name: "Set date" }),
+    ).toBeInTheDocument();
   });
 
   it("shows a Thread with no Tasks as its title alone", () => {
