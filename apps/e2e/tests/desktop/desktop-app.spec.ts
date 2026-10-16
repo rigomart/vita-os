@@ -1,5 +1,8 @@
 // The desktop app (#471), run with: bun run test:e2e:desktop tests/desktop/desktop-app.spec.ts
 // Each test gets its own user-data folder; quit() then launch() reopens the same data.
+import { execFileSync } from "node:child_process";
+import { join } from "node:path";
+
 import { noteView, openNote } from "../../src/app.ts";
 import { expect, test } from "../../src/desktop.ts";
 
@@ -39,4 +42,27 @@ test("offline, a Note written on desktop survives quit and relaunch, with no sig
   expect(
     desktop.requests.filter((url) => !url.startsWith("app://vita/")),
   ).toEqual([]);
+});
+
+test("a database from a newer app is refused with the error dialog, and left unchanged", async ({
+  desktop,
+}) => {
+  const database = join(desktop.userData, "vita.db");
+  const sqlite = (sql: string) =>
+    execFileSync("sqlite3", [database, sql]).toString().trim();
+  sqlite(
+    "CREATE TABLE d1_migrations(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL); INSERT INTO d1_migrations (name) VALUES ('9999_from_the_future.sql');",
+  );
+
+  // The fixture writes the dialog out instead of showing it; main then quits as after a dismissal.
+  const app = desktop.spawn();
+  expect(await app.exited).toBe(1);
+  expect(desktop.dialogs()).toBe(
+    `Vita OS couldn't start\n${database} has migrations this app doesn't know: 9999_from_the_future.sql. It was written by a newer version. Nothing was changed.\n`,
+  );
+  expect(
+    sqlite(
+      "SELECT group_concat(name) FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%'",
+    ),
+  ).toBe("d1_migrations");
 });
