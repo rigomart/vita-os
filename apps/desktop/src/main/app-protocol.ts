@@ -13,6 +13,23 @@ const SCHEME = "app";
 const HOST = "vita";
 export const APP_ORIGIN = `${SCHEME}://${HOST}`;
 
+/**
+ * Only the app's own files: no script from elsewhere, no inline script, nothing
+ * fetched or framed. Inline styles stay, for the style attributes React sets.
+ */
+export const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join("; ");
+
 /** Call before the app is ready. */
 export function registerAppScheme() {
   protocol.registerSchemesAsPrivileged([
@@ -23,7 +40,11 @@ export function registerAppScheme() {
   ]);
 }
 
-/** Serves files under `root`; any other path gets `index.html`, as on the web. */
+/**
+ * Serves files under `root`; any other path gets `index.html`, as on the web.
+ * Every response carries the Content Security Policy. The dev server has none,
+ * because Vite's hot reload runs inline script.
+ */
 export function serveRenderer(root: string) {
   protocol.handle(SCHEME, async (request) => {
     const url = new URL(request.url);
@@ -39,7 +60,10 @@ export function serveRenderer(root: string) {
       return new Response(null, { status: 404 });
     }
     const file = (await isFile(path)) ? path : join(root, "index.html");
-    return net.fetch(pathToFileURL(file).href);
+    const response = await net.fetch(pathToFileURL(file).href);
+    const headers = new Headers(response.headers);
+    headers.set("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+    return new Response(response.body, { status: response.status, headers });
   });
 }
 

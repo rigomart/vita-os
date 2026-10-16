@@ -62,7 +62,7 @@ const unreachable: ApplicationError = {
  * as `unexpected`, as a broken response does over HTTP.
  */
 export function createBridgeClient(
-  bridge: VitaBridge,
+  bridge: Pick<VitaBridge, "call">,
   onFailure: (method: string, cause: unknown) => void = (method, cause) =>
     console.error(`Vita OS call ${method} failed`, cause),
 ): ApplicationClient {

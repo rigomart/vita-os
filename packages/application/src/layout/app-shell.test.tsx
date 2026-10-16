@@ -14,12 +14,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeApplicationClient } from "../test/fake-application-client";
 import { findNoteEditor, noteText, typeInNote } from "../test/note-editor";
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "../test/render-with-providers";
 import { AppShell } from "./app-shell";
+import {
+  type HostCommand,
+  type HostCommands,
+  HostCommandsProvider,
+} from "./host-commands";
 
 const area = {
   _id: "area1" as AreaId,
@@ -120,7 +126,7 @@ function read(name: keyof ReadSpies) {
   return reads[name].mock.calls.length > 0;
 }
 
-function renderShell() {
+function renderShell(hostCommands?: HostCommands) {
   reads = {
     listAreas: vi.fn<ApplicationClient["listAreas"]>(async () => ({
       ok: true,
@@ -140,10 +146,19 @@ function renderShell() {
     })),
   };
 
-  return render(
+  const shell = (
     <AppShell>
       <p>page body</p>
-    </AppShell>,
+    </AppShell>
+  );
+  return render(
+    hostCommands ? (
+      <HostCommandsProvider subscribe={hostCommands}>
+        {shell}
+      </HostCommandsProvider>
+    ) : (
+      shell
+    ),
     {
       applicationClient: createFakeApplicationClient({
         ...reads,
@@ -321,6 +336,32 @@ describe("AppShell", () => {
     await user.click(screen.getByRole("button", { name: "chrome new note" }));
 
     expect(await findNoteEditor()).toBeVisible();
+  });
+
+  it("runs the host's commands, like the desktop menu bar's, and stops listening when it unmounts", async () => {
+    const listeners = new Set<(command: HostCommand) => void>();
+    const send = (command: HostCommand) =>
+      act(() => listeners.forEach((listener) => listener(command)));
+    const { unmount } = renderShell((listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    });
+
+    send("search");
+    expect(
+      await screen.findByPlaceholderText("Jump to a thread, area, or action…"),
+    ).toBeVisible();
+    await userEvent.setup().keyboard("{Escape}");
+
+    send("new-thread");
+    expect(await screen.findByLabelText("Thread title")).toBeVisible();
+    await userEvent.setup().keyboard("{Escape}");
+
+    send("new-note");
+    expect(await findNoteEditor()).toBeVisible();
+
+    unmount();
+    expect(listeners.size).toBe(0);
   });
 
   it("opens the new note dialog from the q shortcut", async () => {
