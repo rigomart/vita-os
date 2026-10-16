@@ -85,7 +85,7 @@ test("a date and time set from a row place the Thread and lead its card; the car
   expect(await logOf(d1, account, title)).toEqual([]);
 });
 
-test("two dated Tasks on the same day read as a count and never pick one", async ({
+test("two dated Tasks on the same day are two cards, each led by its Task", async ({
   page,
   account,
   stamp,
@@ -111,10 +111,12 @@ test("two dated Tasks on the same day read as a count and never pick one", async
     ).toHaveCount(i + 1);
   }
 
+  // ADR 0044: every dated Task places a copy of its Thread's card.
   const today = threadCard(heading(page, "Today"), title);
-  await expect(today).toContainText("2 tasks today");
-  await expect(today).not.toContainText(c1);
-  await expect(today).not.toContainText(c2);
+  await expect(today).toHaveCount(2);
+  await expect(today.nth(0)).toContainText(c1);
+  await expect(today.nth(1)).toContainText(c2);
+  await expect(today.filter({ hasText: "tasks today" })).toHaveCount(0);
   await shot("dated-c-two-today");
   expect(await logOf(d1, account, title)).toEqual([]);
 });
@@ -135,9 +137,7 @@ test("a date set on a card with no single Task adds a Follow up, last in Thread 
   await addTask(pane, b1);
   await addTask(pane, b2);
   await page.goto("/");
-  await expect(threadCard(noDate(page), title)).toContainText(
-    "2 tasks · none focused",
-  );
+  await expect(threadCard(noDate(page), title)).toContainText("2 tasks");
   await shot("dated-b-before");
 
   await threadCard(page, title)

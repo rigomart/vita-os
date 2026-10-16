@@ -9,6 +9,7 @@ import type {
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { queryKeys } from "../../query-keys";
 import {
   createQuietApplicationClient,
   deferred,
@@ -17,12 +18,14 @@ import {
 import { findNoteEditor } from "../../test/note-editor";
 import {
   act,
+  createTestQueryClient,
   render,
   screen,
   waitFor,
   within,
 } from "../../test/render-with-providers";
 import { pickCalendarDay } from "../../test/when-picker";
+import { useOpenThreads } from "../../threads/hooks";
 import { DashboardOverview } from "./dashboard-overview";
 
 const currentDate = new Date(2026, 6, 17, 12).getTime();
@@ -325,6 +328,69 @@ describe("a Dashboard repeating Task card", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Skip/ })).toBeNull();
     expect(document.querySelector('[data-slot="repeat-glyph"]')).toBeNull();
+  });
+});
+
+describe("copies of one Thread", () => {
+  /** The board as the Dashboard draws it, from the cached open Threads. */
+  function Board() {
+    const threads = useOpenThreads().data ?? [];
+    return (
+      <DashboardOverview
+        areas={[]}
+        threads={threads}
+        notes={[]}
+        currentDate={currentDate}
+      />
+    );
+  }
+
+  it("completes only the copy's own Task: that copy leaves, the others stay and stay usable", async () => {
+    const user = userEvent.setup();
+    const pickup = {
+      _id: "pickup" as TaskId,
+      text: "Pickup",
+      date: new Date(2026, 6, 18).getTime(),
+    };
+    const call = {
+      _id: "call" as TaskId,
+      text: "Call the school",
+      date: new Date(2026, 6, 21).getTime(),
+    };
+    const thread = aThread({ tasks: [pickup, call] });
+    const answer = deferred<OperationResult<Thread>>();
+    const completeTask = vi.fn(() => answer.promise);
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(queryKeys.threads.open(), [thread]);
+    render(<Board />, {
+      queryClient,
+      applicationClient: createQuietApplicationClient({
+        completeTask,
+        listOpenThreads: async () => success([{ ...thread, tasks: [call] }]),
+      }),
+    });
+
+    expect(screen.getAllByRole("link", { name: "Checkup" })).toHaveLength(2);
+    await user.click(screen.getByRole("button", { name: "Complete “Pickup”" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Pickup")).not.toBeInTheDocument(),
+    );
+    expect(completeTask).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ taskId: "pickup" }),
+    );
+    const tuesday = screen.getByRole("region", { name: "Tuesday" });
+    expect(
+      within(tuesday).getByRole("button", {
+        name: "Complete “Call the school”",
+      }),
+    ).toBeEnabled();
+    expect(screen.getAllByRole("link", { name: "Checkup" })).toHaveLength(1);
+
+    await act(async () =>
+      answer.resolve(success({ ...thread, tasks: [call] })),
+    );
+    expect(within(tuesday).getByText("Call the school")).toBeVisible();
   });
 });
 

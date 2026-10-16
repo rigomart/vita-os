@@ -8,14 +8,16 @@ import type { ProductSearch } from "../../navigation/search-params";
 import type { AttentionBoard, BoardItem } from "./attention-board-model";
 import type { BoardScope } from "./dashboard-item";
 
-import { groupByWhen, itemId } from "./attention-board-model";
+import { groupByWhen, itemKey } from "./attention-board-model";
 import { DashboardItem } from "./dashboard-item";
 import { groupLook, itemTitle } from "./dashboard-list-model";
 import { dateToken } from "./dashboard-model";
+import { ThreadCopy } from "./thread-copies";
 
 /**
  * Every dated item in one list, what is asking first: Late, Today, then each
- * day of the week, then weeks and months. Each group is a file tab, filled
+ * day of the week, then weeks and months. A Thread stands once per dated
+ * Task, under the day it is about. Each group is a file tab, filled
  * more the nearer it is. From next week on an item is a single line, since it
  * is only there to be known about. When the list is wide enough, cards sit
  * two to a row.
@@ -70,7 +72,7 @@ export function DashboardList({
             ) : (
               <ul className="grid gap-1.5 @2xl:grid-cols-2">
                 {group.items.map((item) => (
-                  <li key={itemId(item)}>
+                  <li key={itemKey(item)}>
                     <DashboardItem
                       dateInHeading={group.exact}
                       item={item}
@@ -136,7 +138,8 @@ export function Count({ count }: { count: number }) {
 
 /**
  * Far enough away to be a line each: a dot (solid for a Thread, outlined for
- * a Note), what it is, and when. The whole line opens it.
+ * a Note), what it is, and when. A Thread's copy reads "Task · Thread", so two
+ * rows of one Thread in a week read apart. The whole line opens it.
  */
 function Lines({ items, scope }: { items: BoardItem[]; scope: BoardScope }) {
   return (
@@ -153,7 +156,19 @@ function Lines({ items, scope }: { items: BoardItem[]; scope: BoardScope }) {
                   : "bg-muted-foreground/70",
               )}
             />
-            <span className="min-w-0 flex-1 truncate">{itemTitle(item)}</span>
+            <span className="min-w-0 flex-1 truncate">
+              {item.kind === "thread" && item.task !== undefined ? (
+                <>
+                  {item.task.text}
+                  <span className="text-muted-foreground">
+                    {" · "}
+                    {itemTitle(item)}
+                  </span>
+                </>
+              ) : (
+                itemTitle(item)
+              )}
+            </span>
             {item.when !== undefined && (
               <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
                 {dateToken(item.when, scope.currentDate)}
@@ -162,18 +177,20 @@ function Lines({ items, scope }: { items: BoardItem[]; scope: BoardScope }) {
           </>
         );
         return (
-          <li key={itemId(item)}>
+          <li key={itemKey(item)}>
             {item.kind === "thread" ? (
-              <Link
-                to="."
-                search={(previous: ProductSearch): ProductSearch => ({
-                  ...previous,
-                  thread: item.thread.slug,
-                })}
-                className={lineClassName}
-              >
-                {content}
-              </Link>
+              <ThreadCopy thread={item.thread} className="rounded-lg">
+                <Link
+                  to="."
+                  search={(previous: ProductSearch): ProductSearch => ({
+                    ...previous,
+                    thread: item.thread.slug,
+                  })}
+                  className={lineClassName}
+                >
+                  {content}
+                </Link>
+              </ThreadCopy>
             ) : (
               <button
                 type="button"

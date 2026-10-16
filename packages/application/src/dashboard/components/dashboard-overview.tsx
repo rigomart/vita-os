@@ -11,6 +11,7 @@ import { DashboardFilter } from "./dashboard-filter";
 import { filterDashboard } from "./dashboard-filter-model";
 import { DashboardList } from "./dashboard-list";
 import { FoldedNoDate, NoDate } from "./no-date";
+import { ThreadCopies } from "./thread-copies";
 
 interface DashboardOverviewProps {
   areas: AreaSummary[];
@@ -85,10 +86,10 @@ export function DashboardOverview({
             )}
           </section>
         ) : (
-          <>
+          <ThreadCopies>
             <FoldedNoDate board={board} scope={scope} />
             <DashboardList board={board} scope={scope} />
-          </>
+          </ThreadCopies>
         )}
       </div>
 

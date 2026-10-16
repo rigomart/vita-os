@@ -4,6 +4,7 @@ import type { BoardItem } from "./attention-board-model";
 
 import { ConnectedThreadAttentionCard } from "../../threads/components/thread-attention-card";
 import { DashboardNote } from "./dashboard-note";
+import { ThreadCopy } from "./thread-copies";
 
 /** What every item on the Dashboard needs to draw itself. */
 export interface BoardScope {
@@ -12,7 +13,10 @@ export interface BoardScope {
   onOpenNote: (note: Note) => void;
 }
 
-/** One item on the board, in the card it wears: a Thread's or a Note's. */
+/**
+ * One item on the board, in the card it wears: a Note's, or one copy of a
+ * Thread's, led by the Task that placed it.
+ */
 export function DashboardItem({
   dateInHeading = false,
   item,
@@ -39,12 +43,15 @@ export function DashboardItem({
   }
   const { areaId } = item.thread;
   return (
-    <ConnectedThreadAttentionCard
-      area={areaId === undefined ? undefined : scope.areaById.get(areaId)}
-      currentDate={scope.currentDate}
-      dateInHeading={dateInHeading}
-      onLateFill={onLateFill}
-      thread={item.thread}
-    />
+    <ThreadCopy thread={item.thread} className="h-full rounded-xl">
+      <ConnectedThreadAttentionCard
+        area={areaId === undefined ? undefined : scope.areaById.get(areaId)}
+        currentDate={scope.currentDate}
+        dateInHeading={dateInHeading}
+        onLateFill={onLateFill}
+        task={item.task}
+        thread={item.thread}
+      />
+    </ThreadCopy>
   );
 }
