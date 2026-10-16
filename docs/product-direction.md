@@ -73,7 +73,7 @@ The Dashboard is the product. Everything else exists to make the Dashboard trust
 Two kinds of thing live in Vita OS. Areas label one of them.
 
 ```text
-Thread → Summary · Tasks (each optionally dated and repeating, one optionally Focused) · Thread Notes · Activity Log
+Thread → Summary · Tasks (each optionally dated and repeating) · Thread Notes · Activity Log
 Standalone Note → Follow-up date
 Area → an optional label on a Thread
 ```
@@ -86,7 +86,7 @@ A Thread may carry:
 
 - a **Summary**: what the Thread is about right now.
 - **Tasks**: useful actions, as unordered peers, each with an optional date and an optional repeat. No done state, no order. Completing one removes it, or moves a repeating one to its next occurrence, and writes it into the Activity Log; completed from Thread detail it can carry a note, kept as a Thread Note. A date is a soft resurfacing point, a day with an optional time of day; "look at this again in two weeks" is a dated Task. A repeat is every N days or weekly on chosen days: missed occurrences collapse into one, and an occurrence can be skipped.
-- a **Focused Task**: the one Task the user has singled out, if any. Focus is emphasis only, and it may sit on a dated Task.
+
 - **Thread Notes**: body-only notes that belong to this Thread and nowhere else.
 - an **Activity Log**: the automatic, read-only record of meaningful changes.
 - an **Area**.
@@ -140,7 +140,7 @@ Open the Dashboard → read Late and Today → handle or reschedule what is aski
 
 1. **Capture asks nothing.** A Thread needs a title. A Note needs a body. Area, Tasks, dates, and Summary are optional and can come later.
 2. **Derive, never ask.** Attention comes from dates and Tasks. The user does not maintain statuses, conditions, or priorities.
-3. **The app never invents a priority.** Capture order is not rank. If several Tasks exist and none is focused, the card says so rather than picking one.
+3. **The app never invents a priority.** Capture order is not rank. If several Tasks exist, the card counts them rather than picking one.
 4. **Dates are soft.** A date means "bring this back", not "due". There are no deadlines.
 5. **Colour belongs to time.** Lateness is the only thing the board colours. Areas are neutral.
 6. **Reading is not handling.** Opening a Thread never clears a Task's date. The user clears, reschedules, completes, or resolves.

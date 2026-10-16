@@ -26,7 +26,6 @@ function renderAttention(
     onEditTask: vi.fn(),
     onRemoveTask: vi.fn(),
     onCompleteTask: vi.fn(),
-    onFocusTask: vi.fn(),
     onSetTaskDate: vi.fn(),
     onSetTaskRepeat: vi.fn(),
     onSkipTask: vi.fn(),
@@ -168,23 +167,11 @@ describe("ThreadAttention dated Tasks", () => {
 
     expect(onSetTaskDate).toHaveBeenCalledExactlyOnceWith(afternoon._id, null);
   });
-
-  it("lets a dated Task be the Focused Task", () => {
-    renderAttention({
-      tasks: [afternoon, loose],
-      focusedTaskId: afternoon._id,
-    });
-
-    expect(taskRows()[0]).toHaveAttribute("data-focused", "true");
-  });
 });
 
 describe("ThreadAttention", () => {
-  it("lists every Task in capture order, highlighting the Focused Task where it sits", () => {
-    renderAttention({
-      tasks: [callClinic, bookScan, collect],
-      focusedTaskId: bookScan._id,
-    });
+  it("lists every Task in capture order", () => {
+    renderAttention({ tasks: [callClinic, bookScan, collect] });
 
     const rows = taskRows();
     expect(rows.map((row) => row.textContent)).toEqual([
@@ -192,48 +179,39 @@ describe("ThreadAttention", () => {
       expect.stringContaining("Book the scan"),
       expect.stringContaining("Collect the results"),
     ]);
-    expect(rows[1]).toHaveAttribute("data-focused", "true");
-    expect(rows[0]).not.toHaveAttribute("data-focused");
-    expect(
-      within(rows[1]!).getByRole("button", { name: "Unfocus this task" }),
-    ).toHaveAttribute("aria-pressed", "true");
-    expect(
-      within(rows[0]!).getByRole("button", { name: "Focus this task" }),
-    ).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByText("3")).toBeVisible();
   });
 
-  it("toggles focus from the radio: focusing another replaces it, focusing the focused one unfocuses", async () => {
-    const user = userEvent.setup();
-    const { onFocusTask } = renderAttention({
-      tasks: [callClinic, bookScan],
-      focusedTaskId: callClinic._id,
-    });
+  it("offers Skip when a Task repeats, the date, Complete with a note, and Remove, and nothing to focus", () => {
+    const daily: Task = {
+      ...callClinic,
+      date: today,
+      repeat: { kind: "days", every: 1 },
+    };
+    renderAttention({ tasks: [daily, bookScan] });
 
-    await user.click(
-      within(taskRows()[1]!).getByRole("button", { name: "Focus this task" }),
-    );
-    expect(onFocusTask).toHaveBeenLastCalledWith(bookScan._id);
-
-    await user.click(
-      within(taskRows()[0]!).getByRole("button", { name: "Unfocus this task" }),
-    );
-    expect(onFocusTask).toHaveBeenLastCalledWith(null);
+    const commands = (row: HTMLElement) =>
+      within(within(row).getByRole("toolbar", { name: "Task commands" }))
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label"));
+    expect(commands(taskRows()[0]!)).toEqual([
+      "Skip task",
+      "Change date",
+      "Complete with a note",
+      "Remove task",
+    ]);
+    expect(commands(taskRows()[1]!)).toEqual([
+      "Set date",
+      "Complete with a note",
+      "Remove task",
+    ]);
+    expect(screen.queryByRole("button", { name: /focus/i })).toBeNull();
   });
 
-  it("highlights nothing when nothing is focused", () => {
-    renderAttention({ tasks: [callClinic, bookScan] });
-
-    expect(
-      taskRows().filter((row) => row.hasAttribute("data-focused")),
-    ).toEqual([]);
-  });
-
-  it("completes and removes any Task, focused or not", async () => {
+  it("completes and removes any Task", async () => {
     const user = userEvent.setup();
     const { onCompleteTask, onRemoveTask } = renderAttention({
       tasks: [callClinic, bookScan],
-      focusedTaskId: callClinic._id,
     });
 
     await user.click(
@@ -308,9 +286,9 @@ describe("ThreadAttention", () => {
     expect(onEditTask).not.toHaveBeenCalled();
   });
 
-  it("captures a Task on Enter and on blur, never asking about focus", async () => {
+  it("captures a Task on Enter and on blur", async () => {
     const user = userEvent.setup();
-    const { onAddTask, onFocusTask } = renderAttention();
+    const { onAddTask } = renderAttention();
 
     expect(screen.queryByRole("list", { name: "Tasks" })).toBeNull();
     const field = screen.getByRole("textbox", { name: "Add a task" });
@@ -321,7 +299,6 @@ describe("ThreadAttention", () => {
     await user.tab();
     expect(onAddTask).toHaveBeenLastCalledWith("Book the scan");
     expect(onAddTask).toHaveBeenCalledTimes(2);
-    expect(onFocusTask).not.toHaveBeenCalled();
 
     await user.type(field, "   {Enter}");
     expect(onAddTask).toHaveBeenCalledTimes(2);
@@ -708,7 +685,6 @@ describe("ThreadAttention repeating Tasks", () => {
           onRemoveTask={vi.fn()}
           onCompleteTask={vi.fn()}
           onCompleteTaskWithNote={vi.fn()}
-          onFocusTask={vi.fn()}
           onSkipTask={vi.fn()}
           onSetTaskRepeat={onSetTaskRepeat}
           onSetTaskDate={(taskId, date) =>

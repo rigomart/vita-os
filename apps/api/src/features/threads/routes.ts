@@ -1,7 +1,6 @@
 import {
   CreateThreadBody,
   EditTaskBody,
-  FocusTaskBody,
   TaskIdSchema,
   ThreadIdSchema,
   UpdateThreadBody,
@@ -11,7 +10,6 @@ import {
   completeTask,
   createThread,
   editTask,
-  focusTask,
   getThreadDetail,
   listOpenThreads,
   listResolvedThreads,
@@ -149,18 +147,6 @@ export const threadsRoutes = new Hono<ApiEnv>()
     async (c) =>
       respond(
         await setTaskDate(c.get("scope"), {
-          ...c.req.valid("param"),
-          ...c.req.valid("json"),
-        }),
-      ),
-  )
-  .put(
-    "/threads/:threadId/focus",
-    validate("param", ThreadParams, "Invalid Task change."),
-    validate("json", FocusTaskBody, "Invalid Task change."),
-    async (c) =>
-      respond(
-        await focusTask(c.get("scope"), {
           ...c.req.valid("param"),
           ...c.req.valid("json"),
         }),

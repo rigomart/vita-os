@@ -20,7 +20,8 @@ import { threads } from "../../platform/sqlite/schema";
  */
 
 // Storage names predate Tasks and stay (ADR 0033): `moves_json` holds the
-// Tasks and `focused_move_id` the Focused Task. They are mapped here, at the edge.
+// Tasks. It is mapped here, at the edge. `focused_move_id` held the retired
+// Focused Task and is never read (ADR 0044).
 export const THREAD_FIELDS = {
   id: threads.id,
   title: threads.title,
@@ -30,7 +31,6 @@ export const THREAD_FIELDS = {
   sort_order: threads.sort_order,
   state: threads.state,
   moves_json: threads.moves_json,
-  focused_move_id: threads.focused_move_id,
   last_activity_at: threads.last_activity_at,
   last_activity_content: threads.last_activity_content,
   created_at: threads.created_at,
@@ -106,15 +106,9 @@ export function serializeTasks(
       );
 }
 
-/** Storage keeps `moves_json` and `focused_move_id`; the domain says Tasks. */
+/** Storage keeps `moves_json`; the domain says Tasks. */
 export function toThread(row: ThreadRow): Thread {
   const tasks = parseTasks(row.moves_json);
-  if (
-    row.focused_move_id !== null &&
-    !tasks?.some((task) => task._id === row.focused_move_id)
-  ) {
-    throw new Error("A stored Focused Task must be one of the Thread's Tasks");
-  }
 
   return {
     _id: row.id as ThreadId,
@@ -125,11 +119,6 @@ export function toThread(row: ThreadRow): Thread {
     order: row.sort_order,
     state: row.state,
     ...(tasks === undefined ? {} : { tasks }),
-    ...(row.focused_move_id === null
-      ? {}
-      : {
-          focusedTaskId: row.focused_move_id as TaskId,
-        }),
     ...(row.last_activity_at === null
       ? {}
       : { lastActivityAt: row.last_activity_at }),

@@ -5,12 +5,11 @@ import {
   openHistory,
   reopenThread,
   resolveThread,
-  taskRow,
   threadId,
 } from "../src/app.ts";
-import { expect, sent, test } from "../src/fixtures.ts";
+import { expect, test } from "../src/fixtures.ts";
 
-test("resolving discards open Tasks and focus, names them in the log, and Reopen keeps them discarded", async ({
+test("resolving discards open Tasks, names them in the log, and Reopen keeps them discarded", async ({
   page,
   account,
   stamp,
@@ -25,16 +24,6 @@ test("resolving discards open Tasks and focus, names them in the log, and Reopen
   const pane = await createThread(page, title);
   await addTask(pane, taskA);
   await addTask(pane, taskB);
-  await sent(page, /\/focus$/, () =>
-    taskRow(pane, taskB)
-      .getByRole("button", { name: "Focus this task", exact: true })
-      .click(),
-  );
-  const unfocus = pane.getByRole("button", {
-    name: "Unfocus this task",
-    exact: true,
-  });
-  await expect(unfocus).toBeVisible();
   await shot("resolve-before");
 
   await resolveThread(pane);
@@ -75,5 +64,4 @@ test("resolving discards open Tasks and focus, names them in the log, and Reopen
   await expect(
     pane.getByRole("button", { name: taskB, exact: true }),
   ).toHaveCount(0);
-  await expect(unfocus).toHaveCount(0);
 });

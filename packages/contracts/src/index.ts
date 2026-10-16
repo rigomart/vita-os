@@ -10,7 +10,6 @@ export type {
   CreateThreadInput,
   DoneNotePageRequest,
   EditTaskInput,
-  FocusTaskInput,
   PageRequest,
   RemoveTaskInput,
   SetNoteRepeatInput,

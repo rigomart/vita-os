@@ -53,6 +53,10 @@ export const threads = sqliteTable(
     revision: integer().notNull().default(0),
     last_change_token: text(),
     moves_json: text(),
+    // The retired Focused Task (ADR 0044). Nothing reads it; a write to
+    // `moves_json` only clears it, so an older build never meets a focus naming
+    // a missing Task. It stays declared so Drizzle Kit does not generate a drop;
+    // a later migration drops it once no deployed API reads it.
     focused_move_id: text(),
   },
   (table) => [

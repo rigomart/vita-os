@@ -33,22 +33,20 @@ export interface TaskClock {
 
 /**
  * Tasks: the useful actions a Thread holds, as peers. They are kept in the
- * order they were captured, which is for finding things and never a priority,
- * and the person may single out one of them as the Focused Task.
+ * order they were captured, which is for finding things and never a priority.
  *
  * Every rule here decides one command against the Thread as it was read. A rule
  * that names a Task the Thread no longer holds answers `null`: the caller saw a
  * different Thread, so the command is refused rather than applied to something
  * else.
  *
- * Only completion writes to the Activity Log. Adding, editing, removing and
- * focusing are silent, so the log stays about what happened to the situation.
+ * Only completion writes to the Activity Log. Adding, editing, dating and
+ * removing are silent, so the log stays about what happened to the situation.
  */
 
 export interface TaskState {
   state: ThreadState;
   tasks?: Task[];
-  focusedTaskId?: TaskId;
 }
 
 /** A Task date is a sane instant: 1970-01-01 through 9999-12-31, whole milliseconds. */
@@ -87,7 +85,7 @@ export function requireTaskId(taskId: string): TaskId {
 }
 
 /**
- * Adding, editing and focusing are open-Thread edits. A resolved Thread
+ * Adding, editing and dating are open-Thread edits. A resolved Thread
  * discarded its Tasks, and a finished situation cannot quietly gain new work.
  */
 export function requireOpenForTasks(thread: { state: ThreadState }): void {
@@ -105,17 +103,16 @@ function findTask(thread: TaskState, taskId: TaskId): Task | undefined {
   return thread.tasks?.find((task) => task._id === taskId);
 }
 
-/** The list without one Task, and focus cleared if it was the one focused. */
+/** The list without one Task. */
 function without(thread: TaskState, taskId: TaskId) {
   return {
     tasks: stored((thread.tasks ?? []).filter((task) => task._id !== taskId)),
-    ...(thread.focusedTaskId === taskId ? { focusedTaskId: undefined } : {}),
   };
 }
 
 /**
- * A new Task joins the end of the list, unfocused: capturing never asks
- * whether it matters most. An ID the Thread already holds is a conflict.
+ * A new Task joins the end of the list: capture order is never a priority.
+ * An ID the Thread already holds is a conflict.
  */
 export function decideAddTask(
   thread: TaskState,
@@ -165,8 +162,8 @@ export function decideRemoveTask(
 }
 
 /**
- * Completing a one-off Task removes it and clears its focus; a repeating Task
- * advances while keeping its identity and focus. Either records one completion.
+ * Completing a one-off Task removes it; a repeating Task advances while keeping
+ * its identity. Either records one completion.
  */
 export function decideCompleteTask(
   thread: TaskState,
@@ -313,24 +310,6 @@ export function decideSetTaskRepeat(
   )
     return { patch: {}, logs: [] };
   return replaceTask(thread, changed);
-}
-
-/**
- * Focus one Task, replacing any earlier focus, or (with `null`) none. The
- * toggle a surface offers — focusing the focused Task unfocuses it — is the
- * surface's to compute; this rule only sets what it is told.
- */
-export function decideFocusTask(
-  thread: TaskState,
-  taskId: TaskId | null,
-): ThreadUpdateDecision | null {
-  requireOpenForTasks(thread);
-  if (taskId !== null && !findTask(thread, taskId)) return null;
-
-  const focusedTaskId = taskId ?? undefined;
-  if (focusedTaskId === thread.focusedTaskId) return { patch: {}, logs: [] };
-
-  return { patch: { focusedTaskId }, logs: [] };
 }
 
 export function hasTasks(thread: { tasks?: readonly Task[] }): boolean {

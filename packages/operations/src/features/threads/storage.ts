@@ -78,11 +78,11 @@ function prepareThreadChange(
     ...(Object.hasOwn(patch, "state")
       ? { state: patch.state ?? sql`NULL` }
       : {}),
-    ...(Object.hasOwn(patch, "focusedTaskId")
-      ? { focused_move_id: patch.focusedTaskId ?? null }
-      : {}),
+    // Clearing the retired focus with the Tasks keeps the row readable by an
+    // older build (a rollback, or an older desktop app on the same file),
+    // which refuses a focus naming a Task the Thread no longer holds.
     ...(Object.hasOwn(patch, "tasks")
-      ? { moves_json: serializeTasks(patch.tasks) }
+      ? { moves_json: serializeTasks(patch.tasks), focused_move_id: null }
       : {}),
     ...(lastLog !== undefined || input.stampActivity === true
       ? {

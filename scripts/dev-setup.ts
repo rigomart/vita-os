@@ -263,22 +263,14 @@ async function seed(): Promise<void> {
         ...(spec.summary ? { summary: spec.summary } : {}),
         ...(spec.area ? { areaId: areaIds.get(spec.area) } : {}),
       });
-      const taskIds: string[] = [];
       for (const text of spec.tasks ?? []) {
-        const taskId = newRecordId();
-        taskIds.push(taskId);
         thread = await call<Thread>("POST", `/v1/threads/${thread._id}/tasks`, {
-          taskId,
+          taskId: newRecordId(),
           text,
           expectedRevision: thread.revision,
         });
       }
-      if (spec.focus !== undefined) {
-        thread = await call<Thread>("PUT", `/v1/threads/${thread._id}/focus`, {
-          taskId: taskIds[spec.focus],
-          expectedRevision: thread.revision,
-        });
-      }
+
       if (spec.followUpInDays !== undefined) {
         // A Thread comes back at its soonest dated Task (ADR 0032).
         thread = await call<Thread>("POST", `/v1/threads/${thread._id}/tasks`, {
@@ -338,8 +330,7 @@ interface SeedThread {
   summary?: string;
   area?: string;
   tasks?: string[];
-  /** Index into `tasks` of the Focused Task. */
-  focus?: number;
+
   followUpInDays?: number;
   /** The Follow-up's time of day, `HH:mm`. */
   followUpAt?: string;
@@ -364,14 +355,12 @@ const SEED: {
       area: "Health",
       summary: "Crown on the lower left molar still feels high.",
       tasks: ["Call the clinic to reschedule", "Ask about a night guard"],
-      focus: 0,
       followUpInDays: -3,
     },
     {
       title: "File quarterly taxes",
       area: "Money",
       tasks: ["Gather Q3 receipts", "Send the summary to the accountant"],
-      focus: 0,
       followUpInDays: 0,
       followUpAt: "10:00",
     },

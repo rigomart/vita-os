@@ -48,7 +48,6 @@ const mocks = vi.hoisted(() => ({
   addTask: vi.fn(),
   removeTask: vi.fn(),
   completeTask: vi.fn(),
-  focusTask: vi.fn(),
   updateThread: vi.fn(),
   removeThread: vi.fn(),
 }));
@@ -172,7 +171,6 @@ function createApplicationClient(): ApplicationClient {
     addTask: mocks.addTask,
     removeTask: mocks.removeTask,
     completeTask: mocks.completeTask,
-    focusTask: mocks.focusTask,
     removeThread: mocks.removeThread,
   });
 }
@@ -215,7 +213,6 @@ describe("ThreadDetailView", () => {
       mocks.addTask,
       mocks.removeTask,
       mocks.completeTask,
-      mocks.focusTask,
     ]) {
       command
         .mockReset()
@@ -600,7 +597,7 @@ describe("ThreadDetailView", () => {
     });
   });
 
-  it("focuses and completes Tasks through the application client", async () => {
+  it("completes Tasks through the application client, with nothing to focus", async () => {
     mocks.showDesktopPane = true;
     mocks.tasks = [
       { _id: "task-specialist", text: "Call the specialist" },
@@ -611,18 +608,12 @@ describe("ThreadDetailView", () => {
     const tasks = within(
       await screen.findByRole("list", { name: "Tasks" }),
     ).getAllByRole("listitem");
-    await userEvent.click(
-      within(tasks[1]!).getByRole("button", { name: "Focus this task" }),
-    );
+    expect(screen.queryByRole("button", { name: /focus/i })).toBeNull();
     await userEvent.click(
       within(tasks[0]!).getByRole("button", { name: "Complete task" }),
     );
 
     await waitFor(() => {
-      expect(mocks.focusTask).toHaveBeenCalledWith({
-        threadId: thread._id,
-        taskId: "task-scan",
-      });
       expect(mocks.completeTask).toHaveBeenCalledWith({
         threadId: thread._id,
         taskId: "task-specialist",

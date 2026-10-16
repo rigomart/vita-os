@@ -28,7 +28,6 @@ import {
   decideCompleteNote,
   decideCompleteTask,
   decideEditTask,
-  decideFocusTask,
   decideRemoveTask,
   decideSetNoteFollowUp,
   decideSetNoteRepeat,
@@ -442,14 +441,6 @@ export function createInMemoryApplicationClient(
       );
       if (note !== undefined) insertThreadNote(thread._id, note.body, note.id);
       return ok(thread);
-    },
-
-    async focusTask(input) {
-      return ok(
-        changeTasks(input.threadId, (thread) =>
-          decideFocusTask(thread, input.taskId),
-        ),
-      );
     },
 
     async setTaskDate(input) {

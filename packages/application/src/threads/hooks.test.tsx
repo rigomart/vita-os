@@ -36,7 +36,6 @@ const home = anArea({
 });
 const thread = aThread({
   tasks: [{ _id: "task-1" as TaskId, text: "Call clinic" }],
-  focusedTaskId: "task-1" as TaskId,
 });
 const unavailable: ApplicationError = {
   code: "unavailable",
@@ -227,9 +226,8 @@ describe("useUpdateThread", () => {
         { _id: "task-1" as TaskId, text: "Call clinic" },
         { _id: "task-2" as TaskId, text: "Book appointment", date: 5_000 },
       ],
-      focusedTaskId: "task-1" as TaskId,
     });
-    const { tasks: _tasks, focusedTaskId: _focus, ...settled } = attentive;
+    const { tasks: _tasks, ...settled } = attentive;
     const client = createFakeApplicationClient({
       updateThread: async () =>
         success({
@@ -256,7 +254,6 @@ describe("useUpdateThread", () => {
       );
       expect(rail?.thread.state).toBe("resolved");
       expect(rail?.thread.tasks).toBeUndefined();
-      expect(rail?.thread.focusedTaskId).toBeUndefined();
       // A Resolved Thread keeps its Area.
       expect(rail?.thread.areaId).toBe(health._id);
       expect(rail?.area).toEqual(health);

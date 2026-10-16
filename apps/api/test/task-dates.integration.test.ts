@@ -121,22 +121,6 @@ describe("a Task's date", () => {
     expect((clearUndated.body as Thread).tasks?.[0]).not.toHaveProperty("date");
   });
 
-  it("can be put on a Task that is focused, and focus stays", async () => {
-    const owner = await createSession("task-dates-focused");
-    const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
-    const focused = (
-      await call(`/v1/threads/${thread._id}/focus`, {
-        method: "PUT",
-        session: owner,
-        body: { taskId: "task-1" },
-      })
-    ).body as Thread;
-
-    const dated = (await setDate(owner, focused, "task-1", day)).body as Thread;
-    expect(dated.focusedTaskId).toBe("task-1");
-    expect(dated.tasks?.[0]?.date).toBe(day);
-  });
-
   it("is refused for a missing Task, writing nothing", async () => {
     const owner = await createSession("task-dates-refused");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);

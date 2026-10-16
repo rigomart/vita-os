@@ -280,8 +280,6 @@ export function createHttpApplicationClient({
         change,
         ThreadSchema,
       ),
-    focusTask: ({ threadId, ...focus }) =>
-      send("PUT", path("threads", threadId, "focus"), focus, ThreadSchema),
 
     /* Activity Log */
     getThreadActivityPage: ({ threadId, ...page }) =>

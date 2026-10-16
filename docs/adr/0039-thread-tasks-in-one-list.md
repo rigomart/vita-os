@@ -1,6 +1,6 @@
 # Thread Tasks in one list
 
-**Status:** Accepted. Amends the Thread detail decision of [ADR 0032](./0032-moves-with-an-optional-date-and-repeat.md).
+**Status:** Accepted. Amends the Thread detail decision of [ADR 0032](./0032-moves-with-an-optional-date-and-repeat.md). Amended by [ADR 0044](./0044-a-card-for-every-dated-task.md): the Focus command and the Focused Task's tint are retired.
 **Date:** 2026-10-10
 
 ADR 0032 listed a **Thread**'s dated **Tasks** first, soonest first, then a quiet "No date" divider, then the undated ones. Each row carried every command on one line: a focus radio, the repeat glyph, the text, the date, Remove, Skip, Complete with a note, and Complete. In the pane at its narrowest the text was left a column of about 120px, so a long **Task** wrapped to five lines. The divider split one set of peers into two lists, and a **Task** jumped to another place when it gained or lost a date.

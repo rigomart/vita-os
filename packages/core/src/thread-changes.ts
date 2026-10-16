@@ -21,7 +21,6 @@ export interface ThreadChangeState {
   areaId?: AreaId;
   state: ThreadState;
   tasks?: Task[];
-  focusedTaskId?: TaskId;
 }
 
 /**
@@ -39,7 +38,6 @@ const PATCHABLE_FIELDS = [
   "summary",
   "areaId",
   "tasks",
-  "focusedTaskId",
   "state",
 ] as const satisfies readonly (keyof ThreadChangeState)[];
 
@@ -141,7 +139,6 @@ export function buildThreadLifecyclePatch(
       patch: {
         state: "resolved",
         tasks: undefined,
-        focusedTaskId: undefined,
       },
       log: {
         type: "state_change",
@@ -267,8 +264,8 @@ export function taskFromNote(
 /**
  * What adding a Standalone Note to a Thread does to the Thread's Tasks. A dated
  * Note adds a Task named by its first line and carrying its date, time of day
- * included and even when that date has already passed, and its Repeat, appended to the end
- * unfocused; the whole Note joins the Thread's Notes as well, so nothing is
+ * included and even when that date has already passed, and its Repeat, appended to the end;
+ * the whole Note joins the Thread's Notes as well, so nothing is
  * dropped. An undated Note adds no Task. Neither writes an Activity Log entry.
  * `taskId` names the Task that may be added.
  */

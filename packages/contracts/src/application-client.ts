@@ -110,11 +110,6 @@ export interface SkipTaskInput extends TaskCommand {
   timeZone: string;
 }
 
-export interface FocusTaskInput extends TaskCommand {
-  /** The Task to focus, replacing any earlier focus; `null` unfocuses. */
-  taskId: Clearable<TaskId>;
-}
-
 export interface AddNoteToThreadInput {
   noteId: NoteId;
   threadId: ThreadId;
@@ -210,7 +205,6 @@ export interface ApplicationClient {
   removeTask(input: RemoveTaskInput): Promise<OperationResult<Thread>>;
   /** Records completion; a repeating Task advances, a one-off Task is removed. */
   completeTask(input: CompleteTaskInput): Promise<OperationResult<Thread>>;
-  focusTask(input: FocusTaskInput): Promise<OperationResult<Thread>>;
   /** Sets, changes or clears one Task's date. Writes nothing to the Activity Log. */
   setTaskDate(input: SetTaskDateInput): Promise<OperationResult<Thread>>;
   setTaskRepeat(input: SetTaskRepeatInput): Promise<OperationResult<Thread>>;

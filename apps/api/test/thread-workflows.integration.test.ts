@@ -90,7 +90,6 @@ describe("Thread creation", () => {
     });
     expect(first.slug).toMatch(/^book-checkup-[0-9a-f]{8}$/);
     expect(first).not.toHaveProperty("tasks");
-    expect(first).not.toHaveProperty("focusedTaskId");
     expect(second).toMatchObject({
       order: 1,
       summary: "Pharmacy closes early",
@@ -433,7 +432,7 @@ describe("Area reassignment", () => {
 });
 
 describe("Thread lifecycle", () => {
-  it("resolving discards the Tasks and focus, and names the discarded Tasks", async () => {
+  it("resolving discards the Tasks and names them", async () => {
     const owner = await createSession("thread-resolve");
     const area = await createArea(owner);
     const thread = await createThread(owner, area);
@@ -451,13 +450,6 @@ describe("Thread lifecycle", () => {
       },
     );
     expect(withTasks.tasks?.[0]?.date).toBe(Date.UTC(2026, 4, 20));
-    await succeed(`/v1/threads/${thread._id}/focus`, {
-      method: "PUT",
-      session: owner,
-      body: {
-        taskId: withTasks.tasks?.[1]?._id,
-      },
-    });
 
     const resolved = await succeed<Thread>(`/v1/threads/${thread._id}`, {
       method: "PATCH",
@@ -467,7 +459,6 @@ describe("Thread lifecycle", () => {
 
     expect(resolved.state).toBe("resolved");
     expect(resolved).not.toHaveProperty("tasks");
-    expect(resolved).not.toHaveProperty("focusedTaskId");
     expect(resolved).not.toHaveProperty("followUp");
     expect(
       (await activityOf(owner, thread)).map((entry) => entry.content),
@@ -495,7 +486,6 @@ describe("Thread lifecycle", () => {
 
     expect(reopened.state).toBe("open");
     expect(reopened).not.toHaveProperty("tasks");
-    expect(reopened).not.toHaveProperty("focusedTaskId");
     expect(
       (await activityOf(owner, thread)).map((entry) => entry.content),
     ).toContain("Reopened thread");
@@ -587,7 +577,6 @@ describe("Thread change privacy", () => {
         { expectedOccurrence: null },
       ],
       [`/v1/threads/${theirs._id}/tasks/theirs`, "DELETE", {}],
-      [`/v1/threads/${theirs._id}/focus`, "PUT", { taskId: "theirs" }],
       [`/v1/threads/${theirs._id}`, "DELETE", undefined],
     ] as const) {
       expectError(await call(path, { method, session: owner, body }), {

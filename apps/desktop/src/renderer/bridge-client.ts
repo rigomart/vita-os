@@ -23,7 +23,6 @@ const methods: Record<keyof ApplicationClient, true> = {
   editTask: true,
   removeTask: true,
   completeTask: true,
-  focusTask: true,
   setTaskDate: true,
   setTaskRepeat: true,
   skipTask: true,

@@ -66,6 +66,7 @@ async function seedDetailFixture() {
       3,
       "open",
       '[{"id":"task-1","text":"Call clinic"},{"id":"task-2","text":"Book appointment","date":1800000000000}]',
+      // A Focused Task stored before ADR 0044 retired Focus; nothing reads it.
       "task-2",
       1_700_000_000_000,
       "Captured next move",
@@ -124,6 +125,7 @@ async function seedDetailFixture() {
       7,
       "open",
       '[{"id":"task-1","text":"Call clinic"}]',
+      // A stored Focused Task naming a Task the Thread no longer holds.
       "task-9",
       1_600_000_000_007,
     ),
@@ -449,7 +451,6 @@ describe("Thread detail", () => {
           { _id: "task-1", text: "Call clinic" },
           { _id: "task-2", text: "Book appointment", date: 1_800_000_000_000 },
         ],
-        focusedTaskId: "task-2",
         lastActivityAt: 1_700_000_000_000,
         lastActivityContent: "Captured next move",
         createdAt: 1_600_000_000_000,
@@ -562,7 +563,23 @@ describe("Thread detail", () => {
     });
   });
 
-  it.each(["empty-tasks", "invalid-tasks", "stray-focus"])(
+  it("ignores a stored Focused Task, even one naming no Task the Thread holds", async () => {
+    const response = await SELF.fetch(
+      "http://api.test/v1/threads/stray-focus",
+      {
+        headers: { cookie: fixture.owner.cookie },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const detail = (await response.json()) as { thread: { tasks?: unknown } };
+    expect(detail.thread.tasks).toEqual([
+      { _id: "task-1", text: "Call clinic" },
+    ]);
+    expect(detail.thread).not.toHaveProperty("focusedTaskId");
+  });
+
+  it.each(["empty-tasks", "invalid-tasks"])(
     "rejects stored invalid Tasks for %s without exposing them",
     async (slug) => {
       const response = await SELF.fetch(`http://api.test/v1/threads/${slug}`, {

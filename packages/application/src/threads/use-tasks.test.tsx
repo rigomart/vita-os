@@ -24,10 +24,7 @@ import { useCompleteTask, useTaskDates, useTasks } from "./use-tasks";
 
 const callClinic = { _id: "task-1" as TaskId, text: "Call clinic" };
 const bookSlot = { _id: "task-2" as TaskId, text: "Book slot" };
-const thread = aThread({
-  tasks: [callClinic, bookSlot],
-  focusedTaskId: callClinic._id,
-});
+const thread = aThread({ tasks: [callClinic, bookSlot] });
 
 function render<T>(client: ApplicationClient, hook: () => T) {
   const feedback = {
@@ -62,7 +59,7 @@ function shown(cache: ReturnType<typeof render>["cache"]) {
 }
 
 describe("useCompleteTask", () => {
-  it("takes the Task off every read at once, and completing the Focused Task leaves the Thread unfocused", async () => {
+  it("takes the Task off every read at once", async () => {
     const pending = deferred<OperationResult<Thread>>();
     const completeTask = vi.fn(() => pending.promise);
     const { cache, result } = render(
@@ -77,9 +74,7 @@ describe("useCompleteTask", () => {
     await waitFor(() => {
       const { open, rail } = shown(cache);
       expect(open?.tasks).toEqual([bookSlot]);
-      expect(open).not.toHaveProperty("focusedTaskId");
       expect(rail?.tasks).toEqual([bookSlot]);
-      expect(rail).not.toHaveProperty("focusedTaskId");
     });
     expect(completeTask).toHaveBeenCalledWith({
       threadId: thread._id,
@@ -93,8 +88,6 @@ describe("useCompleteTask", () => {
         success({
           ...thread,
           tasks: [bookSlot],
-          focusedTaskId: undefined,
-
           lastActivityContent: 'Completed "Call clinic"',
         }),
       );
@@ -128,7 +121,7 @@ describe("useCompleteTask", () => {
     });
 
     expect(shown(cache).open?.tasks).toEqual([callClinic, bookSlot]);
-    expect(shown(cache).rail?.focusedTaskId).toBe(callClinic._id);
+    expect(shown(cache).rail?.tasks).toEqual([callClinic, bookSlot]);
     expect(feedback.error).toHaveBeenCalledWith(
       "This Thread changed elsewhere. It has been refreshed.",
     );
@@ -166,37 +159,7 @@ describe("useTaskDates", () => {
 });
 
 describe("useTasks", () => {
-  it("focuses and unfocuses without reordering the list", async () => {
-    const focusTask = vi.fn(async (input: { taskId: TaskId | null }) =>
-      success({
-        ...thread,
-        ...(input.taskId === null
-          ? { focusedTaskId: undefined }
-          : { focusedTaskId: input.taskId }),
-      }),
-    );
-    const { cache, result } = render(
-      createFakeApplicationClient({ focusTask }),
-      () => useTasks(thread),
-    );
-
-    await act(async () => {
-      await result.current.focus(bookSlot._id);
-    });
-    expect(shown(cache).open?.focusedTaskId).toBe(bookSlot._id);
-    expect(shown(cache).open?.tasks).toEqual([callClinic, bookSlot]);
-
-    await act(async () => {
-      await result.current.focus(null);
-    });
-    expect(shown(cache).rail).not.toHaveProperty("focusedTaskId");
-    expect(focusTask).toHaveBeenLastCalledWith({
-      threadId: thread._id,
-      taskId: null,
-    });
-  });
-
-  it("removes the Focused Task and clears the focus", async () => {
+  it("removes a Task from every read at once", async () => {
     const pending = deferred<OperationResult<Thread>>();
     const { cache, result } = render(
       createFakeApplicationClient({ removeTask: () => pending.promise }),
@@ -209,7 +172,7 @@ describe("useTasks", () => {
 
     await waitFor(() => {
       expect(shown(cache).rail?.tasks).toEqual([bookSlot]);
-      expect(shown(cache).rail).not.toHaveProperty("focusedTaskId");
+      expect(shown(cache).open?.tasks).toEqual([bookSlot]);
     });
     pending.resolve(success({ ...thread, tasks: [bookSlot] }));
   });

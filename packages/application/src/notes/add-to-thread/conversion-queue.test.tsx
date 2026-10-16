@@ -37,7 +37,6 @@ const note: Note = {
 };
 const destination = {
   ...thread,
-  focusedTaskId: `note-task-${note._id}` as TaskId,
   tasks: [
     existing,
     {

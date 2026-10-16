@@ -202,7 +202,6 @@ describe("adding a Note to a Thread", () => {
       expect(added.thread.tasks).toEqual([
         { _id: expect.any(String), text: "Call back", date: jun1 },
       ]);
-      expect(added.thread).not.toHaveProperty("focusedTaskId");
       expect(added.thread).not.toHaveProperty("followUp");
       expect(added.thread).not.toHaveProperty("lastActivityContent");
       expect(await activityOf(owner, thread._id)).toEqual([]);
@@ -215,7 +214,7 @@ describe("adding a Note to a Thread", () => {
       ).toEqual(["Call back\nabout the scan"]);
     });
 
-    it("keeps the Thread's own Tasks first and appends the new one unfocused", async () => {
+    it("keeps the Thread's own Tasks first and appends the new one", async () => {
       const owner = await createSession("add-to-thread-earlier");
       const thread = await createThread(owner, jun1);
       const past = new Date("2020-01-02T09:15:00").getTime();

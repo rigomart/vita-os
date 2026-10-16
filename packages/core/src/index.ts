@@ -48,7 +48,6 @@ export {
   decideAddTask,
   decideCompleteTask,
   decideEditTask,
-  decideFocusTask,
   decideRemoveTask,
   decideSetTaskDate,
   decideSetTaskRepeat,

@@ -270,13 +270,6 @@ export function useTasks(thread: Thread) {
     },
   );
   const occurrences = useOccurrenceCommands(thread);
-  const focus = useTaskCommand<{ threadId: ThreadId; taskId: TaskId | null }>(
-    thread,
-    {
-      run: (client, input) => client.focusTask(input),
-      change: (input) => ({ kind: "focus", ...input }),
-    },
-  );
   const setDate = useSetDateCommand(thread);
   const setRepeat = useSetRepeatCommand(thread);
   const client = useApplicationClient();
@@ -351,8 +344,7 @@ export function useTasks(thread: Thread) {
     complete: (taskId: TaskId) => settle(occurrences.complete(taskId)),
     completeWithNote,
     skip: (taskId: TaskId) => settle(occurrences.skip(taskId)),
-    focus: (taskId: TaskId | null) =>
-      settle(focus.mutateAsync({ threadId: thread._id, taskId })),
+
     setDate: (taskId: TaskId, date: number | null) =>
       settle(
         setDate.mutateAsync({

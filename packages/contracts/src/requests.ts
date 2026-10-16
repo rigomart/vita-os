@@ -63,9 +63,6 @@ export const SkipTaskBody = v.strictObject({
   expectedOccurrence: TaskOccurrenceSchema,
   timeZone: v.string(),
 });
-export const FocusTaskBody = v.strictObject({
-  taskId: v.nullable(TaskIdSchema),
-});
 
 export const CreateAreaBody = v.strictObject({
   name: v.string(),

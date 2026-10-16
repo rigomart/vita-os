@@ -31,26 +31,21 @@ describe("current API request and response values", () => {
     ).toEqual(thread);
   });
 
-  it("requires Task IDs on Task and focus routes without changing the Thread", async () => {
+  it("requires Task IDs on Task routes without changing the Thread", async () => {
     const owner = await createSession("retired-task-id");
     const thread = await succeed<Thread>("/v1/threads", {
       method: "POST",
       session: owner,
       body: { title: "Checkup" },
     });
-    for (const [path, method, body] of [
-      ["tasks", "POST", { text: "Missing ID" }],
-      ["focus", "PUT", {}],
-    ] as const) {
-      expectError(
-        await call(`/v1/threads/${thread._id}/${path}`, {
-          method,
-          session: owner,
-          body,
-        }),
-        { status: 400, code: "validation", message: "Invalid Task change." },
-      );
-    }
+    expectError(
+      await call(`/v1/threads/${thread._id}/tasks`, {
+        method: "POST",
+        session: owner,
+        body: { text: "Missing ID" },
+      }),
+      { status: 400, code: "validation", message: "Invalid Task change." },
+    );
     expect(
       (
         await succeed<ThreadDetail>(`/v1/threads/${thread.slug}`, {
@@ -90,31 +85,52 @@ describe("current API request and response values", () => {
     ]);
   });
 
-  it("returns dated Task and focus values", async () => {
+  it("returns dated Task values", async () => {
     const owner = await createSession("retired-response-aliases");
     const created = await succeed<Thread>("/v1/threads", {
       method: "POST",
       session: owner,
       body: { title: "Checkup" },
     });
-    await succeed(`/v1/threads/${created._id}/tasks`, {
+    const added = await succeed<Thread>(`/v1/threads/${created._id}/tasks`, {
       method: "POST",
       session: owner,
       body: { taskId: "a", text: "Call", date: 123 },
-    });
-    const focused = await succeed<Thread>(`/v1/threads/${created._id}/focus`, {
-      method: "PUT",
-      session: owner,
-      body: { taskId: "a" },
     });
     const detail = await succeed<ThreadDetail>(`/v1/threads/${created.slug}`, {
       session: owner,
     });
     const open = await succeed<Thread[]>("/v1/threads", { session: owner });
-    for (const thread of [focused, detail.thread, ...open]) {
+    for (const thread of [added, detail.thread, ...open]) {
       expect(thread.tasks).toEqual([{ _id: "a", text: "Call", date: 123 }]);
-      expect(thread.focusedTaskId).toBe("a");
     }
+  });
+
+  it("has retired the focus route (ADR 0044) without changing the Thread", async () => {
+    const owner = await createSession("retired-focus-route");
+    const created = await succeed<Thread>("/v1/threads", {
+      method: "POST",
+      session: owner,
+      body: { title: "Checkup" },
+    });
+    const thread = await succeed<Thread>(`/v1/threads/${created._id}/tasks`, {
+      method: "POST",
+      session: owner,
+      body: { taskId: "a", text: "Call" },
+    });
+    const answer = await call(`/v1/threads/${thread._id}/focus`, {
+      method: "PUT",
+      session: owner,
+      body: { taskId: "a" },
+    });
+    expect(answer.status).toBe(404);
+    expect(
+      (
+        await succeed<ThreadDetail>(`/v1/threads/${thread.slug}`, {
+          session: owner,
+        })
+      ).thread,
+    ).toEqual(thread);
   });
 
   it("returns the Follow-up date for dated Notes", async () => {
