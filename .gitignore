@@ -38,3 +38,5 @@ dist-ssr
 # Throwaway Playwright specs (apps/e2e/playwright.config.ts)
 apps/e2e/scratch/
 .claude/settings.local.json
+# Desktop app data in dev (apps/desktop/scripts/dev.ts)
+apps/desktop/.dev-user-data/
