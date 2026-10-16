@@ -38,7 +38,9 @@ import { listBackups } from "./data-files.ts";
 import { opensExternally, originOf } from "./links.ts";
 import { captureConsole, openLog } from "./log.ts";
 import { preferencesStore } from "./preferences.ts";
+import { RELEASES_URL } from "./releases.ts";
 import { startupFailure } from "./startup-failure.ts";
+import { updateNotice } from "./update-notice.ts";
 import { placementOnScreen } from "./window-placement.ts";
 
 /*
@@ -80,6 +82,13 @@ let window: BrowserWindow | null = null;
 /** Work main has started and not finished: opening the data, answering calls. Quitting waits for it. */
 const inFlight = new Set<Promise<unknown>>();
 let quitting = false;
+// Tests point the update check at a feed of their own.
+const releasesUrl = process.env.VITA_DESKTOP_RELEASES_URL;
+const updates = updateNotice({
+  preferences,
+  releasesUrl: releasesUrl ?? RELEASES_URL,
+  checksAutomatically: app.isPackaged || releasesUrl !== undefined,
+});
 const backupsFolder = join(app.getPath("userData"), "backups");
 const data = dataActions({
   local: () => local,
@@ -127,6 +136,9 @@ async function start() {
       applicationMenuTemplate({
         isPackaged: app.isPackaged,
         send: sendCommand,
+        checkForUpdates: () => void updates.checkNow(),
+        checksAutomatically: preferences.get().checkForUpdates,
+        setChecksAutomatically: updates.setChecksAutomatically,
         showLogs: () => shell.showItemInFolder(log.path),
         backUpNow: () => void data.backUpNow(),
         showBackups: () => void data.showBackups(),
@@ -188,6 +200,7 @@ async function start() {
     if (process.platform !== "darwin") app.quit();
   });
   if (!quitting) await openWindow();
+  updates.start();
 }
 
 async function openWindow() {

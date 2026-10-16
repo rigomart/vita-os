@@ -6,6 +6,9 @@ export interface ApplicationMenuOptions {
   /** Developer tools and Reload only where the app runs from source. */
   isPackaged: boolean;
   send(command: MenuCommand): void;
+  checkForUpdates(): void;
+  checksAutomatically: boolean;
+  setChecksAutomatically(on: boolean): void;
   showLogs(): void;
   backUpNow(): void;
   showBackups(): void;
@@ -23,13 +26,37 @@ export interface ApplicationMenuOptions {
 export function applicationMenuTemplate({
   isPackaged,
   send,
+  checkForUpdates,
+  checksAutomatically,
+  setChecksAutomatically,
   showLogs,
   backUpNow,
   showBackups,
   downloadData,
 }: ApplicationMenuOptions): MenuItemConstructorOptions[] {
   return [
-    { role: "appMenu" },
+    {
+      label: "Vita OS",
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        { label: "Check for Updates…", click: checkForUpdates },
+        {
+          label: "Check for Updates Automatically",
+          type: "checkbox",
+          checked: checksAutomatically,
+          click: (item) => setChecksAutomatically(item.checked),
+        },
+        { type: "separator" },
+        { role: "services" },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    },
     {
       label: "File",
       submenu: [

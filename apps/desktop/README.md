@@ -23,6 +23,17 @@ Run from the repo root.
 
 `VITA_DESKTOP_USER_DATA` points the app at another user-data folder, and its log at `logs/` inside it. If your shell sets `ELECTRON_RUN_AS_NODE` (some Electron-based editors do), unset it before running `electron` yourself; the dev script and the Playwright fixture already do.
 
+## Releases and updates
+
+The desktop app has its own version, `version` in this `package.json`, which About shows and the `.dmg` is named after. To release one:
+
+1. Bump `version` in a PR and merge it.
+2. Tag the merge on `main` and push the tag: `git tag desktop-v<version> && git push origin desktop-v<version>`.
+
+`.github/workflows/release-desktop.yml` checks the tag names that version, runs the same checks as CI, packages the app for Apple silicon on a macOS runner, and publishes a GitHub Release with the `.dmg`.
+
+A packaged app checks the repository's releases after launch and once a day (`releases.ts`, `update-notice.ts`). The first time it sees a newer `desktop-v` release, it says so and offers to open the release's page. Installing is by hand, as below. In the app menu, Check for Updates… asks at any time, and Check for Updates Automatically turns the daily check off. This is the app's only network call (ADR 0043). An unpackaged build checks only when `VITA_DESKTOP_RELEASES_URL` points it at a feed, as the tests do.
+
 ## Install on macOS
 
 Open the `.dmg` and drag Vita OS into Applications. Later builds install the same way, replacing the app.

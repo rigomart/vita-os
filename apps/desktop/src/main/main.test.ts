@@ -22,6 +22,11 @@ import {
 import { opensExternally, originOf } from "./links.ts";
 import { captureConsole, openLog } from "./log.ts";
 import { preferencesStore, readPreferences } from "./preferences.ts";
+import {
+  compareVersions,
+  newerRelease,
+  newestDesktopRelease,
+} from "./releases.ts";
 import { startupFailure } from "./startup-failure.ts";
 import { placementOnScreen } from "./window-placement.ts";
 
@@ -215,33 +220,40 @@ describe("preferences", () => {
   const folder = mkdtempSync(join(tmpdir(), "vita-preferences-"));
   afterAll(() => rmSync(folder, { recursive: true, force: true }));
 
+  const defaults = {
+    theme: "system",
+    window: undefined,
+    checkForUpdates: true,
+    announcedVersion: undefined,
+  };
+
   it("start from the defaults, and keep what was changed across launches", () => {
     const path = join(folder, "kept.json");
-    expect(preferencesStore(path).get()).toEqual({
-      theme: "system",
-      window: undefined,
-    });
+    expect(preferencesStore(path).get()).toEqual(defaults);
     const window = { x: 10, y: 20, width: 900, height: 700, maximized: true };
     preferencesStore(path).update({ theme: "dark", window });
-    expect(readPreferences(path)).toEqual({ theme: "dark", window });
+    preferencesStore(path).update({
+      checkForUpdates: false,
+      announcedVersion: "0.2.0",
+    });
+    expect(readPreferences(path)).toEqual({
+      theme: "dark",
+      window,
+      checkForUpdates: false,
+      announcedVersion: "0.2.0",
+    });
   });
 
   it("fall back to the defaults, saying so, for a file they can't read", () => {
     const path = join(folder, "broken.json");
     writeFileSync(path, "{ not json");
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    expect(readPreferences(path)).toEqual({
-      theme: "system",
-      window: undefined,
-    });
+    expect(readPreferences(path)).toEqual(defaults);
     expect(warn).toHaveBeenCalledOnce();
     warn.mockRestore();
 
     writeFileSync(path, JSON.stringify({ theme: "sepia", window: { x: "1" } }));
-    expect(readPreferences(path)).toEqual({
-      theme: "system",
-      window: undefined,
-    });
+    expect(readPreferences(path)).toEqual(defaults);
   });
 });
 
@@ -317,5 +329,67 @@ describe("the log", () => {
       expect.stringContaining("Backup failed Error: disk full"),
     );
     Object.assign(console, original);
+  });
+});
+
+describe("releases", () => {
+  const release = (tag: string, extra: Record<string, unknown> = {}) => ({
+    tag_name: tag,
+    html_url: `https://github.com/rigomart/vita-os/releases/tag/${tag}`,
+    draft: false,
+    prerelease: false,
+    ...extra,
+  });
+
+  it("compare versions part by part, as numbers", () => {
+    expect(compareVersions("0.10.0", "0.9.9")).toBeGreaterThan(0);
+    expect(compareVersions("1.0.0", "1.0.0")).toBe(0);
+    expect(compareVersions("0.1.2", "0.2.0")).toBeLessThan(0);
+  });
+
+  it("pick the newest published desktop release, whatever order GitHub lists them in", () => {
+    expect(
+      newestDesktopRelease([
+        release("desktop-v0.2.0"),
+        release("desktop-v0.10.0"),
+        release("desktop-v0.11.0", { draft: true }),
+        release("desktop-v0.12.0", { prerelease: true }),
+        release("web-v9.0.0"),
+        release("desktop-v1.0.0-beta.1"),
+        null,
+      ]),
+    ).toEqual({
+      version: "0.10.0",
+      url: "https://github.com/rigomart/vita-os/releases/tag/desktop-v0.10.0",
+    });
+    expect(newestDesktopRelease([])).toBeUndefined();
+    expect(() => newestDesktopRelease({ message: "rate limited" })).toThrow();
+  });
+
+  it("are newer only when ahead of the running version, and a refused answer fails", async () => {
+    const answering =
+      (status: number, body: unknown): typeof fetch =>
+      async () =>
+        new Response(JSON.stringify(body), { status });
+    const list = [release("desktop-v0.2.0")];
+    expect(await newerRelease("0.1.0", "feed", answering(200, list))).toEqual({
+      version: "0.2.0",
+      url: list[0]!.html_url,
+    });
+    expect(
+      await newerRelease("0.2.0", "feed", answering(200, list)),
+    ).toBeUndefined();
+    await expect(
+      newerRelease(
+        "0.1.0",
+        "feed",
+        answering(403, { message: "rate limited" }),
+      ),
+    ).rejects.toThrow("GitHub answered 403");
+    await expect(
+      newerRelease("0.1.0", "feed", async () => {
+        throw new TypeError("fetch failed");
+      }),
+    ).rejects.toThrow("GitHub couldn't be reached.");
   });
 });
