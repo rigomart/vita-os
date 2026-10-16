@@ -9,6 +9,10 @@ import { isThemeSource, type ThemeSource } from "../bridge.ts";
 export interface Preferences {
   theme: ThemeSource;
   window?: WindowPlacement | undefined;
+  /** Check for Updates Automatically, in the app menu. */
+  checkForUpdates: boolean;
+  /** The newest release the daily check already told the person about. */
+  announcedVersion?: string | undefined;
 }
 
 /** The window's normal (not maximized) frame, and whether it was maximized. */
@@ -57,10 +61,14 @@ export function readPreferences(path: string): Preferences {
     }
     stored = {};
   }
-  const { theme, window } = (stored ?? {}) as Record<string, unknown>;
+  const { theme, window, checkForUpdates, announcedVersion } = (stored ??
+    {}) as Record<string, unknown>;
   return {
     theme: isThemeSource(theme) ? theme : "system",
     window: isWindowPlacement(window) ? window : undefined,
+    checkForUpdates: checkForUpdates !== false,
+    announcedVersion:
+      typeof announcedVersion === "string" ? announcedVersion : undefined,
   };
 }
 

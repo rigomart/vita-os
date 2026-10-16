@@ -1,6 +1,7 @@
 // The desktop app (apps/desktop), built, on a throwaway user-data folder per test. No web stack, no account.
 // Launches in one test share the folder, so `quit()` then `launch()` reopens the same data.
-// No native error dialog is shown (src/desktop-dialog-stub.cjs), and teardown kills whatever didn't quit.
+// No native error dialog or message box is shown (src/desktop-dialog-stub.cjs), and teardown kills
+// whatever didn't quit. The update check reads an empty releases feed unless a test passes its own.
 // `test.use({ packaged: true })` launches the packaged macOS app instead (apps/desktop/scripts/package.ts).
 import {
   _electron,
@@ -96,6 +97,8 @@ function desktopEnv(
     ...env,
     VITA_DESKTOP_USER_DATA: userData,
     VITA_TEST_DIALOG_LOG: dialogLog(userData),
+    // No release is newer, so no test asks GitHub or sees an update notice unless it says so.
+    VITA_DESKTOP_RELEASES_URL: "data:application/json,[]",
     ...extra,
   };
 }
@@ -147,7 +150,10 @@ export type Desktop = {
   quit(): Promise<void>;
   /** Starts the app on this folder outside Playwright, e.g. a second launch or a failing start. */
   spawn(options?: { env?: Record<string, string> }): DesktopProcess;
-  /** The error dialogs main would have shown, each as `<title>\n<content>\n`. Always empty when packaged. */
+  /**
+   * The error dialogs and message boxes main would have shown, each as `<title>\n<content>\n` or
+   * `<message>\n<detail>\n`. Always empty when packaged.
+   */
   dialogs(): string;
   /** The running app, for a look into main. */
   app(): ElectronApplication;
