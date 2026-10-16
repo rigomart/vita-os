@@ -5,6 +5,7 @@ Vita OS as an Electron app with its data in a SQLite file on the computer: no ac
 - `src/main/`: the main process. It opens and migrates `vita.db` in the user-data folder, then serves the local `ApplicationClient` over IPC (`vita:call`) and the built renderer from `app://vita/`, under a Content Security Policy that allows only the app's own files. A migration or open failure shows an error dialog, then the app quits.
   - The menu bar (`application-menu.ts`) has the product's actions in File and sends them to the page on `vita:command`. Developer Tools and Reload are only in an unpackaged build.
   - Right-click (`context-menu.ts`) offers spelling, a link's actions and editing.
+  - Your data (`data-actions.ts`, `data-files.ts`): a backup of `vita.db` in `backups/` beside it at launch when the newest is a day old and hourly checks after, keeping the newest ten; File → Back Up Now, Show Backups in Finder, and Download My Data…, which saves the same file as the web's Download my data (also in the product's own menu, over `vita:download-data`). Before migrating, `@vita-os/local` checks the file with `PRAGMA quick_check`, and a damaged one opens nothing; the error names the newest backup.
   - `preferences.json` in the user-data folder keeps the window's place (`window-placement.ts` drops one that is off today's displays) and the theme, which the page sends on `vita:theme` so the window's background and native controls follow it.
 - `src/preload/`: exposes `window.vita`: `call(method, input)`, `onCommand(listener)` and `setTheme(theme)`, and nothing else.
 - `src/renderer/`: the product's route tree with a gate that lets everyone through, a `Viewer` with no sign-in, and no Sign out. It hands the menu bar's commands to the shell through `HostCommandsProvider`.
@@ -31,3 +32,9 @@ The app is ad-hoc signed and not notarized. A copy you built and installed yours
 - clear the quarantine flag: `xattr -dr com.apple.quarantine "/Applications/Vita OS.app"`.
 
 The data stays in `~/Library/Application Support/Vita OS/vita.db`, outside the app, so reinstalling or upgrading keeps it. A newer build applies its pending migrations on first launch and copies the file next to itself first. The folder is named after `productName` in `package.json`; renaming it would start the app on an empty database.
+
+## Backups and restoring one
+
+The app backs `vita.db` up once a day to `~/Library/Application Support/Vita OS/backups/` (`vita-<date>T<time>.db`) and keeps the newest ten. They sit on the same disk as the data, so they cover a mistake or a bad update, not a lost computer; the computer's own backups cover that.
+
+To go back to a backup: quit Vita OS, move `vita.db` aside (keep it until you're sure), copy the backup into its place named `vita.db`, and open Vita OS. A backup from an older build is migrated on launch, as an upgrade is. Restoring from inside the app is not built yet.

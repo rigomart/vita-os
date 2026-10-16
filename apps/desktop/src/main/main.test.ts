@@ -1,10 +1,18 @@
-import { MigrationFailedError } from "@vita-os/local";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { DamagedDatabaseError, MigrationFailedError } from "@vita-os/local";
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { contextMenuTemplate } from "./context-menu.ts";
+import {
+  BACKUPS_KEPT,
+  backUp,
+  backupName,
+  exportFileName,
+  isBackupDue,
+  listBackups,
+} from "./data-files.ts";
 import { opensExternally, originOf } from "./links.ts";
 import { preferencesStore, readPreferences } from "./preferences.ts";
 import { startupFailure } from "./startup-failure.ts";
@@ -53,7 +61,9 @@ describe("a failed start", () => {
 
   it("names the copy a successful migration took when a later step fails", () => {
     expect(
-      startupFailure(new Error("ERR_FAILED loading app://vita/"), backup),
+      startupFailure(new Error("ERR_FAILED loading app://vita/"), {
+        migrationBackup: backup,
+      }),
     ).toEqual({
       title: "Vita OS couldn't start",
       content: `ERR_FAILED loading app://vita/\n\nA copy of your data from before this update is at:\n${backup}`,
@@ -62,7 +72,20 @@ describe("a failed start", () => {
 
   it("says only what went wrong when no copy was taken", () => {
     expect(startupFailure(new Error("disk full")).content).toBe("disk full");
-    expect(startupFailure("disk full", null).content).toBe("disk full");
+    expect(startupFailure("disk full", {}).content).toBe("disk full");
+  });
+
+  it("names the newest backup, and how to go back to it, when the data file is damaged", () => {
+    const damaged = new DamagedDatabaseError("/data/vita.db", [
+      "database disk image is malformed",
+    ]);
+    const newest = "/data/backups/vita-2026-10-15T090000.db";
+    expect(startupFailure(damaged, { newestBackup: newest }).content).toBe(
+      `${damaged.message}\n\nThe newest backup is at:\n${newest}\n\nTo go back to it, replace vita.db with a copy of that file, named vita.db, and open Vita OS again.`,
+    );
+    expect(startupFailure(damaged, {}).content).toBe(
+      `${damaged.message}\n\nThere is no backup of it yet.`,
+    );
   });
 });
 
@@ -212,5 +235,43 @@ describe("preferences", () => {
       theme: "system",
       window: undefined,
     });
+  });
+});
+
+describe("backups", () => {
+  const folder = mkdtempSync(join(tmpdir(), "vita-backups-"));
+  afterAll(() => rmSync(folder, { recursive: true, force: true }));
+
+  it("are named for the local time they were taken, so the newest sorts first", () => {
+    expect(backupName(new Date(2026, 9, 6, 9, 5, 3))).toBe(
+      "vita-2026-10-06T090503.db",
+    );
+    expect(exportFileName(new Date(2026, 0, 2, 23, 59))).toBe(
+      "vita-os-export-2026-01-02.json",
+    );
+  });
+
+  it("are due a day after the newest, or when there is none or the clock went back", () => {
+    const newest = join(folder, "vita-2026-10-15T090000.db");
+    expect(isBackupDue(undefined, new Date(2026, 9, 15))).toBe(true);
+    expect(isBackupDue(newest, new Date(2026, 9, 16, 8, 59))).toBe(false);
+    expect(isBackupDue(newest, new Date(2026, 9, 16, 9, 0))).toBe(true);
+    expect(isBackupDue(newest, new Date(2026, 9, 14))).toBe(true);
+  });
+
+  it("keep the newest ten, and nothing else in the folder is touched", async () => {
+    writeFileSync(join(folder, "notes.txt"), "mine");
+    const local = {
+      backUpTo: async (path: string) => writeFileSync(path, "copy"),
+    };
+    for (let day = 1; day <= 12; day += 1) {
+      await backUp(local, folder, new Date(2026, 9, day, 12));
+    }
+    const kept = listBackups(folder).map((path) => path.split("/").at(-1));
+    expect(kept).toHaveLength(BACKUPS_KEPT);
+    expect(kept[0]).toBe("vita-2026-10-12T120000.db");
+    expect(kept.at(-1)).toBe("vita-2026-10-03T120000.db");
+    expect(readdirSync(folder)).toContain("notes.txt");
+    expect(listBackups(join(folder, "missing"))).toEqual([]);
   });
 });

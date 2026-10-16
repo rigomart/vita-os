@@ -2,6 +2,7 @@ import type { ApplicationClient, OperationResult } from "@vita-os/contracts";
 import type {
   Clock,
   Database,
+  ExportFile,
   Operation,
   RequestScope,
 } from "@vita-os/operations";
@@ -104,6 +105,24 @@ export function createLocalApplicationClient({
     markThreadNoteOpen: command(operations.markThreadNoteOpen),
     removeThreadNote: command(operations.removeThreadNote),
   };
+}
+
+/** Everything on this computer, as the web's Download my data saves it. */
+export async function exportLocalData({
+  db,
+  clock = operations.systemClock,
+}: Pick<LocalApplicationClientOptions, "db" | "clock">): Promise<ExportFile> {
+  const result = await operations.exportData({
+    db,
+    clock,
+    actorId: LOCAL_OWNER_ID,
+  });
+  if (result.status !== "ok") {
+    throw new Error("Vita OS couldn't read its data to export it.", {
+      cause: result.error,
+    });
+  }
+  return result.value;
 }
 
 /** As JSON does: operations read an `undefined` field as "clear it". */

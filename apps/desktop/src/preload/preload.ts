@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 import {
   CALL_CHANNEL,
   COMMAND_CHANNEL,
+  DOWNLOAD_DATA_CHANNEL,
   THEME_CHANNEL,
   type MenuCommand,
   type VitaBridge,
@@ -18,6 +19,7 @@ const bridge: VitaBridge = {
     return () => ipcRenderer.off(COMMAND_CHANNEL, hear);
   },
   setTheme: (theme) => ipcRenderer.send(THEME_CHANNEL, theme),
+  downloadData: () => ipcRenderer.invoke(DOWNLOAD_DATA_CHANNEL),
 };
 
 contextBridge.exposeInMainWorld("vita", bridge);

@@ -20,6 +20,7 @@ import { join } from "node:path";
 import {
   CALL_CHANNEL,
   COMMAND_CHANNEL,
+  DOWNLOAD_DATA_CHANNEL,
   isThemeSource,
   type MenuCommand,
   THEME_CHANNEL,
@@ -32,6 +33,8 @@ import {
 import { callApplication } from "./application-calls.ts";
 import { applicationMenuTemplate } from "./application-menu.ts";
 import { contextMenuTemplate } from "./context-menu.ts";
+import { dataActions } from "./data-actions.ts";
+import { listBackups } from "./data-files.ts";
 import { opensExternally, originOf } from "./links.ts";
 import { preferencesStore } from "./preferences.ts";
 import { startupFailure } from "./startup-failure.ts";
@@ -63,6 +66,13 @@ let window: BrowserWindow | null = null;
 /** Work main has started and not finished: opening the data, answering calls. Quitting waits for it. */
 const inFlight = new Set<Promise<unknown>>();
 let quitting = false;
+const backupsFolder = join(app.getPath("userData"), "backups");
+const data = dataActions({
+  local: () => local,
+  window: () => window,
+  track,
+  backupsFolder,
+});
 
 registerAppScheme();
 
@@ -99,6 +109,17 @@ async function start() {
       applicationMenuTemplate({
         isPackaged: app.isPackaged,
         send: sendCommand,
+        backUpNow: () => void data.backUpNow(),
+        showBackups: () => void data.showBackups(),
+        downloadData: () =>
+          void data
+            .downloadData()
+            .catch((error: unknown) =>
+              dialog.showErrorBox(
+                "Your data was not downloaded",
+                error instanceof Error ? error.message : String(error),
+              ),
+            ),
       }),
     ),
   );
@@ -121,12 +142,20 @@ async function start() {
     );
   }
 
+  data.scheduleBackups();
+
   const client = createLocalApplicationClient({ db: local.database });
   ipcMain.handle(CALL_CHANNEL, (event, method: unknown, input: unknown) => {
     if (!isRendererUrl(event.senderFrame?.url)) {
       throw new Error("Vita OS refused a call from outside the app.");
     }
     return track(callApplication(client, method, input));
+  });
+  ipcMain.handle(DOWNLOAD_DATA_CHANNEL, (event) => {
+    if (!isRendererUrl(event.senderFrame?.url)) {
+      throw new Error("Vita OS refused a call from outside the app.");
+    }
+    return data.downloadData();
   });
   ipcMain.on(THEME_CHANNEL, (event, theme: unknown) => {
     if (!isRendererUrl(event.senderFrame?.url) || !isThemeSource(theme)) return;
@@ -216,13 +245,22 @@ function background(): string {
 /** Never swallowed: the person sees why, then the app quits. */
 function failStartup(error: unknown) {
   console.error("Vita OS couldn't start", error);
-  const { title, content } = startupFailure(
-    error,
-    local?.migration.backupPath ?? null,
-  );
+  const { title, content } = startupFailure(error, {
+    migrationBackup: local?.migration.backupPath ?? null,
+    newestBackup: newestBackup(),
+  });
   dialog.showErrorBox(title, content);
   local?.close();
   app.exit(1);
+}
+
+function newestBackup(): string | undefined {
+  try {
+    return listBackups(backupsFolder)[0];
+  } catch (error) {
+    console.error("Vita OS couldn't list its backups", error);
+    return undefined;
+  }
 }
 
 /** The app's pages stay on the app; web and email links open in their own apps. */
