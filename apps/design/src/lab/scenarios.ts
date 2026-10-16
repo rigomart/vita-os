@@ -44,6 +44,13 @@ export const scenarios = [
     seed: (client) => seedLife(client, LONG_TASKS),
   },
   {
+    id: "rhythms",
+    name: "Rhythms",
+    description:
+      "Threads where a frequent Repeat sits beside one-off dated Tasks, and some with many undated ones.",
+    seed: (client) => seedLife(client, RHYTHMS),
+  },
+  {
     id: "long-activity",
     name: "Long activity",
     description:
@@ -579,3 +586,131 @@ function busyLife(): Life {
     notes: [...SAMPLE.notes, ...notes],
   };
 }
+
+/**
+ * A frequent Repeat beside one-off dated Tasks, the case where a card that
+ * names one Task hides the next; plus Threads with many undated Tasks, the
+ * case where a card that names every Task grows tall.
+ */
+const RHYTHMS: Life = {
+  areas: [
+    { name: "Health", icon: "HeartPulse" },
+    { name: "Home", icon: "Home" },
+    { name: "Work", icon: "BriefcaseBusiness" },
+    { name: "Money", icon: "WalletCards" },
+  ],
+  threads: [
+    {
+      title: "Recovery after a knee operation",
+      area: "Health",
+      tasks: [
+        {
+          text: "Evening check-in: pain, swelling, exercises done",
+          inDays: 0,
+          at: "19:00",
+          repeat: { kind: "days", every: 1 },
+        },
+        { text: "Pick up the second prescription", inDays: 1 },
+        {
+          text: "Follow-up appointment, bring the discharge letter",
+          inDays: 4,
+          at: "09:30",
+        },
+        "Ask when driving is allowed again",
+      ],
+    },
+    {
+      title: "Kitchen tap",
+      area: "Home",
+      tasks: [
+        { text: "Call the plumber", inDays: 0 },
+        { text: "Buy a replacement cartridge", inDays: 0 },
+      ],
+    },
+    {
+      title: "Balcony plants",
+      area: "Home",
+      tasks: [
+        {
+          text: "Water the plants",
+          inDays: 1,
+          repeat: { kind: "days", every: 3 },
+        },
+      ],
+    },
+    {
+      title: "Dog's medication",
+      tasks: [
+        {
+          text: "Give the evening tablet",
+          inDays: 0,
+          at: "20:00",
+          repeat: { kind: "days", every: 1 },
+        },
+        { text: "Return the library books", inDays: -2 },
+      ],
+    },
+    {
+      title: "Learn Spanish",
+      tasks: [
+        {
+          text: "Practice session",
+          inDays: 2,
+          repeat: { kind: "weekly", weekdays: [1, 4] },
+        },
+        { text: "Look back at the month's progress", inDays: 18 },
+        "Find a conversation partner",
+      ],
+    },
+    {
+      title: "Household bills",
+      area: "Money",
+      tasks: [
+        {
+          text: "Check the bank balance",
+          inDays: 9,
+          repeat: { kind: "weekly", weekdays: [5] },
+        },
+        { text: "Compare home insurance quotes", inDays: 70 },
+      ],
+    },
+    {
+      title: "Choose between two cars",
+      tasks: [{ text: "Test drive the second one", inDays: 6 }],
+    },
+    {
+      title: "Job search",
+      area: "Work",
+      tasks: [
+        "Update the CV with the last project",
+        "Ask two former colleagues for references",
+        "Shortlist ten companies",
+        "Write a cover letter template",
+        "Set up job alerts",
+        "Practice the system design interview",
+        "Refresh the portfolio site",
+        "Decide on a salary range",
+      ],
+    },
+    {
+      title: "Tax cleanup",
+      area: "Money",
+      tasks: [
+        "Gather last year's receipts",
+        "Find the pension statement",
+        "Send everything to the accountant",
+      ],
+      focus: 0,
+    },
+    {
+      title: "Garden shed",
+      area: "Home",
+      tasks: ["Measure the space"],
+    },
+    { title: "Annual check-up, put off for a while", area: "Health" },
+  ],
+  notes: [
+    { body: "Pick up the dry cleaning", inDays: 0, at: "16:30" },
+    { body: "Wifi password is on the fridge" },
+  ],
+};
