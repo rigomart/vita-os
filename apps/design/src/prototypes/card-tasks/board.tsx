@@ -1,5 +1,5 @@
 import type { ProductSearch } from "@vita-os/application/internal/navigation/search-params.ts";
-import type { AreaSummary, Note, Thread } from "@vita-os/contracts";
+import type { AreaSummary, Note, Task, Thread } from "@vita-os/contracts";
 import type { ComponentType, ReactNode } from "react";
 
 import { Link } from "@tanstack/react-router";
@@ -33,6 +33,8 @@ import { StandaloneNoteDialog } from "@vita-os/application/internal/notes/note-v
 import { cn } from "@vita-os/ui/lib/utils";
 import { useState } from "react";
 
+import { RhythmChip } from "./cards";
+
 export interface ThreadCardProps {
   area?: AreaSummary;
   currentDate: number;
@@ -41,21 +43,31 @@ export interface ThreadCardProps {
   thread: Thread;
   /** The date that put this card where it is; undefined in No date. */
   when?: number;
+  /** The Task that put this card where it is, when the board spreads by Task. */
+  task?: Task;
 }
 
 /**
  * The Dashboard as it ships, with the Thread card swapped for a direction's.
- * With `spread`, a Thread stands once on every day one of its Tasks is due
- * (all its late ones together under Late) instead of once at its soonest.
+ * With `spread`, a Thread stands more than once instead of once at its
+ * soonest: once per dated Task (`"task"`), or once per day it has a Task due
+ * (`"day"`), all its late ones together under Late.
+ * With `echo`, only a Thread's first copy is a card; later ones are lines.
+ * With `rhythms`, repeating Tasks leave the cards and sit as a strip at the
+ * top of their day.
  * Below `lg`, No date sits under the list unfolded; the cards are the
  * question here.
  */
 export function CardBoard({
   ThreadCard,
-  spread = false,
+  echo = false,
+  rhythms = false,
+  spread,
 }: {
   ThreadCard: ComponentType<ThreadCardProps>;
-  spread?: boolean;
+  echo?: boolean;
+  rhythms?: boolean;
+  spread?: "day" | "task";
 }) {
   const currentDate = useAttentionClock();
   const filter = useDashboardFilterParams();
@@ -75,11 +87,18 @@ export function CardBoard({
     currentDate,
   );
   const dated = spread
-    ? spreadItems([...board.now, ...board.week, ...board.later], currentDate)
+    ? spreadItems(
+        [...board.now, ...board.week, ...board.later],
+        currentDate,
+        spread,
+        rhythms,
+      )
     : [...board.now, ...board.week, ...board.later];
   const groups = groupByWhen(dated, currentDate);
   const runs = unscheduledRuns(board);
   const areaById = new Map(areas.map((area) => [area._id, area]));
+  // Threads already drawn as a card, top to bottom, for `echo`.
+  const seen = new Set<string>();
 
   const card = (item: BoardItem, dateInHeading: boolean, onLateFill: boolean) =>
     item.kind === "note" ? (
@@ -102,6 +121,7 @@ export function CardBoard({
         onLateFill={onLateFill}
         thread={item.thread}
         when={item.when}
+        task={placing.get(item)}
       />
     );
 
@@ -114,6 +134,8 @@ export function CardBoard({
         <div className="@container flex flex-col gap-4 pt-2">
           {groups.map((group) => {
             const look = groupLook(group);
+            const strip = group.items.filter((item) => rhythm.has(item));
+            const items = group.items.filter((item) => !rhythm.has(item));
             return (
               <FileTab
                 key={group.key}
@@ -138,15 +160,36 @@ export function CardBoard({
                   </>
                 }
               >
+                {strip.length > 0 && (
+                  <ul
+                    aria-label="Rhythms"
+                    className="flex flex-wrap gap-1.5 pb-1.5"
+                  >
+                    {strip.map((item) =>
+                      item.kind === "thread" ? (
+                        <li key={placing.get(item)!._id}>
+                          <RhythmChip
+                            currentDate={currentDate}
+                            dateInHeading={group.exact}
+                            task={placing.get(item)!}
+                            thread={item.thread}
+                          />
+                        </li>
+                      ) : null,
+                    )}
+                  </ul>
+                )}
                 <ul
                   className={cn(
                     "grid @2xl:grid-cols-2",
                     look.oneLine ? "gap-x-1" : "gap-1.5",
                   )}
                 >
-                  {group.items.map((item) => (
-                    <li key={`${itemId(item)}-${item.when}`}>
-                      {look.oneLine ? (
+                  {items.map((item) => (
+                    <li
+                      key={`${itemId(item)}-${placing.get(item)?._id ?? item.when}`}
+                    >
+                      {look.oneLine || (echo && echoed(item, seen)) ? (
                         <Line
                           item={item}
                           currentDate={currentDate}
@@ -206,24 +249,58 @@ export function CardBoard({
   );
 }
 
+/** The Task that put a spread card where it is, in `"task"` mode. */
+const placing = new WeakMap<BoardItem, Task>();
+
+/** Copies placed by a repeating Task, drawn in the strip with `rhythms`. */
+const rhythm = new WeakSet<BoardItem>();
+
+/** Whether a Thread already has a card above; marks it as having one. */
+function echoed(item: BoardItem, seen: Set<string>) {
+  if (item.kind !== "thread") return false;
+  if (seen.has(item.thread._id)) return true;
+  seen.add(item.thread._id);
+  return false;
+}
+
 /**
- * One item per day a Thread has a Task due, its late days folded into one at
- * the earliest, soonest first. Notes keep their one item.
+ * One item per dated Task, or per day a Thread has a Task due, its late days
+ * folded into one at the earliest; soonest first. Notes keep their one item.
  */
-function spreadItems(items: BoardItem[], currentDate: number): BoardItem[] {
+function spreadItems(
+  items: BoardItem[],
+  currentDate: number,
+  mode: "day" | "task",
+  rhythms: boolean,
+): BoardItem[] {
   const spread: BoardItem[] = [];
   for (const item of items) {
     if (item.kind === "note") {
       spread.push(item);
       continue;
     }
+    const dated = (item.thread.tasks ?? []).filter(
+      (task) => task.date !== undefined,
+    );
+    if (mode === "task") {
+      for (const task of dated) {
+        const copy: BoardItem = {
+          kind: "thread",
+          thread: item.thread,
+          when: task.date,
+        };
+        placing.set(copy, task);
+        if (rhythms && task.repeat !== undefined) rhythm.add(copy);
+        spread.push(copy);
+      }
+      continue;
+    }
     const days = new Map<number, number>();
-    for (const task of item.thread.tasks ?? []) {
-      if (task.date === undefined) continue;
-      const day = Math.max(dayDelta(task.date, currentDate), -1);
+    for (const task of dated) {
+      const day = Math.max(dayDelta(task.date!, currentDate), -1);
       const earliest = days.get(day);
-      if (earliest === undefined || task.date < earliest) {
-        days.set(day, task.date);
+      if (earliest === undefined || task.date! < earliest) {
+        days.set(day, task.date!);
       }
     }
     for (const when of days.values()) {
@@ -254,7 +331,15 @@ function Line({
             : "bg-muted-foreground/70",
         )}
       />
-      <span className="min-w-0 flex-1 truncate">{itemTitle(item)}</span>
+      <span className="min-w-0 flex-1 truncate">
+        {itemTitle(item)}
+        {placing.get(item) && (
+          <span className="text-muted-foreground">
+            {" "}
+            · {placing.get(item)!.text}
+          </span>
+        )}
+      </span>
       {item.when !== undefined && (
         <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
           {dateToken(item.when, currentDate)}

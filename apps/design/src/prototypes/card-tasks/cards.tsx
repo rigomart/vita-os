@@ -3,6 +3,10 @@ import type { Task, Thread } from "@vita-os/contracts";
 
 import { Link } from "@tanstack/react-router";
 import { AreaIcon } from "@vita-os/application/internal/areas/components/area-icon.tsx";
+import {
+  timeToken,
+  withTimeToken,
+} from "@vita-os/application/internal/attention-list/date-parts.ts";
 import { taskDateLabels } from "@vita-os/application/internal/attention-list/follow-up-date.ts";
 import { repeatLabel } from "@vita-os/application/internal/attention-list/repeat.ts";
 import {
@@ -30,88 +34,66 @@ import { ListTodo, Repeat as RepeatIcon, SkipForward } from "lucide-react";
 import type { ThreadCardProps } from "./board";
 
 /**
- * Every Task on the card, dated soonest first, then the undated ones in the
- * order they were captured. No focus.
+ * The board stands a copy of the Thread's card on every dated Task; each copy
+ * names the Task that placed it. In No date, the only Task or how many.
  */
-export function EveryTaskCard(props: ThreadCardProps) {
-  const tasks = props.thread.tasks ?? [];
-  return <TasksCard {...props} rows={[...datedFirst(tasks)]} />;
+export function PerTaskCard(props: ThreadCardProps) {
+  if (props.task === undefined) return <UndatedCard {...props} />;
+  return <TasksCard {...props} rows={[props.task]} />;
 }
 
 /**
- * The dated Tasks, soonest first, and how many have no date. With none dated
- * (in No date) the card names every Task, since there is no focus to pick one.
+ * A copy per dated Task that says where else the Thread stands: the other
+ * dated Tasks' days, so the copies read as one Thread.
  */
-export function DatedTasksCard(props: ThreadCardProps) {
-  const tasks = props.thread.tasks ?? [];
-  const dated = datedFirst(tasks).filter((task) => task.date !== undefined);
-  if (dated.length === 0) return <TasksCard {...props} rows={tasks} />;
-  return (
-    <TasksCard
-      {...props}
-      rows={dated}
-      more={tasks.length - dated.length}
-      moreLabel="without a date"
-    />
-  );
+export function AlsoCard(props: ThreadCardProps) {
+  if (props.task === undefined) return <UndatedCard {...props} />;
+  const also = (props.thread.tasks ?? [])
+    .filter((task) => task.date !== undefined && task._id !== props.task!._id)
+    .sort((a, b) => a.date! - b.date!);
+  return <TasksCard {...props} rows={[props.task]} also={also} />;
 }
 
 /**
- * Every Task due on the day that placed the card, then one line for the next
- * dated Task after that day, then a count of the rest. In No date, a count.
+ * The same copies, but the Task leads and the Thread it belongs to sits in
+ * the footer, so two copies of one Thread read as two different things.
  */
-export function ThenCard(props: ThreadCardProps) {
-  const tasks = props.thread.tasks ?? [];
-  const { when, currentDate } = props;
-  if (when === undefined) {
-    return (
-      <TasksCard
-        {...props}
-        rows={tasks.length === 1 ? tasks : []}
-        more={tasks.length > 1 ? tasks.length : 0}
-        moreLabel="tasks"
-      />
-    );
-  }
-  const placingDay = Math.max(dayDelta(when, currentDate), -1);
-  const dayOf = (task: Task) => Math.max(dayDelta(task.date!, currentDate), -1);
-  const sorted = datedFirst(tasks).filter((task) => task.date !== undefined);
-  const due = sorted.filter((task) => dayOf(task) === placingDay);
-  const next = sorted.find((task) => dayOf(task) > placingDay);
-  const shown = due.length + (next === undefined ? 0 : 1);
-  return (
-    <TasksCard
-      {...props}
-      rows={due}
-      then={next}
-      more={tasks.length - shown}
-      moreLabel="more"
-    />
-  );
+export function TaskFirstCard(props: ThreadCardProps) {
+  if (props.task === undefined) return <UndatedCard {...props} />;
+  return <TasksCard {...props} rows={[props.task]} lead="task" />;
 }
 
 /**
- * The Tasks due on this card's day; the board stands the Thread once on each
- * such day. In No date, every Task.
+ * The board stands the Thread once on each day it has a Task due; the copy
+ * names that day's Tasks. In No date, the only Task or how many.
  */
 export function DayCard(props: ThreadCardProps) {
   const tasks = props.thread.tasks ?? [];
   const { when, currentDate } = props;
-  if (when === undefined) return <TasksCard {...props} rows={tasks} />;
+  if (when === undefined) return <UndatedCard {...props} />;
   const day = Math.max(dayDelta(when, currentDate), -1);
-  const due = tasks.filter(
-    (task) =>
-      task.date !== undefined &&
-      Math.max(dayDelta(task.date, currentDate), -1) === day,
-  );
-  return <TasksCard {...props} rows={datedFirst(due)} />;
+  const due = tasks
+    .filter(
+      (task) =>
+        task.date !== undefined &&
+        Math.max(dayDelta(task.date, currentDate), -1) === day,
+    )
+    .sort((a, b) => a.date! - b.date!);
+  return <TasksCard {...props} rows={due} />;
 }
 
-function datedFirst(tasks: readonly Task[]): Task[] {
-  const dated = tasks
-    .filter((task) => task.date !== undefined)
-    .sort((a, b) => a.date! - b.date!);
-  return [...dated, ...tasks.filter((task) => task.date === undefined)];
+/** Without Focus, a card in No date names its only Task, or counts them. */
+function UndatedCard(props: ThreadCardProps) {
+  const tasks = props.thread.tasks ?? [];
+  if (tasks.length === 1) return <TasksCard {...props} rows={tasks} />;
+  return (
+    <TasksCard
+      {...props}
+      rows={[]}
+      more={tasks.length}
+      moreLabel={tasks.length === 1 ? "task" : "tasks"}
+    />
+  );
 }
 
 /**
@@ -125,13 +107,17 @@ function TasksCard({
   more = 0,
   moreLabel = "more",
   onLateFill,
+  also = [],
+  lead = "thread",
   rows,
-  then,
   thread,
   when,
 }: ThreadCardProps & {
+  /** The Thread's other dated Tasks, named by day. */
+  also?: readonly Task[];
+  /** What heads the card: the Thread's title, or the Task that placed it. */
+  lead?: "task" | "thread";
   rows: readonly Task[];
-  then?: Task;
   more?: number;
   moreLabel?: string;
 }) {
@@ -143,6 +129,12 @@ function TasksCard({
       onLateFill={onLateFill}
       footer={
         <>
+          {lead === "task" && (
+            <ThreadLink
+              thread={thread}
+              className="max-w-48 truncate text-[12px] text-muted-foreground"
+            />
+          )}
           {area && (
             <BoardTag
               icon={<AreaIcon icon={area.icon} className="size-3 shrink-0" />}
@@ -163,22 +155,19 @@ function TasksCard({
         </>
       }
     >
-      <Link
-        to="."
-        search={(previous: ProductSearch): ProductSearch => ({
-          ...previous,
-          thread: thread.slug,
-        })}
-        className="line-clamp-2 min-w-0 text-sm leading-snug font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-ring/40"
-      >
-        {thread.title}
-      </Link>
+      {lead === "thread" && (
+        <ThreadLink
+          thread={thread}
+          className="line-clamp-2 text-sm leading-snug font-medium"
+        />
+      )}
 
       {rows.length > 0 && (
         <ul className="flex flex-col gap-0.5">
           {rows.map((task) => (
             <TaskRow
               key={task._id}
+              leads={lead === "task"}
               currentDate={currentDate}
               inHeading={
                 dateInHeading &&
@@ -193,20 +182,24 @@ function TasksCard({
         </ul>
       )}
 
-      {then && (
+      {also.length > 0 && (
         <p className="flex items-baseline gap-1.5 text-[12px] leading-snug text-muted-foreground">
           <span className="w-3 shrink-0" />
-          <span className="shrink-0 tabular-nums">
-            Then {dateToken(then.date!, currentDate)}
+          <span className="truncate tabular-nums">
+            Also{" "}
+            {also
+              .map((task) =>
+                withTimeToken(dateToken(task.date!, currentDate), task.date!),
+              )
+              .join(" · ")}
           </span>
-          <span className="truncate">{then.text}</span>
         </p>
       )}
 
       {more > 0 && (
         <p className="flex items-center gap-1.5 text-[12px] leading-snug text-muted-foreground/80">
           <ListTodo aria-hidden className="size-3 shrink-0 opacity-60" />
-          {rows.length > 0 || then ? "+" : ""}
+          {rows.length > 0 ? "+" : ""}
           {more} {moreLabel}
         </p>
       )}
@@ -214,14 +207,42 @@ function TasksCard({
   );
 }
 
+/** The Thread's title, opening its pane; the whole card is its target. */
+function ThreadLink({
+  className,
+  thread,
+}: {
+  className: string;
+  thread: Thread;
+}) {
+  return (
+    <Link
+      to="."
+      search={(previous: ProductSearch): ProductSearch => ({
+        ...previous,
+        thread: thread.slug,
+      })}
+      className={cn(
+        "min-w-0 outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-ring/40",
+        className,
+      )}
+    >
+      {thread.title}
+    </Link>
+  );
+}
+
 function TaskRow({
   currentDate,
   inHeading,
+  leads = false,
   task,
   thread,
 }: {
   currentDate: number;
   inHeading: boolean;
+  /** The Task heads the card, in the title's weight. */
+  leads?: boolean;
   task: Task;
   thread: Thread;
 }) {
@@ -256,7 +277,12 @@ function TaskRow({
           <span className="size-1.5 rounded-full border border-muted-foreground/55" />
         )}
       </span>
-      <span className="line-clamp-2 min-w-0 flex-1 text-foreground/75">
+      <span
+        className={cn(
+          "line-clamp-2 min-w-0 flex-1",
+          leads ? "text-sm font-medium text-foreground" : "text-foreground/75",
+        )}
+      >
         <span className="sr-only">
           {repeats
             ? `Task, ${repeatLabel(task.repeat!).toLowerCase()}: `
@@ -294,5 +320,69 @@ function TaskRow({
         />
       </span>
     </li>
+  );
+}
+
+/**
+ * A repeating Task as a pill at the top of its day: the rhythm, its Thread,
+ * its time, and Complete on hover. Opening it opens the Thread.
+ */
+export function RhythmChip({
+  currentDate,
+  dateInHeading,
+  task,
+  thread,
+}: {
+  currentDate: number;
+  dateInHeading: boolean;
+  task: Task;
+  thread: Thread;
+}) {
+  const complete = useCompleteTask(thread);
+  const busy = useCompletingTaskIds(thread).has(task._id);
+  const late = isLate(task.date, currentDate);
+  return (
+    <span
+      className={cn(
+        "group/card relative inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card py-1 pr-1 pl-2.5 text-[13px]",
+        busy && "opacity-50",
+      )}
+    >
+      <RepeatIcon
+        aria-hidden
+        className={cn(
+          "size-3",
+          late ? "text-condition-attention" : "text-muted-foreground",
+        )}
+      />
+      <Link
+        to="."
+        search={(previous: ProductSearch): ProductSearch => ({
+          ...previous,
+          thread: thread.slug,
+        })}
+        className="max-w-56 truncate outline-none after:absolute after:inset-0 after:rounded-full after:content-[''] focus-visible:ring-2 focus-visible:ring-ring/40"
+      >
+        {task.text}
+      </Link>
+      <span className="max-w-32 truncate text-[12px] text-muted-foreground">
+        {thread.title}
+      </span>
+      <span
+        className={cn(
+          "text-[12px] tabular-nums",
+          late ? "text-condition-attention" : "text-muted-foreground",
+        )}
+      >
+        {dateInHeading
+          ? (timeToken(task.date!) ?? "")
+          : withTimeToken(dateToken(task.date!, currentDate), task.date!)}
+      </span>
+      <BoardCompleteButton
+        label={`Complete “${task.text}”`}
+        disabled={busy}
+        onClick={() => void complete(task._id)}
+      />
+    </span>
   );
 }
