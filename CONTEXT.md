@@ -66,7 +66,7 @@ The one **Task** the user has singled out on a **Thread**, when they have. Focus
 _Avoid_: Focused Move (former name), Next Move, priority.
 
 **Follow-up date**:
-A soft resurfacing point on a **Standalone Note** that brings it back into awareness around a chosen time: a day, optionally with a time of day that orders it within that day (ADR 0027). It may carry a **Repeat** (ADR 0041). A **Thread** has none of its own: it comes back at its soonest dated **Task** (ADR 0032).
+A soft resurfacing point on a **Standalone Note** that brings it back into awareness around a chosen time: a day, optionally with a time of day that orders it within that day (ADR 0027). It may carry a **Repeat** (ADR 0041). A **Thread** has none of its own: it comes back at each of its dated **Tasks** (ADR 0032, ADR 0044).
 _Avoid_: Due date, deadline, reminder.
 
 **Activity Log**:
@@ -116,7 +116,7 @@ _Avoid_: Archive (as a place), trash, completed list.
 - An **Area** never changes a **Thread**'s derived attention state.
 - A **Thread** has zero or one **Summary**, zero or more **Tasks**, zero or one **Focused Task**, zero or more **Thread Notes**, and one **Activity Log**.
 - A **Focused Task** is always one of its **Thread**'s **Tasks**. Capturing a **Task** never focuses it; focusing is a separate choice, and every **Task** may stay unfocused.
-- A **Task** may have a date and a **Repeat**; a Repeat requires a date, and clearing the date clears the Repeat. It has no done state, no nesting, and no manual order. "Look at this again in two weeks" is a dated **Task**. A **Thread**'s resurfacing is its soonest dated **Task**, and it has no **Follow-up date** of its own.
+- A **Task** may have a date and a **Repeat**; a Repeat requires a date, and clearing the date clears the Repeat. It has no done state, no nesting, and no manual order. "Look at this again in two weeks" is a dated **Task**. A **Thread** resurfaces at each of its dated **Tasks**, one copy on the **Dashboard** each, and it has no **Follow-up date** of its own.
 - A monthly **Repeat** repeats on its date's day of month; a month without that day uses its last day, and the next month returns to the chosen day. Changing the date moves the Repeat to the new date's day.
 - A weekly **Repeat** snaps a Task's date to the first chosen weekday on or after it. Repeats count calendar days in the caller's time zone and keep the local time of day, except that a time skipped by a daylight-saving change moves to the first valid time and stays there. Completing or skipping advances to the first occurrence after the current date that is not before today; missed occurrences collapse into one Task, shown once under Late until it is completed or skipped. Completing or skipping acts on the occurrence on screen, so a double activation moves it once.
 - A **Resolved Thread** holds no **Tasks** and gains none.
@@ -144,7 +144,7 @@ _Avoid_: Archive (as a place), trash, completed list.
 - The list groups its items under headings for when they come due, the grain widening with distance: Late, Today, Tomorrow (with its weekday), then each of the next six days with something due (its weekday and how many days out), then weeks out to four (`In 1 week` and its span), then calendar months (ADR 0026). A day with nothing due gets no heading.
 - Every dated **Task** and dated **Standalone Note** appears in exactly one group, and every undated item in exactly one run. Nothing is capped. From next week on an item is one line with its date, and opens as its card would: a **Thread**'s copy reads "Task · Thread", its **Task** and then its title, muted, so two rows of one Thread read apart; a **Note** reads its first line. Below `lg`, **No date** starts folded to one line naming its first two items and how many more; folding hides its cards, never that they exist.
 - An **Open Thread** with no **Tasks** is valid; it is not automatically overdue, stale, or broken.
-- **Focus never affects attention**: the **Dashboard** derives from whether a **Thread** has **Tasks** and from their dates. Neither the **Focused Task** nor the number of **Tasks** moves a Thread between groups or changes its place.
+- **Focus never affects attention**: the **Dashboard** derives from whether a **Thread** has **Tasks** and from their dates. Neither the **Focused Task** nor the number of undated **Tasks** moves a Thread between groups or changes its place; only dated **Tasks** place it, one copy each.
 - Opening or reviewing a **Thread** does not clear or change any **Task**'s date; the user must clear, reschedule, complete, or resolve explicitly.
 
 ## Dashboard Structure
