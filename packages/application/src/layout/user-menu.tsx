@@ -25,7 +25,8 @@ interface UserMenuUser {
 interface UserMenuProps {
   onThemeChange: (theme: ThemePreference) => void;
   user?: UserMenuUser | null;
-  onSignOut: () => void;
+  /** Without it there is no Sign out, as on desktop. */
+  onSignOut?: (() => void) | undefined;
   /** Shown only when the host can save the person's data as a file. */
   onDownloadData?: (() => Promise<void>) | undefined;
   theme: ThemePreference;
@@ -67,17 +68,24 @@ export function UserMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-56">
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col gap-1">
-              {user?.name && (
-                <p className="text-sm leading-none font-medium">{user.name}</p>
-              )}
-              <p className="text-xs leading-none text-muted-foreground">
-                {user?.email}
-              </p>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
+          {/* Desktop has no account to name. */}
+          {(user?.name || user?.email) && (
+            <>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col gap-1">
+                  {user.name && (
+                    <p className="text-sm leading-none font-medium">
+                      {user.name}
+                    </p>
+                  )}
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user.email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <Palette />
@@ -99,7 +107,7 @@ export function UserMenu({
               </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
-          <DropdownMenuSeparator />
+          {(onDownloadData || onSignOut) && <DropdownMenuSeparator />}
           {onDownloadData && (
             <DropdownMenuItem
               onClick={() =>
@@ -114,10 +122,12 @@ export function UserMenu({
               Download my data
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={onSignOut}>
-            <LogOut />
-            Sign out
-          </DropdownMenuItem>
+          {onSignOut && (
+            <DropdownMenuItem onClick={onSignOut}>
+              <LogOut />
+              Sign out
+            </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

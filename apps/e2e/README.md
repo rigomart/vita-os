@@ -6,6 +6,7 @@ Playwright fixtures, shared actions, and worked example specs that agents use to
 - `bun run verify up|doctor|env|d1 "<SELECT>"|down [--purge]`: the stack alone, one JSON object per command (`src/verify.ts`).
 - `VITA_INSTANCE=<name>` picks the instance (default `main`); each has its own ports, D1, logs, and results under `.verify/instances/<name>/`.
 - `scratch/` (gitignored) is for the throwaway specs that prove a change: `bun run test:e2e scratch/try.spec.ts`.
+- `bun run test:e2e:desktop [file]`: builds `apps/desktop` and drives it through Electron (`playwright.desktop.config.ts`, fixture in `src/desktop.ts`), each test on a throwaway user-data folder, with no web stack. Its specs live in `tests/desktop/` and `scratch/desktop/`; the web config ignores them.
 
 Specs run in the installed Google Chrome (`channel: "chrome"` in `playwright.config.ts`). Without it, run `bunx playwright install chrome`.
 

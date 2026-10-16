@@ -73,6 +73,10 @@ The fixtures (`src/fixtures.ts`): `page` is signed in as the spec file's user at
 
 `src/app.ts` holds the actions specs share, for Threads, Tasks, the date picker, Notes, the palette, and D1 subqueries. Read it before writing your own. For example, `createThread(page, title)` returns the new Thread's side pane or drawer once its write is confirmed and it has stopped sliding; `addTask(pane, text)` and `taskRow(pane, text)` add and find a Task in it.
 
+## The desktop app
+
+`apps/desktop` is proved the same way, without the web stack: `bun run test:e2e:desktop scratch/desktop/<change>.spec.ts` builds the app (cached when unchanged) and launches it through Electron. Import `test` and `expect` from `src/desktop.ts`, not `src/fixtures.ts`. Each test gets `desktop` (`launch()` returns the window, `quit()` quits as Command-Q does, `launch()` again reopens the same throwaway user-data folder, `requests` lists every URL a window loaded, `spawn()` starts it outside Playwright for a second launch or a start that fails, `dialogs()` returns the error dialogs main showed), `stamp` and `shot`. Error dialogs are never shown during a run: the fixture requires `src/desktop-dialog-stub.cjs` into main, which writes each one to `dialogs()` instead, and main then quits with code 1. Teardown kills any app that hasn't quit within five seconds, so a spec can't leave a window or process behind. There is no HTTP, so `sent` does not apply: a success toast is a write's answer, and quit-and-relaunch proves what was stored. `desktop.app().context().setOffline(true)` turns the network off. [`tests/desktop/desktop-app.spec.ts`](../../../apps/e2e/tests/desktop/desktop-app.spec.ts) is the worked example.
+
 ## Look around with agent-browser
 
 For a quick look (what a screen shows now, how a layout reads, what to drive next), point agent-browser at your instance: `bun run verify up`, take `webUrl` from its output, open `<webUrl>/sign-up`, and sign up with a throwaway email such as `look-<anything>@vita.test`. The same isolation rules apply.

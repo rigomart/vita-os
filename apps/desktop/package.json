@@ -1,0 +1,45 @@
+{
+  "name": "@vita-os/desktop",
+  "productName": "Vita OS",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "start:dev": "bun scripts/dev.ts",
+    "build": "tsc -b && vite build && bun scripts/build-main.ts",
+    "start": "electron .",
+    "lint": "oxlint --fix --deny-warnings . && oxfmt --write .",
+    "lint:check": "oxlint --deny-warnings . && oxfmt --check .",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "typecheck": "tsc -b",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "@libsql/client": "0.18.0",
+    "@tanstack/react-query": "5.90.19",
+    "@tanstack/react-router": "1.170.18",
+    "@vita-os/application": "workspace:*",
+    "@vita-os/contracts": "workspace:*",
+    "@vita-os/local": "workspace:*",
+    "@vita-os/ui": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@rolldown/plugin-babel": "0.2.3",
+    "@tailwindcss/vite": "4.3.0",
+    "@types/node": "^24.13.3",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "6.0.2",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "electron": "44.8.0",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "8.0.13",
+    "vitest": "4.1.7"
+  }
+}
