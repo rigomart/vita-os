@@ -111,6 +111,22 @@ describe("UserMenu", () => {
     );
   });
 
+  it("offers the theme choice and no Sign out when the host has no session to end", async () => {
+    const user = userEvent.setup();
+    render(<UserMenu user={{}} theme="system" onThemeChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Account" }));
+
+    expect(
+      await screen.findByRole("menuitem", { name: "Appearance" }),
+    ).toBeVisible();
+    expect(screen.getAllByRole("menuitem")).toHaveLength(1);
+    expect(
+      screen.queryByRole("menuitem", { name: "Sign out" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("separator")).not.toBeInTheDocument();
+  });
+
   it("uses the email when the account has no name", () => {
     render(
       <UserMenu
