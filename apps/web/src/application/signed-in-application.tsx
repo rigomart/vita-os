@@ -11,8 +11,12 @@ import { VersionReload } from "./version-reload";
 
 export function SignedInApplication({
   client,
+  downloadData,
   children,
-}: PropsWithChildren<{ client: ApplicationClient }>) {
+}: PropsWithChildren<{
+  client: ApplicationClient;
+  downloadData?: () => Promise<void>;
+}>) {
   const { data } = authClient.useSession();
   return (
     // Session changes replace the cache before children can read another account's data.
@@ -24,6 +28,7 @@ export function SignedInApplication({
       <ViewerProvider
         viewer={data?.user}
         signOut={() => void authClient.signOut()}
+        downloadData={downloadData}
       >
         {children}
       </ViewerProvider>

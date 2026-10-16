@@ -13,6 +13,7 @@ import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { downloadData } from "./application/download-data";
 import { SignedInApplication } from "./application/signed-in-application";
 import { API_BASE_URL } from "./lib/env";
 import { versionAwareFetch } from "./lib/version-aware-fetch";
@@ -45,7 +46,15 @@ createRoot(root).render(
   <StrictMode>
     <AppErrorBoundary>
       <ThemeProvider>
-        <SignedInApplication client={applicationClient}>
+        <SignedInApplication
+          client={applicationClient}
+          downloadData={() =>
+            downloadData({
+              apiBaseUrl: API_BASE_URL,
+              monitor: versionAwareFetch,
+            })
+          }
+        >
           <SessionGateProvider gate={BrowserSessionGate}>
             <FeedbackProvider>
               <RouterProvider router={router} />

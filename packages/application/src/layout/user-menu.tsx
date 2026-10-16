@@ -12,7 +12,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@vita-os/ui/components/dropdown-menu";
-import { LogOut, Monitor, Moon, Palette, Sun } from "lucide-react";
+import { useFeedback } from "@vita-os/ui/lib/feedback";
+import { Download, LogOut, Monitor, Moon, Palette, Sun } from "lucide-react";
 
 import type { ThemePreference } from "../theme/theme-provider";
 
@@ -25,6 +26,8 @@ interface UserMenuProps {
   onThemeChange: (theme: ThemePreference) => void;
   user?: UserMenuUser | null;
   onSignOut: () => void;
+  /** Shown only when the host can save the person's data as a file. */
+  onDownloadData?: (() => Promise<void>) | undefined;
   theme: ThemePreference;
 }
 
@@ -43,7 +46,9 @@ export function UserMenu({
   theme,
   onThemeChange,
   onSignOut,
+  onDownloadData,
 }: UserMenuProps) {
+  const feedback = useFeedback();
   const accountName = user?.name ?? user?.email ?? "Account";
   const initial = (user?.name?.[0] ?? user?.email?.[0] ?? "?").toUpperCase();
 
@@ -95,6 +100,20 @@ export function UserMenu({
             </DropdownMenuSubContent>
           </DropdownMenuSub>
           <DropdownMenuSeparator />
+          {onDownloadData && (
+            <DropdownMenuItem
+              onClick={() =>
+                void onDownloadData().catch(() =>
+                  feedback.error(
+                    "Your data was not downloaded. Please try again.",
+                  ),
+                )
+              }
+            >
+              <Download />
+              Download my data
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={onSignOut}>
             <LogOut />
             Sign out

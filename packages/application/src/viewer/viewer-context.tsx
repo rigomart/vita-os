@@ -18,6 +18,11 @@ export interface ViewerAccess {
   /** Absent while the host is still establishing who is here. */
   viewer?: Viewer | undefined;
   signOut: () => void;
+  /**
+   * Save all of the person's data as one file. Absent where the host has no
+   * download to offer. Rejects when the download failed.
+   */
+  downloadData?: (() => Promise<void>) | undefined;
 }
 
 const ViewerContext = createContext<ViewerAccess | null>(null);
@@ -25,10 +30,11 @@ const ViewerContext = createContext<ViewerAccess | null>(null);
 export function ViewerProvider({
   viewer,
   signOut,
+  downloadData,
   children,
 }: PropsWithChildren<ViewerAccess>) {
   return (
-    <ViewerContext.Provider value={{ viewer, signOut }}>
+    <ViewerContext.Provider value={{ viewer, signOut, downloadData }}>
       {children}
     </ViewerContext.Provider>
   );
