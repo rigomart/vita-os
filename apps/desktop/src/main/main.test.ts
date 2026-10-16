@@ -1,5 +1,11 @@
 import { DamagedDatabaseError, MigrationFailedError } from "@vita-os/local";
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -14,6 +20,7 @@ import {
   listBackups,
 } from "./data-files.ts";
 import { opensExternally, originOf } from "./links.ts";
+import { captureConsole, openLog } from "./log.ts";
 import { preferencesStore, readPreferences } from "./preferences.ts";
 import { startupFailure } from "./startup-failure.ts";
 import { placementOnScreen } from "./window-placement.ts";
@@ -273,5 +280,42 @@ describe("backups", () => {
     expect(kept.at(-1)).toBe("vita-2026-10-03T120000.db");
     expect(readdirSync(folder)).toContain("notes.txt");
     expect(listBackups(join(folder, "missing"))).toEqual([]);
+  });
+});
+
+describe("the log", () => {
+  const folder = mkdtempSync(join(tmpdir(), "vita-log-"));
+  afterAll(() => rmSync(folder, { recursive: true, force: true }));
+
+  it("rolls over once past its size, so at most two files' worth is kept", () => {
+    const log = openLog(folder, 200);
+    for (let line = 1; line <= 12; line += 1) {
+      log.write(
+        "info",
+        `line ${String(line).padStart(2, "0")} ${"x".repeat(30)}`,
+      );
+    }
+    const current = readFileSync(join(folder, "main.log"), "utf8");
+    const old = readFileSync(join(folder, "main.old.log"), "utf8");
+    expect(current.length).toBeLessThanOrEqual(200);
+    expect(old.length).toBeLessThanOrEqual(200);
+    expect(current).toMatch(/ info  line 12 x+\n$/);
+    expect(readdirSync(folder).sort()).toEqual(["main.log", "main.old.log"]);
+  });
+
+  it("keeps what main's console says, and the console still prints it", () => {
+    const log = { path: "", write: vi.fn() };
+    const original = { ...console };
+    const print = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    captureConsole(log);
+    console.error("Backup failed", new Error("disk full"));
+    expect(print).toHaveBeenCalledOnce();
+    expect(log.write).toHaveBeenCalledWith(
+      "error",
+      expect.stringContaining("Backup failed Error: disk full"),
+    );
+    Object.assign(console, original);
   });
 });
