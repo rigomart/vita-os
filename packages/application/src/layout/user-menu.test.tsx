@@ -111,6 +111,44 @@ describe("UserMenu", () => {
     );
   });
 
+  it("offers Import from a cloud export only when the host provides it, and says so when it can't start", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <UserMenu user={{}} theme="system" onThemeChange={vi.fn()} />,
+    );
+    await user.click(screen.getByRole("button", { name: "Account" }));
+    await screen.findByRole("menuitem", { name: "Appearance" });
+    expect(
+      screen.queryByRole("menuitem", { name: "Import from a cloud export…" }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    const feedback = createFeedbackMock();
+    const importData = vi.fn(() => Promise.reject(new Error("refused")));
+    render(
+      <UserMenu
+        user={{}}
+        theme="system"
+        onThemeChange={vi.fn()}
+        onImportData={importData}
+      />,
+      { feedback },
+    );
+    await user.click(screen.getByRole("button", { name: "Account" }));
+    await user.click(
+      await screen.findByRole("menuitem", {
+        name: "Import from a cloud export…",
+      }),
+    );
+
+    expect(importData).toHaveBeenCalledOnce();
+    await waitFor(() =>
+      expect(feedback.error).toHaveBeenCalledWith(
+        "Your data was not imported. Please try again.",
+      ),
+    );
+  });
+
   it("offers the theme choice and no Sign out when the host has no session to end", async () => {
     const user = userEvent.setup();
     render(<UserMenu user={{}} theme="system" onThemeChange={vi.fn()} />);

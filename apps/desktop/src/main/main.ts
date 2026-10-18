@@ -20,7 +20,9 @@ import { join } from "node:path";
 import {
   CALL_CHANNEL,
   COMMAND_CHANNEL,
+  DATA_IMPORTED_CHANNEL,
   DOWNLOAD_DATA_CHANNEL,
+  IMPORT_DATA_CHANNEL,
   isThemeSource,
   type MenuCommand,
   THEME_CHANNEL,
@@ -95,6 +97,7 @@ const data = dataActions({
   window: () => window,
   track,
   backupsFolder,
+  imported: () => window?.webContents.send(DATA_IMPORTED_CHANNEL),
 });
 
 registerAppScheme();
@@ -151,6 +154,7 @@ async function start() {
                 error instanceof Error ? error.message : String(error),
               ),
             ),
+        importData: () => void data.importData(),
       }),
     ),
   );
@@ -187,6 +191,12 @@ async function start() {
       throw new Error("Vita OS refused a call from outside the app.");
     }
     return data.downloadData();
+  });
+  ipcMain.handle(IMPORT_DATA_CHANNEL, (event) => {
+    if (!isRendererUrl(event.senderFrame?.url)) {
+      throw new Error("Vita OS refused a call from outside the app.");
+    }
+    return data.importData();
   });
   ipcMain.on(THEME_CHANNEL, (event, theme: unknown) => {
     if (!isRendererUrl(event.senderFrame?.url) || !isThemeSource(theme)) return;

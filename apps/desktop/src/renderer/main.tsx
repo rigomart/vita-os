@@ -1,4 +1,4 @@
-import { onlineManager } from "@tanstack/react-query";
+import { onlineManager, useQueryClient } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import {
   AppErrorBoundary,
@@ -41,6 +41,8 @@ onlineManager.setOnline(true);
  * the browser host mounts them, over the local client in main. There is no
  * account, so the gate lets everyone through and there is no Sign out. The
  * menu bar's File commands reach the shell as the header's buttons do.
+ * Download my data and Import from a cloud export run in main, which writes
+ * the files and says how an import went.
  */
 const client = createBridgeClient(window.vita);
 
@@ -71,6 +73,15 @@ function NativeTheme() {
   return null;
 }
 
+function RefreshOnImport() {
+  const cache = useQueryClient();
+  useEffect(
+    () => window.vita.onDataImported(() => void cache.invalidateQueries()),
+    [cache],
+  );
+  return null;
+}
+
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element not found");
 
@@ -80,7 +91,12 @@ createRoot(root).render(
       <ThemeProvider>
         <NativeTheme />
         <ApplicationClientProvider client={client}>
-          <ViewerProvider viewer={{}} downloadData={window.vita.downloadData}>
+          <RefreshOnImport />
+          <ViewerProvider
+            viewer={{}}
+            downloadData={window.vita.downloadData}
+            importData={window.vita.importData}
+          >
             <SessionGateProvider gate={LocalSessionGate}>
               <HostCommandsProvider subscribe={window.vita.onCommand}>
                 <FeedbackProvider>
