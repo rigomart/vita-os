@@ -6,6 +6,10 @@ export const COMMAND_CHANNEL = "vita:command";
 export const THEME_CHANNEL = "vita:theme";
 /** The renderer asks main to save the person's data as a file on it. */
 export const DOWNLOAD_DATA_CHANNEL = "vita:download-data";
+/** The renderer asks main to import a cloud export on it. */
+export const IMPORT_DATA_CHANNEL = "vita:import-data";
+/** Main tells the renderer on it that an import changed the data. */
+export const DATA_IMPORTED_CHANNEL = "vita:data-imported";
 
 /** The product's `HostCommand`, which the renderer's compile checks this against. */
 export type MenuCommand = "new-note" | "new-thread" | "search";
@@ -27,4 +31,8 @@ export interface VitaBridge {
   setTheme(theme: ThemeSource): void;
   /** Saves the person's data where they pick. Resolves when saved or cancelled. */
   downloadData(): Promise<void>;
+  /** Imports a cloud export the person picks; main says how it went. Resolves when done or cancelled. */
+  importData(): Promise<void>;
+  /** Hears that an import changed the data, from either menu; returns how to stop. */
+  onDataImported(listener: () => void): () => void;
 }

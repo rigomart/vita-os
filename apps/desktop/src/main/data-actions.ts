@@ -1,6 +1,11 @@
-import { exportLocalData, type LocalDatabase } from "@vita-os/local";
+import {
+  exportLocalData,
+  importLocalData,
+  type LocalDatabase,
+} from "@vita-os/local";
 import { app, type BrowserWindow, dialog, shell } from "electron";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
@@ -16,17 +21,20 @@ export interface DataActionsOptions {
   /** The open database, once main has opened it. */
   local(): LocalDatabase | undefined;
   window(): BrowserWindow | null;
-  /** So quitting waits for a backup or a download being written. */
+  /** So quitting waits for a backup, a download or an import being written. */
   track<T>(work: Promise<T>): Promise<T>;
   backupsFolder: string;
+  /** After an import, so the window shows what it brought. */
+  imported(): void;
 }
 
-/** What the person can do with their data file from the menus: back it up, see the backups, download it. */
+/** What the person can do with their data file from the menus: back it up, see the backups, download it, import the web's. */
 export function dataActions({
   local,
   window,
   track,
   backupsFolder,
+  imported,
 }: DataActionsOptions) {
   let warnedAboutBackups = false;
 
@@ -107,7 +115,50 @@ export function dataActions({
         ),
       );
     },
+
+    /**
+     * Imports a file the web's Download my data saved, into an empty Vita OS.
+     * Says how it went in a message box; resolves when said or cancelled.
+     */
+    async importData(): Promise<void> {
+      const options: Electron.OpenDialogOptions = {
+        title: "Import from a Cloud Export",
+        defaultPath: app.getPath("downloads"),
+        properties: ["openFile"],
+        filters: [{ name: "Vita OS export", extensions: ["json"] }],
+      };
+      const parent = window();
+      const { canceled, filePaths } = await (parent
+        ? dialog.showOpenDialog(parent, options)
+        : dialog.showOpenDialog(options));
+      const [filePath] = filePaths;
+      if (canceled || !filePath) return;
+      try {
+        const counts = await track(
+          readFile(filePath, "utf8").then((text) =>
+            importLocalData({ db: opened().database }, text),
+          ),
+        );
+        console.info(`Vita OS imported ${filePath}`);
+        imported();
+        await dialog.showMessageBox({
+          message: "Your data is imported",
+          detail: `${count(counts.threads, "Thread")}, ${count(counts.notes, "Note")} and ${count(counts.areas, "Area")}.`,
+        });
+      } catch (error) {
+        console.error(`Vita OS didn't import ${filePath}`, error);
+        await dialog.showMessageBox({
+          type: "warning",
+          message: "Your data was not imported",
+          detail: messageOf(error),
+        });
+      }
+    },
   };
+}
+
+function count(amount: number, noun: string): string {
+  return `${amount} ${noun}${amount === 1 ? "" : "s"}`;
 }
 
 function messageOf(error: unknown): string {

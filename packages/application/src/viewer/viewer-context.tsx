@@ -25,6 +25,12 @@ export interface ViewerAccess {
    * download to offer. Rejects when the download failed.
    */
   downloadData?: (() => Promise<void>) | undefined;
+  /**
+   * Import a cloud export into an empty database, saying how it went. Absent
+   * where the host has nothing to import into, as on the web. Rejects only
+   * when the host couldn't start it.
+   */
+  importData?: (() => Promise<void>) | undefined;
 }
 
 const ViewerContext = createContext<ViewerAccess | null>(null);
@@ -33,10 +39,13 @@ export function ViewerProvider({
   viewer,
   signOut,
   downloadData,
+  importData,
   children,
 }: PropsWithChildren<ViewerAccess>) {
   return (
-    <ViewerContext.Provider value={{ viewer, signOut, downloadData }}>
+    <ViewerContext.Provider
+      value={{ viewer, signOut, downloadData, importData }}
+    >
       {children}
     </ViewerContext.Provider>
   );

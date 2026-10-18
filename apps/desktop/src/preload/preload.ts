@@ -3,7 +3,9 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 import {
   CALL_CHANNEL,
   COMMAND_CHANNEL,
+  DATA_IMPORTED_CHANNEL,
   DOWNLOAD_DATA_CHANNEL,
+  IMPORT_DATA_CHANNEL,
   THEME_CHANNEL,
   type MenuCommand,
   type VitaBridge,
@@ -20,6 +22,12 @@ const bridge: VitaBridge = {
   },
   setTheme: (theme) => ipcRenderer.send(THEME_CHANNEL, theme),
   downloadData: () => ipcRenderer.invoke(DOWNLOAD_DATA_CHANNEL),
+  importData: () => ipcRenderer.invoke(IMPORT_DATA_CHANNEL),
+  onDataImported: (listener) => {
+    const hear = () => listener();
+    ipcRenderer.on(DATA_IMPORTED_CHANNEL, hear);
+    return () => ipcRenderer.off(DATA_IMPORTED_CHANNEL, hear);
+  },
 };
 
 contextBridge.exposeInMainWorld("vita", bridge);

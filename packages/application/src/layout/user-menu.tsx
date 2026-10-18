@@ -13,7 +13,15 @@ import {
   DropdownMenuTrigger,
 } from "@vita-os/ui/components/dropdown-menu";
 import { useFeedback } from "@vita-os/ui/lib/feedback";
-import { Download, LogOut, Monitor, Moon, Palette, Sun } from "lucide-react";
+import {
+  Download,
+  LogOut,
+  Monitor,
+  Moon,
+  Palette,
+  Sun,
+  Upload,
+} from "lucide-react";
 
 import type { ThemePreference } from "../theme/theme-provider";
 
@@ -29,6 +37,8 @@ interface UserMenuProps {
   onSignOut?: (() => void) | undefined;
   /** Shown only when the host can save the person's data as a file. */
   onDownloadData?: (() => Promise<void>) | undefined;
+  /** Shown only when the host can import a cloud export, as on desktop. */
+  onImportData?: (() => Promise<void>) | undefined;
   theme: ThemePreference;
 }
 
@@ -48,6 +58,7 @@ export function UserMenu({
   onThemeChange,
   onSignOut,
   onDownloadData,
+  onImportData,
 }: UserMenuProps) {
   const feedback = useFeedback();
   const accountName = user?.name ?? user?.email ?? "Account";
@@ -107,7 +118,9 @@ export function UserMenu({
               </DropdownMenuRadioGroup>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
-          {(onDownloadData || onSignOut) && <DropdownMenuSeparator />}
+          {(onDownloadData || onImportData || onSignOut) && (
+            <DropdownMenuSeparator />
+          )}
           {onDownloadData && (
             <DropdownMenuItem
               onClick={() =>
@@ -120,6 +133,20 @@ export function UserMenu({
             >
               <Download />
               Download my data
+            </DropdownMenuItem>
+          )}
+          {onImportData && (
+            <DropdownMenuItem
+              onClick={() =>
+                void onImportData().catch(() =>
+                  feedback.error(
+                    "Your data was not imported. Please try again.",
+                  ),
+                )
+              }
+            >
+              <Upload />
+              Import from a cloud export…
             </DropdownMenuItem>
           )}
           {onSignOut && (

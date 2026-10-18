@@ -1,3 +1,5 @@
+import type { BatchItem } from "drizzle-orm/batch";
+
 import { asc, desc, eq, getTableColumns } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -32,6 +34,16 @@ const { user_id: _threadNoteOwner, ...THREAD_NOTE_COLUMNS } =
   getTableColumns(threadNotes);
 
 export type StoredRows = Omit<ExportFile, "format" | "exportedAt">;
+
+const latestMigration = (database: RequestScope["db"]["drizzle"]) =>
+  database
+    .select({ name: migrationHistory.name })
+    .from(migrationHistory)
+    .orderBy(desc(migrationHistory.id))
+    .limit(1);
+
+/** Rows per insert, well under SQLite's limit on bound values in one statement. */
+const ROWS_PER_INSERT = 100;
 
 /** Everything the owner has, read in one batch so a write can't split it. */
 export function exportStorage({ db, actorId }: RequestScope) {
@@ -75,11 +87,7 @@ export function exportStorage({ db, actorId }: RequestScope) {
           .from(threadNotes)
           .where(eq(threadNotes.user_id, actorId))
           .orderBy(asc(threadNotes.created_at), asc(threadNotes.id)),
-        database
-          .select({ name: migrationHistory.name })
-          .from(migrationHistory)
-          .orderBy(desc(migrationHistory.id))
-          .limit(1),
+        latestMigration(database),
       ]);
       if (!latest?.name) {
         throw new Error("The database has no applied migrations.");
@@ -94,4 +102,73 @@ export function exportStorage({ db, actorId }: RequestScope) {
       };
     },
   };
+}
+
+/** Writes an export's rows into an empty database, as the actor's. */
+export function importStorage({ db, actorId }: RequestScope) {
+  const database = db.drizzle;
+
+  return {
+    /**
+     * The database's newest migration and whether it holds any product row,
+     * whoever owns it: import goes only into a database with nothing in it.
+     */
+    async readTarget(): Promise<{
+      migration: string | null;
+      hasRecords: boolean;
+    }> {
+      const [[latest], ...tables] = await database.batch([
+        latestMigration(database),
+        database.select({ id: areas.id }).from(areas).limit(1),
+        database.select({ id: threads.id }).from(threads).limit(1),
+        database
+          .select({ id: activityLogEntries.id })
+          .from(activityLogEntries)
+          .limit(1),
+        database.select({ id: notes.id }).from(notes).limit(1),
+        database.select({ id: threadNotes.id }).from(threadNotes).limit(1),
+      ]);
+      return {
+        migration: latest?.name ?? null,
+        hasRecords: tables.some((rows) => rows.length > 0),
+      };
+    },
+
+    /** Every row in one batch, so a failure part way writes nothing. */
+    async write(rows: StoredRows): Promise<void> {
+      const owned = <R extends object>(list: R[]) =>
+        list.map((row) => ({ ...row, user_id: actorId }));
+      const statements: BatchItem<"sqlite">[] = [
+        ...chunks(owned(rows.areas)).map((chunk) =>
+          database.insert(areas).values(keepingUnlistedIcons(chunk)),
+        ),
+        ...chunks(owned(rows.threads)).map((chunk) =>
+          database.insert(threads).values(chunk),
+        ),
+        ...chunks(owned(rows.activity_log_entries)).map((chunk) =>
+          database.insert(activityLogEntries).values(chunk),
+        ),
+        ...chunks(owned(rows.notes)).map((chunk) =>
+          database.insert(notes).values(chunk),
+        ),
+        ...chunks(owned(rows.thread_notes)).map((chunk) =>
+          database.insert(threadNotes).values(chunk),
+        ),
+      ];
+      const [first, ...rest] = statements;
+      if (first === undefined) return;
+      await database.batch([first, ...rest]);
+    },
+  };
+}
+
+const keepingUnlistedIcons = (rows: object[]) =>
+  rows as (typeof areas.$inferInsert)[];
+
+function chunks<R>(rows: R[]): R[][] {
+  const result: R[][] = [];
+  for (let start = 0; start < rows.length; start += ROWS_PER_INSERT) {
+    result.push(rows.slice(start, start + ROWS_PER_INSERT));
+  }
+  return result;
 }

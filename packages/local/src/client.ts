@@ -3,6 +3,7 @@ import type {
   Clock,
   Database,
   ExportFile,
+  ImportedCounts,
   Operation,
   RequestScope,
 } from "@vita-os/operations";
@@ -122,6 +123,37 @@ export async function exportLocalData({
     });
   }
   return result.value;
+}
+
+/**
+ * A file the web's Download my data saved, into this computer's empty
+ * database. Rejects with what to tell the person when it is refused or fails,
+ * having changed nothing.
+ */
+export async function importLocalData(
+  {
+    db,
+    clock = operations.systemClock,
+  }: Pick<LocalApplicationClientOptions, "db" | "clock">,
+  text: string,
+): Promise<ImportedCounts> {
+  let file: unknown;
+  try {
+    file = JSON.parse(text);
+  } catch {
+    throw new Error("This file isn't a Vita OS export: it isn't JSON.");
+  }
+  const result = await operations.importData(
+    { db, clock, actorId: LOCAL_OWNER_ID },
+    file,
+  );
+  if (result.status === "ok") return result.value;
+  if (result.error._tag === "Unexpected") {
+    throw new Error("Vita OS couldn't write the imported data.", {
+      cause: result.error.cause,
+    });
+  }
+  throw new Error(result.error.message);
 }
 
 /** As JSON does: operations read an `undefined` field as "clear it". */

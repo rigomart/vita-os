@@ -1,6 +1,7 @@
 export {
   createLocalApplicationClient,
   exportLocalData,
+  importLocalData,
   LOCAL_OWNER_ID,
   type LocalApplicationClientOptions,
 } from "./client.ts";

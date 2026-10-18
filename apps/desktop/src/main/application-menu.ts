@@ -13,6 +13,7 @@ export interface ApplicationMenuOptions {
   backUpNow(): void;
   showBackups(): void;
   downloadData(): void;
+  importData(): void;
 }
 
 /**
@@ -33,6 +34,7 @@ export function applicationMenuTemplate({
   backUpNow,
   showBackups,
   downloadData,
+  importData,
 }: ApplicationMenuOptions): MenuItemConstructorOptions[] {
   return [
     {
@@ -78,6 +80,7 @@ export function applicationMenuTemplate({
         { label: "Back Up Now", click: backUpNow },
         { label: "Show Backups in Finder", click: showBackups },
         { label: "Download My Data…", click: downloadData },
+        { label: "Import from a Cloud Export…", click: importData },
         { type: "separator" },
         { role: "close" },
       ],
