@@ -26,8 +26,9 @@ function Chrome({ children }: { children: ReactNode }) {
     <div className="grid min-h-svh min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr]">
       <SkyHeader {...actions} />
       {/* Below `lg` the action bar floats over the page's foot, so the page
-          keeps that much room under its last item. */}
-      <main className="w-full min-w-0 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0">
+          keeps that much room under its last item. The side insets keep a
+          landscape phone's notch off the page. */}
+      <main className="w-full min-w-0 pr-[env(safe-area-inset-right)] pb-[calc(6rem+env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)] lg:pb-0">
         {children}
       </main>
       <ActionBar {...actions} />

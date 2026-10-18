@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -13,7 +13,32 @@
     <meta name="theme-color" content="#f6f6f8" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Vita OS" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- The page draws under the status bar; the sky header fills it. -->
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <script>
+      // The stored theme, applied before the first paint so a dark start never
+      // flashes white. `initializeTheme` in @vita-os/application takes over
+      // once the app loads; the key and colours are its.
+      (function () {
+        var theme = "system";
+        try {
+          theme = localStorage.getItem("vita-os:theme") || "system";
+        } catch (error) {}
+        var dark =
+          theme === "dark" ||
+          (theme !== "light" &&
+            matchMedia("(prefers-color-scheme: dark)").matches);
+        var root = document.documentElement;
+        root.classList.toggle("dark", dark);
+        root.style.colorScheme = dark ? "dark" : "light";
+        document
+          .querySelector('meta[name="theme-color"]')
+          .setAttribute("content", dark ? "#0e0f11" : "#f6f6f8");
+      })();
+    </script>
 
     <title>Vita OS</title>
     <meta

@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { useAttentionClock } from "../hooks/use-attention-clock";
 import { clock } from "../lib/clock";
 import { isApplePlatform } from "../lib/platform";
+import { useTopColor } from "../theme/theme-color";
 import { useTheme } from "../theme/theme-provider";
 import { useViewer } from "../viewer/viewer-context";
 import { hourOf, isDay, skyAt, sunAt } from "./sky";
@@ -37,6 +38,9 @@ export interface ChromeActions {
  *
  * From `lg` the actions sit at its right; below, they move to the `ActionBar`
  * at the bottom, where a thumb reaches them, and only the account menu stays.
+ *
+ * In an installed app the sky runs up under the status bar, and the top of it
+ * stays there when the header scrolls away, so the bar is always sky.
  */
 export function SkyHeader({
   onNewNote,
@@ -49,80 +53,89 @@ export function SkyHeader({
   const hour = hourOf(useMinuteClock());
   const sky = skyAt(hour);
   const palette = paletteKey();
+  useTopColor(sky.top);
 
   return (
-    <header
-      aria-label="Vita OS"
-      className="relative isolate overflow-hidden"
-      style={
-        {
-          "--ink": sky.ink,
-          background: `linear-gradient(to bottom, ${sky.top}, ${sky.horizon})`,
-          color: sky.ink,
-        } as CSSProperties
-      }
-    >
-      {!isDay(hour) && <Stars />}
-      <div className="relative mx-auto max-w-[76rem] px-4 sm:px-6">
-        <Sun hour={hour} />
-        <div className="flex h-16 items-center gap-4">
-          <Link
-            to="/"
-            aria-label="Vita OS home"
-            className="shrink-0 rounded-lg outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-[var(--ink)]"
-          >
-            <img
-              src="/vita-logo.svg"
-              alt=""
-              className="size-7 rounded-lg ring-1 ring-[color-mix(in_oklab,var(--ink)_25%,transparent)]"
-            />
-          </Link>
-          <p className="flex min-w-0 items-baseline gap-2.5">
-            <time dateTime={format(today, "yyyy-MM-dd")} className="contents">
-              <span className="font-heading text-2xl font-semibold tracking-tight">
-                {format(today, "EEEE")}
-              </span>
-              <span className="truncate text-sm opacity-75">
-                {format(today, "MMMM d")}
-              </span>
-            </time>
-          </p>
+    <>
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 z-40 h-[env(safe-area-inset-top)]"
+        style={{ background: sky.top }}
+      />
+      <header
+        aria-label="Vita OS"
+        className="relative isolate overflow-hidden [--safe-top:env(safe-area-inset-top)] pt-(--safe-top) pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]"
+        style={
+          {
+            "--ink": sky.ink,
+            // Flat under the status bar, where the strip above matches it.
+            background: `linear-gradient(to bottom, ${sky.top} var(--safe-top), ${sky.horizon})`,
+            color: sky.ink,
+          } as CSSProperties
+        }
+      >
+        {!isDay(hour) && <Stars />}
+        <div className="relative mx-auto max-w-[76rem] px-4 sm:px-6">
+          <Sun hour={hour} />
+          <div className="flex h-16 items-center gap-4">
+            <Link
+              to="/"
+              aria-label="Vita OS home"
+              className="shrink-0 rounded-lg outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-[var(--ink)]"
+            >
+              <img
+                src="/vita-logo.svg"
+                alt=""
+                className="size-7 rounded-lg ring-1 ring-[color-mix(in_oklab,var(--ink)_25%,transparent)]"
+              />
+            </Link>
+            <p className="flex min-w-0 items-baseline gap-2.5">
+              <time dateTime={format(today, "yyyy-MM-dd")} className="contents">
+                <span className="font-heading text-2xl font-semibold tracking-tight">
+                  {format(today, "EEEE")}
+                </span>
+                <span className="truncate text-sm opacity-75">
+                  {format(today, "MMMM d")}
+                </span>
+              </time>
+            </p>
 
-          <div className="ml-auto flex items-center gap-1.5">
-            <TooltipProvider delay={200}>
-              <div className="hidden items-center gap-1.5 lg:flex">
-                <button
-                  type="button"
-                  aria-label={`Search, ${palette.label}`}
-                  onClick={onOpenPalette}
-                  className={cn(skyButton, "w-52 justify-start px-3")}
-                >
-                  <Search aria-hidden className="size-4" />
-                  <span className="text-sm opacity-80">Search</span>
-                  <span className="ml-auto text-xs opacity-60">
-                    {palette.hint}
-                  </span>
-                </button>
-                <SkyAction label="New note" shortcut="Q" onClick={onNewNote}>
-                  <PenLine className="size-4" />
-                </SkyAction>
-                <SkyAction label="New thread" onClick={onNewThread}>
-                  <MessageSquarePlus className="size-4" />
-                </SkyAction>
-              </div>
-            </TooltipProvider>
-            <UserMenu
-              user={viewer}
-              theme={theme}
-              onThemeChange={setTheme}
-              onSignOut={signOut}
-              onDownloadData={downloadData}
-            />
+            <div className="ml-auto flex items-center gap-1.5">
+              <TooltipProvider delay={200}>
+                <div className="hidden items-center gap-1.5 lg:flex">
+                  <button
+                    type="button"
+                    aria-label={`Search, ${palette.label}`}
+                    onClick={onOpenPalette}
+                    className={cn(skyButton, "w-52 justify-start px-3")}
+                  >
+                    <Search aria-hidden className="size-4" />
+                    <span className="text-sm opacity-80">Search</span>
+                    <span className="ml-auto text-xs opacity-60">
+                      {palette.hint}
+                    </span>
+                  </button>
+                  <SkyAction label="New note" shortcut="Q" onClick={onNewNote}>
+                    <PenLine className="size-4" />
+                  </SkyAction>
+                  <SkyAction label="New thread" onClick={onNewThread}>
+                    <MessageSquarePlus className="size-4" />
+                  </SkyAction>
+                </div>
+              </TooltipProvider>
+              <UserMenu
+                user={viewer}
+                theme={theme}
+                onThemeChange={setTheme}
+                onSignOut={signOut}
+                onDownloadData={downloadData}
+              />
+            </div>
           </div>
+          <div className="h-4 lg:h-8" />
         </div>
-        <div className="h-4 lg:h-8" />
-      </div>
-    </header>
+      </header>
+    </>
   );
 }
 
