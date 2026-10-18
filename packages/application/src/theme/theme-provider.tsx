@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { applyThemeColor } from "./theme-color";
+
 export type ThemePreference = "dark" | "light" | "system";
 export type ResolvedTheme = Exclude<ThemePreference, "system">;
 
@@ -43,6 +45,7 @@ function applyTheme(theme: ThemePreference) {
   const resolvedTheme = resolveTheme(theme);
   document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
   document.documentElement.style.colorScheme = resolvedTheme;
+  applyThemeColor(resolvedTheme);
   return resolvedTheme;
 }
 

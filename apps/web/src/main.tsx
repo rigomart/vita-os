@@ -72,5 +72,14 @@ createRoot(root).render(
 
 function ThemeAwareToaster() {
   const { resolvedTheme } = useTheme();
-  return <Toaster theme={resolvedTheme} />;
+  return (
+    <Toaster
+      theme={resolvedTheme}
+      // On a phone, above the action bar (`bottom-[max(0.75rem,…)]`, 3.5rem
+      // tall) rather than over it and the home indicator.
+      mobileOffset={{
+        bottom: "calc(max(0.75rem, env(safe-area-inset-bottom)) + 4rem)",
+      }}
+    />
+  );
 }
