@@ -52,7 +52,52 @@ export interface RowProps {
   big?: boolean;
   /** The Thread's title under the Task at every width. */
   stacked?: boolean;
+  /**
+   * How much attention the line asks for, 0 (Late, Today) to 5 (months out):
+   * the nearer, the larger and darker. Overrides `big`, `loud` and `quiet`.
+   */
+  level?: number;
 }
+
+/** Each level's type size, weight, ink and room. */
+export const levels = [
+  {
+    frame: "py-2.5 text-[17px] text-foreground",
+    marker: "h-[1.55rem]",
+    task: "font-semibold",
+    thread: "text-sm",
+  },
+  {
+    frame: "py-2 text-[15px] text-foreground",
+    marker: "h-[1.4rem]",
+    task: "font-medium",
+    thread: "text-[13px]",
+  },
+  {
+    frame: "py-1.5 text-sm text-foreground/90",
+    marker: "h-5",
+    task: "font-medium",
+    thread: "text-[13px]",
+  },
+  {
+    frame: "py-1.5 text-sm text-foreground/75 hover:text-foreground",
+    marker: "h-5",
+    task: "font-normal",
+    thread: "text-[13px]",
+  },
+  {
+    frame: "py-1 text-[13px] text-foreground/60 hover:text-foreground",
+    marker: "h-[1.15rem]",
+    task: "font-normal",
+    thread: "text-xs",
+  },
+  {
+    frame: "py-1 text-[13px] text-foreground/50 hover:text-foreground",
+    marker: "h-[1.15rem]",
+    task: "font-normal",
+    thread: "text-xs",
+  },
+] as const;
 
 /**
  * One item on the board as a line rather than a sheet: a marker, the words,
@@ -76,6 +121,7 @@ function ThreadRow({
   big,
   dateInHeading = false,
   item,
+  level,
   loud,
   quiet,
   stacked,
@@ -114,6 +160,7 @@ function ThreadRow({
       quiet={quiet}
       loud={loud}
       big={big}
+      level={level}
       marker={
         lead?.repeat !== undefined ? (
           <RepeatIcon
@@ -142,7 +189,11 @@ function ThreadRow({
             className={cn(
               "line-clamp-2",
               !stacked && "@md:inline",
-              big ? "font-semibold" : !quiet && "font-medium",
+              level !== undefined
+                ? levels[level]!.task
+                : big
+                  ? "font-semibold"
+                  : !quiet && "font-medium",
             )}
           >
             {task?.text ?? thread.title}
@@ -151,7 +202,11 @@ function ThreadRow({
             <span
               className={cn(
                 "block truncate font-normal text-muted-foreground",
-                big ? "pt-0.5 text-sm" : "text-[13px]",
+                level !== undefined
+                  ? levels[level]!.thread
+                  : big
+                    ? "pt-0.5 text-sm"
+                    : "text-[13px]",
                 !stacked && "@md:inline",
               )}
             >
@@ -219,6 +274,7 @@ function ThreadRow({
 function NoteRow({
   big,
   dateInHeading = false,
+  level,
   loud,
   note,
   quiet,
@@ -252,6 +308,7 @@ function NoteRow({
       quiet={quiet}
       loud={loud}
       big={big}
+      level={level}
       marker={<NoteMark />}
       words={
         <button
@@ -311,6 +368,7 @@ export function NoteMark() {
 function RowFrame({
   big,
   busy,
+  level,
   controls,
   date,
   loud,
@@ -322,6 +380,7 @@ function RowFrame({
 }: {
   big?: boolean;
   busy: boolean;
+  level?: number;
   controls: ReactNode;
   date: ReactNode;
   loud?: boolean;
@@ -336,8 +395,16 @@ function RowFrame({
       aria-busy={busy || undefined}
       className={cn(
         "group/card relative flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors has-focus-visible:bg-muted/60 hover:bg-muted/50",
-        big ? "px-3.5 py-3 text-[17px]" : loud ? "text-[15px]" : "text-sm",
-        quiet ? "text-foreground/70" : "text-foreground",
+        level !== undefined
+          ? levels[level]!.frame
+          : [
+              big
+                ? "px-3.5 py-3 text-[17px]"
+                : loud
+                  ? "text-[15px]"
+                  : "text-sm",
+              quiet ? "text-foreground/70" : "text-foreground",
+            ],
         busy && "opacity-60",
       )}
     >
@@ -345,13 +412,25 @@ function RowFrame({
         aria-hidden
         className={cn(
           "flex w-3 shrink-0 items-center justify-center",
-          big ? "h-[1.55rem]" : loud ? "h-[1.4rem]" : "h-5",
+          level !== undefined
+            ? levels[level]!.marker
+            : big
+              ? "h-[1.55rem]"
+              : loud
+                ? "h-[1.4rem]"
+                : "h-5",
         )}
       >
         {marker}
       </span>
       <div className="min-w-0 flex-1 leading-snug">{words}</div>
-      <div className="flex h-5 shrink-0 items-center gap-2.5 text-[12px] text-muted-foreground">
+      <div
+        className={cn(
+          "flex h-5 shrink-0 items-center gap-2.5 text-[12px] text-muted-foreground",
+          level === 0 && "h-[1.55rem]",
+          level !== undefined && level >= 4 && "opacity-70",
+        )}
+      >
         {meta}
         {showsDate && date}
         <span className="flex items-center gap-1">
