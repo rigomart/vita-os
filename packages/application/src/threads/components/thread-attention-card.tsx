@@ -60,7 +60,6 @@ export function ThreadAttentionCard({
   dateInHeading = false,
   onAddFollowUp,
   onCompleteTask,
-  onLateFill,
   onSetTaskDate,
   onSetTaskRepeat,
   onSkipTask,
@@ -75,8 +74,6 @@ export function ThreadAttentionCard({
   /** Adds a Task named "Follow up" carrying the date. */
   onAddFollowUp: (when: number) => unknown;
   onCompleteTask: (taskId: TaskId) => unknown;
-  /** The card sits on Late's fill, so it drops its own late tint. */
-  onLateFill?: boolean;
   /** Sets, changes or (with `null`) clears one Task's date. */
   onSetTaskDate: (taskId: TaskId, date: number | null) => unknown;
   /** Sets, changes or (with `null`) clears one Task's Repeat. */
@@ -131,8 +128,6 @@ export function ThreadAttentionCard({
 
   return (
     <BoardCard
-      late={isLate(lead?.date, currentDate)}
-      onLateFill={onLateFill}
       footer={
         <>
           {showsDate && dateControl}
@@ -228,14 +223,12 @@ export function ConnectedThreadAttentionCard({
   area,
   currentDate,
   dateInHeading,
-  onLateFill,
   task,
   thread,
 }: {
   area?: AreaSummary;
   currentDate: number;
   dateInHeading?: boolean;
-  onLateFill?: boolean;
   task?: Task;
   thread: Thread;
 }) {
@@ -250,7 +243,6 @@ export function ConnectedThreadAttentionCard({
       area={area}
       currentDate={currentDate}
       dateInHeading={dateInHeading}
-      onLateFill={onLateFill}
       task={task}
       thread={thread}
       onAddFollowUp={(when) => taskDates.addFollowUp(when)}
@@ -284,7 +276,7 @@ function SecondRow({
 }
 
 /** A Task's words, named as a Task, and its Repeat, for a screen reader. */
-function TaskText({ task }: { task: Task }) {
+export function TaskText({ task }: { task: Task }) {
   return (
     <>
       <span className="sr-only">
@@ -298,7 +290,7 @@ function TaskText({ task }: { task: Task }) {
 }
 
 /** The repeat glyph for a repeating Task, else a hollow dot. */
-function TaskMarker({
+export function TaskMarker({
   currentDate,
   task,
 }: {

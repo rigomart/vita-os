@@ -1,13 +1,12 @@
 import { cn } from "@vita-os/ui/lib/utils";
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import type { AttentionBoard } from "./attention-board-model";
 import type { BoardScope } from "./dashboard-item";
 
 import { itemKey, unscheduledRuns } from "./attention-board-model";
 import { DashboardItem } from "./dashboard-item";
-import { Count, FileTab } from "./dashboard-list";
 import { foldedNoDateSummary, NO_DATE_FILL } from "./dashboard-list-model";
 
 /**
@@ -119,4 +118,51 @@ function Runs({ board, scope }: { board: AttentionBoard; scope: BoardScope }) {
       </ul>
     </section>
   ));
+}
+
+/**
+ * Folded No date as one shape, like a file tab on its folder: the heading on
+ * a tab, the summary on the fill below, and the corner where they meet turned
+ * inward.
+ */
+function FileTab({
+  children,
+  fill,
+  heading,
+  label,
+}: {
+  children: ReactNode;
+  fill: string;
+  heading: ReactNode;
+  label: string;
+}) {
+  return (
+    <section aria-label={label}>
+      <div className="flex">
+        <div className={cn("relative rounded-t-xl", fill)}>
+          <h2 className="flex items-baseline gap-2.5 px-4 pt-2 pb-1">
+            {heading}
+          </h2>
+          <span
+            aria-hidden
+            className={cn(
+              "absolute bottom-0 left-full size-3 [mask-image:radial-gradient(circle_at_100%_0,transparent_11.5px,black_12px)]",
+              fill,
+            )}
+          />
+        </div>
+      </div>
+      <div className={cn("rounded-2xl rounded-tl-none p-1.5", fill)}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function Count({ count }: { count: number }) {
+  return (
+    <span className="text-xs tabular-nums text-muted-foreground/60">
+      {count}
+    </span>
+  );
 }

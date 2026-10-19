@@ -1,6 +1,6 @@
 # A card for every dated Task
 
-**Status:** Accepted. Amends [ADR 0037](./0037-one-list-under-the-sky.md) (an Open Thread may stand in more than one group) and [ADR 0038](./0038-board-cards-as-sheets.md) (a dated card leads with its Task). Retires the Focused Task of [ADR 0022](./0022-peer-moves-with-an-optional-focus.md) and the Focus command of [ADR 0039](./0039-thread-tasks-in-one-list.md).
+**Status:** Accepted. Amends [ADR 0037](./0037-one-list-under-the-sky.md) (an Open Thread may stand in more than one group) and [ADR 0038](./0038-board-cards-as-sheets.md) (a dated card leads with its Task). Retires the Focused Task of [ADR 0022](./0022-peer-moves-with-an-optional-focus.md) and the Focus command of [ADR 0039](./0039-thread-tasks-in-one-list.md). Amended by [ADR 0045](./0045-the-list-graded-by-attention.md): each copy on the list is a line, "Task · Thread".
 **Date:** 2026-10-16
 
 A **Thread** stood on the **Dashboard** once, at its soonest dated **Task**, and its card named one **Task**. A frequent **Repeat** is almost always the soonest, so it held the card, and the **Tasks** dated after it were not named anywhere on the board. A Thread with a daily evening check-in, a pickup on Saturday and an appointment on Tuesday showed the check-in every day; on Saturday the card read "2 tasks that day", on Tuesday "2 tasks today", and the appointment's words appeared only in **Thread** detail. Each dated **Task** is a point where the person asked the Thread to come back, and the board was dropping all but the first.

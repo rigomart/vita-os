@@ -5,22 +5,36 @@ import type { BoardGroup, BoardItem } from "./attention-board-model";
 /**
  * How a group of the Dashboard's list reads, by how far it stands from today:
  * 0 is Late and Today, 1 Tomorrow, 2 two or three days out, 3 the rest of the
- * week, 4 the weeks after it, 5 the months. Nearer reads larger, darker and
- * more raised; from the weeks on, items shrink to one line each, since they
- * are only there to be known about.
+ * week, 4 the weeks after it, 5 the months. Every group is a ruled heading
+ * over lines; the nearer it is, the larger, bolder and darker both read, with
+ * more room around them, so what is asking stands out and what is far off
+ * recedes.
  */
 export interface GroupLook {
   distance: number;
-  /** The file tab's fill, shared by its tab and its body. */
-  fill: string;
-  /** The heading's size, weight and ink. */
-  heading: string;
-  /** One line per item instead of a card. */
-  oneLine: boolean;
+  heading: {
+    /** The room under the group. */
+    section: string;
+    /** The rule above the heading and the room around it. */
+    rule: string;
+    /** The date's number, for a group that names one day. */
+    numeral: string;
+    label: string;
+  };
+  line: LineLook;
 }
 
-/** From here on, items are one-line rows. */
-const ONE_LINE_FROM = 4;
+/** How each item's line reads at a group's distance. */
+export interface LineLook {
+  /** The line's room, type size and ink. */
+  frame: string;
+  /** Holds the marker on the first line of text. */
+  marker: string;
+  task: string;
+  thread: string;
+  /** The Area, date and controls at the right. */
+  meta: string;
+}
 
 const distanceByTone: Record<Exclude<BoardGroup["tone"], "far">, number> = {
   late: 0,
@@ -30,26 +44,90 @@ const distanceByTone: Record<Exclude<BoardGroup["tone"], "far">, number> = {
   week: 3,
 };
 
-/** Nearer reads larger and darker, in small steps. */
-const headings = [
-  "text-xl font-semibold text-foreground",
-  "text-lg font-semibold text-foreground",
-  "text-base font-semibold text-foreground/85",
-  "text-[15px] font-medium text-foreground/75",
-  "text-sm font-medium text-muted-foreground",
-  "text-sm font-medium text-muted-foreground/80",
+const headings: GroupLook["heading"][] = [
+  {
+    section: "pb-5",
+    rule: "border-border/80 pt-4 pb-1.5",
+    numeral: "text-3xl font-semibold",
+    label: "text-xl font-semibold",
+  },
+  {
+    section: "pb-4",
+    rule: "border-border/70 pt-3.5 pb-1",
+    numeral: "text-2xl font-semibold text-foreground/85",
+    label: "text-lg font-semibold",
+  },
+  {
+    section: "pb-3",
+    rule: "border-border/60 pt-3 pb-1",
+    numeral: "text-xl font-medium text-foreground/60",
+    label: "text-base font-medium text-foreground/85",
+  },
+  {
+    section: "pb-2.5",
+    rule: "border-border/50 pt-2.5 pb-0.5",
+    numeral: "text-lg font-medium text-foreground/45",
+    label: "text-[15px] font-medium text-foreground/70",
+  },
+  {
+    section: "pb-2",
+    rule: "border-border/40 pt-2.5 pb-0.5",
+    numeral: "",
+    label: "text-sm font-medium text-muted-foreground",
+  },
+  {
+    section: "pb-2",
+    rule: "border-border/30 pt-2 pb-0.5",
+    numeral: "",
+    label: "text-[13px] font-medium text-muted-foreground/70",
+  },
 ];
 
-/** Late's warm fill: the attention colour faintly over the page. */
-export const LATE_FILL =
-  "bg-[color-mix(in_oklab,var(--color-condition-attention)_9%,var(--color-surface-1))]";
-const NEAR_FILL =
-  "bg-[color-mix(in_oklab,var(--color-surface-2)_70%,var(--color-surface-1))]";
-const FAR_FILL =
-  "bg-[color-mix(in_oklab,var(--color-surface-2)_45%,var(--color-surface-1))]";
-/** The folded No date tab, between the near days and the far ones. */
-export const NO_DATE_FILL =
-  "bg-[color-mix(in_oklab,var(--color-surface-2)_55%,var(--color-surface-1))]";
+/** Faint lines come back to full ink under the pointer, to be read. */
+const lines: LineLook[] = [
+  {
+    frame: "py-2.5 text-[17px] text-foreground",
+    marker: "h-[1.55rem]",
+    task: "font-semibold",
+    thread: "text-sm",
+    meta: "h-[1.55rem]",
+  },
+  {
+    frame: "py-2 text-[15px] text-foreground",
+    marker: "h-[1.4rem]",
+    task: "font-medium",
+    thread: "text-[13px]",
+    meta: "h-5",
+  },
+  {
+    frame: "py-1.5 text-sm text-foreground/90",
+    marker: "h-5",
+    task: "font-medium",
+    thread: "text-[13px]",
+    meta: "h-5",
+  },
+  {
+    frame: "py-1.5 text-sm text-foreground/75 hover:text-foreground",
+    marker: "h-5",
+    task: "font-normal",
+    thread: "text-[13px]",
+    meta: "h-5",
+  },
+  {
+    frame: "py-1 text-[13px] text-foreground/60 hover:text-foreground",
+    marker: "h-[1.15rem]",
+    task: "font-normal",
+    thread: "text-xs",
+    meta: "h-[1.15rem] opacity-70",
+  },
+  {
+    frame: "py-1 text-[13px] text-foreground/50 hover:text-foreground",
+    marker: "h-[1.15rem]",
+    task: "font-normal",
+    thread: "text-xs",
+    meta: "h-[1.15rem] opacity-70",
+  },
+];
 
 export function groupLook(group: BoardGroup): GroupLook {
   const distance =
@@ -58,22 +136,20 @@ export function groupLook(group: BoardGroup): GroupLook {
         ? 4
         : 5
       : distanceByTone[group.tone];
-  const late = group.tone === "late";
+  const heading = headings[distance]!;
   return {
     distance,
-    heading: late
-      ? "text-xl font-semibold text-condition-attention"
-      : headings[distance]!,
-    fill: late
-      ? LATE_FILL
-      : distance === 0
-        ? "bg-surface-2"
-        : distance <= 2
-          ? NEAR_FILL
-          : FAR_FILL,
-    oneLine: distance >= ONE_LINE_FROM,
+    heading:
+      group.tone === "late"
+        ? { ...heading, label: `${heading.label} text-condition-attention` }
+        : heading,
+    line: lines[distance]!,
   };
 }
+
+/** The folded No date tab's fill. */
+export const NO_DATE_FILL =
+  "bg-[color-mix(in_oklab,var(--color-surface-2)_55%,var(--color-surface-1))]";
 
 /** What an item is called in a line of text: its title, or a Note's first line. */
 export function itemTitle(item: BoardItem) {

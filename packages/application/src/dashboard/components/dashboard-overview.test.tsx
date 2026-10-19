@@ -366,7 +366,7 @@ describe("DashboardOverview", () => {
     expect(within(unlabeled!).queryByTitle("Home")).not.toBeInTheDocument();
   });
 
-  it("reads every dated item as one list, attention first, each group with its count", () => {
+  it("reads every dated item as one list, attention first", () => {
     renderOverview({
       threads: [
         thread("Late one", { followUp: today - DAY }),
@@ -385,15 +385,17 @@ describe("DashboardOverview", () => {
       "In 1 week",
       "August",
     ]);
-    expect(screen.getByRole("region", { name: "Late" })).toHaveTextContent(
-      /^Late2/,
-    );
+    expect(
+      within(screen.getByRole("region", { name: "Late" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(2);
     expect(groupText("Today")).toEqual([
       expect.stringContaining("Water the plants"),
     ]);
   });
 
-  it("shows items from next week on as one line each, opening what they are", () => {
+  it("shows items from next week on as the same lines, opening what they are", () => {
     renderOverview({
       threads: [thread("Distant", { followUp: today + 30 * DAY })],
       notes: [
@@ -404,35 +406,30 @@ describe("DashboardOverview", () => {
     });
 
     const week = screen.getByRole("region", { name: "In 1 week" });
-    const line = within(week).getByRole("button", {
-      name: /^Open note: Renew the passport/,
-    });
-    // A Note's first line, and its date: no card controls.
+    const line = within(week).getByRole("listitem");
+    // A Note's first line and its date, with its controls as near up.
     expect(line).toHaveTextContent(/^Renew the passport10d$/);
     expect(
-      within(week).queryByRole("button", { name: "Archive note" }),
-    ).toBeNull();
+      within(line).getByRole("button", {
+        name: /^Open note: Renew the passport/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(line).getByRole("button", { name: "Archive note" }),
+    ).toBeInTheDocument();
 
     const month = screen.getByRole("region", { name: "August" });
-    expect(within(month).getByRole("link")).toHaveAttribute(
+    expect(
+      within(month).getByRole("link", { name: "Distant" }),
+    ).toHaveAttribute(
       "href",
       // The thread pane opens over this page (the mocked Link keeps `.`).
       ".?thread=distant",
     );
-    // A Thread's row reads "Task · Thread", so its rows in a week read apart.
-    expect(within(month).getByRole("link")).toHaveTextContent(
-      /^Follow up · DistantAug 16$/,
+    // A Thread's line reads "Task · Thread", then its Area and date.
+    expect(within(month).getByRole("listitem")).toHaveTextContent(
+      /^Task: Follow up · DistantHealthAug 16$/,
     );
-  });
-
-  it("drops a late card's own tint on Late's fill", () => {
-    renderOverview({
-      threads: [thread("Overdue", { followUp: today - DAY })],
-    });
-
-    const sheet = card("Overdue").querySelector('[class*="group/card"]');
-    expect(sheet).not.toBeNull();
-    expect(sheet!.className).not.toMatch(/condition-attention\)_7%/);
   });
 
   it("heads each group with when it comes due, and leaves an exact day to its heading", () => {
@@ -448,14 +445,15 @@ describe("DashboardOverview", () => {
 
     const group = (name: string) => screen.getByRole("region", { name });
 
-    // A late card keeps its own date: "Late" says only that it slipped.
-    expect(group("Late")).toHaveTextContent(/^Late1/);
+    // A late line keeps its own date: "Late" says only that it slipped.
+    expect(group("Late")).toHaveTextContent(/^Late/);
     expect(within(group("Late")).getByText("−3d")).toBeVisible();
     // Only the heading says Today; the card under it carries no token.
     expect(within(group("Today")).getAllByText(/Today/)).toHaveLength(1);
 
     const tomorrow = group("Tomorrow");
-    expect(tomorrow).toHaveTextContent(/^TomorrowSaturday1/);
+    // A day's heading leads with the date's number.
+    expect(tomorrow).toHaveTextContent(/^18TomorrowSaturday/);
     expect(within(tomorrow).queryByText("Sat")).not.toBeInTheDocument();
     // The date still opens from the card, as a control rather than a token.
     expect(
@@ -463,7 +461,7 @@ describe("DashboardOverview", () => {
     ).toBeInTheDocument();
 
     const sunday = group("Sunday");
-    expect(sunday).toHaveTextContent(/^Sundayin 2 days2/);
+    expect(sunday).toHaveTextContent(/^19Sundayin 2 days/);
     expect(within(sunday).getAllByRole("listitem")).toHaveLength(2);
   });
 
@@ -569,7 +567,7 @@ describe("DashboardOverview", () => {
 
     const sunday = screen.getByRole("region", { name: "Sunday" });
     const checkup = within(card("Checkup"));
-    expect(card("Checkup")).toHaveTextContent(/^Task: Book the scanCheckup/);
+    expect(card("Checkup")).toHaveTextContent(/^Task: Book the scan · Checkup/);
     expect(checkup.getByRole("link", { name: "Checkup" })).toBeVisible();
     expect(screen.queryByText("Pick a clinic")).toBeNull();
     expect(within(sunday).getAllByRole("listitem")).toHaveLength(1);
@@ -597,11 +595,10 @@ describe("DashboardOverview", () => {
     });
 
     const todayGroup = screen.getByRole("region", { name: "Today" });
-    // The heading counts cards, not Threads.
-    expect(todayGroup).toHaveTextContent(/^Today2/);
     const [morning, evening] = within(todayGroup).getAllByRole("listitem");
-    expect(morning).toHaveTextContent(/^Task: Morning checkRecovery/);
-    expect(evening).toHaveTextContent(/^Task: Evening checkRecovery/);
+    expect(within(todayGroup).getAllByRole("listitem")).toHaveLength(2);
+    expect(morning).toHaveTextContent(/^Task: Morning check · Recovery/);
+    expect(evening).toHaveTextContent(/^Task: Evening check · Recovery/);
     expect(
       within(morning!).getByRole("button", {
         name: "Complete “Morning check”",
@@ -615,9 +612,9 @@ describe("DashboardOverview", () => {
     expect(screen.queryByText(/tasks today/)).toBeNull();
     expect(
       within(screen.getByRole("region", { name: "In 1 week" })).getByRole(
-        "link",
+        "listitem",
       ),
-    ).toHaveTextContent(/^Plan the week · Recovery7d$/);
+    ).toHaveTextContent(/^Task: Plan the week · RecoveryHealth7d$/);
   });
 
   it("rings every copy of a Thread while one is hovered or focused, and never a Thread that stands once", async () => {

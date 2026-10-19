@@ -9,7 +9,6 @@ import {
   foldedNoDateSummary,
   groupLook,
   itemTitle,
-  LATE_FILL,
 } from "./dashboard-list-model";
 
 const currentDate = new Date(2026, 6, 17, 12).getTime();
@@ -60,37 +59,35 @@ describe("groupLook", () => {
     ]);
   });
 
-  it("turns items into one line each from next week on", () => {
-    expect(
-      looks([0, 6, 7, 40]).map(({ label, oneLine }) => [label, oneLine]),
-    ).toEqual([
-      ["Today", false],
-      ["Thursday", false],
-      ["In 1 week", true],
-      ["August", true],
-    ]);
-  });
-
-  it("fills Late warm, raises Today most, then less with distance", () => {
-    const [late, today, tomorrow, monday, tuesday, week] = looks([
-      -1, 0, 1, 3, 4, 9,
-    ]);
-    expect(late!.fill).toBe(LATE_FILL);
-    expect(today!.fill).toBe("bg-surface-2");
-    expect(tomorrow!.fill).toContain("var(--color-surface-2)_70%");
-    expect(monday!.fill).toBe(tomorrow!.fill);
-    expect(tuesday!.fill).toContain("var(--color-surface-2)_45%");
-    expect(week!.fill).toBe(tuesday!.fill);
-  });
-
   it("writes nearer headings larger, and Late in the attention colour", () => {
     const [late, today, tomorrow, , , august] = looks([-1, 0, 1, 2, 4, 40]);
-    expect(late!.heading).toContain("text-condition-attention");
-    expect(late!.heading).toContain("text-xl");
-    expect(today!.heading).toContain("text-xl");
-    expect(today!.heading).not.toContain("text-condition-attention");
-    expect(tomorrow!.heading).toContain("text-lg");
-    expect(august!.heading).toContain("text-sm");
+    expect(late!.heading.label).toContain("text-condition-attention");
+    expect(late!.heading.label).toContain("text-xl");
+    expect(today!.heading.label).toContain("text-xl");
+    expect(today!.heading.label).not.toContain("text-condition-attention");
+    expect(tomorrow!.heading.label).toContain("text-lg");
+    expect(august!.heading.label).toContain("text-[13px]");
+  });
+
+  it("writes nearer lines larger, and fades them with distance", () => {
+    const [late, today, tomorrow, thursday, week, august] = looks([
+      -1, 0, 1, 6, 9, 40,
+    ]);
+    expect(late!.line).toBe(today!.line);
+    expect(today!.line.frame).toContain("text-[17px]");
+    expect(today!.line.task).toBe("font-semibold");
+    expect(tomorrow!.line.frame).toContain("text-[15px]");
+    expect(thursday!.line.frame).toContain("text-foreground/75");
+    expect(week!.line.frame).toContain("text-foreground/60");
+    expect(august!.line.frame).toContain("text-foreground/50");
+  });
+
+  it("gives a day's number to the days only, not to the weeks and months", () => {
+    const [today, thursday, week, august] = looks([0, 6, 9, 40]);
+    expect(today!.heading.numeral).toContain("text-3xl");
+    expect(thursday!.heading.numeral).not.toBe("");
+    expect(week!.heading.numeral).toBe("");
+    expect(august!.heading.numeral).toBe("");
   });
 });
 

@@ -18,17 +18,12 @@ export const revealed =
   "opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100";
 
 /**
- * The one shape every item on the board takes, Thread or Note: a sheet with an
- * edge of its own, filed on its group's fill like a sheet in a folder, in
- * three rows that never trade places. The first two carry the words — the
+ * The shape every item in No date takes, Thread or Note: a sheet with an
+ * edge of its own, in three rows that never trade places. The first two carry the words — the
  * headline, then what is next — each with the full width to itself. The third
  * is the footer: when and where on the left, the controls on the right.
  *
- * A card fills the height of its row, with the footer held to the bottom, so
- * two cards side by side end together and their footers line up.
- *
- * A late card carries a faint warm tint, unless it sits on Late's fill
- * (`onLateFill`), which already says so.
+ * A card fills the height of its row, with the footer held to the bottom.
  *
  * A `dogEared` card has its top right corner folded over: the mark of a scrap
  * someone wrote, where a pill would read as one more Area.
@@ -36,14 +31,10 @@ export const revealed =
 export function BoardCard({
   children,
   footer,
-  late = false,
-  onLateFill = false,
   dogEared = false,
 }: {
   children: ReactNode;
   footer: ReactNode;
-  late?: boolean;
-  onLateFill?: boolean;
   dogEared?: boolean;
 }) {
   return (
@@ -51,9 +42,6 @@ export function BoardCard({
       className={cn(
         "group/card relative flex h-full flex-col gap-1 rounded-xl border border-border/80 bg-card px-3 py-2.5 transition-colors",
         "hover:border-foreground/15 has-focus-visible:border-ring/50",
-        late &&
-          !onLateFill &&
-          "bg-[color-mix(in_oklab,var(--color-condition-attention)_7%,var(--color-card))]",
         // The corner is cut away, and the fold drawn over the cut.
         dogEared &&
           "[clip-path:polygon(0_0,calc(100%-18px)_0,100%_18px,100%_100%,0_100%)]",

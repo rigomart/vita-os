@@ -1,6 +1,6 @@
 # Vita OS: Product Direction
 
-> Last update: 2026/10/06.
+> Last update: 2026/10/18.
 
 This document says what Vita OS is for and where it is going. `CONTEXT.md` owns the vocabulary and the exact rules; `docs/adr/` records each decision. When this document and either of those disagree, they win and this document is stale.
 
@@ -117,12 +117,12 @@ The Dashboard lays every Open Thread and every open Standalone Note on one axis 
 
 - **Late**, then **Today**: what is asking.
 - **Tomorrow** and each day of the coming week that has something due, by name.
-- **Weeks**, then **months**: further out, one line per item, there to be known about rather than read.
+- **Weeks**, then **months**: further out, small and faint, there to be known about rather than read.
 - **No date**: **Ready to move** (Threads whose Tasks are all undated), **Open** (Threads with no Tasks), **Notes** (undated Notes). On a wide screen it sits beside the list; on a phone it leads the list, folded to one line.
 
 Placement is derived from dates and from whether a Thread has Tasks. A Thread sits at its soonest dated Task; a Standalone Note sits at its Follow-up date. The user never sets a status. A date outranks undated Tasks, so a Thread whose Tasks are all undated leads No date and is never Late or Today. Nothing is capped.
 
-Each day sits on a file tab, raised more the nearer it is, with Late on a warm fill: the shape of the coming days reads before any card does. Above the page, the sky shows the time of day and nothing else.
+Every item is a line under its day's heading, and the nearer a day, the larger and darker it reads: what is asking stands out, and what is far off recedes. Above the page, the sky shows the time of day and nothing else.
 
 A filter at the top of the list narrows it to one Area, to unlabeled Threads, or to Notes alone. Notes have no list of their own: the Notes filter is where to read them together.
 
