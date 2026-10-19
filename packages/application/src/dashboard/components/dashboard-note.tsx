@@ -16,7 +16,6 @@ import {
   BoardCard,
   BoardCompleteButton,
   BoardDate,
-  isLate,
   showsBoardDate,
 } from "./board-card";
 
@@ -38,15 +37,12 @@ export function DashboardNote({
   currentDate,
   dateInHeading = false,
   note,
-  onLateFill,
   onOpenNote,
 }: {
   currentDate: number;
   /** The group heading above already names this Note's day. */
   dateInHeading?: boolean;
   note: Note;
-  /** The card sits on Late's fill, so it drops its own late tint. */
-  onLateFill?: boolean;
   onOpenNote: (note: Note) => void;
 }) {
   const archiveNote = useArchiveNote();
@@ -90,8 +86,6 @@ export function DashboardNote({
 
   return (
     <BoardCard
-      late={isLate(when, currentDate)}
-      onLateFill={onLateFill}
       dogEared
       footer={
         <>

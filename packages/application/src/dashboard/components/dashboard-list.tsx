@@ -1,26 +1,18 @@
-import type { ReactNode } from "react";
-
-import { Link } from "@tanstack/react-router";
-import { markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { cn } from "@vita-os/ui/lib/utils";
 
-import type { ProductSearch } from "../../navigation/search-params";
-import type { AttentionBoard, BoardItem } from "./attention-board-model";
+import type { AttentionBoard } from "./attention-board-model";
 import type { BoardScope } from "./dashboard-item";
 
 import { groupByWhen, itemKey } from "./attention-board-model";
-import { DashboardItem } from "./dashboard-item";
-import { groupLook, itemTitle } from "./dashboard-list-model";
-import { dateToken } from "./dashboard-model";
-import { ThreadCopy } from "./thread-copies";
+import { DashboardLine } from "./dashboard-line";
+import { groupLook } from "./dashboard-list-model";
 
 /**
  * Every dated item in one list, what is asking first: Late, Today, then each
  * day of the week, then weeks and months. A Thread stands once per dated
- * Task, under the day it is about. Each group is a file tab, filled
- * more the nearer it is. From next week on an item is a single line, since it
- * is only there to be known about. When the list is wide enough, cards sit
- * two to a row.
+ * Task, under the day it is about. Each group is a ruled heading over its
+ * items' lines, the date's number first when it names one day. The nearer a
+ * group, the larger and darker it reads; the far ones recede.
  */
 export function DashboardList({
   board,
@@ -43,170 +35,62 @@ export function DashboardList({
   }
 
   return (
-    <div className="@container flex flex-col gap-4 pt-2">
+    <div className="@container flex flex-col">
       {groups.map((group) => {
         const look = groupLook(group);
+        const day = group.exact ? group.items[0]?.when : undefined;
         return (
-          <FileTab
+          <section
             key={group.key}
-            label={group.label}
-            fill={look.fill}
-            heading={
-              <>
-                <span
-                  className={cn("font-heading tracking-tight", look.heading)}
-                >
-                  {group.label}
-                </span>
-                {group.hint && (
-                  <span className="text-[13px] text-muted-foreground">
-                    {group.hint}
-                  </span>
-                )}
-                <Count count={group.items.length} />
-              </>
-            }
+            aria-label={group.label}
+            className={look.heading.section}
           >
-            {look.oneLine ? (
-              <Lines items={group.items} scope={scope} />
-            ) : (
-              <ul className="grid gap-1.5 @2xl:grid-cols-2">
-                {group.items.map((item) => (
-                  <li key={itemKey(item)}>
-                    <DashboardItem
-                      dateInHeading={group.exact}
-                      item={item}
-                      onLateFill={group.tone === "late"}
-                      scope={scope}
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </FileTab>
+            <h2
+              className={cn(
+                "flex items-baseline gap-2.5 border-t px-1",
+                look.heading.rule,
+              )}
+            >
+              {day !== undefined && (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "font-heading tabular-nums",
+                    look.heading.numeral,
+                  )}
+                >
+                  {new Date(day).getDate()}
+                </span>
+              )}
+              <span
+                className={cn(
+                  "font-heading tracking-tight",
+                  look.heading.label,
+                )}
+              >
+                {group.label}
+              </span>
+              {group.hint && (
+                <span className="text-xs text-muted-foreground/70">
+                  {group.hint}
+                </span>
+              )}
+            </h2>
+            <ul className="-mx-1.5">
+              {group.items.map((item) => (
+                <li key={itemKey(item)}>
+                  <DashboardLine
+                    dateInHeading={group.exact}
+                    item={item}
+                    look={look.line}
+                    scope={scope}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
         );
       })}
     </div>
   );
 }
-
-/**
- * A group as one shape, like a file tab on its folder: the heading on a tab,
- * the items on the fill below, and the corner where they meet turned inward.
- */
-export function FileTab({
-  children,
-  fill,
-  heading,
-  label,
-}: {
-  children: ReactNode;
-  fill: string;
-  heading: ReactNode;
-  label: string;
-}) {
-  return (
-    <section aria-label={label}>
-      <div className="flex">
-        <div className={cn("relative rounded-t-xl", fill)}>
-          <h2 className="flex items-baseline gap-2.5 px-4 pt-2 pb-1">
-            {heading}
-          </h2>
-          <span
-            aria-hidden
-            className={cn(
-              "absolute bottom-0 left-full size-3 [mask-image:radial-gradient(circle_at_100%_0,transparent_11.5px,black_12px)]",
-              fill,
-            )}
-          />
-        </div>
-      </div>
-      <div className={cn("rounded-2xl rounded-tl-none p-1.5", fill)}>
-        {children}
-      </div>
-    </section>
-  );
-}
-
-export function Count({ count }: { count: number }) {
-  return (
-    <span className="text-xs tabular-nums text-muted-foreground/60">
-      {count}
-    </span>
-  );
-}
-
-/**
- * Far enough away to be a line each: a dot (solid for a Thread, outlined for
- * a Note), what it is, and when. A Thread's copy reads "Task · Thread", so two
- * rows of one Thread in a week read apart. The whole line opens it.
- */
-function Lines({ items, scope }: { items: BoardItem[]; scope: BoardScope }) {
-  return (
-    <ul className="grid gap-x-1 @2xl:grid-cols-2">
-      {items.map((item) => {
-        const content = (
-          <>
-            <span
-              aria-hidden
-              className={cn(
-                "size-1.5 shrink-0 -translate-y-px rounded-full",
-                item.kind === "note"
-                  ? "border border-muted-foreground"
-                  : "bg-muted-foreground/70",
-              )}
-            />
-            <span className="min-w-0 flex-1 truncate">
-              {item.kind === "thread" && item.task !== undefined ? (
-                <>
-                  {item.task.text}
-                  <span className="text-muted-foreground">
-                    {" · "}
-                    {itemTitle(item)}
-                  </span>
-                </>
-              ) : (
-                itemTitle(item)
-              )}
-            </span>
-            {item.when !== undefined && (
-              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                {dateToken(item.when, scope.currentDate)}
-              </span>
-            )}
-          </>
-        );
-        return (
-          <li key={itemKey(item)}>
-            {item.kind === "thread" ? (
-              <ThreadCopy thread={item.thread} className="rounded-lg">
-                <Link
-                  to="."
-                  search={(previous: ProductSearch): ProductSearch => ({
-                    ...previous,
-                    thread: item.thread.slug,
-                  })}
-                  className={lineClassName}
-                >
-                  {content}
-                </Link>
-              </ThreadCopy>
-            ) : (
-              <button
-                type="button"
-                aria-label={`Open note: ${markdownToPlainText(item.note.body).slice(0, 120)}`}
-                onClick={() => scope.onOpenNote(item.note)}
-                className={lineClassName}
-              >
-                {content}
-              </button>
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-const lineClassName =
-  "flex w-full items-baseline gap-3 rounded-lg px-3 py-1.5 text-left text-sm text-foreground/80 transition-colors outline-none hover:bg-muted/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40";
