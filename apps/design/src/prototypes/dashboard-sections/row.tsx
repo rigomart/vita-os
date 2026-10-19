@@ -48,6 +48,10 @@ export interface RowProps {
   quiet?: boolean;
   /** Bigger type, for what is asking now. */
   loud?: boolean;
+  /** Bigger still, with room around it: a line that reads as a card. */
+  big?: boolean;
+  /** The Thread's title under the Task at every width. */
+  stacked?: boolean;
 }
 
 /**
@@ -69,10 +73,12 @@ export function ItemRow(props: RowProps) {
 }
 
 function ThreadRow({
+  big,
   dateInHeading = false,
   item,
   loud,
   quiet,
+  stacked,
   scope,
   thread,
 }: RowProps & { thread: Thread }) {
@@ -107,6 +113,7 @@ function ThreadRow({
       busy={busy}
       quiet={quiet}
       loud={loud}
+      big={big}
       marker={
         lead?.repeat !== undefined ? (
           <RepeatIcon
@@ -126,16 +133,29 @@ function ThreadRow({
             ...previous,
             thread: thread.slug,
           })}
-          className="block outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] @md:truncate"
+          className={cn(
+            "block outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']",
+            !stacked && "@md:truncate",
+          )}
         >
           <span
-            className={cn("line-clamp-2 @md:inline", !quiet && "font-medium")}
+            className={cn(
+              "line-clamp-2",
+              !stacked && "@md:inline",
+              big ? "font-semibold" : !quiet && "font-medium",
+            )}
           >
             {task?.text ?? thread.title}
           </span>
           {task !== undefined && (
-            <span className="block truncate text-[13px] font-normal text-muted-foreground @md:inline">
-              <span className="hidden @md:inline"> · </span>
+            <span
+              className={cn(
+                "block truncate font-normal text-muted-foreground",
+                big ? "pt-0.5 text-sm" : "text-[13px]",
+                !stacked && "@md:inline",
+              )}
+            >
+              {!stacked && <span className="hidden @md:inline"> · </span>}
               {thread.title}
             </span>
           )}
@@ -197,6 +217,7 @@ function ThreadRow({
 }
 
 function NoteRow({
+  big,
   dateInHeading = false,
   loud,
   note,
@@ -230,6 +251,7 @@ function NoteRow({
       busy={busy}
       quiet={quiet}
       loud={loud}
+      big={big}
       marker={<NoteMark />}
       words={
         <button
@@ -287,6 +309,7 @@ export function NoteMark() {
  * right. The controls stay in place at rest so nothing reflows on hover.
  */
 function RowFrame({
+  big,
   busy,
   controls,
   date,
@@ -297,6 +320,7 @@ function RowFrame({
   showsDate,
   words,
 }: {
+  big?: boolean;
   busy: boolean;
   controls: ReactNode;
   date: ReactNode;
@@ -312,7 +336,7 @@ function RowFrame({
       aria-busy={busy || undefined}
       className={cn(
         "group/card relative flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors has-focus-visible:bg-muted/60 hover:bg-muted/50",
-        loud ? "text-[15px]" : "text-sm",
+        big ? "px-3.5 py-3 text-[17px]" : loud ? "text-[15px]" : "text-sm",
         quiet ? "text-foreground/70" : "text-foreground",
         busy && "opacity-60",
       )}
@@ -321,7 +345,7 @@ function RowFrame({
         aria-hidden
         className={cn(
           "flex w-3 shrink-0 items-center justify-center",
-          loud ? "h-[1.4rem]" : "h-5",
+          big ? "h-[1.55rem]" : loud ? "h-[1.4rem]" : "h-5",
         )}
       >
         {marker}

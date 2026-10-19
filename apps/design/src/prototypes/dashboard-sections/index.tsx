@@ -3,18 +3,22 @@ import { DashboardScreen } from "@vita-os/application/internal/dashboard/screens
 import { definePrototype } from "@/lab/prototype";
 
 import { SectionsBoard } from "./board";
-import { AgendaList, PagesList, SpotlightList } from "./lists";
+import { PagesList } from "./pages";
+import { StripList } from "./strip";
+import { TimelineList } from "./timeline";
+import { ZoomList } from "./zoom";
 
 /**
- * The Dashboard's list of when things come due, drawn three other ways. The
+ * The Dashboard's list of when things come due, drawn other ways. The
  * chrome, the filter and No date stay as they ship; only the groups (Late,
  * Today, Tomorrow, the days, weeks and months) and the items in them change.
- * Try "Several dated Tasks" and "Busy".
+ * Try "Several dated Tasks" and "Busy". Round one's Agenda and Spotlight are
+ * kept in commit 2d2fdb2.
  */
 export default definePrototype({
   title: "Dashboard sections",
   description:
-    "How the groups of the Dashboard's list look: file tabs of cards, a calendar gutter, one spotlight, or a page per day.",
+    "How the groups of the Dashboard's list look: file tabs of cards, day pages, a timeline, zoom, or a week strip.",
   shell: true,
   variants: [
     {
@@ -25,25 +29,32 @@ export default definePrototype({
       component: DashboardScreen,
     },
     {
-      key: "agenda",
-      name: "Agenda",
-      description:
-        "No boxes. The day in a sticky gutter at the left, its items as lines; only Today has a fill.",
-      component: () => <SectionsBoard List={AgendaList} />,
-    },
-    {
-      key: "spotlight",
-      name: "Spotlight",
-      description:
-        "Late and Today in one raised panel of cards; everything after as quiet lines under plain headings.",
-      component: () => <SectionsBoard List={SpotlightList} />,
-    },
-    {
       key: "pages",
       name: "Day pages",
       description:
         "Each day is one sheet with its date at the head and its items ruled on it; far groups have no sheet.",
       component: () => <SectionsBoard List={PagesList} />,
+    },
+    {
+      key: "timeline",
+      name: "Timeline",
+      description:
+        "A line down the left with a stop per group; near items are small sheets on it, quiet stretches show as space.",
+      component: () => <SectionsBoard List={TimelineList} />,
+    },
+    {
+      key: "zoom",
+      name: "Zoom",
+      description:
+        "Items change form with distance: big for Late and Today, chips for the week, one line of names for later.",
+      component: () => <SectionsBoard List={ZoomList} />,
+    },
+    {
+      key: "strip",
+      name: "Week strip",
+      description:
+        "A pinned strip of the next seven days with a dot per item, over a plain list with ruled headings.",
+      component: () => <SectionsBoard List={StripList} />,
     },
   ],
 });

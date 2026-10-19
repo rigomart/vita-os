@@ -121,3 +121,12 @@ export function groupDay(group: BoardGroup, currentDate: number) {
 export function isFar(group: BoardGroup) {
   return group.tone === "far";
 }
+
+/** Late and Today: what is asking now. */
+export function isNow(group: BoardGroup) {
+  return group.tone === "late" || group.tone === "today";
+}
+
+export function weekday(day: number, width: "long" | "short") {
+  return new Date(day).toLocaleDateString("en-US", { weekday: width });
+}
