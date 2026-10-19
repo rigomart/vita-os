@@ -85,9 +85,6 @@ export function StripList({ groups, scope }: ListProps) {
 
       <div className="flex flex-col">
         {groups.map((group) => {
-          const { distance } = groupLook(group);
-          const late = group.tone === "late";
-          const day = groupDay(group, scope.currentDate);
           return (
             <section
               key={group.key}
@@ -95,39 +92,7 @@ export function StripList({ groups, scope }: ListProps) {
               aria-label={group.label}
               className="scroll-mt-40 pb-3"
             >
-              <h2 className="flex items-baseline gap-2.5 border-t border-border/70 px-1 pt-3 pb-1">
-                {group.exact && (
-                  <span
-                    className={cn(
-                      "font-heading tabular-nums",
-                      distance === 0
-                        ? "text-2xl font-semibold"
-                        : "text-xl font-medium text-foreground/60",
-                    )}
-                  >
-                    {new Date(day).getDate()}
-                  </span>
-                )}
-                <span
-                  className={cn(
-                    "font-heading tracking-tight",
-                    late
-                      ? "text-lg font-semibold text-condition-attention"
-                      : distance === 0
-                        ? "text-lg font-semibold"
-                        : group.tone === "far"
-                          ? "text-sm font-medium text-muted-foreground"
-                          : "text-base font-medium text-foreground/85",
-                  )}
-                >
-                  {group.label}
-                </span>
-                {group.hint && (
-                  <span className="text-xs text-muted-foreground/70">
-                    {group.hint}
-                  </span>
-                )}
-              </h2>
+              <RuledHeading group={group} scope={scope} />
               <ul className="-mx-1.5">
                 {group.items.map((item) => (
                   <li key={itemKey(item)}>
@@ -229,4 +194,53 @@ function useGroupInView(groups: BoardGroup[]) {
     return () => observer.disconnect();
   }, [keys]);
   return active;
+}
+
+/**
+ * A group's heading on a rule across the list: the date's number for a day,
+ * then its name and how far out it is. Nearer reads larger.
+ */
+export function RuledHeading({
+  group,
+  scope,
+}: {
+  group: BoardGroup;
+  scope: ListProps["scope"];
+}) {
+  const { distance } = groupLook(group);
+  const late = group.tone === "late";
+  const day = groupDay(group, scope.currentDate);
+  return (
+    <h2 className="flex items-baseline gap-2.5 border-t border-border/70 px-1 pt-3 pb-1">
+      {group.exact && (
+        <span
+          className={cn(
+            "font-heading tabular-nums",
+            distance === 0
+              ? "text-2xl font-semibold"
+              : "text-xl font-medium text-foreground/60",
+          )}
+        >
+          {new Date(day).getDate()}
+        </span>
+      )}
+      <span
+        className={cn(
+          "font-heading tracking-tight",
+          late
+            ? "text-lg font-semibold text-condition-attention"
+            : distance === 0
+              ? "text-lg font-semibold"
+              : group.tone === "far"
+                ? "text-sm font-medium text-muted-foreground"
+                : "text-base font-medium text-foreground/85",
+        )}
+      >
+        {group.label}
+      </span>
+      {group.hint && (
+        <span className="text-xs text-muted-foreground/70">{group.hint}</span>
+      )}
+    </h2>
+  );
 }

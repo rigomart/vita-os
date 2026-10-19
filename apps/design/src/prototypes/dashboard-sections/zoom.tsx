@@ -130,12 +130,15 @@ export function ZoomList({ groups, scope }: ListProps) {
  * A day's item as a chip: its marker, its Task and Thread, and a time if it
  * has one. A chip opens its item; acting on it happens there.
  */
-function Chip({ item, scope }: { item: BoardItem; scope: BoardScope }) {
+export function Chip({ item, scope }: { item: BoardItem; scope: BoardScope }) {
   const time = item.when === undefined ? undefined : timeToken(item.when);
   const repeats = item.kind === "thread" && item.task?.repeat !== undefined;
   const body = (
     <>
-      <span aria-hidden className="flex w-3 items-center justify-center">
+      <span
+        aria-hidden
+        className="flex w-3 shrink-0 items-center justify-center"
+      >
         {item.kind === "note" ? (
           <NoteMark />
         ) : repeats ? (
@@ -144,7 +147,7 @@ function Chip({ item, scope }: { item: BoardItem; scope: BoardScope }) {
           <span className="size-1.5 rounded-full bg-muted-foreground/60" />
         )}
       </span>
-      <span className="max-w-72 truncate">
+      <span className="min-w-0 max-w-72 truncate">
         {item.kind === "thread" && item.task !== undefined ? (
           <>
             {item.task.text}
@@ -158,14 +161,14 @@ function Chip({ item, scope }: { item: BoardItem; scope: BoardScope }) {
         )}
       </span>
       {time !== undefined && (
-        <span className="text-xs tabular-nums text-muted-foreground">
+        <span className="shrink-0 text-xs whitespace-nowrap tabular-nums text-muted-foreground">
           {time}
         </span>
       )}
     </>
   );
   const chip =
-    "inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1 text-[13px] text-foreground/90 transition-colors outline-none hover:border-foreground/20 hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/40";
+    "inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1 text-[13px] text-foreground/90 transition-colors outline-none hover:border-foreground/20 hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/40";
 
   if (item.kind === "note") {
     return (
@@ -179,7 +182,7 @@ function Chip({ item, scope }: { item: BoardItem; scope: BoardScope }) {
     );
   }
   return (
-    <ThreadCopy thread={item.thread} className="rounded-full">
+    <ThreadCopy thread={item.thread} className="max-w-full rounded-full">
       <Link
         to="."
         search={(previous: ProductSearch): ProductSearch => ({
@@ -197,6 +200,29 @@ function Chip({ item, scope }: { item: BoardItem; scope: BoardScope }) {
 
 /** Weeks and months out: the label, then every item's name in one line. */
 function FarLine({ group, scope }: { group: BoardGroup; scope: BoardScope }) {
+  return (
+    <p className="flex items-baseline gap-3 py-1 text-sm">
+      <span className="w-[5.5rem] shrink-0 text-[13px] font-medium text-muted-foreground @2xl:w-32">
+        {group.label}
+        {group.hint && (
+          <span className="block text-[11px] font-normal text-muted-foreground/60">
+            {group.hint}
+          </span>
+        )}
+      </span>
+      <FarNames group={group} scope={scope} />
+    </p>
+  );
+}
+
+/** Every item of a group by name, in one run of text, each opening its item. */
+export function FarNames({
+  group,
+  scope,
+}: {
+  group: BoardGroup;
+  scope: BoardScope;
+}) {
   const names: ReactNode[] = [];
   group.items.forEach((item, index) => {
     if (index > 0) names.push(<span key={`sep-${index}`}>, </span>);
@@ -230,16 +256,6 @@ function FarLine({ group, scope }: { group: BoardGroup; scope: BoardScope }) {
     );
   });
   return (
-    <p className="flex items-baseline gap-3 py-1 text-sm">
-      <span className="w-[5.5rem] shrink-0 text-[13px] font-medium text-muted-foreground @2xl:w-32">
-        {group.label}
-        {group.hint && (
-          <span className="block text-[11px] font-normal text-muted-foreground/60">
-            {group.hint}
-          </span>
-        )}
-      </span>
-      <span className="min-w-0 flex-1 text-muted-foreground/90">{names}</span>
-    </p>
+    <span className="min-w-0 flex-1 text-muted-foreground/90">{names}</span>
   );
 }
