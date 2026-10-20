@@ -6,6 +6,7 @@ import type {
   Thread,
   ThreadId,
 } from "@vita-os/contracts";
+import type { ReactNode } from "react";
 import type { Mock } from "vitest";
 
 import userEvent from "@testing-library/user-event";
@@ -126,7 +127,10 @@ function read(name: keyof ReadSpies) {
   return reads[name].mock.calls.length > 0;
 }
 
-function renderShell(hostCommands?: HostCommands) {
+function renderShell(
+  hostCommands?: HostCommands,
+  page: ReactNode = <p>page body</p>,
+) {
   reads = {
     listAreas: vi.fn<ApplicationClient["listAreas"]>(async () => ({
       ok: true,
@@ -146,11 +150,7 @@ function renderShell(hostCommands?: HostCommands) {
     })),
   };
 
-  const shell = (
-    <AppShell>
-      <p>page body</p>
-    </AppShell>
-  );
+  const shell = <AppShell>{page}</AppShell>;
   return render(
     hostCommands ? (
       <HostCommandsProvider subscribe={hostCommands}>
@@ -207,6 +207,75 @@ describe("AppShell", () => {
     expect(
       document.querySelector('[data-slot="thread-detail-pane-space"]'),
     ).toBeNull();
+  });
+
+  it("returns focus to what opened the Thread when the pane closes, or to the page's main once that is gone", async () => {
+    const { rerender } = renderShell(
+      undefined,
+      <button type="button">Thread line</button>,
+    );
+    const line = screen.getByRole("button", { name: "Thread line" });
+    line.focus();
+
+    mocks.search = { thread: thread.slug };
+    rerender(
+      <AppShell>
+        <button type="button">Thread line</button>
+      </AppShell>,
+    );
+    const pane = document.querySelector('[data-slot="thread-detail-pane"]');
+    await waitFor(() => expect(pane).toHaveFocus());
+
+    mocks.search = {};
+    rerender(
+      <AppShell>
+        <button type="button">Thread line</button>
+      </AppShell>,
+    );
+    expect(line).toHaveFocus();
+
+    mocks.search = { thread: thread.slug };
+    rerender(
+      <AppShell>
+        <button type="button">Thread line</button>
+      </AppShell>,
+    );
+    await waitFor(() =>
+      expect(
+        document.querySelector('[data-slot="thread-detail-pane"]'),
+      ).toHaveFocus(),
+    );
+    mocks.search = {};
+    rerender(<AppShell>{null}</AppShell>);
+    expect(screen.getByRole("main")).toHaveFocus();
+  });
+
+  it("leaves focus on the page when the pane closes while focus is there", async () => {
+    const { rerender } = renderShell(
+      undefined,
+      <button type="button">Thread line</button>,
+    );
+    mocks.search = { thread: thread.slug };
+    rerender(
+      <AppShell>
+        <button type="button">Thread line</button>
+      </AppShell>,
+    );
+    await waitFor(() =>
+      expect(
+        document.querySelector('[data-slot="thread-detail-pane"]'),
+      ).toHaveFocus(),
+    );
+    const palette = screen.getByRole("button", { name: "chrome palette" });
+    palette.focus();
+
+    mocks.search = {};
+    rerender(
+      <AppShell>
+        <button type="button">Thread line</button>
+      </AppShell>,
+    );
+    expect(palette).toHaveFocus();
   });
 
   it("zeroes --rail while no thread is open", () => {

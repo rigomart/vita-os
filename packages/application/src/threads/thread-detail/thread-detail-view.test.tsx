@@ -262,6 +262,34 @@ describe("ThreadDetailView", () => {
     expect(mocks.onClose).not.toHaveBeenCalled();
   });
 
+  it("takes focus into the drawer as it opens", async () => {
+    renderThreadDetail();
+
+    const drawer = await screen.findByRole("dialog", {
+      name: "Sister's front teeth",
+    });
+    await waitFor(() => expect(drawer).toHaveFocus());
+  });
+
+  it("clears a Task draft on Escape and keeps the drawer open", async () => {
+    renderThreadDetail();
+
+    const drawer = await screen.findByRole("dialog", {
+      name: "Sister's front teeth",
+    });
+    await userEvent.type(
+      within(drawer).getByRole("textbox", { name: "Add a task" }),
+      "Draft{Escape}",
+    );
+
+    expect(
+      within(drawer).getByRole("textbox", { name: "Add a task" }),
+    ).toHaveValue("");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(drawer).toHaveAttribute("data-state", "open");
+    expect(mocks.onClose).not.toHaveBeenCalled();
+  });
+
   it("closes the narrow Thread pane after its close animation", async () => {
     renderThreadDetail();
 
@@ -354,6 +382,125 @@ describe("ThreadDetailView", () => {
       pane,
     );
     expect(pane).toHaveAttribute("data-state", "open");
+  });
+
+  it("takes focus into the desktop pane before the Thread's read answers, and again for another Thread", async () => {
+    mocks.showDesktopPane = true;
+    mocks.knownSlugs = ["sister-s-front-teeth"];
+    const { rerender } = renderThreadDetail({ threadSlug: "moms-legs" });
+
+    const pane = document.querySelector<HTMLElement>(
+      '[data-slot="thread-detail-pane"]',
+    );
+    expect(pane).toHaveFocus();
+    expect(pane).toHaveAccessibleName("Thread detail");
+
+    const board = document.createElement("button");
+    document.body.append(board);
+    board.focus();
+    rerender(
+      <ThreadDetailView
+        threadSlug="sister-s-front-teeth"
+        onClose={mocks.onClose}
+        onThreadLocationChange={mocks.onThreadLocationChange}
+      />,
+    );
+    expect(pane).toHaveFocus();
+    board.remove();
+  });
+
+  it("keeps focus where it is when a rename changes the open Thread's slug", async () => {
+    mocks.showDesktopPane = true;
+    mocks.updateThread.mockResolvedValue({
+      ok: true,
+      value: { ...thread, title: "Front teeth", slug: "front-teeth" },
+    });
+    const { rerender } = renderThreadDetail();
+    const pane = await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
+
+    await userEvent.click(
+      within(pane).getByRole("button", { name: "Sister's front teeth" }),
+    );
+    const title = within(pane).getByDisplayValue("Sister's front teeth");
+    await userEvent.clear(title);
+    await userEvent.type(title, "Front teeth{Enter}");
+    await waitFor(() =>
+      expect(mocks.onThreadLocationChange).toHaveBeenCalledWith({
+        threadSlug: "front-teeth",
+      }),
+    );
+    const close = within(pane).getByRole("button", { name: "Close thread" });
+    close.focus();
+
+    const show = (threadSlug: string) =>
+      rerender(
+        <ThreadDetailView
+          threadSlug={threadSlug}
+          onClose={mocks.onClose}
+          onThreadLocationChange={mocks.onThreadLocationChange}
+        />,
+      );
+    show("front-teeth");
+    expect(close).toHaveFocus();
+
+    show("moms-legs");
+    expect(pane).toHaveFocus();
+    close.focus();
+    show("front-teeth");
+    expect(pane).toHaveFocus();
+  });
+
+  it("closes the desktop pane on Escape from the pane or the board behind it", async () => {
+    mocks.showDesktopPane = true;
+    renderThreadDetail();
+    const pane = await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
+    await waitFor(() => expect(pane).toHaveAttribute("data-state", "open"));
+
+    fireEvent.keyDown(document.body, { key: "Escape" });
+
+    expect(pane).toHaveAttribute("data-state", "closed");
+  });
+
+  it("leaves the desktop pane open when a field, an inline editor or an open layer owns Escape", async () => {
+    mocks.showDesktopPane = true;
+    renderThreadDetail();
+    const pane = await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
+    await waitFor(() => expect(pane).toHaveAttribute("data-state", "open"));
+
+    await userEvent.click(
+      within(pane).getByRole("button", { name: "Sister's front teeth" }),
+    );
+    const editor = within(pane).getByDisplayValue("Sister's front teeth");
+    await userEvent.type(editor, " draft{Escape}");
+    expect(within(pane).queryByDisplayValue(/draft/)).toBeNull();
+    expect(pane).toHaveAttribute("data-state", "open");
+
+    const field = document.createElement("input");
+    document.body.append(field);
+    fireEvent.keyDown(field, { key: "Escape" });
+    field.remove();
+    expect(pane).toHaveAttribute("data-state", "open");
+
+    const layer = document.createElement("div");
+    layer.setAttribute("role", "dialog");
+    document.body.append(layer);
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    layer.remove();
+    expect(pane).toHaveAttribute("data-state", "open");
+
+    const owner = document.createElement("button");
+    owner.addEventListener("keydown", (event) => event.preventDefault());
+    document.body.append(owner);
+    fireEvent.keyDown(owner, { key: "Escape" });
+    owner.remove();
+    expect(pane).toHaveAttribute("data-state", "open");
+    expect(mocks.onClose).not.toHaveBeenCalled();
   });
 
   it("subscribes to Thread detail, its Notes, and the shared Area picker list", async () => {

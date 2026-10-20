@@ -13,7 +13,7 @@ import {
 } from "@vita-os/ui/components/drawer";
 import { cn } from "@vita-os/ui/lib/utils";
 import { X } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import type { ThreadLocation } from "./thread-pane-nav";
 
@@ -50,9 +50,9 @@ export function ThreadDetailView({
 
   useDocumentTitle(detail?.thread.title ?? "Thread");
 
-  const paneNav = useMemo(
-    () => ({ onThreadLocationChange }),
-    [onThreadLocationChange],
+  const { paneRef, paneNav } = useFocusPaneOnNewThread(
+    threadSlug,
+    onThreadLocationChange,
   );
 
   if (detailState.error !== null) {
@@ -91,6 +91,7 @@ export function ThreadDetailView({
 
   return (
     <ThreadDetailPane
+      ref={paneRef}
       title={title}
       thread={hasMatchingThread ? detail.thread : null}
       showActions={hasMatchingThread}
@@ -127,7 +128,14 @@ function ThreadDetailDrawer({
       onAnimationEnd={completeOpenChange}
     >
       <DrawerContent
-        className="h-[90dvh] max-h-[90dvh] p-0 before:inset-0 before:rounded-t-4xl data-[vaul-drawer-direction=bottom]:max-h-[90dvh]"
+        className="h-[90dvh] max-h-[90dvh] p-0 outline-none before:inset-0 before:rounded-t-4xl data-[vaul-drawer-direction=bottom]:max-h-[90dvh]"
+        // vaul leaves focus behind the drawer it traps; take it in.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          if (event.currentTarget instanceof HTMLElement) {
+            event.currentTarget.focus({ preventScroll: true });
+          }
+        }}
         // Escape in a field that closes itself on it (the note line under a
         // Task) closes that field, not the drawer around it.
         onEscapeKeyDown={(event) => {
@@ -167,23 +175,27 @@ function ThreadDetailDrawer({
 }
 
 function ThreadDetailPane({
+  ref,
   title,
   thread,
   showActions,
   onClosed,
   children,
-}: ThreadShellProps) {
+}: ThreadShellProps & { ref: React.Ref<HTMLElement> }) {
   const { open, requestClose, completeOpenChange } =
     useDeferredRouteClose(onClosed);
+  useEscapeClosesPane(requestClose);
 
   // Covers the page rather than pushing it (ADR 0023): the page keeps its
   // width, so the board never reflows while the pane slides.
   return (
     <aside
+      ref={ref}
       aria-label={title}
+      tabIndex={-1}
       data-slot="thread-detail-pane"
       data-state={open ? "open" : "closed"}
-      className="fixed inset-y-0 right-0 z-30 flex h-dvh w-[clamp(28rem,34vw,34rem)] translate-x-full flex-col border-l bg-popover text-sm text-popover-foreground shadow-xl transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] data-[state=open]:translate-x-0 motion-reduce:transition-none"
+      className="fixed inset-y-0 right-0 z-30 flex h-dvh w-[clamp(28rem,34vw,34rem)] translate-x-full flex-col border-l bg-popover text-sm text-popover-foreground shadow-xl outline-none transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] data-[state=open]:translate-x-0 motion-reduce:transition-none"
       onTransitionEnd={(event) => {
         // Tailwind v4 slides with the `translate` property, not `transform`.
         if (
@@ -205,6 +217,73 @@ function ThreadDetailPane({
       </div>
     </aside>
   );
+}
+
+function useFocusPaneOnNewThread(
+  threadSlug: string,
+  onThreadLocationChange: (location: ThreadLocation) => void,
+) {
+  const renamedToRef = useRef<string>(undefined);
+  const paneNav = useMemo(
+    () => ({
+      onThreadLocationChange: (location: ThreadLocation) => {
+        renamedToRef.current = location.threadSlug;
+        onThreadLocationChange(location);
+      },
+    }),
+    [onThreadLocationChange],
+  );
+
+  const paneRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const renamed = renamedToRef.current === threadSlug;
+    renamedToRef.current = undefined;
+    if (!renamed) paneRef.current?.focus({ preventScroll: true });
+  }, [threadSlug]);
+
+  return { paneRef, paneNav };
+}
+
+const OPEN_LAYER = ["dialog", "alertdialog", "menu", "listbox"]
+  .map((role) => `[role=${role}]:not([data-closed]):not([data-state=closed])`)
+  .join(", ");
+
+function ownsEscape(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    (target.closest("[data-keeps-escape]") !== null ||
+      target.matches("input, textarea, select") ||
+      target.isContentEditable)
+  );
+}
+
+/** Open layers are read in the capture phase, before their own handlers close them on this Escape. */
+function useEscapeClosesPane(requestClose: () => void) {
+  useEffect(() => {
+    let layerWasOpen = false;
+    const noteLayers = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        layerWasOpen = document.querySelector(OPEN_LAYER) !== null;
+      }
+    };
+    const close = (event: KeyboardEvent) => {
+      if (
+        event.key !== "Escape" ||
+        event.defaultPrevented ||
+        layerWasOpen ||
+        ownsEscape(event.target)
+      ) {
+        return;
+      }
+      requestClose();
+    };
+    window.addEventListener("keydown", noteLayers, true);
+    window.addEventListener("keydown", close);
+    return () => {
+      window.removeEventListener("keydown", noteLayers, true);
+      window.removeEventListener("keydown", close);
+    };
+  }, [requestClose]);
 }
 
 function ThreadControls({

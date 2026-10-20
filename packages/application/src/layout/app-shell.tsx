@@ -28,7 +28,10 @@ function Chrome({ children }: { children: ReactNode }) {
       {/* Below `lg` the action bar floats over the page's foot, so the page
           keeps that much room under its last item. The side insets keep a
           landscape phone's notch off the page. */}
-      <main className="w-full min-w-0 pr-[env(safe-area-inset-right)] pb-[calc(6rem+env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)] lg:pb-0">
+      <main
+        tabIndex={-1}
+        className="w-full min-w-0 outline-none pr-[env(safe-area-inset-right)] pb-[calc(6rem+env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)] lg:pb-0"
+      >
         {children}
       </main>
       <ActionBar {...actions} />
