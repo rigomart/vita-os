@@ -1106,7 +1106,11 @@ describe("ThreadAttention focus", () => {
 
   it("does not recover again when a removed Task rolls back", async () => {
     const user = userEvent.setup();
-    const view = renderAttention({ tasks: [callClinic, bookScan] });
+    const answer = deferred<void>();
+    const view = renderAttention({
+      tasks: [callClinic, bookScan],
+      onCompleteTask: () => answer.promise,
+    });
     const button = within(taskRows()[0]!).getByRole("button", {
       name: "Complete task",
     });
@@ -1118,6 +1122,8 @@ describe("ThreadAttention focus", () => {
     const add = screen.getByRole("textbox", { name: "Add a task" });
     await user.click(add);
     view.show({ tasks: [callClinic, bookScan] });
+    expect(add).toHaveFocus();
+    await act(async () => answer.resolve());
     expect(add).toHaveFocus();
   });
 
