@@ -1,6 +1,8 @@
 import { cn } from "@vita-os/ui/lib/utils";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { useFocusRecovery } from "../../ui/recover-focus";
+
 /**
  * A Task's text: at most two lines at rest, all of it while edited.
  *
@@ -20,9 +22,11 @@ export function TaskTextField({
   disabled?: boolean;
   className?: string;
 }) {
+  const recoverFocus = useFocusRecovery();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const field = useRef<HTMLTextAreaElement>(null);
+  const display = useRef<HTMLButtonElement>(null);
 
   // Fits the field to its text before it paints, on every keystroke.
   useLayoutEffect(() => {
@@ -65,15 +69,20 @@ export function TaskTextField({
         // Its Escape cancels the edit alone, never the Thread drawer around it.
         data-keeps-escape=""
         onChange={(event) => setDraft(event.target.value.replace(/\n/g, " "))}
-        onBlur={commit}
+        onBlur={(event) => {
+          const destination = event.relatedTarget;
+          if (destination instanceof HTMLElement) {
+            void recoverFocus(() => destination, commit, event.currentTarget);
+          } else commit();
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter" && !event.nativeEvent.isComposing) {
             event.preventDefault();
-            commit();
+            void recoverFocus(() => display.current, commit);
           }
           if (event.key === "Escape") {
             event.preventDefault();
-            cancel();
+            void recoverFocus(() => display.current, cancel);
           }
         }}
         className={cn(
@@ -86,15 +95,17 @@ export function TaskTextField({
 
   return (
     <button
+      ref={display}
       type="button"
-      disabled={disabled}
+      aria-disabled={disabled || undefined}
       onClick={() => {
+        if (disabled) return;
         setDraft(value);
         setEditing(true);
       }}
       className={cn(
         shared,
-        "cursor-text outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none",
+        "cursor-text outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring/40 aria-disabled:pointer-events-none aria-disabled:opacity-50 motion-reduce:transition-none",
       )}
     >
       <span className="line-clamp-2">{value}</span>

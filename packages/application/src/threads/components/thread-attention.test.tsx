@@ -982,13 +982,13 @@ describe("ThreadAttention completing with a note", () => {
       completingTaskIds: new Set([callClinic._id]),
     });
 
-    expect(note(taskRows()[0]!)).toBeDisabled();
+    expect(note(taskRows()[0]!)).toHaveAttribute("aria-disabled", "true");
     expect(note(taskRows()[1]!)).toBeEnabled();
   });
 });
 
 describe("ThreadAttention pending occurrence controls", () => {
-  it("disables Complete and Skip for the pending Task while another Task stays usable", () => {
+  it("marks Complete and Skip unavailable without disabling them", () => {
     renderAttention({
       tasks: [
         { ...callClinic, date: today, repeat: { kind: "days", every: 1 } },
@@ -998,12 +998,143 @@ describe("ThreadAttention pending occurrence controls", () => {
     });
     expect(
       within(taskRows()[0]!).getByRole("button", { name: "Complete task" }),
-    ).toBeDisabled();
+    ).toHaveAttribute("aria-disabled", "true");
     expect(
       within(taskRows()[0]!).getByRole("button", { name: "Skip task" }),
-    ).toBeDisabled();
+    ).toHaveAttribute("aria-disabled", "true");
     expect(
       within(taskRows()[1]!).getByRole("button", { name: "Complete task" }),
     ).toBeEnabled();
+  });
+});
+
+describe("ThreadAttention focus", () => {
+  for (const command of ["Complete task", "Remove task"]) {
+    for (const index of [1, 2, 0]) {
+      it(`${command} focuses the neighbor of ${index === 1 ? "the middle" : index === 2 ? "the last" : "the only"} Task`, async () => {
+        const user = userEvent.setup();
+        const initial =
+          index === 0 ? [callClinic] : [callClinic, bookScan, collect];
+        function Tasks() {
+          const [tasks, setTasks] = useState(initial);
+          const remove = (id: TaskId) =>
+            setTasks((tasks) => tasks.filter((task) => task._id !== id));
+          return (
+            <ThreadAttention
+              tasks={tasks}
+              now={now}
+              onAddTask={vi.fn()}
+              onEditTask={vi.fn()}
+              onRemoveTask={remove}
+              onCompleteTask={remove}
+              onCompleteTaskWithNote={remove}
+              onSetTaskDate={vi.fn()}
+              onSetTaskRepeat={vi.fn()}
+              onSkipTask={vi.fn()}
+            />
+          );
+        }
+        render(<Tasks />);
+        const next =
+          index === 0
+            ? screen.getByRole("textbox", { name: "Add a task" })
+            : within(taskRows()[index === 1 ? 2 : 1]!).getByRole("button", {
+                name: command,
+              });
+        const button = within(taskRows()[index]!).getByRole("button", {
+          name: command,
+        });
+        act(() => button.focus());
+        await user.keyboard("{Enter}");
+        expect(next).toHaveFocus();
+      });
+    }
+  }
+
+  for (const command of ["Complete task", "Skip task", "Remove task"]) {
+    it(`${command} stays focused and ignores a second activation while busy`, async () => {
+      const user = userEvent.setup();
+      const answer = deferred<void>();
+      const run = vi.fn(() => answer.promise);
+      renderAttention({
+        tasks: [
+          { ...callClinic, date: today, repeat: { kind: "days", every: 1 } },
+        ],
+        onCompleteTask: run,
+        onSkipTask: run,
+        onRemoveTask: run,
+      });
+      const button = screen.getByRole("button", { name: command });
+      act(() => button.focus());
+      await user.keyboard("{Enter}{Enter}");
+      expect(button).toHaveFocus();
+      expect(button).not.toBeDisabled();
+      expect(button).toHaveAttribute("aria-disabled", "true");
+      expect(run).toHaveBeenCalledTimes(1);
+      await act(async () => answer.resolve());
+      expect(button).toHaveFocus();
+    });
+  }
+
+  for (const key of ["{Enter}", "{Escape}", "{Tab}"]) {
+    it(`Task text ${key} ${key === "{Tab}" ? "leaves focus on the next control" : "returns focus to its display"}`, async () => {
+      const user = userEvent.setup();
+      const { onEditTask } = renderAttention({ tasks: [callClinic] });
+      await user.click(screen.getByRole("button", { name: callClinic.text }));
+      await user.keyboard(` changed${key}`);
+      const target = screen.getByRole("button", {
+        name: key === "{Tab}" ? "Set date" : callClinic.text,
+      });
+      expect(target).toHaveFocus();
+      expect(onEditTask).toHaveBeenCalledTimes(key === "{Escape}" ? 0 : 1);
+    });
+  }
+
+  for (const cancel of ["escape", "cancel"]) {
+    it(`note-line ${cancel} returns to its opener`, async () => {
+      const user = userEvent.setup();
+      renderAttention({ tasks: [callClinic] });
+      const opener = screen.getByRole("button", {
+        name: "Complete with a note",
+      });
+      await user.click(opener);
+      if (cancel === "escape") await user.keyboard("{Escape}");
+      else await user.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(opener).toHaveFocus();
+    });
+  }
+
+  it("does not recover again when a removed Task rolls back", async () => {
+    const user = userEvent.setup();
+    const view = renderAttention({ tasks: [callClinic, bookScan] });
+    const button = within(taskRows()[0]!).getByRole("button", {
+      name: "Complete task",
+    });
+    act(() => button.focus());
+    await user.keyboard("{Enter}");
+    view.show({ tasks: [bookScan] });
+    await act(async () => {});
+    expect(screen.getByRole("button", { name: "Complete task" })).toHaveFocus();
+    const add = screen.getByRole("textbox", { name: "Add a task" });
+    await user.click(add);
+    view.show({ tasks: [callClinic, bookScan] });
+    expect(add).toHaveFocus();
+  });
+
+  it("leaves focus alone when the person moves before a Task disappears", async () => {
+    const user = userEvent.setup();
+    const answer = deferred<void>();
+    const view = renderAttention({
+      tasks: [callClinic, bookScan],
+      onCompleteTask: () => answer.promise,
+    });
+    await user.click(
+      within(taskRows()[0]!).getByRole("button", { name: "Complete task" }),
+    );
+    const add = screen.getByRole("textbox", { name: "Add a task" });
+    await user.click(add);
+    view.show({ tasks: [bookScan] });
+    expect(add).toHaveFocus();
+    await act(async () => answer.resolve());
   });
 });
