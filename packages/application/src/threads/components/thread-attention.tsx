@@ -21,7 +21,7 @@ import {
   SkipForward,
   Trash2,
 } from "lucide-react";
-import { Fragment, useId, useState } from "react";
+import { Fragment, useId, useRef, useState } from "react";
 
 import {
   repeatLabel,
@@ -521,15 +521,25 @@ function CompletionNoteLine({
 
 /** The foot of the list: capture a Task with nothing to decide. */
 function AddTask({ onAdd }: { onAdd: (text: string) => unknown }) {
-  const [draft, setDraft] = useState("");
-  const action = useGuardedAsyncAction(onAdd, { errorToast: false });
-  const disabled = action.isPending;
+  const [draft, setDraftState] = useState("");
+  const draftRef = useRef("");
+  const pending = useRef(Promise.resolve());
+  const setDraft = (text: string) => {
+    draftRef.current = text;
+    setDraftState(text);
+  };
 
   const commit = () => {
-    const text = draft.trim();
-    if (!text || disabled) return;
+    const text = draftRef.current.trim();
+    if (!text) return;
     setDraft("");
-    void action.run(text);
+    pending.current = pending.current.then(async () => {
+      try {
+        await onAdd(text);
+      } catch {
+        if (!draftRef.current) setDraft(text);
+      }
+    });
   };
 
   return (
@@ -542,7 +552,6 @@ function AddTask({ onAdd }: { onAdd: (text: string) => unknown }) {
       </span>
       <input
         type="text"
-        disabled={disabled}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
