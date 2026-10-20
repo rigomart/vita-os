@@ -323,12 +323,24 @@ export function useTasks(thread: Thread) {
     add: (text: string) => {
       const trimmed = text.trim();
       return trimmed
-        ? settle(
-            add.mutateAsync({
+        ? add
+            .mutateAsync({
               threadId: thread._id,
               task: { _id: newRecordId() as TaskId, text: trimmed },
-            }),
-          )
+            })
+            .then(() => undefined)
+            .catch((error: unknown) => {
+              feedback.error(failureMessage(error), {
+                description: trimmed,
+                action: {
+                  label: "Copy task",
+                  onClick: () => navigator.clipboard.writeText(trimmed),
+                  failedMessage:
+                    "Couldn’t copy the task. Select its text below to copy it.",
+                },
+              });
+              throw error;
+            })
         : Promise.resolve();
     },
     edit: (taskId: TaskId, text: string) => {

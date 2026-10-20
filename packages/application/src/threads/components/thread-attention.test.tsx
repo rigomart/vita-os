@@ -1,14 +1,26 @@
-import type { Task, TaskId } from "@vita-os/contracts";
+import type { OperationResult, Task, TaskId, Thread } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { addDays, subDays } from "date-fns";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { deferred } from "../../test/fake-application-client";
-import { act, render, screen, within } from "../../test/render-with-providers";
+import {
+  createFakeApplicationClient,
+  deferred,
+  failure,
+} from "../../test/fake-application-client";
+import { aThread } from "../../test/fixtures";
+import {
+  act,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "../../test/render-with-providers";
 import { pickCalendarDay } from "../../test/when-picker";
 import { ThreadAttention } from "./thread-attention";
+import { ThreadAttentionSection } from "./thread-attention-section";
 
 const now = new Date("2026-08-13T12:00:00").getTime();
 /** Today as the picker stores a date alone: local midnight. */
@@ -70,6 +82,119 @@ function taskRows() {
     "listitem",
   );
 }
+
+describe("ThreadAttention Task capture", () => {
+  it("queues A then B while A saves, keeping the input enabled and focused", async () => {
+    const user = userEvent.setup();
+    const first = deferred<void>();
+    const second = deferred<void>();
+    const onAddTask = vi
+      .fn()
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    renderAttention({ onAddTask });
+    const input = screen.getByRole("textbox", { name: "Add a task" });
+
+    await user.click(input);
+    await user.keyboard("A{Enter}");
+    expect(input).toHaveValue("");
+    expect(input).toBeEnabled();
+    expect(input).toHaveFocus();
+    await user.keyboard("B{Enter}");
+    expect(input).toHaveValue("");
+    expect(input).toHaveFocus();
+    expect(onAddTask.mock.calls).toEqual([["A"]]);
+
+    await act(async () => first.resolve());
+    expect(onAddTask.mock.calls).toEqual([["A"], ["B"]]);
+    expect(input).toBeEnabled();
+    expect(input).toHaveFocus();
+    await act(async () => second.resolve());
+    expect(onAddTask).toHaveBeenCalledTimes(2);
+  });
+
+  it("restores a failed add and surfaces its text through the existing feedback", async () => {
+    const user = userEvent.setup();
+    const pending = deferred<OperationResult<Thread>>();
+    const { feedback } = render(<ThreadAttentionSection thread={aThread()} />, {
+      applicationClient: createFakeApplicationClient({
+        addTask: () => pending.promise,
+      }),
+    });
+    const input = screen.getByRole("textbox", { name: "Add a task" });
+    await user.click(input);
+    await user.keyboard("Call clinic{Enter}");
+    await act(async () =>
+      pending.resolve(
+        failure({ code: "unavailable", message: "offline", retryable: true }),
+      ),
+    );
+
+    await waitFor(() => expect(input).toHaveValue("Call clinic"));
+    expect(input).toHaveFocus();
+    expect(feedback.error).toHaveBeenCalledExactlyOnceWith(
+      "Could not save that change. Please try again.",
+      expect.objectContaining({
+        description: "Call clinic",
+        action: expect.objectContaining({ label: "Copy task" }),
+      }),
+    );
+  });
+
+  it("preserves a newer draft while the failed text stays available in feedback", async () => {
+    const user = userEvent.setup();
+    const pending = deferred<OperationResult<Thread>>();
+    const { feedback } = render(<ThreadAttentionSection thread={aThread()} />, {
+      applicationClient: createFakeApplicationClient({
+        addTask: () => pending.promise,
+      }),
+    });
+    const input = screen.getByRole("textbox", { name: "Add a task" });
+    await user.click(input);
+    await user.keyboard("A{Enter}B");
+    await act(async () =>
+      pending.resolve(
+        failure({ code: "unavailable", message: "offline", retryable: true }),
+      ),
+    );
+
+    await waitFor(() => expect(feedback.error).toHaveBeenCalled());
+    expect(input).toHaveValue("B");
+    expect(feedback.error).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ description: "A" }),
+    );
+  });
+
+  it("adds once when Enter is immediately followed by blur", async () => {
+    const user = userEvent.setup();
+    const pending = deferred<void>();
+    const onAddTask = vi.fn(() => pending.promise);
+    renderAttention({ onAddTask });
+    await user.click(screen.getByRole("textbox", { name: "Add a task" }));
+    await user.keyboard("A{Enter}{Tab}");
+    await act(async () => pending.resolve());
+    expect(onAddTask.mock.calls).toEqual([["A"]]);
+  });
+
+  it("continues saving queued Tasks after an earlier add fails", async () => {
+    const user = userEvent.setup();
+    const first = deferred<void>();
+    const onAddTask = vi
+      .fn()
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValue(undefined);
+    renderAttention({ onAddTask });
+    const input = screen.getByRole("textbox", { name: "Add a task" });
+    await user.click(input);
+    await user.keyboard("A{Enter}B{Enter}");
+    await act(async () => first.reject(new Error("offline")));
+
+    expect(onAddTask.mock.calls).toEqual([["A"], ["B"]]);
+    expect(input).toHaveValue("A");
+    expect(input).toHaveFocus();
+  });
+});
 
 describe("ThreadAttention dated Tasks", () => {
   const afternoon: Task = {
