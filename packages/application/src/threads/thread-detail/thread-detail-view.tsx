@@ -53,6 +53,7 @@ export function ThreadDetailView({
   const { paneRef, paneNav } = useFocusPaneOnNewThread(
     threadSlug,
     onThreadLocationChange,
+    detailState.isPending,
   );
 
   if (detailState.error !== null) {
@@ -222,8 +223,10 @@ function ThreadDetailPane({
 function useFocusPaneOnNewThread(
   threadSlug: string,
   onThreadLocationChange: (location: ThreadLocation) => void,
+  isLoading: boolean,
 ) {
   const renamedToRef = useRef<string>(undefined);
+  const reloadingAfterRenameRef = useRef(false);
   const paneNav = useMemo(
     () => ({
       onThreadLocationChange: (location: ThreadLocation) => {
@@ -238,8 +241,17 @@ function useFocusPaneOnNewThread(
   useEffect(() => {
     const renamed = renamedToRef.current === threadSlug;
     renamedToRef.current = undefined;
-    if (!renamed) paneRef.current?.focus({ preventScroll: true });
+    if (renamed) reloadingAfterRenameRef.current = true;
+    else paneRef.current?.focus({ preventScroll: true });
   }, [threadSlug]);
+
+  useEffect(() => {
+    if (isLoading || !reloadingAfterRenameRef.current) return;
+    reloadingAfterRenameRef.current = false;
+    if (document.activeElement === document.body) {
+      paneRef.current?.focus({ preventScroll: true });
+    }
+  }, [isLoading]);
 
   return { paneRef, paneNav };
 }

@@ -3,6 +3,8 @@ import { Textarea } from "@vita-os/ui/components/textarea";
 import { cn } from "@vita-os/ui/lib/utils";
 import { useEffect, useRef, useState } from "react";
 
+import { useFocusRecovery } from "./recover-focus";
+
 interface EditableFieldProps {
   value: string;
   onSave: (value: string) => void;
@@ -31,7 +33,7 @@ const editableFieldStyles = cn(
   "col-start-1 row-start-1 w-full min-w-0 rounded-none border-0 border-b border-border/30 bg-transparent px-0 shadow-none transition-[border-color,background-color,color]",
   "hover:border-border/70 hover:bg-muted/40",
   "focus-visible:border-foreground focus-visible:bg-muted/20 focus-visible:ring-0 focus-visible:outline-none",
-  "disabled:pointer-events-none disabled:opacity-50",
+  "disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50",
 );
 
 export function EditableField({
@@ -50,8 +52,10 @@ export function EditableField({
   editOnFocus = false,
   chromeless = false,
 }: EditableFieldProps) {
+  const recoverFocus = useFocusRecovery();
   const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState(value);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isCommittingRef = useRef(false);
@@ -97,11 +101,20 @@ export function EditableField({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
-      cancel();
+      e.preventDefault();
+      void recoverFocus(() => buttonRef.current, cancel);
     }
     if (e.key === "Enter" && variant === "input") {
-      commit();
+      e.preventDefault();
+      void recoverFocus(() => buttonRef.current, commit);
     }
+  };
+
+  const handleBlur = (event: React.FocusEvent<HTMLElement>) => {
+    const destination = event.relatedTarget;
+    if (destination instanceof HTMLElement) {
+      void recoverFocus(() => destination, commit, event.currentTarget);
+    } else commit();
   };
 
   const fieldClassName = cn(
@@ -129,14 +142,18 @@ export function EditableField({
     <div className="grid w-full items-start text-left">
       {!editOnFocus && (
         <button
-          ref={displayRef}
+          ref={(element) => {
+            buttonRef.current = element;
+            if (typeof displayRef === "function") return displayRef(element);
+            if (displayRef) displayRef.current = element;
+          }}
           type="button"
           onClick={() => {
             if (!disabled) {
               setEditing(true);
             }
           }}
-          disabled={disabled}
+          aria-disabled={disabled || undefined}
           tabIndex={editing ? -1 : 0}
           aria-hidden={editing}
           className={cn(
@@ -159,7 +176,7 @@ export function EditableField({
             rows={textareaRows}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
+            onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             data-keeps-escape=""
             placeholder={placeholder}
@@ -175,7 +192,7 @@ export function EditableField({
             type="text"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
+            onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             data-keeps-escape=""
             placeholder={placeholder}

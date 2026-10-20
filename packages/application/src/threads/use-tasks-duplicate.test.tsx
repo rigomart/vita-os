@@ -51,7 +51,10 @@ describe("rendered pending Task controls", () => {
       const user = userEvent.setup();
       const button = screen.getByRole("button", { name: label });
       await user.dblClick(button);
-      await waitFor(() => expect(button).toBeDisabled());
+      await waitFor(() =>
+        expect(button).toHaveAttribute("aria-disabled", "true"),
+      );
+      expect(button).toHaveFocus();
       const command = label === "Complete task" ? completeTask : skipTask;
       expect(command).toHaveBeenCalledTimes(1);
       expect(command).toHaveBeenCalledWith(
@@ -74,7 +77,8 @@ describe("rendered pending Task controls", () => {
       await act(async () =>
         answer.resolve(success({ ...seed, tasks: [{ ...task, date: next }] })),
       );
-      await waitFor(() => expect(button).toBeEnabled());
+      await waitFor(() => expect(button).not.toHaveAttribute("aria-disabled"));
+      expect(button).toHaveFocus();
     },
   );
 });

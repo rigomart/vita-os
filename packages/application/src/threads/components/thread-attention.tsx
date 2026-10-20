@@ -30,6 +30,7 @@ import {
   whenTone,
   withTimeToken,
 } from "../../attention-list";
+import { useFocusRecovery } from "../../ui/recover-focus";
 import { TaskTextField } from "./task-text-field";
 
 interface ThreadAttentionProps {
@@ -89,6 +90,28 @@ export function ThreadAttention({
   onSetTaskRepeat,
   onSkipTask,
 }: ThreadAttentionProps) {
+  const recoverFocus = useFocusRecovery();
+  const section = useRef<HTMLElement>(null);
+  const taskControl = (taskId: TaskId, label: string) => {
+    const rows =
+      section.current?.querySelectorAll<HTMLElement>("[data-task-id]");
+    const row = Array.from(rows ?? []).find(
+      (row) => row.dataset.taskId === taskId,
+    );
+    return row?.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);
+  };
+  const taskAction = (task: Task, label: string, run: () => unknown) => {
+    const index = tasks.indexOf(task);
+    const neighbor = tasks[index + 1] ?? tasks[index - 1];
+    const target =
+      (task.repeat && label === "Complete task"
+        ? taskControl(task._id, label)
+        : neighbor && taskControl(neighbor._id, label)) ??
+      section.current?.querySelector<HTMLInputElement>(
+        '[aria-label="Add a task"]',
+      );
+    return recoverFocus(() => target, run);
+  };
   // The Task whose note line is open, and the text written for each Task.
   const [noting, setNoting] = useState<TaskId | null>(null);
   const [notes, setNotes] = useState<ReadonlyMap<TaskId, string>>(new Map());
@@ -104,15 +127,17 @@ export function ThreadAttention({
   // Sent, the text leaves this surface for good: if the completion fails,
   // it comes back in a toast, never here.
   const completeWithNote = (taskId: TaskId) => {
+    if (busy(taskId)) return;
     const text = notes.get(taskId) ?? "";
     setNoting(null);
     keepNote(taskId, undefined);
-    if (text.trim() === "") onCompleteTask(taskId);
-    else void onCompleteTaskWithNote(taskId, text);
+    if (text.trim() === "") return onCompleteTask(taskId);
+    return onCompleteTaskWithNote(taskId, text);
   };
 
   return (
     <section
+      ref={section}
       role="region"
       aria-label="Thread attention"
       data-slot="thread-attention"
@@ -141,8 +166,16 @@ export function ThreadAttention({
                   disabled={busy(task._id)}
                   noting={noting === task._id}
                   onEdit={(text) => onEditTask(task._id, text)}
-                  onRemove={() => onRemoveTask(task._id)}
-                  onComplete={() => onCompleteTask(task._id)}
+                  onRemove={() =>
+                    taskAction(task, "Remove task", () =>
+                      onRemoveTask(task._id),
+                    )
+                  }
+                  onComplete={() =>
+                    taskAction(task, "Complete task", () =>
+                      onCompleteTask(task._id),
+                    )
+                  }
                   onToggleNote={() =>
                     setNoting((current) =>
                       current === task._id ? null : task._id,
@@ -158,11 +191,20 @@ export function ThreadAttention({
                     text={notes.get(task._id) ?? ""}
                     disabled={busy(task._id)}
                     onChange={(text) => keepNote(task._id, text)}
-                    onComplete={() => completeWithNote(task._id)}
-                    onCancel={() => {
-                      setNoting(null);
-                      keepNote(task._id, undefined);
-                    }}
+                    onComplete={() =>
+                      taskAction(task, "Complete task", () =>
+                        completeWithNote(task._id),
+                      )
+                    }
+                    onCancel={() =>
+                      recoverFocus(
+                        () => taskControl(task._id, "Complete with a note"),
+                        () => {
+                          setNoting(null);
+                          keepNote(task._id, undefined);
+                        },
+                      )
+                    }
                   />
                 )}
               </Fragment>
@@ -220,7 +262,9 @@ function TaskRow({
     action.isPending ||
     dateAction.isPending ||
     repeatAction.isPending;
-  const act = (run: () => unknown) => void action.run(run);
+  const act = (run: () => unknown) => {
+    if (!busy) void action.run(run);
+  };
   const when = task.date === undefined ? undefined : taskWhen(task.date, now);
   const tone = whenTone(task.date, now);
   // The date token and the date command open the same picker.
@@ -241,16 +285,17 @@ function TaskRow({
 
   return (
     <li
+      data-task-id={task._id}
       aria-busy={busy || undefined}
       className="group/task flex items-start gap-1.5 rounded-lg px-1 pt-1 pb-0.5 text-foreground/90 transition-colors hover:bg-muted/50 motion-reduce:transition-none"
     >
       <Command label="Complete">
         <button
           type="button"
-          disabled={busy}
+          aria-disabled={busy || undefined}
           onClick={() => act(onComplete)}
           aria-label="Complete task"
-          className="group/complete flex size-8 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 xl:size-6"
+          className="group/complete flex size-8 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40 aria-disabled:pointer-events-none aria-disabled:opacity-50 xl:size-6"
         >
           <span
             aria-hidden
@@ -281,10 +326,16 @@ function TaskRow({
               datePicker(
                 <button
                   type="button"
-                  disabled={busy}
+                  aria-disabled={busy || undefined}
+                  onClickCapture={(event) => {
+                    if (busy) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }
+                  }}
                   aria-label={`${taskDateLabels.change}: ${when}`}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-xs tabular-nums outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50",
+                    "inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-xs tabular-nums outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 aria-disabled:opacity-50",
                     tone ? DATE_TONE[tone] : "text-muted-foreground",
                   )}
                 >
@@ -313,7 +364,7 @@ function TaskRow({
               <Command label="Skip to the next date">
                 <CommandButton
                   aria-label="Skip task"
-                  disabled={busy}
+                  aria-disabled={busy || undefined}
                   onClick={() => act(onSkip)}
                 >
                   <SkipForward />
@@ -330,7 +381,7 @@ function TaskRow({
                           ? taskDateLabels.set
                           : taskDateLabels.change
                       }
-                      disabled={busy}
+                      aria-disabled={busy || undefined}
                     >
                       <CalendarClock />
                     </CommandButton>
@@ -346,8 +397,10 @@ function TaskRow({
 
             <Command label="Complete with a note">
               <CommandButton
-                disabled={busy}
-                onClick={() => void onToggleNote()}
+                aria-disabled={busy || undefined}
+                onClick={() => {
+                  if (!busy) void onToggleNote();
+                }}
                 aria-label="Complete with a note"
                 aria-expanded={noting}
                 className={noting ? "bg-muted text-foreground" : undefined}
@@ -358,7 +411,7 @@ function TaskRow({
             <span aria-hidden className="mx-0.5 h-3.5 w-px bg-border" />
             <Command label="Remove">
               <CommandButton
-                disabled={busy}
+                aria-disabled={busy || undefined}
                 onClick={() => act(onRemove)}
                 aria-label="Remove task"
                 className="hover:text-destructive"
@@ -392,16 +445,25 @@ function Command({
 function CommandButton({
   className,
   children,
+  onClickCapture,
   ...props
 }: ComponentProps<"button">) {
   return (
     <button
       type="button"
       className={cn(
-        "flex size-8 items-center justify-center rounded-full text-muted-foreground/70 outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 data-popup-open:bg-muted data-popup-open:text-foreground motion-reduce:transition-none xl:size-7 [&_svg]:size-3.5",
+        "flex size-8 items-center justify-center rounded-full text-muted-foreground/70 outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-popup-open:bg-muted data-popup-open:text-foreground motion-reduce:transition-none xl:size-7 [&_svg]:size-3.5",
         className,
       )}
       {...props}
+      onClickCapture={(event) => {
+        if (props["aria-disabled"]) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        onClickCapture?.(event);
+      }}
     >
       {children}
     </button>
@@ -475,7 +537,8 @@ function CompletionNoteLine({
           autoFocus
           rows={2}
           value={text}
-          disabled={disabled}
+          aria-disabled={disabled || undefined}
+          readOnly={disabled}
           aria-describedby={hintId}
           placeholder="What happened?"
           onChange={(event) => onChange(event.target.value)}
@@ -507,8 +570,11 @@ function CompletionNoteLine({
           <Button
             type="button"
             size="sm"
-            disabled={disabled}
-            onClick={onComplete}
+            aria-disabled={disabled || undefined}
+            className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
+            onClick={() => {
+              if (!disabled) void onComplete();
+            }}
           >
             <Check />
             Complete

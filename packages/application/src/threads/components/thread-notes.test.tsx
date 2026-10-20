@@ -1,6 +1,7 @@
 import type { ThreadNote, ThreadNoteId } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -9,7 +10,7 @@ import {
   replaceNoteText,
   typeInNote,
 } from "../../test/note-editor";
-import { render, screen, within } from "../../test/render-with-providers";
+import { act, render, screen, within } from "../../test/render-with-providers";
 import { ThreadNotes } from "./thread-notes";
 
 function note(id: string, fields: Partial<ThreadNote> = {}): ThreadNote {
@@ -109,6 +110,69 @@ describe("ThreadNotes", () => {
     await user.click(screen.getByRole("button", { name: "Archive note" }));
     expect(callbacks.onToggleArchived).toHaveBeenCalledWith(saved);
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  for (const index of [0, 1]) {
+    it(`archiving the ${index === 0 ? "first" : "last"} card focuses the other card, then capture`, async () => {
+      const user = userEvent.setup();
+      const first = note("First");
+      const second = note("Second");
+      function Notes() {
+        const [notes, setNotes] = useState([first, second]);
+        return (
+          <ThreadNotes
+            notes={notes}
+            {...actions()}
+            onToggleArchived={(note) =>
+              setNotes((notes) =>
+                notes.filter((current) => current._id !== note._id),
+              )
+            }
+          />
+        );
+      }
+      render(<Notes />);
+      const archive = screen.getAllByRole("button", { name: "Archive note" })[
+        index
+      ]!;
+      act(() => archive.focus());
+      await user.keyboard("{Enter}");
+      expect(
+        screen.getByRole("button", {
+          name: `Open note: ${index === 0 ? "Second" : "First"}`,
+        }),
+      ).toHaveFocus();
+      await user.tab();
+      await user.keyboard("{Enter}");
+      expect(
+        screen.getByRole("button", { name: "Write a note…" }),
+      ).toHaveFocus();
+    });
+  }
+  it("deleting from the Note view focuses the next card", async () => {
+    const user = userEvent.setup();
+    function Notes() {
+      const [notes, setNotes] = useState([note("First"), note("Second")]);
+      return (
+        <ThreadNotes
+          notes={notes}
+          {...actions()}
+          onRemove={(note) =>
+            setNotes((notes) =>
+              notes.filter((current) => current._id !== note._id),
+            )
+          }
+        />
+      );
+    }
+    render(<Notes />);
+    await user.click(screen.getByRole("button", { name: "Open note: First" }));
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Delete note" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Open note: Second" }),
+    ).toHaveFocus();
   });
   it("keeps a Note view open when archiving removes its card from Open Notes", async () => {
     const user = userEvent.setup();

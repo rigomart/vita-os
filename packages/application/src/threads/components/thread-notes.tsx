@@ -6,11 +6,12 @@ import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-actio
 import { cn } from "@vita-os/ui/lib/utils";
 import { format, isSameYear } from "date-fns";
 import { Archive, ArchiveRestore, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { AttentionCollapsed } from "../../attention-list";
 import { clock } from "../../lib/clock";
 import { NoteDialog } from "../../notes/note-view/note-dialog";
+import { useFocusRecovery } from "../../ui/recover-focus";
 
 interface ThreadNotesProps {
   notes: ThreadNote[] | undefined;
@@ -43,6 +44,8 @@ export function ThreadNotes({
   onToggleArchived,
   onRemove,
 }: ThreadNotesProps) {
+  const recoverFocus = useFocusRecovery();
+  const section = useRef<HTMLElement>(null);
   const [composing, setComposing] = useState(false);
   // Kept above both lists: archiving a Note can task or remove its card.
   const [selected, setSelected] = useState<ThreadNote | null>(null);
@@ -50,17 +53,38 @@ export function ThreadNotes({
     archivedNotes.length > 0 ||
     (!isArchivedInitialLoading && !isArchivedExhausted);
   const currentNote = selected;
+  const noteAction = (note: ThreadNote, run: () => Promise<void> | void) => {
+    const cards = Array.from(
+      section.current?.querySelectorAll<HTMLElement>("[data-note-id]") ?? [],
+    );
+    const card = cards.find((card) => card.dataset.noteId === note._id);
+    const siblings = cards.filter(
+      (candidate) => candidate.parentElement === card?.parentElement,
+    );
+    const position = card ? siblings.indexOf(card) : -1;
+    const neighbor = siblings[position + 1] ?? siblings[position - 1];
+    const target =
+      neighbor?.querySelector<HTMLButtonElement>("button") ??
+      section.current?.querySelector<HTMLButtonElement>("button");
+    return recoverFocus(() => target, run);
+  };
   const card = (note: ThreadNote) => (
     <ThreadNoteCard
       key={note._id}
       note={note}
       onOpen={() => setSelected(note)}
-      onToggleArchived={onToggleArchived}
+      onToggleArchived={(note) =>
+        noteAction(note, () => onToggleArchived(note))
+      }
     />
   );
 
   return (
-    <section aria-label="Thread Notes" className="flex flex-col gap-3">
+    <section
+      ref={section}
+      aria-label="Thread Notes"
+      className="flex flex-col gap-3"
+    >
       <button
         type="button"
         onClick={() => setComposing(true)}
@@ -131,7 +155,9 @@ export function ThreadNotes({
               completedAt: archiving ? clock.now() : undefined,
             });
           }}
-          onDelete={() => onRemove(currentNote)}
+          onDelete={() => {
+            void noteAction(currentNote, () => onRemove(currentNote));
+          }}
         />
       )}
     </section>
@@ -160,6 +186,7 @@ function ThreadNoteCard({
   const date = new Date(timestamp);
   return (
     <article
+      data-note-id={note._id}
       className={cn(
         "group/card relative flex flex-col rounded-3xl border-2 border-border/70 bg-surface-2 p-4",
         "animate-in fade-in slide-in-from-bottom-2 transition-colors duration-300 hover:border-border has-focus-visible:border-ring/50 motion-reduce:animate-none",
@@ -195,15 +222,15 @@ function ThreadNoteCard({
           variant="secondary"
           size="icon-sm"
           className={cn(
-            "group/toggle relative shrink-0 rounded-full",
+            "group/toggle relative shrink-0 rounded-full aria-disabled:pointer-events-none aria-disabled:opacity-50",
             archived && "bg-transparent text-brand-accent-text",
           )}
-          disabled={isPending}
+          aria-disabled={isPending || undefined}
           aria-busy={isPending}
           aria-label={archived ? "Unarchive note" : "Archive note"}
           onClick={(event) => {
             event.stopPropagation();
-            void toggle();
+            if (!isPending) void toggle();
           }}
         >
           {archived ? (

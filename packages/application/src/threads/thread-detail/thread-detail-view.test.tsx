@@ -452,6 +452,39 @@ describe("ThreadDetailView", () => {
     expect(pane).toHaveFocus();
   });
 
+  it("puts focus on the pane when a rename reloads the Thread under the focused title", async () => {
+    mocks.showDesktopPane = true;
+    mocks.updateThread.mockResolvedValue({
+      ok: true,
+      value: { ...thread, title: "Front teeth", slug: "front-teeth" },
+    });
+    const { rerender } = renderThreadDetail();
+    const pane = await screen.findByRole("complementary", {
+      name: "Sister's front teeth",
+    });
+
+    await userEvent.click(
+      within(pane).getByRole("button", { name: "Sister's front teeth" }),
+    );
+    const title = within(pane).getByDisplayValue("Sister's front teeth");
+    await userEvent.clear(title);
+    await userEvent.type(title, "Front teeth{Enter}");
+    await waitFor(() =>
+      expect(mocks.onThreadLocationChange).toHaveBeenCalledWith({
+        threadSlug: "front-teeth",
+      }),
+    );
+
+    rerender(
+      <ThreadDetailView
+        threadSlug="front-teeth"
+        onClose={mocks.onClose}
+        onThreadLocationChange={mocks.onThreadLocationChange}
+      />,
+    );
+    await waitFor(() => expect(pane).toHaveFocus());
+  });
+
   it("closes the desktop pane on Escape from the pane or the board behind it", async () => {
     mocks.showDesktopPane = true;
     renderThreadDetail();
