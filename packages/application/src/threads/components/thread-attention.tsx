@@ -562,6 +562,7 @@ function AddTask({ onAdd }: { onAdd: (text: string) => unknown }) {
           }
           if (event.key === "Escape") setDraft("");
         }}
+        data-keeps-escape=""
         aria-label="Add a task"
         placeholder="Add a task…"
         className="h-9 w-full min-w-0 rounded-md border border-transparent bg-transparent px-0 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-border/60 focus:bg-muted/30 focus:px-1.5 motion-reduce:transition-none xl:h-7"

@@ -161,6 +161,7 @@ export function EditableField({
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commit}
             onKeyDown={handleKeyDown}
+            data-keeps-escape=""
             placeholder={placeholder}
             disabled={disabled}
             aria-label={inputAriaLabel}
@@ -176,6 +177,7 @@ export function EditableField({
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commit}
             onKeyDown={handleKeyDown}
+            data-keeps-escape=""
             placeholder={placeholder}
             disabled={disabled}
             aria-label={inputAriaLabel}

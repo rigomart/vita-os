@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useEffectEvent,
+  useRef,
   useState,
 } from "react";
 
@@ -68,10 +69,6 @@ export function ShellBehavior({ children }: { children: ReactNode }) {
   const [historyNote, setHistoryNote] = useState<Note | null>(null);
   const areas = useAreas().data;
 
-  useGlobalNewNoteShortcut(dialogs.openNewNote);
-  useCommandPaletteShortcut(() => setPaletteOpen(true));
-  useAreaFilterShortcuts(areas);
-
   // The thread pane opens from two sources: the global `?thread=<slug>`
   // search param (any page, in place) or the /threads/$threadSlug deep link.
   // When both are present, the search param wins. Not strict, so the shell
@@ -89,6 +86,16 @@ export function ShellBehavior({ children }: { children: ReactNode }) {
   const isSearchSource = searchThreadSlug !== undefined;
   const openThreadSlug =
     searchThreadSlug ?? threadRouteMatch?.params.threadSlug;
+
+  const paneFocus = useThreadPaneFocusReturn(openThreadSlug);
+  const openPalette = () => {
+    paneFocus.holdOpener();
+    setPaletteOpen(true);
+  };
+
+  useGlobalNewNoteShortcut(dialogs.openNewNote);
+  useCommandPaletteShortcut(openPalette);
+  useAreaFilterShortcuts(areas);
 
   // `?inbox=true` summoned the Notes panel over any page. Notes now live on
   // the Dashboard, so the old address lands there filtered to Notes, keeping
@@ -147,8 +154,11 @@ export function ShellBehavior({ children }: { children: ReactNode }) {
 
   const actions: ShellActions = {
     onNewNote: dialogs.openNewNote,
-    onNewThread: () => dialogs.openCreateThread(createForAreaId),
-    onOpenPalette: () => setPaletteOpen(true),
+    onNewThread: () => {
+      paneFocus.holdOpener();
+      dialogs.openCreateThread(createForAreaId);
+    },
+    onOpenPalette: openPalette,
     onManageAreas: dialogs.openManageAreas,
   };
 
@@ -166,6 +176,8 @@ export function ShellBehavior({ children }: { children: ReactNode }) {
           The page keeps its full width; `--rail` is the rail's width for
           anything that must clear it. */}
       <div
+        ref={paneFocus.pageRef}
+        onFocus={paneFocus.trackOpener}
         style={
           {
             "--rail": openThreadSlug === undefined ? "0px" : RAIL_WIDTH,
@@ -187,7 +199,10 @@ export function ShellBehavior({ children }: { children: ReactNode }) {
       {paletteOpen && (
         <CommandPalette
           open
-          onOpenChange={setPaletteOpen}
+          onOpenChange={(open) => {
+            if (!open) paneFocus.releaseOpener();
+            setPaletteOpen(open);
+          }}
           onNewNote={actions.onNewNote}
           onNewThread={actions.onNewThread}
           onManageAreas={actions.onManageAreas}
@@ -207,7 +222,10 @@ export function ShellBehavior({ children }: { children: ReactNode }) {
       {dialogs.showCreateThread && (
         <NewThreadDialog
           open
-          onOpenChange={dialogs.setShowCreateThread}
+          onOpenChange={(open) => {
+            if (!open) paneFocus.releaseOpener();
+            dialogs.setShowCreateThread(open);
+          }}
           defaultAreaId={dialogs.createForAreaId}
           onSubmit={async (value) => {
             const { slug } = await createThread(value);
@@ -231,4 +249,55 @@ export function ShellBehavior({ children }: { children: ReactNode }) {
       )}
     </ShellActionsContext>
   );
+}
+
+/** A closing dialog may hand focus back to an older element, so the opener is held while the palette or New thread dialog is open. */
+function useThreadPaneFocusReturn(openThreadSlug: string | undefined) {
+  const pageRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const heldRef = useRef(false);
+  const wasOpenRef = useRef(openThreadSlug !== undefined);
+
+  const onPage = (element: Element | null): element is HTMLElement =>
+    element instanceof HTMLElement &&
+    pageRef.current?.contains(element) === true;
+
+  // React's focus events bubble through portals; only the page's own count.
+  const trackOpener = (event: React.FocusEvent) => {
+    if (!heldRef.current && onPage(event.target)) {
+      openerRef.current = event.target;
+    }
+  };
+
+  const holdOpener = () => {
+    const active = document.activeElement;
+    if (onPage(active)) openerRef.current = active;
+    heldRef.current = true;
+  };
+  const releaseOpener = () => {
+    heldRef.current = false;
+  };
+
+  useEffect(() => {
+    const paneOpen = openThreadSlug !== undefined;
+    const closed = wasOpenRef.current && !paneOpen;
+    wasOpenRef.current = paneOpen;
+    if (paneOpen) {
+      releaseOpener();
+      return;
+    }
+    if (!closed) return;
+    const active = document.activeElement;
+    if (active !== null && active !== document.body) return;
+    const opener = openerRef.current;
+    if (opener?.isConnected) {
+      opener.focus();
+      if (document.activeElement === opener) return;
+    }
+    pageRef.current
+      ?.querySelector<HTMLElement>("main")
+      ?.focus({ preventScroll: true });
+  }, [openThreadSlug]);
+
+  return { pageRef, trackOpener, holdOpener, releaseOpener };
 }
