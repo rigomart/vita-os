@@ -7,7 +7,11 @@ import type { BoardScope } from "./dashboard-item";
 
 import { itemKey, unscheduledRuns } from "./attention-board-model";
 import { DashboardItem } from "./dashboard-item";
-import { foldedNoDateSummary, NO_DATE_FILL } from "./dashboard-list-model";
+import {
+  CURSOR_SCROLL_MARGIN,
+  foldedNoDateSummary,
+  NO_DATE_FILL,
+} from "./dashboard-list-model";
 
 /**
  * What has no date, under one heading, in three runs: Ready to move, Open,
@@ -111,7 +115,11 @@ function Runs({ board, scope }: { board: AttentionBoard; scope: BoardScope }) {
       </h3>
       <ul className="-mx-3 flex flex-col gap-1.5">
         {run.items.map((item) => (
-          <li key={itemKey(item)}>
+          <li
+            key={itemKey(item)}
+            data-cursor-item={itemKey(item)}
+            className={CURSOR_SCROLL_MARGIN}
+          >
             <DashboardItem item={item} scope={scope} />
           </li>
         ))}

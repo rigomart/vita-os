@@ -828,3 +828,137 @@ describe("a No date Thread card", () => {
     expect(garden.queryByRole("button", { name: /^Complete/ })).toBeNull();
   });
 });
+
+describe("DashboardOverview cursor", () => {
+  const board = () =>
+    renderOverview({
+      threads: [
+        thread("Dentist", { followUp: today - DAY }),
+        thread("Kitchen", { followUp: today, order: 1 }),
+        thread("Garden", { order: 2 }),
+      ],
+      notes: [note("Call mum")],
+    });
+  const opener = (name: string) =>
+    name === "Call mum"
+      ? screen.getByRole("button", { name: "Open note: Call mum" })
+      : screen.getByRole("link", { name });
+  const item = (name: string) => opener(name).closest("[data-cursor-item]");
+  const tabStops = () =>
+    new Set(
+      [...document.querySelectorAll<HTMLElement>("[data-cursor-item] *")]
+        .filter((element) => element.tabIndex === 0)
+        .map((element) => element.closest("[data-cursor-item]")),
+    );
+
+  it("is one Tab stop, the item focused last, with its own controls", async () => {
+    const user = userEvent.setup();
+    board();
+    expect(tabStops()).toEqual(new Set([item("Dentist")]));
+
+    act(() => opener("Kitchen").focus());
+    expect(tabStops()).toEqual(new Set([item("Kitchen")]));
+
+    await user.tab();
+    expect(document.activeElement).not.toBe(opener("Kitchen"));
+    expect(document.activeElement?.closest("[data-cursor-item]")).toBe(
+      item("Kitchen"),
+    );
+  });
+
+  it("moves through the items in reading order by arrows, j/k, Home and End", async () => {
+    const user = userEvent.setup();
+    board();
+    act(() => opener("Dentist").focus());
+
+    await user.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(opener("Kitchen"));
+    await user.keyboard("j");
+    expect(document.activeElement).toBe(opener("Garden"));
+    await user.keyboard("j");
+    expect(document.activeElement).toBe(opener("Call mum"));
+    await user.keyboard("j");
+    expect(document.activeElement).toBe(opener("Call mum"));
+    await user.keyboard("k");
+    expect(document.activeElement).toBe(opener("Garden"));
+    await user.keyboard("{Home}");
+    expect(document.activeElement).toBe(opener("Dentist"));
+    await user.keyboard("{End}");
+    expect(document.activeElement).toBe(opener("Call mum"));
+    await user.keyboard("{ArrowUp}");
+    expect(document.activeElement).toBe(opener("Garden"));
+  });
+
+  describe("after an item's own action takes it away", () => {
+    const dentist = thread("Dentist", { followUp: today - DAY });
+    const kitchen = thread("Kitchen", { followUp: today, order: 1 });
+    const garden = thread("Garden", { followUp: today, order: 2 });
+    const boardOf = (threads: Thread[]) => (
+      <FeedbackProvider feedback={createFeedbackMock()}>
+        <DashboardOverview
+          areas={areas}
+          currentDate={currentDate}
+          notes={[]}
+          threads={threads}
+        />
+      </FeedbackProvider>
+    );
+    async function completeByKeyboard(name: string) {
+      const user = userEvent.setup();
+      const complete = within(item(name) as HTMLElement).getByRole("button", {
+        name: /^Complete/,
+      });
+      act(() => complete.focus());
+      await user.keyboard("{Enter}");
+      return user;
+    }
+    const settle = () => act(() => new Promise((done) => setTimeout(done, 0)));
+
+    it("focuses the item that read next", async () => {
+      const { rerender } = render(boardOf([dentist, kitchen, garden]));
+      await completeByKeyboard("Kitchen");
+      rerender(boardOf([dentist, garden]));
+      await settle();
+      expect(document.activeElement).toBe(opener("Garden"));
+    });
+
+    it("focuses the item before when it was the last", async () => {
+      const { rerender } = render(boardOf([dentist, kitchen, garden]));
+      await completeByKeyboard("Garden");
+      rerender(boardOf([dentist, kitchen]));
+      await settle();
+      expect(document.activeElement).toBe(opener("Kitchen"));
+    });
+
+    it("holds focus on the board when nothing is left", async () => {
+      const { container, rerender } = render(boardOf([dentist]));
+      await completeByKeyboard("Dentist");
+      rerender(boardOf([]));
+      await settle();
+      expect(document.activeElement).toBe(container.querySelector(".grid"));
+    });
+
+    it("leaves focus the person moved elsewhere, through a rollback", async () => {
+      const { rerender } = render(boardOf([dentist, kitchen, garden]));
+      await completeByKeyboard("Kitchen");
+      rerender(boardOf([dentist, garden]));
+      await settle();
+      act(() => opener("Dentist").focus());
+      rerender(boardOf([dentist, kitchen, garden]));
+      await settle();
+      expect(document.activeElement).toBe(opener("Dentist"));
+    });
+  });
+
+  it("leaves the keys alone on an item's own controls", async () => {
+    const user = userEvent.setup();
+    board();
+    const complete = within(item("Dentist") as HTMLElement).getByRole(
+      "button",
+      { name: /^Complete/ },
+    );
+    act(() => complete.focus());
+    await user.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(complete);
+  });
+});

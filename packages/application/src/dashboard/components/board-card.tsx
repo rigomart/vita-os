@@ -13,6 +13,10 @@ import {
 } from "../../attention-list";
 import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
 
+/** Inset, so it never meets the outer ring that marks every copy of a Thread. */
+export const focusRing =
+  "has-focus-visible:ring-2 has-focus-visible:ring-ring has-focus-visible:ring-inset";
+
 /** Held in place at rest, so the footer never reflows on hover. */
 export const revealed =
   "opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100";
@@ -41,7 +45,9 @@ export function BoardCard({
     <div
       className={cn(
         "group/card relative flex h-full flex-col gap-1 rounded-xl border border-border/80 bg-card px-3 py-2.5 transition-colors",
-        "hover:border-foreground/15 has-focus-visible:border-ring/50",
+        "hover:border-foreground/15",
+        focusRing,
+        "[&_a:focus-visible]:ring-0",
         // The corner is cut away, and the fold drawn over the cut.
         dogEared &&
           "[clip-path:polygon(0_0,calc(100%-18px)_0,100%_18px,100%_100%,0_100%)]",

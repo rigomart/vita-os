@@ -116,7 +116,7 @@ export function DashboardNote({
         onClick={() => onOpenNote(note)}
         // The overlay stretches the button over the whole card; the footer's
         // controls sit above it, so only they keep their own clicks.
-        className="line-clamp-2 min-h-0 rounded-sm py-0 pr-4 text-left text-sm leading-snug whitespace-pre-line wrap-anywhere text-foreground/85 outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:ring-3 focus-visible:ring-ring/30"
+        className="line-clamp-2 min-h-0 rounded-sm py-0 pr-4 text-left text-sm leading-snug whitespace-pre-line wrap-anywhere text-foreground/85 outline-none after:absolute after:inset-0 after:rounded-xl"
       >
         {markdownToPlainText(note.body)}
       </button>

@@ -36,6 +36,7 @@ import {
   BoardCompleteButton,
   BoardControl,
   BoardDate,
+  focusRing,
   revealed,
   showsBoardDate,
 } from "./board-card";
@@ -342,7 +343,9 @@ function LineFrame({
     <div
       aria-busy={busy || undefined}
       className={cn(
-        "group/card relative flex items-start gap-2.5 rounded-lg px-2.5 transition-colors has-focus-visible:bg-muted/60 hover:bg-muted/50",
+        "group/card relative flex items-start gap-2.5 rounded-lg px-2.5 transition-colors hover:bg-muted/50",
+        focusRing,
+        "has-focus-visible:bg-muted/60",
         look.frame,
       )}
     >
