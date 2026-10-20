@@ -83,7 +83,6 @@ const headings: GroupLook["heading"][] = [
   },
 ];
 
-/** Faint lines come back to full ink under the pointer, to be read. */
 const lines: LineLook[] = [
   {
     frame: "py-2.5 text-[17px] text-foreground",
@@ -107,21 +106,24 @@ const lines: LineLook[] = [
     meta: "h-5",
   },
   {
-    frame: "py-1.5 text-sm text-foreground/75 hover:text-foreground",
+    frame:
+      "py-1.5 text-sm text-foreground/75 hover:text-foreground has-focus-visible:text-foreground",
     marker: "h-5",
     task: "font-normal",
     thread: "text-[13px]",
     meta: "h-5",
   },
   {
-    frame: "py-1 text-[13px] text-foreground/60 hover:text-foreground",
+    frame:
+      "py-1 text-[13px] text-foreground/60 hover:text-foreground has-focus-visible:text-foreground",
     marker: "h-[1.15rem]",
     task: "font-normal",
     thread: "text-xs",
     meta: "h-[1.15rem] opacity-70",
   },
   {
-    frame: "py-1 text-[13px] text-foreground/50 hover:text-foreground",
+    frame:
+      "py-1 text-[13px] text-foreground/50 hover:text-foreground has-focus-visible:text-foreground",
     marker: "h-[1.15rem]",
     task: "font-normal",
     thread: "text-xs",
@@ -146,6 +148,9 @@ export function groupLook(group: BoardGroup): GroupLook {
     line: lines[distance]!,
   };
 }
+
+/** Clearance for the sticky filter above and the phone action bar below. */
+export const CURSOR_SCROLL_MARGIN = "scroll-mt-24 scroll-mb-24";
 
 /** The folded No date tab's fill. */
 export const NO_DATE_FILL =

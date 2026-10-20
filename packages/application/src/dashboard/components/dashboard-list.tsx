@@ -5,7 +5,7 @@ import type { BoardScope } from "./dashboard-item";
 
 import { groupByWhen, itemKey } from "./attention-board-model";
 import { DashboardLine } from "./dashboard-line";
-import { groupLook } from "./dashboard-list-model";
+import { CURSOR_SCROLL_MARGIN, groupLook } from "./dashboard-list-model";
 
 /**
  * Every dated item in one list, what is asking first: Late, Today, then each
@@ -78,7 +78,11 @@ export function DashboardList({
             </h2>
             <ul className="-mx-1.5">
               {group.items.map((item) => (
-                <li key={itemKey(item)}>
+                <li
+                  key={itemKey(item)}
+                  data-cursor-item={itemKey(item)}
+                  className={CURSOR_SCROLL_MARGIN}
+                >
                   <DashboardLine
                     dateInHeading={group.exact}
                     item={item}

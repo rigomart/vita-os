@@ -1,6 +1,6 @@
 import type { AreaSummary, Note, Thread } from "@vita-os/contracts";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { DashboardFilterParams } from "../../navigation/use-dashboard-filter-params";
 import type { BoardScope } from "./dashboard-item";
@@ -12,6 +12,7 @@ import { filterDashboard } from "./dashboard-filter-model";
 import { DashboardList } from "./dashboard-list";
 import { FoldedNoDate, NoDate } from "./no-date";
 import { ThreadCopies } from "./thread-copies";
+import { useDashboardCursor } from "./use-dashboard-cursor";
 
 interface DashboardOverviewProps {
   areas: AreaSummary[];
@@ -38,6 +39,8 @@ export function DashboardOverview({
 }: DashboardOverviewProps) {
   // Held here, not on a card, so the Note view outlives its card leaving.
   const [openNote, setOpenNote] = useState<Note | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+  useDashboardCursor(root);
   const filtered = filterDashboard({
     threads,
     notes,
@@ -57,7 +60,10 @@ export function DashboardOverview({
   };
 
   return (
-    <div className="mx-auto grid max-w-[76rem] gap-x-12 px-4 sm:px-6 lg:min-h-full lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div
+      ref={root}
+      className="mx-auto grid max-w-[76rem] gap-x-12 px-4 outline-none sm:px-6 lg:min-h-full lg:grid-cols-[minmax(0,1fr)_20rem]"
+    >
       <div className="min-w-0 lg:pb-16">
         <h1 className="sr-only">Dashboard</h1>
         <div className="sticky top-0 z-20 -mx-4 bg-surface-1/90 px-4 pt-5 pb-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-3 lg:px-3">
