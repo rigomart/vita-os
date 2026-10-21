@@ -96,8 +96,11 @@ function setup(surface: "detail" | "line") {
   return { repeatAnswer, setTaskRepeat, setTaskDate, stored: () => stored };
 }
 
+// One gesture across two openings of the picker, whose calendar jsdom draws
+// slowly: on CI it takes most of the default five seconds.
 describe.each(["detail", "line"] as const)(
   "%s date picker gesture",
+  { timeout: 15_000 },
   (surface) => {
     it.each(["weekly Friday", "Stop repeating"] as const)(
       "holds the picker while %s saves, so a Wednesday picked next is judged by it",

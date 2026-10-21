@@ -501,9 +501,9 @@ describe("ThreadAttention", () => {
     expect(screen.getByRole("grid")).toBeVisible();
   });
 
-  it("removes a Task's time with Remove, and offers it only with a time", async () => {
+  it("removes a Task's time with Remove", async () => {
     const user = userEvent.setup();
-    const { onSetTaskDate, unmount } = renderAttention({
+    const { onSetTaskDate } = renderAttention({
       tasks: [{ ...callClinic, date: new Date(2026, 7, 13, 9).getTime() }],
     });
 
@@ -521,8 +521,10 @@ describe("ThreadAttention", () => {
       callClinic._id,
       today,
     );
-    unmount();
+  });
 
+  it("offers Remove only when there is a time, with the field empty", async () => {
+    const user = userEvent.setup();
     renderAttention({ tasks: [{ ...callClinic, date: today }] });
     await user.click(
       screen.getByRole("button", { name: "Change date: Today" }),
