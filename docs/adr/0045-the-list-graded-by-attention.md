@@ -1,6 +1,6 @@
 # The Dashboard's list graded by attention
 
-**Status:** Accepted. Amends [ADR 0037](./0037-one-list-under-the-sky.md) (file tabs, fills, two cards to a row, one-line rows from next week), [ADR 0038](./0038-board-cards-as-sheets.md) (cards as sheets now only in No date) and [ADR 0044](./0044-a-card-for-every-dated-task.md) (a dated copy is a line, not a card). Amended by [ADR 0046](./0046-no-date-as-lines.md): No date draws lines too.
+**Status:** Accepted. Amends [ADR 0037](./0037-one-list-under-the-sky.md) (file tabs, fills, two cards to a row, one-line rows from next week), [ADR 0038](./0038-board-cards-as-sheets.md) (cards as sheets now only in No date) and [ADR 0044](./0044-a-card-for-every-dated-task.md) (a dated copy is a line, not a card). Amended by [ADR 0046](./0046-no-date-as-lines.md): No date draws lines too. Amended by [ADR 0048](./0048-later-folds-at-the-foot-of-the-list.md): the weeks and months fold into Later at the foot of the list.
 **Date:** 2026-10-18
 
 ADR 0037 drew each group of the list as a file tab on a fill, with its items as cards two to a row, and ADR 0038 made every card a sheet. Every group then wore the same shape: Late, Today, Tuesday and Saturday were all a tab over a box, so nothing read first, and distance rested on small steps in heading size. Most days hold one item, which left half of each box empty, and a card took about 90px for two lines of words. A week of one-item days ran long.
