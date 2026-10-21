@@ -1,4 +1,4 @@
-import type { SetNoteRepeatInput } from "@vita-os/contracts";
+import type { CreateNoteInput, SetNoteRepeatInput } from "@vita-os/contracts";
 
 import {
   CompleteNoteBody as SharedCompleteNoteBody,
@@ -18,6 +18,8 @@ import {
 export const CreateNoteBody = v.strictObject({
   ...SharedCreateNoteBody.entries,
   followUp: v.optional(TaskDateSchema),
+  repeat: v.optional(RepeatSchema),
+  timeZone: v.optional(TimeZoneSchema),
 });
 export const NoteFollowUp = v.strictObject({
   ...SharedNoteFollowUp.entries,
@@ -33,6 +35,16 @@ export const CompleteNoteBody = v.strictObject({
   ...SharedCompleteNoteBody.entries,
   timeZone: TimeZoneSchema,
 });
+
+export function normalizeCreateNote(
+  input: v.InferOutput<typeof CreateNoteBody>,
+): CreateNoteInput {
+  const { repeat, ...rest } = input;
+  return {
+    ...rest,
+    ...(repeat === undefined ? {} : { repeat: requireRepeat(repeat) }),
+  };
+}
 
 export function normalizeSetNoteRepeat(
   input: v.InferOutput<typeof SetNoteRepeatBody>,

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { ValidationError } from "./errors";
 import {
   decideCompleteNote,
+  decideNewNote,
   decideSetNoteFollowUp,
   decideSetNoteRepeat,
 } from "./note-repeat";
@@ -143,6 +144,39 @@ describe("setting a Note's Repeat", () => {
       decideSetNoteRepeat(nov5, { kind: "monthly", day: 32 }, "UTC"),
     ).toThrow(ValidationError);
     expect(() => decideSetNoteRepeat(nov5, every3, "")).toThrow(
+      ValidationError,
+    );
+  });
+});
+
+describe("a new Note", () => {
+  const nov5 = ms("2026-11-05T09:00Z");
+
+  it("takes a date alone without a zone", () => {
+    expect(decideNewNote({})).toEqual({});
+    expect(decideNewNote({ followUp: nov5 })).toEqual({ followUp: nov5 });
+  });
+
+  it("takes a Repeat with its date, snapping a weekly one", () => {
+    expect(decideNewNote({ followUp: nov5, repeat: thursdays }, "UTC")).toEqual(
+      { followUp: nov5, repeat: thursdays },
+    );
+    expect(
+      decideNewNote(
+        { followUp: nov5, repeat: { kind: "weekly", weekdays: [6] } },
+        "UTC",
+      ),
+    ).toEqual({
+      followUp: ms("2026-11-07T09:00Z"),
+      repeat: { kind: "weekly", weekdays: [6] },
+    });
+  });
+
+  it("refuses a Repeat without a date or a zone", () => {
+    expect(() => decideNewNote({ repeat: every3 }, "UTC")).toThrow(
+      "A Repeat requires a date",
+    );
+    expect(() => decideNewNote({ followUp: nov5, repeat: every3 })).toThrow(
       ValidationError,
     );
   });

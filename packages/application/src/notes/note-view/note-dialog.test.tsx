@@ -445,22 +445,46 @@ describe("NoteDialog repeating note", () => {
     expect(onSetRepeat).toHaveBeenCalledExactlyOnceWith(monthly);
   });
 
-  it("offers no Repeat while composing a new Note", async () => {
+  it("composes a new Note with a Repeat, cleared with its date", async () => {
     const user = userEvent.setup();
-    render(
-      <NoteDialog
-        open
-        onOpenChange={vi.fn()}
-        onSubmit={vi.fn()}
-        onSetRepeat={vi.fn()}
-      />,
-    );
+    const onSubmit = vi.fn(async () => undefined);
+    render(<NoteDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+    typeInNote(await findNoteEditor(), "Pay the rent");
+    const tomorrow = new Date(2026, 6, 18).getTime();
 
+    await user.click(screen.getByRole("button", { name: "Follow-up date" }));
+    expect(
+      screen.getByRole("button", { name: /^Repeat, Never/ }),
+    ).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /^Tomorrow, / }));
+    await user.click(screen.getByRole("button", { name: "Follow-up date" }));
+    await user.click(screen.getByRole("button", { name: /^Repeat, Never/ }));
+    await user.click(
+      screen.getByRole("button", { name: "Every month on the 18th" }),
+    );
+    expect(
+      screen.getByRole("img", { name: "Repeats monthly on the 18th" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Follow-up date" }));
+    await user.click(
+      screen.getByRole("button", { name: "Clear follow-up date" }),
+    );
+    expect(screen.queryByRole("img", { name: /^Repeats/ })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Follow-up date" }));
     await user.click(screen.getByRole("button", { name: /^Tomorrow, / }));
     await user.click(screen.getByRole("button", { name: "Follow-up date" }));
+    await user.click(screen.getByRole("button", { name: /^Repeat, Never/ }));
+    await user.click(
+      screen.getByRole("button", { name: "Every month on the 18th" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Add" }));
 
-    expect(screen.queryByRole("button", { name: /^Repeat/ })).toBeNull();
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith({
+      body: "Pay the rent",
+      when: tomorrow,
+      repeat: { kind: "monthly", day: 18 },
+    });
   });
 
   it("offers Complete beside Archive, naming where it goes back to", async () => {

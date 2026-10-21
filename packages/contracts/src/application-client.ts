@@ -128,6 +128,14 @@ export interface CreateThreadFromNoteInput {
   taskId?: TaskId;
 }
 
+export interface CreateNoteInput {
+  body: string;
+  followUp?: number;
+  repeat?: Repeat;
+  /** Required with a Repeat. */
+  timeZone?: string;
+}
+
 export interface UpdateNoteFollowUpInput {
   noteId: NoteId;
   /** Sets or changes the date; `null` clears it and its Repeat. */
@@ -222,10 +230,8 @@ export interface ApplicationClient {
     input: DoneNotePageRequest,
   ): Promise<OperationResult<NotePage>>;
   countOpenNotes(): Promise<OperationResult<number>>;
-  createNote(input: {
-    body: string;
-    followUp?: number;
-  }): Promise<OperationResult<Note>>;
+  /** A Repeat needs the date and a zone; weekly and monthly snap the date. */
+  createNote(input: CreateNoteInput): Promise<OperationResult<Note>>;
   updateNoteBody(input: {
     noteId: NoteId;
     body: string;

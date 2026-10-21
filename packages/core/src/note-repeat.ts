@@ -86,6 +86,26 @@ export function decideSetNoteRepeat(
 }
 
 /**
+ * A new Note's date and Repeat, decided as if the Repeat were set right after
+ * the date: it needs the date and a zone, and weekly and monthly snap it.
+ */
+export function decideNewNote(
+  note: NoteRepeatState,
+  timeZone?: string,
+): NoteRepeatState {
+  if (note.repeat === undefined) {
+    return note.followUp === undefined
+      ? {}
+      : { followUp: requireTaskDate(note.followUp) };
+  }
+  return decideSetNoteRepeat(
+    note.followUp === undefined ? {} : { followUp: note.followUp },
+    note.repeat,
+    requireTimeZone(timeZone),
+  );
+}
+
+/**
  * Completing a repeating Note moves it to its next occurrence: missed ones
  * collapse into the first not before today. It records nothing.
  */

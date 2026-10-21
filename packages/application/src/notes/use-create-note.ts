@@ -1,8 +1,12 @@
+import type { Repeat } from "@vita-os/contracts";
+
+import { browserTimeZone } from "../lib/time-zone";
 import { useCaptureNote } from "./hooks";
 
 export type CreateNoteValue = {
   body: string;
   when?: number;
+  repeat?: Repeat;
 };
 
 /**
@@ -19,5 +23,8 @@ export function useCreateNote() {
     capture.mutateAsync({
       body: value.body,
       ...(value.when === undefined ? {} : { followUp: value.when }),
+      ...(value.repeat === undefined
+        ? {}
+        : { repeat: value.repeat, timeZone: browserTimeZone() }),
     });
 }

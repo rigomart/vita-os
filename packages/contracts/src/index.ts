@@ -6,6 +6,7 @@ export type {
   CompleteNoteInput,
   CompleteTaskInput,
   CreateAreaInput,
+  CreateNoteInput,
   CreateThreadFromNoteInput,
   CreateThreadInput,
   DoneNotePageRequest,

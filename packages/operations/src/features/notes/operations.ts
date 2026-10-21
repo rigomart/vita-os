@@ -1,6 +1,7 @@
 import type {
   CommandAcknowledgement,
   CompleteNoteInput,
+  CreateNoteInput,
   DoneNotePageRequest,
   Note,
   NoteId,
@@ -13,11 +14,11 @@ import type { NoteRepeatState } from "@vita-os/core";
 import { commandAcknowledged } from "@vita-os/contracts";
 import {
   decideCompleteNote,
+  decideNewNote,
   decideSetNoteFollowUp,
   decideSetNoteRepeat,
   noteSearchTerms,
   requireNonBlankText,
-  requireTaskDate,
 } from "@vita-os/core";
 import { Result } from "better-result";
 
@@ -61,22 +62,16 @@ export function getDoneNotePage(
 
 export function createNote(
   scope: RequestScope,
-  input: {
-    body: string;
-    followUp?: number;
-  },
+  input: CreateNoteInput,
 ): Operation<Note> {
   return Result.gen(async function* () {
     const body = yield* attempt(() =>
       requireNonBlankText(input.body, "Note body"),
     );
-    if (input.followUp !== undefined) {
-      const followUp = input.followUp;
-      yield* attempt(() => requireTaskDate(followUp));
-    }
+    const dates = yield* attempt(() => decideNewNote(input, input.timeZone));
     return found(
       yield* Result.await(
-        database(() => noteStorage(scope).insert({ ...input, body })),
+        database(() => noteStorage(scope).insert({ body, ...dates })),
       ),
     );
   });

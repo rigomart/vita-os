@@ -29,6 +29,7 @@ import { pageRequest } from "../../platform/http/schemas";
 import {
   CompleteNoteBody,
   CreateNoteBody,
+  normalizeCreateNote,
   normalizeSetNoteRepeat,
   NoteFollowUp,
   SetNoteRepeatBody,
@@ -61,7 +62,13 @@ export const notesRoutes = new Hono<ApiEnv>()
     "/notes",
     validate("json", CreateNoteBody, "Invalid Note."),
     async (c) =>
-      respond(await createNote(c.get("scope"), c.req.valid("json")), 201),
+      respond(
+        await createNote(
+          c.get("scope"),
+          normalizeCreateNote(c.req.valid("json")),
+        ),
+        201,
+      ),
   )
   .patch(
     "/notes/:noteId/body",

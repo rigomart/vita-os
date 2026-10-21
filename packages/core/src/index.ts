@@ -31,6 +31,7 @@ export {
 export { clearedToAbsent } from "./clearable";
 export {
   decideCompleteNote,
+  decideNewNote,
   decideSetNoteFollowUp,
   decideSetNoteRepeat,
   type NoteRepeatState,
