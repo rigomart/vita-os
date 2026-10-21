@@ -155,6 +155,8 @@ export function lookAt(distance: number): GroupLook {
   return { distance, heading: headings[distance]!, line: lines[distance]! };
 }
 
+export const LATER_LOOK = lookAt(3);
+
 /** No date's lines read like the soon group's: nothing there is late, nothing is far off. */
 export const NO_DATE_LOOK = lookAt(2).line;
 
@@ -172,11 +174,8 @@ export function itemTitle(item: BoardItem) {
   return text.split("\n")[0]!.trim();
 }
 
-/**
- * No date folded to one line: the first two items by name, then how many
- * more there are.
- */
-export function foldedNoDateSummary(items: readonly BoardItem[]) {
+/** The first two items by name, then how many more there are. */
+export function foldedSummary(items: readonly BoardItem[]) {
   const names = items.slice(0, 2).map(itemTitle).join(", ");
   const rest = items.length - 2;
   return rest > 0 ? `${names} and ${rest} more` : names;

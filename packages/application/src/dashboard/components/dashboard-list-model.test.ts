@@ -5,11 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { BoardItem } from "./attention-board-model";
 
 import { groupByWhen } from "./attention-board-model";
-import {
-  foldedNoDateSummary,
-  groupLook,
-  itemTitle,
-} from "./dashboard-list-model";
+import { foldedSummary, groupLook, itemTitle } from "./dashboard-list-model";
 
 const currentDate = new Date(2026, 6, 17, 12).getTime();
 const day = (offset: number) => new Date(2026, 6, 17 + offset).getTime();
@@ -100,10 +96,10 @@ describe("itemTitle", () => {
   });
 });
 
-describe("foldedNoDateSummary", () => {
+describe("foldedSummary", () => {
   it("names the first two items and counts the rest", () => {
     expect(
-      foldedNoDateSummary([
+      foldedSummary([
         threadItem("Marathon"),
         threadItem("Emergency fund"),
         noteItem("Wifi password"),
@@ -113,9 +109,9 @@ describe("foldedNoDateSummary", () => {
   });
 
   it("names one or two items without a count", () => {
-    expect(foldedNoDateSummary([threadItem("Marathon")])).toBe("Marathon");
+    expect(foldedSummary([threadItem("Marathon")])).toBe("Marathon");
     expect(
-      foldedNoDateSummary([threadItem("Marathon"), noteItem("Wifi password")]),
+      foldedSummary([threadItem("Marathon"), noteItem("Wifi password")]),
     ).toBe("Marathon, Wifi password");
   });
 });

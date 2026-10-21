@@ -9,7 +9,7 @@ import { itemKey, unscheduledRuns } from "./attention-board-model";
 import { DashboardLine } from "./dashboard-line";
 import {
   CURSOR_SCROLL_MARGIN,
-  foldedNoDateSummary,
+  foldedSummary,
   NO_DATE_FILL,
   NO_DATE_LOOK,
 } from "./dashboard-list-model";
@@ -86,7 +86,7 @@ export function FoldedNoDate({
           className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-muted-foreground transition-colors outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/40"
         >
           <span className="min-w-0 flex-1 truncate">
-            {open ? "Hide" : foldedNoDateSummary(items)}
+            {open ? "Hide" : foldedSummary(items)}
           </span>
           <ChevronDown
             aria-hidden

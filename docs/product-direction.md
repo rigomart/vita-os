@@ -117,10 +117,10 @@ The Dashboard lays every Open Thread and every open Standalone Note on one axis 
 
 - **Late**, then **Today**: what is asking.
 - **Tomorrow** and each day of the coming week that has something due, by name.
-- **Weeks**, then **months**: further out, small and faint, there to be known about rather than read.
+- **Later**: the weeks and months, folded at the foot of the list to one line naming how many, when the next comes, and the first two. Opened, they read small and faint, there to be known about rather than read.
 - **No date**: **Ready to move** (Threads whose Tasks are all undated), **Open** (Threads with no Tasks), **Notes** (undated Notes). On a wide screen it sits beside the list; on a phone it leads the list, folded to one line.
 
-Placement is derived from dates and from whether a Thread has Tasks. A Thread sits at its soonest dated Task; a Standalone Note sits at its Follow-up date. The user never sets a status. A date outranks undated Tasks, so a Thread whose Tasks are all undated leads No date and is never Late or Today. Nothing is capped.
+Placement is derived from dates and from whether a Thread has Tasks. A Thread sits at its soonest dated Task; a Standalone Note sits at its Follow-up date. The user never sets a status. A date outranks undated Tasks, so a Thread whose Tasks are all undated leads No date and is never Late or Today. Nothing is capped: Later and the folded No date hide lines, never that they exist.
 
 Every item is a line under its day's heading, and the nearer a day, the larger and darker it reads: what is asking stands out, and what is far off recedes. Above the page, the sky shows the time of day and nothing else.
 

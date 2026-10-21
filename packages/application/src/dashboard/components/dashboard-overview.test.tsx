@@ -181,6 +181,10 @@ function groupText(name: string) {
     .map((item) => item.textContent);
 }
 
+function openLater() {
+  act(() => screen.getByRole("button", { name: /^Later/ }).click());
+}
+
 /** The list's groups, top to bottom, by their headings. */
 function groupLabels() {
   return screen
@@ -378,10 +382,13 @@ describe("DashboardOverview", () => {
       notes: [note("Water the plants", { followUp: today })],
     });
 
+    expect(groupLabels()).toEqual(["Late", "Today", "Sunday", "Later"]);
+    openLater();
     expect(groupLabels()).toEqual([
       "Late",
       "Today",
       "Sunday",
+      "Later",
       "In 1 week",
       "August",
     ]);
@@ -395,6 +402,81 @@ describe("DashboardOverview", () => {
     ]);
   });
 
+  it("folds what is a week or more away into Later, naming how many, the next and the first two", async () => {
+    const user = userEvent.setup();
+    renderOverview({
+      threads: [
+        thread("Tomorrow one", { followUp: today + DAY }),
+        thread("Insurance", { followUp: today + 9 * DAY, order: 1 }),
+        thread("Distant", { followUp: today + 30 * DAY, order: 2 }),
+      ],
+      notes: [note("Renew the passport", { followUp: today + 12 * DAY })],
+    });
+
+    const later = screen.getByRole("button", { name: /^Later/ });
+    expect(later).toHaveAttribute("aria-expanded", "false");
+    expect(later).toHaveTextContent(
+      /^Later3next 9dInsurance, Renew the passport and 1 more$/,
+    );
+    expect(screen.queryByRole("link", { name: "Distant" })).toBeNull();
+    expect(groupLabels()).toEqual(["Tomorrow", "Later"]);
+
+    await user.click(later);
+    expect(later).toHaveAttribute("aria-expanded", "true");
+    expect(later).toHaveTextContent(/^Later3next 9d$/);
+    expect(groupLabels()).toEqual(["Tomorrow", "Later", "In 1 week", "August"]);
+
+    await user.click(later);
+    expect(screen.queryByRole("link", { name: "Distant" })).toBeNull();
+  });
+
+  it("keeps Later as set while the board changes, and pops its count when an item moves into it", async () => {
+    const user = userEvent.setup();
+    const near = thread("Insurance", { followUp: today + DAY });
+    const far = thread("Distant", { followUp: today + 30 * DAY, order: 1 });
+    const { rerender, props } = renderOverview({ threads: [near, far] });
+    const rerenderWith = (threads: Thread[]) =>
+      rerender(
+        <FeedbackProvider feedback={createFeedbackMock()}>
+          <DashboardOverview {...props} threads={threads} />
+        </FeedbackProvider>,
+      );
+    const count = () =>
+      screen
+        .getByRole("button", { name: /^Later/ })
+        .querySelector(".tabular-nums");
+
+    expect(count()).toHaveTextContent("1");
+    expect(count()).not.toHaveClass("animate-in");
+
+    rerenderWith([thread("Insurance", { followUp: today + 10 * DAY }), far]);
+    expect(count()).toHaveTextContent("2");
+    expect(count()).toHaveClass("animate-in");
+    expect(screen.queryByRole("link", { name: "Insurance" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /^Later/ }));
+    rerenderWith([far]);
+    expect(screen.getByRole("button", { name: /^Later/ })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByRole("link", { name: "Distant" })).toBeVisible();
+  });
+
+  it("shows no Later when nothing is a week away, and says so when only Later holds anything", () => {
+    const { unmount } = renderOverview({
+      threads: [thread("Tomorrow one", { followUp: today + DAY })],
+    });
+    expect(screen.queryByRole("button", { name: /^Later/ })).toBeNull();
+    unmount();
+
+    renderOverview({
+      threads: [thread("Distant", { followUp: today + 30 * DAY })],
+    });
+    expect(screen.getByText("Nothing this week.")).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Later/ })).toBeVisible();
+  });
+
   it("shows items from next week on as the same lines, opening what they are", () => {
     renderOverview({
       threads: [thread("Distant", { followUp: today + 30 * DAY })],
@@ -404,6 +486,7 @@ describe("DashboardOverview", () => {
         }),
       ],
     });
+    openLater();
 
     const week = screen.getByRole("region", { name: "In 1 week" });
     const line = within(week).getByRole("listitem");
@@ -539,6 +622,7 @@ describe("DashboardOverview", () => {
 
     expect(groupText("Today")).toEqual([expect.stringContaining("Mixed")]);
     expect(groupText("Tomorrow")).toEqual([expect.stringContaining("Soon")]);
+    openLater();
     expect(screen.getByRole("region", { name: "August" })).toHaveTextContent(
       "Far only",
     );
@@ -610,6 +694,7 @@ describe("DashboardOverview", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/tasks today/)).toBeNull();
+    openLater();
     expect(
       within(screen.getByRole("region", { name: "In 1 week" })).getByRole(
         "listitem",
@@ -631,6 +716,7 @@ describe("DashboardOverview", () => {
         thread("Dentist", { followUp: today, order: 1 }),
       ],
     });
+    openLater();
 
     const copies = () =>
       screen

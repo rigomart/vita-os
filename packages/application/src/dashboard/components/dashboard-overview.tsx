@@ -25,8 +25,8 @@ interface DashboardOverviewProps {
 
 /**
  * The Dashboard answers one question — what needs attention now? — as one
- * list read from what is asking now out to what is far off, with what has no
- * date beside it. The page scrolls; the filter sticks to the top of the list
+ * list read from what is asking now out to the end of the week, with what is
+ * further off folded into Later at its foot and what has no date beside it. The page scrolls; the filter sticks to the top of the list
  * and, from `lg`, No date to the side. Below `lg` No date leads the list,
  * folded to one line.
  */
@@ -38,6 +38,7 @@ export function DashboardOverview({
   threads,
 }: DashboardOverviewProps) {
   const [openNote, setOpenNote] = useState<Note | null>(null);
+  const [laterOpen, setLaterOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   useDashboardCursor(root);
   const filtered = filterDashboard({
@@ -93,7 +94,12 @@ export function DashboardOverview({
         ) : (
           <ThreadCopies>
             <FoldedNoDate board={board} scope={scope} />
-            <DashboardList board={board} scope={scope} />
+            <DashboardList
+              board={board}
+              laterOpen={laterOpen}
+              scope={scope}
+              onLaterOpenChange={setLaterOpen}
+            />
           </ThreadCopies>
         )}
       </div>
