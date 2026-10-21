@@ -59,11 +59,11 @@ const MONTH_HORIZON = 28;
  * The grain widens with distance: Now splits into Late and Today, This week
  * into its days, Later into weeks and then months. Every group reads label,
  * hint, count, so the list says when its items come due without anyone
- * reading each card's date.
+ * reading each line's date.
  */
 export interface BoardGroup {
   /**
-   * The heading names the one day every item under it comes due, so its cards
+   * The heading names the one day every item under it comes due, so its lines
    * leave their date to the heading.
    */
   exact: boolean;
@@ -234,11 +234,11 @@ export function datedTasks(thread: Thread): (Task & { date: number })[] {
 }
 
 /**
- * The one Task a Thread's card names and acts on: the Task that placed its
+ * The one Task a Thread's line names and acts on: the Task that placed its
  * copy, or in No date the Thread's only Task. With several undated Tasks
- * there is none, as the card must not pick a headline the person never chose.
+ * there is none, as the line must not pick a headline the person never chose.
  */
-export function cardTask(thread: Thread, placedBy?: Task): Task | undefined {
+export function lineTask(thread: Thread, placedBy?: Task): Task | undefined {
   if (placedBy !== undefined) return placedBy;
   const tasks = thread.tasks ?? [];
   return tasks.length === 1 ? tasks[0] : undefined;

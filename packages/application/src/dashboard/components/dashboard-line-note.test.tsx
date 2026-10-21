@@ -4,7 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render, screen, waitFor } from "../../test/render-with-providers";
-import { DashboardNote } from "./dashboard-note";
+import { DashboardLine } from "./dashboard-line";
+import { NO_DATE_LOOK } from "./dashboard-list-model";
 
 const mocks = vi.hoisted(() => ({
   archiveNote: vi.fn(),
@@ -47,7 +48,26 @@ function note(body: string, fields: Partial<Note> = {}): Note {
   };
 }
 
-describe("DashboardNote", () => {
+function NoteLine({
+  dateInHeading = false,
+  note,
+  onOpenNote = vi.fn(),
+}: {
+  dateInHeading?: boolean;
+  note: Note;
+  onOpenNote?: (note: Note) => void;
+}) {
+  return (
+    <DashboardLine
+      dateInHeading={dateInHeading}
+      item={{ kind: "note", note }}
+      look={NO_DATE_LOOK}
+      scope={{ areaById: new Map(), currentDate, onOpenNote }}
+    />
+  );
+}
+
+describe("a Note's line", () => {
   beforeEach(() => {
     mocks.archiveNote.mockReset();
     mocks.completeNote.mockReset();
@@ -56,42 +76,33 @@ describe("DashboardNote", () => {
     mocks.updateNoteWhen.mockReset();
   });
 
-  it("opens the Note from a two-line plain text preview", async () => {
+  it("opens the Note from its first line, in plain text", async () => {
     const user = userEvent.setup();
     const onOpenNote = vi.fn();
     const saved = note(
       "# Consultation\n**Next steps** [Clinic](https://example.com)",
     );
-    render(
-      <DashboardNote
-        currentDate={currentDate}
-        note={saved}
-        onOpenNote={onOpenNote}
-      />,
-    );
+    render(<NoteLine note={saved} onOpenNote={onOpenNote} />);
 
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();
     const preview = screen.getByRole("button", {
       name: /Open note: Consultation/,
     });
-    expect(preview).toHaveTextContent("Consultation Next steps Clinic");
-    expect(preview).not.toHaveTextContent("**");
-    expect(preview).toHaveClass("line-clamp-2");
+    expect(preview).toHaveAccessibleName(
+      /^Open note: Consultation\s+Next steps Clinic$/,
+    );
+    expect(preview).toHaveTextContent(/^Consultation$/);
     await user.click(preview);
     expect(onOpenNote).toHaveBeenCalledExactlyOnceWith(saved);
   });
 
-  it("archives the note from the footer and says so", async () => {
+  it("archives the note from its line and says so", async () => {
     const user = userEvent.setup();
     const onOpenNote = vi.fn();
     mocks.archiveNote.mockResolvedValue(undefined);
     const { feedback } = render(
-      <DashboardNote
-        currentDate={currentDate}
-        note={note("Water the plants")}
-        onOpenNote={onOpenNote}
-      />,
+      <NoteLine note={note("Water the plants")} onOpenNote={onOpenNote} />,
     );
 
     expect(
@@ -109,12 +120,10 @@ describe("DashboardNote", () => {
 
   it("dates itself with the board's token and wears no Area-style tag", () => {
     render(
-      <DashboardNote
-        currentDate={currentDate}
+      <NoteLine
         note={note("Water the plants", {
           followUp: currentDate - 2 * 24 * 60 * 60 * 1000,
         })}
-        onOpenNote={vi.fn()}
       />,
     );
 
@@ -137,13 +146,7 @@ describe("DashboardNote", () => {
         repeat: monthly,
       });
       mocks.completeNote.mockResolvedValue(undefined);
-      render(
-        <DashboardNote
-          currentDate={currentDate}
-          note={repeating}
-          onOpenNote={onOpenNote}
-        />,
-      );
+      render(<NoteLine note={repeating} onOpenNote={onOpenNote} />);
 
       expect(
         screen.queryByRole("button", { name: "Archive note" }),
@@ -168,13 +171,11 @@ describe("DashboardNote", () => {
         }),
       );
       render(
-        <DashboardNote
-          currentDate={currentDate}
+        <NoteLine
           note={note("Pay the utility bill", {
             followUp: today,
             repeat: monthly,
           })}
-          onOpenNote={vi.fn()}
         />,
       );
 
@@ -194,13 +195,11 @@ describe("DashboardNote", () => {
         retryable: false,
       });
       const { feedback } = render(
-        <DashboardNote
-          currentDate={currentDate}
+        <NoteLine
           note={note("Pay the utility bill", {
             followUp: today,
             repeat: monthly,
           })}
-          onOpenNote={vi.fn()}
         />,
       );
 
@@ -215,14 +214,12 @@ describe("DashboardNote", () => {
 
     it("wears the repeat glyph on its date, even under its day's heading", () => {
       render(
-        <DashboardNote
-          currentDate={currentDate}
+        <NoteLine
           dateInHeading
           note={note("Pay the utility bill", {
             followUp: today,
             repeat: monthly,
           })}
-          onOpenNote={vi.fn()}
         />,
       );
 
@@ -236,13 +233,7 @@ describe("DashboardNote", () => {
     });
 
     it("keeps Archive and no glyph on a one-off Note", () => {
-      render(
-        <DashboardNote
-          currentDate={currentDate}
-          note={note("Water the plants", { followUp: today })}
-          onOpenNote={vi.fn()}
-        />,
-      );
+      render(<NoteLine note={note("Water the plants", { followUp: today })} />);
 
       expect(
         screen.getByRole("button", { name: "Archive note" }),
@@ -257,11 +248,7 @@ describe("DashboardNote", () => {
       const user = userEvent.setup();
       mocks.setNoteRepeat.mockResolvedValue(undefined);
       render(
-        <DashboardNote
-          currentDate={currentDate}
-          note={note("Pay the utility bill", { followUp: today })}
-          onOpenNote={vi.fn()}
-        />,
+        <NoteLine note={note("Pay the utility bill", { followUp: today })} />,
       );
 
       await user.click(

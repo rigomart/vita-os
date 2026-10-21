@@ -3,7 +3,7 @@ import type { AreaSummary, Note, Thread } from "@vita-os/contracts";
 import { useRef, useState } from "react";
 
 import type { DashboardFilterParams } from "../../navigation/use-dashboard-filter-params";
-import type { BoardScope } from "./dashboard-item";
+import type { BoardScope } from "./dashboard-line";
 
 import { StandaloneNoteDialog } from "../../notes/note-view/standalone-note-dialog";
 import { boardItems, buildAttentionBoard } from "./attention-board-model";
@@ -37,7 +37,6 @@ export function DashboardOverview({
   notes,
   threads,
 }: DashboardOverviewProps) {
-  // Held here, not on a card, so the Note view outlives its card leaving.
   const [openNote, setOpenNote] = useState<Note | null>(null);
   const root = useRef<HTMLDivElement>(null);
   useDashboardCursor(root);

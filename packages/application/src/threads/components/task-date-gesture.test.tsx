@@ -9,6 +9,8 @@ import userEvent from "@testing-library/user-event";
 import { decideSetTaskDate, decideSetTaskRepeat } from "@vita-os/core";
 import { describe, expect, it, vi } from "vitest";
 
+import { DashboardLine } from "../../dashboard/components/dashboard-line";
+import { NO_DATE_LOOK } from "../../dashboard/components/dashboard-list-model";
 import { queryKeys } from "../../query-keys";
 import {
   createQuietApplicationClient,
@@ -25,7 +27,6 @@ import {
   within,
 } from "../../test/render-with-providers";
 import { useOpenThreads } from "../hooks";
-import { ConnectedThreadAttentionCard } from "./thread-attention-card";
 import { ThreadAttentionSection } from "./thread-attention-section";
 
 const aug = (day: number) => new Date(2026, 7, day).getTime();
@@ -41,19 +42,24 @@ const seed = aThread({
   ],
 });
 
-function Surface({ surface }: { surface: "detail" | "card" }) {
+function Surface({ surface }: { surface: "detail" | "line" }) {
   const threads = useOpenThreads();
   const thread = threads.data?.[0];
   if (!thread) return null;
   return surface === "detail" ? (
     <ThreadAttentionSection thread={thread} />
   ) : (
-    <ConnectedThreadAttentionCard thread={thread} currentDate={aug(1)} />
+    <DashboardLine
+      dateInHeading={false}
+      item={{ kind: "thread", thread }}
+      look={NO_DATE_LOOK}
+      scope={{ areaById: new Map(), currentDate: aug(1), onOpenNote: vi.fn() }}
+    />
   );
 }
 
 /** Apply each real domain rule when its request finishes, including the current stored Repeat. */
-function setup(surface: "detail" | "card") {
+function setup(surface: "detail" | "line") {
   let stored: Thread = seed;
   const repeatAnswer = deferred<void>();
   const setTaskRepeat = vi.fn(async (input: SetTaskRepeatInput) => {
@@ -90,7 +96,7 @@ function setup(surface: "detail" | "card") {
   return { repeatAnswer, setTaskRepeat, setTaskDate, stored: () => stored };
 }
 
-describe.each(["detail", "card"] as const)(
+describe.each(["detail", "line"] as const)(
   "%s date picker gesture",
   (surface) => {
     it.each(["weekly Friday", "Doesn't repeat"] as const)(
@@ -98,7 +104,7 @@ describe.each(["detail", "card"] as const)(
       async (choice) => {
         const service = setup(surface);
         const user = userEvent.setup();
-        // In Thread detail the date itself opens the picker; the card's button names no date.
+        // In Thread detail the date itself opens the picker; the line's button names no date.
         const trigger = () =>
           screen.getByRole("button", {
             name: surface === "detail" ? /^Change date:/ : "Change date",
@@ -128,7 +134,7 @@ describe.each(["detail", "card"] as const)(
           expect(service.setTaskRepeat).toHaveBeenCalledTimes(1),
         );
         // Nothing can be picked until the Repeat lands: a row's picker is
-        // back on its menu, held; a card's has closed, and its date is held.
+        // back on its menu, held; a line's has closed, and its date is held.
         const pickDate = () =>
           screen.queryByRole("button", { name: "Pick a date…" });
         if (surface === "detail") expect(pickDate()).toBeDisabled();
@@ -138,7 +144,7 @@ describe.each(["detail", "card"] as const)(
         }
 
         await act(async () => service.repeatAnswer.resolve());
-        if (surface === "card") {
+        if (surface === "line") {
           await waitFor(() => expect(trigger()).toBeEnabled());
           await user.click(trigger());
         }

@@ -17,78 +17,19 @@ import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
 export const focusRing =
   "has-focus-visible:ring-2 has-focus-visible:ring-ring has-focus-visible:ring-inset";
 
-/** Held in place at rest, so the footer never reflows on hover. */
+/** Held in place at rest, so the line never reflows on hover. */
 export const revealed =
   "opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100";
 
 /**
- * The shape every item in No date takes, Thread or Note: a sheet with an
- * edge of its own, in three rows that never trade places. The first two carry the words — the
- * headline, then what is next — each with the full width to itself. The third
- * is the footer: when and where on the left, the controls on the right.
- *
- * A card fills the height of its row, with the footer held to the bottom.
- *
- * A `dogEared` card has its top right corner folded over: the mark of a scrap
- * someone wrote, where a pill would read as one more Area.
- */
-export function BoardCard({
-  children,
-  footer,
-  dogEared = false,
-}: {
-  children: ReactNode;
-  footer: ReactNode;
-  dogEared?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "group/card relative flex h-full flex-col gap-1 rounded-xl border border-border/80 bg-card px-3 py-2.5 transition-colors",
-        "hover:border-foreground/15",
-        focusRing,
-        "[&_a:focus-visible]:ring-0",
-        // The corner is cut away, and the fold drawn over the cut.
-        dogEared &&
-          "[clip-path:polygon(0_0,calc(100%-18px)_0,100%_18px,100%_100%,0_100%)]",
-      )}
-    >
-      {dogEared && (
-        <span
-          aria-hidden
-          className="absolute top-0 right-0 size-[18px] rounded-bl-[4px] bg-[linear-gradient(to_bottom_left,transparent_calc(50%-0.5px),var(--color-border)_50%,var(--color-surface-3)_calc(50%+0.5px))]"
-        />
-      )}
-      {children}
-      <div className="mt-auto flex min-h-6 items-center gap-1.5 pt-0.5 text-[12px] leading-snug text-muted-foreground/75">
-        {footer}
-      </div>
-    </div>
-  );
-}
-
-/** Which Area, as a small muted pill in the footer. */
-export function BoardTag({ icon, label }: { icon: ReactNode; label: string }) {
-  return (
-    <span
-      title={label}
-      className="inline-flex max-w-40 min-w-0 items-center gap-1 rounded-full bg-muted/70 px-1.5 py-px text-[11px] text-muted-foreground"
-    >
-      {icon}
-      <span className="truncate">{label}</span>
-    </span>
-  );
-}
-
-/**
  * The item's date as a token that opens the picker. Undated — or dated under
  * a heading that already names its day, with no time to add — it is only a
- * revealed control, so `BoardCard` footers place it with the other controls.
- * Under such a heading a time is all the token says.
+ * revealed control, so a line places it with the other controls. Under such
+ * a heading a time is all the token says.
  *
  * With `showsRepeat`, a repeating date wears the repeat glyph in place of the
  * calendar, and is always a token, so the rhythm shows under any heading. A
- * Task card marks its repeat beside the Task instead.
+ * Task's line marks its repeat beside the Task instead.
  */
 export function BoardDate({
   busy,
@@ -163,8 +104,8 @@ export function BoardDate({
 }
 
 /**
- * Whether a card's date reads as a token at the left of its footer: a dated
- * item does unless its heading already names the day and it has no time.
+ * Whether a line's date reads as a token before its controls: a dated item
+ * does unless its heading already names the day and it has no time.
  */
 export function showsBoardDate(
   when: number | undefined,

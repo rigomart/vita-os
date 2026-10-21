@@ -395,7 +395,7 @@ describe("copies of one Thread", () => {
 });
 
 describe("a Dashboard Note view", () => {
-  it("keeps the Note view open when archiving removes its board card", async () => {
+  it("keeps the Note view open when archiving removes its line", async () => {
     const user = userEvent.setup();
     const markNoteDone = vi.fn(async () => {
       rerender(
@@ -438,7 +438,7 @@ describe("a Dashboard Note view", () => {
     expect(markNoteDone).toHaveBeenCalledExactlyOnceWith({ noteId: "note1" });
   });
 
-  it("keeps the Note view open when a Follow-up date moves its card to another day", async () => {
+  it("keeps the Note view open when a Follow-up date moves its line to another day", async () => {
     const user = userEvent.setup();
     const nextDate = new Date(2026, 6, 18).getTime();
     const datedNote = {

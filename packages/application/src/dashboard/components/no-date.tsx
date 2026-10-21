@@ -3,19 +3,21 @@ import { ChevronDown } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import type { AttentionBoard } from "./attention-board-model";
-import type { BoardScope } from "./dashboard-item";
+import type { BoardScope } from "./dashboard-line";
 
 import { itemKey, unscheduledRuns } from "./attention-board-model";
-import { DashboardItem } from "./dashboard-item";
+import { DashboardLine } from "./dashboard-line";
 import {
   CURSOR_SCROLL_MARGIN,
   foldedNoDateSummary,
   NO_DATE_FILL,
+  NO_DATE_LOOK,
 } from "./dashboard-list-model";
 
 /**
- * What has no date, under one heading, in three runs: Ready to move, Open,
- * Notes. From `lg` it sits beside the list, pinned as the page scrolls.
+ * What has no date, under one heading, in three runs of lines like the
+ * list's: Ready to move, Open, Notes. From `lg` it sits beside the list,
+ * pinned as the page scrolls.
  */
 export function NoDate({
   board,
@@ -39,7 +41,7 @@ export function NoDate({
           Everything open has a date.
         </p>
       ) : (
-        <div className="flex flex-col gap-5 pt-4">
+        <div className="flex flex-col gap-4 pt-3">
           <Runs board={board} scope={scope} />
         </div>
       )}
@@ -95,7 +97,7 @@ export function FoldedNoDate({
           />
         </button>
         {open && (
-          <div className="flex flex-col gap-4 px-3 pt-1 pb-2">
+          <div className="flex flex-col gap-3 px-3 pt-1 pb-2">
             <Runs board={board} scope={scope} />
           </div>
         )}
@@ -107,20 +109,25 @@ export function FoldedNoDate({
 function Runs({ board, scope }: { board: AttentionBoard; scope: BoardScope }) {
   return unscheduledRuns(board).map((run) => (
     <section key={run.key} aria-label={run.title}>
-      <h3 className="flex items-baseline gap-2 pb-1 text-[13px] font-semibold text-muted-foreground">
+      <h3 className="flex items-baseline gap-2 px-1 pb-0.5 text-[13px] font-semibold text-muted-foreground">
         {run.title}
         <span className="font-normal tabular-nums opacity-70">
           {run.items.length}
         </span>
       </h3>
-      <ul className="-mx-3 flex flex-col gap-1.5">
+      <ul className="-mx-1.5">
         {run.items.map((item) => (
           <li
             key={itemKey(item)}
             data-cursor-item={itemKey(item)}
             className={CURSOR_SCROLL_MARGIN}
           >
-            <DashboardItem item={item} scope={scope} />
+            <DashboardLine
+              dateInHeading={false}
+              item={item}
+              look={NO_DATE_LOOK}
+              scope={scope}
+            />
           </li>
         ))}
       </ul>

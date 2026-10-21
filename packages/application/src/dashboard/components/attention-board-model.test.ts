@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   boardItems,
   buildAttentionBoard,
-  cardTask,
+  lineTask,
   groupByWhen,
   itemId,
   itemKey,
@@ -362,22 +362,22 @@ describe("a repeating Task on the board", () => {
   });
 });
 
-describe("cardTask", () => {
+describe("lineTask", () => {
   const dated = { _id: "book" as TaskId, text: "Book", date: day(2) };
 
   it("names the Task that placed the copy, whatever else the Thread holds", () => {
     const busy = thread("busy", { tasks: [task("Call"), dated] });
 
-    expect(cardTask(busy, dated)).toBe(dated);
+    expect(lineTask(busy, dated)).toBe(dated);
   });
 
   it("names a No date card's only Task, and none of several", () => {
     const only = task("Call");
 
-    expect(cardTask(thread("one", { tasks: [only] }))).toBe(only);
+    expect(lineTask(thread("one", { tasks: [only] }))).toBe(only);
     expect(
-      cardTask(thread("several", { tasks: [task("A"), task("B")] })),
+      lineTask(thread("several", { tasks: [task("A"), task("B")] })),
     ).toBeUndefined();
-    expect(cardTask(thread("empty"))).toBeUndefined();
+    expect(lineTask(thread("empty"))).toBeUndefined();
   });
 });

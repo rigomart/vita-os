@@ -1,19 +1,29 @@
-import type { Note, Repeat, Task, Thread } from "@vita-os/contracts";
+import type {
+  AreaSummary,
+  Note,
+  Repeat,
+  Task,
+  Thread,
+} from "@vita-os/contracts";
 import type { ReactNode } from "react";
 
 import { Link } from "@tanstack/react-router";
 import { markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
-import { Archive, SkipForward } from "lucide-react";
+import {
+  Archive,
+  ListTodo,
+  Repeat as RepeatIcon,
+  SkipForward,
+} from "lucide-react";
 
 import type { ProductSearch } from "../../navigation/search-params";
 import type { BoardItem } from "./attention-board-model";
-import type { BoardScope } from "./dashboard-item";
 import type { LineLook } from "./dashboard-list-model";
 
 import { AreaIcon } from "../../areas/components/area-icon";
-import { taskDateLabels } from "../../attention-list";
+import { repeatLabel, taskDateLabels } from "../../attention-list";
 import { useArchiveNote } from "../../notes/use-archive-note";
 import {
   completeNoteFailure,
@@ -23,35 +33,43 @@ import {
 import { useSetNoteRepeat } from "../../notes/use-set-note-repeat";
 import { useUpdateNoteWhen } from "../../notes/use-update-note-when";
 import {
-  TaskMarker,
-  TaskText,
-} from "../../threads/components/thread-attention-card";
-import {
   useCompleteTask,
   useCompletingTaskIds,
   useSkipTask,
   useTaskDates,
 } from "../../threads/use-tasks";
+import { lineTask } from "./attention-board-model";
+import { itemTitle } from "./dashboard-list-model";
 import {
   BoardCompleteButton,
   BoardControl,
   BoardDate,
   focusRing,
+  isLate,
   revealed,
   showsBoardDate,
-} from "./board-card";
-import { itemTitle } from "./dashboard-list-model";
+} from "./line-controls";
 import { ThreadCopy } from "./thread-copies";
 
+export interface BoardScope {
+  areaById: ReadonlyMap<string, AreaSummary>;
+  currentDate: number;
+  onOpenNote: (note: Note) => void;
+}
+
 /**
- * One dated item on the Dashboard's list, as a line: a marker, the words, then
- * the Area and the date at the right, with Skip, the date and Complete
- * revealed on hover or focus. `look` sizes and inks it by how near its group
- * is. The whole line opens the Thread or the Note.
+ * One item on the Dashboard, as a line: a marker, the words, then the Area
+ * and the date at the right, with Skip, the date and Complete revealed on
+ * hover or focus. `look` sizes and inks it by how near its group is. The
+ * whole line opens the Thread or the Note.
  *
- * A Thread's copy reads its Task, then the Thread's title, muted; on a narrow
- * list the title drops under the Task. Every control acts on the Task that
- * placed the copy and no other.
+ * On the list a Thread's copy reads its Task, then the Thread's title, muted;
+ * on a narrow list the title drops under the Task. In No date the Thread's
+ * title leads, over its only Task or how many it has, because the line must
+ * not invent a headline the person never chose. Every control acts on the
+ * Task the line names (`lineTask`) and no other; a No date line naming no
+ * single Task offers no Complete, and a date set there adds a Task named
+ * "Follow up" with it.
  */
 export function DashboardLine({
   dateInHeading,
@@ -105,71 +123,83 @@ function ThreadLine({
   const skipTask = useSkipTask(thread);
   const taskDates = useTaskDates(thread);
   const completing = useCompletingTaskIds(thread);
+  const tasks = thread.tasks ?? [];
+  const lead = lineTask(thread, task);
   const action = useGuardedAsyncAction((run: () => unknown) => run(), {
     errorToast: false,
   });
   const dateAction = useGuardedAsyncAction(
-    (when: number | undefined) =>
-      task === undefined
-        ? undefined
-        : taskDates.setDate(task._id, when ?? null),
+    (when: number | undefined) => {
+      if (lead !== undefined) return taskDates.setDate(lead._id, when ?? null);
+      if (when !== undefined) return taskDates.addFollowUp(when);
+    },
     { errorToast: false },
   );
   const repeatAction = useGuardedAsyncAction(
     (repeat: Repeat | null) =>
-      task === undefined ? undefined : taskDates.setRepeat(task._id, repeat),
+      lead === undefined ? undefined : taskDates.setRepeat(lead._id, repeat),
     { errorToast: false },
   );
   const busy =
     action.isPending ||
     dateAction.isPending ||
     repeatAction.isPending ||
-    (task !== undefined && completing.has(task._id));
+    (lead !== undefined && completing.has(lead._id));
   const area =
     thread.areaId === undefined ? undefined : scope.areaById.get(thread.areaId);
+  const title = (
+    <Link
+      to="."
+      search={(previous: ProductSearch): ProductSearch => ({
+        ...previous,
+        thread: thread.slug,
+      })}
+      className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
+    >
+      {thread.title}
+    </Link>
+  );
+  const first = task === undefined ? title : <TaskText task={task} />;
+  const second =
+    task !== undefined ? (
+      title
+    ) : lead !== undefined ? (
+      <TaskText task={lead} />
+    ) : (
+      tasks.length > 0 && `${tasks.length} tasks`
+    );
 
   return (
     <LineFrame
       busy={busy}
       look={look}
       marker={
-        task === undefined ? undefined : (
-          <TaskMarker task={task} currentDate={scope.currentDate} />
+        lead === undefined ? (
+          tasks.length > 0 && (
+            <ListTodo className="size-3 text-muted-foreground/60" />
+          )
+        ) : (
+          <TaskMarker task={lead} currentDate={scope.currentDate} />
         )
       }
       words={
         <p className="@md:truncate">
-          {task !== undefined && (
-            <span className={cn("line-clamp-2 @md:inline", look.task)}>
-              <TaskText task={task} />
-            </span>
-          )}
-          <span
-            className={cn(
-              task === undefined
-                ? cn("line-clamp-2 @md:inline", look.task)
-                : cn(
-                    "block truncate text-muted-foreground @md:inline",
-                    look.thread,
-                  ),
-            )}
-          >
-            {task !== undefined && (
+          <span className={cn("line-clamp-2 @md:inline", look.task)}>
+            {first}
+          </span>
+          {second && (
+            <span
+              className={cn(
+                "block truncate text-muted-foreground @md:inline",
+                look.thread,
+              )}
+            >
               <span aria-hidden className="hidden @md:inline">
                 {" · "}
               </span>
-            )}
-            <Link
-              to="."
-              search={(previous: ProductSearch): ProductSearch => ({
-                ...previous,
-                thread: thread.slug,
-              })}
-              className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
-            >
-              {thread.title}
-            </Link>
-          </span>
+              {second}
+            </span>
+          )}
         </p>
       }
       meta={
@@ -183,7 +213,7 @@ function ThreadLine({
           </span>
         )
       }
-      showsDate={showsBoardDate(task?.date, dateInHeading)}
+      showsDate={showsBoardDate(lead?.date, dateInHeading)}
       date={
         <BoardDate
           busy={busy}
@@ -191,34 +221,34 @@ function ThreadLine({
           inHeading={dateInHeading}
           labels={taskDateLabels}
           onSetWhen={(when) => dateAction.run(when)}
-          {...(task === undefined
+          {...(lead === undefined
             ? {}
             : {
                 repeat: {
-                  value: task.repeat,
+                  value: lead.repeat,
                   onChange: (repeat: Repeat | null) => repeatAction.run(repeat),
                 },
               })}
-          when={task?.date}
+          when={lead?.date}
         />
       }
       controls={
-        task !== undefined && (
+        lead !== undefined && (
           <>
-            {task.repeat !== undefined && (
+            {lead.repeat !== undefined && (
               <BoardControl
-                label={`Skip “${task.text}” to its next date`}
+                label={`Skip “${lead.text}” to its next date`}
                 disabled={busy}
-                onClick={() => void action.run(() => skipTask(task._id))}
+                onClick={() => void action.run(() => skipTask(lead._id))}
                 className={revealed}
               >
                 <SkipForward className="size-3.5" />
               </BoardControl>
             )}
             <BoardCompleteButton
-              label={`Complete “${task.text}”`}
+              label={`Complete “${lead.text}”`}
               disabled={busy}
-              onClick={() => void action.run(() => completeTask(task._id))}
+              onClick={() => void action.run(() => completeTask(lead._id))}
             />
           </>
         )
@@ -373,5 +403,40 @@ function LineFrame({
         </span>
       </div>
     </div>
+  );
+}
+
+function TaskText({ task }: { task: Task }) {
+  return (
+    <>
+      <span className="sr-only">
+        {task.repeat === undefined
+          ? "Task: "
+          : `Task, ${repeatLabel(task.repeat).toLowerCase()}: `}
+      </span>
+      {task.text}
+    </>
+  );
+}
+
+function TaskMarker({
+  currentDate,
+  task,
+}: {
+  currentDate: number;
+  task: Task;
+}) {
+  return task.repeat === undefined ? (
+    <span className="size-2 rounded-full border border-muted-foreground/55" />
+  ) : (
+    <RepeatIcon
+      data-slot="repeat-glyph"
+      className={cn(
+        "size-3",
+        isLate(task.date, currentDate)
+          ? "text-condition-attention"
+          : "text-muted-foreground",
+      )}
+    />
   );
 }

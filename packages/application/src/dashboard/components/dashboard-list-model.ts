@@ -155,6 +155,9 @@ export function lookAt(distance: number): GroupLook {
   return { distance, heading: headings[distance]!, line: lines[distance]! };
 }
 
+/** No date's lines read like the soon group's: nothing there is late, nothing is far off. */
+export const NO_DATE_LOOK = lookAt(2).line;
+
 /** Clearance for the sticky filter above and the phone action bar below. */
 export const CURSOR_SCROLL_MARGIN = "scroll-mt-24 scroll-mb-24";
 
