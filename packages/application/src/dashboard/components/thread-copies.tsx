@@ -52,7 +52,7 @@ export function ThreadCopies({ children }: { children: ReactNode }) {
 }
 
 /**
- * One copy of a Thread on the board, card or one-line row. Hovering or
+ * One copy of a Thread on the board, as a line. Hovering or
  * focusing it rings every copy of the Thread, so a Thread spread across the
  * week reads as one. A Thread that stands once never rings, and nothing rings
  * at rest: colour on the board belongs to time.

@@ -5,7 +5,7 @@ export const DAY = 24 * 60 * 60 * 1000;
 /**
  * A date as a token, never a sentence: −6d · Today · Tue · 12d · Mar 4.
  *
- * The board is dense enough that a phrase on every card reads as noise, and
+ * The board is dense enough that a phrase on every line reads as noise, and
  * the column a token sits in already says roughly when — so the token only has
  * to say exactly when, in about four characters.
  */

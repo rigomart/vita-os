@@ -1,6 +1,6 @@
 # The board's cards as sheets
 
-**Status:** Accepted. Amends [ADR 0037](./0037-one-list-under-the-sky.md) and replaces the margin rule of [ADR 0017](./0017-dashboard-time-columns.md)'s amendment. Amended by [ADR 0045](./0045-the-list-graded-by-attention.md): the list draws lines, so sheets remain only in No date.
+**Status:** Accepted. Amends [ADR 0037](./0037-one-list-under-the-sky.md) and replaces the margin rule of [ADR 0017](./0017-dashboard-time-columns.md)'s amendment. Amended by [ADR 0045](./0045-the-list-graded-by-attention.md): the list draws lines, so sheets remain only in No date. Superseded by [ADR 0046](./0046-no-date-as-lines.md): No date draws lines too.
 **Date:** 2026-10-10
 
 On the one list of ADR 0037, a **Thread** and a **Standalone Note** wore the same card: a frameless row, filled only on hover. A Note was told apart by its regular weight and a short margin rule at its left edge, the mark ADR 0017's amendment chose. On the file tabs' fills the rule was too faint to notice, and the frameless rows floated on the fill without an edge of their own. When a Note sat beside a Thread, it ended halfway down the Thread's height.

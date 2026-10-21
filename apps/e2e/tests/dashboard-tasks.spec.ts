@@ -1,7 +1,7 @@
 import { addTask, closeThread, createThread, threadCard } from "../src/app.ts";
 import { expect, sent, test } from "../src/fixtures.ts";
 
-test("a No date card shows its one Task or a count, and completes the one Task in one click", async ({
+test("a No date line shows its one Task or a count, and completes the one Task in one click", async ({
   page,
   stamp,
   shot,

@@ -1,7 +1,7 @@
 import { cn } from "@vita-os/ui/lib/utils";
 
 import type { AttentionBoard } from "./attention-board-model";
-import type { BoardScope } from "./dashboard-item";
+import type { BoardScope } from "./dashboard-line";
 
 import { groupByWhen, itemKey } from "./attention-board-model";
 import { DashboardLine } from "./dashboard-line";

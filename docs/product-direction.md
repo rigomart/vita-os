@@ -126,7 +126,7 @@ Every item is a line under its day's heading, and the nearer a day, the larger a
 
 A filter at the top of the list narrows it to one Area, to unlabeled Threads, or to Notes alone. Notes have no list of their own: the Notes filter is where to read them together.
 
-The board can act on what it shows. A card completes the Task it displays in one click, skips it when it repeats, and sets, changes, or clears that Task's date and repeat, or adds a "Follow up" Task when it shows no single Task; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
+The board can act on what it shows. A line completes the Task it displays in one click, skips it when it repeats, and sets, changes, or clears that Task's date and repeat, or adds a "Follow up" Task when it shows no single Task; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
 
 The intended loop takes one to two minutes:
 
@@ -140,7 +140,7 @@ Open the Dashboard → read Late and Today → handle or reschedule what is aski
 
 1. **Capture asks nothing.** A Thread needs a title. A Note needs a body. Area, Tasks, dates, and Summary are optional and can come later.
 2. **Derive, never ask.** Attention comes from dates and Tasks. The user does not maintain statuses, conditions, or priorities.
-3. **The app never invents a priority.** Capture order is not rank. If several Tasks exist, the card counts them rather than picking one.
+3. **The app never invents a priority.** Capture order is not rank. If several Tasks exist, the line counts them rather than picking one.
 4. **Dates are soft.** A date means "bring this back", not "due". There are no deadlines.
 5. **Colour belongs to time.** Lateness is the only thing the board colours. Areas are neutral.
 6. **Reading is not handling.** Opening a Thread never clears a Task's date. The user clears, reschedules, completes, or resolves.
@@ -169,7 +169,7 @@ Resembling another tool is not a test. Task managers have repeats, and repeats p
 | Idea | Verdict | Why |
 | --- | --- | --- |
 | Tasks with a date and repeat (ADR 0032) | In | Brings a rhythm back with no manual reset; missed occurrences collapse. |
-| One-tap "not now, next week" on a card | In | Deferring cheaply is the product. |
+| One-tap "not now, next week" on a line | In | Deferring cheaply is the product. |
 | A recap when a Thread is opened after weeks away | In | Restores context. |
 | "Last touched N months ago" on a Thread | Only if neutral | Plain information passes; a warning colour pressures. |
 | Priority levels | Out | Ranks the doing; the list already says what is asking. |
