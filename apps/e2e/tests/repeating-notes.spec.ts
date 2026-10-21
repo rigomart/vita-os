@@ -70,7 +70,6 @@ test("a Today Note takes a monthly Repeat from its card and Complete moves it to
 }) => {
   const body = `Pay N ${stamp}`;
 
-  // Compose offers the date but no Repeat.
   await page.goto("/");
   await page.getByRole("button", { name: "New note", exact: true }).click();
   await noteView(page).getByRole("textbox", { name: "Note body" }).fill(body);
@@ -81,8 +80,11 @@ test("a Today Note takes a monthly Repeat from its card and Complete moves it to
     datePicker(page).getByRole("button", { name: "Pick a date…" }),
   ).toBeVisible();
   await expect(
-    datePicker(page).getByRole("button", { name: /Repeat/ }),
-  ).toHaveCount(0);
+    datePicker(page).getByRole("button", {
+      name: "Repeat, Never",
+      exact: true,
+    }),
+  ).toBeDisabled();
   await shot("repeat-note-compose");
   await quickPick(page, "Today");
   await expect(datePicker(page)).toBeHidden();

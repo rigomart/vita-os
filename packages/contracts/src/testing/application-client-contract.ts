@@ -676,6 +676,49 @@ export function describeApplicationClient(
         expect(oneOff).not.toHaveProperty("repeat");
       });
 
+      it("creates a Note with its Repeat, snapping a weekly one, and refuses one without a date or zone", async () => {
+        const client = await newClient();
+        await expect(
+          client.createNote({
+            body: "Pay the utility bill",
+            repeat: monthly5,
+            timeZone: "UTC",
+          }),
+        ).resolves.toMatchObject({ ok: false, error: { code: "validation" } });
+        await expect(
+          client.createNote({
+            body: "Pay the utility bill",
+            followUp: nov5,
+            repeat: monthly5,
+          }),
+        ).resolves.toMatchObject({ ok: false, error: { code: "validation" } });
+
+        const monthly = await value(
+          client.createNote({
+            body: "Pay the utility bill",
+            followUp: nov5,
+            repeat: monthly5,
+            timeZone: "UTC",
+          }),
+        );
+        expect(monthly).toMatchObject({ followUp: nov5, repeat: monthly5 });
+        const weekly = await value(
+          client.createNote({
+            body: "Water the plants",
+            followUp: nov5,
+            repeat: { kind: "weekly", weekdays: [4] },
+            timeZone: "UTC",
+          }),
+        );
+        expect(weekly).toMatchObject({
+          followUp: Date.UTC(2030, 10, 7, 9),
+          repeat: { kind: "weekly", weekdays: [4] },
+        });
+        expect(await value(client.listOpenNotes())).toEqual(
+          expect.arrayContaining([monthly, weekly]),
+        );
+      });
+
       it("completes to the next occurrence, once, recording nothing", async () => {
         const client = await newClient();
         const note = await value(

@@ -97,10 +97,9 @@ export function noteStorage({ db, clock, actorId }: RequestScope) {
       });
     },
 
-    async insert(note: {
-      body: string;
-      followUp?: number;
-    }): Promise<Note | null> {
+    async insert(
+      note: { body: string } & NoteRepeatState,
+    ): Promise<Note | null> {
       const now = clock.now();
       const [row] = await database
         .insert(notes)
@@ -109,6 +108,7 @@ export function noteStorage({ db, clock, actorId }: RequestScope) {
           user_id: actorId,
           body: note.body,
           attention_date: note.followUp ?? null,
+          repeat: serializeRepeat(note.repeat),
           state: "open",
           completed_at: null,
           created_at: now,

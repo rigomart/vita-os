@@ -77,6 +77,8 @@ export const AreaOrderBody = v.strictObject({ areaIds: v.array(AreaIdSchema) });
 export const CreateNoteBody = v.strictObject({
   body: v.string(),
   followUp: v.optional(Timestamp),
+  repeat: v.optional(RequestRepeatSchema),
+  timeZone: v.optional(v.string()),
 });
 export const NoteBody = v.strictObject({ body: v.string() });
 export const NoteFollowUp = v.strictObject({

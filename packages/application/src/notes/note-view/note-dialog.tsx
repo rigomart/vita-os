@@ -1,6 +1,7 @@
 import type { Repeat } from "@vita-os/contracts";
 import type { MarkdownChangeCause } from "@vita-os/ui/components/markdown-editor";
 
+import { decideSetNoteFollowUp, decideSetNoteRepeat } from "@vita-os/core";
 import { Button } from "@vita-os/ui/components/button";
 import {
   DropdownMenu,
@@ -41,6 +42,7 @@ import { followUpDateLabels } from "../../attention-list/follow-up-date";
 import { repeatLabel } from "../../attention-list/repeat";
 import { WhenPopover } from "../../attention-list/when-popover";
 import { clock } from "../../lib/clock";
+import { browserTimeZone } from "../../lib/time-zone";
 import { completeNoteFailure, completeNoteLabel } from "../use-complete-note";
 
 // CodeMirror is a large share of the bundle. It starts downloading with this
@@ -62,7 +64,11 @@ export interface NoteDialogProps {
     completedAt?: number;
   };
   threadTitle?: string;
-  onSubmit?: (value: { body: string; when?: number }) => Promise<void> | void;
+  onSubmit?: (value: {
+    body: string;
+    when?: number;
+    repeat?: Repeat;
+  }) => Promise<void> | void;
   onSave?: (body: string) => Promise<void> | void;
   /** Archive an Open Note, or unarchive an Archived one. */
   onToggleArchived?: () => Promise<void> | void;
@@ -76,7 +82,7 @@ export interface NoteDialogProps {
   onSetWhen?: (when: number | undefined) => Promise<void> | void;
   /** The Follow-up date's Repeat, on a saved Standalone Note. */
   repeat?: Repeat;
-  /** Offered in the picker of a saved Standalone Note only. */
+  /** Offered in the picker of a saved Standalone Note; a new one holds its own. */
   onSetRepeat?: (repeat: Repeat | null) => Promise<void> | void;
   /** Offered on an Open repeating Note: move it to its next date. */
   onComplete?: () => Promise<void> | void;
@@ -120,6 +126,7 @@ export function NoteDialog({
   // The unsaved text, or null when nothing has been edited.
   const [draft, setDraft] = useState<string | null>(null);
   const [when, setWhen] = useState<number | undefined>(followUp);
+  const [composeRepeat, setComposeRepeat] = useState<Repeat | undefined>();
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const keepEditingRef = useRef<HTMLButtonElement>(null);
   const discardTitleId = useId();
@@ -169,12 +176,18 @@ export function NoteDialog({
     complete.isPending;
   const error = isCompose ? submit.error : save.error;
   const isDirty = isCompose
-    ? body !== "" || when !== followUp
+    ? body !== "" || when !== followUp || composeRepeat !== undefined
     : draft !== null && draft !== savedBody;
+
+  const composeDates = (next: { followUp?: number; repeat?: Repeat }) => {
+    setWhen(next.followUp);
+    setComposeRepeat(next.repeat);
+  };
 
   const finishDismissal = () => {
     setDraft(null);
     setWhen(followUp);
+    setComposeRepeat(undefined);
     setConfirmingDiscard(false);
     save.clearError();
     submit.clearError();
@@ -198,11 +211,12 @@ export function NoteDialog({
     if (isCompose && onSubmit) {
       const result = await submit.run({
         body: trimmed,
-        when: threadTitle === undefined ? when : undefined,
+        ...(threadTitle === undefined ? { when, repeat: composeRepeat } : {}),
       });
       if (!result.ok) return;
       setDraft(null);
       setWhen(undefined);
+      setComposeRepeat(undefined);
       onOpenChange(false);
     } else if (!isCompose && onSave && isDirty) {
       const result = await save.run(trimmed);
@@ -260,8 +274,11 @@ export function NoteDialog({
     : undefined;
 
   const shownWhen = isCompose ? when : followUp;
-  // A new Note takes its Repeat once saved, from the card or this view.
-  const shownRepeat = isCompose || shownWhen === undefined ? undefined : repeat;
+  const shownRepeat = isCompose
+    ? composeRepeat
+    : shownWhen === undefined
+      ? undefined
+      : repeat;
   const canComplete =
     note?.state === "open" &&
     followUp !== undefined &&
@@ -276,17 +293,38 @@ export function NoteDialog({
         busy={isPending}
         when={shownWhen}
         onSetWhen={(value) => {
-          if (isCompose) setWhen(value);
+          if (isCompose)
+            composeDates(
+              decideSetNoteFollowUp(
+                { followUp: when, repeat: composeRepeat },
+                value ?? null,
+                browserTimeZone(),
+              ),
+            );
           else void changeWhen.run(value);
         }}
-        {...(isCompose || onSetRepeat === undefined
-          ? {}
-          : {
+        {...(isCompose
+          ? {
               repeat: {
-                value: repeat,
-                onChange: (value: Repeat | null) => changeRepeat.run(value),
+                value: composeRepeat,
+                onChange: (value: Repeat | null) =>
+                  composeDates(
+                    decideSetNoteRepeat(
+                      { followUp: when },
+                      value,
+                      browserTimeZone(),
+                    ),
+                  ),
               },
-            })}
+            }
+          : onSetRepeat === undefined
+            ? {}
+            : {
+                repeat: {
+                  value: repeat,
+                  onChange: (value: Repeat | null) => changeRepeat.run(value),
+                },
+              })}
         trigger={
           <Button
             type="button"

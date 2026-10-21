@@ -28,6 +28,7 @@ import {
   decideCompleteNote,
   decideCompleteTask,
   decideEditTask,
+  decideNewNote,
   decideRemoveTask,
   decideSetNoteFollowUp,
   decideSetNoteRepeat,
@@ -526,7 +527,7 @@ export function createInMemoryApplicationClient(
       const note: Note = {
         _id: newRecordId() as NoteId,
         body: requireNonBlankText(input.body, "Note body"),
-        ...(input.followUp === undefined ? {} : { followUp: input.followUp }),
+        ...decideNewNote(input, input.timeZone),
         state: "open",
         createdAt: now,
         updatedAt: now,

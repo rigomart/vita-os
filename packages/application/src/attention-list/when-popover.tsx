@@ -65,7 +65,7 @@ const timeLabel = (time: string) =>
 /**
  * The picker every When shares (ADR 0040): a menu of the days a When is most
  * often set to, each with the day it lands on, then Pick a date…, the time as
- * chips, and for a Task or a saved Standalone Note its Repeat. The calendar, a typed time, and the
+ * chips, and for a Task or a Standalone Note its Repeat. The calendar, a typed time, and the
  * Repeat's choices replace the menu in place and come back with ←, so the
  * picker is never taller than a calendar.
  *

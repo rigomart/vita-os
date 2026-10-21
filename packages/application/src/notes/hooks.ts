@@ -2,6 +2,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import type {
   ApplicationError,
   CommandAcknowledgement,
+  CreateNoteInput,
   Note,
   NoteId,
   Repeat,
@@ -81,10 +82,7 @@ export function useArchivedNotes(
   return { ...page, notes: page.entries };
 }
 
-export interface CaptureNoteVariables {
-  body: string;
-  followUp?: number;
-}
+export type CaptureNoteVariables = CreateNoteInput;
 
 export function useCaptureNote(): ApplicationMutationResult<
   CaptureNoteVariables,
@@ -109,6 +107,7 @@ export function useCaptureNote(): ApplicationMutationResult<
             ...(input.followUp === undefined
               ? {}
               : { followUp: input.followUp }),
+            ...(input.repeat === undefined ? {} : { repeat: input.repeat }),
             state: "open",
             createdAt: now,
             updatedAt: now,
