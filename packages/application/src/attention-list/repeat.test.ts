@@ -33,7 +33,6 @@ describe("monthly Repeat in the picker", () => {
       undefined,
     );
     expect(presets.map((preset) => preset.label)).toEqual([
-      "Doesn't repeat",
       "Every day",
       "Every weekday",
       "Every Sunday",
@@ -50,6 +49,7 @@ describe("monthly Repeat in the picker", () => {
     });
     expect(presets.at(-1)).toEqual({
       label: "Every month on the 31st",
+      word: "Monthly",
       repeat: { kind: "monthly", day: 31 },
     });
   });

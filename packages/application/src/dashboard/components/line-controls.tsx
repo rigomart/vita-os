@@ -8,7 +8,7 @@ import {
   type RepeatControl,
   repeatLabel,
   timeToken,
-  WhenPopover,
+  WhenPicker,
   withTimeToken,
 } from "../../attention-list";
 import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
@@ -54,50 +54,56 @@ export function BoardDate({
   when?: number;
 }) {
   const glyph = showsRepeat ? repeat?.value : undefined;
+  const bare =
+    when === undefined ||
+    (glyph === undefined && !showsBoardDate(when, inHeading));
+  const label = when === undefined ? labels.set : labels.change;
   return (
-    <WhenPopover
+    <WhenPicker
       busy={busy}
       when={when}
       {...(repeat === undefined ? {} : { repeat })}
       clearLabel={labels.clear}
       onSetWhen={onSetWhen}
       trigger={
-        when === undefined ||
-        (glyph === undefined && !showsBoardDate(when, inHeading)) ? (
-          <BoardControl
-            disabled={busy}
-            className={revealed}
-            label={when === undefined ? labels.set : labels.change}
-          >
+        // One button either way: a time set from the open picker trades the
+        // bare control for a token, and a new element would close the picker.
+        <button
+          disabled={busy}
+          type="button"
+          aria-label={label}
+          title={bare ? label : undefined}
+          className={
+            bare
+              ? cn(boardControlClassName, revealed)
+              : cn(
+                  "relative z-10 -mx-1 -my-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-1 py-0.5 tabular-nums transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40",
+                  dateToneClassName(when, currentDate),
+                )
+          }
+        >
+          {bare ? (
             <CalendarClock className="size-3.5" />
-          </BoardControl>
-        ) : (
-          <button
-            disabled={busy}
-            type="button"
-            aria-label={labels.change}
-            className={cn(
-              "relative z-10 -mx-1 -my-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-1 py-0.5 tabular-nums transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40",
-              dateToneClassName(when, currentDate),
-            )}
-          >
-            {glyph === undefined ? (
-              <CalendarClock aria-hidden className="size-3" />
-            ) : (
-              <span
-                role="img"
-                aria-label={repeatLabel(glyph)}
-                data-slot="repeat-glyph"
-                className="flex shrink-0 items-center"
-              >
-                <RepeatIcon aria-hidden className="size-3" />
-              </span>
-            )}
-            {inHeading
-              ? timeToken(when)
-              : withTimeToken(dateToken(when, currentDate), when)}
-          </button>
-        )
+          ) : (
+            <>
+              {glyph === undefined ? (
+                <CalendarClock aria-hidden className="size-3" />
+              ) : (
+                <span
+                  role="img"
+                  aria-label={repeatLabel(glyph)}
+                  data-slot="repeat-glyph"
+                  className="flex shrink-0 items-center"
+                >
+                  <RepeatIcon aria-hidden className="size-3" />
+                </span>
+              )}
+              {inHeading
+                ? timeToken(when)
+                : withTimeToken(dateToken(when, currentDate), when)}
+            </>
+          )}
+        </button>
       }
     />
   );
@@ -145,6 +151,9 @@ export function BoardCompleteButton({
   );
 }
 
+const boardControlClassName =
+  "relative z-10 -my-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform,opacity] hover:bg-muted hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40";
+
 export function BoardControl({
   children,
   className,
@@ -165,10 +174,7 @@ export function BoardControl({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className={cn(
-        "relative z-10 -my-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform,opacity] hover:bg-muted hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40",
-        className,
-      )}
+      className={cn(boardControlClassName, className)}
     >
       {children}
     </button>

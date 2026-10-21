@@ -446,7 +446,7 @@ describe("ThreadAttention", () => {
     );
   });
 
-  it("picks a Task's date from the calendar and clears it", async () => {
+  it("picks a Task's date from the calendar beside its time, and clears it", async () => {
     const user = userEvent.setup();
     const { onSetTaskDate } = renderAttention({
       tasks: [{ ...callClinic, date: today }],
@@ -455,23 +455,19 @@ describe("ThreadAttention", () => {
     await user.click(
       screen.getByRole("button", { name: "Change date: Today" }),
     );
-    await user.click(
-      await screen.findByRole("button", { name: "Pick a date…" }),
-    );
-    // The calendar opens on the date's month.
+    // The calendar is open at once, on the date's month.
     await user.click(within(await screen.findByRole("grid")).getByText("20"));
     expect(onSetTaskDate).toHaveBeenCalledWith(
       callClinic._id,
       new Date(2026, 7, 20).getTime(),
     );
 
-    // A Task's picker stays open after a day is picked, so a Repeat can
-    // follow, and goes back to its menu, where Clear date is.
+    // A Task's picker stays open after a day is picked, so a Repeat can follow.
     await user.click(screen.getByRole("button", { name: "Clear date" }));
     expect(onSetTaskDate).toHaveBeenLastCalledWith(callClinic._id, null);
   });
 
-  it("moves a Task to a quick pick, keeping its time", async () => {
+  it("moves a Task to another day, keeping its time", async () => {
     const user = userEvent.setup();
     const { onSetTaskDate } = renderAttention({
       tasks: [{ ...callClinic, date: new Date(2026, 7, 13, 9).getTime() }],
@@ -480,20 +476,14 @@ describe("ThreadAttention", () => {
     await user.click(
       screen.getByRole("button", { name: "Change date: Today · 9 AM" }),
     );
-    // The quick picks count from the real today.
-    await user.click(
-      await screen.findByRole("button", { name: /^Tomorrow, / }),
-    );
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(9, 0, 0, 0);
+    await user.click(within(await screen.findByRole("grid")).getByText("14"));
     expect(onSetTaskDate).toHaveBeenCalledExactlyOnceWith(
       callClinic._id,
-      tomorrow.getTime(),
+      new Date(2026, 7, 14, 9).getTime(),
     );
   });
 
-  it("sets a Task's time from a chip in one click, once", async () => {
+  it("sets a Task's time from a preset in one click, once, and stays open", async () => {
     const user = userEvent.setup();
     const { onSetTaskDate } = renderAttention({
       tasks: [{ ...callClinic, date: today }],
@@ -502,17 +492,16 @@ describe("ThreadAttention", () => {
     await user.click(
       screen.getByRole("button", { name: "Change date: Today" }),
     );
-    const time = await screen.findByRole("group", { name: "Time" });
-    await user.click(within(time).getByRole("button", { name: "3 PM" }));
+    const presets = await screen.findByRole("group", { name: "Preset times" });
+    await user.click(within(presets).getByRole("button", { name: "3 PM" }));
     expect(onSetTaskDate).toHaveBeenCalledExactlyOnceWith(
       callClinic._id,
       new Date(2026, 7, 13, 15).getTime(),
     );
-    // A row's picker stays open on its menu, for a Repeat to follow.
-    expect(screen.getByRole("button", { name: "Pick a date…" })).toBeVisible();
+    expect(screen.getByRole("grid")).toBeVisible();
   });
 
-  it("removes a Task's time with its chip again", async () => {
+  it("removes a Task's time with Remove", async () => {
     const user = userEvent.setup();
     const { onSetTaskDate } = renderAttention({
       tasks: [{ ...callClinic, date: new Date(2026, 7, 13, 9).getTime() }],
@@ -521,18 +510,30 @@ describe("ThreadAttention", () => {
     await user.click(
       screen.getByRole("button", { name: "Change date: Today · 9 AM" }),
     );
-    const chip = within(
-      await screen.findByRole("group", { name: "Time" }),
-    ).getByRole("button", { name: "9 AM" });
-    expect(chip).toHaveAttribute("aria-pressed", "true");
-    await user.click(chip);
+    expect(
+      within(
+        await screen.findByRole("group", { name: "Preset times" }),
+      ).getByRole("button", { name: "9 AM" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("Time")).toHaveValue("09:00");
+    await user.click(screen.getByRole("button", { name: "Remove time" }));
     expect(onSetTaskDate).toHaveBeenCalledExactlyOnceWith(
       callClinic._id,
       today,
     );
   });
 
-  it("types a time no chip offers, choosing between AM and PM", async () => {
+  it("offers Remove only when there is a time, with the field empty", async () => {
+    const user = userEvent.setup();
+    renderAttention({ tasks: [{ ...callClinic, date: today }] });
+    await user.click(
+      screen.getByRole("button", { name: "Change date: Today" }),
+    );
+    expect(await screen.findByLabelText("Time")).toHaveValue("");
+    expect(screen.queryByRole("button", { name: "Remove time" })).toBeNull();
+  });
+
+  it("saves a typed time on Enter, once", async () => {
     const user = userEvent.setup();
     const { onSetTaskDate } = renderAttention({
       tasks: [{ ...callClinic, date: today }],
@@ -541,19 +542,43 @@ describe("ThreadAttention", () => {
     await user.click(
       screen.getByRole("button", { name: "Change date: Today" }),
     );
-    await user.click(await screen.findByRole("button", { name: "Other time" }));
-    const field = screen.getByRole("textbox", { name: "Time" });
-    expect(field).toHaveFocus();
-    await user.type(field, "7");
-    expect(screen.getByRole("button", { name: "7 AM" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "7 PM" })).toBeVisible();
-    expect(onSetTaskDate).not.toHaveBeenCalled();
-
-    await user.type(field, "45p{Enter}");
+    await user.type(await screen.findByLabelText("Time"), "19:45{Enter}");
     expect(onSetTaskDate).toHaveBeenCalledExactlyOnceWith(
       callClinic._id,
       new Date(2026, 7, 13, 19, 45).getTime(),
     );
+  });
+
+  it("saves a typed time when the picker closes before it would have", async () => {
+    const user = userEvent.setup();
+    const { onSetTaskDate } = renderAttention({
+      tasks: [{ ...callClinic, date: today }],
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Change date: Today" }),
+    );
+    await user.type(await screen.findByLabelText("Time"), "07:30");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("grid")).toBeNull());
+    expect(onSetTaskDate).toHaveBeenCalledExactlyOnceWith(
+      callClinic._id,
+      new Date(2026, 7, 13, 7, 30).getTime(),
+    );
+  });
+
+  it("never saves midnight, which reads as no time, and says so", async () => {
+    const user = userEvent.setup();
+    const { onSetTaskDate } = renderAttention({
+      tasks: [{ ...callClinic, date: today }],
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Change date: Today" }),
+    );
+    await user.type(await screen.findByLabelText("Time"), "00:00{Enter}");
+    expect(screen.getByText(/^Midnight is no time\./)).toBeVisible();
+    expect(onSetTaskDate).not.toHaveBeenCalled();
   });
 
   it("tones a late date the way the rest of the app does", () => {
@@ -609,19 +634,27 @@ describe("ThreadAttention repeating Tasks", () => {
     expect(onSkipTask).toHaveBeenCalledExactlyOnceWith(checkIn._id);
   });
 
-  it("keeps the time and the Repeat disabled until the Task has a day", async () => {
+  it("shows the time and the Repeat, disabled, until the Task has a day", async () => {
     const user = userEvent.setup();
     renderAttention({ tasks: [bookScan] });
 
     await user.click(screen.getByRole("button", { name: "Set date" }));
-    expect(
-      await screen.findByRole("button", { name: "Repeat, Never" }),
-    ).toBeDisabled();
-    for (const chip of within(
-      screen.getByRole("group", { name: "Time" }),
-    ).getAllByRole("button")) {
-      expect(chip).toBeDisabled();
+    expect(await screen.findByLabelText("Time")).toBeDisabled();
+    for (const control of [
+      ...within(
+        screen.getByRole("group", { name: "Preset times" }),
+      ).getAllByRole("button"),
+      ...within(screen.getByRole("group", { name: "Repeat" })).getAllByRole(
+        "button",
+      ),
+    ]) {
+      expect(control).toBeDisabled();
     }
+    expect(
+      within(screen.getByRole("group", { name: "Repeat" }))
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Daily", "Weekdays", "Weekly", "Biweekly", "Monthly", "Custom"]);
   });
 
   it("saves a preset Repeat in one click, and nothing else", async () => {
@@ -631,21 +664,18 @@ describe("ThreadAttention repeating Tasks", () => {
     });
 
     await user.click(screen.getByRole("button", { name: /^Change date:/ }));
-    await user.click(
-      await screen.findByRole("button", { name: "Repeat, Never" }),
-    );
-    expect(
-      screen.getByRole("button", { name: "Doesn't repeat" }),
-    ).toHaveAttribute("aria-pressed", "true");
-    await user.click(screen.getByRole("button", { name: "Every day" }));
+    const daily = await screen.findByRole("button", { name: "Every day" });
+    expect(daily).toHaveTextContent("Daily");
+    expect(daily).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByRole("button", { name: "Stop repeating" })).toBeNull();
+    await user.click(daily);
 
     expect(onSetTaskRepeat).toHaveBeenCalledExactlyOnceWith(oneOff._id, {
       kind: "days",
       every: 1,
     });
     expect(onSetTaskDate).not.toHaveBeenCalled();
-    // Back on the menu.
-    expect(screen.getByRole("button", { name: "Pick a date…" })).toBeVisible();
+    expect(screen.getByRole("group", { name: "Repeat" })).toBeVisible();
   });
 
   it("offers the date's own weekday, and says when a preset moves the date", async () => {
@@ -656,15 +686,12 @@ describe("ThreadAttention repeating Tasks", () => {
     });
 
     await user.click(screen.getByRole("button", { name: /^Change date:/ }));
-    await user.click(
-      await screen.findByRole("button", { name: "Repeat, Never" }),
-    );
     expect(
-      screen.getByRole("button", { name: "Every Saturday" }),
-    ).toBeVisible();
+      await screen.findByRole("button", { name: "Every Saturday" }),
+    ).toHaveTextContent("Weekly");
     expect(
       screen.getByRole("button", { name: "Every weekday, from Mon" }),
-    ).toBeVisible();
+    ).toHaveTextContent("Weekdays");
   });
 
   it("offers every month on the date's day, and marks a monthly Task with it", async () => {
@@ -673,10 +700,7 @@ describe("ThreadAttention repeating Tasks", () => {
 
     await user.click(screen.getByRole("button", { name: /^Change date:/ }));
     await user.click(
-      await screen.findByRole("button", { name: "Repeat, Never" }),
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Every month on the 13th" }),
+      await screen.findByRole("button", { name: "Every month on the 13th" }),
     );
     expect(onSetTaskRepeat).toHaveBeenCalledExactlyOnceWith(oneOff._id, {
       kind: "monthly",
@@ -702,13 +726,8 @@ describe("ThreadAttention repeating Tasks", () => {
       }),
     ).toBeVisible();
     await user.click(screen.getByRole("button", { name: /^Change date:/ }));
-    await user.click(
-      await screen.findByRole("button", {
-        name: "Repeat, Monthly on the 31st",
-      }),
-    );
     expect(
-      screen.getByRole("button", { name: "Every month on the 31st" }),
+      await screen.findByRole("button", { name: "Every month on the 31st" }),
     ).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -718,9 +737,8 @@ describe("ThreadAttention repeating Tasks", () => {
 
     await user.click(screen.getByRole("button", { name: /^Change date:/ }));
     await user.click(
-      await screen.findByRole("button", { name: "Repeat, Daily" }),
+      await screen.findByRole("button", { name: "Custom repeat" }),
     );
-    await user.click(screen.getByRole("button", { name: "Custom…" }));
     const custom = screen.getByRole("group", { name: "Custom repeat" });
     expect(
       within(custom).getByRole("button", { name: "Every N days" }),
@@ -737,6 +755,8 @@ describe("ThreadAttention repeating Tasks", () => {
       kind: "days",
       every: 3,
     });
+    // Back on the choices.
+    expect(screen.getByRole("group", { name: "Repeat" })).toBeVisible();
   });
 
   it("says where a custom weekly choice moves the date before saving it", async () => {
@@ -745,9 +765,8 @@ describe("ThreadAttention repeating Tasks", () => {
 
     await user.click(screen.getByRole("button", { name: /^Change date:/ }));
     await user.click(
-      await screen.findByRole("button", { name: "Repeat, Daily" }),
+      await screen.findByRole("button", { name: "Custom repeat" }),
     );
-    await user.click(screen.getByRole("button", { name: "Custom…" }));
     const custom = screen.getByRole("group", { name: "Custom repeat" });
     await user.click(within(custom).getByRole("button", { name: "Weekly" }));
     // It starts from the date's own weekday, so nothing moves yet.
@@ -777,7 +796,27 @@ describe("ThreadAttention repeating Tasks", () => {
     });
   });
 
-  it("clears the Repeat with Doesn't repeat, and with the date", async () => {
+  it("goes back from Custom to the choices without saving", async () => {
+    const user = userEvent.setup();
+    const { onSetTaskRepeat } = renderAttention({ tasks: [checkIn] });
+
+    await user.click(screen.getByRole("button", { name: /^Change date:/ }));
+    await user.click(
+      await screen.findByRole("button", { name: "Custom repeat" }),
+    );
+    expect(screen.queryByLabelText("Time")).toBeNull();
+    await user.click(
+      screen.getByRole("button", { name: "Back to repeat choices" }),
+    );
+    expect(screen.getByLabelText("Time")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Every day" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(onSetTaskRepeat).not.toHaveBeenCalled();
+  });
+
+  it("stops the Repeat with Stop, with the chosen one again, and with the date", async () => {
     const user = userEvent.setup();
     const { onSetTaskRepeat, onSetTaskDate } = renderAttention({
       tasks: [checkIn],
@@ -785,15 +824,17 @@ describe("ThreadAttention repeating Tasks", () => {
 
     await user.click(screen.getByRole("button", { name: /^Change date:/ }));
     await user.click(
-      await screen.findByRole("button", { name: "Repeat, Daily" }),
+      await screen.findByRole("button", { name: "Stop repeating" }),
     );
-    await user.click(screen.getByRole("button", { name: "Doesn't repeat" }));
     expect(onSetTaskRepeat).toHaveBeenCalledExactlyOnceWith(checkIn._id, null);
+
+    await user.click(screen.getByRole("button", { name: "Every day" }));
+    expect(onSetTaskRepeat).toHaveBeenLastCalledWith(checkIn._id, null);
 
     await user.click(screen.getByRole("button", { name: "Clear date" }));
     // One command: clearing the date clears the Repeat with it.
     expect(onSetTaskDate).toHaveBeenCalledExactlyOnceWith(checkIn._id, null);
-    expect(onSetTaskRepeat).toHaveBeenCalledTimes(1);
+    expect(onSetTaskRepeat).toHaveBeenCalledTimes(2);
   });
 
   it("keeps the picker open when an undated Task gets its day, so a Repeat can follow", async () => {
@@ -831,10 +872,9 @@ describe("ThreadAttention repeating Tasks", () => {
     const month = new Date().toLocaleString("en-US", { month: "long" });
     await pickCalendarDay(user, new RegExp(`${month} 28`));
 
-    const repeat = await screen.findByRole("button", { name: "Repeat, Never" });
-    expect(repeat).toBeEnabled();
-    await user.click(repeat);
-    await user.click(screen.getByRole("button", { name: "Every day" }));
+    const daily = await screen.findByRole("button", { name: "Every day" });
+    expect(daily).toBeEnabled();
+    await user.click(daily);
     expect(onSetTaskRepeat).toHaveBeenCalledExactlyOnceWith(bookScan._id, {
       kind: "days",
       every: 1,

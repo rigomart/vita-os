@@ -3,8 +3,9 @@ import {
   captureNote,
   closeThread,
   createThread,
-  datePicker,
+  fromToday,
   openNote,
+  pickDate,
 } from "../src/app.ts";
 import { expect, test } from "../src/fixtures.ts";
 
@@ -25,15 +26,7 @@ test("All counts every open Thread and Standalone Note; Area and Notes filters k
   await expect(count("All 0")).toBeVisible();
   await shot("dashboard-counts-before");
 
-  await captureNote(page, datedNote, async () => {
-    await datePicker(page)
-      .getByRole("button", { name: "Pick a date…", exact: true })
-      .click();
-    await datePicker(page)
-      .getByRole("grid")
-      .getByRole("button", { name: /^Today, / })
-      .click();
-  });
+  await captureNote(page, datedNote, () => pickDate(page, fromToday(0)));
   await page.reload();
   await expect(
     openNote(page.getByRole("region", { name: "Today" }), datedNote),

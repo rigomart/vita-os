@@ -18,7 +18,6 @@ import {
   openHistory,
   openNote,
   pickDate,
-  quickPick,
   taskRow,
 } from "../src/app.ts";
 import { expect, sent, test } from "../src/fixtures.ts";
@@ -32,17 +31,14 @@ const glyph = (scope: Locator) =>
   scope.getByRole("img", { name: /^Repeats monthly on the / });
 const completeButton = (scope: Locator) =>
   scope.getByRole("button", { name: /^Complete · back / });
+const monthlyPreset = (page: Page) =>
+  datePicker(page)
+    .getByRole("group", { name: "Repeat", exact: true })
+    .getByRole("button", { name: /^Every month on the / });
 
 async function setMonthly(page: Page, open: () => Promise<void>) {
   await open();
-  await datePicker(page)
-    .getByRole("button", { name: "Repeat, Never", exact: true })
-    .click();
-  await sent(page, /\/repeat$/, () =>
-    datePicker(page)
-      .getByRole("button", { name: /^Every month on the / })
-      .click(),
-  );
+  await sent(page, /\/repeat$/, () => monthlyPreset(page).click());
   await expect(datePicker(page)).toBeHidden();
 }
 
@@ -76,17 +72,10 @@ test("a Today Note takes a monthly Repeat from its card and Complete moves it to
   await noteView(page)
     .getByRole("button", { name: "Follow-up date", exact: true })
     .click();
-  await expect(
-    datePicker(page).getByRole("button", { name: "Pick a date…" }),
-  ).toBeVisible();
-  await expect(
-    datePicker(page).getByRole("button", {
-      name: "Repeat, Never",
-      exact: true,
-    }),
-  ).toBeDisabled();
+  await expect(datePicker(page)).toContainText("No date");
+  await expect(monthlyPreset(page)).toBeDisabled();
   await shot("repeat-note-compose");
-  await quickPick(page, "Today");
+  await pickDate(page, fromToday(0));
   await expect(datePicker(page)).toBeHidden();
   await sent(page, /\/notes$/, () =>
     noteView(page).getByRole("button", { name: "Add", exact: true }).click(),
@@ -104,18 +93,9 @@ test("a Today Note takes a monthly Repeat from its card and Complete moves it to
   await noteCard(page, body)
     .getByRole("button", { name: "Change follow-up date", exact: true })
     .click();
-  await datePicker(page)
-    .getByRole("button", { name: "Repeat, Never", exact: true })
-    .click();
-  await expect(
-    datePicker(page).getByRole("button", { name: /^Every month on the / }),
-  ).toBeVisible();
+  await expect(monthlyPreset(page)).toBeEnabled();
   await shot("repeat-note-presets");
-  await sent(page, /\/repeat$/, () =>
-    datePicker(page)
-      .getByRole("button", { name: /^Every month on the / })
-      .click(),
-  );
+  await sent(page, /\/repeat$/, () => monthlyPreset(page).click());
   await expect(datePicker(page)).toBeHidden();
   await page.reload();
   await expect(openNote(today(page), body)).toBeVisible();
@@ -213,7 +193,7 @@ test("Archive takes a repeating Note into History and Unarchive brings it back w
   const repeat = JSON.stringify({ kind: "monthly", day: new Date().getDate() });
 
   await page.goto("/");
-  await captureNote(page, body, () => quickPick(page, "Today"));
+  await captureNote(page, body, () => pickDate(page, fromToday(0)));
   await page.reload();
   await setMonthlyFromCard(page, body);
   await page.reload();
@@ -271,7 +251,7 @@ test("clearing a repeating Note's date clears its Repeat and brings Archive back
   const body = `Clear N ${stamp}`;
 
   await page.goto("/");
-  await captureNote(page, body, () => quickPick(page, "Today"));
+  await captureNote(page, body, () => pickDate(page, fromToday(0)));
   await page.reload();
   await setMonthlyFromCard(page, body);
   await page.reload();
@@ -318,7 +298,7 @@ test("a repeating Note added to a Thread becomes a dated Task carrying the Repea
   const pane = await createThread(page, title);
   await closeThread(pane);
 
-  await captureNote(page, body, () => quickPick(page, "Tomorrow"));
+  await captureNote(page, body, () => pickDate(page, fromToday(1)));
   await page.reload();
   await openNote(page, body).click();
   const view = noteView(page);
@@ -361,7 +341,7 @@ test("at 1024x768 the card's picker sets the Repeat and its Complete moves the N
 
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto("/");
-  await captureNote(page, body, () => quickPick(page, "Today"));
+  await captureNote(page, body, () => pickDate(page, fromToday(0)));
   await page.reload();
   await expect(openNote(today(page), body)).toBeVisible();
   await setMonthlyFromCard(page, body);

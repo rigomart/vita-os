@@ -110,19 +110,12 @@ export const dateToken = (thread: Locator, task: string, when: string) =>
     exact: true,
   });
 
-export const datePicker = (page: Page) =>
-  page.locator("[data-slot=popover-content]");
+/** The When picker: a popover from 768px, else a drawer. */
+export const datePicker = (page: Page) => page.locator("[data-when-picker]");
 
-export const quickPick = (page: Page, label: string) =>
-  datePicker(page)
-    .getByRole("button", { name: new RegExp(`^${label}, `) })
-    .click();
-
+/** Picks the day on the picker's calendar, paging months until it shows. */
 export async function pickDate(page: Page, day: Date) {
   const picker = datePicker(page);
-  await picker
-    .getByRole("button", { name: "Pick a date…", exact: true })
-    .click();
   const cell = picker.locator(`td[data-day="${isoDay(day)}"]`);
   const first = picker.locator("td[data-day]").first();
   await expect(first).toBeVisible();
@@ -145,18 +138,13 @@ export async function closeDatePicker(page: Page) {
   await expect(datePicker(page)).toHaveCount(0);
 }
 
-/** In an open picker of a dated Task. */
-export async function setRepeat(page: Page, choice: string, shown: string) {
-  const picker = datePicker(page);
-  await picker
-    .getByRole("button", { name: "Repeat, Never", exact: true })
-    .click();
-  await sent(page, /\/repeat$/, () =>
-    picker.getByRole("button", { name: choice, exact: true }).click(),
-  );
-  await expect(
-    picker.getByRole("button", { name: `Repeat, ${shown}`, exact: true }),
-  ).toBeVisible();
+/** In a dated Task's open picker, which stays open: `choice` is the preset's full name, "Every day". */
+export async function setRepeat(page: Page, choice: string) {
+  const preset = datePicker(page)
+    .getByRole("group", { name: "Repeat", exact: true })
+    .getByRole("button", { name: choice, exact: true });
+  await sent(page, /\/repeat$/, () => preset.click());
+  await expect(preset).toHaveAttribute("aria-pressed", "true");
 }
 
 // Local dates, as the browser on this machine sees them: a spec that runs across midnight can fail.

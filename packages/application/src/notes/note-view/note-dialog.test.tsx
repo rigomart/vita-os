@@ -20,6 +20,7 @@ import {
   screen,
   waitFor,
 } from "../../test/render-with-providers";
+import { pickCalendarDay } from "../../test/when-picker";
 import { NoteDialog } from "./note-dialog";
 
 function deferred() {
@@ -437,44 +438,26 @@ describe("NoteDialog repeating note", () => {
     await user.click(
       screen.getByRole("button", { name: "Change follow-up date" }),
     );
-    await user.click(screen.getByRole("button", { name: /^Repeat, Never/ }));
     await user.click(
-      screen.getByRole("button", { name: "Every month on the 17th" }),
+      await screen.findByRole("button", { name: "Every month on the 17th" }),
     );
 
     expect(onSetRepeat).toHaveBeenCalledExactlyOnceWith(monthly);
   });
 
-  it("composes a new Note with a Repeat, cleared with its date", async () => {
+  it("composes a new Note with a Repeat", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
     render(<NoteDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
     typeInNote(await findNoteEditor(), "Pay the rent");
-    const tomorrow = new Date(2026, 6, 18).getTime();
 
     await user.click(screen.getByRole("button", { name: "Follow-up date" }));
+    // With no date yet the Repeat shows, held, named from today.
     expect(
-      screen.getByRole("button", { name: /^Repeat, Never/ }),
+      screen.getByRole("button", { name: "Every month on the 17th" }),
     ).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: /^Tomorrow, / }));
+    await pickCalendarDay(user, /July 18/);
     await user.click(screen.getByRole("button", { name: "Follow-up date" }));
-    await user.click(screen.getByRole("button", { name: /^Repeat, Never/ }));
-    await user.click(
-      screen.getByRole("button", { name: "Every month on the 18th" }),
-    );
-    expect(
-      screen.getByRole("img", { name: "Repeats monthly on the 18th" }),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Follow-up date" }));
-    await user.click(
-      screen.getByRole("button", { name: "Clear follow-up date" }),
-    );
-    expect(screen.queryByRole("img", { name: /^Repeats/ })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Follow-up date" }));
-    await user.click(screen.getByRole("button", { name: /^Tomorrow, / }));
-    await user.click(screen.getByRole("button", { name: "Follow-up date" }));
-    await user.click(screen.getByRole("button", { name: /^Repeat, Never/ }));
     await user.click(
       screen.getByRole("button", { name: "Every month on the 18th" }),
     );
@@ -482,10 +465,36 @@ describe("NoteDialog repeating note", () => {
 
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith({
       body: "Pay the rent",
-      when: tomorrow,
+      when: new Date(2026, 6, 18).getTime(),
       repeat: { kind: "monthly", day: 18 },
     });
   });
+
+  // Three openings of the picker, whose calendar jsdom draws slowly.
+  it(
+    "clears a composed Repeat with its date",
+    { timeout: 15_000 },
+    async () => {
+      const user = userEvent.setup();
+      render(<NoteDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
+
+      await user.click(screen.getByRole("button", { name: "Follow-up date" }));
+      await pickCalendarDay(user, /July 18/);
+      await user.click(screen.getByRole("button", { name: "Follow-up date" }));
+      await user.click(
+        screen.getByRole("button", { name: "Every month on the 18th" }),
+      );
+      expect(
+        screen.getByRole("img", { name: "Repeats monthly on the 18th" }),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Follow-up date" }));
+      await user.click(
+        screen.getByRole("button", { name: "Clear follow-up date" }),
+      );
+      expect(screen.queryByRole("img", { name: /^Repeats/ })).toBeNull();
+    },
+  );
 
   it("offers Complete beside Archive, naming where it goes back to", async () => {
     const user = userEvent.setup();
@@ -663,7 +672,8 @@ describe("NoteDialog dismissal", () => {
     const onOpenChange = vi.fn();
     render(<NoteDialog open onOpenChange={onOpenChange} onSubmit={vi.fn()} />);
     await user.click(screen.getByRole("button", { name: "Follow-up date" }));
-    await user.click(screen.getByRole("button", { name: /^Tomorrow, / }));
+    const month = new Date().toLocaleString("en-US", { month: "long" });
+    await pickCalendarDay(user, new RegExp(`${month} 15`));
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(
       screen.getByRole("alertdialog", { name: discardQuestion }),

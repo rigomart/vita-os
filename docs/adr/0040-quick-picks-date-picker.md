@@ -1,6 +1,6 @@
 # A date picker of quick picks and time chips
 
-**Status:** Accepted. Amends the picker of [ADR 0027](./0027-optional-time-orders-a-day.md).
+**Status:** Accepted. Amends the picker of [ADR 0027](./0027-optional-time-orders-a-day.md). Superseded by [ADR 0047](./0047-a-calendar-beside-the-time-and-repeat.md): the calendar is always open, with a time field and presets and one-word Repeat choices beside it; the quick picks and pages are gone. Every choice still saves as it is made.
 **Date:** 2026-10-11
 
 One picker sets every When: a **Task**'s date and **Repeat**, on its row in **Thread** detail and on a Dashboard card, and a **Standalone Note**'s **Follow-up date**. It had grown to a hint, a calendar, an `Add time` button and its field, four Repeat modes with a stepper or seven weekday toggles, a summary line, and Clear and Done: about 570px before Weekly added its row, so a card low on the screen opened it past the bottom. It saved a picked day at once but a time and a Repeat only when it closed. The days most often chosen, tomorrow or next week, took a hunt through the calendar. The hint, written for a **Note**'s **Follow-up date**, showed on **Tasks** too.

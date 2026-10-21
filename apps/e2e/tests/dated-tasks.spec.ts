@@ -11,7 +11,6 @@ import {
   logOf,
   openPalette,
   pickDate,
-  quickPick,
   taskRow,
   threadCard,
   threadId,
@@ -41,21 +40,12 @@ test("a date and time set from a row place the Thread and lead its card; the car
 
   await taskRow(pane, task).getByRole("button", { name: "Set date" }).click();
   await sent(page, /\/date$/, () => pickDate(page, fromToday(2)));
-  // 3:30 PM has no chip, so it is typed under Other time.
-  await datePicker(page)
-    .getByRole("button", { name: "Other time", exact: true })
-    .click();
-  await page.keyboard.type("330p");
-  await expect(
-    datePicker(page).getByRole("button", { name: "3:30 PM", exact: true }),
-  ).toBeVisible();
-  await sent(page, /\/date$/, () => page.keyboard.press("Enter"));
-  await expect(
-    datePicker(page).getByRole("button", {
-      name: "Other time: 3:30 PM",
-      exact: true,
-    }),
-  ).toBeVisible();
+  // 3:30 PM has no preset, so it is typed into the Time field.
+  const time = datePicker(page).getByLabel("Time", { exact: true });
+  await time.fill("15:30");
+  await sent(page, /\/date$/, () => time.press("Enter"));
+  await expect(time).toHaveValue("15:30");
+  await expect(datePicker(page)).toContainText("3:30 PM");
   await closeDatePicker(page);
 
   const placed = threadCard(heading(page, weekday(fromToday(2))), title);
@@ -102,7 +92,7 @@ test("two dated Tasks on the same day are two cards, each led by its Task", asyn
   await addTask(pane, c2);
   for (const [i, task] of [c1, c2].entries()) {
     await taskRow(pane, task).getByRole("button", { name: "Set date" }).click();
-    await sent(page, /\/date$/, () => quickPick(page, "Today"));
+    await sent(page, /\/date$/, () => pickDate(page, fromToday(0)));
     await closeDatePicker(page);
     await expect(
       pane

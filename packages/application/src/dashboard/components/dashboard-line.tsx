@@ -396,10 +396,14 @@ function LineFrame({
         )}
       >
         {meta}
-        {showsDate && date}
-        <span className="flex items-center gap-1">
-          {!showsDate && date}
-          {controls}
+        {/* The date keeps its place in the tree as it turns from a control
+            into a token, as a time set from its open picker does: moved, it
+            would be a new picker, closed. */}
+        <span
+          className={cn("flex items-center", showsDate ? "gap-2.5" : "gap-1")}
+        >
+          {date}
+          <span className="flex items-center gap-1">{controls}</span>
         </span>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { startOfLocalDay, timeOfDay } from "@vita-os/core";
+import { startOfLocalDay, timeOfDay, withTimeOfDay } from "@vita-os/core";
 import { format } from "date-fns";
 
 const DAY = 86_400_000;
@@ -33,4 +33,12 @@ export function timeToken(when: number): string | undefined {
 export function withTimeToken(date: string, when: number): string {
   const time = timeToken(when);
   return time === undefined ? date : `${date} · ${time}`;
+}
+
+/** `day`, at the time of day `current` already carries. */
+export function onDay(day: number, current: number | undefined): number {
+  return withTimeOfDay(
+    day,
+    current === undefined ? undefined : timeOfDay(current),
+  );
 }

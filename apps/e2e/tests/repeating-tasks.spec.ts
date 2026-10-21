@@ -12,7 +12,6 @@ import {
   logOf,
   monthsOn,
   pickDate,
-  quickPick,
   setRepeat,
   taskRow,
   threadCard,
@@ -55,32 +54,32 @@ test("a daily Repeat at 9 PM from a row: complete, skip, then weekly on another 
   const task = `R1 ${stamp}`;
   const pane = await threadWithTask(page, title, task);
   const picker = datePicker(page);
-  const repeatNever = picker.getByRole("button", {
-    name: "Repeat, Never",
-    exact: true,
-  });
+  const repeats = picker
+    .getByRole("group", { name: "Repeat", exact: true })
+    .getByRole("button");
+  const time = picker.getByLabel("Time", { exact: true });
+  const presetTimes = picker
+    .getByRole("group", { name: "Preset times" })
+    .getByRole("button");
 
   await taskRow(pane, task).getByRole("button", { name: "Set date" }).click();
-  await expect(repeatNever).toBeDisabled();
-  const timeChips = picker
-    .getByRole("group", { name: "Time" })
-    .getByRole("button");
-  await expect(timeChips).toHaveCount(5);
-  for (const chip of await timeChips.all()) await expect(chip).toBeDisabled();
+  await expect(picker).toContainText("No date");
+  await expect(repeats).toHaveCount(6);
+  for (const repeat of await repeats.all()) await expect(repeat).toBeDisabled();
+  await expect(time).toBeDisabled();
+  await expect(presetTimes).toHaveCount(4);
+  for (const chip of await presetTimes.all()) await expect(chip).toBeDisabled();
   await shot("repeat-picker-no-date");
 
-  await sent(page, /\/date$/, () => quickPick(page, "Today"));
-  await expect(repeatNever).toBeEnabled();
-  await picker.getByRole("button", { name: "Other time", exact: true }).click();
-  await page.keyboard.type("9p");
-  await expect(
-    picker.getByRole("button", { name: "9 PM", exact: true }),
-  ).toBeVisible();
-  await sent(page, /\/date$/, () => page.keyboard.press("Enter"));
-  await expect(
-    picker.getByRole("button", { name: "Other time: 9 PM", exact: true }),
-  ).toBeVisible();
-  await setRepeat(page, "Every day", "Daily");
+  await sent(page, /\/date$/, () => pickDate(page, fromToday(0)));
+  for (const repeat of await repeats.all()) await expect(repeat).toBeEnabled();
+  // 9 PM has no preset, so it is typed into the Time field.
+  await time.fill("21:00");
+  await sent(page, /\/date$/, () => time.press("Enter"));
+  await expect(time).toHaveValue("21:00");
+  await expect(picker).toContainText("9 PM");
+  await setRepeat(page, "Every day");
+  await expect(picker).toContainText("· Daily");
   await shot("repeat-picker-daily");
   await closeDatePicker(page);
 
@@ -133,9 +132,8 @@ test("a daily Repeat at 9 PM from a row: complete, skip, then weekly on another 
     day.toLocaleDateString("en-US", { weekday: "long" });
   await dateToken(pane, task, inTwoDays).click();
   await picker
-    .getByRole("button", { name: "Repeat, Daily", exact: true })
+    .getByRole("button", { name: "Custom repeat", exact: true })
     .click();
-  await picker.getByRole("button", { name: "Custom…", exact: true }).click();
   const custom = picker.getByRole("group", { name: "Custom repeat" });
   await custom.getByRole("button", { name: "Weekly", exact: true }).click();
   const off = custom.getByRole("button", {
@@ -187,7 +185,7 @@ test("a missed daily Task is one Late card, skipped and completed from the card,
 
   await taskRow(pane, task).getByRole("button", { name: "Set date" }).click();
   await sent(page, /\/date$/, () => pickDate(page, fromToday(-3)));
-  await setRepeat(page, "Every day", "Daily");
+  await setRepeat(page, "Every day");
   await closeDatePicker(page);
 
   // An open Thread pane covers the right of the list (ADR 0023, ADR 0037).
@@ -242,9 +240,8 @@ test("a missed daily Task is one Late card, skipped and completed from the card,
   await settled(drawer);
   await dateToken(drawer, task, "Tomorrow").click();
   await picker
-    .getByRole("button", { name: "Repeat, Daily", exact: true })
+    .getByRole("button", { name: "Custom repeat", exact: true })
     .click();
-  await picker.getByRole("button", { name: "Custom…", exact: true }).click();
   const custom = picker.getByRole("group", { name: "Custom repeat" });
   await custom.getByRole("button", { name: "More days", exact: true }).click();
   await custom.getByRole("button", { name: "More days", exact: true }).click();
@@ -254,8 +251,11 @@ test("a missed daily Task is one Late card, skipped and completed from the card,
     custom.getByRole("button", { name: "Save repeat", exact: true }).click(),
   );
   await expect(
-    picker.getByRole("button", { name: "Repeat, Every 3 days", exact: true }),
-  ).toBeVisible();
+    picker.getByRole("button", {
+      name: "Custom: Repeats every 3 days",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
 
   await closeDatePicker(page);
   await settled(drawer);
@@ -299,25 +299,15 @@ test("monthly on the 31st falls on a shorter month's last day, then back on the 
 
   await taskRow(pane, task).getByRole("button", { name: "Set date" }).click();
   await sent(page, /\/date$/, () => pickDate(page, first));
-  const repeatNever = picker.getByRole("button", {
-    name: "Repeat, Never",
-    exact: true,
-  });
-  await expect(repeatNever).toBeEnabled();
-  await repeatNever.click();
-  const preset = picker.getByRole("button", {
-    name: "Every month on the 31st",
-    exact: true,
-  });
-  await expect(preset).toBeVisible();
-  await shot("repeat-picker-monthly");
-  await sent(page, /\/repeat$/, () => preset.click());
   await expect(
     picker.getByRole("button", {
-      name: "Repeat, Monthly on the 31st",
+      name: "Every month on the 31st",
       exact: true,
     }),
-  ).toBeVisible();
+  ).toBeEnabled();
+  await shot("repeat-picker-monthly");
+  await setRepeat(page, "Every month on the 31st");
+  await expect(picker).toContainText("· Monthly on the 31st");
   await closeDatePicker(page);
   await expect(glyph).toBeVisible();
 
@@ -368,7 +358,7 @@ test("a missed monthly Task is one Late card; Complete moves it a month on, and 
   await taskRow(pane, task).getByRole("button", { name: "Set date" }).click();
   await sent(page, /\/date$/, () => pickDate(page, missed));
   const day = ordinal(missed.getDate());
-  await setRepeat(page, `Every month on the ${day}`, `Monthly on the ${day}`);
+  await setRepeat(page, `Every month on the ${day}`);
   await closeDatePicker(page);
   await closeThread(pane);
 
@@ -410,10 +400,10 @@ test("a missed monthly Task is one Late card; Complete moves it a month on, and 
   await sent(page, /\/date$/, () => pickDate(page, moved));
   await expect(
     picker.getByRole("button", {
-      name: `Repeat, Monthly on the ${ordinal(moved.getDate())}`,
+      name: `Every month on the ${ordinal(moved.getDate())}`,
       exact: true,
     }),
-  ).toBeVisible();
+  ).toHaveAttribute("aria-pressed", "true");
   await shot("repeat-monthly-date-changed");
   await closeDatePicker(page);
   await page.reload();
