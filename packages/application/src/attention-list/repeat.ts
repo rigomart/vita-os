@@ -109,15 +109,18 @@ export function repeatShortLabel(repeat: Repeat | undefined): string {
 }
 
 export interface RepeatPreset {
+  /** What it does in full: "Every Thursday". */
   label: string;
-  /** `null` is no Repeat. */
-  repeat: Repeat | null;
+  /** Its button's one word: "Weekly". */
+  word: string;
+  repeat: Repeat;
 }
 
 /**
  * The rhythms a date's picker offers in one click, read from its date's
  * weekday and day of month. A monthly Repeat keeps its own day, which a short
  * month's date stands in for: Feb 28 still offers the 31st it returns to.
+ * Doesn't repeat is none of them: the picker stops a Repeat instead.
  */
 export function repeatPresets(
   when: number,
@@ -127,19 +130,25 @@ export function repeatPresets(
   const day =
     current?.kind === "monthly" ? current.day : new Date(when).getDate();
   return [
-    { label: "Doesn't repeat", repeat: null },
-    { label: "Every day", repeat: { kind: "days", every: 1 } },
+    { label: "Every day", word: "Daily", repeat: { kind: "days", every: 1 } },
     {
       label: "Every weekday",
+      word: "Weekdays",
       repeat: { kind: "weekly", weekdays: [1, 2, 3, 4, 5] },
     },
     {
       label: `Every ${weekday.name}`,
+      word: "Weekly",
       repeat: { kind: "weekly", weekdays: [weekday.day] },
     },
-    { label: "Every 2 weeks", repeat: { kind: "days", every: 14 } },
+    {
+      label: "Every 2 weeks",
+      word: "Biweekly",
+      repeat: { kind: "days", every: 14 },
+    },
     {
       label: `Every month on the ${ordinal(day)}`,
+      word: "Monthly",
       repeat: { kind: "monthly", day },
     },
   ];

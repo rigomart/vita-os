@@ -26,7 +26,7 @@ import { Fragment, useId, useRef, useState } from "react";
 import {
   repeatLabel,
   taskDateLabels,
-  WhenPopover,
+  WhenPicker,
   whenTone,
   withTimeToken,
 } from "../../attention-list";
@@ -269,7 +269,7 @@ function TaskRow({
   const tone = whenTone(task.date, now);
   // The date token and the date command open the same picker.
   const datePicker = (trigger: ReactElement) => (
-    <WhenPopover
+    <WhenPicker
       busy={busy}
       when={task.date}
       clearLabel={taskDateLabels.clear}

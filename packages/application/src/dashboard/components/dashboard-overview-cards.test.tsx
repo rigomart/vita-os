@@ -94,9 +94,11 @@ describe("a Dashboard card date control", () => {
         timeZone: expect.any(String),
       }),
     );
+    // A day closes a card's picker: the card moves to its new day.
+    await waitFor(() => expect(screen.queryByRole("grid")).toBeNull());
   });
 
-  it("closes the card's picker on a time, as on a day", async () => {
+  it("keeps the card's picker open on a time, which saves while still being typed", async () => {
     const user = userEvent.setup();
     const task = {
       _id: "task1" as TaskId,
@@ -126,9 +128,7 @@ describe("a Dashboard card date control", () => {
         timeZone: expect.any(String),
       }),
     );
-    await waitFor(() =>
-      expect(screen.queryByRole("button", { name: "Pick a date…" })).toBeNull(),
-    );
+    expect(screen.getByRole("grid")).toBeVisible();
   });
 
   it("reschedules from the dated Task's own token", async () => {

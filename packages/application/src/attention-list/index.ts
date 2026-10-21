@@ -4,4 +4,4 @@ export { timeToken, whenTone, withTimeToken } from "./date-parts";
 export { followUpDateLabels, taskDateLabels } from "./follow-up-date";
 export { repeatLabel } from "./repeat";
 export { RowDeleteAction, RowIconAction } from "./row-parts";
-export { type RepeatControl, WhenPopover } from "./when-popover";
+export { type RepeatControl, WhenPicker } from "./when-picker";

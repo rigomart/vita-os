@@ -254,9 +254,8 @@ describe("a Note's line", () => {
       await user.click(
         screen.getByRole("button", { name: "Change follow-up date" }),
       );
-      await user.click(screen.getByRole("button", { name: /^Repeat, Never/ }));
       await user.click(
-        screen.getByRole("button", { name: "Every month on the 17th" }),
+        await screen.findByRole("button", { name: "Every month on the 17th" }),
       );
 
       expect(mocks.setNoteRepeat).toHaveBeenCalledExactlyOnceWith(

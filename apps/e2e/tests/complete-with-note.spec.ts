@@ -6,10 +6,10 @@ import {
   closeDatePicker,
   closeThread,
   createThread,
-  datePicker,
   dateToken,
+  fromToday,
   logOf,
-  quickPick,
+  pickDate,
   setRepeat,
   taskRow,
   threadId,
@@ -88,11 +88,8 @@ test("a repeating Task completed with a note in the drawer moves to its next occ
   const row = taskRow(drawer, task);
   await expect(page.getByText("Thread created")).toBeHidden();
   await row.getByRole("button", { name: "Set date" }).click();
-  await expect(
-    datePicker(page).getByRole("button", { name: "Pick a date…" }),
-  ).toBeVisible();
-  await sent(page, /\/date$/, () => quickPick(page, "Today"));
-  await setRepeat(page, "Every day", "Daily");
+  await sent(page, /\/date$/, () => pickDate(page, fromToday(0)));
+  await setRepeat(page, "Every day");
 
   await closeDatePicker(page);
   await settled(drawer);

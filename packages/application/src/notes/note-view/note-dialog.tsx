@@ -40,7 +40,7 @@ import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { withTimeToken } from "../../attention-list/date-parts";
 import { followUpDateLabels } from "../../attention-list/follow-up-date";
 import { repeatLabel } from "../../attention-list/repeat";
-import { WhenPopover } from "../../attention-list/when-popover";
+import { WhenPicker } from "../../attention-list/when-picker";
 import { clock } from "../../lib/clock";
 import { browserTimeZone } from "../../lib/time-zone";
 import { completeNoteFailure, completeNoteLabel } from "../use-complete-note";
@@ -289,7 +289,7 @@ export function NoteDialog({
     : undefined;
   const attentionPicker =
     threadTitle === undefined && (isCompose || onSetWhen) ? (
-      <WhenPopover
+      <WhenPicker
         busy={isPending}
         when={shownWhen}
         onSetWhen={(value) => {
