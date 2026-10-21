@@ -138,15 +138,21 @@ export function groupLook(group: BoardGroup): GroupLook {
         ? 4
         : 5
       : distanceByTone[group.tone];
-  const heading = headings[distance]!;
-  return {
-    distance,
-    heading:
-      group.tone === "late"
-        ? { ...heading, label: `${heading.label} text-condition-attention` }
-        : heading,
-    line: lines[distance]!,
-  };
+  const look = lookAt(distance);
+  return group.tone === "late"
+    ? {
+        ...look,
+        heading: {
+          ...look.heading,
+          label: `${look.heading.label} text-condition-attention`,
+        },
+      }
+    : look;
+}
+
+/** How a group reads at `distance`, whatever it holds. */
+export function lookAt(distance: number): GroupLook {
+  return { distance, heading: headings[distance]!, line: lines[distance]! };
 }
 
 /** Clearance for the sticky filter above and the phone action bar below. */
