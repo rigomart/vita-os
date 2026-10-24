@@ -57,7 +57,7 @@ CI (`.github/workflows/verify.yml`) runs `lint:check`, `typecheck`, `build`, a c
 
 ## Check a change in the real app
 
-`bun run verify up --instance <name>` starts an isolated local stack (its own ports and D1) and needs no `.dev.vars` or `.env.local`; agents drive it with agent-browser as a throwaway user, per `.claude/skills/verify-vita-os/SKILL.md`. `bun run verify --help` lists the stack commands (`up`, `down`, `doctor`, `env`, `d1`). `bun run test:e2e <spec>` runs a Playwright spec from `apps/e2e` against the same kind of stack.
+`bun run verify up --instance <name>` starts an isolated local stack (its own ports and D1) and needs no `.dev.vars` or `.env.local`; agents drive it with agent-browser as a throwaway user, per `.claude/skills/verify-vita-os/SKILL.md`. `bun run verify --help` lists the stack commands (`up`, `down`, `doctor`, `env`, `d1`).
 
 ## Deploy
 

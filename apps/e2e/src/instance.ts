@@ -73,7 +73,6 @@ export function instancePaths(name: string) {
     state: join(dir, "state.json"),
     persistDir: join(dir, "d1"),
     logsDir: join(dir, "logs"),
-    playwrightDir: join(dir, "playwright"),
   };
 }
 
