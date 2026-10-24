@@ -37,7 +37,7 @@ To start signed out, use a session you have not signed in on, or `cookies clear`
 
 1. `bun run verify up --instance <name>`, then `bun run verify doctor --instance <name>`.
 2. Read the feature files the change touches in `features/`.
-3. `set viewport 1440 900` (the default, 1280×577, sits on a layout boundary), sign up, and drive the new behavior on every entry point and width it touched, checking right after each action.
+3. `open` the app, then `set viewport 1440 900` (the default, 1280×577, sits on a layout boundary), sign up, and drive the new behavior on every entry point and width it touched, checking right after each action.
 4. Rerun the checks of each touched feature file.
 5. If the behavior changed on purpose, update those feature files in the same change; a new feature gets a file and a row in `features/README.md`.
 6. Report (see Proof standards), then tear down: `bun run verify down --purge --instance <name>`.
@@ -50,10 +50,10 @@ Run steps 1 and 3 of Prove a change (instance, doctor, viewport, a new user). Th
 
 - **One action, then look.** After each action take a fresh `snapshot -i` and use refs only from it. Do not send long `batch` runs and rerun them from the top; fix and retry the step that failed.
 - **Locate by role and name**: refs from the snapshot, `find role button click --name "New thread"`, `find label "Email" fill "…"`. The app has no `data-testid`. Use CSS only for these hooks: `[data-slot=thread-detail-pane]` (the side pane), `[data-vaul-drawer]` (the drawer), `[data-when-picker]` (the date picker), `nav[aria-label=Actions]` (the bottom bar), `[aria-label='…']` to wait for a control, and `main section[aria-label='<group>']` for a Dashboard group.
-- **Wait on conditions**: `wait "<css>"`, `wait --fn "<expression>"`, `wait --text "<visible text>"`. `wait <ms>` is never proof, and neither is `wait --text`, which is a case-sensitive substring.
+- **Wait on conditions**: `wait "<css>"`, `wait --fn "<expression>"`, `wait --text "<visible text>"`. `wait <ms>` is never proof, and neither is `wait --text`, which is a case-sensitive substring. A wait for something to go passes at once if it was never there: confirm it is present first (`get count "<css>"`), then act, then wait for it to go.
 - **Check exact values**: `get text`, `get value`, `is enabled`, `is visible`, and `eval` returning JSON, compared in full. Read focus straight after the action: `eval "document.activeElement.getAttribute('aria-label')"`.
 - **Prove a write**: `network requests --clear` before the action, `network requests --filter <path>` after it, and check the method and the status. Each write also prints a CORS preflight line (`OPTIONS … (Other) 204`) before it; read the `POST`/`PUT`/`PATCH`/`DELETE` line. A line with no status is still pending: look again before reloading. Then `reload`, wait for something visible, and check the screen.
-- **Evidence**: `screenshot <evidenceDir>/<feature>-<step>.png`, one right after the action and one after the reload. `evidenceDir` comes from `up` or `env`; its run folder is named in UTC, so it can carry tomorrow's date in the evening. For a sequence (focus moving, a drawer sliding), `record start <evidenceDir>/<name>.webm` and `record stop`.
+- **Evidence**: `screenshot <evidenceDir>/<feature>-<step>.png`, one right after the action and one after the reload. `evidenceDir` comes from `up` or `env`; its run folder is named in UTC, so it can carry tomorrow's date in the evening. For a sequence (focus moving, a drawer sliding), `record start <evidenceDir>/<name>.webm` and `record stop`, but only after its checks have passed without recording, then relaunch the session (see the `record start` trap).
 
 Worked example, run as written (a Task added in the Thread pane keeps the box focused and empty, and is stored once):
 
@@ -62,8 +62,9 @@ bun run verify up --instance gen
 export AGENT_BROWSER_SESSION=vita-gen
 WEB=$(bun run verify env --instance gen | jq -r .webUrl)
 EVIDENCE=$(bun run verify env --instance gen | jq -r .evidenceDir)
-agent-browser set viewport 1440 900
 agent-browser open "$WEB/sign-up"
+agent-browser set viewport 1440 900
+agent-browser eval "innerWidth"                         # 1440
 agent-browser wait --text "Create a new account"
 agent-browser find label "Name" fill "Verify 807602"
 agent-browser find label "Email" fill "verify-807602@vita.test"
@@ -125,10 +126,10 @@ bun run verify down --purge --instance <name>  # stop the instance, close its br
 
 App traps:
 
-- **The date picker.** Day buttons are named in full (`Saturday, October 24th, 2026`; today reads `Today, Friday, October 23rd, 2026`). Pick days relative to today, in the browser's time zone. On a Task row the picker stays open after a day is picked, and the row's controls may be disabled until the `PUT …/date` answers; `press Escape`, then `wait --fn "!document.querySelector('[data-when-picker]')"`, since the calendar stays in the page while it slides out. In New note it closes on its own. The time is three spinbuttons (`Hours`, `Minutes`, `AM/PM`) beside `9 AM`, `12 PM`, `3 PM`, `6 PM`; Repeat options are buttons named in full (`Every Saturday`, `Every month on the 24th`, `Custom repeat`).
+- **The date picker** (`[data-when-picker]`, in the page only while open) is a calendar with, beside it, the When (`No date`, or `Sat, Oct 24` and `Clear date`), a `Time` field (three spinbuttons in a snapshot) over `9 AM` `12 PM` `3 PM` `6 PM`, and the Repeat as one word each, `Daily` to `Custom`, named in full (`Every day`, `Every Saturday`, `Every month on the 24th`, `Custom repeat`). Time and Repeat are disabled until there is a date. Day buttons are named in full (`Saturday, October 24th, 2026`; today reads `Today, Friday, October 23rd, 2026`; the picked day adds `, selected`). Pick days relative to today, in the browser's time zone. On a Task row it stays open after a day is picked; on a Dashboard line and in New note it closes by itself. Below 768px it is a drawer of its own, a second `[data-vaul-drawer]`. To close it, confirm `get count "[data-when-picker]"` is `1`, `press Escape`, then `wait --fn "!document.querySelector('[data-when-picker]')"`; Escape closes only the picker and focus returns to its button.
 - **Stored dates** are epoch milliseconds of local midnight when there is no time: tomorrow is `new Date(y, m, d + 1).getTime()` in the browser. A Thread's Tasks are JSON in `threads.moves_json` (`null` once the last one is completed); a Note's Follow-up date is `notes.attention_date`; Archived is `state = 'done'`.
 - **Hidden duplicates.** Below 1024px the header's `New note` and `New thread` stay in the page, hidden, so `wait "[aria-label='New note']"` times out on a phone. Wait on `nav[aria-label=Actions]` there and act on refs from `snapshot -i`.
-- **Drawers slide.** Their content is on the page before they stop, and a click during the slide can land outside and close them. Wait first: `wait --fn "document.querySelector('[data-vaul-drawer]')?.getAnimations().length === 0"`.
+- **Drawers and the pane slide.** Their content is on the page before they stop, and a click during the slide can land outside and close them. Wait first: `wait --fn "document.querySelector('[data-vaul-drawer]')?.getAnimations().length === 0"`. On a phone the New thread form is a drawer too. The side pane slides in for about 0.2 s and a click inside it meanwhile lands on the board; wait with `wait --fn "(p => p && p.getAnimations().length === 0 && Math.round(p.getBoundingClientRect().right) === innerWidth)(document.querySelector('[data-slot=thread-detail-pane]'))"`.
 - **Overlays.** From 1280px an open Thread pane covers the header's actions: close it (`Close thread`) or use the palette (`Search, Command K`). The `Open TanStack Router Devtools` button floats in a corner in dev; leave it alone.
 - **Wait for the control, not the address.** After Sign Up or Sign In the path is `/` before the Dashboard renders, and a `find` then sees only the devtools button: wait on `[aria-label='New thread']`. The sign-in and sign-up boxes are named by a `<label>`, not `aria-label`, so `wait "[aria-label=Email]"` never matches; wait on `--text "Create a new account"` or `--text "Sign in to your account"`.
 - **The Note editor** (`textbox "Note body"`) is CodeMirror and loads after the dialog: `wait "[aria-label='Note body']"` before `fill`. Saved Notes are buttons named `Open note: <first line>`.
@@ -145,6 +146,11 @@ agent-browser traps:
 - **`wait --text` reads visible text only**, not labels or placeholders: `wait --text "Add a task"` times out beside the `Add a task` box. Use `wait "[aria-label='Add a task']"`.
 - **`snapshot -s <selector>` can print a subtree several times**, for any selector (it did for `[data-when-picker]`, `[data-slot=thread-detail-pane]` and `[aria-label='Thread attention']`). Read order and counts from `eval` or D1.
 - **`keyboard type` moves focus back into the last-used input** when focus is on the page body, hiding lost focus. Check `document.activeElement` before typing the next input.
-- **`press <letter>` with focus on the page body can get stuck repeating**; `reload` stops it.
+- **`press <letter>` or `keyboard type` with focus on the page body can get stuck repeating keys**; `reload` stops it. Where focus may be lost, use `keyboard inserttext`.
 - **`close` on a session that is not running starts it first**, and `session list` still shows a closed session for a moment. `verify down` closes `vita-<name>` only when it is listed; do not close it again by hand. To confirm it is gone, run `agent-browser session list` a second time a few seconds after `down`.
+- **The session can reset to `about:blank` and lose its sign-in**, sometimes printing `[agent-browser] relaunched browser`, mostly in fast loops. When a step surprises you, `get url`; if it is `about:blank`, open the app, sign in again and set the viewport.
+- **`set viewport` right after the browser launches may not stick.** Set it after `open` and confirm with `eval "innerWidth"`.
+- **`mouse wheel` fires at (0,0) whatever `mouse move` set** (agent-browser 0.38.1), so nothing under the pointer scrolls, and `scroll` only sets `scrollTop` without a wheel or touch event. To scroll the way a person does, use CDP from a short script outside the repo: connect to `agent-browser get cdp-url`, `Target.getTargets`, `Target.attachToTarget` the page with `flatten: true`, then send with its `sessionId` `Input.dispatchMouseEvent` (`type: "mouseWheel"`, `x`, `y`, `deltaY`) or `Input.synthesizeScrollGesture` (`x`, `y`, `yDistance` negative to scroll down, `gestureSourceType: "touch"`) at a point inside the container (check it with `document.elementFromPoint(x, y)`).
+- **A local save answers in milliseconds**, so behavior while a write is in flight needs a slow network: through the same CDP connection, `Network.enable` and `Network.emulateNetworkConditions` (`latency: 3000`, throughputs `-1`). It stays on after the script disconnects; send it again with `latency: 0` before a reload.
+- **`record start` can leave `document.visibilityState` `"hidden"`**, even after `record stop`, and slide transitions then stall. Do not record timing-sensitive steps, and relaunch the session (`close`, then `open`) after recording.
 - **Enter does commit a Task edit.** It once looked broken under agent-browser and became a "never press Enter" rule; the app sends exactly one write. Reproduce a second way before writing such a rule.
