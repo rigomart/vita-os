@@ -74,6 +74,36 @@ async function freePort(
   );
 }
 
+const PORT_LOCK = 9129;
+const PORT_LOCK_WAIT_MS = 300_000;
+
+/**
+ * A probed port stays free only until someone binds it, so every `up` on this machine, in any checkout, holds this
+ * from choosing its ports until its processes have bound them. It is a listening socket: the OS frees it if `up` dies.
+ */
+async function lockPorts(): Promise<() => void> {
+  const deadline = Date.now() + PORT_LOCK_WAIT_MS;
+  while (true) {
+    const server = createServer();
+    const held = await new Promise<boolean>((res, fail) => {
+      server.once("error", (err: NodeJS.ErrnoException) =>
+        err.code === "EADDRINUSE" ? res(false) : fail(err),
+      );
+      server.listen(
+        { port: PORT_LOCK, host: "127.0.0.1", exclusive: true },
+        () => res(true),
+      );
+    });
+    if (held) return () => server.close();
+    if (Date.now() > deadline)
+      throw new VitaError(
+        `port ${PORT_LOCK}, which up holds while it starts an instance, stayed taken for ${PORT_LOCK_WAIT_MS / 1000}s`,
+        `see what holds it: lsof -nP -iTCP:${PORT_LOCK} -sTCP:LISTEN`,
+      );
+    await sleep(500);
+  }
+}
+
 async function httpStatus(
   url: string,
 ): Promise<{ status: number; body: string } | undefined> {
@@ -210,10 +240,26 @@ export async function up(instance: string, opts: UpOptions = {}) {
   }
   if (existing) await down(instance, { dryRun: false, purge: false });
 
+  const paths = instancePaths(instance);
+  for (const d of [paths.persistDir, paths.logsDir])
+    mkdirSync(d, { recursive: true });
+  migrate(paths);
+
+  const unlock = await lockPorts();
+  try {
+    return await start(instance, opts);
+  } finally {
+    unlock();
+  }
+}
+
+/** Returns once the API and web are healthy, which is after every port they bind is bound. */
+async function start(instance: string, opts: UpOptions) {
   // Above the ports `bun run dev` (5173, 8787) and the design lab (5174) use, so neither collides with an instance.
   const apiPort = opts.apiPort ?? (await freePort(8790));
   const webPort = opts.webPort ?? (await freePort(5180, [apiPort]));
-  const inspectorPort = await freePort(9230, [apiPort, webPort]);
+  // Below 9229, where the vite plugin scans up from for the web worker's inspector.
+  const inspectorPort = await freePort(9130, [apiPort, webPort]);
   for (const [name, port] of [
     ["api", apiPort],
     ["web", webPort],
@@ -243,10 +289,7 @@ export async function up(instance: string, opts: UpOptions = {}) {
     branch: currentBranch(),
     startedAt: new Date().toISOString(),
   };
-  for (const d of [state.persistDir, state.logsDir, state.evidenceDir])
-    mkdirSync(d, { recursive: true });
-
-  migrate(state);
+  mkdirSync(state.evidenceDir, { recursive: true });
 
   const apiLog = join(state.logsDir, "api.log");
   state.pids.api = startDetached(
