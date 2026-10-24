@@ -28,6 +28,11 @@ export type State = {
   session?: string;
 };
 
+/** The agent-browser session that drives this instance; `down` closes it. */
+export function browserSession(name: string): string {
+  return `vita-${name}`;
+}
+
 /** A failure with the next step to take; the CLI prints both as JSON. */
 export class VitaError extends Error {
   constructor(

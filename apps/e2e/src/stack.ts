@@ -8,6 +8,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 import {
   API_DIR,
+  browserSession,
   instancePaths,
   loadState,
   requireState,
@@ -179,6 +180,7 @@ export function publicEnv(state: State) {
     instance: state.instance,
     webUrl: state.webUrl,
     apiUrl: state.apiUrl,
+    session: browserSession(state.instance),
     evidenceDir: state.evidenceDir,
     logsDir: state.logsDir,
     gitSha: state.gitSha,
@@ -312,6 +314,23 @@ export async function doctor(instance: string) {
   };
 }
 
+/** `close` on a session that is not running starts one first, so close only a listed session. */
+function closeBrowser(session: string): void {
+  const list = spawnSync("agent-browser", ["session", "list", "--json"], {
+    encoding: "utf8",
+    timeout: 15_000,
+  });
+  if (list.status !== 0) return;
+  const { data } = JSON.parse(list.stdout) as {
+    data?: { sessions?: string[] };
+  };
+  if (!data?.sessions?.includes(session)) return;
+  spawnSync("agent-browser", ["--session", session, "close"], {
+    stdio: "ignore",
+    timeout: 15_000,
+  });
+}
+
 /** `purge` also deletes the local D1. Evidence is kept. */
 export async function down(
   instance: string,
@@ -319,6 +338,7 @@ export async function down(
 ) {
   const state = loadState(instance);
   if (!state) {
+    if (!opts.dryRun) closeBrowser(browserSession(instance));
     if (opts.purge && !opts.dryRun)
       rmSync(instancePaths(instance).persistDir, {
         recursive: true,
@@ -331,7 +351,9 @@ export async function down(
   );
   const plan = {
     signalGroups: groups.map(([name, pid]) => `${name}:-${pid}`),
-    closeLegacyBrowserSession: state.session ?? null,
+    closeBrowserSessions: [browserSession(instance), state.session].filter(
+      (session): session is string => session !== undefined,
+    ),
     deleteD1: opts.purge ? instancePaths(instance).persistDir : null,
     keepEvidence: dirname(state.evidenceDir),
   };
@@ -344,12 +366,7 @@ export async function down(
   for (const [, pid] of groups)
     if (groupAlive(pid)) signalGroup(pid, "SIGKILL");
 
-  // Only for instances of the old agent-browser CLI; delete after the transition.
-  if (state.session)
-    spawnSync("agent-browser", ["--session", state.session, "close"], {
-      stdio: "ignore",
-      timeout: 15_000,
-    });
+  for (const session of plan.closeBrowserSessions) closeBrowser(session);
 
   rmSync(instancePaths(instance).state, { force: true });
   if (opts.purge)
