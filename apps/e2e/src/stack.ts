@@ -492,13 +492,13 @@ async function startProcesses(state: State, abort: AbortSignal) {
     webLog,
     abort,
   );
-  // A signal that came in during the last check still undoes the start.
-  abort.throwIfAborted();
   if (!groupAlive(state.pids.api) || !(await apiHealthy(state)))
     throw new VitaError(
       "API stopped while web was starting",
       `read the log: ${apiLog}`,
     );
+  // A signal that came in during the last checks still undoes the start.
+  abort.throwIfAborted();
 }
 
 export async function doctor(instance: string) {
