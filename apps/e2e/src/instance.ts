@@ -1,6 +1,13 @@
 // Shared by the CLI (Bun) and the Playwright fixtures (Node): node: APIs only, no side effects on import.
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 
 export const ROOT = resolve(import.meta.dirname, "../../..");
@@ -27,6 +34,17 @@ export type State = {
   /** Only in state files of the old agent-browser CLI, closed by `down`; delete after the transition. */
   session?: string;
 };
+
+// agent-browser sessions are machine-wide but instances are per checkout, so the session names the checkout too.
+const CHECKOUT_ID = createHash("sha256")
+  .update(realpathSync(ROOT))
+  .digest("hex")
+  .slice(0, 6);
+
+/** The agent-browser session that drives this instance in this checkout; `down` closes it. */
+export function browserSession(name: string): string {
+  return `vita-${name}-${CHECKOUT_ID}`;
+}
 
 /** A failure with the next step to take; the CLI prints both as JSON. */
 export class VitaError extends Error {

@@ -2,31 +2,30 @@
 import { d1, instanceName, requireState, VitaError } from "./instance.ts";
 import { doctor, down, publicEnv, up } from "./stack.ts";
 
-const HELP = `verify: start, check, and stop an isolated local Vita OS stack (no browser).
+const HELP = `verify: start, check, and stop an isolated local Vita OS stack. It never drives the app.
 
 Every command prints one JSON object on stdout: {"ok":true,...} or {"ok":false,"error":...,"hint":...}.
 Instances are isolated by name (--instance <name> or VITA_INSTANCE, default "main"): own ports, own
-local D1 under .verify/instances/<name>/, own logs. Evidence lives in .verify/evidence/<instance>/<run>/
-and survives "down".
+local D1 under .verify/instances/<name>/, own logs, own agent-browser session ("session" in the output
+of up and env; it names this checkout too). Evidence lives in .verify/evidence/<instance>/<run>/ and
+survives "down".
 
 Commands:
   up [--web-port N] [--api-port N]   Migrate a private local D1, start the API (wrangler dev) and web (vite),
                                      wait for both. Idempotent: a healthy instance is reused.
   doctor                             Read-only health check of this instance. Run first when anything looks off.
-  env                                Print URLs, the evidence dir, and the logs dir.
+  env                                Print URLs, the agent-browser session, the evidence dir, and the logs dir.
   d1 "<SELECT ...>"                  Read-only SQL against this instance's local D1 (one SELECT).
-  down [--dry-run] [--purge]         Stop only the processes this instance started. --purge also deletes
-                                     its local D1. Evidence is kept.
+  down [--dry-run] [--purge]         Stop only the processes this instance started and close its agent-browser
+                                     session. --purge also deletes its local D1. Evidence and logs are kept.
 
-Drive the app with Playwright specs in apps/e2e (bun run test:e2e starts the instance itself):
-  bun run test:e2e scratch/try.spec.ts                # a throwaway spec (apps/e2e/scratch is gitignored)
-  bun run test:e2e tests/complete-with-note.spec.ts   # a worked example
-  VITA_INSTANCE=a bun run test:e2e                     # every spec in tests/ and scratch/, on instance "a"
+Drive the app with agent-browser on the instance's session, per .claude/skills/verify-vita-os/SKILL.md:
+  agent-browser --session "$(bun run verify env | jq -r .session)" open "$(bun run verify env | jq -r .webUrl)/sign-up"
 
 Examples:
   bun run verify up && bun run verify doctor
-  bun run verify d1 "SELECT title FROM threads"
-  VITA_INSTANCE=b bun run verify up      # a second, fully isolated stack
+  bun run verify d1 "SELECT title FROM threads WHERE user_id = (SELECT id FROM user WHERE email = '...')"
+  bun run verify up --instance b      # a second, fully isolated stack
 `;
 
 const VALUE_FLAGS = ["instance", "web-port", "api-port"];
