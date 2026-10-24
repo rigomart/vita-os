@@ -1,7 +1,14 @@
 // Used by the verify CLI (Bun); node: APIs only, so it also loads under Node.
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, openSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -45,6 +52,16 @@ function signalGroup(pid: number | undefined, signal: NodeJS.Signals): void {
   }
 }
 
+/** Pass only groups an `up` started: SIGTERM, then SIGKILL whatever is left after 10s. */
+async function stopGroups(pids: (number | undefined)[]): Promise<void> {
+  const live = pids.filter((pid) => groupAlive(pid));
+  for (const pid of live) signalGroup(pid, "SIGTERM");
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline && live.some((pid) => groupAlive(pid)))
+    await sleep(250);
+  for (const pid of live) if (groupAlive(pid)) signalGroup(pid, "SIGKILL");
+}
+
 function portFree(port: number): Promise<boolean> {
   const tryHost = (host: string) =>
     new Promise<boolean>((res) => {
@@ -74,31 +91,98 @@ async function freePort(
   );
 }
 
-const PORT_LOCK = 9129;
-const PORT_LOCK_WAIT_MS = 300_000;
-
 /**
  * A probed port stays free only until someone binds it, so every `up` on this machine, in any checkout, holds this
- * from choosing its ports until its processes have bound them. It is a listening socket: the OS frees it if `up` dies.
+ * from choosing its ports until its processes have bound them.
  */
-async function lockPorts(): Promise<() => void> {
-  const deadline = Date.now() + PORT_LOCK_WAIT_MS;
+const PORT_LOCK = 9129;
+/** Held for a moment while an `up` reads or takes an instance's owner file. */
+const CLAIM_LOCK = 9128;
+const LOCK_WAIT_MS = 300_000;
+
+/** What `up` throws after SIGINT or SIGTERM, once it has stopped what it started. */
+export class Interrupted extends VitaError {
+  constructor(readonly signal: NodeJS.Signals) {
+    super(
+      `up stopped by ${signal}`,
+      "it stopped the processes it had started; run up again",
+    );
+  }
+}
+
+/** A machine-wide lock as a listening socket on 127.0.0.1: the OS frees it if its holder dies. */
+async function holdPort(
+  port: number,
+  heldFor: string,
+  abort: AbortSignal,
+): Promise<() => void> {
+  const deadline = Date.now() + LOCK_WAIT_MS;
   while (true) {
+    abort.throwIfAborted();
     const server = createServer();
     const held = await new Promise<boolean>((res, fail) => {
       server.once("error", (err: NodeJS.ErrnoException) =>
         err.code === "EADDRINUSE" ? res(false) : fail(err),
       );
-      server.listen(
-        { port: PORT_LOCK, host: "127.0.0.1", exclusive: true },
-        () => res(true),
+      server.listen({ port, host: "127.0.0.1", exclusive: true }, () =>
+        res(true),
       );
     });
     if (held) return () => server.close();
     if (Date.now() > deadline)
       throw new VitaError(
-        `port ${PORT_LOCK}, which up holds while it starts an instance, stayed taken for ${PORT_LOCK_WAIT_MS / 1000}s`,
-        `see what holds it: lsof -nP -iTCP:${PORT_LOCK} -sTCP:LISTEN`,
+        `port ${port}, which up holds ${heldFor}, stayed taken for ${LOCK_WAIT_MS / 1000}s`,
+        `see what holds it: lsof -nP -iTCP:${port} -sTCP:LISTEN`,
+      );
+    await sleep(500);
+  }
+}
+
+/** The pid and start time, so a pid reused after a crash does not count as the same process. */
+function processStamp(pid: number): string | undefined {
+  const ps = run(["ps", "-p", String(pid), "-o", "lstart="], ROOT);
+  return ps.code === 0 ? `${pid} ${ps.stdout.trim()}` : undefined;
+}
+
+/**
+ * One `up` per instance at a time, so a second one waits and then reuses what the first started, and two never
+ * migrate one D1 at once. `up`s of other instances run alongside until they need the port lock.
+ */
+async function lockInstance(
+  instance: string,
+  abort: AbortSignal,
+): Promise<() => void> {
+  const { dir } = instancePaths(instance);
+  mkdirSync(dir, { recursive: true });
+  const file = join(dir, "up.pid");
+  const owner = () =>
+    existsSync(file) ? readFileSync(file, "utf8") : undefined;
+  const mine = processStamp(process.pid)!;
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  while (true) {
+    // Only read or written under CLAIM_LOCK, so two ups never both take it, not even from an owner that was killed.
+    const releaseClaim = await holdPort(
+      CLAIM_LOCK,
+      "while it claims an instance",
+      abort,
+    );
+    let holder: string | undefined;
+    try {
+      holder = owner();
+      const pid = Number(holder?.split(" ")[0]);
+      if (!holder || !pid || processStamp(pid) !== holder) {
+        writeFileSync(file, mine);
+        return () => {
+          if (owner() === mine) rmSync(file, { force: true });
+        };
+      }
+    } finally {
+      releaseClaim();
+    }
+    if (Date.now() > deadline)
+      throw new VitaError(
+        `another up of instance "${instance}" (pid ${holder.split(" ")[0]}) ran for ${LOCK_WAIT_MS / 1000}s`,
+        `wait for it, or see it: ps -p ${holder.split(" ")[0]}`,
       );
     await sleep(500);
   }
@@ -118,12 +202,20 @@ async function httpStatus(
 async function waitFor(
   what: string,
   check: () => Promise<boolean>,
+  pid: number,
   timeoutMs: number,
   log: string,
+  abort: AbortSignal,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (await check()) return;
+    abort.throwIfAborted();
+    if (!groupAlive(pid))
+      throw new VitaError(
+        `${what} exited while starting`,
+        `read the log: ${log}`,
+      );
     await sleep(500);
   }
   throw new VitaError(
@@ -219,8 +311,25 @@ export function publicEnv(state: State) {
 
 export type UpOptions = { webPort?: number; apiPort?: number };
 
-/** Reuses a healthy instance, applying any new migrations. */
+/** Reuses a healthy instance, applying any new migrations. On SIGINT/SIGTERM it stops what it started and throws Interrupted. */
 export async function up(instance: string, opts: UpOptions = {}) {
+  const abort = new AbortController();
+  const onSignal = (signal: NodeJS.Signals) =>
+    abort.abort(new Interrupted(signal));
+  process.on("SIGINT", onSignal).on("SIGTERM", onSignal);
+  try {
+    const unlock = await lockInstance(instance, abort.signal);
+    try {
+      return await upLocked(instance, opts, abort.signal);
+    } finally {
+      unlock();
+    }
+  } finally {
+    process.off("SIGINT", onSignal).off("SIGTERM", onSignal);
+  }
+}
+
+async function upLocked(instance: string, opts: UpOptions, abort: AbortSignal) {
   const existing = loadState(instance);
   // Vite and wrangler serve the working tree, so a commit changes nothing; another branch may need other migrations.
   if (existing && existing.branch !== currentBranch())
@@ -243,18 +352,26 @@ export async function up(instance: string, opts: UpOptions = {}) {
   const paths = instancePaths(instance);
   for (const d of [paths.persistDir, paths.logsDir])
     mkdirSync(d, { recursive: true });
+  abort.throwIfAborted();
   migrate(paths);
 
-  const unlock = await lockPorts();
+  const unlock = await holdPort(
+    PORT_LOCK,
+    "while it starts an instance",
+    abort,
+  );
   try {
-    return await start(instance, opts);
+    return await start(instance, opts, abort);
   } finally {
     unlock();
   }
 }
 
-/** Returns once the API and web are healthy, which is after every port they bind is bound. */
-async function start(instance: string, opts: UpOptions) {
+/**
+ * Returns once the API and web are healthy, which is after every port they bind is bound. If it fails, it first stops
+ * what it started: a child still starting could otherwise bind a port the next `up` picks once the lock is free.
+ */
+async function start(instance: string, opts: UpOptions, abort: AbortSignal) {
   // Above the ports `bun run dev` (5173, 8787) and the design lab (5174) use, so neither collides with an instance.
   const apiPort = opts.apiPort ?? (await freePort(8790));
   const webPort = opts.webPort ?? (await freePort(5180, [apiPort]));
@@ -291,6 +408,18 @@ async function start(instance: string, opts: UpOptions) {
   };
   mkdirSync(state.evidenceDir, { recursive: true });
 
+  try {
+    await startProcesses(state, abort);
+  } catch (error) {
+    await stopGroups(Object.values(state.pids));
+    rmSync(paths.state, { force: true });
+    throw error;
+  }
+  return { ok: true, reused: false, ...publicEnv(state) };
+}
+
+async function startProcesses(state: State, abort: AbortSignal) {
+  abort.throwIfAborted();
   const apiLog = join(state.logsDir, "api.log");
   state.pids.api = startDetached(
     [
@@ -298,9 +427,9 @@ async function start(instance: string, opts: UpOptions) {
       "wrangler",
       "dev",
       "--port",
-      String(apiPort),
+      String(state.apiPort),
       "--inspector-port",
-      String(inspectorPort),
+      String(state.inspectorPort),
       "--persist-to",
       state.persistDir,
       "--var",
@@ -315,19 +444,34 @@ async function start(instance: string, opts: UpOptions) {
     { CI: "1" },
   );
   saveState(state);
-  await waitFor("API", () => apiHealthy(state), 90_000, apiLog);
+  await waitFor(
+    "API",
+    () => apiHealthy(state),
+    state.pids.api,
+    90_000,
+    apiLog,
+    abort,
+  );
 
+  abort.throwIfAborted();
   const webLog = join(state.logsDir, "web.log");
   state.pids.web = startDetached(
-    ["bunx", "vite", "--port", String(webPort), "--strictPort"],
+    ["bunx", "vite", "--port", String(state.webPort), "--strictPort"],
     WEB_DIR,
     webLog,
     { VITE_API_BASE_URL: state.apiUrl },
   );
   saveState(state);
-  await waitFor("web", () => webHealthy(state), 90_000, webLog);
-
-  return { ok: true, reused: false, ...publicEnv(state) };
+  await waitFor(
+    "web",
+    () => webHealthy(state),
+    state.pids.web,
+    90_000,
+    webLog,
+    abort,
+  );
+  // A signal that came in during the last check still undoes the start.
+  abort.throwIfAborted();
 }
 
 export async function doctor(instance: string) {
@@ -402,12 +546,7 @@ export async function down(
   };
   if (opts.dryRun) return { ok: true, dryRun: true, plan };
 
-  for (const [, pid] of groups) signalGroup(pid, "SIGTERM");
-  const deadline = Date.now() + 10_000;
-  while (Date.now() < deadline && groups.some(([, pid]) => groupAlive(pid)))
-    await sleep(250);
-  for (const [, pid] of groups)
-    if (groupAlive(pid)) signalGroup(pid, "SIGKILL");
+  await stopGroups(groups.map(([, pid]) => pid));
 
   for (const session of plan.closeBrowserSessions) closeBrowser(session);
 
