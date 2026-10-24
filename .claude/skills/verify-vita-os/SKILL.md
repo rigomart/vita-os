@@ -10,12 +10,12 @@ Proof is driving the change in the real web app on an isolated instance, the way
 Three commands, all from the repo root:
 
 - `bun run verify up --instance <name>` starts or reuses an instance and prints its `webUrl`, `session`, `evidenceDir` and `logsDir`. `bun run verify --help` lists the rest (`doctor`, `env`, `d1`, `down`). Every command prints one JSON object; on `{"ok":false}` follow its `hint`.
-- `agent-browser --session vita-<name> <command>` drives the instance's own browser. Its usage guide: `agent-browser skills get core`. If `agent-browser --version` fails, stop and ask the user to install it.
+- `agent-browser --session <session> <command>` drives the instance's own browser, with `<session>` taken from the `session` field of `up` or `env`. Its usage guide: `agent-browser skills get core`. If `agent-browser --version` fails, stop and ask the user to install it.
 - `bun run verify d1 "<SELECT>" --instance <name>` reads the instance's D1. One SELECT per call, one call at a time.
 
 ## Isolation
 
-Pick an instance name for your task (lowercase, digits, dashes, such as `notes-repeat`) and pass `--instance <name>` to every `verify` command and `--session vita-<name>` to every agent-browser command (or `export AGENT_BROWSER_SESSION=vita-<name>` at the start of each shell call; it does not carry over between calls). An instance owns its ports (web from 5180, API from 8790), its D1 and logs under `.verify/instances/<name>/`, its evidence under `.verify/evidence/<name>/<run>/`, and its browser session. Another agent in this checkout uses another name.
+Pick an instance name for your task (lowercase, digits, dashes, such as `notes-repeat`) and pass `--instance <name>` to every `verify` command and `--session <session>` to every agent-browser command (or `export AGENT_BROWSER_SESSION="$(bun run verify env --instance <name> | jq -r .session)"` at the start of each shell call; it does not carry over between calls). Take `session` from `up` or `env`; do not build it from the instance name, because it also names the checkout. An instance owns its ports (web from 5180, API from 8790), its D1 and logs under `.verify/instances/<name>/`, its evidence under `.verify/evidence/<name>/<run>/`, and its browser session. Another agent in this checkout uses another name.
 
 Drive only an instance you started with `verify up`. Never drive `bun run dev` (:5173), the design lab (:5174) or the owner's account (`dev@vita.test`).
 
@@ -59,7 +59,7 @@ Worked example, run as written (a Task added in the Thread pane keeps the box fo
 
 ```bash
 bun run verify up --instance gen
-export AGENT_BROWSER_SESSION=vita-gen
+export AGENT_BROWSER_SESSION="$(bun run verify env --instance gen | jq -r .session)"
 WEB=$(bun run verify env --instance gen | jq -r .webUrl)
 EVIDENCE=$(bun run verify env --instance gen | jq -r .evidenceDir)
 agent-browser open "$WEB/sign-up"
@@ -120,7 +120,7 @@ bun run verify doctor --instance <name>        # read-only; run it first wheneve
 bun run verify down --purge --instance <name>  # stop the instance, close its browser session, delete its D1
 ```
 
-`down` signals only the process groups this instance started and closes the `vita-<name>` browser session. Evidence under `.verify/evidence/<name>/` and logs under `.verify/instances/<name>/logs/` (`migrate.log`, `api.log`, `web.log`) survive `down` and `--purge`. `branchMatches: false` from `doctor` means you switched branches since `up`: `down --purge`, then `up`. Run `down --purge` after a failed attempt too, so nothing strands ports.
+`down` signals only the process groups this instance started and closes the instance's browser session (its `session`). Evidence under `.verify/evidence/<name>/` and logs under `.verify/instances/<name>/logs/` (`migrate.log`, `api.log`, `web.log`) survive `down` and `--purge`. `branchMatches: false` from `doctor` means you switched branches since `up`: `down --purge`, then `up`. Run `down --purge` after a failed attempt too, so nothing strands ports.
 
 ## Gotchas
 
@@ -147,7 +147,7 @@ agent-browser traps:
 - **`snapshot -s <selector>` can print a subtree several times**, for any selector (it did for `[data-when-picker]`, `[data-slot=thread-detail-pane]` and `[aria-label='Thread attention']`). Read order and counts from `eval` or D1.
 - **`keyboard type` moves focus back into the last-used input** when focus is on the page body, hiding lost focus. Check `document.activeElement` before typing the next input.
 - **`press <letter>` or `keyboard type` with focus on the page body can get stuck repeating keys**; `reload` stops it. Where focus may be lost, use `keyboard inserttext`.
-- **`close` on a session that is not running starts it first**, and `session list` still shows a closed session for a moment. `verify down` closes `vita-<name>` only when it is listed; do not close it again by hand. To confirm it is gone, run `agent-browser session list` a second time a few seconds after `down`.
+- **`close` on a session that is not running starts it first**, and `session list` still shows a closed session for a moment. `verify down` closes the instance's `session` only when it is listed; do not close it again by hand. To confirm it is gone, run `agent-browser session list` a second time a few seconds after `down`.
 - **The session can reset to `about:blank` and lose its sign-in**, sometimes printing `[agent-browser] relaunched browser`, mostly in fast loops. When a step surprises you, `get url`; if it is `about:blank`, open the app, sign in again and set the viewport.
 - **`set viewport` right after the browser launches may not stick.** Set it after `open` and confirm with `eval "innerWidth"`.
 - **`mouse wheel` fires at (0,0) whatever `mouse move` set** (agent-browser 0.38.1), so nothing under the pointer scrolls, and `scroll` only sets `scrollTop` without a wheel or touch event. To scroll the way a person does, use CDP from a short script outside the repo: connect to `agent-browser get cdp-url`, `Target.getTargets`, `Target.attachToTarget` the page with `flatten: true`, then send with its `sessionId` `Input.dispatchMouseEvent` (`type: "mouseWheel"`, `x`, `y`, `deltaY`) or `Input.synthesizeScrollGesture` (`x`, `y`, `yDistance` negative to scroll down, `gestureSourceType: "touch"`) at a point inside the container (check it with `document.elementFromPoint(x, y)`).

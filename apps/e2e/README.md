@@ -10,4 +10,4 @@ Playwright fixtures, shared actions, and example specs that drive Vita OS in the
 
 Specs run in the installed Google Chrome (`channel: "chrome"` in `playwright.config.ts`). Without it, run `bunx playwright install chrome`.
 
-Fixtures are in `src/fixtures.ts`, shared Vita OS actions in `src/app.ts`. Proving a web change no longer uses these specs: the `verify-vita-os` skill ([`.claude/skills/verify-vita-os/SKILL.md`](../../.claude/skills/verify-vita-os/SKILL.md)) drives the app with agent-browser on an instance from `bun run verify`, which also closes the instance's `vita-<name>` browser session on `down`.
+Fixtures are in `src/fixtures.ts`, shared Vita OS actions in `src/app.ts`. Proving a web change no longer uses these specs: the `verify-vita-os` skill ([`.claude/skills/verify-vita-os/SKILL.md`](../../.claude/skills/verify-vita-os/SKILL.md)) drives the app with agent-browser on an instance from `bun run verify`, which also closes the instance's agent-browser session (`session` in its output) on `down`.

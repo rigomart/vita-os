@@ -6,8 +6,9 @@ const HELP = `verify: start, check, and stop an isolated local Vita OS stack. It
 
 Every command prints one JSON object on stdout: {"ok":true,...} or {"ok":false,"error":...,"hint":...}.
 Instances are isolated by name (--instance <name> or VITA_INSTANCE, default "main"): own ports, own
-local D1 under .verify/instances/<name>/, own logs, own agent-browser session (vita-<name>). Evidence
-lives in .verify/evidence/<instance>/<run>/ and survives "down".
+local D1 under .verify/instances/<name>/, own logs, own agent-browser session ("session" in the output
+of up and env; it names this checkout too). Evidence lives in .verify/evidence/<instance>/<run>/ and
+survives "down".
 
 Commands:
   up [--web-port N] [--api-port N]   Migrate a private local D1, start the API (wrangler dev) and web (vite),
@@ -19,7 +20,7 @@ Commands:
                                      session. --purge also deletes its local D1. Evidence and logs are kept.
 
 Drive the app with agent-browser on the instance's session, per .claude/skills/verify-vita-os/SKILL.md:
-  agent-browser --session vita-main open "$(bun run verify env | jq -r .webUrl)/sign-up"
+  agent-browser --session "$(bun run verify env | jq -r .session)" open "$(bun run verify env | jq -r .webUrl)/sign-up"
 
 Examples:
   bun run verify up && bun run verify doctor
