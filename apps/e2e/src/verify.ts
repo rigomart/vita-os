@@ -21,6 +21,7 @@ Commands:
   d1 "<SELECT ...>"                  Read-only SQL against this instance's local D1 (one SELECT).
   down [--dry-run] [--purge]         Stop only the processes this instance started and close its agent-browser
                                      session. --purge also deletes its local D1. Evidence and logs are kept.
+                                     Waits for an up of the same instance that is still starting.
 
 Drive the app with agent-browser on the instance's session, per .claude/skills/verify-vita-os/SKILL.md:
   agent-browser --session "$(bun run verify env | jq -r .session)" open "$(bun run verify env | jq -r .webUrl)/sign-up"

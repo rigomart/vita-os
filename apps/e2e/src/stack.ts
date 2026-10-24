@@ -100,12 +100,17 @@ const PORT_LOCK = 9129;
 const CLAIM_LOCK = 9128;
 const LOCK_WAIT_MS = 300_000;
 
-/** What `up` throws after SIGINT or SIGTERM, once it has stopped what it started. */
+/** What `up` or `down` throws after SIGINT or SIGTERM; `up` first stops what it started, `down` only stops waiting. */
 export class Interrupted extends VitaError {
-  constructor(readonly signal: NodeJS.Signals) {
+  constructor(
+    command: "up" | "down",
+    readonly signal: NodeJS.Signals,
+  ) {
     super(
-      `up stopped by ${signal}`,
-      "it stopped the processes it had started; run up again",
+      `${command} stopped by ${signal}`,
+      command === "up"
+        ? "it stopped the processes it had started; run up again"
+        : "it stopped nothing; run down again",
     );
   }
 }
@@ -140,13 +145,18 @@ async function holdPort(
 
 /** The pid and start time, so a pid reused after a crash does not count as the same process. */
 function processStamp(pid: number): string | undefined {
-  const ps = run(["ps", "-p", String(pid), "-o", "lstart="], ROOT);
+  // lstart is printed in the caller's time zone and locale, which differ between callers.
+  const ps = run(["ps", "-p", String(pid), "-o", "lstart="], ROOT, {
+    TZ: "UTC",
+    LC_ALL: "C",
+  });
   return ps.code === 0 ? `${pid} ${ps.stdout.trim()}` : undefined;
 }
 
 /**
- * One `up` per instance at a time, so a second one waits and then reuses what the first started, and two never
- * migrate one D1 at once. `up`s of other instances run alongside until they need the port lock.
+ * One `up` or `down` per instance at a time: a second `up` waits and then reuses what the first started, two never
+ * migrate one D1 at once, and `down` stops a stack only once its `up` has finished. `up`s of other instances run
+ * alongside until they need the port lock.
  */
 async function lockInstance(
   instance: string,
@@ -179,10 +189,11 @@ async function lockInstance(
     } finally {
       releaseClaim();
     }
+    const holderPid = holder.split(" ")[0];
     if (Date.now() > deadline)
       throw new VitaError(
-        `another up of instance "${instance}" (pid ${holder.split(" ")[0]}) ran for ${LOCK_WAIT_MS / 1000}s`,
-        `wait for it, or see it: ps -p ${holder.split(" ")[0]}`,
+        `instance "${instance}" is busy: verify (pid ${holderPid}) has held it for ${LOCK_WAIT_MS / 1000}s`,
+        `wait for it to finish, or stop it with kill -INT ${holderPid}, then run this again`,
       );
     await sleep(500);
   }
@@ -311,22 +322,33 @@ export function publicEnv(state: State) {
 
 export type UpOptions = { webPort?: number; apiPort?: number };
 
-/** Reuses a healthy instance, applying any new migrations. On SIGINT/SIGTERM it stops what it started and throws Interrupted. */
-export async function up(instance: string, opts: UpOptions = {}) {
+/** Runs `body` holding the instance lock; SIGINT or SIGTERM aborts the signal it gets with Interrupted. */
+async function withInstanceLock<T>(
+  instance: string,
+  command: "up" | "down",
+  body: (abort: AbortSignal) => Promise<T>,
+): Promise<T> {
   const abort = new AbortController();
   const onSignal = (signal: NodeJS.Signals) =>
-    abort.abort(new Interrupted(signal));
+    abort.abort(new Interrupted(command, signal));
   process.on("SIGINT", onSignal).on("SIGTERM", onSignal);
   try {
     const unlock = await lockInstance(instance, abort.signal);
     try {
-      return await upLocked(instance, opts, abort.signal);
+      return await body(abort.signal);
     } finally {
       unlock();
     }
   } finally {
     process.off("SIGINT", onSignal).off("SIGTERM", onSignal);
   }
+}
+
+/** Reuses a healthy instance, applying any new migrations. On SIGINT/SIGTERM it stops what it started and throws Interrupted. */
+export function up(instance: string, opts: UpOptions = {}) {
+  return withInstanceLock(instance, "up", (abort) =>
+    upLocked(instance, opts, abort),
+  );
 }
 
 async function upLocked(instance: string, opts: UpOptions, abort: AbortSignal) {
@@ -347,7 +369,7 @@ async function upLocked(instance: string, opts: UpOptions, abort: AbortSignal) {
     migrate(existing);
     return { ok: true, reused: true, ...publicEnv(existing) };
   }
-  if (existing) await down(instance, { dryRun: false, purge: false });
+  if (existing) await downLocked(instance, { dryRun: false, purge: false });
 
   const paths = instancePaths(instance);
   for (const d of [paths.persistDir, paths.logsDir])
@@ -472,6 +494,11 @@ async function startProcesses(state: State, abort: AbortSignal) {
   );
   // A signal that came in during the last check still undoes the start.
   abort.throwIfAborted();
+  if (!groupAlive(state.pids.api) || !(await apiHealthy(state)))
+    throw new VitaError(
+      "API stopped while web was starting",
+      `read the log: ${apiLog}`,
+    );
 }
 
 export async function doctor(instance: string) {
@@ -518,11 +545,15 @@ function closeBrowser(session: string): void {
   });
 }
 
-/** `purge` also deletes the local D1. Evidence is kept. */
-export async function down(
-  instance: string,
-  opts: { dryRun: boolean; purge: boolean },
-) {
+type DownOptions = { dryRun: boolean; purge: boolean };
+
+/** `purge` also deletes the local D1. Evidence is kept. Waits for an `up` of the instance in progress, except for a dry run. */
+export function down(instance: string, opts: DownOptions) {
+  if (opts.dryRun) return downLocked(instance, opts);
+  return withInstanceLock(instance, "down", () => downLocked(instance, opts));
+}
+
+async function downLocked(instance: string, opts: DownOptions) {
   const state = loadState(instance);
   if (!state) {
     if (!opts.dryRun) closeBrowser(browserSession(instance));
