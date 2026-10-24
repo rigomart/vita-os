@@ -1,4 +1,4 @@
-// Shared by the CLI (Bun) and the Playwright fixtures (Node): node: APIs only, no side effects on import.
+// Shared by the verify CLI (Bun) and the desktop fixtures (Node, src/desktop.ts and src/desktop-setup.ts): node: APIs only, no side effects on import.
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import {

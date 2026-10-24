@@ -1,6 +1,8 @@
 #!/usr/bin/env bun
+import { constants } from "node:os";
+
 import { d1, instanceName, requireState, VitaError } from "./instance.ts";
-import { doctor, down, publicEnv, up } from "./stack.ts";
+import { doctor, down, Interrupted, publicEnv, up } from "./stack.ts";
 
 const HELP = `verify: start, check, and stop an isolated local Vita OS stack. It never drives the app.
 
@@ -12,12 +14,14 @@ survives "down".
 
 Commands:
   up [--web-port N] [--api-port N]   Migrate a private local D1, start the API (wrangler dev) and web (vite),
-                                     wait for both. Idempotent: a healthy instance is reused.
+                                     wait for both. Idempotent: a healthy instance is reused, and a second up
+                                     of the same instance waits for the first. Ctrl-C stops what it started.
   doctor                             Read-only health check of this instance. Run first when anything looks off.
   env                                Print URLs, the agent-browser session, the evidence dir, and the logs dir.
   d1 "<SELECT ...>"                  Read-only SQL against this instance's local D1 (one SELECT).
   down [--dry-run] [--purge]         Stop only the processes this instance started and close its agent-browser
                                      session. --purge also deletes its local D1. Evidence and logs are kept.
+                                     Waits for an up of the same instance that is still starting.
 
 Drive the app with agent-browser on the instance's session, per .claude/skills/verify-vita-os/SKILL.md:
   agent-browser --session "$(bun run verify env | jq -r .session)" open "$(bun run verify env | jq -r .webUrl)/sign-up"
@@ -128,6 +132,8 @@ main().then(
         error: String(err instanceof Error ? err.stack : err),
         hint: "unexpected failure; read .verify/instances/<instance>/logs",
       });
-    process.exit(1);
+    process.exit(
+      err instanceof Interrupted ? 128 + constants.signals[err.signal] : 1,
+    );
   },
 );
