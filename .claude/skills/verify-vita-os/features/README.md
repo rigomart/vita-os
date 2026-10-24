@@ -2,6 +2,8 @@
 
 What to prove about each user-visible feature of the Vita OS web app. Prove a change by driving its new behavior and rerunning the checks of every feature it touched. A change that alters a feature's behavior updates its file in the same change; a new feature gets a file and a row.
 
+A file holds behavior and checks, never driving steps: the agent works out the steps from the screen. An entry point or variant names a place and a width (`drawer, 1024 to 1279px`); a precondition names a state and the UI path that creates it; a check gives exact values and, where the screen cannot show one, the read that gets it (a D1 `SELECT`, an `eval` that reads focus, positions or groups, a request's method, path and status). Something that must be waited for or avoided goes under Traps.
+
 | Feature | Behavior | Not covered |
 | --- | --- | --- |
 | [Sign in](sign-in.md) | Sign-up and sign-in land on the Dashboard; signed out, product routes go to `/sign-in`; Sign out ends the session. | Phone width; the sign-in form's empty-field validation |
@@ -10,7 +12,7 @@ What to prove about each user-visible feature of the Vita OS web app. Prove a ch
 | [Tasks](tasks.md) | Add, date and complete Tasks in the pane, the drawer and a Dashboard line; Activity logs completion. | Edit, Remove, Complete with a note, Skip, Repeat, a time; completing from a Dashboard line; the drawer below 1024px |
 | [Thread pane focus](thread-pane-focus.md) | Opening a Thread from a Dashboard line, the palette or New thread moves focus into the side pane or drawer; Escape closes it except from a field that keeps it; closing returns focus to the opener. | Resolve and Delete leaving focus on `main`; switching Threads with the pane open; a Thread still loading; the title and Summary editors' Escape |
 | [Scroll a thread on a phone](scroll-a-thread-on-a-phone.md) | On a phone the Thread drawer scrolls as one region holding the header, Tasks, tabs and Notes; the side pane scrolls only its body. | Notes and Activity long enough to overflow; the drawer at 1024 to 1279px; the on-screen keyboard |
-| [Dashboard](dashboard.md) | Dated Threads and Notes grouped by when they come due beside No date's runs; the filter row's counts and Notes filter. | Late, Today, weekdays and Later; Area filters and `1..9`/`0`; keyboard movement through the list; below 1024px (No date folded); several dated Tasks of one Thread ringing together |
+| [Dashboard](dashboard.md) | Dated Threads and Notes grouped by when they come due beside No date's runs, which lead the list folded below 1024px; the filter row's counts and Notes filter. | Late, Today, weekdays and Later; Area filters and `1..9`/`0`; keyboard movement through the list; several dated Tasks of one Thread ringing together |
 | Note view | One live-preview Markdown editor per Note: edit in place, discard prompt, Delete with Undo, Archive. | No checks yet |
 | Thread Notes | Notes inside a Thread: capture, edit, Archive, Unarchive, delete. | No checks yet |
 | Add a Note to a Thread | An open Standalone Note moves into a Thread after a five-second Undo; a dated Note becomes a dated Task. | No checks yet |
