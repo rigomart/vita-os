@@ -1,4 +1,4 @@
-// Used by the verify CLI (Bun) and Playwright's global setup (Node), so it runs on both.
+// Used by the verify CLI (Bun); node: APIs only, so it also loads under Node.
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, openSync, rmSync, writeFileSync } from "node:fs";
