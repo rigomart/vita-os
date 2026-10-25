@@ -160,7 +160,7 @@ describe("NoteDialog saved note", () => {
     expect(screen.queryByRole("button", { name: "Follow-up date" })).toBeNull();
   });
 
-  it("marks an Archived note in the header and offers Unarchive", () => {
+  it("marks a Completed note in the header and offers Reopen", () => {
     render(
       <NoteDialog
         open
@@ -174,14 +174,14 @@ describe("NoteDialog saved note", () => {
       />,
     );
     expect(
-      document.querySelector('[data-slot="note-archived"]'),
-    ).toHaveTextContent("Archived Oct 1");
-    expect(screen.getByRole("button", { name: "Unarchive" })).toBeVisible();
+      document.querySelector('[data-slot="note-completed"]'),
+    ).toHaveTextContent("Completed Oct 1");
+    expect(screen.getByRole("button", { name: "Reopen" })).toBeVisible();
     expect(screen.queryByText(/Done/)).toBeNull();
-    expect(screen.queryByRole("button", { name: "Reopen" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Complete" })).toBeNull();
   });
 
-  it("offers Archive, never Mark done, on an Open note", () => {
+  it("offers Complete, never Mark done, on an Open note", () => {
     render(
       <NoteDialog
         open
@@ -190,7 +190,7 @@ describe("NoteDialog saved note", () => {
         onToggleArchived={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: "Archive" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Complete" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Mark done" })).toBeNull();
   });
 
@@ -368,7 +368,7 @@ describe("NoteDialog saved note", () => {
     expect(await navigator.clipboard.readText()).toBe("Consultation notes");
   });
 
-  it("guards archiving and reports success only after the callback succeeds", async () => {
+  it("guards completing and reports success only after the callback succeeds", async () => {
     const user = userEvent.setup();
     const pending = deferred();
     const onToggleArchived = vi.fn(() => pending.promise);
@@ -380,7 +380,7 @@ describe("NoteDialog saved note", () => {
         onToggleArchived={onToggleArchived}
       />,
     );
-    const archive = screen.getByRole("button", { name: "Archive" });
+    const archive = screen.getByRole("button", { name: "Complete" });
     await user.click(archive);
     await user.click(archive);
     expect(onToggleArchived).toHaveBeenCalledTimes(1);
@@ -388,11 +388,11 @@ describe("NoteDialog saved note", () => {
     expect(feedback.success).not.toHaveBeenCalled();
     pending.resolve();
     await waitFor(() =>
-      expect(feedback.success).toHaveBeenCalledWith("Note archived"),
+      expect(feedback.success).toHaveBeenCalledWith("Note completed"),
     );
   });
 
-  it("says Note unarchived after unarchiving", async () => {
+  it("says Note reopened after reopening", async () => {
     const user = userEvent.setup();
     const { feedback } = render(
       <NoteDialog
@@ -402,9 +402,9 @@ describe("NoteDialog saved note", () => {
         onToggleArchived={vi.fn(async () => undefined)}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Unarchive" }));
+    await user.click(screen.getByRole("button", { name: "Reopen" }));
     await waitFor(() =>
-      expect(feedback.success).toHaveBeenCalledWith("Note unarchived"),
+      expect(feedback.success).toHaveBeenCalledWith("Note reopened"),
     );
   });
 });
@@ -496,7 +496,7 @@ describe("NoteDialog repeating note", () => {
     },
   );
 
-  it("offers Complete beside Archive, naming where it goes back to", async () => {
+  it("offers one Complete on a repeating Note, naming where it goes back to", async () => {
     const user = userEvent.setup();
     const pending = deferred();
     const onComplete = vi.fn(() => pending.promise);
@@ -513,7 +513,7 @@ describe("NoteDialog repeating note", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Archive" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Complete" })).toBeNull();
     expect(
       screen.getByRole("img", { name: "Repeats monthly on the 17th" }),
     ).toBeInTheDocument();
@@ -554,25 +554,28 @@ describe("NoteDialog repeating note", () => {
   it.each([
     ["a one-off Note", savedNote, undefined],
     [
-      "an Archived repeating Note",
+      "a Completed repeating Note",
       { ...savedNote, state: "done" as const, completedAt: 1 },
       monthly,
     ],
-  ])("offers no Complete on %s", (_label, note, repeat) => {
-    render(
-      <NoteDialog
-        open
-        onOpenChange={vi.fn()}
-        note={note}
-        followUp={today}
-        {...(repeat === undefined ? {} : { repeat })}
-        onToggleArchived={vi.fn()}
-        onComplete={vi.fn()}
-      />,
-    );
+  ])(
+    "offers no Complete that moves it to a next date on %s",
+    (_label, note, repeat) => {
+      render(
+        <NoteDialog
+          open
+          onOpenChange={vi.fn()}
+          note={note}
+          followUp={today}
+          {...(repeat === undefined ? {} : { repeat })}
+          onToggleArchived={vi.fn()}
+          onComplete={vi.fn()}
+        />,
+      );
 
-    expect(screen.queryByRole("button", { name: /^Complete/ })).toBeNull();
-  });
+      expect(screen.queryByRole("button", { name: /^Complete · / })).toBeNull();
+    },
+  );
 });
 
 describe("NoteDialog dismissal", () => {

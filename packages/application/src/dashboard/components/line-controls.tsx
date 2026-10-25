@@ -17,9 +17,12 @@ import { dateToken, dateToneClassName, dayDelta } from "./dashboard-model";
 export const focusRing =
   "has-focus-visible:ring-2 has-focus-visible:ring-ring has-focus-visible:ring-inset";
 
-/** Held in place at rest, so the line never reflows on hover. */
+/**
+ * Held in place at rest, so the line never reflows on hover. A touch screen
+ * has no hover, so there it is always shown.
+ */
 export const revealed =
-  "opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100";
+  "opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100 pointer-coarse:opacity-100";
 
 /**
  * The item's date as a token that opens the picker. Undated — or dated under
@@ -121,17 +124,11 @@ export function showsBoardDate(
   return !inHeading || timeToken(when) !== undefined;
 }
 
-/**
- * The control that takes an item off the board: completing a Thread's Task,
- * or archiving a Note.
- */
 export function BoardCompleteButton({
-  icon: Icon = Check,
   label,
   onClick,
   disabled,
 }: {
-  icon?: typeof Check;
   label: string;
   onClick: () => void;
   disabled?: boolean;
@@ -143,16 +140,17 @@ export function BoardCompleteButton({
       onClick={onClick}
       className={cn(
         revealed,
-        "bg-muted hover:bg-condition-healthy/15 hover:text-condition-healthy",
+        "bg-foreground/8 hover:bg-condition-healthy/15 hover:text-condition-healthy",
       )}
     >
-      <Icon className="size-3.5" />
+      <Check className="size-3.5" />
     </BoardControl>
   );
 }
 
+/** On a touch screen the control takes a finger's height without growing the line. */
 const boardControlClassName =
-  "relative z-10 -my-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform,opacity] hover:bg-muted hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40";
+  "pointer-coarse:after:absolute pointer-coarse:after:-inset-x-0.5 pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:content-[''] relative z-10 -my-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform,opacity] hover:bg-muted hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40";
 
 export function BoardControl({
   children,

@@ -321,7 +321,7 @@ describe("AppShell", () => {
     expect(read("getDoneNotePage")).toBe(false);
   });
 
-  it("opens an Archived Note from History over the page, without Add to thread", async () => {
+  it("opens a Completed Note from History over the page, without Add to thread", async () => {
     const user = userEvent.setup();
     renderShell();
 
@@ -335,9 +335,7 @@ describe("AppShell", () => {
     expect(screen.getByText("page body")).toBeInTheDocument();
     expect(view).toContainElement(await findNoteEditor());
     expect(view).toHaveTextContent("Passport photo sizes");
-    expect(
-      screen.getByRole("button", { name: "Unarchive" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reopen" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "More actions" }));
     expect(
       await screen.findByRole("menuitem", { name: "Delete note" }),

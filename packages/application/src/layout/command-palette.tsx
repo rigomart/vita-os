@@ -150,7 +150,7 @@ export function CommandPalette({
         ref={inputRef}
         placeholder={
           showHistory
-            ? "Search resolved threads and archived notes…"
+            ? "Search resolved threads and completed notes…"
             : "Jump to a thread, area, or action…"
         }
         value={search}
@@ -181,7 +181,7 @@ export function CommandPalette({
           {historyLoading
             ? "Loading history…"
             : showHistory && !search.trim()
-              ? "No resolved threads or archived notes yet."
+              ? "No resolved threads or completed notes yet."
               : "No results found."}
         </CommandEmpty>
         {/* Jumping first: Threads are the work. Create lives last because the
@@ -222,7 +222,7 @@ export function CommandPalette({
           })}
         </CommandGroup>
         {showHistory && (
-          <CommandGroup heading="Archived notes">
+          <CommandGroup heading="Completed notes">
             {archivedNotes.map((note) => (
               <ArchivedNoteItem
                 key={note._id}
@@ -235,7 +235,7 @@ export function CommandPalette({
                 variant="ghost"
                 size="sm"
                 className="mt-1 w-full"
-                aria-label="Load more archived notes"
+                aria-label="Load more completed notes"
                 aria-busy={archivedQuery.isFetching || undefined}
                 disabled={archivedQuery.isFetching}
                 onKeyDown={(event) => {
@@ -255,7 +255,7 @@ export function CommandPalette({
                 )}
                 {archivedQuery.isFetching
                   ? "Loading…"
-                  : "Load more archived notes"}
+                  : "Load more completed notes"}
               </Button>
             )}
           </CommandGroup>

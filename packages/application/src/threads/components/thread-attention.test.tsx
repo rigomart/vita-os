@@ -307,7 +307,7 @@ describe("ThreadAttention", () => {
     expect(screen.getByText("3")).toBeVisible();
   });
 
-  it("offers Skip when a Task repeats, the date, Complete with a note, and Remove, and nothing to focus", () => {
+  it("offers Remove, Skip when a Task repeats, Complete with a note, and Complete last, one date control, and nothing to focus", () => {
     const daily: Task = {
       ...callClinic,
       date: today,
@@ -320,16 +320,22 @@ describe("ThreadAttention", () => {
         .getAllByRole("button")
         .map((button) => button.getAttribute("aria-label"));
     expect(commands(taskRows()[0]!)).toEqual([
-      "Skip task",
-      "Change date",
-      "Complete with a note",
       "Remove task",
+      "Skip task",
+      "Complete with a note",
+      "Complete task",
     ]);
     expect(commands(taskRows()[1]!)).toEqual([
-      "Set date",
-      "Complete with a note",
       "Remove task",
+      "Complete with a note",
+      "Complete task",
     ]);
+    const dates = (row: HTMLElement) =>
+      within(row)
+        .getAllByRole("button", { name: /date/i })
+        .map((button) => button.getAttribute("aria-label"));
+    expect(dates(taskRows()[0]!)).toEqual(["Change date: Today"]);
+    expect(dates(taskRows()[1]!)).toEqual(["Set date"]);
     expect(screen.queryByRole("button", { name: /focus/i })).toBeNull();
   });
 
@@ -439,7 +445,7 @@ describe("ThreadAttention", () => {
     ).toHaveClass("xl:opacity-0");
     expect(
       within(taskRows()[0]!).getByRole("button", { name: "Complete task" }),
-    ).toHaveClass("size-8", "xl:size-6");
+    ).toHaveClass("size-8", "xl:size-7");
     expect(screen.getByRole("textbox", { name: "Add a task" })).toHaveClass(
       "h-9",
       "xl:h-7",
@@ -465,6 +471,23 @@ describe("ThreadAttention", () => {
     // A Task's picker stays open after a day is picked, so a Repeat can follow.
     await user.click(screen.getByRole("button", { name: "Clear date" }));
     expect(onSetTaskDate).toHaveBeenLastCalledWith(callClinic._id, null);
+  });
+
+  it("keeps the picker open when a day turns the undated Task's date command into its token", async () => {
+    const user = userEvent.setup();
+    const { onSetTaskDate, show } = renderAttention({ tasks: [callClinic] });
+
+    await user.click(screen.getByRole("button", { name: "Set date" }));
+    await user.click(within(await screen.findByRole("grid")).getByText("20"));
+    expect(onSetTaskDate).toHaveBeenCalledOnce();
+    const date = onSetTaskDate.mock.calls[0]![1] as number;
+    show({ tasks: [{ ...callClinic, date }] });
+
+    expect(screen.getByRole("grid")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /^Change date: / }),
+    ).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Set date" })).toBeNull();
   });
 
   it("moves a Task to another day, keeping its time", async () => {
@@ -612,7 +635,7 @@ describe("ThreadAttention repeating Tasks", () => {
   };
   const { repeat: _repeat, ...oneOff } = checkIn;
 
-  it("marks a repeating Task with the repeat glyph on its date, and offers skip on it alone", async () => {
+  it("marks a repeating Task with the repeat glyph, and offers skip on it alone", async () => {
     const user = userEvent.setup();
     const { onSkipTask } = renderAttention({ tasks: [checkIn, bookScan] });
 
@@ -620,9 +643,7 @@ describe("ThreadAttention repeating Tasks", () => {
     const glyph = within(repeating!).getByRole("img", {
       name: "Repeats daily",
     });
-    expect(
-      within(repeating!).getByRole("button", { name: /^Change date:/ }),
-    ).toContainElement(glyph);
+    expect(glyph).toHaveAttribute("data-slot", "repeat-glyph");
     expect(within(plain!).queryByRole("img")).toBeNull();
     expect(
       within(plain!).queryByRole("button", { name: "Skip task" }),

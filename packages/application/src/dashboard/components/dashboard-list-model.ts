@@ -28,12 +28,10 @@ export interface GroupLook {
 export interface LineLook {
   /** The line's room, type size and ink. */
   frame: string;
-  /** Holds the marker on the first line of text. */
-  marker: string;
+  /** The first row: what the line names. */
   task: string;
-  thread: string;
-  /** The Area, date and controls at the right. */
-  meta: string;
+  /** Ink for the muted words after the first and for the second row. */
+  detail: string;
 }
 
 const distanceByTone: Record<Exclude<BoardGroup["tone"], "far">, number> = {
@@ -48,86 +46,74 @@ const headings: GroupLook["heading"][] = [
   {
     section: "pb-5",
     rule: "border-border/80 pt-4 pb-1.5",
-    numeral: "text-3xl font-semibold",
-    label: "text-xl font-semibold",
+    numeral: "text-2xl font-semibold",
+    label: "text-lg font-semibold",
   },
   {
     section: "pb-4",
     rule: "border-border/70 pt-3.5 pb-1",
-    numeral: "text-2xl font-semibold text-foreground/85",
-    label: "text-lg font-semibold",
+    numeral: "text-xl font-semibold text-foreground/85",
+    label: "text-base font-semibold",
   },
   {
     section: "pb-3",
     rule: "border-border/60 pt-3 pb-1",
-    numeral: "text-xl font-medium text-foreground/60",
-    label: "text-base font-medium text-foreground/85",
+    numeral: "text-lg font-medium text-foreground/60",
+    label: "text-[15px] font-medium text-foreground/85",
   },
   {
     section: "pb-2.5",
     rule: "border-border/50 pt-2.5 pb-0.5",
-    numeral: "text-lg font-medium text-foreground/45",
-    label: "text-[15px] font-medium text-foreground/70",
+    numeral: "text-base font-medium text-foreground/45",
+    label: "text-sm font-medium text-foreground/70",
   },
   {
     section: "pb-2",
     rule: "border-border/40 pt-2.5 pb-0.5",
     numeral: "",
-    label: "text-sm font-medium text-muted-foreground",
+    label: "text-[13px] font-medium text-muted-foreground",
   },
   {
     section: "pb-2",
     rule: "border-border/30 pt-2 pb-0.5",
     numeral: "",
-    label: "text-[13px] font-medium text-muted-foreground/70",
+    label: "text-xs font-medium text-muted-foreground/70",
   },
 ];
 
 const lines: LineLook[] = [
   {
-    frame: "py-2.5 text-[17px] text-foreground",
-    marker: "h-[1.55rem]",
+    frame: "py-2 text-base text-foreground",
     task: "font-semibold",
-    thread: "text-sm",
-    meta: "h-[1.55rem]",
+    detail: "text-[13px]",
   },
   {
-    frame: "py-2 text-[15px] text-foreground",
-    marker: "h-[1.4rem]",
+    frame: "py-1.5 text-sm text-foreground",
     task: "font-medium",
-    thread: "text-[13px]",
-    meta: "h-5",
+    detail: "text-xs",
   },
   {
-    frame: "py-1.5 text-sm text-foreground/90",
-    marker: "h-5",
+    frame: "py-1.5 text-[13px] text-foreground/90",
     task: "font-medium",
-    thread: "text-[13px]",
-    meta: "h-5",
+    detail: "text-xs",
   },
   {
     frame:
-      "py-1.5 text-sm text-foreground/75 hover:text-foreground has-focus-visible:text-foreground",
-    marker: "h-5",
+      "py-1.5 text-[13px] text-foreground/75 hover:text-foreground has-focus-visible:text-foreground",
     task: "font-normal",
-    thread: "text-[13px]",
-    meta: "h-5",
+    detail: "text-xs",
   },
   {
     frame:
-      "py-1 text-[13px] text-foreground/60 hover:text-foreground has-focus-visible:text-foreground",
-    marker: "h-[1.15rem]",
+      "py-1 text-xs text-foreground/60 hover:text-foreground has-focus-visible:text-foreground",
     task: "font-normal",
-    thread: "text-xs",
-    meta: "h-[1.15rem] opacity-70",
+    detail: "text-[11px] opacity-70",
   },
   {
     frame:
-      "py-1 text-[13px] text-foreground/50 hover:text-foreground has-focus-visible:text-foreground",
-    marker: "h-[1.15rem]",
+      "py-1 text-xs text-foreground/50 hover:text-foreground has-focus-visible:text-foreground",
     task: "font-normal",
-    thread: "text-xs",
-    meta: "h-[1.15rem] opacity-70",
+    detail: "text-[11px] opacity-70",
   },
 ];
 

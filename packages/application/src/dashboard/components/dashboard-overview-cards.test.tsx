@@ -395,7 +395,7 @@ describe("copies of one Thread", () => {
 });
 
 describe("a Dashboard Note view", () => {
-  it("keeps the Note view open when archiving removes its line", async () => {
+  it("keeps the Note view open when completing removes its line", async () => {
     const user = userEvent.setup();
     const markNoteDone = vi.fn(async () => {
       rerender(
@@ -428,11 +428,11 @@ describe("a Dashboard Note view", () => {
     expect(await findNoteEditor()).toHaveTextContent("Clinic");
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Archive",
+        name: "Complete",
       }),
     );
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Unarchive" })).toBeVisible(),
+      expect(screen.getByRole("button", { name: "Reopen" })).toBeVisible(),
     );
     expect(screen.getByRole("dialog")).toBeVisible();
     expect(markNoteDone).toHaveBeenCalledExactlyOnceWith({ noteId: "note1" });
@@ -493,7 +493,7 @@ describe("a Dashboard Note view", () => {
     });
   });
 
-  it("completes a repeating Note from its view, which stays open beside Archive", async () => {
+  it("completes a repeating Note from its view, which stays open", async () => {
     const user = userEvent.setup();
     const occurrence = new Date(2026, 6, 17).getTime();
     const next = new Date(2026, 7, 17).getTime();
@@ -518,7 +518,7 @@ describe("a Dashboard Note view", () => {
       screen.getByRole("button", { name: /Open note: Consultation/ }),
     );
     const view = within(screen.getByRole("dialog"));
-    expect(view.getByRole("button", { name: "Archive" })).toBeVisible();
+    expect(view.queryByRole("button", { name: "Complete" })).toBeNull();
     await user.click(view.getByRole("button", { name: /^Complete · back / }));
 
     await waitFor(() =>
@@ -628,7 +628,7 @@ describe("a Dashboard Note view", () => {
         "This note no longer repeats.",
       ),
     );
-    expect(view.queryByRole("button", { name: /^Complete/ })).toBeNull();
-    expect(view.getByRole("button", { name: "Archive" })).toBeVisible();
+    expect(view.queryByRole("button", { name: /^Complete · / })).toBeNull();
+    expect(view.getByRole("button", { name: "Complete" })).toBeVisible();
   });
 });

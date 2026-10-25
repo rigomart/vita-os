@@ -97,7 +97,7 @@ describe("a Note's line", () => {
     expect(onOpenNote).toHaveBeenCalledExactlyOnceWith(saved);
   });
 
-  it("archives the note from its line and says so", async () => {
+  it("completes the note from its line and says so", async () => {
     const user = userEvent.setup();
     const onOpenNote = vi.fn();
     mocks.archiveNote.mockResolvedValue(undefined);
@@ -108,17 +108,17 @@ describe("a Note's line", () => {
     expect(
       screen.queryByRole("button", { name: /done/i }),
     ).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Archive note" }));
+    await user.click(screen.getByRole("button", { name: "Complete note" }));
 
     expect(mocks.archiveNote).toHaveBeenCalledExactlyOnceWith("note1");
     await waitFor(() =>
-      expect(feedback.success).toHaveBeenCalledWith("Note archived"),
+      expect(feedback.success).toHaveBeenCalledWith("Note completed"),
     );
     expect(mocks.updateNoteBody).not.toHaveBeenCalled();
     expect(onOpenNote).not.toHaveBeenCalled();
   });
 
-  it("dates itself with the board's token and wears no Area-style tag", () => {
+  it("dates itself with the board's token and says it is a Note where a Thread names its Area", () => {
     render(
       <NoteLine
         note={note("Water the plants", {
@@ -130,7 +130,7 @@ describe("a Note's line", () => {
     expect(
       screen.getByRole("button", { name: "Change follow-up date" }),
     ).toHaveTextContent("−2d");
-    expect(screen.queryByText("Note")).not.toBeInTheDocument();
+    expect(screen.getByText("Note")).toBeInTheDocument();
   });
 
   describe("repeating", () => {
@@ -149,7 +149,7 @@ describe("a Note's line", () => {
       render(<NoteLine note={repeating} onOpenNote={onOpenNote} />);
 
       expect(
-        screen.queryByRole("button", { name: "Archive note" }),
+        screen.queryByRole("button", { name: "Complete note" }),
       ).not.toBeInTheDocument();
       const complete = screen.getByRole("button", {
         name: "Complete · back Aug 17",
@@ -232,14 +232,14 @@ describe("a Note's line", () => {
       );
     });
 
-    it("keeps Archive and no glyph on a one-off Note", () => {
+    it("offers a plain Complete and no glyph on a one-off Note", () => {
       render(<NoteLine note={note("Water the plants", { followUp: today })} />);
 
       expect(
-        screen.getByRole("button", { name: "Archive note" }),
+        screen.getByRole("button", { name: "Complete note" }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: /^Complete/ }),
+        screen.queryByRole("button", { name: /^Complete · / }),
       ).not.toBeInTheDocument();
       expect(document.querySelector('[data-slot="repeat-glyph"]')).toBeNull();
     });

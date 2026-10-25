@@ -54,7 +54,7 @@ The unordered set of peer **Tasks** a **Thread** holds. They are shown in the or
 _Avoid_: Up Next, queue, next moves, action queue, checklist.
 
 **Repeat**:
-An optional rhythm on a dated **Task** or a **Standalone Note**'s **Follow-up date**: every N days, weekly on chosen weekdays, or monthly on the date's day of month. Completing a repeating Task or Note moves it to its next occurrence instead of removing or archiving it (ADR 0032, ADR 0041). It is set in the date picker; a repeating Task or Note wears a repeat glyph on its date.
+An optional rhythm on a dated **Task** or a **Standalone Note**'s **Follow-up date**: every N days, weekly on chosen weekdays, or monthly on the date's day of month. Completing a repeating Task or Note moves it to its next occurrence instead of removing it or putting it in **History** (ADR 0032, ADR 0041). It is set in the date picker; a repeating Task or Note wears a repeat glyph on its date.
 _Avoid_: Recurrence, routine, habit.
 
 **Skip**:
@@ -79,10 +79,10 @@ A body-only capture that is valid as soon as it is saved: information, a thought
 _Avoid_: Task, item, todo, ticket.
 
 **Note view**:
-The dialog where a **Note** is written, read, edited, archived, unarchived, and deleted.
+The dialog where a **Note** is written, read, edited, completed, reopened, and deleted.
 
 **Standalone Note**:
-A **Note** that belongs to no **Area** or **Thread** and requires no classification. While open it appears on the **Dashboard**, and it may have a **Follow-up date**. A repeating one is completed rather than archived; Archive ends its **Repeat** (ADR 0041).
+A **Note** that belongs to no **Area** or **Thread** and requires no classification. While open it appears on the **Dashboard**, and it may have a **Follow-up date**. Completing a repeating one moves it to its next date, as a repeating **Task**'s Complete does; to finish it for good, stop its **Repeat**, then complete it.
 _Avoid_: Inbox item, task.
 
 **Thread Note**:
@@ -90,11 +90,12 @@ A **Note** that belongs to exactly one **Thread**, appears only there, and has n
 _Avoid_: Manual Activity Log Entry, comment.
 
 **Open Note**:
-A **Note** that has not been archived.
+A **Note** that has not been completed.
 _Avoid_: Pending item, unprocessed.
 
-**Archived Note**:
-A **Note** put away: it leaves the **Dashboard**, or its **Thread**'s open Notes, unchanged and still findable. An archived **Standalone Note** is found in **History**; an archived **Thread Note** stays in its **Thread**'s Archived notes. Unarchiving puts it back as it was. Stored as `done` (ADR 0031).
+**Completed Note**:
+A **Note** put away: it leaves the **Dashboard**, or its **Thread**'s open Notes, unchanged and still findable. A completed **Standalone Note** is found in **History**; a completed **Thread Note** stays in its **Thread**'s Completed notes. Reopening puts it back as it was. Stored as `done` (ADR 0031).
+_Avoid_: Archived Note, archive, unarchive.
 _Avoid_: Done, completed, resolved, processed.
 
 **Dashboard**:
@@ -102,8 +103,8 @@ The main awareness surface: one list of every dated **Task**'s **Thread** and ev
 _Avoid_: Task list, project board, backlog.
 
 **History**:
-The palette's mode for what is finished: every **Resolved Thread** and every archived **Standalone Note**, searchable, reached from its History chip. Choosing one opens it in place (ADR 0029, ADR 0031).
-_Avoid_: Archive (as a place), trash, completed list.
+The palette's mode for what is finished: every **Resolved Thread** and every completed **Standalone Note**, searchable, reached from its History chip. Choosing one opens it in place (ADR 0029, ADR 0031).
+_Avoid_: Archive, trash, completed list.
 
 ## Relationships
 
@@ -121,12 +122,12 @@ _Avoid_: Archive (as a place), trash, completed list.
 - An **Activity Log** has zero or more automatically recorded **Activity Log Entries**.
 - A **Standalone Note** belongs to no **Area** and no **Thread**.
 - A **Thread Note** belongs to exactly one **Thread** and never appears on the **Dashboard** or in **History**.
-- A visible **Note** is either **Open** or **Archived**.
+- A visible **Note** is either **Open** or **Completed**.
 - A **Standalone Note** has zero or one **Follow-up date**; a **Thread Note** has none, because a **Thread** comes back at its dated **Tasks**.
-- Adding an Open **Standalone Note** to an Open **Thread** makes it a **Thread Note** there, with its body and creation time; it leaves the **Dashboard**. An **Archived Note**, a **Thread Note**, and a **Resolved Thread** take no part. Adding is one-way.
+- Adding an Open **Standalone Note** to an Open **Thread** makes it a **Thread Note** there, with its body and creation time; it leaves the **Dashboard**. A **Completed Note**, a **Thread Note**, and a **Resolved Thread** take no part. Adding is one-way.
 - When a dated **Standalone Note** is added to a **Thread**, or starts one, its first non-blank line, with any leading Markdown markers removed, becomes a dated **Task** carrying the Note's **Follow-up date**, time included. The **Task** joins the end of the list, and the whole Note joins the **Thread**'s Notes. A line with nothing left gives a **Task** named "Follow up". An undated Note adds no **Task**. A repeating Note's **Task** carries its **Repeat** too.
-- Archiving a **Note** changes nothing about it but where it is shown; unarchiving returns a **Standalone Note** to the **Dashboard** where its **Follow-up date** puts it. Resolving a **Thread** does more (see Activity Rules), so the two actions keep their own words.
-- **History** lists archived **Standalone Notes** most recently archived first, and searches every one of them by body.
+- Completing a **Note** changes nothing about it but where it is shown; reopening returns a **Standalone Note** to the **Dashboard** where its **Follow-up date** puts it. Resolving a **Thread** does more (see Activity Rules), so the two keep their own words; both are undone by Reopen.
+- **History** lists completed **Standalone Notes** most recently completed first, and searches every one of them by body.
 
 ## Thread Attention
 
@@ -146,14 +147,14 @@ _Avoid_: Archive (as a place), trash, completed list.
 
 ## Dashboard Structure
 
-- The palette's **History** chip switches to two groups: **Resolved threads**, newest resolution first, and **Archived notes**, most recently archived first, one bounded page until a search reaches every archived **Standalone Note** by body. Choosing a **Thread** opens its pane, where it can be reopened; choosing a **Note** opens the **Note view** over the current page, where it can be read, unarchived, or deleted (ADR 0029, ADR 0031).
+- The palette's **History** chip switches to two groups: **Resolved threads**, newest resolution first, and **Completed notes**, most recently completed first, one bounded page until a search reaches every completed **Standalone Note** by body. Choosing a **Thread** opens its pane, where it can be reopened; choosing a **Note** opens the **Note view** over the current page, where it can be read, reopened, or deleted (ADR 0029, ADR 0031).
 - The Dashboard has one attention-first view and no view-switching tabs or secondary schedule. Each group of the list is a heading on a rule across the list, led by the date's number when it names one day, over its items' lines. The nearer a group, the larger, bolder and darker its heading and lines read, with more room around them: Late and Today lead, and the weeks and months, once **Later** is open, are small and faint until hovered (ADR 0045). Late's heading is in the attention colour. **No date** draws the same lines at one size, between Today's and the far ones (ADR 0046). The page scrolls as one: the filter stays at the top of the list and, from `lg`, **No date** stays beside it and scrolls on its own. Below `lg` **No date** leads the list, folded.
 - The page's header is the sky at the current hour, with the date, and from `lg` search, New note, New thread and the account menu; below `lg` those actions sit in a bar at the bottom and the header keeps only the account menu. The sky is ambient: it carries no items and no times, so on the board colour still belongs to time (ADR 0037).
 - One pill group at the top of the list filters it: **All** with its total count of **Open Threads** and open **Standalone Notes**, each Area with its Open Thread count, then **No area**, in the user's Area order, then **Notes** with its open **Standalone Note** count, set apart from the Areas, then Edit areas, which opens **Manage areas**. Options with nothing open stay, muted; **No area** is left out while there are no Areas. The group never wraps or scrolls: options that do not fit fold, in order, into a More menu that also offers Edit areas, and the selected option and **Notes** always stay in view. Choosing an Area shows only its **Open Threads** across every group and run, and any Area filter hides **Standalone Notes**; **No area** shows only unlabeled Threads; **Notes** shows only open **Standalone Notes**, laid out by the same rules. The filter lives in the URL as one of two parameters, never both: `?area=<slug>` or `?area=none`, or `?show=notes`, which no Area slug can collide with. It survives the in-place Thread pane and the **Note view**, and falls back to All for an unknown value. `1..9` select the matching Area and `0` returns to All (ADR 0021, ADR 0031).
-- On the list a line is one copy of its **Thread**, led by the dated **Task** that placed it: the repeat glyph when it repeats or a hollow dot when it does not, the **Task**, then the **Thread**'s title, muted, then its **Area** and date at the right. Two dated **Tasks** on the same day are two lines. A **Standalone Note**'s line is marked by a small dog-eared sheet. A **Thread**'s line in **No date** leads with its title, over its only **Task**, or "N tasks" when it has several, because the line must not invent a headline the user never chose. A **Thread** with no **Tasks** is its title alone. On a wide enough list a labeled Thread shows its **Area**, icon and name, neutral; an unlabeled Thread shows none. Colour on the board belongs to time: a late line's date and Late's heading are in the attention colour. Dates are compact tokens rather than phrases, and a line under a heading that names its day (Today, Tomorrow, or a weekday) leaves the date to the heading, showing only its time when it has one.
+- On the list a line is one copy of its **Thread**, led by the dated **Task** that placed it: the repeat glyph when it repeats or a hollow dot when it does not, the **Task**, then the **Thread**'s title, muted, and in a second row under them its **Area**, with its date and the controls at the right. The controls are revealed on hover or focus, and always shown on a touch screen. A **Standalone Note**'s second row says "Note". Two dated **Tasks** on the same day are two lines. A **Standalone Note**'s line is marked by a small dog-eared sheet. A **Thread**'s line in **No date** leads with its title, over its only **Task**, or "N tasks" when it has several, because the line must not invent a headline the user never chose. A **Thread** with no **Tasks** is its title alone. A labeled Thread shows its **Area**, icon and name, neutral; an unlabeled Thread shows a faint "No area" once the user has Areas, and nothing before. Colour on the board belongs to time: a late line's date and Late's heading are in the attention colour. Dates are compact tokens rather than phrases, and a line under a heading that names its day (Today, Tomorrow, or a weekday) leaves the date to the heading, showing only its time when it has one.
 - When a **Thread** stands more than once, hovering or keyboard-focusing any of its copies rings all of them in the focus ring's accent, so a **Thread** spread across the week reads as one. The ring is an interaction state, never shown at rest, and a **Thread** that stands once never rings (ADR 0044).
-- The Dashboard **can act on attention in place**: a line's controls — shown on hover or keyboard focus — complete the **Task** it names, and only that one, skip it when it repeats, or set, change, and clear that **Task**'s date and **Repeat**; on a **No date** line that names no single **Task**, setting a date adds a **Task** named "Follow up" with it. Completing one copy's **Task** leaves the **Thread**'s other copies where they are. A **Standalone Note** offers Archive and its **Follow-up date**, or Complete when it repeats. Removing **Tasks**, changing a **Thread**'s **Area**, editing its text, and resolving it still happen in **Thread** detail, where the Area is a chip in the header.
-- **Thread** detail lists every **Task** in one list, in capture order, dated or not; a date never moves a **Task** (ADR 0039). Each row leads with Complete, one click. Its text shows up to two lines, and all of it while edited. Under the text, the date sits at the left and the row's commands at the right, each named by a tooltip: **Skip** when the **Task** repeats, the date, Complete with a note, and Remove. The date and the date command set, change, or clear that **Task**'s date and, once it has a day, its **Repeat**; capturing a **Task** never asks for either. Complete with a note opens a note line under the row, and completing from there also captures the text as a **Thread Note**. The Dashboard completes in one click and never asks for a note.
+- The Dashboard **can act on attention in place**: a line's controls — shown on hover or keyboard focus, and always on a touch screen — complete the **Task** it names, and only that one, skip it when it repeats, or set, change, and clear that **Task**'s date and **Repeat**; on a **No date** line that names no single **Task**, setting a date adds a **Task** named "Follow up" with it. Completing one copy's **Task** leaves the **Thread**'s other copies where they are. A **Standalone Note** offers Complete and its **Follow-up date**; a repeating one's Complete moves it to its next date. Removing **Tasks**, changing a **Thread**'s **Area**, editing its text, and resolving it still happen in **Thread** detail, where the Area is a chip in the header.
+- **Thread** detail lists every **Task** in one list, in capture order, dated or not, on a panel of its own that sets the work apart from the **Thread**'s Notes below; a date never moves a **Task** (ADR 0039). Each row leads with a marker, as on the Dashboard: a hollow dot, or the repeat glyph when the **Task** repeats. Its text shows up to two lines, and all of it while edited. Under the text, the date sits at the left, one control that sets it or, once set, shows it; the row's commands are at the right, each named by a tooltip: Remove, **Skip** when the **Task** repeats, Complete with a note, and Complete, last and in one click, as on the Dashboard. The date control sets, changes, or clears that **Task**'s date and, once it has a day, its **Repeat**; capturing a **Task** never asks for either. Complete with a note opens a note line under the row, and completing from there also captures the text as a **Thread Note**. The Dashboard completes in one click and never asks for a note.
 - Opening a line summons **Thread** detail in place; opening a **Note** opens the **Note view** over the current page.
 - When nothing is open at all the board is replaced by a single line saying nothing is asking.
 - Opening a **Thread** from any surface — the **Dashboard** or the palette — shows its detail pane in place over the current page; closing the pane returns the user to where they were. A Thread's own address is `/threads/$threadSlug`, which opens the pane over the Dashboard. The in-place behavior is recorded in ADR 0007.
@@ -163,12 +164,12 @@ _Avoid_: Archive (as a place), trash, completed list.
 ## Note Handling
 
 - A **Note** can be captured and edited with just a body; it has no title or type selector.
-- Saved Note cards are read-only previews that open the **Note view**. **Thread Note** previews render Markdown in a bounded space; the Dashboard and **History** show its first line in plain text.
+- A saved **Note** shows as a line, a read-only preview that opens the **Note view**. In its **Thread**, a **Thread Note**'s line reads like a **Task**'s: the Note's marker, up to three lines of its text in plain text, then its date, with Complete, or Reopen once completed, at the right; the Dashboard and **History** show a **Note**'s first line.
 - The **Note view** renders the full body for reading and uses a Markdown textarea for writing and editing. Changed drafts ask for confirmation before being discarded.
 - Markdown supports headings, lists, emphasis, code, links, quotes, dividers, and tables. Checkbox markers remain literal text for now.
 - A **Standalone Note** can have its **Follow-up date** set, changed, or cleared.
 - A **Thread Note** appears only on its parent **Thread** and has no **Follow-up date**.
-- Any **Note** can be archived, unarchived, or permanently deleted, whether open or archived.
+- Any **Note** can be completed, reopened, or permanently deleted, whether open or completed.
 - Creation time is preserved; last-edited time is retained going forward. An unknown historical edit time remains unknown.
 - An Open **Standalone Note** can be added to an Open **Thread**, or start a new **Thread**, from the ⋯ menu of its **Note view**: Add to thread… or New thread from note (ADR 0030). Both are optional and never prompted; nothing suggests a Thread or counts Notes that have none.
 - Processing and conversion are outside this version.
@@ -177,7 +178,7 @@ _Avoid_: Archive (as a place), trash, completed list.
 
 - Capturing a **Thread Note** updates its **Thread**'s last-activity date without adding an **Activity Log Entry**.
 - Adding a **Standalone Note** to a **Thread**, or starting a **Thread** from one, counts as capturing a **Thread Note**. It adds no **Activity Log** entry, even when the Note's date adds a dated **Task**.
-- Editing, archiving, unarchiving, or deleting an existing **Thread Note** changes only the Note and does not update Thread activity.
+- Editing, completing, reopening, or deleting an existing **Thread Note** changes only the Note and does not update Thread activity.
 - Setting, changing, or clearing a **Task**'s date adds no **Activity Log** entry. Entries an earlier **Follow-up date** change wrote keep their wording.
 - Completing any **Task** adds one **Activity Log** entry. Completing it with a note also captures one **Thread Note**, which updates the **Thread**'s last-activity date as any captured Thread Note does, so the Note, not the completion, is the Thread's last activity. The **Task** change, the Note, and the entry are written together or not at all. A repeating Task keeps its identity and text and moves to its next occurrence; a one-off Task is removed. Completing every one-off **Task** leaves the **Thread** open.
 - Skipping a repeating **Task** moves it to its next occurrence without an **Activity Log** entry. Setting or clearing a **Repeat** also adds none.
@@ -215,6 +216,6 @@ Old names survive in stored data, code, and older ADRs. Each line maps one to th
 - "Health status", "Condition", "Standard": removed from **Area** (issue 371, ADR 0021). A part of life that needs a periodic look gets a **Thread** with a dated **Task**.
 - "Definition of Done": project-management language, not a **Thread** concept; use **Summary** or the **Activity Log**.
 - "Move a Note to a Thread": former action name; use **Add to thread** (ADR 0030). "Convert", "process", and "attach" stay out of the interface.
-- "Done", "completed" for a **Note**: former words; use **archived** (ADR 0031). Completing names only what a repeating **Standalone Note** does. **Threads** keep **Resolve**. Stored values keep `done`.
+- "Archived", "archive", "unarchive" for a **Note**: former words (ADR 0031); use **completed**, **complete** and **reopen**. "Done" is the stored value only. **Threads** keep **Resolve**.
 - "Stale Thread": not part of the domain language; use the plain **Open Thread** group.
 - "Now", "This week", "the margin": former **Dashboard** columns and the unscheduled margin beside them (ADR 0017). The list's groups (Late, Today, each day, weeks, months) and **No date** replace them (ADR 0037). "Later", a column there, is now the fold at the foot of the list (ADR 0048). The code's attention board still sorts dated items into `now`, `week` and `later` buckets before grouping them.

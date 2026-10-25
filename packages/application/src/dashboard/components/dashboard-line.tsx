@@ -11,12 +11,7 @@ import { Link } from "@tanstack/react-router";
 import { markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
-import {
-  Archive,
-  ListTodo,
-  Repeat as RepeatIcon,
-  SkipForward,
-} from "lucide-react";
+import { ListTodo, Repeat as RepeatIcon, SkipForward } from "lucide-react";
 
 import type { ProductSearch } from "../../navigation/search-params";
 import type { BoardItem } from "./attention-board-model";
@@ -24,6 +19,7 @@ import type { LineLook } from "./dashboard-list-model";
 
 import { AreaIcon } from "../../areas/components/area-icon";
 import { repeatLabel, taskDateLabels } from "../../attention-list";
+import { NoteMarker } from "../../notes/note-marker";
 import { useArchiveNote } from "../../notes/use-archive-note";
 import {
   completeNoteFailure,
@@ -51,6 +47,9 @@ import {
 } from "./line-controls";
 import { ThreadCopy } from "./thread-copies";
 
+/** The non-breaking space keeps the dot on the Thread's title when it wraps. */
+const SEPARATOR_KEPT_WITH_TITLE = " ·\u00a0";
+
 export interface BoardScope {
   areaById: ReadonlyMap<string, AreaSummary>;
   currentDate: number;
@@ -58,18 +57,15 @@ export interface BoardScope {
 }
 
 /**
- * One item on the Dashboard, as a line: a marker, the words, then the Area
- * and the date at the right, with Skip, the date and Complete revealed on
- * hover or focus. `look` sizes and inks it by how near its group is. The
- * whole line opens the Thread or the Note.
+ * One item on the Dashboard. `look` sizes and inks it by how near its group
+ * is. The whole line opens the Thread or the Note.
  *
- * On the list a Thread's copy reads its Task, then the Thread's title, muted;
- * on a narrow list the title drops under the Task. In No date the Thread's
- * title leads, over its only Task or how many it has, because the line must
- * not invent a headline the person never chose. Every control acts on the
- * Task the line names (`lineTask`) and no other; a No date line naming no
- * single Task offers no Complete, and a date set there adds a Task named
- * "Follow up" with it.
+ * On the list a Thread's copy reads its Task, then the Thread's title, muted.
+ * In No date the Thread's title leads, then its only Task or how many it has,
+ * because the line must not invent a headline the person never chose. Every
+ * control acts on the Task the line names (`lineTask`) and no other; a No date
+ * line naming no single Task offers no Complete, and a date set there adds a
+ * Task named "Follow up" with it.
  */
 export function DashboardLine({
   dateInHeading,
@@ -147,6 +143,7 @@ function ThreadLine({
     (lead !== undefined && completing.has(lead._id));
   const area =
     thread.areaId === undefined ? undefined : scope.areaById.get(thread.areaId);
+  const hasAreas = scope.areaById.size > 0;
   const title = (
     <Link
       to="."
@@ -183,34 +180,24 @@ function ThreadLine({
         )
       }
       words={
-        <p className="@md:truncate">
-          <span className={cn("line-clamp-2 @md:inline", look.task)}>
-            {first}
-          </span>
+        <p className="line-clamp-2 @md:line-clamp-1">
+          <span className={look.task}>{first}</span>
           {second && (
-            <span
-              className={cn(
-                "block truncate text-muted-foreground @md:inline",
-                look.thread,
-              )}
-            >
-              <span aria-hidden className="hidden @md:inline">
-                {" · "}
-              </span>
+            <span className={cn("text-muted-foreground", look.detail)}>
+              <span aria-hidden>{SEPARATOR_KEPT_WITH_TITLE}</span>
               {second}
             </span>
           )}
         </p>
       }
-      meta={
-        area && (
-          <span
-            title={area.name}
-            className="hidden items-center gap-1 text-muted-foreground/80 @md:inline-flex"
-          >
+      detail={
+        area ? (
+          <span title={area.name} className="flex min-w-0 items-center gap-1">
             <AreaIcon icon={area.icon} className="size-3 shrink-0" />
-            <span className="max-w-28 truncate">{area.name}</span>
+            <span className="truncate">{area.name}</span>
           </span>
+        ) : (
+          hasAreas && <span className="text-muted-foreground/60">No area</span>
         )
       }
       showsDate={showsBoardDate(lead?.date, dateInHeading)}
@@ -258,9 +245,9 @@ function ThreadLine({
 }
 
 /**
- * A dated Standalone Note as a line, marked by a small dog-eared sheet. A
- * repeating Note wears the repeat glyph on its date under any heading and
- * offers Complete; a one-off Note offers Archive.
+ * A repeating Note wears the repeat glyph on its date under any heading.
+ * Complete moves a repeating Note to its next date and sends a one-off Note
+ * to History.
  */
 function NoteLine({
   dateInHeading,
@@ -275,8 +262,8 @@ function NoteLine({
 }) {
   const archiveNote = useArchiveNote();
   // The line leaves at once; the toast says where the Note went.
-  const archive = useGuardedAsyncAction(() => archiveNote(note._id), {
-    successMessage: "Note archived",
+  const finish = useGuardedAsyncAction(() => archiveNote(note._id), {
+    successMessage: "Note completed",
   });
   const completeNote = useCompleteNote();
   const complete = useGuardedAsyncAction(() => completeNote(note), {
@@ -299,9 +286,7 @@ function NoteLine({
     <LineFrame
       busy={busy}
       look={look}
-      marker={
-        <span className="block h-2.5 w-2 rounded-[1.5px] border border-muted-foreground/60 [clip-path:polygon(0_0,55%_0,100%_40%,100%_100%,0_100%)]" />
-      }
+      marker={<NoteMarker />}
       words={
         <button
           type="button"
@@ -312,6 +297,7 @@ function NoteLine({
           {itemTitle({ kind: "note", note })}
         </button>
       }
+      detail="Note"
       showsDate={repeats || showsBoardDate(when, dateInHeading)}
       date={
         <BoardDate
@@ -336,9 +322,8 @@ function NoteLine({
           />
         ) : (
           <BoardCompleteButton
-            icon={Archive}
-            label="Archive note"
-            onClick={() => void archive.run()}
+            label="Complete note"
+            onClick={() => void finish.run()}
           />
         )
       }
@@ -346,26 +331,22 @@ function NoteLine({
   );
 }
 
-/**
- * The line's shape: marker, words, then Area, date and controls at the
- * right. The controls hold their place at rest, so nothing reflows on hover.
- */
 function LineFrame({
   busy,
   controls,
   date,
+  detail,
   look,
   marker,
-  meta,
   showsDate,
   words,
 }: {
   busy: boolean;
   controls: ReactNode;
   date: ReactNode;
+  detail?: ReactNode;
   look: LineLook;
   marker?: ReactNode;
-  meta?: ReactNode;
   showsDate: boolean;
   words: ReactNode;
 }) {
@@ -373,34 +354,31 @@ function LineFrame({
     <div
       aria-busy={busy || undefined}
       className={cn(
-        "group/card relative flex items-start gap-2.5 rounded-lg px-2.5 transition-colors hover:bg-muted/50",
+        "group/card relative grid grid-cols-[0.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-0.5 rounded-lg px-2.5 leading-snug transition-colors hover:bg-muted/50",
         focusRing,
         "has-focus-visible:bg-muted/60",
         look.frame,
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "flex w-3 shrink-0 items-center justify-center",
-          look.marker,
-        )}
-      >
+      <span aria-hidden className="flex h-lh items-center justify-center">
         {marker}
       </span>
-      <div className="min-w-0 flex-1 leading-snug">{words}</div>
+      <div className="min-w-0">{words}</div>
       <div
         className={cn(
-          "flex shrink-0 items-center gap-2.5 text-[12px] text-muted-foreground",
-          look.meta,
+          "col-start-2 flex min-h-5 items-center gap-2.5 text-muted-foreground",
+          look.detail,
         )}
       >
-        {meta}
+        <span className="flex min-w-0 flex-1 items-center">{detail}</span>
         {/* The date keeps its place in the tree as it turns from a control
             into a token, as a time set from its open picker does: moved, it
             would be a new picker, closed. */}
         <span
-          className={cn("flex items-center", showsDate ? "gap-2.5" : "gap-1")}
+          className={cn(
+            "flex shrink-0 items-center",
+            showsDate ? "gap-2.5" : "gap-1",
+          )}
         >
           {date}
           <span className="flex items-center gap-1">{controls}</span>
