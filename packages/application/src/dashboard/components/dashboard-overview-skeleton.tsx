@@ -80,32 +80,25 @@ export function DashboardOverviewSkeleton() {
                     <div
                       key={line}
                       className={cn(
-                        "flex items-start gap-2.5 px-2.5",
+                        "grid grid-cols-[0.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-0.5 px-2.5 leading-snug",
                         look.line.frame,
                       )}
                     >
-                      <div
-                        className={cn(
-                          "flex w-3 shrink-0 items-center justify-center",
-                          look.line.marker,
-                        )}
-                      >
+                      <div className="flex h-lh items-center justify-center">
                         <Skeleton
                           className="size-2.5 rounded-full bg-foreground/10"
                           style={wave}
                         />
                       </div>
-                      <div className="min-w-0 flex-1 leading-snug">
-                        <Bar width={width} style={wave} />
-                        <Bar
-                          className={cn(
-                            "opacity-70 @md:hidden",
-                            look.line.thread,
-                          )}
-                          width="w-1/3"
-                          style={wave}
-                        />
-                      </div>
+                      <Bar width={width} style={wave} />
+                      <Bar
+                        className={cn(
+                          "col-start-2 opacity-70",
+                          look.line.detail,
+                        )}
+                        width="w-1/3"
+                        style={wave}
+                      />
                     </div>
                   ))}
                 </div>

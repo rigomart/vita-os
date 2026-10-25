@@ -58,11 +58,11 @@ describe("groupLook", () => {
   it("writes nearer headings larger, and Late in the attention colour", () => {
     const [late, today, tomorrow, , , august] = looks([-1, 0, 1, 2, 4, 40]);
     expect(late!.heading.label).toContain("text-condition-attention");
-    expect(late!.heading.label).toContain("text-xl");
-    expect(today!.heading.label).toContain("text-xl");
+    expect(late!.heading.label).toContain("text-lg");
+    expect(today!.heading.label).toContain("text-lg");
     expect(today!.heading.label).not.toContain("text-condition-attention");
-    expect(tomorrow!.heading.label).toContain("text-lg");
-    expect(august!.heading.label).toContain("text-[13px]");
+    expect(tomorrow!.heading.label).toContain("text-base");
+    expect(august!.heading.label).toContain("text-xs");
   });
 
   it("writes nearer lines larger, and fades them with distance", () => {
@@ -70,9 +70,9 @@ describe("groupLook", () => {
       -1, 0, 1, 6, 9, 40,
     ]);
     expect(late!.line).toBe(today!.line);
-    expect(today!.line.frame).toContain("text-[17px]");
+    expect(today!.line.frame).toContain("text-base");
     expect(today!.line.task).toBe("font-semibold");
-    expect(tomorrow!.line.frame).toContain("text-[15px]");
+    expect(tomorrow!.line.frame).toContain("text-sm");
     expect(thursday!.line.frame).toContain("text-foreground/75");
     expect(week!.line.frame).toContain("text-foreground/60");
     expect(august!.line.frame).toContain("text-foreground/50");
@@ -80,7 +80,7 @@ describe("groupLook", () => {
 
   it("gives a day's number to the days only, not to the weeks and months", () => {
     const [today, thursday, week, august] = looks([0, 6, 9, 40]);
-    expect(today!.heading.numeral).toContain("text-3xl");
+    expect(today!.heading.numeral).toContain("text-2xl");
     expect(thursday!.heading.numeral).not.toBe("");
     expect(week!.heading.numeral).toBe("");
     expect(august!.heading.numeral).toBe("");

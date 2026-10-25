@@ -1,5 +1,5 @@
 import type { Repeat, Task, TaskId } from "@vita-os/contracts";
-import type { ComponentProps, ReactElement } from "react";
+import type { ReactElement } from "react";
 
 import { Button } from "@vita-os/ui/components/button";
 import { Textarea } from "@vita-os/ui/components/textarea";
@@ -31,6 +31,13 @@ import {
   withTimeToken,
 } from "../../attention-list";
 import { useFocusRecovery } from "../../ui/recover-focus";
+import {
+  Command,
+  CommandButton,
+  commandButtonClassName,
+  completeCommandClassName,
+  revealed,
+} from "./row-commands";
 import { TaskTextField } from "./task-text-field";
 
 interface ThreadAttentionProps {
@@ -60,22 +67,17 @@ interface ThreadAttentionProps {
 
 /**
  * The Thread's live attention: its Tasks as one list of peers, in the order
- * they were captured. A date never moves a Task; it is shown on the row.
- *
- * Each row leads with Complete, one click. The text has the row's width for
- * up to two lines, and all of it while edited. Under it, the date sits at the
- * left and the row's commands at the right, named by tooltips: Skip when the
- * Task repeats, the date, Complete with a note, and Remove.
+ * they were captured, on a panel that sets them apart from the Notes below. A
+ * date never moves a Task; it is shown on the row.
  *
  * "Complete with a note" opens a line under the row; completing from there
  * also captures the text as a Thread Note. The text is held here while it is
  * written; once sent it is the caller's, which hands it back in a toast if the
  * completion fails.
  *
- * `xl` is the Thread pane's breakpoint (THREAD_PANE_BREAKPOINT): from there up
- * the pane is a rail, and a row's commands wait for its hover or focus in room
- * kept for them, so nothing shifts. Below it the Thread is a bottom drawer, so
- * every command stays visible and finger-sized.
+ * From `xl` (THREAD_PANE_BREAKPOINT) the pane is a rail and a row's commands
+ * wait for its hover or focus; below it the pane is a drawer with no hover, so
+ * they are always shown.
  */
 export function ThreadAttention({
   tasks,
@@ -141,7 +143,7 @@ export function ThreadAttention({
       role="region"
       aria-label="Thread attention"
       data-slot="thread-attention"
-      className="flex shrink-0 flex-col gap-1"
+      className="flex shrink-0 flex-col gap-1 rounded-2xl bg-muted/50 px-2 pt-1 pb-1.5"
     >
       <div className="flex h-8 items-center gap-2 xl:h-7">
         <span className="shrink-0 text-2xs font-medium tracking-wide text-muted-foreground/80 uppercase">
@@ -219,9 +221,8 @@ export function ThreadAttention({
 }
 
 /**
- * One Task: a line, not a card. Complete leads; the text and, under it, the
- * date and the commands follow. A pending Task is dimmed and says so; a
- * disabled one takes no command.
+ * One Task. A pending Task is dimmed and says so; a disabled one takes no
+ * command.
  */
 function TaskRow({
   task,
@@ -267,7 +268,6 @@ function TaskRow({
   };
   const when = task.date === undefined ? undefined : taskWhen(task.date, now);
   const tone = whenTone(task.date, now);
-  // The date token and the date command open the same picker.
   const datePicker = (trigger: ReactElement) => (
     <WhenPicker
       busy={busy}
@@ -287,79 +287,120 @@ function TaskRow({
     <li
       data-task-id={task._id}
       aria-busy={busy || undefined}
-      className="group/task flex items-start gap-1.5 rounded-lg px-1 pt-1 pb-0.5 text-foreground/90 transition-colors hover:bg-muted/50 motion-reduce:transition-none"
+      className="group/row flex items-start gap-1.5 rounded-lg px-1 pt-1 pb-0.5 text-foreground/90 transition-colors hover:bg-muted motion-reduce:transition-none"
     >
-      <Command label="Complete">
-        <button
-          type="button"
-          aria-disabled={busy || undefined}
-          onClick={() => act(onComplete)}
-          aria-label="Complete task"
-          className="group/complete flex size-8 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40 aria-disabled:pointer-events-none aria-disabled:opacity-50 xl:size-6"
-        >
+      <span className="flex size-8 shrink-0 items-center justify-center xl:size-6">
+        {task.repeat === undefined ? (
           <span
             aria-hidden
             className={cn(
-              "flex size-[18px] items-center justify-center rounded-full border-[1.5px] transition-colors group-hover/complete:border-condition-healthy group-hover/complete:bg-condition-healthy/10 motion-reduce:transition-none",
+              "size-2 rounded-full border",
               tone === "overdue"
-                ? "border-condition-attention/70"
-                : "border-muted-foreground/45",
+                ? "border-condition-attention"
+                : "border-muted-foreground/55",
+            )}
+          />
+        ) : (
+          <span
+            role="img"
+            aria-label={repeatLabel(task.repeat)}
+            data-slot="repeat-glyph"
+            className={cn(
+              "flex",
+              tone === "overdue"
+                ? "text-condition-attention"
+                : "text-muted-foreground",
             )}
           >
-            <Check
-              strokeWidth={3}
-              className="size-2.5 text-transparent group-hover/complete:text-condition-healthy"
-            />
+            <RepeatIcon aria-hidden className="size-3" />
           </span>
-        </button>
-      </Command>
+        )}
+      </span>
 
-      <div className="min-w-0 flex-1 pt-1 xl:pt-0">
-        <TaskTextField
-          value={task.text}
-          onSave={(text) => act(() => onEdit(text))}
-          disabled={busy}
-        />
-        <div className="flex min-h-8 items-center gap-2 xl:min-h-7">
-          <div className="-ml-1 flex min-w-0 flex-1 items-center">
-            {when !== undefined &&
-              datePicker(
-                <button
-                  type="button"
-                  aria-disabled={busy || undefined}
-                  onClickCapture={(event) => {
-                    if (busy) {
-                      event.preventDefault();
-                      event.stopPropagation();
-                    }
-                  }}
-                  aria-label={`${taskDateLabels.change}: ${when}`}
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-xs tabular-nums outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 aria-disabled:opacity-50",
-                    tone ? DATE_TONE[tone] : "text-muted-foreground",
-                  )}
-                >
-                  {task.repeat !== undefined && (
-                    <span
-                      role="img"
-                      aria-label={repeatLabel(task.repeat)}
-                      data-slot="repeat-glyph"
-                      className="flex shrink-0 items-center"
+      <div
+        className={cn(
+          "min-w-0 flex-1 pt-1 xl:pt-0",
+          when === undefined && "xl:flex xl:items-start xl:gap-2",
+        )}
+      >
+        <div className={cn("min-w-0", when === undefined && "xl:flex-1")}>
+          <TaskTextField
+            value={task.text}
+            onSave={(text) => act(() => onEdit(text))}
+            disabled={busy}
+          />
+        </div>
+        <div
+          className={cn(
+            "flex min-h-8 items-center gap-2 xl:min-h-7",
+            when === undefined && "xl:-my-0.5 xl:shrink-0",
+          )}
+        >
+          <div
+            className={cn(
+              "-ml-1 flex min-w-0 flex-1 items-center",
+              when === undefined && "xl:ml-0 xl:flex-none",
+            )}
+          >
+            <Tooltip>
+              {datePicker(
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      aria-disabled={busy || undefined}
+                      onClickCapture={(event) => {
+                        if (busy) {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }
+                      }}
+                      aria-label={
+                        when === undefined
+                          ? taskDateLabels.set
+                          : `${taskDateLabels.change}: ${when}`
+                      }
+                      className={
+                        when === undefined
+                          ? cn(commandButtonClassName, revealed)
+                          : cn(
+                              "inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-xs tabular-nums outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 aria-disabled:opacity-50",
+                              tone ? DATE_TONE[tone] : "text-muted-foreground",
+                            )
+                      }
                     >
-                      <RepeatIcon aria-hidden className="size-3" />
-                    </span>
-                  )}
-                  {when}
-                </button>,
+                      {when ?? <CalendarClock />}
+                    </button>
+                  }
+                />,
               )}
+              <TooltipContent>
+                {when === undefined
+                  ? taskDateLabels.set
+                  : taskDateLabels.change}
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           <div
             role="toolbar"
             aria-label="Task commands"
-            className="-mr-1 flex shrink-0 items-center gap-0.5 transition-opacity motion-reduce:transition-none xl:opacity-0 xl:group-focus-within/task:opacity-100 xl:group-hover/task:opacity-100 xl:has-data-popup-open:opacity-100"
+            className={cn(
+              "-mr-1 flex shrink-0 items-center gap-0.5 transition-opacity motion-reduce:transition-none xl:has-data-popup-open:opacity-100",
+              revealed,
+            )}
           >
-            {/* Skip leads, so the other commands keep their places from row to row. */}
+            <Command label="Remove">
+              <CommandButton
+                aria-disabled={busy || undefined}
+                onClick={() => act(onRemove)}
+                aria-label="Remove task"
+                className="hover:text-destructive"
+              >
+                <Trash2 />
+              </CommandButton>
+            </Command>
+            <span aria-hidden className="mx-0.5 h-3.5 w-px bg-border" />
             {task.repeat !== undefined && (
               <Command label="Skip to the next date">
                 <CommandButton
@@ -371,30 +412,6 @@ function TaskRow({
                 </CommandButton>
               </Command>
             )}
-            <Tooltip>
-              {datePicker(
-                <TooltipTrigger
-                  render={
-                    <CommandButton
-                      aria-label={
-                        when === undefined
-                          ? taskDateLabels.set
-                          : taskDateLabels.change
-                      }
-                      aria-disabled={busy || undefined}
-                    >
-                      <CalendarClock />
-                    </CommandButton>
-                  }
-                />,
-              )}
-              <TooltipContent>
-                {when === undefined
-                  ? taskDateLabels.set
-                  : taskDateLabels.change}
-              </TooltipContent>
-            </Tooltip>
-
             <Command label="Complete with a note">
               <CommandButton
                 aria-disabled={busy || undefined}
@@ -408,65 +425,20 @@ function TaskRow({
                 <MessageSquarePlus />
               </CommandButton>
             </Command>
-            <span aria-hidden className="mx-0.5 h-3.5 w-px bg-border" />
-            <Command label="Remove">
+            <Command label="Complete">
               <CommandButton
                 aria-disabled={busy || undefined}
-                onClick={() => act(onRemove)}
-                aria-label="Remove task"
-                className="hover:text-destructive"
+                onClick={() => act(onComplete)}
+                aria-label="Complete task"
+                className={completeCommandClassName}
               >
-                <Trash2 />
+                <Check />
               </CommandButton>
             </Command>
           </div>
         </div>
       </div>
     </li>
-  );
-}
-
-/** Names the command it wraps in a tooltip; the button carries the rest. */
-function Command({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactElement;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger render={children} />
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  );
-}
-
-function CommandButton({
-  className,
-  children,
-  onClickCapture,
-  ...props
-}: ComponentProps<"button">) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "flex size-8 items-center justify-center rounded-full text-muted-foreground/70 outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-popup-open:bg-muted data-popup-open:text-foreground motion-reduce:transition-none xl:size-7 [&_svg]:size-3.5",
-        className,
-      )}
-      {...props}
-      onClickCapture={(event) => {
-        if (props["aria-disabled"]) {
-          event.preventDefault();
-          event.stopPropagation();
-          return;
-        }
-        onClickCapture?.(event);
-      }}
-    >
-      {children}
-    </button>
   );
 }
 

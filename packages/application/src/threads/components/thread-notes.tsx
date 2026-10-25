@@ -1,17 +1,25 @@
 import type { ThreadNote } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
-import { Markdown, markdownToPlainText } from "@vita-os/ui/components/markdown";
+import { markdownToPlainText } from "@vita-os/ui/components/markdown";
+import { TooltipProvider } from "@vita-os/ui/components/tooltip";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format, isSameYear } from "date-fns";
-import { Archive, ArchiveRestore, Loader2 } from "lucide-react";
+import { Check, Loader2, Plus, RotateCcw } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { AttentionCollapsed } from "../../attention-list";
 import { clock } from "../../lib/clock";
+import { NoteMarker } from "../../notes/note-marker";
 import { NoteDialog } from "../../notes/note-view/note-dialog";
 import { useFocusRecovery } from "../../ui/recover-focus";
+import {
+  Command,
+  CommandButton,
+  completeCommandClassName,
+  revealed,
+} from "./row-commands";
 
 interface ThreadNotesProps {
   notes: ThreadNote[] | undefined;
@@ -24,12 +32,16 @@ interface ThreadNotesProps {
   onLoadMoreArchived?: () => void;
   onCreate: (body: string) => Promise<void> | void;
   onUpdateBody: (note: ThreadNote, body: string) => Promise<void> | void;
-  /** Archive an Open Note, or unarchive an Archived one. */
+  /** Complete an Open Note, or reopen a Completed one. */
   onToggleArchived: (note: ThreadNote) => Promise<void> | void;
   /** Deletes at once; the owner offers Undo. */
   onRemove: (note: ThreadNote) => void;
 }
 
+/**
+ * A Thread's Notes as lines like its Tasks'. A line opens the Note view;
+ * "Write a note…" sits on top.
+ */
 export function ThreadNotes({
   notes,
   threadTitle = "Thread",
@@ -69,7 +81,7 @@ export function ThreadNotes({
     return recoverFocus(() => target, run);
   };
   const card = (note: ThreadNote) => (
-    <ThreadNoteCard
+    <ThreadNoteRow
       key={note._id}
       note={note}
       onOpen={() => setSelected(note)}
@@ -83,46 +95,62 @@ export function ThreadNotes({
     <section
       ref={section}
       aria-label="Thread Notes"
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-0.5"
     >
       <button
         type="button"
         onClick={() => setComposing(true)}
-        className="min-h-10 rounded-2xl border border-border/60 bg-muted/30 px-3 py-2.5 text-left text-sm text-muted-foreground outline-none transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+        className="group/write flex min-h-9 items-center gap-1.5 rounded-lg px-1 text-left text-sm text-muted-foreground/60 outline-none transition-colors hover:bg-muted/50 hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/40 motion-reduce:transition-none xl:min-h-8"
       >
+        <span
+          aria-hidden
+          className="flex size-8 shrink-0 items-center justify-center text-muted-foreground/50 xl:size-6"
+        >
+          <Plus className="size-3" />
+        </span>
         Write a note…
       </button>
-      {notes && notes.length > 0 ? (
-        <div className="flex flex-col gap-2.5">{notes.map(card)}</div>
-      ) : null}
-      {showArchived && (
-        <AttentionCollapsed title="Archived notes" count={archivedNotes.length}>
-          <div className="flex flex-col gap-2.5 pt-1">
-            {archivedNotes.map(card)}
-          </div>
-          {(canLoadMoreArchived || isLoadingMoreArchived) && (
-            <div className="flex justify-center pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={isLoadingMoreArchived}
-                aria-busy={isLoadingMoreArchived || undefined}
-                onClick={onLoadMoreArchived}
-              >
-                {isLoadingMoreArchived ? (
-                  <>
-                    <Loader2 className="animate-spin" />
-                    Loading…
-                  </>
-                ) : (
-                  "Load more"
-                )}
-              </Button>
-            </div>
-          )}
-        </AttentionCollapsed>
-      )}
+      <TooltipProvider delay={300}>
+        {notes && notes.length > 0 ? (
+          <ul aria-label="Notes" className="flex flex-col gap-0.5">
+            {notes.map(card)}
+          </ul>
+        ) : null}
+        {showArchived && (
+          <AttentionCollapsed
+            title="Completed notes"
+            count={archivedNotes.length}
+          >
+            <ul
+              aria-label="Completed notes"
+              className="flex flex-col gap-0.5 pt-1"
+            >
+              {archivedNotes.map(card)}
+            </ul>
+            {(canLoadMoreArchived || isLoadingMoreArchived) && (
+              <div className="flex justify-center pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={isLoadingMoreArchived}
+                  aria-busy={isLoadingMoreArchived || undefined}
+                  onClick={onLoadMoreArchived}
+                >
+                  {isLoadingMoreArchived ? (
+                    <>
+                      <Loader2 className="animate-spin" />
+                      Loading…
+                    </>
+                  ) : (
+                    "Load more"
+                  )}
+                </Button>
+              </div>
+            )}
+          </AttentionCollapsed>
+        )}
+      </TooltipProvider>
       {composing && (
         <NoteDialog
           open
@@ -164,7 +192,7 @@ export function ThreadNotes({
   );
 }
 
-function ThreadNoteCard({
+function ThreadNoteRow({
   note,
   onOpen,
   onToggleArchived,
@@ -177,72 +205,74 @@ function ThreadNoteCard({
   const { run: toggle, isPending } = useGuardedAsyncAction(
     () => onToggleArchived(note),
     {
-      successMessage: archived ? "Note unarchived" : "Note archived",
+      successMessage: archived ? "Note reopened" : "Note completed",
     },
   );
+  const text = markdownToPlainText(note.body).trim();
   const timestamp = archived
     ? (note.completedAt ?? note.createdAt)
     : note.createdAt;
   const date = new Date(timestamp);
   return (
-    <article
+    <li
       data-note-id={note._id}
       className={cn(
-        "group/card relative flex flex-col rounded-3xl border-2 border-border/70 bg-surface-2 p-4",
-        "animate-in fade-in slide-in-from-bottom-2 transition-colors duration-300 hover:border-border has-focus-visible:border-ring/50 motion-reduce:animate-none",
-        archived && "border-border/40 bg-transparent opacity-70",
+        "group/row relative flex items-start gap-1.5 rounded-lg px-1 pt-1 pb-0.5 text-foreground/90 transition-colors hover:bg-muted/50 has-focus-visible:bg-muted/60 motion-reduce:transition-none",
+        archived && "text-muted-foreground",
       )}
     >
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={`Open note: ${markdownToPlainText(note.body).slice(0, 120)}`}
-        className="text-left outline-none after:absolute after:inset-0 after:rounded-3xl focus-visible:after:ring-3 focus-visible:after:ring-ring/30"
-      >
-        <div className="relative max-h-36 overflow-hidden after:pointer-events-none after:absolute after:inset-x-0 after:top-32 after:h-4 after:bg-linear-to-b after:from-transparent after:to-surface-2">
-          <Markdown
-            variant="preview"
-            className={cn("text-sm", archived && "text-muted-foreground/60")}
+      <span className="flex size-8 shrink-0 items-center justify-center xl:size-6">
+        <NoteMarker />
+      </span>
+      <div className="min-w-0 flex-1 pt-1 xl:pt-0">
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`Open note: ${text.slice(0, 120)}`}
+          className="block w-full py-0.5 text-left text-sm leading-snug outline-none after:absolute after:inset-0 after:rounded-lg"
+        >
+          <span className="line-clamp-3 whitespace-pre-line">
+            {withoutBlankLines(text)}
+          </span>
+        </button>
+        <div className="flex min-h-8 items-center gap-2 xl:min-h-7">
+          <time
+            dateTime={date.toISOString()}
+            className="flex-1 text-xs text-muted-foreground/70 tabular-nums"
           >
-            {note.body}
-          </Markdown>
+            {format(
+              date,
+              isSameYear(date, clock.now()) ? "MMM d" : "MMM d, yyyy",
+            )}
+          </time>
+          <div
+            role="toolbar"
+            aria-label="Note commands"
+            className={cn("-mr-1 flex shrink-0 items-center", revealed)}
+          >
+            <Command label={archived ? "Reopen" : "Complete"}>
+              <CommandButton
+                aria-disabled={isPending || undefined}
+                aria-busy={isPending}
+                aria-label={archived ? "Reopen note" : "Complete note"}
+                className={cn(
+                  "relative z-10",
+                  !archived && completeCommandClassName,
+                )}
+                onClick={() => {
+                  if (!isPending) void toggle();
+                }}
+              >
+                {archived ? <RotateCcw /> : <Check />}
+              </CommandButton>
+            </Command>
+          </div>
         </div>
-      </button>
-      <div className="mt-3 flex items-center justify-end gap-2">
-        <time
-          dateTime={date.toISOString()}
-          className="text-2xs text-muted-foreground/60"
-        >
-          {format(
-            date,
-            isSameYear(date, clock.now()) ? "MMM d" : "MMM d, yyyy",
-          )}
-        </time>
-        <Button
-          variant="secondary"
-          size="icon-sm"
-          className={cn(
-            "group/toggle relative shrink-0 rounded-full aria-disabled:pointer-events-none aria-disabled:opacity-50",
-            archived && "bg-transparent text-brand-accent-text",
-          )}
-          aria-disabled={isPending || undefined}
-          aria-busy={isPending}
-          aria-label={archived ? "Unarchive note" : "Archive note"}
-          onClick={(event) => {
-            event.stopPropagation();
-            if (!isPending) void toggle();
-          }}
-        >
-          {archived ? (
-            <>
-              <Archive className="group-hover/toggle:hidden" />
-              <ArchiveRestore className="hidden group-hover/toggle:block" />
-            </>
-          ) : (
-            <Archive />
-          )}
-        </Button>
       </div>
-    </article>
+    </li>
   );
+}
+
+function withoutBlankLines(text: string) {
+  return text.replace(/\n{2,}/g, "\n");
 }

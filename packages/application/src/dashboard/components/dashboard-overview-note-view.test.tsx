@@ -42,7 +42,7 @@ function Dashboard() {
 }
 
 describe("the last Dashboard Note", () => {
-  it("keeps its Note view open through archiving and can unarchive it from the empty Dashboard", async () => {
+  it("keeps its Note view open through completing and can reopen it from the empty Dashboard", async () => {
     const user = userEvent.setup();
     const pending = deferred<ReturnType<typeof success<Note>>>();
     let serverNotes = [saved];
@@ -66,7 +66,7 @@ describe("the last Dashboard Note", () => {
     );
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Archive",
+        name: "Complete",
       }),
     );
 
@@ -82,11 +82,11 @@ describe("the last Dashboard Note", () => {
         success({ ...saved, state: "done", completedAt: currentDate }),
       );
     });
-    await user.click(await screen.findByRole("button", { name: "Unarchive" }));
+    await user.click(await screen.findByRole("button", { name: "Reopen" }));
     await waitFor(() =>
       expect(
         within(screen.getByRole("dialog")).getByRole("button", {
-          name: "Archive",
+          name: "Complete",
         }),
       ).toBeVisible(),
     );
@@ -97,7 +97,7 @@ describe("the last Dashboard Note", () => {
     expect(screen.queryByText("Nothing is asking for you.")).toBeNull();
   });
 
-  it("restores its card and keeps the view open when archiving fails", async () => {
+  it("restores its card and keeps the view open when completing fails", async () => {
     const user = userEvent.setup();
     const pending = deferred<ReturnType<typeof failure<Note>>>();
     const queryClient = createTestQueryClient();
@@ -115,7 +115,7 @@ describe("the last Dashboard Note", () => {
     );
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Archive",
+        name: "Complete",
       }),
     );
     await waitFor(() =>
@@ -137,7 +137,7 @@ describe("the last Dashboard Note", () => {
     expect(feedback.success).not.toHaveBeenCalled();
     expect(
       within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Archive",
+        name: "Complete",
       }),
     ).toBeEnabled();
     expect(screen.queryByText("Nothing is asking for you.")).toBeNull();

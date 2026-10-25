@@ -43,7 +43,7 @@ describe("ThreadNotes", () => {
     );
     expect(screen.queryByText("Loading Notes…")).toBeNull();
     expect(
-      screen.queryByRole("button", { name: /archived notes/i }),
+      screen.queryByRole("button", { name: /completed notes/i }),
     ).toBeNull();
     expect(screen.getByRole("button", { name: "Write a note…" })).toBeVisible();
     expect(screen.queryByRole("textbox")).toBeNull();
@@ -102,17 +102,17 @@ describe("ThreadNotes", () => {
     );
     expect(screen.queryByRole("dialog")).toBeNull();
   });
-  it("archives a card without opening the view", async () => {
+  it("completes a card without opening the view", async () => {
     const user = userEvent.setup();
     const callbacks = actions();
     const saved = note("Called the clinic");
     render(<ThreadNotes notes={[saved]} {...callbacks} />);
-    await user.click(screen.getByRole("button", { name: "Archive note" }));
+    await user.click(screen.getByRole("button", { name: "Complete note" }));
     expect(callbacks.onToggleArchived).toHaveBeenCalledWith(saved);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
   for (const index of [0, 1]) {
-    it(`archiving the ${index === 0 ? "first" : "last"} card focuses the other card, then capture`, async () => {
+    it(`completing the ${index === 0 ? "first" : "last"} card focuses the other card, then capture`, async () => {
       const user = userEvent.setup();
       const first = note("First");
       const second = note("Second");
@@ -131,7 +131,7 @@ describe("ThreadNotes", () => {
         );
       }
       render(<Notes />);
-      const archive = screen.getAllByRole("button", { name: "Archive note" })[
+      const archive = screen.getAllByRole("button", { name: "Complete note" })[
         index
       ]!;
       act(() => archive.focus());
@@ -174,7 +174,7 @@ describe("ThreadNotes", () => {
       screen.getByRole("button", { name: "Open note: Second" }),
     ).toHaveFocus();
   });
-  it("keeps a Note view open when archiving removes its card from Open Notes", async () => {
+  it("keeps a Note view open when completing removes its card from Open Notes", async () => {
     const user = userEvent.setup();
     const callbacks = actions();
     const saved = note("Consultation");
@@ -182,7 +182,7 @@ describe("ThreadNotes", () => {
     await user.click(
       screen.getByRole("button", { name: /Open note: Consultation/ }),
     );
-    await user.click(screen.getByRole("button", { name: "Archive" }));
+    await user.click(screen.getByRole("button", { name: "Complete" }));
     rerender(
       <ThreadNotes
         notes={[]}
@@ -191,9 +191,9 @@ describe("ThreadNotes", () => {
       />,
     );
     expect(screen.getByRole("dialog")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Unarchive" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Reopen" })).toBeVisible();
   });
-  it("keeps Archived notes in collapsed history and can unarchive them", async () => {
+  it("keeps Completed notes in collapsed history and can reopen them", async () => {
     const user = userEvent.setup();
     const callbacks = actions();
     const done = note("Finished note", { state: "done", completedAt: 2000 });
@@ -201,8 +201,8 @@ describe("ThreadNotes", () => {
     expect(
       screen.queryByRole("button", { name: /Open note: Finished note/ }),
     ).toBeNull();
-    await user.click(screen.getByRole("button", { name: /archived notes/i }));
-    await user.click(screen.getByRole("button", { name: "Unarchive note" }));
+    await user.click(screen.getByRole("button", { name: /completed notes/i }));
+    await user.click(screen.getByRole("button", { name: "Reopen note" }));
     expect(callbacks.onToggleArchived).toHaveBeenCalledWith(done);
   });
 });

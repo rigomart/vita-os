@@ -261,7 +261,7 @@ describe("CommandPalette", () => {
       [...document.querySelectorAll("[cmdk-group-heading]")].map(
         (el) => el.textContent,
       ),
-    ).toEqual(["Resolved threads", "Archived notes"]);
+    ).toEqual(["Resolved threads", "Completed notes"]);
   });
 
   it("searches every Archived Note on the service, past the first page", async () => {
@@ -318,12 +318,12 @@ describe("CommandPalette", () => {
     await user.click(screen.getByRole("button", { name: "History" }));
     await screen.findAllByRole("option", { name: /Rent payment receipt/ });
     expect(
-      screen.queryByRole("button", { name: "Load more archived notes" }),
+      screen.queryByRole("button", { name: "Load more completed notes" }),
     ).not.toBeInTheDocument();
 
     await user.type(screen.getByRole("combobox"), "receipt");
     const loadMore = await screen.findByRole("button", {
-      name: "Load more archived notes",
+      name: "Load more completed notes",
     });
     await user.keyboard("{Home}");
     await user.tab();
@@ -339,15 +339,15 @@ describe("CommandPalette", () => {
     ).toHaveLength(21);
     expect(screen.getByRole("combobox")).toHaveValue("receipt");
     expect(
-      screen.queryByRole("button", { name: "Load more archived notes" }),
+      screen.queryByRole("button", { name: "Load more completed notes" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("combobox")).toHaveFocus();
     await user.keyboard("{End}{Enter}");
     expect(await screen.findByRole("dialog", { name: "Note" })).toBeVisible();
     expect(screen.getByRole("dialog", { name: "Note" })).toHaveTextContent(
-      "Archived Jan 1",
+      "Completed Jan 1",
     );
-    expect(screen.getByRole("button", { name: "Unarchive" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Reopen" })).toBeVisible();
   });
 
   it("filters resolved history in resolution order and clears search when returning", async () => {

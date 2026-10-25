@@ -22,8 +22,6 @@ import { useFeedback } from "@vita-os/ui/lib/feedback";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
 import {
-  ArchiveIcon,
-  ArchiveRestoreIcon,
   CalendarClock,
   CheckIcon,
   CopyIcon,
@@ -31,6 +29,7 @@ import {
   MessageSquareIcon,
   MessageSquarePlusIcon,
   Repeat as RepeatIcon,
+  RotateCcwIcon,
   Trash2Icon,
   TriangleAlertIcon,
   XIcon,
@@ -155,7 +154,7 @@ export function NoteDialog({
   );
   const archived = note?.state === "done";
   const toggle = useGuardedAsyncAction(async () => onToggleArchived?.(), {
-    successMessage: archived ? "Note unarchived" : "Note archived",
+    successMessage: archived ? "Note reopened" : "Note completed",
   });
   const changeWhen = useGuardedAsyncAction(async (value: number | undefined) =>
     onSetWhen?.(value),
@@ -328,7 +327,7 @@ export function NoteDialog({
         trigger={
           <Button
             type="button"
-            variant="ghost"
+            variant="secondary"
             size="sm"
             disabled={isPending}
             aria-label={
@@ -339,7 +338,7 @@ export function NoteDialog({
                   : followUpDateLabels.change
             }
             className={cn(
-              "-ml-2 rounded-full text-muted-foreground",
+              "rounded-full bg-muted/70 font-medium text-muted-foreground hover:bg-muted",
               shownWhen !== undefined && "text-brand-accent-text",
             )}
           >
@@ -400,18 +399,21 @@ export function NoteDialog({
               </ResponsiveDialogTitle>
               {note?.state === "done" ? (
                 <span
-                  data-slot="note-archived"
+                  data-slot="note-completed"
                   className="inline-flex h-5.5 shrink-0 items-center gap-1 rounded-full bg-muted px-2 text-xs font-semibold text-muted-foreground"
                 >
-                  <ArchiveIcon aria-hidden className="size-3" />
-                  Archived
-                  {/* A phone's header has no room for the date beside the
-                      switch; the footer still says when the Note was added. */}
+                  <CheckIcon aria-hidden className="size-3" />
+                  Completed
                   {note.completedAt === undefined ? null : (
                     <span className="hidden sm:inline">
                       {` ${format(note.completedAt, "MMM d")}`}
                     </span>
                   )}
+                </span>
+              ) : null}
+              {!isCompose && (isDirty || dates) ? (
+                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground/80">
+                  {isDirty ? "Unsaved changes" : dates}
                 </span>
               ) : null}
               <ResponsiveDialogDescription className="sr-only">
@@ -547,45 +549,8 @@ export function NoteDialog({
               </div>
             </div>
           ) : (
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
-              <div className="flex items-center gap-1.5">
-                {attentionPicker}
-                {/* Archive stays beside it: archiving ends the rhythm. */}
-                {canComplete ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isPending}
-                    aria-busy={complete.isPending}
-                    aria-label={completeLabel}
-                    title={completeLabel}
-                    className="rounded-full"
-                    onClick={() => {
-                      void complete.run();
-                    }}
-                  >
-                    <CheckIcon />
-                    Complete
-                  </Button>
-                ) : null}
-                {note && onToggleArchived ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isPending}
-                    aria-busy={toggle.isPending}
-                    className="rounded-full"
-                    onClick={() => {
-                      void toggle.run();
-                    }}
-                  >
-                    {archived ? <ArchiveRestoreIcon /> : <ArchiveIcon />}
-                    {archived ? "Unarchive" : "Archive"}
-                  </Button>
-                ) : null}
-              </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {attentionPicker}
               <div className="ml-auto flex items-center gap-2.5">
                 {isCompose ? (
                   <>
@@ -604,23 +569,44 @@ export function NoteDialog({
                     </Button>
                   </>
                 ) : isDirty ? (
-                  <>
-                    <span className="text-xs text-muted-foreground">
-                      Unsaved changes
-                    </span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="rounded-full px-4"
-                      disabled={!body.trim() || isPending || !onSave}
-                      aria-busy={isPending}
-                      onClick={() => void handleSubmit()}
-                    >
-                      Save
-                    </Button>
-                  </>
-                ) : dates ? (
-                  <p className="text-xs text-muted-foreground">{dates}</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="rounded-full px-4"
+                    disabled={!body.trim() || isPending || !onSave}
+                    aria-busy={isPending}
+                    onClick={() => void handleSubmit()}
+                  >
+                    Save
+                  </Button>
+                ) : canComplete ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={isPending}
+                    aria-busy={complete.isPending}
+                    className="rounded-full px-4"
+                    onClick={() => {
+                      void complete.run();
+                    }}
+                  >
+                    <CheckIcon />
+                    {completeLabel}
+                  </Button>
+                ) : note && onToggleArchived ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={isPending}
+                    aria-busy={toggle.isPending}
+                    className="rounded-full px-4"
+                    onClick={() => {
+                      void toggle.run();
+                    }}
+                  >
+                    {archived ? <RotateCcwIcon /> : <CheckIcon />}
+                    {archived ? "Reopen" : "Complete"}
+                  </Button>
                 ) : null}
               </div>
             </div>

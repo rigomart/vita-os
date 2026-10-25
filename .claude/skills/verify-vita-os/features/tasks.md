@@ -6,7 +6,7 @@ In a Thread's pane or drawer, `Add a task` adds a Task on Enter and stays ready 
 
 - Thread side pane (1280px and wider) and drawer (1024 to 1279px)
 - A No date line on the Dashboard: its `Set date` dates that Thread's only Task
-- Row commands: `Complete task`, `Set date` / `Change date`, `Complete with a note`, `Remove task`
+- Row controls: one date control (`Set date` while undated, then `Change date: <when>`), then the toolbar `Remove task`, `Skip task` when it repeats, `Complete with a note`, `Complete task`
 
 ## Preconditions
 
@@ -16,7 +16,7 @@ In a Thread's pane or drawer, `Add a task` adds a Task on Enter and stays ready 
 
 1. Typing `Pay the fee <stamp>` in `Add a task` and pressing Enter sends `POST /v1/threads/<id>/tasks` → `200`; right after, focus is still on `Add a task` and its value is `""`. Same in the drawer.
 2. The Task shows as `button "Pay the fee <stamp>"` in `region "Thread attention"`, and on the Dashboard the Thread is under `Ready to move` in No date (read the groups as in [Dashboard](dashboard.md)).
-3. The row's `Set date` opens the picker: `get count "[data-when-picker]"` is `1`. Beside the calendar it reads `No date`, with a `Time` field, `9 AM` `12 PM` `3 PM` `6 PM` and the Repeat words `Daily` `Weekdays` `Weekly` `Biweekly` `Monthly` `Custom`, all disabled while the Task has no date. Picking tomorrow (`Saturday, October 24th, 2026` when today is `Today, Friday, October 23rd, 2026`) sends `PUT …/tasks/<task id>/date` → `200`, and the picker stays open: it reads `Sat, Oct 24` with `Clear date`, the day is renamed `Saturday, October 24th, 2026, selected`, and the time and Repeat controls are enabled. The row gains a date button `Change date: Tomorrow`, and the picker's own button is renamed `Change date`. Escape closes only the picker (count `0`, pane still open) and leaves focus on `Change date`. The Dashboard shows the Thread under `Tomorrow`, its line reading `Task: | Pay the fee <stamp> · <thread title>` (from the line's `li`).
+3. The row's `Set date` opens the picker: `get count "[data-when-picker]"` is `1`. Beside the calendar it reads `No date`, with a `Time` field, `9 AM` `12 PM` `3 PM` `6 PM` and the Repeat words `Daily` `Weekdays` `Weekly` `Biweekly` `Monthly` `Custom`, all disabled while the Task has no date. Picking tomorrow (`Saturday, October 24th, 2026` when today is `Today, Friday, October 23rd, 2026`) sends `PUT …/tasks/<task id>/date` → `200`, and the picker stays open: it reads `Sat, Oct 24`, with `Clear date` at its foot, the day is renamed `Saturday, October 24th, 2026, selected`, and the time and Repeat controls are enabled. The same control is renamed `Change date: Tomorrow`, and it is the row's only date button. Escape closes only the picker (count `0`, pane still open) and leaves focus on `Change date: Tomorrow`. The Dashboard shows the Thread under `Tomorrow`, its line reading `Task: | Pay the fee <stamp> · <thread title>` (from the line's `li`).
 4. The stored date is local midnight of tomorrow:
    `SELECT moves_json FROM threads WHERE user_id = (SELECT id FROM user WHERE email = '<email>')` → `"date":<new Date(y, m, d + 1).getTime()>`
 5. `Complete task` sends `POST …/tasks/<task id>/complete` → `200`; the row is gone, focus lands on `Add a task`, and the Thread's Dashboard line moves from `Tomorrow` to `Open` in No date. (The pane's `Open` chip is the Thread's state and reads `Open` throughout.)

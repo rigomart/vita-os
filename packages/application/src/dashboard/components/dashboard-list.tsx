@@ -42,7 +42,7 @@ export function DashboardList({
 
   if (near.length === 0 && later.length === 0) {
     return (
-      <p className="pt-2 text-[15px] text-muted-foreground">
+      <p className="pt-2 text-sm text-muted-foreground">
         Nothing is on the calendar.
       </p>
     );
@@ -51,7 +51,7 @@ export function DashboardList({
   return (
     <div className="@container flex flex-col">
       {near.length === 0 && (
-        <p className="px-1 pt-2 pb-3 text-[15px] text-muted-foreground">
+        <p className="px-1 pt-2 pb-3 text-sm text-muted-foreground">
           Nothing this week.
         </p>
       )}
@@ -178,7 +178,7 @@ function LaterFold({
             />
           </span>
           {!open && (
-            <span className="truncate text-[13px] font-normal text-muted-foreground">
+            <span className="truncate text-xs font-normal text-muted-foreground">
               {foldedSummary(board.later)}
             </span>
           )}

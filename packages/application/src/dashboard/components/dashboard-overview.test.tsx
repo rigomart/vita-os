@@ -491,14 +491,14 @@ describe("DashboardOverview", () => {
     const week = screen.getByRole("region", { name: "In 1 week" });
     const line = within(week).getByRole("listitem");
     // A Note's first line and its date, with its controls as near up.
-    expect(line).toHaveTextContent(/^Renew the passport10d$/);
+    expect(line).toHaveTextContent(/^Renew the passportNote10d$/);
     expect(
       within(line).getByRole("button", {
         name: /^Open note: Renew the passport/,
       }),
     ).toBeInTheDocument();
     expect(
-      within(line).getByRole("button", { name: "Archive note" }),
+      within(line).getByRole("button", { name: "Complete note" }),
     ).toBeInTheDocument();
 
     const month = screen.getByRole("region", { name: "August" });
@@ -509,7 +509,6 @@ describe("DashboardOverview", () => {
       // The thread pane opens over this page (the mocked Link keeps `.`).
       ".?thread=distant",
     );
-    // A Thread's line reads "Task · Thread", then its Area and date.
     expect(within(month).getByRole("listitem")).toHaveTextContent(
       /^Task: Follow up · DistantHealthAug 16$/,
     );

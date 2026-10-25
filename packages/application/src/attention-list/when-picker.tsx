@@ -27,6 +27,7 @@ import { useIsMobile } from "@vita-os/ui/hooks/use-mobile";
 import { cn } from "@vita-os/ui/lib/utils";
 import { format } from "date-fns";
 import {
+  CalendarX2,
   ChevronDown,
   ChevronLeft,
   Clock,
@@ -225,23 +226,9 @@ function WhenPanel(props: PartsProps) {
       </div>
       <div className="relative w-64">
         <div className="absolute inset-0 flex flex-col gap-0.5 overflow-y-auto p-2">
-          <div className="flex h-7 shrink-0 items-center gap-1 pl-2">
-            <span className="flex-1 truncate text-xs text-muted-foreground">
-              {whenSummary(when, repeat?.value)}
-            </span>
-            {when !== undefined && (
-              <button
-                type="button"
-                disabled={choices.busy}
-                aria-label={clearLabel}
-                title={clearLabel}
-                onClick={choices.clear}
-                className="inline-flex size-6 items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50 [&_svg]:size-3.5"
-              >
-                <X />
-              </button>
-            )}
-          </div>
+          <p className="h-7 shrink-0 truncate pl-2 text-xs leading-7 text-muted-foreground">
+            {whenSummary(when, repeat?.value)}
+          </p>
           {custom && repeat !== undefined && when !== undefined ? (
             <CustomRepeat
               value={repeat.value}
@@ -299,11 +286,43 @@ function WhenPanel(props: PartsProps) {
                   </div>
                 </>
               )}
+              {when !== undefined && (
+                <ClearDate
+                  choices={choices}
+                  label={clearLabel}
+                  className="mt-auto h-8 shrink-0 text-xs"
+                />
+              )}
             </>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function ClearDate({
+  choices,
+  className,
+  label,
+}: {
+  choices: Choices;
+  className: string;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={choices.busy}
+      onClick={choices.clear}
+      className={cn(
+        "flex items-center gap-2 rounded-lg px-2 text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:bg-muted disabled:opacity-50 [&_svg]:size-3.5",
+        className,
+      )}
+    >
+      <CalendarX2 aria-hidden />
+      {label}
+    </button>
   );
 }
 
@@ -758,15 +777,11 @@ function WhenSheet(props: PartsProps) {
         </>
       )}
       {when !== undefined && (
-        <button
-          type="button"
-          disabled={choices.busy}
-          onClick={choices.clear}
-          className="flex h-10 items-center gap-2 rounded-lg px-2 text-sm text-muted-foreground outline-none hover:bg-muted focus-visible:bg-muted disabled:opacity-50 [&_svg]:size-3.5"
-        >
-          <X />
-          {clearLabel}
-        </button>
+        <ClearDate
+          choices={choices}
+          label={clearLabel}
+          className="h-10 text-sm"
+        />
       )}
     </div>
   );
