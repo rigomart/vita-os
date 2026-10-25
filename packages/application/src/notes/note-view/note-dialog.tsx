@@ -382,7 +382,9 @@ export function NoteDialog({
           event.stopPropagation();
           setConfirmingDiscard(false);
         }}
-        className="flex max-h-[85dvh] flex-col overflow-hidden sm:max-w-2xl data-[vaul-drawer-direction=bottom]:max-h-[85dvh] [&>div:last-child]:min-h-0 [&>div:last-child]:overflow-hidden"
+        // Clip, not hidden: vaul's ::after gives a bottom drawer scroll room
+        // that scroll-into-view would use, cutting off the drawer's top (#502).
+        className="flex max-h-[85dvh] flex-col overflow-clip sm:max-w-2xl data-[vaul-drawer-direction=bottom]:max-h-[85dvh] [&>div:last-child]:min-h-0 [&>div:last-child]:overflow-hidden"
       >
         <div className="flex max-h-[calc(85dvh-4rem)] min-h-0 flex-col gap-3">
           {/* In a drawer the handle sits right above the header. */}
