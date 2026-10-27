@@ -85,7 +85,7 @@ function ResponsiveDialogContent({
   finalFocus,
 }: Omit<React.ComponentProps<typeof DialogContent>, "finalFocus"> & {
   onEscapeKeyDown?: (event: KeyboardEvent) => void;
-  /** Read as it closes: where focus goes. Nothing returns it to the opener. */
+  /** Read as it closes: the element to focus; null returns focus to the opener. */
   finalFocus?: () => HTMLElement | null | undefined;
 }) {
   const isMobile = use(MobileContext);

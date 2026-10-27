@@ -73,7 +73,7 @@ export interface NoteDialogProps {
   onToggleArchived?: () => Promise<void> | void;
   /** Deletes without asking: the owner offers Undo once the view has closed. */
   onDelete?: () => void;
-  /** Read as the view closes: where focus goes instead of back to its opener. */
+  /** Read as the view closes: the element to focus; null returns focus to the opener. */
   finalFocus?: () => HTMLElement | null | undefined;
   /** Offered on an Open Standalone Note only: choose a Thread for it. */
   onAddToThread?: () => void;
@@ -450,8 +450,8 @@ export function NoteDialog({
                   <DropdownMenuContent
                     align="end"
                     className="w-auto"
-                    // Deleting closes the view with the menu open: the view
-                    // decides where focus goes, not the menu.
+                    // The menu returns focus to its trigger as it closes; skip
+                    // that while deleting, so the view's finalFocus holds.
                     finalFocus={() => !deleting.current}
                   >
                     <DropdownMenuItem onClick={copyMarkdown}>

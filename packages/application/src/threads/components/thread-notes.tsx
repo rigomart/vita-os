@@ -38,8 +38,7 @@ export function ThreadNotes({
     focusAfterDelete.current = null;
     setSelected(note);
   };
-  /** The line after the Note's, or before it, or else "Write a note…". */
-  const lineAfter = (note: ThreadNote) => {
+  const focusTargetAfterRemoving = (note: ThreadNote) => {
     const lines = Array.from(
       section.current?.querySelectorAll<HTMLElement>("[data-note-id]") ?? [],
     );
@@ -109,7 +108,7 @@ export function ThreadNotes({
           }}
           finalFocus={() => focusAfterDelete.current}
           onDelete={() => {
-            focusAfterDelete.current = lineAfter(currentNote);
+            focusAfterDelete.current = focusTargetAfterRemoving(currentNote);
             onRemove(currentNote);
           }}
         />
