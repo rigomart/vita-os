@@ -224,7 +224,6 @@ describe("completing a Task with a Thread Note", () => {
       expect(after.notes[0]).toEqual({
         _id: noteId,
         body: "Called **clinic**\nOpens at nine",
-        state: "open",
         createdAt: now,
         updatedAt: now,
       });

@@ -56,8 +56,8 @@ export interface NoteDialogProps {
   onOpenChange: (open: boolean) => void;
   note?: {
     body: string;
-    /** `done` is how an Archived Note is stored. */
-    state: "open" | "done";
+    /** Absent for a Thread Note. `done` is how a Completed Note is stored. */
+    state?: "open" | "done";
     createdAt: number;
     updatedAt?: number;
     completedAt?: number;

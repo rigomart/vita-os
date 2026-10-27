@@ -10,75 +10,42 @@ import type {
 import { newRecordId } from "@vita-os/core";
 
 import type { ApplicationMutationResult } from "../cache/use-application-mutation";
-import type { PagedResult } from "../cache/use-paged-application-query";
 
 import {
   changeRecords,
   patchById,
-  patchPagedEntries,
   patchQuery,
   removeById,
 } from "../cache/patch";
 import { afterUndoWindow } from "../cache/undo-window";
 import { useApplicationMutation } from "../cache/use-application-mutation";
 import { useOptionalApplicationQuery } from "../cache/use-application-query";
-import { usePagedApplicationQuery } from "../cache/use-paged-application-query";
 import { clock } from "../lib/clock";
 import { queryKeys } from "../query-keys";
 
-const DONE_PAGE_SIZE = 20;
-
 /**
- * A Thread's Open Notes, newest first. `null` means the Thread is not there — or
+ * A Thread's Notes, newest first. `null` means the Thread is not there — or
  * is not this person's, which reads the same.
  */
 export function useThreadNotes(
   threadId: ThreadId,
 ): UseQueryResult<ThreadNote[] | null, ApplicationError> {
   return useOptionalApplicationQuery({
-    queryKey: queryKeys.threadNotes.open(threadId),
-    run: (client) => client.listOpenThreadNotes({ threadId }),
+    queryKey: queryKeys.threadNotes.list(threadId),
+    run: (client) => client.listThreadNotes({ threadId }),
   });
-}
-
-export type ArchivedThreadNotesResult = PagedResult<ThreadNote> & {
-  /** The same entries, named for what they are on this surface. */
-  notes: ThreadNote[];
-};
-
-/** A Thread's Archived Notes (stored as Done), a bounded page at a time. */
-export function useArchivedThreadNotes(
-  threadId: ThreadId,
-  limit = DONE_PAGE_SIZE,
-): ArchivedThreadNotesResult {
-  const page = usePagedApplicationQuery<ThreadNote>({
-    queryKey: queryKeys.threadNotes.done(threadId, limit),
-    run: (client, cursor) =>
-      client.getDoneThreadNotePage({
-        threadId,
-        limit,
-        ...(cursor === undefined ? {} : { cursor }),
-      }),
-    // The panel renders its own failure state beside the Thread.
-    throwOnError: false,
-  });
-
-  return { ...page, notes: page.entries };
 }
 
 function threadNoteKeys(threadId: ThreadId) {
-  return [
-    queryKeys.threadNotes.open(threadId),
-    queryKeys.threadNotes.doneAll(threadId),
-  ];
+  return [queryKeys.threadNotes.list(threadId)];
 }
 
-function patchOpenThreadNotes(
+function patchThreadNotes(
   cache: QueryClient,
   threadId: ThreadId,
   patch: (notes: ThreadNote[]) => ThreadNote[],
 ): void {
-  patchQuery<ThreadNote[]>(cache, queryKeys.threadNotes.open(threadId), patch);
+  patchQuery<ThreadNote[]>(cache, queryKeys.threadNotes.list(threadId), patch);
 }
 
 /**
@@ -90,7 +57,7 @@ export function showThreadNote(
   threadId: ThreadId,
   note: ThreadNote,
 ): void {
-  patchOpenThreadNotes(cache, threadId, (notes) =>
+  patchThreadNotes(cache, threadId, (notes) =>
     notes.some((existing) => existing._id === note._id)
       ? notes
       : [note, ...notes],
@@ -125,7 +92,6 @@ export function useCaptureThreadNote(): ApplicationMutationResult<
           showThreadNote(cache, input.threadId, {
             _id: pendingId,
             body: input.body,
-            state: "open",
             createdAt: now,
             updatedAt: now,
           }),
@@ -134,7 +100,7 @@ export function useCaptureThreadNote(): ApplicationMutationResult<
     },
     reconcile: (cache, note, input, pendingId) => {
       if (pendingId === undefined) return;
-      patchOpenThreadNotes(cache, input.threadId, (notes) =>
+      patchThreadNotes(cache, input.threadId, (notes) =>
         notes.map((existing) => (existing._id === pendingId ? note : existing)),
       );
     },
@@ -165,88 +131,10 @@ export function useUpdateThreadNoteBody(): ApplicationMutationResult<
         threadNoteKeys(input.threadId),
         [input.threadNoteId],
         ["body"],
-        () => {
-          const patch = (notes: ThreadNote[]) =>
-            patchById(notes, input.threadNoteId, { body: input.body });
-          patchOpenThreadNotes(cache, input.threadId, patch);
-          patchPagedEntries(
-            cache,
-            queryKeys.threadNotes.doneAll(input.threadId),
-            patch,
-          );
-        },
-      ),
-  });
-}
-
-/** Archiving is the stored Done state. */
-export function useArchiveThreadNote(): ApplicationMutationResult<
-  { threadId: ThreadId; threadNoteId: ThreadNoteId },
-  ThreadNote
-> {
-  return useApplicationMutation<
-    { threadId: ThreadId; threadNoteId: ThreadNoteId },
-    ThreadNote
-  >({
-    run: (client, input) =>
-      client.markThreadNoteDone({ threadNoteId: input.threadNoteId }),
-    affected: (input) => threadNoteKeys(input.threadId),
-    optimistic: (cache, input) =>
-      changeRecords<ThreadNote>(
-        cache,
-        threadNoteKeys(input.threadId),
-        [input.threadNoteId],
-        ["body"],
-        () => {
-          const patch = (notes: ThreadNote[]) =>
-            removeById(notes, input.threadNoteId);
-          patchOpenThreadNotes(cache, input.threadId, patch);
-          patchPagedEntries(
-            cache,
-            queryKeys.threadNotes.doneAll(input.threadId),
-            patch,
-          );
-        },
-      ),
-  });
-}
-
-/**
- * Unarchiving a Thread Note. The caller passes the record because an Archived
- * Note was never in the open list to rebuild it from.
- */
-export function useUnarchiveThreadNote(): ApplicationMutationResult<
-  { threadId: ThreadId; note: ThreadNote },
-  ThreadNote
-> {
-  return useApplicationMutation<
-    { threadId: ThreadId; note: ThreadNote },
-    ThreadNote
-  >({
-    run: (client, input) =>
-      client.markThreadNoteOpen({ threadNoteId: input.note._id }),
-    affected: (input) => threadNoteKeys(input.threadId),
-    optimistic: (cache, input) =>
-      changeRecords<ThreadNote>(
-        cache,
-        threadNoteKeys(input.threadId),
-        [input.note._id],
-        ["state", "completedAt"],
-        () => {
-          patchPagedEntries<ThreadNote>(
-            cache,
-            queryKeys.threadNotes.doneAll(input.threadId),
-            (notes) => removeById(notes, input.note._id),
-          );
-          patchOpenThreadNotes(cache, input.threadId, (notes) =>
-            notes.some((existing) => existing._id === input.note._id)
-              ? notes
-              : [
-                  { ...input.note, state: "open", completedAt: undefined },
-                  ...notes,
-                ],
-          );
-        },
+        () =>
+          patchThreadNotes(cache, input.threadId, (notes) =>
+            patchById(notes, input.threadNoteId, { body: input.body }),
+          ),
       ),
   });
 }
@@ -278,16 +166,10 @@ export function useDiscardThreadNote(): ApplicationMutationResult<
         threadNoteKeys(input.threadId),
         [input.threadNoteId],
         ["body"],
-        () => {
-          const patch = (notes: ThreadNote[]) =>
-            removeById(notes, input.threadNoteId);
-          patchOpenThreadNotes(cache, input.threadId, patch);
-          patchPagedEntries(
-            cache,
-            queryKeys.threadNotes.doneAll(input.threadId),
-            patch,
-          );
-        },
+        () =>
+          patchThreadNotes(cache, input.threadId, (notes) =>
+            removeById(notes, input.threadNoteId),
+          ),
       ),
   });
 }

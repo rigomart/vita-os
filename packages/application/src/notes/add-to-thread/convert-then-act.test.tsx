@@ -78,7 +78,7 @@ describe("acting on a confirmed conversion", () => {
       timeZone: expect.any(String),
     });
     expect(
-      queryClient.getQueryData(queryKeys.threadNotes.open(thread._id)),
+      queryClient.getQueryData(queryKeys.threadNotes.list(thread._id)),
     ).toEqual([threadNote]);
   });
   it("hides the source when creating a Thread and waits for the confirmed destination", async () => {

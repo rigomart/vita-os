@@ -79,7 +79,7 @@ interface SeedThread {
   followUpInDays?: number;
   /** The Follow-up's time of day, `HH:mm`. */
   followUpAt?: string;
-  notes?: { body: string; done?: boolean }[];
+  notes?: { body: string }[];
   resolution?: string;
 }
 
@@ -144,12 +144,7 @@ async function seedLife(client: ApplicationClient, life: Life) {
       );
     }
     for (const note of spec.notes ?? []) {
-      const created = must(
-        await client.createThreadNote({ threadId, body: note.body }),
-      );
-      if (note.done) {
-        must(await client.markThreadNoteDone({ threadNoteId: created._id }));
-      }
+      must(await client.createThreadNote({ threadId, body: note.body }));
     }
     if (spec.resolution !== undefined) {
       must(
@@ -224,7 +219,6 @@ const SAMPLE: Life = {
         { body: "Called the clinic\nWaiting for a reply" },
         {
           body: "## Previous visit\nCollected the treatment summary and saved the clinic's contact details.",
-          done: true,
         },
       ],
     },

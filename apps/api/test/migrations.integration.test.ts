@@ -100,6 +100,11 @@ let repeater: { actorId: string; cookie: string };
 let notesBeforeRepeat: Record<string, unknown>[];
 let noteColumnsBeforeRepeat: Record<string, unknown>[];
 let schemaBeforeRepeat: Record<string, unknown>[];
+let schemaAfterRepeat: Record<string, unknown>[];
+let recorder: { actorId: string; cookie: string };
+let threadNotesBeforeCleanup: Record<string, unknown>[];
+let threadNoteColumnsBeforeCleanup: Record<string, unknown>[];
+let schemaBeforeThreadNoteCleanup: Record<string, unknown>[];
 
 async function readSchema() {
   return (
@@ -128,6 +133,14 @@ async function storedFocus(threadId: string) {
     .prepare("SELECT focused_move_id FROM threads WHERE id = ?")
     .bind(threadId)
     .first<string | null>("focused_move_id");
+}
+
+async function readThreadNotes() {
+  return (
+    await database
+      .prepare("SELECT * FROM thread_notes ORDER BY id")
+      .all<Record<string, unknown>>()
+  ).results;
 }
 
 async function readNotes() {
@@ -343,6 +356,111 @@ beforeAll(async () => {
   noteColumnsBeforeRepeat = await readColumns("notes");
   schemaBeforeRepeat = await readSchema();
   await applyD1Migrations(database, migrationsThrough(8));
+  schemaAfterRepeat = await readSchema();
+
+  recorder = await signUp("thread-note-migration-owner");
+  await database.batch([
+    database
+      .prepare(
+        `INSERT INTO threads (id, user_id, title, slug, sort_order, state, created_at)
+         VALUES ('record-thread', ?, 'Dentist', 'record-thread', 0, 'open', 1700000000000)`,
+      )
+      .bind(recorder.actorId),
+    ...[
+      ["record-open", "Clinic opens at nine", "open", null, 1_700_000_000_100],
+      [
+        "record-done",
+        "Old consultation",
+        "done",
+        1_700_000_000_300,
+        1_700_000_000_200,
+      ],
+    ].map(([id, body, state, completedAt, createdAt]) =>
+      database
+        .prepare(
+          `INSERT INTO thread_notes (id, user_id, thread_id, body, state, completed_at, created_at, updated_at)
+           VALUES (?, ?, 'record-thread', ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          id,
+          recorder.actorId,
+          body,
+          state,
+          completedAt,
+          createdAt,
+          createdAt,
+        ),
+    ),
+  ]);
+  threadNotesBeforeCleanup = await readThreadNotes();
+  threadNoteColumnsBeforeCleanup = await readColumns("thread_notes");
+  schemaBeforeThreadNoteCleanup = await readSchema();
+  await applyD1Migrations(database, migrationsThrough(9));
+});
+
+describe("0009: Thread Notes stop needing a state", () => {
+  it("keeps every Thread Note as stored, state and completion included", async () => {
+    expect(threadNotesBeforeCleanup.length).toBeGreaterThan(2);
+    expect(await readThreadNotes()).toEqual(threadNotesBeforeCleanup);
+  });
+
+  it("defaults state to open, drops its check and indexes, and changes nothing else", async () => {
+    expect(await readColumns("thread_notes")).toEqual(
+      threadNoteColumnsBeforeCleanup.map((column) =>
+        column.name === "state" ? { ...column, dflt_value: "'open'" } : column,
+      ),
+    );
+    const threadNotesSchema = (await readSchema()).filter(
+      (row) => row.tbl_name === "thread_notes",
+    );
+    expect(threadNotesSchema.map((row) => row.name)).toEqual([
+      "thread_notes",
+      "thread_notes_by_owner_thread_created",
+    ]);
+    expect(
+      threadNotesSchema.every((row) => !/\bCHECK\b/i.test(String(row.sql))),
+    ).toBe(true);
+    const unrelated = (rows: Record<string, unknown>[]) =>
+      rows.filter((row) => row.tbl_name !== "thread_notes");
+    expect(unrelated(await readSchema())).toEqual(
+      unrelated(schemaBeforeThreadNoteCleanup),
+    );
+    expect(
+      (await database.prepare("PRAGMA foreign_key_check").all()).results,
+    ).toEqual([]);
+  });
+
+  it("takes writes from the API before it and the API after it", async () => {
+    await database
+      .prepare(
+        "UPDATE thread_notes SET state = 'done', completed_at = 1700000000400 WHERE id = 'record-open'",
+      )
+      .run();
+    await database
+      .prepare(
+        `INSERT INTO thread_notes (id, user_id, thread_id, body, created_at, updated_at)
+         VALUES ('record-new', ?, 'record-thread', 'Booked for Monday', 1700000000500, 1700000000500)`,
+      )
+      .bind(recorder.actorId)
+      .run();
+    expect(
+      await database
+        .prepare(
+          "SELECT state, completed_at FROM thread_notes WHERE id = 'record-new'",
+        )
+        .first(),
+    ).toEqual({ state: "open", completed_at: null });
+
+    const listed = await read<ThreadNote[]>(
+      "/v1/threads/record-thread/notes",
+      recorder.cookie,
+    );
+    expect(listed.map((note) => note.body)).toEqual([
+      "Booked for Monday",
+      "Old consultation",
+      "Clinic opens at nine",
+    ]);
+  });
 });
 
 const NOTE_DATE = Date.UTC(2030, 10, 5, 9);
@@ -364,9 +482,7 @@ describe("0008: Standalone Notes gain a Repeat", () => {
     });
     const unrelated = (rows: Record<string, unknown>[]) =>
       rows.filter((row) => row.name !== "notes");
-    expect(unrelated(await readSchema())).toEqual(
-      unrelated(schemaBeforeRepeat),
-    );
+    expect(unrelated(schemaAfterRepeat)).toEqual(unrelated(schemaBeforeRepeat));
   });
 
   it("reads every existing Note as not repeating", async () => {

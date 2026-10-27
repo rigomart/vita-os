@@ -87,13 +87,9 @@ export {
 export { queryKeys, threadQueryKeys } from "./query-keys";
 export {
   useCaptureThreadNote,
-  useArchiveThreadNote,
   useDiscardThreadNote,
-  useArchivedThreadNotes,
-  useUnarchiveThreadNote,
   useThreadNotes,
   useUpdateThreadNoteBody,
-  type ArchivedThreadNotesResult,
 } from "./thread-notes/hooks";
 export {
   useCreateThread,

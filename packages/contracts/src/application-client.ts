@@ -11,7 +11,6 @@ import type {
   Thread,
   ThreadDetail,
   ThreadNote,
-  ThreadNotePage,
   ThreadState,
 } from "./models";
 
@@ -269,12 +268,10 @@ export interface ApplicationClient {
   ): Promise<OperationResult<NoteAddedToThread>>;
 
   /* Thread Notes */
-  listOpenThreadNotes(input: {
+  /** Every Note of the Thread, newest first. */
+  listThreadNotes(input: {
     threadId: ThreadId;
   }): Promise<OperationResult<ThreadNote[]>>;
-  getDoneThreadNotePage(
-    input: { threadId: ThreadId } & PageRequest,
-  ): Promise<OperationResult<ThreadNotePage>>;
   createThreadNote(input: {
     threadId: ThreadId;
     body: string;
@@ -282,12 +279,6 @@ export interface ApplicationClient {
   updateThreadNoteBody(input: {
     threadNoteId: ThreadNoteId;
     body: string;
-  }): Promise<OperationResult<ThreadNote>>;
-  markThreadNoteDone(input: {
-    threadNoteId: ThreadNoteId;
-  }): Promise<OperationResult<ThreadNote>>;
-  markThreadNoteOpen(input: {
-    threadNoteId: ThreadNoteId;
   }): Promise<OperationResult<ThreadNote>>;
   removeThreadNote(input: {
     threadNoteId: ThreadNoteId;

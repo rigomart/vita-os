@@ -89,7 +89,17 @@ async function storedRows(session: Session, table: (typeof TABLES)[number]) {
   )
     .bind(session.actorId)
     .all<Record<string, unknown>>();
-  return results.map(({ user_id: _owner, ...row }) => row);
+  return results.map(({ user_id: _owner, ...row }) =>
+    table === "thread_notes" ? withoutRetiredThreadNoteColumns(row) : row,
+  );
+}
+
+function withoutRetiredThreadNoteColumns({
+  state: _state,
+  completed_at: _completedAt,
+  ...row
+}: Record<string, unknown>) {
+  return row;
 }
 
 async function exportOf(session: Session): Promise<ExportFile> {

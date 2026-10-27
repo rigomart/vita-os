@@ -40,12 +40,9 @@ const methods: Record<keyof ApplicationClient, true> = {
   removeNote: true,
   addNoteToThread: true,
   createThreadFromNote: true,
-  listOpenThreadNotes: true,
-  getDoneThreadNotePage: true,
+  listThreadNotes: true,
   createThreadNote: true,
   updateThreadNoteBody: true,
-  markThreadNoteDone: true,
-  markThreadNoteOpen: true,
   removeThreadNote: true,
 };
 

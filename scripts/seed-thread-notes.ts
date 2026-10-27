@@ -1,5 +1,3 @@
-import type { ThreadNotePage } from "../packages/contracts/src/models";
-
 export type SeedApiCall = <T>(
   method: string,
   path: string,
@@ -36,7 +34,6 @@ Sample consultation notes for trying the Note view.
       { body: "Called the clinic\nWaiting for a reply" },
       {
         body: "## Previous visit\nCollected the treatment summary and saved the clinic's contact details.",
-        done: true,
       },
     ],
   },
@@ -71,26 +68,15 @@ export async function seedThreadNotes(call: SeedApiCall): Promise<number> {
     const matches = threads.filter((thread) => thread.title === sample.title);
     if (matches.length !== 1) continue;
     const thread = matches[0];
-    const open = await call<unknown[]>(
+    const existing = await call<unknown[]>(
       "GET",
       `/v1/threads/${thread._id}/notes`,
     );
-    const done = await call<ThreadNotePage>(
-      "GET",
-      `/v1/threads/${thread._id}/notes/done?limit=1`,
-    );
-    if (open.length || done.entries.length) continue;
+    if (existing.length) continue;
     for (const note of sample.notes) {
-      const created = await call<{ _id: string }>(
-        "POST",
-        `/v1/threads/${thread._id}/notes`,
-        { body: note.body },
-      );
-      if ("done" in note && note.done) {
-        await call("PATCH", `/v1/thread-notes/${created._id}/state`, {
-          state: "done",
-        });
-      }
+      await call("POST", `/v1/threads/${thread._id}/notes`, {
+        body: note.body,
+      });
       added++;
     }
   }

@@ -50,9 +50,9 @@ async function findNote(
   noteId: ThreadNoteId,
 ): Promise<boolean | undefined> {
   try {
-    const open = await client.listOpenThreadNotes({ threadId });
-    if (!open.ok) return open.error.code === "not_found" ? false : undefined;
-    return open.value.some((note) => note._id === noteId);
+    const notes = await client.listThreadNotes({ threadId });
+    if (!notes.ok) return notes.error.code === "not_found" ? false : undefined;
+    return notes.value.some((note) => note._id === noteId);
   } catch {
     return undefined;
   }
@@ -96,20 +96,19 @@ function useOccurrenceCommands(thread: Thread) {
       }),
       alsoShows: {
         keys: ({ threadId, note }) =>
-          note === undefined ? [] : [queryKeys.threadNotes.open(threadId)],
+          note === undefined ? [] : [queryKeys.threadNotes.list(threadId)],
         show: (cache, { threadId, note, now }) =>
           note === undefined
             ? { rollback: () => undefined }
             : changeRecords<ThreadNote>(
                 cache,
-                [queryKeys.threadNotes.open(threadId)],
+                [queryKeys.threadNotes.list(threadId)],
                 [note.id],
                 [],
                 () =>
                   showThreadNote(cache, threadId, {
                     _id: note.id,
                     body: note.body,
-                    state: "open",
                     createdAt: now,
                     updatedAt: now,
                   }),

@@ -110,8 +110,6 @@ export const NoteSchema = v.object({
 export const ThreadNoteSchema = v.object({
   _id: ThreadNoteIdSchema,
   body: v.string(),
-  state: NoteStateSchema,
-  completedAt: v.optional(Timestamp),
   createdAt: Timestamp,
   updatedAt: Timestamp,
 });
@@ -133,10 +131,6 @@ export const ActivityLogPageSchema = v.object({
 });
 export const NotePageSchema = v.object({
   entries: v.array(NoteSchema),
-  nextCursor: v.optional(v.string()),
-});
-export const ThreadNotePageSchema = v.object({
-  entries: v.array(ThreadNoteSchema),
   nextCursor: v.optional(v.string()),
 });
 export const CommandAckSchema = v.object({ acknowledged: v.literal(true) });

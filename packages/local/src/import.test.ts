@@ -87,10 +87,9 @@ async function exportedFile(): Promise<ExportFile> {
       note: { id: crypto.randomUUID() as ThreadNoteId, body: "Bought" },
     }),
   );
-  const threadNote = await value(
+  await value(
     client.createThreadNote({ threadId: thread._id, body: "Ask a plumber" }),
   );
-  await value(client.markThreadNoteDone({ threadNoteId: threadNote._id }));
   const resolved = await value(client.createThread({ title: "Old roof" }));
   await value(
     client.updateThread({ threadId: resolved._id, state: "resolved" }),
@@ -138,9 +137,9 @@ describe("importing a cloud export", () => {
       "done",
       "open",
     ]);
-    expect(file.thread_notes.map((note) => note.state).sort()).toEqual([
-      "done",
-      "open",
+    expect(file.thread_notes.map((note) => note.body).sort()).toEqual([
+      "Ask a plumber",
+      "Bought",
     ]);
 
     const local = await freshDatabase();

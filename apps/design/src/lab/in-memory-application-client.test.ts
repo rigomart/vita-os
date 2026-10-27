@@ -76,9 +76,7 @@ describe("in-memory application client", () => {
         note: { id: "note-1" as ThreadNoteId, body: "Fitted it" },
       }),
     );
-    const notes = value(
-      await client.listOpenThreadNotes({ threadId: thread._id }),
-    );
+    const notes = value(await client.listThreadNotes({ threadId: thread._id }));
 
     expect(completed.lastActivityContent).toBeUndefined();
     expect(notes.map((note) => note._id)).toEqual(["note-1"]);

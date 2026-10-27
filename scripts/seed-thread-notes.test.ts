@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 
 import { type SeedApiCall, seedThreadNotes } from "./seed-thread-notes";
 
-type Note = { _id: string; body: string; state: "open" | "done" };
+type Note = { _id: string; body: string };
 
 // Replace only HTTP transport. Reads reflect writes, so the second run tests
 // duplicate prevention instead of receiving a canned empty response again.
@@ -20,59 +20,34 @@ function fixture({
     body?: unknown,
   ): Promise<T> => {
     if (method === "GET" && path === "/v1/threads") return threads as T;
-    const route = /^\/v1\/threads\/([^/]+)\/notes(\/done\?limit=1)?$/.exec(
-      path,
-    );
+    const route = /^\/v1\/threads\/([^/]+)\/notes$/.exec(path);
     if (route) {
       const existing = notes.get(route[1]) ?? [];
-      if (method === "GET") {
-        return (
-          route[2]
-            ? {
-                entries: existing.filter((note) => note.state === "done"),
-              }
-            : existing.filter((note) => note.state === "open")
-        ) as T;
-      }
+      if (method === "GET") return existing as T;
       if (method === "POST") {
         const note: Note = {
           _id: `note-${writes.length}`,
           body: (body as { body: string }).body,
-          state: "open",
         };
         notes.set(route[1], [...existing, note]);
         writes.push({ method, path, body });
         return note as T;
       }
     }
-    const state = /^\/v1\/thread-notes\/([^/]+)\/state$/.exec(path);
-    if (method === "PATCH" && state) {
-      const note = [...notes.values()]
-        .flat()
-        .find((item) => item._id === state[1]);
-      if (!note) throw new Error("Unknown Note");
-      note.state = (body as { state: "done" }).state;
-      writes.push({ method, path, body });
-      return note as T;
-    }
     throw new Error(`Unexpected request: ${method} ${path}`);
   };
   return { call, writes, notes };
 }
 
-test("adds readable Markdown and completed history to empty sample Threads", async () => {
-  const { call, writes, notes } = fixture();
+test("adds readable Markdown to empty sample Threads", async () => {
+  const { call, notes } = fixture();
   expect(await seedThreadNotes(call)).toBe(4);
   expect(notes.get("dentist")).toHaveLength(3);
   expect(notes.get("review")).toHaveLength(1);
-  expect(
-    notes.get("dentist")?.filter((note) => note.state === "done"),
-  ).toHaveLength(1);
   const consultation = notes.get("dentist")?.[0].body;
   expect(consultation).toContain("# Consultation");
   expect(consultation).toContain("| Topic | Notes |");
   expect(consultation).toContain("- [ ]");
-  expect(writes.filter((write) => write.method === "PATCH")).toHaveLength(1);
 });
 
 test("rerunning does not duplicate sample Notes", async () => {
@@ -83,22 +58,16 @@ test("rerunning does not duplicate sample Notes", async () => {
   expect(writes).toEqual(before);
 });
 
-for (const state of ["open", "done"] as const) {
-  test(`preserves existing ${state} Notes and skips that Thread`, async () => {
-    const existing: Note = {
-      _id: "personal-note",
-      body: "My edited content",
-      state,
-    };
-    const { call, writes, notes } = fixture({
-      threads: [{ _id: "dentist", title: "Dentist follow-up" }],
-      notes: new Map([["dentist", [existing]]]),
-    });
-    expect(await seedThreadNotes(call)).toBe(0);
-    expect(writes).toEqual([]);
-    expect(notes.get("dentist")).toEqual([existing]);
+test("preserves existing Notes and skips that Thread", async () => {
+  const existing: Note = { _id: "personal-note", body: "My edited content" };
+  const { call, writes, notes } = fixture({
+    threads: [{ _id: "dentist", title: "Dentist follow-up" }],
+    notes: new Map([["dentist", [existing]]]),
   });
-}
+  expect(await seedThreadNotes(call)).toBe(0);
+  expect(writes).toEqual([]);
+  expect(notes.get("dentist")).toEqual([existing]);
+});
 
 test("does not recreate removed Threads or choose between duplicate titles", async () => {
   const { call, writes } = fixture({

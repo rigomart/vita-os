@@ -133,7 +133,6 @@ describe("adding a Note to a Thread", () => {
     expect(added.threadNote).toEqual({
       _id: expect.any(String),
       body: "Clinic opens at **nine**",
-      state: "open",
       createdAt: note.createdAt,
       updatedAt: edited.updatedAt,
     });

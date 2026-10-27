@@ -34,11 +34,7 @@ export const queryKeys = {
   },
   threadNotes: {
     all: ["thread-notes"] as const,
-    open: (threadId: ThreadId) => ["thread-notes", "open", threadId] as const,
-    done: (threadId: ThreadId, limit: number) =>
-      ["thread-notes", "done", threadId, limit] as const,
-    doneAll: (threadId: ThreadId) =>
-      ["thread-notes", "done", threadId] as const,
+    list: (threadId: ThreadId) => ["thread-notes", threadId] as const,
   },
 };
 

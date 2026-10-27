@@ -3,7 +3,6 @@ import type {
   AreaSummary,
   Note,
   Thread,
-  ThreadNote,
 } from "@vita-os/contracts";
 
 import { sql } from "drizzle-orm";
@@ -150,25 +149,16 @@ export const threadNotes = sqliteTable(
       .notNull()
       .references(() => threads.id, { onDelete: "cascade" }),
     body: text().notNull(),
-    state: text().$type<ThreadNote["state"]>().notNull(),
-    completed_at: integer(),
+    // `state` and `completed_at` stay in D1 until a later migration drops them
+    // (ADR 0049); see RETIRED in apps/api/migration/test_drizzle_schema.py.
     created_at: integer().notNull(),
     updated_at: integer().notNull(),
   },
   (table) => [
-    check("thread_notes_state", sql`${table.state} IN ('open', 'done')`),
-    index("thread_notes_by_owner_thread_state_created").on(
+    index("thread_notes_by_owner_thread_created").on(
       table.user_id,
       table.thread_id,
-      table.state,
       sql`${table.created_at} DESC`,
-      sql`${table.id} DESC`,
-    ),
-    index("thread_notes_by_owner_thread_state_completed").on(
-      table.user_id,
-      table.thread_id,
-      table.state,
-      sql`${table.completed_at} DESC`,
       sql`${table.id} DESC`,
     ),
   ],

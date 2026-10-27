@@ -108,16 +108,16 @@ function service() {
       return switches.dropAfterCommit ? failure(unavailable) : result;
     },
   );
-  const listOpenThreadNotes = vi.fn(
-    (input: Parameters<ApplicationClient["listOpenThreadNotes"]>[0]) =>
+  const listThreadNotes = vi.fn(
+    (input: Parameters<ApplicationClient["listThreadNotes"]>[0]) =>
       switches.offline
         ? Promise.resolve(failure<ThreadNote[]>(unavailable))
-        : base.listOpenThreadNotes(input),
+        : base.listThreadNotes(input),
   );
   const client: ApplicationClient = {
     ...base,
     completeTask,
-    listOpenThreadNotes,
+    listThreadNotes,
   };
   return {
     client,
@@ -143,7 +143,7 @@ function setup(
     (cache) => {
       cache.setQueryData(queryKeys.threads.open(), [seed]);
       cache.setQueryData(
-        queryKeys.threadNotes.open(seed._id),
+        queryKeys.threadNotes.list(seed._id),
         fake.storedNotes(),
       );
     },
@@ -169,7 +169,7 @@ function setup(
   const open = () =>
     cache.getQueryData<Thread[]>(queryKeys.threads.open())?.[0];
   const notes = () =>
-    cache.getQueryData<ThreadNote[]>(queryKeys.threadNotes.open(seed._id));
+    cache.getQueryData<ThreadNote[]>(queryKeys.threadNotes.list(seed._id));
   return { feedback, wrapper, tasks, unmount, add, open, notes };
 }
 
@@ -205,7 +205,7 @@ describe("completing a Task with a note", () => {
 
     await waitFor(() => expect(task(open(), refill._id)).toBeUndefined());
     expect(notes()).toEqual([
-      expect.objectContaining({ body: "Picked it up", state: "open" }),
+      expect.objectContaining({ body: "Picked it up" }),
     ]);
 
     await act(async () => {

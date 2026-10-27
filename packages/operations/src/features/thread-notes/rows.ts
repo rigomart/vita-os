@@ -14,8 +14,6 @@ import { threadNotes } from "../../platform/sqlite/schema";
 export const THREAD_NOTE_FIELDS = {
   id: threadNotes.id,
   body: threadNotes.body,
-  state: threadNotes.state,
-  completed_at: threadNotes.completed_at,
   created_at: threadNotes.created_at,
   updated_at: threadNotes.updated_at,
 };
@@ -29,8 +27,6 @@ export function toThreadNote(row: ThreadNoteRow): ThreadNote {
   return {
     _id: row.id as ThreadNoteId,
     body: row.body,
-    state: row.state,
-    ...(row.completed_at === null ? {} : { completedAt: row.completed_at }),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

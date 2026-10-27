@@ -95,7 +95,6 @@ export const CompleteNoteBody = v.strictObject({
 });
 export const NoteStateBody = v.strictObject({ state: NoteStateSchema });
 export const ThreadNoteBody = v.strictObject({ body: v.string() });
-export const ThreadNoteStateBody = v.strictObject({ state: NoteStateSchema });
 
 export const AddNoteToThreadBody = v.strictObject({
   threadId: ThreadIdSchema,

@@ -3,9 +3,9 @@ import type {
   Thread,
   ThreadDetail,
   ThreadNote,
-  ThreadNotePage,
 } from "@vita-os/contracts";
 
+import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "./sessions";
@@ -40,7 +40,7 @@ async function capture(
   });
 }
 
-async function openNotes(
+async function threadNotes(
   session: Session,
   thread: Thread,
 ): Promise<ThreadNote[]> {
@@ -48,7 +48,7 @@ async function openNotes(
 }
 
 describe("capturing a Thread Note", () => {
-  it("captures an Open Note inside the Thread and counts as Thread activity", async () => {
+  it("captures a Note inside the Thread and counts as Thread activity", async () => {
     const owner = await createSession("thread-note-capture");
     const thread = await seedThread(owner);
 
@@ -57,7 +57,8 @@ describe("capturing a Thread Note", () => {
       session: owner,
     });
 
-    expect(note).toMatchObject({ body: "Clinic opens at nine", state: "open" });
+    expect(note.body).toBe("Clinic opens at nine");
+    expect(note).not.toHaveProperty("state");
     expect(note).not.toHaveProperty("completedAt");
     expect(note.updatedAt).toBe(note.createdAt);
     expect(detail.thread.lastActivityAt).toEqual(expect.any(Number));
@@ -96,12 +97,12 @@ describe("capturing a Thread Note", () => {
       }),
       { status: 404, code: "not_found", message: "Thread not found." },
     );
-    expect(await openNotes(other, theirs)).toEqual([]);
+    expect(await threadNotes(other, theirs)).toEqual([]);
   });
 });
 
 describe("reading a Thread's Notes", () => {
-  it("reads the Thread's Open Notes, newest first", async () => {
+  it("reads the Thread's Notes, newest first", async () => {
     const owner = await createSession("thread-note-list");
     const thread = await seedThread(owner);
     const other = await seedThread(owner);
@@ -109,7 +110,7 @@ describe("reading a Thread's Notes", () => {
     const second = await capture(owner, thread, "Second");
     await capture(owner, other, "Another Thread's note");
 
-    const notes = await openNotes(owner, thread);
+    const notes = await threadNotes(owner, thread);
 
     expect(notes.map((note) => note._id)).toEqual([second._id, first._id]);
   });
@@ -135,50 +136,27 @@ describe("reading a Thread's Notes", () => {
     });
   });
 
-  it("pages the Thread's Done Notes, bounded and stable", async () => {
-    const owner = await createSession("thread-note-done-page");
+  it("lists a Note completed before Thread Notes lost Complete", async () => {
+    const owner = await createSession("thread-note-stored-done");
     const thread = await seedThread(owner);
-    const completed: string[] = [];
-    for (const body of ["one", "two", "three", "four", "five"]) {
-      const note = await capture(owner, thread, body);
-      await succeed(`/v1/thread-notes/${note._id}/state`, {
-        method: "PATCH",
-        session: owner,
-        body: { state: "done" },
-      });
-      completed.push(note._id);
-    }
+    const open = await capture(owner, thread, "Still open");
+    const doneId = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO thread_notes (id, user_id, thread_id, body, state, completed_at, created_at, updated_at)
+       VALUES (?, ?, ?, 'Completed long ago', 'done', 1600000000500, 1600000000000, 1600000000000)`,
+    )
+      .bind(doneId, owner.actorId, thread._id)
+      .run();
 
-    const seen: string[] = [];
-    let cursor: string | undefined;
-    do {
-      const page = await succeed<ThreadNotePage>(
-        `/v1/threads/${thread._id}/notes/done?limit=2${
-          cursor === undefined ? "" : `&cursor=${encodeURIComponent(cursor)}`
-        }`,
-        { session: owner },
-      );
-      expect(page.entries.length).toBeLessThanOrEqual(2);
-      seen.push(...page.entries.map((note) => note._id));
-      cursor = page.nextCursor;
-    } while (cursor !== undefined);
-
-    expect(seen).toEqual([...completed].reverse());
-    expect(await openNotes(owner, thread)).toEqual([]);
-  });
-
-  it("refuses an unbounded Done page request", async () => {
-    const owner = await createSession("thread-note-page-refusals");
-    const thread = await seedThread(owner);
-
-    for (const query of ["limit=0", "limit=51", "limit=nope"]) {
-      expectError(
-        await call(`/v1/threads/${thread._id}/notes/done?${query}`, {
-          session: owner,
-        }),
-        { status: 400, code: "validation" },
-      );
-    }
+    expect(await threadNotes(owner, thread)).toEqual([
+      open,
+      {
+        _id: doneId,
+        body: "Completed long ago",
+        createdAt: 1600000000000,
+        updatedAt: 1600000000000,
+      },
+    ]);
   });
 });
 
@@ -197,27 +175,6 @@ describe("editing a Thread Note", () => {
     expect(edited.updatedAt).toBeGreaterThanOrEqual(note.updatedAt);
   });
 
-  it("completes and reopens, remembering and then forgetting the completion", async () => {
-    const owner = await createSession("thread-note-done-open");
-    const thread = await seedThread(owner);
-    const note = await capture(owner, thread, "Clinic opens at nine");
-
-    const done = await succeed<ThreadNote>(
-      `/v1/thread-notes/${note._id}/state`,
-      { method: "PATCH", session: owner, body: { state: "done" } },
-    );
-    expect(done.state).toBe("done");
-    expect(done.completedAt).toEqual(expect.any(Number));
-    expect(await openNotes(owner, thread)).toEqual([]);
-
-    const reopened = await succeed<ThreadNote>(
-      `/v1/thread-notes/${note._id}/state`,
-      { method: "PATCH", session: owner, body: { state: "open" } },
-    );
-    expect(reopened).not.toHaveProperty("completedAt");
-    expect(await openNotes(owner, thread)).toHaveLength(1);
-  });
-
   it("discards a Thread Note", async () => {
     const owner = await createSession("thread-note-remove");
     const thread = await seedThread(owner);
@@ -229,7 +186,7 @@ describe("editing a Thread Note", () => {
         session: owner,
       }),
     ).resolves.toEqual({ acknowledged: true });
-    expect(await openNotes(owner, thread)).toEqual([]);
+    expect(await threadNotes(owner, thread)).toEqual([]);
   });
 
   it("refuses every write against another owner's Thread Note", async () => {
@@ -240,7 +197,6 @@ describe("editing a Thread Note", () => {
 
     for (const [path, method, body] of [
       [`/v1/thread-notes/${theirs._id}/body`, "PATCH", { body: "Mine now" }],
-      [`/v1/thread-notes/${theirs._id}/state`, "PATCH", { state: "done" }],
       [`/v1/thread-notes/${theirs._id}`, "DELETE", undefined],
     ] as const) {
       expectError(await call(path, { method, session: owner, body }), {
@@ -250,10 +206,9 @@ describe("editing a Thread Note", () => {
       });
     }
 
-    expect((await openNotes(other, theirThread))[0]).toMatchObject({
+    expect((await threadNotes(other, theirThread))[0]).toMatchObject({
       _id: theirs._id,
       body: "Private",
-      state: "open",
     });
   });
 });

@@ -52,7 +52,6 @@ export function aThreadNote(overrides: Partial<ThreadNote> = {}): ThreadNote {
   return {
     _id: "thread-note-1" as ThreadNoteId,
     body: "Clinic opens at nine",
-    state: "open",
     createdAt: 4_000,
     updatedAt: 4_000,
     ...overrides,

@@ -1,18 +1,9 @@
-import type {
-  PageRequest,
-  ThreadNote,
-  ThreadNotePage,
-} from "@vita-os/contracts";
+import type { ThreadNote } from "@vita-os/contracts";
 
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import type { RequestScope } from "../../platform/request-scope";
 
-import {
-  doneCursor,
-  pageBoundary,
-  toPage,
-} from "../../platform/sqlite/page-cursor";
 import { threadNotes, threads } from "../../platform/sqlite/schema";
 import { THREAD_NOTE_FIELDS, toThreadNote } from "./rows";
 
@@ -43,8 +34,6 @@ export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
           user_id: sql<string>`${actorId}`.as("user_id"),
           thread_id: sql<string>`${threadId}`.as("thread_id"),
           body: sql<string>`${body}`.as("body"),
-          state: sql<ThreadNote["state"]>`'open'`.as("state"),
-          completed_at: sql<null>`NULL`.as("completed_at"),
           created_at: sql<number>`${now}`.as("created_at"),
           updated_at: sql<number>`${now}`.as("updated_at"),
         })
@@ -67,46 +56,14 @@ export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
 
   return {
     prepareInsert,
-    async listOpen(threadId: string): Promise<ThreadNote[]> {
+    /** Every Note of the Thread, newest first. */
+    async list(threadId: string): Promise<ThreadNote[]> {
       const rows = await database
         .select(THREAD_NOTE_FIELDS)
         .from(threadNotes)
-        .where(
-          and(
-            owned,
-            eq(threadNotes.thread_id, threadId),
-            eq(threadNotes.state, "open"),
-          ),
-        )
+        .where(and(owned, eq(threadNotes.thread_id, threadId)))
         .orderBy(desc(threadNotes.created_at), desc(threadNotes.id));
       return rows.map(toThreadNote);
-    },
-
-    /** Throws before reading when the cursor is not one these operations minted. */
-    async readDonePage(
-      threadId: string,
-      page: PageRequest,
-    ): Promise<ThreadNotePage> {
-      const cursor =
-        page.cursor === undefined ? undefined : doneCursor.decode(page.cursor);
-      const rows = await database
-        .select(THREAD_NOTE_FIELDS)
-        .from(threadNotes)
-        .where(
-          and(
-            owned,
-            eq(threadNotes.thread_id, threadId),
-            eq(threadNotes.state, "done"),
-            pageBoundary(threadNotes.completed_at, threadNotes.id, cursor),
-          ),
-        )
-        .orderBy(desc(threadNotes.completed_at), desc(threadNotes.id))
-        .limit(page.limit + 1);
-      return toPage(rows, page.limit, {
-        toEntry: toThreadNote,
-        cursorFor: (note) => ({ at: note.completedAt ?? null, id: note._id }),
-        codec: doneCursor,
-      });
     },
 
     /** Capture and move the Thread activity stamp in one atomic batch. */
@@ -127,15 +84,6 @@ export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
 
     setBody(threadNoteId: string, body: string): Promise<ThreadNote | null> {
       return update(threadNoteId, { body, updated_at: clock.now() });
-    },
-
-    /** Completing and reopening leave the last-edited time alone. */
-    markDone(threadNoteId: string): Promise<ThreadNote | null> {
-      return update(threadNoteId, { state: "done", completed_at: clock.now() });
-    },
-
-    markOpen(threadNoteId: string): Promise<ThreadNote | null> {
-      return update(threadNoteId, { state: "open", completed_at: null });
     },
 
     async remove(threadNoteId: string): Promise<boolean> {

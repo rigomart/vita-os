@@ -1,6 +1,6 @@
 # Notes on the Dashboard, History in the palette, and archived Notes
 
-**Status:** Accepted. Amended by ADR 0037 — the filter row's Notes option stays, set apart after the Areas in one pill group, and the phone dropdown is gone; capture moves from the dock to the header and the bottom bar. Amended by [ADR 0050](./0050-notes-are-completed-not-archived.md) — Notes are completed and reopened, not archived, and History's group is Completed notes.
+**Status:** Accepted. Amended by ADR 0037 — the filter row's Notes option stays, set apart after the Areas in one pill group, and the phone dropdown is gone; capture moves from the dock to the header and the bottom bar. Amended by [ADR 0050](./0050-notes-are-completed-not-archived.md) — Notes are completed and reopened, not archived, and History's group is Completed notes. Amended by [ADR 0049](./0049-thread-notes-are-never-completed.md) — a Thread Note is never archived or completed, and a Thread lists all its Notes in one list.
 **Date:** 2026-10-02
 
 Since ADR 0017 the **Dashboard** shows every open **Standalone Note**, dated ones in their column and undated ones in the margin's **Notes** run. The summoned **Notes** panel (ADR 0012, renamed by ADR 0015) was therefore a second list of the same things, with its own ordering, its own badge, and its own way back to finished Notes. And "Done" was the wrong word for most Notes: a fact or a thought is not completed, it is put away.

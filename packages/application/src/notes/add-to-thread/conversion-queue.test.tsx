@@ -59,7 +59,7 @@ function setup() {
   const queryClient = createTestQueryClient();
   queryClient.setQueryData(queryKeys.notes.open(), [note]);
   queryClient.setQueryData(queryKeys.threads.open(), [thread]);
-  queryClient.setQueryData(queryKeys.threadNotes.open(thread._id), []);
+  queryClient.setQueryData(queryKeys.threadNotes.list(thread._id), []);
   const applicationClient = createQuietApplicationClient({
     addNoteToThread,
     addTask,
@@ -82,7 +82,7 @@ describe("conversion Undo without a Thread lock", () => {
       thread,
     ]);
     expect(
-      queryClient.getQueryData(queryKeys.threadNotes.open(thread._id)),
+      queryClient.getQueryData(queryKeys.threadNotes.list(thread._id)),
     ).toEqual([]);
     expect(addNoteToThread).not.toHaveBeenCalled();
     await act(async () => undo.resolve(true));
@@ -100,7 +100,7 @@ describe("conversion Undo without a Thread lock", () => {
     ]);
     expect(
       queryClient.getQueryData<ThreadNote[]>(
-        queryKeys.threadNotes.open(thread._id),
+        queryKeys.threadNotes.list(thread._id),
       ),
     ).toEqual([threadNote]);
   });

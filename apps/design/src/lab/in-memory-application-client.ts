@@ -165,7 +165,6 @@ export function createInMemoryApplicationClient(
     const threadNote: ThreadNote = {
       _id: newRecordId() as ThreadNoteId,
       body: note.body,
-      state: "open",
       createdAt: note.createdAt,
       updatedAt: note.updatedAt ?? note.createdAt,
     };
@@ -192,7 +191,6 @@ export function createInMemoryApplicationClient(
     const note: ThreadNote = {
       _id: id,
       body,
-      state: "open",
       createdAt: now,
       updatedAt: now,
     };
@@ -200,9 +198,9 @@ export function createInMemoryApplicationClient(
     return note;
   }
 
-  function threadNotesOf(threadId: ThreadId, state: Note["state"]) {
+  function threadNotesOf(threadId: ThreadId) {
     return threadNotes
-      .filter((note) => note.threadId === threadId && note.state === state)
+      .filter((note) => note.threadId === threadId)
       .map(({ threadId: _, ...note }) => note);
   }
 
@@ -637,24 +635,10 @@ export function createInMemoryApplicationClient(
     },
 
     /* Thread Notes */
-    async listOpenThreadNotes({ threadId }) {
+    async listThreadNotes({ threadId }) {
       requireThread(threadId);
       return ok(
-        threadNotesOf(threadId, "open").sort(
-          newestFirst((note) => note.createdAt),
-        ),
-      );
-    },
-
-    async getDoneThreadNotePage({ threadId, ...page }) {
-      requireThread(threadId);
-      return ok(
-        paginate(
-          threadNotesOf(threadId, "done").sort(
-            newestFirst((note) => note.completedAt ?? 0),
-          ),
-          page,
-        ),
+        threadNotesOf(threadId).sort(newestFirst((note) => note.createdAt)),
       );
     },
 
@@ -674,28 +658,6 @@ export function createInMemoryApplicationClient(
           editNote(findThreadNote(threadNoteId), "Thread note", (note) => {
             note.body = text;
             note.updatedAt = clock.now();
-          }),
-        ),
-      );
-    },
-
-    async markThreadNoteDone({ threadNoteId }) {
-      return ok(
-        withoutThreadId(
-          editNote(findThreadNote(threadNoteId), "Thread note", (note) => {
-            note.state = "done";
-            note.completedAt = clock.now();
-          }),
-        ),
-      );
-    },
-
-    async markThreadNoteOpen({ threadNoteId }) {
-      return ok(
-        withoutThreadId(
-          editNote(findThreadNote(threadNoteId), "Thread note", (note) => {
-            note.state = "open";
-            delete note.completedAt;
           }),
         ),
       );

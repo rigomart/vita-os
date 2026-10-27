@@ -10,41 +10,27 @@ import {
   replaceNoteText,
   typeInNote,
 } from "../../test/note-editor";
-import { act, render, screen, within } from "../../test/render-with-providers";
+import { render, screen, within } from "../../test/render-with-providers";
 import { ThreadNotes } from "./thread-notes";
 
-function note(id: string, fields: Partial<ThreadNote> = {}): ThreadNote {
+function note(id: string): ThreadNote {
   return {
     _id: id as ThreadNoteId,
     body: id,
-    state: "open",
     createdAt: 1000,
     updatedAt: 1000,
-    ...fields,
   };
 }
 const actions = () => ({
   onCreate: vi.fn(),
   onUpdateBody: vi.fn(),
-  onToggleArchived: vi.fn(),
   onRemove: vi.fn(),
 });
 
 describe("ThreadNotes", () => {
   it("keeps the space below capture empty while Notes initially load", () => {
-    render(
-      <ThreadNotes
-        notes={undefined}
-        archivedNotes={[]}
-        isArchivedExhausted={false}
-        isArchivedInitialLoading
-        {...actions()}
-      />,
-    );
+    render(<ThreadNotes notes={undefined} {...actions()} />);
     expect(screen.queryByText("Loading Notes…")).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: /completed notes/i }),
-    ).toBeNull();
     expect(screen.getByRole("button", { name: "Write a note…" })).toBeVisible();
     expect(screen.queryByRole("textbox")).toBeNull();
   });
@@ -102,52 +88,18 @@ describe("ThreadNotes", () => {
     );
     expect(screen.queryByRole("dialog")).toBeNull();
   });
-  it("completes a card without opening the view", async () => {
+  it("offers no Complete, on a line or in the Note view", async () => {
     const user = userEvent.setup();
-    const callbacks = actions();
-    const saved = note("Called the clinic");
-    render(<ThreadNotes notes={[saved]} {...callbacks} />);
-    await user.click(screen.getByRole("button", { name: "Complete note" }));
-    expect(callbacks.onToggleArchived).toHaveBeenCalledWith(saved);
-    expect(screen.queryByRole("dialog")).toBeNull();
+    render(<ThreadNotes notes={[note("Called the clinic")]} {...actions()} />);
+    expect(screen.queryByRole("button", { name: /complete/i })).toBeNull();
+    await user.click(
+      screen.getByRole("button", { name: "Open note: Called the clinic" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).queryByRole("button", { name: /complete|reopen/i }),
+    ).toBeNull();
   });
-  for (const index of [0, 1]) {
-    it(`completing the ${index === 0 ? "first" : "last"} card focuses the other card, then capture`, async () => {
-      const user = userEvent.setup();
-      const first = note("First");
-      const second = note("Second");
-      function Notes() {
-        const [notes, setNotes] = useState([first, second]);
-        return (
-          <ThreadNotes
-            notes={notes}
-            {...actions()}
-            onToggleArchived={(note) =>
-              setNotes((notes) =>
-                notes.filter((current) => current._id !== note._id),
-              )
-            }
-          />
-        );
-      }
-      render(<Notes />);
-      const archive = screen.getAllByRole("button", { name: "Complete note" })[
-        index
-      ]!;
-      act(() => archive.focus());
-      await user.keyboard("{Enter}");
-      expect(
-        screen.getByRole("button", {
-          name: `Open note: ${index === 0 ? "Second" : "First"}`,
-        }),
-      ).toHaveFocus();
-      await user.tab();
-      await user.keyboard("{Enter}");
-      expect(
-        screen.getByRole("button", { name: "Write a note…" }),
-      ).toHaveFocus();
-    });
-  }
   it("deleting from the Note view focuses the next card", async () => {
     const user = userEvent.setup();
     function Notes() {
@@ -173,36 +125,5 @@ describe("ThreadNotes", () => {
     expect(
       screen.getByRole("button", { name: "Open note: Second" }),
     ).toHaveFocus();
-  });
-  it("keeps a Note view open when completing removes its card from Open Notes", async () => {
-    const user = userEvent.setup();
-    const callbacks = actions();
-    const saved = note("Consultation");
-    const { rerender } = render(<ThreadNotes notes={[saved]} {...callbacks} />);
-    await user.click(
-      screen.getByRole("button", { name: /Open note: Consultation/ }),
-    );
-    await user.click(screen.getByRole("button", { name: "Complete" }));
-    rerender(
-      <ThreadNotes
-        notes={[]}
-        archivedNotes={[{ ...saved, state: "done", completedAt: 2000 }]}
-        {...callbacks}
-      />,
-    );
-    expect(screen.getByRole("dialog")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Reopen" })).toBeVisible();
-  });
-  it("keeps Completed notes in collapsed history and can reopen them", async () => {
-    const user = userEvent.setup();
-    const callbacks = actions();
-    const done = note("Finished note", { state: "done", completedAt: 2000 });
-    render(<ThreadNotes notes={[]} archivedNotes={[done]} {...callbacks} />);
-    expect(
-      screen.queryByRole("button", { name: /Open note: Finished note/ }),
-    ).toBeNull();
-    await user.click(screen.getByRole("button", { name: /completed notes/i }));
-    await user.click(screen.getByRole("button", { name: "Reopen note" }));
-    expect(callbacks.onToggleArchived).toHaveBeenCalledWith(done);
   });
 });

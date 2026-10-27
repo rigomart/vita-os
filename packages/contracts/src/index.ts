@@ -58,7 +58,6 @@ export type {
   Thread,
   ThreadDetail,
   ThreadNote,
-  ThreadNotePage,
   ThreadState,
 } from "./models";
 export * from "./schemas";

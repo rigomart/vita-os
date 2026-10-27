@@ -56,7 +56,6 @@ describe("in-memory completion with a Note", () => {
       expect(state.threadNotes.get(input.threadId)).toEqual([
         expect.objectContaining({
           body: "Called",
-          state: "open",
           _id: input.note.id,
         }),
       ]);
@@ -72,7 +71,7 @@ describe("in-memory completion with a Note", () => {
       });
       expect(state.threadNotes.get(input.threadId)).toHaveLength(1);
       expect(
-        await client.listOpenThreadNotes({ threadId: input.threadId }),
+        await client.listThreadNotes({ threadId: input.threadId }),
       ).toEqual({ ok: true, value: state.threadNotes.get(input.threadId) });
     },
   );
