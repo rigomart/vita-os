@@ -10,7 +10,13 @@ import {
   replaceNoteText,
   typeInNote,
 } from "../../test/note-editor";
-import { render, screen, within } from "../../test/render-with-providers";
+import {
+  act,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "../../test/render-with-providers";
 import { ThreadNotes } from "./thread-notes";
 
 function note(id: string): ThreadNote {
@@ -100,30 +106,41 @@ describe("ThreadNotes", () => {
       within(dialog).queryByRole("button", { name: /complete|reopen/i }),
     ).toBeNull();
   });
-  it("deleting from the Note view focuses the next card", async () => {
-    const user = userEvent.setup();
-    function Notes() {
-      const [notes, setNotes] = useState([note("First"), note("Second")]);
-      return (
-        <ThreadNotes
-          notes={notes}
-          {...actions()}
-          onRemove={(note) =>
-            setNotes((notes) =>
-              notes.filter((current) => current._id !== note._id),
-            )
-          }
-        />
+  it.each(["at once", "once the view has closed"] as const)(
+    "deleting from the Note view focuses the next line when it goes %s",
+    async (when) => {
+      const user = userEvent.setup();
+      let removeLater = () => {};
+      function Notes() {
+        const [notes, setNotes] = useState([note("First"), note("Second")]);
+        return (
+          <ThreadNotes
+            notes={notes}
+            {...actions()}
+            onRemove={(note) => {
+              const remove = () =>
+                setNotes((notes) =>
+                  notes.filter((current) => current._id !== note._id),
+                );
+              if (when === "at once") remove();
+              else removeLater = remove;
+            }}
+          />
+        );
+      }
+      render(<Notes />);
+      await user.click(
+        screen.getByRole("button", { name: "Open note: First" }),
       );
-    }
-    render(<Notes />);
-    await user.click(screen.getByRole("button", { name: "Open note: First" }));
-    await user.click(screen.getByRole("button", { name: "More actions" }));
-    await user.click(
-      await screen.findByRole("menuitem", { name: "Delete note" }),
-    );
-    expect(
-      screen.getByRole("button", { name: "Open note: Second" }),
-    ).toHaveFocus();
-  });
+      await user.click(screen.getByRole("button", { name: "More actions" }));
+      await user.click(
+        await screen.findByRole("menuitem", { name: "Delete note" }),
+      );
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      act(() => removeLater());
+      expect(
+        screen.getByRole("button", { name: "Open note: Second" }),
+      ).toHaveFocus();
+    },
+  );
 });
