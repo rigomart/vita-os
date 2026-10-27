@@ -69,8 +69,8 @@ export interface NoteDialogProps {
     repeat?: Repeat;
   }) => Promise<void> | void;
   onSave?: (body: string) => Promise<void> | void;
-  /** Archive an Open Note, or unarchive an Archived one. */
-  onToggleArchived?: () => Promise<void> | void;
+  /** Complete an Open Note, or reopen a Completed one. */
+  onToggleCompleted?: () => Promise<void> | void;
   /** Deletes without asking: the owner offers Undo once the view has closed. */
   onDelete?: () => void;
   /** Read as the view closes: the element to focus; null returns focus to the opener. */
@@ -110,7 +110,7 @@ export function NoteDialog({
   threadTitle,
   onSubmit,
   onSave,
-  onToggleArchived,
+  onToggleCompleted,
   onDelete,
   finalFocus,
   onAddToThread,
@@ -155,9 +155,9 @@ export function NoteDialog({
   const saveTask = useGuardedAsyncAction(async (value: string) =>
     onSave?.(value),
   );
-  const archived = note?.state === "done";
-  const toggle = useGuardedAsyncAction(async () => onToggleArchived?.(), {
-    successMessage: archived ? "Note reopened" : "Note completed",
+  const completed = note?.state === "done";
+  const toggle = useGuardedAsyncAction(async () => onToggleCompleted?.(), {
+    successMessage: completed ? "Note reopened" : "Note completed",
   });
   const changeWhen = useGuardedAsyncAction(async (value: number | undefined) =>
     onSetWhen?.(value),
@@ -607,7 +607,7 @@ export function NoteDialog({
                     <CheckIcon />
                     {completeLabel}
                   </Button>
-                ) : note && onToggleArchived ? (
+                ) : note && onToggleCompleted ? (
                   <Button
                     type="button"
                     size="sm"
@@ -618,8 +618,8 @@ export function NoteDialog({
                       void toggle.run();
                     }}
                   >
-                    {archived ? <RotateCcwIcon /> : <CheckIcon />}
-                    {archived ? "Reopen" : "Complete"}
+                    {completed ? <RotateCcwIcon /> : <CheckIcon />}
+                    {completed ? "Reopen" : "Complete"}
                   </Button>
                 ) : null}
               </div>

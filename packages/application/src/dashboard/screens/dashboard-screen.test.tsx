@@ -80,8 +80,8 @@ vi.mock("../../threads/use-tasks", () => ({
 vi.mock("../../threads/use-update-thread", () => ({
   useUpdateThread: () => vi.fn(),
 }));
-vi.mock("../../notes/use-archive-note", () => ({
-  useArchiveNote: () => vi.fn(),
+vi.mock("../../notes/use-mark-note-done", () => ({
+  useMarkNoteDone: () => vi.fn(),
 }));
 vi.mock("../../notes/use-update-note-body", () => ({
   useUpdateNoteBody: () => vi.fn(),

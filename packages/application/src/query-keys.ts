@@ -27,7 +27,7 @@ export const queryKeys = {
   notes: {
     all: ["notes"] as const,
     open: () => ["notes", "open"] as const,
-    /** Archived Notes, stored as Done: one page size and search per read. */
+    /** Completed Notes, stored as Done: one page size and search per read. */
     done: (limit: number, query = "") =>
       ["notes", "done", limit, query] as const,
     doneAll: () => ["notes", "done"] as const,

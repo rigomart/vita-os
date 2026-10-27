@@ -71,17 +71,17 @@ export {
 } from "./areas/hooks";
 export type { ApplicationMutationResult } from "./cache/use-application-mutation";
 export {
-  useArchivedNotes,
-  useArchiveNote,
+  useCompletedNotes,
+  useMarkNoteDone,
   useCaptureNote,
   useCompleteNote,
   useDiscardNote,
   useOpenNotes,
   useSetNoteRepeat,
-  useUnarchiveNote,
+  useMarkNoteOpen,
   useUpdateNoteFollowUp,
   useUpdateNoteBody,
-  type ArchivedNotesResult,
+  type CompletedNotesResult,
   type CaptureNoteVariables,
 } from "./notes/hooks";
 export { queryKeys, threadQueryKeys } from "./query-keys";

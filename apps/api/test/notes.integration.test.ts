@@ -374,8 +374,8 @@ describe("Done and Open history", () => {
   });
 });
 
-describe("searching Archived Notes", () => {
-  async function archive(session: Session, body: string): Promise<Note> {
+describe("searching Completed Notes", () => {
+  async function markDone(session: Session, body: string): Promise<Note> {
     const note = await capture(session, body);
     return succeed<Note>(`/v1/notes/${note._id}/state`, {
       method: "PATCH",
@@ -392,11 +392,11 @@ describe("searching Archived Notes", () => {
     return page;
   }
 
-  it("finds bodies containing every word, in any order or case, newest archive first", async () => {
+  it("finds bodies containing every word, in any order or case, most recently completed first", async () => {
     const owner = await createSession("note-search-words");
-    const milk = await archive(owner, "Buy milk and EGGS");
-    await archive(owner, "Buy bread");
-    const later = await archive(owner, "eggs, then milk");
+    const milk = await markDone(owner, "Buy milk and EGGS");
+    await markDone(owner, "Buy bread");
+    const later = await markDone(owner, "eggs, then milk");
     await capture(owner, "Open milk eggs note");
 
     const page = await search(owner, "  eggs   milk ");
@@ -407,12 +407,12 @@ describe("searching Archived Notes", () => {
 
   it("matches %, _ and the escape character literally", async () => {
     const owner = await createSession("note-search-escaping");
-    const percent = await archive(owner, "Rent up 50% this year");
-    await archive(owner, "Rent up 500 this year");
-    const underscore = await archive(owner, "file_name.txt");
-    await archive(owner, "filename.txt");
-    const backslash = await archive(owner, "C:\\temp\\notes");
-    await archive(owner, "C:/temp/notes");
+    const percent = await markDone(owner, "Rent up 50% this year");
+    await markDone(owner, "Rent up 500 this year");
+    const underscore = await markDone(owner, "file_name.txt");
+    await markDone(owner, "filename.txt");
+    const backslash = await markDone(owner, "C:\\temp\\notes");
+    await markDone(owner, "C:/temp/notes");
 
     expect((await search(owner, "50%")).entries.map((n) => n._id)).toEqual([
       percent._id,
@@ -425,22 +425,22 @@ describe("searching Archived Notes", () => {
     ]);
   });
 
-  it("searches only the actor's Archived Notes", async () => {
+  it("searches only the actor's Completed Notes", async () => {
     const owner = await createSession("note-search-owner");
     const other = await createSession("note-search-other");
-    const mine = await archive(owner, "Passport renewal receipt");
-    await archive(other, "Passport renewal receipt");
+    const mine = await markDone(owner, "Passport renewal receipt");
+    await markDone(other, "Passport renewal receipt");
 
     expect((await search(owner, "passport")).entries.map((n) => n._id)).toEqual(
       [mine._id],
     );
   });
 
-  it("pages a search across every Archived Note, not only the first page", async () => {
+  it("pages a search across every Completed Note, not only the first page", async () => {
     const owner = await createSession("note-search-pages");
-    const match = await archive(owner, "The oldest needle");
+    const match = await markDone(owner, "The oldest needle");
     for (let index = 0; index < 4; index += 1) {
-      await archive(owner, `Haystack ${index}`);
+      await markDone(owner, `Haystack ${index}`);
     }
 
     const first = await search(owner, "needle", 2);
@@ -686,7 +686,7 @@ describe("repeating Notes", () => {
     expect(
       await storage.schedule(read, { followUp: nov5 + 86_400_000 }),
     ).toBeNull();
-    // ...and archives it.
+    // ...and completes it.
     const fresh = (await storage.find(note._id))!;
     await succeed(`/v1/notes/${note._id}/state`, {
       method: "PATCH",

@@ -128,7 +128,7 @@ describe("the last Dashboard Note", () => {
       pending.resolve(
         failure({
           code: "unexpected",
-          message: "Could not archive note",
+          message: "Could not complete note",
           retryable: false,
         }),
       );

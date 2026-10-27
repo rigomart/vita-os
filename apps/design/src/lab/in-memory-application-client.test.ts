@@ -129,7 +129,7 @@ describe("in-memory application client", () => {
     ).toEqual([thread._id]);
   });
 
-  it("pages and searches Archived Notes", async () => {
+  it("pages and searches Completed Notes", async () => {
     const client = createInMemoryApplicationClient();
     for (const body of ["Buy milk", "Buy bread", "Call Sam"]) {
       const note = value(await client.createNote({ body }));

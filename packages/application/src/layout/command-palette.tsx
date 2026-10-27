@@ -25,7 +25,7 @@ import { useAreas } from "../areas/hooks";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { clock } from "../lib/clock";
 import { NOTES_FILTER, withDashboardFilter } from "../navigation/search-params";
-import { useArchivedNotes } from "../notes/hooks";
+import { useCompletedNotes } from "../notes/hooks";
 import { useOpenThreads, useResolvedThreads } from "../threads/hooks";
 import {
   CommandDialog,
@@ -43,21 +43,20 @@ interface CommandPaletteProps {
   onNewNote: () => void;
   onNewThread: () => void;
   onManageAreas: () => void;
-  /** Read an Archived Note chosen from History over the current page. */
+  /** Read a Completed Note chosen from History over the current page. */
   onOpenNote: (note: Note) => void;
 }
 
-/** How long typing settles before History searches Archived Notes. */
-const ARCHIVED_SEARCH_DELAY = 250;
+const COMPLETED_SEARCH_DELAY = 250;
 
-// Equal History scores retain the API's order when searching. Archived Notes
+// Equal History scores retain the API's order when searching. Completed Notes
 // are searched on the service; the same rule here narrows what is already on
 // screen while that answer is on its way.
 function paletteFilter(value: string, search: string, keywords?: string[]) {
   if (value.startsWith("resolved-thread-")) {
     return defaultFilter((keywords ?? []).join(" "), search) > 0 ? 1 : 0;
   }
-  if (value.startsWith("archived-note-")) {
+  if (value.startsWith("completed-note-")) {
     return matchesNoteSearch((keywords ?? []).join(" "), search) ? 1 : 0;
   }
   const score = defaultFilter(value, search, keywords);
@@ -84,25 +83,25 @@ export function CommandPalette({
   const threads = useOpenThreads({ enabled: open }).data;
   const [search, setSearch] = useState("");
   const [showHistory, setShowHistory] = useState(false);
-  const archivedSearch = useDebouncedValue(
+  const completedSearch = useDebouncedValue(
     boundNoteSearch(search),
-    ARCHIVED_SEARCH_DELAY,
+    COMPLETED_SEARCH_DELAY,
   );
   const inputRef = useRef<HTMLInputElement>(null);
   const resolvedQuery = useResolvedThreads({ enabled: open && showHistory });
-  const archivedQuery = useArchivedNotes({
-    query: archivedSearch,
+  const completedQuery = useCompletedNotes({
+    query: completedSearch,
     enabled: open && showHistory,
   });
   const visibleThreads = showHistory ? resolvedQuery.data : threads;
-  const archivedNotes = showHistory ? archivedQuery.notes : [];
+  const completedNotes = showHistory ? completedQuery.notes : [];
   // Pagination belongs to the settled search, never the previous results
   // retained while a new search is on its way. Empty History stays one page.
-  const canLoadMoreArchived =
-    archivedSearch !== "" &&
-    archivedSearch === boundNoteSearch(search) &&
-    !archivedQuery.isPlaceholderData &&
-    archivedQuery.hasNextPage;
+  const canLoadMoreCompleted =
+    completedSearch !== "" &&
+    completedSearch === boundNoteSearch(search) &&
+    !completedQuery.isPlaceholderData &&
+    completedQuery.hasNextPage;
   useEffect(() => {
     inputRef.current?.focus();
   }, [showHistory]);
@@ -127,7 +126,7 @@ export function CommandPalette({
   const filterBy = (filter: Parameters<typeof withDashboardFilter>[0]) =>
     run(() => navigate({ to: "/", search: withDashboardFilter(filter) }));
   const historyLoading =
-    showHistory && (resolvedQuery.isPending || archivedQuery.isPending);
+    showHistory && (resolvedQuery.isPending || completedQuery.isPending);
 
   return (
     <CommandDialog
@@ -223,37 +222,37 @@ export function CommandPalette({
         </CommandGroup>
         {showHistory && (
           <CommandGroup heading="Completed notes">
-            {archivedNotes.map((note) => (
-              <ArchivedNoteItem
+            {completedNotes.map((note) => (
+              <CompletedNoteItem
                 key={note._id}
                 note={note}
                 onSelect={() => run(() => onOpenNote(note))}
               />
             ))}
-            {canLoadMoreArchived && (
+            {canLoadMoreCompleted && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="mt-1 w-full"
                 aria-label="Load more completed notes"
-                aria-busy={archivedQuery.isFetching || undefined}
-                disabled={archivedQuery.isFetching}
+                aria-busy={completedQuery.isFetching || undefined}
+                disabled={completedQuery.isFetching}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ")
                     event.stopPropagation();
                 }}
                 onClick={() => {
-                  if (archivedQuery.isFetching) return;
+                  if (completedQuery.isFetching) return;
                   inputRef.current?.focus();
-                  void archivedQuery.fetchNextPage();
+                  void completedQuery.fetchNextPage();
                 }}
               >
-                {archivedQuery.isFetching ? (
+                {completedQuery.isFetching ? (
                   <Loader2 className="animate-spin" />
                 ) : (
                   <Plus />
                 )}
-                {archivedQuery.isFetching
+                {completedQuery.isFetching
                   ? "Loading…"
                   : "Load more completed notes"}
               </Button>
@@ -332,8 +331,7 @@ export function CommandPalette({
   );
 }
 
-/** An Archived Note in History: one line of its text and when it was archived. */
-function ArchivedNoteItem({
+function CompletedNoteItem({
   note,
   onSelect,
 }: {
@@ -341,24 +339,24 @@ function ArchivedNoteItem({
   onSelect: () => void;
 }) {
   const preview = markdownToPlainText(note.body).replace(/\s+/g, " ").trim();
-  const archivedAt =
+  const completedAt =
     note.completedAt === undefined ? undefined : new Date(note.completedAt);
   return (
     <CommandItem
-      value={`archived-note-${note._id}`}
+      value={`completed-note-${note._id}`}
       keywords={[note.body]}
       onSelect={onSelect}
     >
       <StickyNote />
       <span className="min-w-0 flex-1 truncate">{preview}</span>
-      {archivedAt && (
+      {completedAt && (
         <time
-          dateTime={archivedAt.toISOString()}
+          dateTime={completedAt.toISOString()}
           className="shrink-0 text-xs text-muted-foreground"
         >
           {format(
-            archivedAt,
-            isSameYear(archivedAt, clock.now()) ? "MMM d" : "MMM d, yyyy",
+            completedAt,
+            isSameYear(completedAt, clock.now()) ? "MMM d" : "MMM d, yyyy",
           )}
         </time>
       )}

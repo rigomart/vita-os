@@ -56,8 +56,8 @@ vi.mock("../../threads/use-tasks", () => ({
 vi.mock("../../threads/use-update-thread", () => ({
   useUpdateThread: () => vi.fn(),
 }));
-vi.mock("../../notes/use-archive-note", () => ({
-  useArchiveNote: () => vi.fn(),
+vi.mock("../../notes/use-mark-note-done", () => ({
+  useMarkNoteDone: () => vi.fn(),
 }));
 vi.mock("../../notes/use-complete-note", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../notes/use-complete-note")>()),

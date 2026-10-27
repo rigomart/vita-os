@@ -795,7 +795,7 @@ export function describeApplicationClient(
         expect(completed.followUp).toBeLessThan(today + 32 * day);
       });
 
-      it("keeps the date and Repeat while archived, and refuses to complete an archived Note", async () => {
+      it("keeps the date and Repeat while completed, and refuses to complete a completed Note", async () => {
         const client = await newClient();
         const note = await value(
           client.createNote({ body: "Pay the utility bill", followUp: nov5 }),
@@ -808,8 +808,8 @@ export function describeApplicationClient(
           }),
         );
 
-        const archived = await value(client.markNoteDone({ noteId: note._id }));
-        expect(archived).toMatchObject({
+        const done = await value(client.markNoteDone({ noteId: note._id }));
+        expect(done).toMatchObject({
           state: "done",
           followUp: nov5,
           repeat: monthly5,
@@ -822,10 +822,8 @@ export function describeApplicationClient(
           }),
         ).resolves.toMatchObject({ ok: false, error: { code: "not_found" } });
 
-        const unarchived = await value(
-          client.markNoteOpen({ noteId: note._id }),
-        );
-        expect(unarchived).toMatchObject({
+        const reopened = await value(client.markNoteOpen({ noteId: note._id }));
+        expect(reopened).toMatchObject({
           state: "open",
           followUp: nov5,
           repeat: monthly5,

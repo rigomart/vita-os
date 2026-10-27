@@ -14,14 +14,14 @@ import {
 import { aNote } from "../test/fixtures";
 import { createHarness } from "../test/harness";
 import {
-  useArchivedNotes,
-  useArchiveNote,
+  useCompletedNotes,
+  useMarkNoteDone,
   useCaptureNote,
   useCompleteNote,
   useDiscardNote,
   useOpenNotes,
   useSetNoteRepeat,
-  useUnarchiveNote,
+  useMarkNoteOpen,
   useUpdateNoteFollowUp,
   useUpdateNoteBody,
 } from "./hooks";
@@ -58,9 +58,9 @@ describe("reading Notes", () => {
     await waitFor(() => expect(result.current.data).toEqual([note, older]));
   });
 
-  it("searches Archived Notes on the service, within its bounds", async () => {
+  it("searches Completed Notes on the service, within its bounds", async () => {
     const match = aNote({
-      _id: "archived-1" as NoteId,
+      _id: "completed-1" as NoteId,
       state: "done",
       completedAt: 9,
     });
@@ -74,7 +74,7 @@ describe("reading Notes", () => {
     const { wrapper } = createHarness(client);
 
     const { result, rerender } = renderHook(
-      ({ query }: { query: string }) => useArchivedNotes({ query, limit: 5 }),
+      ({ query }: { query: string }) => useCompletedNotes({ query, limit: 5 }),
       { wrapper, initialProps: { query: "" } },
     );
     await waitFor(() => expect(result.current.notes).toEqual([match]));
@@ -97,7 +97,7 @@ describe("reading Notes", () => {
     });
     const { wrapper } = createHarness(client);
 
-    const { result } = renderHook(() => useArchivedNotes({ enabled: false }), {
+    const { result } = renderHook(() => useCompletedNotes({ enabled: false }), {
       wrapper,
     });
 
@@ -105,7 +105,7 @@ describe("reading Notes", () => {
     expect(calls).toBe(0);
   });
 
-  it("keeps the Archived Notes already read while reading more", async () => {
+  it("keeps the Completed Notes already read while reading more", async () => {
     const first = aNote({
       _id: "done-1" as NoteId,
       state: "done",
@@ -124,7 +124,7 @@ describe("reading Notes", () => {
     });
     const { wrapper } = createHarness(client);
 
-    const { result } = renderHook(() => useArchivedNotes({ limit: 1 }), {
+    const { result } = renderHook(() => useCompletedNotes({ limit: 1 }), {
       wrapper,
     });
 
@@ -226,8 +226,8 @@ describe("a repeating Note", () => {
   const monthly = { kind: "monthly", day: 5 } as const;
   const repeating = aNote({ followUp: nov5, repeat: monthly });
 
-  it("clears its Repeat with its date, open or archived", async () => {
-    const archived = aNote({
+  it("clears its Repeat with its date, open or completed", async () => {
+    const completedNote = aNote({
       _id: "note-done" as NoteId,
       state: "done",
       completedAt: 9,
@@ -242,7 +242,7 @@ describe("a repeating Note", () => {
     const { wrapper, cache } = createHarness(client, (seeded) => {
       seeded.setQueryData(queryKeys.notes.open(), [repeating]);
       seeded.setQueryData(doneKey, {
-        pages: [{ entries: [archived] }],
+        pages: [{ entries: [completedNote] }],
         pageParams: [undefined],
       });
     });
@@ -255,7 +255,7 @@ describe("a repeating Note", () => {
         timeZone: "UTC",
       });
       result.current.mutate({
-        noteId: archived._id,
+        noteId: completedNote._id,
         followUp: null,
         timeZone: "UTC",
       });
@@ -370,11 +370,11 @@ describe("a repeating Note", () => {
   });
 });
 
-describe("archiving, unarchiving, and discarding", () => {
+describe("completing, reopening, and discarding", () => {
   it.each([
-    ["an archived", true],
+    ["a completed", true],
     ["a discarded", false],
-  ] as const)("%s Note leaves the Open Notes", async (_label, archive) => {
+  ] as const)("%s Note leaves the Open Notes", async (_label, markDone) => {
     const client = createFakeApplicationClient({
       markNoteDone: async () =>
         success({ ...note, state: "done" as const, completedAt: 9 }),
@@ -385,20 +385,20 @@ describe("archiving, unarchiving, and discarding", () => {
       seedOpenNotes([note, older]),
     );
     const { result } = renderHook(
-      () => ({ archive: useArchiveNote(), discard: useDiscardNote() }),
+      () => ({ markDone: useMarkNoteDone(), discard: useDiscardNote() }),
       { wrapper },
     );
 
     await act(async () => {
-      await (archive
-        ? result.current.archive.mutateAsync({ noteId: note._id })
+      await (markDone
+        ? result.current.markDone.mutateAsync({ noteId: note._id })
         : result.current.discard.mutateAsync({ noteId: note._id }));
     });
 
     expect(cache.getQueryData(queryKeys.notes.open())).toEqual([older]);
   });
 
-  it("puts an unarchived Note back in creation order", async () => {
+  it("puts a reopened Note back in creation order", async () => {
     const done = aNote({
       _id: "note-done" as NoteId,
       state: "done",
@@ -412,7 +412,7 @@ describe("archiving, unarchiving, and discarding", () => {
       client,
       seedOpenNotes([note, older]),
     );
-    const { result } = renderHook(() => useUnarchiveNote(), { wrapper });
+    const { result } = renderHook(() => useMarkNoteOpen(), { wrapper });
 
     await act(async () => {
       await result.current.mutateAsync({ note: done });
@@ -427,7 +427,7 @@ describe("archiving, unarchiving, and discarding", () => {
     expect(notes?.[1]).toMatchObject({ state: "open", completedAt: undefined });
   });
 
-  it("puts the Open Notes back when archiving fails", async () => {
+  it("puts the Open Notes back when completing fails", async () => {
     const client = createFakeApplicationClient({
       markNoteDone: async () => ({ ok: false, error: unavailable }),
       listOpenNotes: async () => success([note, older]),
@@ -436,7 +436,7 @@ describe("archiving, unarchiving, and discarding", () => {
       client,
       seedOpenNotes([note, older]),
     );
-    const { result } = renderHook(() => useArchiveNote(), { wrapper });
+    const { result } = renderHook(() => useMarkNoteDone(), { wrapper });
 
     await act(async () => {
       await result.current
@@ -449,8 +449,8 @@ describe("archiving, unarchiving, and discarding", () => {
   });
 });
 
-describe("Archived Note optimistic changes", () => {
-  it.each(["edit", "unarchive", "discard"] as const)(
+describe("Completed Note optimistic changes", () => {
+  it.each(["edit", "reopen", "discard"] as const)(
     "updates cached history for %s and restores it on failure",
     async (operation) => {
       const done = aNote({ state: "done", completedAt: 5000 });
@@ -471,7 +471,7 @@ describe("Archived Note optimistic changes", () => {
       const { result } = renderHook(
         () => ({
           edit: useUpdateNoteBody(),
-          unarchive: useUnarchiveNote(),
+          reopen: useMarkNoteOpen(),
           discard: useDiscardNote(),
         }),
         { wrapper },
@@ -479,8 +479,8 @@ describe("Archived Note optimistic changes", () => {
       act(() => {
         if (operation === "edit")
           result.current.edit.mutate({ noteId: done._id, body: "Changed" });
-        else if (operation === "unarchive")
-          result.current.unarchive.mutate({ note: done });
+        else if (operation === "reopen")
+          result.current.reopen.mutate({ note: done });
         else result.current.discard.mutate({ noteId: done._id });
       });
       await waitFor(() => {

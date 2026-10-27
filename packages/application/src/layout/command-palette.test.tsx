@@ -62,7 +62,7 @@ const olderResolvedThread = {
   slug: "sister-older",
 } satisfies Thread;
 
-function archived(id: string, body: string, completedAt: number): Note {
+function completedNote(id: string, body: string, completedAt: number): Note {
   return {
     _id: id as NoteId,
     body,
@@ -73,20 +73,19 @@ function archived(id: string, body: string, completedAt: number): Note {
   };
 }
 
-const recentArchived = archived(
-  "archived-recent",
+const recentCompleted = completedNote(
+  "completed-recent",
   "# Gate code\n**4471** for the side gate",
   new Date(new Date().getFullYear(), 0, 2).getTime(),
 );
 /** Older than the first page holds: only a search reaches it. */
-const oldArchived = archived(
-  "archived-old",
+const oldCompleted = completedNote(
+  "completed-old",
   "Passport photo sizes: 35x45mm",
   new Date(2025, 0, 5).getTime(),
 );
 
-/** The archived-notes reads History made, in order. */
-const archivedReads: DoneNotePageRequest[] = [];
+const completedReads: DoneNotePageRequest[] = [];
 
 const navigate = vi.hoisted(() => vi.fn());
 /** The search the shell and palette read, so a test can put a filter on. */
@@ -153,14 +152,14 @@ function renderShell() {
     </AppShell>,
     {
       applicationClient: createQuietApplicationClient({
-        // The service searches every Archived Note; without a search it
+        // The service searches every Completed Note; without a search it
         // answers its first page, which holds only the most recent one.
         getDoneNotePage: async (request) => {
-          archivedReads.push(request);
+          completedReads.push(request);
           const entries =
             request.query === undefined
-              ? [recentArchived]
-              : [recentArchived, oldArchived].filter((note) =>
+              ? [recentCompleted]
+              : [recentCompleted, oldCompleted].filter((note) =>
                   matchesNoteSearch(note.body, request.query ?? ""),
                 );
           return { ok: true, value: { entries } };
@@ -195,7 +194,7 @@ describe("CommandPalette", () => {
   beforeEach(() => {
     navigate.mockClear();
     search.value = {};
-    archivedReads.length = 0;
+    completedReads.length = 0;
   });
 
   it("lists threads first, then filters, and create actions last", async () => {
@@ -238,7 +237,7 @@ describe("CommandPalette", () => {
     expect(
       screen.queryByRole("option", { name: /Sister's checkup/ }),
     ).not.toBeInTheDocument();
-    expect(archivedReads).toEqual([]);
+    expect(completedReads).toEqual([]);
 
     const input = screen.getByPlaceholderText(PLACEHOLDER);
     await user.type(input, "Sister");
@@ -264,7 +263,7 @@ describe("CommandPalette", () => {
     ).toEqual(["Resolved threads", "Completed notes"]);
   });
 
-  it("searches every Archived Note on the service, past the first page", async () => {
+  it("searches every Completed Note on the service, past the first page", async () => {
     const user = userEvent.setup();
     renderShell();
     await openPalette(user);
@@ -283,7 +282,7 @@ describe("CommandPalette", () => {
       screen.queryByRole("option", { name: /Gate code/ }),
     ).not.toBeInTheDocument();
     // Debounced: one read for the settled search, none per keystroke.
-    expect(archivedReads.map((read) => read.query)).toEqual([
+    expect(completedReads.map((read) => read.query)).toEqual([
       undefined,
       "35x45mm passport",
     ]);
@@ -292,7 +291,7 @@ describe("CommandPalette", () => {
   it("loads further search matches and opens an older identical Note", async () => {
     const user = userEvent.setup();
     const notes = Array.from({ length: 21 }, (_, index) =>
-      archived(
+      completedNote(
         `receipt-${index}`,
         "Rent payment receipt",
         new Date(2025, 0, 21 - index).getTime(),
@@ -385,8 +384,8 @@ describe("CommandPalette", () => {
       "resolved",
       "thread",
       "resolved1",
-      "archived",
-      "archived-recent",
+      "completed",
+      "completed-recent",
     ]) {
       await user.clear(input);
       await user.type(input, query);

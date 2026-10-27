@@ -33,16 +33,16 @@ import {
   showNoteDates,
   showNoteEdit,
   showNoteLeavingOpenNotes,
-  showUnarchivedNote,
+  showReopenedNote,
 } from "./optimistic";
 
-const ARCHIVED_PAGE_SIZE = 20;
+const COMPLETED_PAGE_SIZE = 20;
 
 /**
  * Every Open Note, newest first.
  *
  * Read whole rather than paged: an Open Note is one the person still has to deal
- * with, so this is the set they have agreed to look at. Archived Notes grow
+ * with, so this is the set they have agreed to look at. Completed Notes grow
  * without limit and are paged instead.
  */
 export function useOpenNotes(): UseQueryResult<Note[], ApplicationError> {
@@ -52,20 +52,20 @@ export function useOpenNotes(): UseQueryResult<Note[], ApplicationError> {
   });
 }
 
-export type ArchivedNotesResult = PagedResult<Note> & {
+export type CompletedNotesResult = PagedResult<Note> & {
   /** The same entries, named for what they are on this surface. */
   notes: Note[];
 };
 
 /**
- * Archived Notes, most recently archived first: one bounded page, narrowed on
+ * Completed Notes, most recently completed first: one bounded page, narrowed on
  * the service to the bodies containing every word of `query`. The service
  * stores them as Done.
  */
-export function useArchivedNotes(
+export function useCompletedNotes(
   options: { query?: string; limit?: number; enabled?: boolean } = {},
-): ArchivedNotesResult {
-  const limit = options.limit ?? ARCHIVED_PAGE_SIZE;
+): CompletedNotesResult {
+  const limit = options.limit ?? COMPLETED_PAGE_SIZE;
   const query = boundNoteSearch(options.query ?? "");
   const page = usePagedApplicationQuery<Note>({
     queryKey: queryKeys.notes.done(limit, query),
@@ -230,8 +230,8 @@ export function useCompleteNote(): ApplicationMutationResult<
   });
 }
 
-/** Archiving is the stored Done state: the Note leaves the board for History. */
-export function useArchiveNote(): ApplicationMutationResult<
+/** Completing is the stored Done state: the Note leaves the board for History. */
+export function useMarkNoteDone(): ApplicationMutationResult<
   { noteId: NoteId },
   Note
 > {
@@ -245,8 +245,8 @@ export function useArchiveNote(): ApplicationMutationResult<
   });
 }
 
-/** Unarchiving needs the whole Note: it is not in the open list to rebuild from. */
-export function useUnarchiveNote(): ApplicationMutationResult<
+/** Reopening needs the whole Note: it is not in the open list to rebuild from. */
+export function useMarkNoteOpen(): ApplicationMutationResult<
   { note: Note },
   Note
 > {
@@ -259,7 +259,7 @@ export function useUnarchiveNote(): ApplicationMutationResult<
         noteKeys(),
         [input.note._id],
         ["state", "completedAt"],
-        () => showUnarchivedNote(cache, input.note),
+        () => showReopenedNote(cache, input.note),
       ),
   });
 }

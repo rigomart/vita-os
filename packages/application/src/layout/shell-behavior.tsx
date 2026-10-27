@@ -65,7 +65,6 @@ export function ShellBehavior({ children }: { children: ReactNode }) {
   const dialogs = useCreateDialogs();
   const openThreadInPlace = useOpenThreadInPlace();
   const [paletteOpen, setPaletteOpen] = useState(false);
-  // An Archived Note chosen from the palette's History, read over the page.
   const [historyNote, setHistoryNote] = useState<Note | null>(null);
   const areas = useAreas().data;
 

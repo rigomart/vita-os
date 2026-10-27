@@ -1,7 +1,7 @@
 import { ValidationError } from "./errors";
 
 /**
- * Searching Archived Notes by what they say.
+ * Searching Completed Notes by what they say.
  *
  * A search is a few words, and a Note matches when its body contains every one
  * of them, in any order and any case. The bounds keep a search one bounded
