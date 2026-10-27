@@ -78,7 +78,7 @@ export function DashboardOverview({
                   Nothing is asking for you.
                 </p>
                 <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                  Every Thread is resolved and every Note is archived.
+                  Every Thread is resolved and every Note is completed.
                 </p>
               </>
             ) : (
