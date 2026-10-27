@@ -9,7 +9,7 @@ import {
   noteSearchTerms,
 } from "./note-search";
 
-describe("archived Note search terms", () => {
+describe("Completed Note search terms", () => {
   it("splits a search into distinct words", () => {
     expect(noteSearchTerms("  milk   eggs milk ")).toEqual(["milk", "eggs"]);
   });

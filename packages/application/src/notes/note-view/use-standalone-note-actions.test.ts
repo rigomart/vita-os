@@ -6,19 +6,19 @@ import { act, renderHook } from "../../test/render-with-providers";
 import { useStandaloneNoteActions } from "./use-standalone-note-actions";
 
 const mocks = vi.hoisted(() => ({
-  archiveNote: vi.fn(),
-  unarchiveNote: vi.fn(),
+  markNoteDone: vi.fn(),
+  markNoteOpen: vi.fn(),
   removeNote: vi.fn(),
   updateNoteBody: vi.fn(),
   updateNoteWhen: vi.fn(),
 }));
 
-vi.mock("../use-archive-note", () => ({
-  useArchiveNote: () => mocks.archiveNote,
+vi.mock("../use-mark-note-done", () => ({
+  useMarkNoteDone: () => mocks.markNoteDone,
 }));
 
-vi.mock("../use-unarchive-note", () => ({
-  useUnarchiveNote: () => mocks.unarchiveNote,
+vi.mock("../use-mark-note-open", () => ({
+  useMarkNoteOpen: () => mocks.markNoteOpen,
 }));
 
 vi.mock("../use-remove-note", () => ({
@@ -40,7 +40,7 @@ const openNote = {
   createdAt: Date.now(),
 } satisfies Note;
 
-const archivedNote = {
+const completedNote = {
   ...openNote,
   state: "done",
   completedAt: Date.now(),
@@ -64,21 +64,23 @@ describe("useStandaloneNoteActions", () => {
     expect(feedback.error).not.toHaveBeenCalled();
   });
 
-  it("archives an Open Note", async () => {
+  it("completes an Open Note", async () => {
     const { result } = renderHook(() => useStandaloneNoteActions(openNote));
 
-    await act(() => result.current.toggleArchived());
+    await act(() => result.current.toggleCompleted());
 
-    expect(mocks.archiveNote).toHaveBeenCalledExactlyOnceWith("note1");
-    expect(mocks.unarchiveNote).not.toHaveBeenCalled();
+    expect(mocks.markNoteDone).toHaveBeenCalledExactlyOnceWith("note1");
+    expect(mocks.markNoteOpen).not.toHaveBeenCalled();
   });
 
-  it("unarchives an Archived Note with the whole record", async () => {
-    const { result } = renderHook(() => useStandaloneNoteActions(archivedNote));
+  it("reopens a Completed Note with the whole record", async () => {
+    const { result } = renderHook(() =>
+      useStandaloneNoteActions(completedNote),
+    );
 
-    await act(() => result.current.toggleArchived());
+    await act(() => result.current.toggleCompleted());
 
-    expect(mocks.unarchiveNote).toHaveBeenCalledExactlyOnceWith(archivedNote);
-    expect(mocks.archiveNote).not.toHaveBeenCalled();
+    expect(mocks.markNoteOpen).toHaveBeenCalledExactlyOnceWith(completedNote);
+    expect(mocks.markNoteDone).not.toHaveBeenCalled();
   });
 });

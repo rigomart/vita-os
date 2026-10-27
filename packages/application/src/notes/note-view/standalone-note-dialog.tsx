@@ -39,8 +39,8 @@ export function StandaloneNoteDialog({
           const updated = await actions.saveBody(body);
           setSavedNote(updated);
         }}
-        onToggleArchived={async () => {
-          const updated = await actions.toggleArchived();
+        onToggleCompleted={async () => {
+          const updated = await actions.toggleCompleted();
           setSavedNote(updated);
         }}
         onDelete={() => void deleteWithUndo(actions.deleteNote)}

@@ -48,8 +48,8 @@ const thread = {
   createdAt: 0,
 } satisfies Thread;
 
-const archivedNote = {
-  _id: "note-archived" as NoteId,
+const completedNote = {
+  _id: "note-completed" as NoteId,
   body: "Passport photo sizes",
   state: "done" as const,
   completedAt: 1,
@@ -146,7 +146,7 @@ function renderShell(
     })),
     getDoneNotePage: vi.fn<ApplicationClient["getDoneNotePage"]>(async () => ({
       ok: true,
-      value: { entries: [archivedNote] },
+      value: { entries: [completedNote] },
     })),
   };
 

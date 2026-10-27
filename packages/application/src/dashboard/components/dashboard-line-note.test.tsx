@@ -8,15 +8,15 @@ import { DashboardLine } from "./dashboard-line";
 import { NO_DATE_LOOK } from "./dashboard-list-model";
 
 const mocks = vi.hoisted(() => ({
-  archiveNote: vi.fn(),
+  markNoteDone: vi.fn(),
   completeNote: vi.fn(),
   setNoteRepeat: vi.fn(),
   updateNoteBody: vi.fn(),
   updateNoteWhen: vi.fn(),
 }));
 
-vi.mock("../../notes/use-archive-note", () => ({
-  useArchiveNote: () => mocks.archiveNote,
+vi.mock("../../notes/use-mark-note-done", () => ({
+  useMarkNoteDone: () => mocks.markNoteDone,
 }));
 
 vi.mock("../../notes/use-complete-note", async (importOriginal) => ({
@@ -69,7 +69,7 @@ function NoteLine({
 
 describe("a Note's line", () => {
   beforeEach(() => {
-    mocks.archiveNote.mockReset();
+    mocks.markNoteDone.mockReset();
     mocks.completeNote.mockReset();
     mocks.setNoteRepeat.mockReset();
     mocks.updateNoteBody.mockReset();
@@ -100,7 +100,7 @@ describe("a Note's line", () => {
   it("completes the note from its line and says so", async () => {
     const user = userEvent.setup();
     const onOpenNote = vi.fn();
-    mocks.archiveNote.mockResolvedValue(undefined);
+    mocks.markNoteDone.mockResolvedValue(undefined);
     const { feedback } = render(
       <NoteLine note={note("Water the plants")} onOpenNote={onOpenNote} />,
     );
@@ -110,7 +110,7 @@ describe("a Note's line", () => {
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Complete note" }));
 
-    expect(mocks.archiveNote).toHaveBeenCalledExactlyOnceWith("note1");
+    expect(mocks.markNoteDone).toHaveBeenCalledExactlyOnceWith("note1");
     await waitFor(() =>
       expect(feedback.success).toHaveBeenCalledWith("Note completed"),
     );
@@ -138,7 +138,7 @@ describe("a Note's line", () => {
     const today = new Date(2026, 6, 17).getTime();
     const monthly = { kind: "monthly", day: 17 } as const;
 
-    it("offers Complete in place of Archive, naming where it goes back to", async () => {
+    it("offers Complete, naming where it goes back to", async () => {
       const user = userEvent.setup();
       const onOpenNote = vi.fn();
       const repeating = note("Pay the utility bill", {
@@ -158,7 +158,7 @@ describe("a Note's line", () => {
       await user.click(complete);
 
       expect(mocks.completeNote).toHaveBeenCalledExactlyOnceWith(repeating);
-      expect(mocks.archiveNote).not.toHaveBeenCalled();
+      expect(mocks.markNoteDone).not.toHaveBeenCalled();
       expect(onOpenNote).not.toHaveBeenCalled();
     });
 

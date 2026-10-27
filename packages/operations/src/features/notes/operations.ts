@@ -47,7 +47,7 @@ export function countOpenNotes(scope: RequestScope): Operation<number> {
 /** Done Notes only grow, so both kinds of Note page them at this size. */
 export const NOTE_PAGE_SIZE: PageSize = { fallback: 20, maximum: 50 };
 
-/** Archived Notes, newest archive first; `query` searches their bodies. */
+/** Completed Notes, most recently completed first; `query` searches their bodies. */
 export function getDoneNotePage(
   scope: RequestScope,
   input: DoneNotePageRequest,

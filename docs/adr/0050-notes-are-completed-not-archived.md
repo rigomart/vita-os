@@ -24,4 +24,4 @@ ADR 0031 had Notes archived, not completed, on the grounds that a fact or a thou
 
 - Ending a repeating Note takes two steps, stop its Repeat and then Complete, where Archive took one.
 - ADR 0041's open question, whether Complete on a Note needs a word of its own, is settled: it uses the **Task**'s word.
-- Code names still say archive: `useArchiveNote`, `useUnarchiveNote`, `useArchivedNotes`, `onToggleArchived` and the Note view's `archived`. They are now at odds with `CONTEXT.md`, which lists "archive" and "unarchive" as former words for a Note. A rename is a separate, mechanical change.
+- Code names follow: `useArchivedNotes` is `useCompletedNotes`, `onToggleArchived` is `onToggleCompleted`, and the hooks behind Complete and Reopen are `useMarkNoteDone` and `useMarkNoteOpen`, after the contract operations they call, because `useCompleteNote` already names a repeating Note's Complete.

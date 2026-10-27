@@ -20,12 +20,12 @@ import type { LineLook } from "./dashboard-list-model";
 import { AreaIcon } from "../../areas/components/area-icon";
 import { repeatLabel, taskDateLabels } from "../../attention-list";
 import { NoteMarker } from "../../notes/note-marker";
-import { useArchiveNote } from "../../notes/use-archive-note";
 import {
   completeNoteFailure,
   completeNoteLabel,
   useCompleteNote,
 } from "../../notes/use-complete-note";
+import { useMarkNoteDone } from "../../notes/use-mark-note-done";
 import { useSetNoteRepeat } from "../../notes/use-set-note-repeat";
 import { useUpdateNoteWhen } from "../../notes/use-update-note-when";
 import {
@@ -260,9 +260,9 @@ function NoteLine({
   note: Note;
   scope: BoardScope;
 }) {
-  const archiveNote = useArchiveNote();
+  const markNoteDone = useMarkNoteDone();
   // The line leaves at once; the toast says where the Note went.
-  const finish = useGuardedAsyncAction(() => archiveNote(note._id), {
+  const finish = useGuardedAsyncAction(() => markNoteDone(note._id), {
     successMessage: "Note completed",
   });
   const completeNote = useCompleteNote();

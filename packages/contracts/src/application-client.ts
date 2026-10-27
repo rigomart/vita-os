@@ -162,7 +162,7 @@ export interface PageRequest {
 }
 
 /**
- * A page of Archived Notes (stored as Done). `query` narrows it to the Notes
+ * A page of Completed Notes (stored as Done). `query` narrows it to the Notes
  * whose body contains every word of it; blank or absent reads them all.
  */
 export interface DoneNotePageRequest extends PageRequest {

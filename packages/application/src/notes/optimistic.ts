@@ -13,7 +13,7 @@ import { queryKeys } from "../query-keys";
 
 /**
  * Every read a Note command can touch: the Open Notes, and every page of
- * Archived Notes (stored as Done), searched or not.
+ * Completed Notes (stored as Done), searched or not.
  */
 export function noteKeys(): QueryKey[] {
   return [queryKeys.notes.open(), queryKeys.notes.doneAll()];
@@ -92,7 +92,7 @@ function withNoteDates(
 }
 
 /**
- * Taking a Note out of the Open Notes — archiving it and discarding it both do
+ * Taking a Note out of the Open Notes — completing it and discarding it both do
  * this the same way, because that read holds Open Notes only.
  */
 export function showNoteLeavingOpenNotes(
@@ -106,12 +106,12 @@ export function showNoteLeavingOpenNotes(
 }
 
 /**
- * Unarchiving a Note puts it back on the Open Notes, which is why the caller
- * passes the whole record: an Archived Note was never in the open list to
- * rebuild it from. The archived pages drop it immediately while retaining the
+ * Reopening a Note puts it back on the Open Notes, which is why the caller
+ * passes the whole record: a Completed Note was never in the open list to
+ * rebuild it from. The completed pages drop it immediately while retaining the
  * service's pagination cursors.
  */
-export function showUnarchivedNote(cache: QueryClient, note: Note): void {
+export function showReopenedNote(cache: QueryClient, note: Note): void {
   patchPagedEntries<Note>(cache, queryKeys.notes.doneAll(), (notes) =>
     removeById(notes, note._id),
   );

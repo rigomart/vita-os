@@ -27,8 +27,8 @@ export type PagedResult<TEntry> = UseInfiniteQueryResult<
  *
  * Pages already read stay read: asking for more adds to what is on screen rather
  * than replacing it, and the cursor the service handed back is the only way to
- * ask. Every bounded history in Vita OS — the Activity Log, Archived Notes, a
- * Thread's Archived Notes — reads exactly this way.
+ * ask. Every bounded history in Vita OS — the Activity Log, Completed Notes —
+ * reads exactly this way.
  *
  * `keepPrevious` holds what is on screen while a read under a new key — a new
  * search, say — is on its way, instead of flashing empty.

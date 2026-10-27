@@ -1,11 +1,11 @@
 import type { Note, Repeat } from "@vita-os/contracts";
 
 import { useApplicationClient } from "../../application-client-provider";
-import { useArchiveNote } from "../use-archive-note";
 import { useCompleteNote } from "../use-complete-note";
+import { useMarkNoteDone } from "../use-mark-note-done";
+import { useMarkNoteOpen } from "../use-mark-note-open";
 import { useRemoveNote } from "../use-remove-note";
 import { useSetNoteRepeat } from "../use-set-note-repeat";
-import { useUnarchiveNote } from "../use-unarchive-note";
 import { useUpdateNoteBody } from "../use-update-note-body";
 import { useUpdateNoteWhen } from "../use-update-note-when";
 
@@ -16,8 +16,8 @@ import { useUpdateNoteWhen } from "../use-update-note-when";
  * intact: a failed command preserves the draft and is reported once.
  */
 export function useStandaloneNoteActions(note: Note) {
-  const archiveNote = useArchiveNote();
-  const unarchiveNote = useUnarchiveNote();
+  const markNoteDone = useMarkNoteDone();
+  const markNoteOpen = useMarkNoteOpen();
   const removeNote = useRemoveNote();
   const updateNoteBody = useUpdateNoteBody();
   const updateNoteWhen = useUpdateNoteWhen();
@@ -27,9 +27,9 @@ export function useStandaloneNoteActions(note: Note) {
 
   return {
     saveBody: (body: string) => updateNoteBody(note._id, body),
-    /** Archive an Open Note, or return an Archived one to the board. */
-    toggleArchived: () =>
-      note.state === "done" ? unarchiveNote(note) : archiveNote(note._id),
+    /** Complete an Open Note, or return a Completed one to the board. */
+    toggleCompleted: () =>
+      note.state === "done" ? markNoteOpen(note) : markNoteDone(note._id),
     deleteNote: (undoWindow?: () => Promise<boolean>) =>
       removeNote(note._id, undoWindow),
     setWhen: (when: number | undefined) => updateNoteWhen(note._id, when),

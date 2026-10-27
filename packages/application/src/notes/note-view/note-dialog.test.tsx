@@ -170,7 +170,7 @@ describe("NoteDialog saved note", () => {
           state: "done",
           completedAt: new Date("2026-10-01T12:00:00").getTime(),
         }}
-        onToggleArchived={vi.fn()}
+        onToggleCompleted={vi.fn()}
       />,
     );
     expect(
@@ -187,7 +187,7 @@ describe("NoteDialog saved note", () => {
         open
         onOpenChange={vi.fn()}
         note={savedNote}
-        onToggleArchived={vi.fn()}
+        onToggleCompleted={vi.fn()}
       />,
     );
     expect(screen.getByRole("button", { name: "Complete" })).toBeVisible();
@@ -371,20 +371,20 @@ describe("NoteDialog saved note", () => {
   it("guards completing and reports success only after the callback succeeds", async () => {
     const user = userEvent.setup();
     const pending = deferred();
-    const onToggleArchived = vi.fn(() => pending.promise);
+    const onToggleCompleted = vi.fn(() => pending.promise);
     const { feedback } = render(
       <NoteDialog
         open
         onOpenChange={vi.fn()}
         note={savedNote}
-        onToggleArchived={onToggleArchived}
+        onToggleCompleted={onToggleCompleted}
       />,
     );
-    const archive = screen.getByRole("button", { name: "Complete" });
-    await user.click(archive);
-    await user.click(archive);
-    expect(onToggleArchived).toHaveBeenCalledTimes(1);
-    expect(archive).toBeDisabled();
+    const completeButton = screen.getByRole("button", { name: "Complete" });
+    await user.click(completeButton);
+    await user.click(completeButton);
+    expect(onToggleCompleted).toHaveBeenCalledTimes(1);
+    expect(completeButton).toBeDisabled();
     expect(feedback.success).not.toHaveBeenCalled();
     pending.resolve();
     await waitFor(() =>
@@ -399,7 +399,7 @@ describe("NoteDialog saved note", () => {
         open
         onOpenChange={vi.fn()}
         note={{ ...savedNote, state: "done", completedAt: 1 }}
-        onToggleArchived={vi.fn(async () => undefined)}
+        onToggleCompleted={vi.fn(async () => undefined)}
       />,
     );
     await user.click(screen.getByRole("button", { name: "Reopen" }));
@@ -508,7 +508,7 @@ describe("NoteDialog repeating note", () => {
         followUp={today}
         repeat={monthly}
         onSetWhen={vi.fn()}
-        onToggleArchived={vi.fn()}
+        onToggleCompleted={vi.fn()}
         onComplete={onComplete}
       />,
     );
@@ -568,7 +568,7 @@ describe("NoteDialog repeating note", () => {
           note={note}
           followUp={today}
           {...(repeat === undefined ? {} : { repeat })}
-          onToggleArchived={vi.fn()}
+          onToggleCompleted={vi.fn()}
           onComplete={vi.fn()}
         />,
       );
