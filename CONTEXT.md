@@ -75,26 +75,26 @@ A meaningful automatic change recorded in an **Activity Log**.
 _Avoid_: Audit event, comment.
 
 **Note**:
-A body-only capture that is valid as soon as it is saved: information, a thought, or an action. A Note is either a **Standalone Note** or a **Thread Note**. Its body is Markdown; single line breaks are kept.
+A body-only capture that is valid as soon as it is saved. A Note is either a **Standalone Note** or a **Thread Note**. A Standalone Note holds anything, information, a thought, or something to do, and is completed once it no longer needs attention. A Thread Note is a record of its **Thread**, information, a thought, or what happened; what there is to do in a Thread is its **Tasks**. A Note's body is Markdown; single line breaks are kept.
 _Avoid_: Task, item, todo, ticket.
 
 **Note view**:
-The dialog where a **Note** is written, read, edited, completed, reopened, and deleted.
+The dialog where a **Note** is written, read, edited, and deleted, and where a **Standalone Note** is completed and reopened.
 
 **Standalone Note**:
 A **Note** that belongs to no **Area** or **Thread** and requires no classification. While open it appears on the **Dashboard**, and it may have a **Follow-up date**. Completing a repeating one moves it to its next date, as a repeating **Task**'s Complete does; to finish it for good, stop its **Repeat**, then complete it.
 _Avoid_: Inbox item, task.
 
 **Thread Note**:
-A **Note** that belongs to exactly one **Thread**, appears only there, and has no **Follow-up date**.
+A **Note** that belongs to exactly one **Thread**, appears only there, newest first, and has no **Follow-up date**. It is a record, never completed: it stays until it is deleted.
 _Avoid_: Manual Activity Log Entry, comment.
 
 **Open Note**:
-A **Note** that has not been completed.
+A **Standalone Note** that has not been completed.
 _Avoid_: Pending item, unprocessed.
 
 **Completed Note**:
-A **Note** put away: it leaves the **Dashboard**, or its **Thread**'s open Notes, unchanged and still findable. A completed **Standalone Note** is found in **History**; a completed **Thread Note** stays in its **Thread**'s Completed notes. Reopening puts it back as it was. Stored as `done` (ADR 0031).
+A **Standalone Note** put away: it leaves the **Dashboard** unchanged and is found in **History**. Reopening puts it back as it was. Stored as `done` (ADR 0031). A **Thread Note** is never completed.
 _Avoid_: Archived Note, archive, unarchive.
 _Avoid_: Done, completed, resolved, processed.
 
@@ -122,11 +122,11 @@ _Avoid_: Archive, trash, completed list.
 - An **Activity Log** has zero or more automatically recorded **Activity Log Entries**.
 - A **Standalone Note** belongs to no **Area** and no **Thread**.
 - A **Thread Note** belongs to exactly one **Thread** and never appears on the **Dashboard** or in **History**.
-- A visible **Note** is either **Open** or **Completed**.
+- A visible **Standalone Note** is either **Open** or **Completed**. A **Thread Note** is neither: it stays in its **Thread**'s Notes until it is deleted.
 - A **Standalone Note** has zero or one **Follow-up date**; a **Thread Note** has none, because a **Thread** comes back at its dated **Tasks**.
 - Adding an Open **Standalone Note** to an Open **Thread** makes it a **Thread Note** there, with its body and creation time; it leaves the **Dashboard**. A **Completed Note**, a **Thread Note**, and a **Resolved Thread** take no part. Adding is one-way.
 - When a dated **Standalone Note** is added to a **Thread**, or starts one, its first non-blank line, with any leading Markdown markers removed, becomes a dated **Task** carrying the Note's **Follow-up date**, time included. The **Task** joins the end of the list, and the whole Note joins the **Thread**'s Notes. A line with nothing left gives a **Task** named "Follow up". An undated Note adds no **Task**. A repeating Note's **Task** carries its **Repeat** too.
-- Completing a **Note** changes nothing about it but where it is shown; reopening returns a **Standalone Note** to the **Dashboard** where its **Follow-up date** puts it. Resolving a **Thread** does more (see Activity Rules), so the two keep their own words; both are undone by Reopen.
+- Completing a **Standalone Note** changes nothing about it but where it is shown; reopening returns a **Standalone Note** to the **Dashboard** where its **Follow-up date** puts it. Resolving a **Thread** does more (see Activity Rules), so the two keep their own words; both are undone by Reopen.
 - **History** lists completed **Standalone Notes** most recently completed first, and searches every one of them by body.
 
 ## Thread Attention
@@ -164,12 +164,12 @@ _Avoid_: Archive, trash, completed list.
 ## Note Handling
 
 - A **Note** can be captured and edited with just a body; it has no title or type selector.
-- A saved **Note** shows as a line, a read-only preview that opens the **Note view**. In its **Thread**, a **Thread Note**'s line reads like a **Task**'s: the Note's marker, up to three lines of its text in plain text, then its date, with Complete, or Reopen once completed, at the right; the Dashboard and **History** show a **Note**'s first line.
+- A saved **Note** shows as a line, a read-only preview that opens the **Note view**. In its **Thread**, a **Thread Note**'s line reads like a **Task**'s: the Note's marker, up to three lines of its text in plain text, then its creation date, and no commands; the Dashboard and **History** show a **Note**'s first line.
 - The **Note view** renders the full body for reading and uses a Markdown textarea for writing and editing. Changed drafts ask for confirmation before being discarded.
 - Markdown supports headings, lists, emphasis, code, links, quotes, dividers, and tables. Checkbox markers remain literal text for now.
 - A **Standalone Note** can have its **Follow-up date** set, changed, or cleared.
 - A **Thread Note** appears only on its parent **Thread** and has no **Follow-up date**.
-- Any **Note** can be completed, reopened, or permanently deleted, whether open or completed.
+- Any **Note** can be permanently deleted. A **Standalone Note** can also be completed and reopened, and deleted whether open or completed.
 - Creation time is preserved; last-edited time is retained going forward. An unknown historical edit time remains unknown.
 - An Open **Standalone Note** can be added to an Open **Thread**, or start a new **Thread**, from the ⋯ menu of its **Note view**: Add to thread… or New thread from note (ADR 0030). Both are optional and never prompted; nothing suggests a Thread or counts Notes that have none.
 - Processing and conversion are outside this version.
@@ -178,7 +178,7 @@ _Avoid_: Archive, trash, completed list.
 
 - Capturing a **Thread Note** updates its **Thread**'s last-activity date without adding an **Activity Log Entry**.
 - Adding a **Standalone Note** to a **Thread**, or starting a **Thread** from one, counts as capturing a **Thread Note**. It adds no **Activity Log** entry, even when the Note's date adds a dated **Task**.
-- Editing, completing, reopening, or deleting an existing **Thread Note** changes only the Note and does not update Thread activity.
+- Editing or deleting an existing **Thread Note** changes only the Note and does not update Thread activity.
 - Setting, changing, or clearing a **Task**'s date adds no **Activity Log** entry. Entries an earlier **Follow-up date** change wrote keep their wording.
 - Completing any **Task** adds one **Activity Log** entry. Completing it with a note also captures one **Thread Note**, which updates the **Thread**'s last-activity date as any captured Thread Note does, so the Note, not the completion, is the Thread's last activity. The **Task** change, the Note, and the entry are written together or not at all. A repeating Task keeps its identity and text and moves to its next occurrence; a one-off Task is removed. Completing every one-off **Task** leaves the **Thread** open.
 - Skipping a repeating **Task** moves it to its next occurrence without an **Activity Log** entry. Setting or clearing a **Repeat** also adds none.

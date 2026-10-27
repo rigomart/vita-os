@@ -158,13 +158,9 @@ function createApplicationClient(): ApplicationClient {
       mocks.calls.push("listAreas");
       return { ok: true, value: [area] };
     },
-    listOpenThreadNotes: async () => {
-      mocks.calls.push("listOpenThreadNotes");
+    listThreadNotes: async () => {
+      mocks.calls.push("listThreadNotes");
       return { ok: true, value: [] };
-    },
-    getDoneThreadNotePage: async () => {
-      mocks.calls.push("getDoneThreadNotePage");
-      return { ok: true, value: { entries: [] } };
     },
     createThreadNote: async () => ({ ok: true, value: threadNote }),
     updateThread: mocks.updateThread,
@@ -545,12 +541,7 @@ describe("ThreadDetailView", () => {
     });
 
     expect(new Set(mocks.calls)).toEqual(
-      new Set([
-        "getThreadDetail",
-        "listOpenThreadNotes",
-        "getDoneThreadNotePage",
-        "listAreas",
-      ]),
+      new Set(["getThreadDetail", "listThreadNotes", "listAreas"]),
     );
     expect(mocks.applicationDetailSlugs).toEqual([thread.slug]);
   });

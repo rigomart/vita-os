@@ -84,12 +84,9 @@ export function createFakeApplicationClient(
     addNoteToThread: unconfigured,
     createThreadFromNote: unconfigured,
 
-    listOpenThreadNotes: unconfigured,
-    getDoneThreadNotePage: unconfigured,
+    listThreadNotes: unconfigured,
     createThreadNote: unconfigured,
     updateThreadNoteBody: unconfigured,
-    markThreadNoteDone: unconfigured,
-    markThreadNoteOpen: unconfigured,
     removeThreadNote: unconfigured,
 
     ...(state === undefined ? {} : completionClient(state)),
@@ -101,7 +98,7 @@ function completionClient(
   state: FakeCompletionState,
 ): Pick<
   ApplicationClient,
-  "completeTask" | "listOpenThreadNotes" | "getThreadActivityPage"
+  "completeTask" | "listThreadNotes" | "getThreadActivityPage"
 > {
   return {
     async completeTask(input) {
@@ -143,7 +140,6 @@ function completionClient(
             : {
                 _id: input.note!.id,
                 body,
-                state: "open",
                 createdAt: now,
                 updatedAt: now,
               };
@@ -189,14 +185,10 @@ function completionClient(
         entries: (state.activityLog?.get(threadId) ?? []).slice(0, limit),
       });
     },
-    async listOpenThreadNotes({ threadId }) {
+    async listThreadNotes({ threadId }) {
       if (!state.threads.some((thread) => thread._id === threadId))
         return notFound();
-      return success(
-        (state.threadNotes.get(threadId) ?? []).filter(
-          (note) => note.state === "open",
-        ),
-      );
+      return success(state.threadNotes.get(threadId) ?? []);
     },
   };
 }
@@ -251,8 +243,7 @@ export function createQuietApplicationClient(
     listOpenNotes: async () => success([]),
     getDoneNotePage: emptyPage,
     countOpenNotes: async () => success(0),
-    listOpenThreadNotes: async () => success([]),
-    getDoneThreadNotePage: emptyPage,
+    listThreadNotes: async () => success([]),
     ...overrides,
   });
 }

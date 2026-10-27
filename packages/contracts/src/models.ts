@@ -13,7 +13,6 @@ import type {
   RepeatSchema,
   TaskSchema,
   ThreadDetailSchema,
-  ThreadNotePageSchema,
   ThreadNoteSchema,
   ThreadSchema,
   ThreadStateSchema,
@@ -48,4 +47,3 @@ export interface Page<TEntry> {
 }
 export type ActivityLogPage = v.InferOutput<typeof ActivityLogPageSchema>;
 export type NotePage = v.InferOutput<typeof NotePageSchema>;
-export type ThreadNotePage = v.InferOutput<typeof ThreadNotePageSchema>;

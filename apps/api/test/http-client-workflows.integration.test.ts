@@ -88,7 +88,7 @@ describe("Owners through the HTTP client", () => {
       ownerClient.getThreadDetail({ slug: theirThread.slug }),
     ).resolves.toMatchObject(notFound);
     await expect(
-      ownerClient.listOpenThreadNotes({ threadId: theirThread._id }),
+      ownerClient.listThreadNotes({ threadId: theirThread._id }),
     ).resolves.toMatchObject(notFound);
     await expect(
       ownerClient.updateNoteBody({ noteId: theirNote._id, body: "Mine now" }),

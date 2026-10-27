@@ -15,7 +15,6 @@ import {
   NotePageSchema,
   NoteSchema,
   ThreadDetailSchema,
-  ThreadNotePageSchema,
   ThreadNoteSchema,
   ThreadSchema,
 } from "../index";
@@ -364,13 +363,8 @@ export function createHttpApplicationClient({
       ),
 
     /* Thread Notes */
-    listOpenThreadNotes: (input) =>
+    listThreadNotes: (input) =>
       read(`${path("threads", input.threadId)}/notes`, ThreadNoteListSchema),
-    getDoneThreadNotePage: ({ threadId, ...page }) =>
-      read(
-        `${path("threads", threadId)}/notes/done?${pageQuery(page)}`,
-        ThreadNotePageSchema,
-      ),
     createThreadNote: (input) =>
       send(
         "POST",
@@ -383,20 +377,6 @@ export function createHttpApplicationClient({
         "PATCH",
         `${path("thread-notes", input.threadNoteId)}/body`,
         { body: input.body },
-        ThreadNoteSchema,
-      ),
-    markThreadNoteDone: (input) =>
-      send(
-        "PATCH",
-        `${path("thread-notes", input.threadNoteId)}/state`,
-        { state: "done" },
-        ThreadNoteSchema,
-      ),
-    markThreadNoteOpen: (input) =>
-      send(
-        "PATCH",
-        `${path("thread-notes", input.threadNoteId)}/state`,
-        { state: "open" },
         ThreadNoteSchema,
       ),
     removeThreadNote: (input) =>

@@ -97,12 +97,9 @@ export function createLocalApplicationClient({
     addNoteToThread: command(operations.addNoteToThread),
     createThreadFromNote: command(operations.createThreadFromNote),
 
-    listOpenThreadNotes: command(operations.listOpenThreadNotes),
-    getDoneThreadNotePage: command(operations.getDoneThreadNotePage),
+    listThreadNotes: command(operations.listThreadNotes),
     createThreadNote: command(operations.createThreadNote),
     updateThreadNoteBody: command(operations.updateThreadNoteBody),
-    markThreadNoteDone: command(operations.markThreadNoteDone),
-    markThreadNoteOpen: command(operations.markThreadNoteOpen),
     removeThreadNote: command(operations.removeThreadNote),
   };
 }

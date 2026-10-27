@@ -169,9 +169,6 @@ describe("the local client", () => {
       refusal("Invalid pagination."),
     );
     await expect(
-      client.getDoneThreadNotePage({ threadId: thread._id, limit: 0 }),
-    ).resolves.toEqual(refusal("Invalid pagination."));
-    await expect(
       client.getThreadActivityPage({ threadId: thread._id, limit: 1.5 }),
     ).resolves.toEqual(refusal("Invalid Activity Log pagination."));
     await expect(client.getDoneNotePage({ limit: 50 })).resolves.toMatchObject({
@@ -375,7 +372,6 @@ describe("the libsql database adapter", () => {
         user_id: LOCAL_OWNER_ID,
         thread_id: "no-such-thread",
         body: "Orphan",
-        state: "open",
         created_at: 1,
         updated_at: 1,
       }),

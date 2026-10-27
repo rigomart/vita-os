@@ -170,11 +170,7 @@ function renderShell(
           ok: true,
           value: { entries: [] },
         }),
-        listOpenThreadNotes: async () => ({ ok: true, value: [] }),
-        getDoneThreadNotePage: async () => ({
-          ok: true,
-          value: { entries: [] },
-        }),
+        listThreadNotes: async () => ({ ok: true, value: [] }),
         createNote: async () => ({ ok: true, value: newNote }),
         listResolvedThreads: async () => ({ ok: true, value: [] }),
       }),

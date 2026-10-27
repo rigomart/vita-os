@@ -17,6 +17,9 @@ MIGRATIONS = API / "migrations"
 SCHEMA = ROOT / "packages/operations/src/platform/sqlite/schema.ts"
 KIT = API / "node_modules/drizzle-kit/bin.cjs"
 PRODUCT_TABLES = {"areas", "threads", "activity_log_entries", "notes", "thread_notes"}
+# D1 columns Drizzle no longer declares, so the code never names them (ADR 0049).
+# Remove each entry with the migration that drops its column.
+RETIRED = {"thread_notes": {"state", "completed_at"}}
 
 
 def generate(destination, schema=SCHEMA):
@@ -59,6 +62,7 @@ def shape(database, table):
         (name, kind.lower(), bool(required), default, bool(primary))
         for _, name, kind, required, default, primary
         in database.execute(f'PRAGMA table_info("{table}")')
+        if name not in RETIRED.get(table, set())
     ]
     indexes = []
     for _, name, unique, origin, partial in database.execute(
@@ -121,11 +125,11 @@ class DrizzleSchemaTests(unittest.TestCase):
             )
             journal = json.loads((output / "meta/_journal.json").read_text())
             latest = journal["entries"][-1]
-            self.assertEqual(latest["idx"], 8)
-            self.assertEqual(latest["tag"], "0008_repeating_notes")
+            self.assertEqual(latest["idx"], 9)
+            self.assertEqual(latest["tag"], "0009_thread_notes_never_completed")
             self.assertTrue((MIGRATIONS / f'{latest["tag"]}.sql').exists())
 
-    def test_next_column_change_generates_only_0009(self):
+    def test_next_column_change_generates_only_0010(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "migrations"
             shutil.copytree(MIGRATIONS / "meta", output / "meta")
@@ -144,7 +148,7 @@ class DrizzleSchemaTests(unittest.TestCase):
             generate(output, schema)
             files = list(output.glob("*.sql"))
             self.assertEqual(len(files), 1)
-            self.assertTrue(files[0].name.startswith("0009_"))
+            self.assertTrue(files[0].name.startswith("0010_"))
             self.assertEqual(
                 files[0].read_text().strip(),
                 'ALTER TABLE `threads` ADD `generation_probe` text;',

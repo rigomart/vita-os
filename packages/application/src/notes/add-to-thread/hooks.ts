@@ -29,7 +29,7 @@ function showConfirmedNote(
   cache: Parameters<typeof patchQuery>[0],
   added: NoteAddedToThread,
 ) {
-  const key = queryKeys.threadNotes.open(added.thread._id);
+  const key = queryKeys.threadNotes.list(added.thread._id);
   cache.setQueryData<ThreadNote[]>(key, (notes) =>
     notes?.some((note) => note._id === added.threadNote._id)
       ? notes
@@ -68,7 +68,7 @@ export function useAddNoteToThread(): ApplicationMutationResult<
     affected: ({ thread }, cache) => [
       ...noteKeys(),
       ...threadChangeKeys(cache, { threadId: thread._id }),
-      queryKeys.threadNotes.open(thread._id),
+      queryKeys.threadNotes.list(thread._id),
     ],
     optimistic: (cache, { note }) => hideSource(cache, note),
     reconcile: (cache, added) => {

@@ -18,9 +18,6 @@ describe("query keys", () => {
     expect(queryKeys.notes.done(20).slice(0, 2)).toEqual(
       queryKeys.notes.doneAll(),
     );
-    expect(queryKeys.threadNotes.done(threadId, 20).slice(0, 3)).toEqual(
-      queryKeys.threadNotes.doneAll(threadId),
-    );
   });
 
   it("separates one Thread's reads from another's", () => {
@@ -29,8 +26,8 @@ describe("query keys", () => {
     expect(queryKeys.threads.activity(threadId)).not.toEqual(
       queryKeys.threads.activity(other),
     );
-    expect(queryKeys.threadNotes.open(threadId)).not.toEqual(
-      queryKeys.threadNotes.open(other),
+    expect(queryKeys.threadNotes.list(threadId)).not.toEqual(
+      queryKeys.threadNotes.list(other),
     );
   });
 

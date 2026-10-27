@@ -89,8 +89,6 @@ export const ExportedThreadNoteSchema = v.strictObject({
   id: Id,
   thread_id: Id,
   body: v.string(),
-  state: NoteState,
-  completed_at: v.nullable(Integer),
   created_at: Integer,
   updated_at: Integer,
 });

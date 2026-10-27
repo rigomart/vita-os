@@ -41,7 +41,6 @@ const note = {
 const threadNote = {
   _id: "thread-note-1" as ThreadNoteId,
   body: "Clinic opens at nine",
-  state: "open" as const,
   createdAt: 4,
   updatedAt: 4,
 };
@@ -121,15 +120,9 @@ const client = {
     value: { thread, threadNote },
   }),
 
-  listOpenThreadNotes: async () => ({ ok: true, value: [threadNote] }),
-  getDoneThreadNotePage: async () => ({ ok: true, value: { entries: [] } }),
+  listThreadNotes: async () => ({ ok: true, value: [threadNote] }),
   createThreadNote: async () => ({ ok: true, value: threadNote }),
   updateThreadNoteBody: async () => ({ ok: true, value: threadNote }),
-  markThreadNoteDone: async () => ({
-    ok: true,
-    value: { ...threadNote, state: "done" as const, completedAt: 9 },
-  }),
-  markThreadNoteOpen: async () => ({ ok: true, value: threadNote }),
   removeThreadNote: async () => ({ ok: true, value: commandAcknowledged }),
 } satisfies ApplicationClient;
 

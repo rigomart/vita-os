@@ -1,5 +1,3 @@
-import type { InfiniteData } from "@tanstack/react-query";
-import type { Page } from "@vita-os/contracts";
 import type {
   ApplicationError,
   ThreadId,
@@ -20,10 +18,7 @@ import { aThreadNote } from "../test/fixtures";
 import { createHarness } from "../test/harness";
 import {
   useCaptureThreadNote,
-  useArchiveThreadNote,
   useDiscardThreadNote,
-  useArchivedThreadNotes,
-  useUnarchiveThreadNote,
   useThreadNotes,
   useUpdateThreadNoteBody,
 } from "./hooks";
@@ -40,14 +35,14 @@ function seedNotes(notes: ThreadNote[]) {
   return (cache: {
     setQueryData: (key: readonly unknown[], value: unknown) => unknown;
   }) => {
-    cache.setQueryData(queryKeys.threadNotes.open(threadId), notes);
+    cache.setQueryData(queryKeys.threadNotes.list(threadId), notes);
   };
 }
 
 describe("reading a Thread's Notes", () => {
-  it("reads the Open Notes", async () => {
+  it("reads the Notes", async () => {
     const client = createFakeApplicationClient({
-      listOpenThreadNotes: async () => success([note]),
+      listThreadNotes: async () => success([note]),
     });
     const { wrapper } = createHarness(client);
 
@@ -58,7 +53,7 @@ describe("reading a Thread's Notes", () => {
 
   it("reads a Thread that is not there as absent", async () => {
     const client = createFakeApplicationClient({
-      listOpenThreadNotes: async () => ({
+      listThreadNotes: async () => ({
         ok: false,
         error: {
           code: "not_found" as const,
@@ -73,36 +68,6 @@ describe("reading a Thread's Notes", () => {
 
     await waitFor(() => expect(result.current.isPending).toBe(false));
     expect(result.current.data).toBeNull();
-  });
-
-  it("keeps the Done Notes already read while reading more", async () => {
-    const first = aThreadNote({
-      _id: "done-1" as ThreadNoteId,
-      state: "done",
-      completedAt: 9,
-    });
-    const second = aThreadNote({
-      _id: "done-2" as ThreadNoteId,
-      state: "done",
-      completedAt: 8,
-    });
-    const client = createFakeApplicationClient({
-      getDoneThreadNotePage: async ({ cursor }) =>
-        cursor === undefined
-          ? success({ entries: [first], nextCursor: "page-2" })
-          : success({ entries: [second] }),
-    });
-    const { wrapper } = createHarness(client);
-
-    const { result } = renderHook(() => useArchivedThreadNotes(threadId, 1), {
-      wrapper,
-    });
-
-    await waitFor(() => expect(result.current.notes).toEqual([first]));
-    await act(async () => {
-      await result.current.fetchNextPage();
-    });
-    await waitFor(() => expect(result.current.notes).toEqual([first, second]));
   });
 });
 
@@ -121,7 +86,7 @@ describe("capturing a Thread Note", () => {
     await waitFor(() =>
       expect(
         cache.getQueryData<ThreadNote[]>(
-          queryKeys.threadNotes.open(threadId),
+          queryKeys.threadNotes.list(threadId),
         )?.[0]?.body,
       ).toBe("Opens at nine"),
     );
@@ -129,7 +94,7 @@ describe("capturing a Thread Note", () => {
     pending.resolve(success(stored));
     await waitFor(() =>
       expect(
-        cache.getQueryData<ThreadNote[]>(queryKeys.threadNotes.open(threadId)),
+        cache.getQueryData<ThreadNote[]>(queryKeys.threadNotes.list(threadId)),
       ).toEqual([stored]),
     );
   });
@@ -137,7 +102,7 @@ describe("capturing a Thread Note", () => {
   it("puts the list back when the capture fails", async () => {
     const client = createFakeApplicationClient({
       createThreadNote: async () => ({ ok: false, error: unavailable }),
-      listOpenThreadNotes: async () => success([note]),
+      listThreadNotes: async () => success([note]),
     });
     const { wrapper, cache } = createHarness(client, seedNotes([note]));
     const { result } = renderHook(() => useCaptureThreadNote(), { wrapper });
@@ -149,7 +114,7 @@ describe("capturing a Thread Note", () => {
     });
 
     await waitFor(() => expect(result.current.error).toEqual(unavailable));
-    expect(cache.getQueryData(queryKeys.threadNotes.open(threadId))).toEqual([
+    expect(cache.getQueryData(queryKeys.threadNotes.list(threadId))).toEqual([
       note,
     ]);
   });
@@ -174,126 +139,65 @@ describe("changing a Thread Note", () => {
     await waitFor(() =>
       expect(
         cache.getQueryData<ThreadNote[]>(
-          queryKeys.threadNotes.open(threadId),
+          queryKeys.threadNotes.list(threadId),
         )?.[0]?.body,
       ).toBe("Eight"),
     );
   });
 
-  it.each([
-    ["completed", true],
-    ["discarded", false],
-  ] as const)("a %s Note leaves the open list", async (_label, complete) => {
+  it("drops a discarded Note from the list", async () => {
     const client = createFakeApplicationClient({
-      markThreadNoteDone: async () =>
-        success({ ...note, state: "done" as const, completedAt: 9 }),
       removeThreadNote: async () => success({ acknowledged: true as const }),
     });
     const { wrapper, cache } = createHarness(client, seedNotes([note]));
-    const { result } = renderHook(
-      () => ({
-        complete: useArchiveThreadNote(),
-        discard: useDiscardThreadNote(),
-      }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => useDiscardThreadNote(), { wrapper });
 
     await act(async () => {
-      await (complete
-        ? result.current.complete.mutateAsync({
-            threadId,
-            threadNoteId: note._id,
-          })
-        : result.current.discard.mutateAsync({
-            threadId,
-            threadNoteId: note._id,
-          }));
+      await result.current.mutateAsync({ threadId, threadNoteId: note._id });
     });
 
-    expect(cache.getQueryData(queryKeys.threadNotes.open(threadId))).toEqual(
+    expect(cache.getQueryData(queryKeys.threadNotes.list(threadId))).toEqual(
       [],
     );
   });
 
-  it("puts a reopened Note back on the open list", async () => {
-    const done = aThreadNote({
-      _id: "done-1" as ThreadNoteId,
-      state: "done",
-      completedAt: 9,
-    });
-    const client = createFakeApplicationClient({
-      markThreadNoteOpen: async () =>
-        success({ ...done, state: "open" as const }),
-    });
-    const { wrapper, cache } = createHarness(client, seedNotes([note]));
-    const { result } = renderHook(() => useUnarchiveThreadNote(), { wrapper });
-
-    await act(async () => {
-      await result.current.mutateAsync({ threadId, note: done });
-    });
-
-    const notes = cache.getQueryData<ThreadNote[]>(
-      queryKeys.threadNotes.open(threadId),
-    );
-    expect(notes?.map((entry) => entry._id)).toEqual([done._id, note._id]);
-    expect(notes?.[0]).toMatchObject({ state: "open", completedAt: undefined });
-  });
-});
-
-describe("Done ThreadNote optimistic changes", () => {
-  it.each(["edit", "reopen", "discard"] as const)(
-    "updates cached history for %s and restores it on failure",
+  it.each(["edit", "discard"] as const)(
+    "puts the list back when the %s fails",
     async (operation) => {
-      const done = aThreadNote({ state: "done", completedAt: 5000 });
       const pending = deferred<{ ok: false; error: ApplicationError }>();
       const client = createFakeApplicationClient({
         updateThreadNoteBody: () => pending.promise,
-        markThreadNoteOpen: () => pending.promise,
         removeThreadNote: () => pending.promise,
       });
-      const key = queryKeys.threadNotes.done(threadId, 20);
-      const original = {
-        pages: [{ entries: [done], nextCursor: "next-page" }],
-        pageParams: [undefined],
-      };
-      const { cache, wrapper } = createHarness(client, (seeded) =>
-        seeded.setQueryData(key, original),
-      );
+      const { wrapper, cache } = createHarness(client, seedNotes([note]));
       const { result } = renderHook(
         () => ({
           edit: useUpdateThreadNoteBody(),
-          reopen: useUnarchiveThreadNote(),
           discard: useDiscardThreadNote(),
         }),
         { wrapper },
       );
+
       act(() => {
         if (operation === "edit")
           result.current.edit.mutate({
             threadId,
-            threadNoteId: done._id,
+            threadNoteId: note._id,
             body: "Changed",
           });
-        else if (operation === "reopen")
-          result.current.reopen.mutate({ threadId, note: done });
         else
-          result.current.discard.mutate({ threadId, threadNoteId: done._id });
+          result.current.discard.mutate({ threadId, threadNoteId: note._id });
       });
-      await waitFor(() => {
-        const entries =
-          cache.getQueryData<InfiniteData<Page<ThreadNote>>>(key)?.pages[0]
-            ?.entries;
-        expect(entries).toEqual(
-          operation === "edit" ? [{ ...done, body: "Changed" }] : [],
-        );
-      });
-      expect(
-        cache.getQueryData<InfiniteData<Page<ThreadNote>>>(key)?.pages[0]
-          ?.nextCursor,
-      ).toBe("next-page");
+      await waitFor(() =>
+        expect(
+          cache.getQueryData(queryKeys.threadNotes.list(threadId)),
+        ).toEqual(operation === "edit" ? [{ ...note, body: "Changed" }] : []),
+      );
       await act(async () => pending.resolve({ ok: false, error: unavailable }));
       await waitFor(() => expect(result.current[operation].isError).toBe(true));
-      expect(cache.getQueryData(key)).toEqual(original);
+      expect(cache.getQueryData(queryKeys.threadNotes.list(threadId))).toEqual([
+        note,
+      ]);
     },
   );
 });

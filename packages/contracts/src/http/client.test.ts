@@ -59,8 +59,9 @@ const note = {
 };
 
 const threadNote = {
-  ...note,
   _id: "thread-note-1",
+  body: "Clinic opens at nine",
+  createdAt: 1_600_000_000_000,
   updatedAt: 1_600_000_000_000,
 };
 
@@ -76,23 +77,13 @@ const responseFamilies = [
     entry: threadNote,
     page: false,
     read: (client: ApplicationClient) =>
-      client.listOpenThreadNotes({ threadId: "thread-1" as ThreadId }),
+      client.listThreadNotes({ threadId: "thread-1" as ThreadId }),
   },
   {
     name: "Note page",
     entry: note,
     page: true,
     read: (client: ApplicationClient) => client.getDoneNotePage({ limit: 2 }),
-  },
-  {
-    name: "Thread Note page",
-    entry: threadNote,
-    page: true,
-    read: (client: ApplicationClient) =>
-      client.getDoneThreadNotePage({
-        threadId: "thread-1" as ThreadId,
-        limit: 2,
-      }),
   },
 ];
 
@@ -262,12 +253,6 @@ describe("createHttpApplicationClient", () => {
       field: "updatedAt",
       entry: note,
       read: (client: ApplicationClient) => client.listOpenNotes(),
-    },
-    {
-      field: "completedAt",
-      entry: threadNote,
-      read: (client: ApplicationClient) =>
-        client.listOpenThreadNotes({ threadId: "thread-1" as ThreadId }),
     },
   ])(
     "rejects null optional Note field $field",
@@ -821,7 +806,6 @@ describe("createHttpApplicationClient", () => {
       threadNote: {
         _id: "thread-note-1",
         body: "Clinic opens at nine",
-        state: "open",
         createdAt: 1_600_000_000_000,
         updatedAt: 1_600_000_000_000,
       },

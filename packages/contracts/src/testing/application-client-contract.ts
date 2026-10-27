@@ -317,7 +317,7 @@ export function describeApplicationClient(
     });
 
     describe("Thread Notes", () => {
-      it("captures, edits, completes, pages, and discards a Thread Note", async () => {
+      it("captures, edits, lists, and discards a Thread Note", async () => {
         const client = await newClient();
         const area = await value(
           client.createArea({
@@ -336,7 +336,7 @@ export function describeApplicationClient(
           }),
         );
         await expect(
-          client.listOpenThreadNotes({ threadId: thread._id }),
+          client.listThreadNotes({ threadId: thread._id }),
         ).resolves.toEqual({ ok: true, value: [note] });
 
         const edited = await value(
@@ -346,20 +346,15 @@ export function describeApplicationClient(
           }),
         );
         expect(edited.body).toBe("Opens at eight");
-
-        const done = await value(
-          client.markThreadNoteDone({ threadNoteId: note._id }),
-        );
         await expect(
-          client.getDoneThreadNotePage({ threadId: thread._id, limit: 20 }),
-        ).resolves.toEqual({ ok: true, value: { entries: [done] } });
+          client.listThreadNotes({ threadId: thread._id }),
+        ).resolves.toEqual({ ok: true, value: [edited] });
 
-        await value(client.markThreadNoteOpen({ threadNoteId: note._id }));
         await expect(
           client.removeThreadNote({ threadNoteId: note._id }),
         ).resolves.toEqual({ ok: true, value: { acknowledged: true } });
         await expect(
-          client.listOpenThreadNotes({ threadId: thread._id }),
+          client.listThreadNotes({ threadId: thread._id }),
         ).resolves.toEqual({ ok: true, value: [] });
       });
     });
@@ -387,7 +382,7 @@ export function describeApplicationClient(
           createdAt: note.createdAt,
         });
         await expect(
-          client.listOpenThreadNotes({ threadId: thread._id }),
+          client.listThreadNotes({ threadId: thread._id }),
         ).resolves.toEqual({ ok: true, value: [added.threadNote] });
         await expect(client.listOpenNotes()).resolves.toEqual({
           ok: true,

@@ -1,4 +1,4 @@
-import type { Note, NoteAddedToThread, ThreadNote } from "@vita-os/contracts";
+import type { Note, NoteAddedToThread } from "@vita-os/contracts";
 import type { SQL } from "drizzle-orm";
 
 import { and, eq, exists, sql } from "drizzle-orm";
@@ -72,8 +72,6 @@ export function addToThreadStorage(scope: RequestScope) {
             user_id: notes.user_id,
             thread_id: sql<string>`${threadId}`.as("thread_id"),
             body: notes.body,
-            state: sql<ThreadNote["state"]>`'open'`.as("state"),
-            completed_at: sql<null>`NULL`.as("completed_at"),
             created_at: notes.created_at,
             updated_at:
               sql<number>`COALESCE(${notes.updated_at}, ${notes.created_at})`.as(

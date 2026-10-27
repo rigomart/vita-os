@@ -1,10 +1,8 @@
 import type {
   CommandAcknowledgement,
-  PageRequest,
   ThreadId,
   ThreadNote,
   ThreadNoteId,
-  ThreadNotePage,
 } from "@vita-os/contracts";
 
 import { commandAcknowledged } from "@vita-os/contracts";
@@ -16,8 +14,6 @@ import type { Operation } from "../../platform/operation";
 import type { RequestScope } from "../../platform/request-scope";
 
 import { attempt, database } from "../../platform/operation";
-import { requirePageLimit } from "../../platform/page-size";
-import { NOTE_PAGE_SIZE } from "../notes/operations";
 import { threadNotFound } from "../threads/errors";
 import { threadStorage } from "../threads/storage";
 import { threadNoteNotFound } from "./errors";
@@ -31,7 +27,7 @@ function found(note: ThreadNote | null): Result<ThreadNote, NotFound> {
   return note === null ? Result.err(threadNoteNotFound()) : Result.ok(note);
 }
 
-export function listOpenThreadNotes(
+export function listThreadNotes(
   scope: RequestScope,
   input: {
     threadId: ThreadId;
@@ -46,27 +42,7 @@ export function listOpenThreadNotes(
       return Result.err(threadNotFound());
     return Result.ok(
       yield* Result.await(
-        database(() => threadNoteStorage(scope).listOpen(input.threadId)),
-      ),
-    );
-  });
-}
-
-export function getDoneThreadNotePage(
-  scope: RequestScope,
-  { threadId, ...page }: { threadId: ThreadId } & PageRequest,
-): Operation<ThreadNotePage> {
-  return Result.gen(async function* () {
-    yield* requirePageLimit(page.limit, NOTE_PAGE_SIZE);
-    if (
-      !(yield* Result.await(
-        database(() => threadStorage(scope).exists(threadId)),
-      ))
-    )
-      return Result.err(threadNotFound());
-    return Result.ok(
-      yield* Result.await(
-        database(() => threadNoteStorage(scope).readDonePage(threadId, page)),
+        database(() => threadNoteStorage(scope).list(input.threadId)),
       ),
     );
   });
@@ -106,36 +82,6 @@ export function updateThreadNoteBody(
         database(() =>
           threadNoteStorage(scope).setBody(input.threadNoteId, body),
         ),
-      ),
-    );
-  });
-}
-
-export function markThreadNoteDone(
-  scope: RequestScope,
-  input: {
-    threadNoteId: ThreadNoteId;
-  },
-): Operation<ThreadNote> {
-  return Result.gen(async function* () {
-    return found(
-      yield* Result.await(
-        database(() => threadNoteStorage(scope).markDone(input.threadNoteId)),
-      ),
-    );
-  });
-}
-
-export function markThreadNoteOpen(
-  scope: RequestScope,
-  input: {
-    threadNoteId: ThreadNoteId;
-  },
-): Operation<ThreadNote> {
-  return Result.gen(async function* () {
-    return found(
-      yield* Result.await(
-        database(() => threadNoteStorage(scope).markOpen(input.threadNoteId)),
       ),
     );
   });
