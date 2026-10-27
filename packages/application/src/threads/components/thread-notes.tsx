@@ -8,7 +8,6 @@ import { useRef, useState } from "react";
 import { clock } from "../../lib/clock";
 import { NoteMarker } from "../../notes/note-marker";
 import { NoteDialog } from "../../notes/note-view/note-dialog";
-import { useFocusRecovery } from "../../ui/recover-focus";
 
 interface ThreadNotesProps {
   notes: ThreadNote[] | undefined;
@@ -30,23 +29,29 @@ export function ThreadNotes({
   onUpdateBody,
   onRemove,
 }: ThreadNotesProps) {
-  const recoverFocus = useFocusRecovery();
   const section = useRef<HTMLElement>(null);
   const [composing, setComposing] = useState(false);
   const [selected, setSelected] = useState<ThreadNote | null>(null);
+  const focusAfterDelete = useRef<HTMLElement | null>(null);
   const currentNote = selected;
-  const noteAction = (note: ThreadNote, run: () => Promise<void> | void) => {
-    const cards = Array.from(
+  const open = (note: ThreadNote) => {
+    focusAfterDelete.current = null;
+    setSelected(note);
+  };
+  /** The line after the Note's, or before it, or else "Write a note…". */
+  const lineAfter = (note: ThreadNote) => {
+    const lines = Array.from(
       section.current?.querySelectorAll<HTMLElement>("[data-note-id]") ?? [],
     );
-    const position = cards.findIndex(
-      (card) => card.dataset.noteId === note._id,
+    const position = lines.findIndex(
+      (line) => line.dataset.noteId === note._id,
     );
-    const neighbor = cards[position + 1] ?? cards[position - 1];
-    const target =
+    const neighbor = lines[position + 1] ?? lines[position - 1];
+    return (
       neighbor?.querySelector<HTMLButtonElement>("button") ??
-      section.current?.querySelector<HTMLButtonElement>("button");
-    return recoverFocus(() => target, run);
+      section.current?.querySelector<HTMLButtonElement>("button") ??
+      null
+    );
   };
 
   return (
@@ -74,7 +79,7 @@ export function ThreadNotes({
             <ThreadNoteRow
               key={note._id}
               note={note}
-              onOpen={() => setSelected(note)}
+              onOpen={() => open(note)}
             />
           ))}
         </ul>
@@ -102,8 +107,10 @@ export function ThreadNotes({
             await onUpdateBody(currentNote, body);
             setSelected({ ...currentNote, body, updatedAt: clock.now() });
           }}
+          finalFocus={() => focusAfterDelete.current}
           onDelete={() => {
-            void noteAction(currentNote, () => onRemove(currentNote));
+            focusAfterDelete.current = lineAfter(currentNote);
+            onRemove(currentNote);
           }}
         />
       )}

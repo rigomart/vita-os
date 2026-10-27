@@ -73,6 +73,8 @@ export interface NoteDialogProps {
   onToggleArchived?: () => Promise<void> | void;
   /** Deletes without asking: the owner offers Undo once the view has closed. */
   onDelete?: () => void;
+  /** Read as the view closes: where focus goes instead of back to its opener. */
+  finalFocus?: () => HTMLElement | null | undefined;
   /** Offered on an Open Standalone Note only: choose a Thread for it. */
   onAddToThread?: () => void;
   /** Offered on an Open Standalone Note only: start a Thread from it. */
@@ -110,6 +112,7 @@ export function NoteDialog({
   onSave,
   onToggleArchived,
   onDelete,
+  finalFocus,
   onAddToThread,
   onNewThread,
   followUp,
@@ -250,8 +253,10 @@ export function NoteDialog({
   // first, so it is never lost on the way into a Thread.
   const canAddToThread = note?.state === "open" && !isPending && !isDirty;
 
+  const deleting = useRef(false);
   const handleDelete = () => {
     if (isPending || !onDelete) return;
+    deleting.current = true;
     onDelete();
     onOpenChange(false);
   };
@@ -371,6 +376,7 @@ export function NoteDialog({
       <ResponsiveDialogContent
         surface="framed"
         showCloseButton={false}
+        finalFocus={finalFocus}
         onEscapeKeyDown={(event) => {
           if (inFloatingLayer(event.target)) {
             event.preventDefault();
@@ -441,7 +447,13 @@ export function NoteDialog({
                     <EllipsisIcon />
                     <span className="sr-only">More actions</span>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-auto">
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-auto"
+                    // Deleting closes the view with the menu open: the view
+                    // decides where focus goes, not the menu.
+                    finalFocus={() => !deleting.current}
+                  >
                     <DropdownMenuItem onClick={copyMarkdown}>
                       <CopyIcon />
                       Copy Markdown

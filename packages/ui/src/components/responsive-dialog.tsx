@@ -82,8 +82,11 @@ function ResponsiveDialogContent({
   className,
   children,
   onEscapeKeyDown,
-}: React.ComponentProps<typeof DialogContent> & {
+  finalFocus,
+}: Omit<React.ComponentProps<typeof DialogContent>, "finalFocus"> & {
   onEscapeKeyDown?: (event: KeyboardEvent) => void;
+  /** Read as it closes: where focus goes. Nothing returns it to the opener. */
+  finalFocus?: () => HTMLElement | null | undefined;
 }) {
   const isMobile = use(MobileContext);
   const { guarded, requestClose } = use(DrawerDismissalContext);
@@ -99,6 +102,12 @@ function ResponsiveDialogContent({
     return (
       <DrawerContent
         className={cn(className)}
+        onCloseAutoFocus={(event) => {
+          const target = finalFocus?.();
+          if (!target) return;
+          event.preventDefault();
+          target.focus();
+        }}
         onEscapeKeyDown={(event) => {
           // These modal libraries track focus separately, so Escape can still
           // target the drawer while its confirmation is open in another portal.
@@ -180,6 +189,7 @@ function ResponsiveDialogContent({
       showCloseButton={showCloseButton}
       surface={surface}
       className={className}
+      finalFocus={finalFocus && (() => finalFocus() ?? true)}
       onKeyDownCapture={(event) => {
         if (event.key === "Escape") onEscapeKeyDown?.(event.nativeEvent);
       }}
