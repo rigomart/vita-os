@@ -47,7 +47,6 @@ interface CommandPaletteProps {
   onOpenNote: (note: Note) => void;
 }
 
-/** How long typing settles before History searches Completed Notes. */
 const COMPLETED_SEARCH_DELAY = 250;
 
 // Equal History scores retain the API's order when searching. Completed Notes
@@ -332,7 +331,6 @@ export function CommandPalette({
   );
 }
 
-/** A Completed Note in History: one line of its text and when it was completed. */
 function CompletedNoteItem({
   note,
   onSelect,

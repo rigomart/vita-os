@@ -85,7 +85,6 @@ const oldCompleted = completedNote(
   new Date(2025, 0, 5).getTime(),
 );
 
-/** The completed-notes reads History made, in order. */
 const completedReads: DoneNotePageRequest[] = [];
 
 const navigate = vi.hoisted(() => vi.fn());
