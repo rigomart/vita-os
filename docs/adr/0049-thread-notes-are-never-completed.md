@@ -20,9 +20,9 @@ The contract reads a Thread's Notes with `listThreadNotes`, every Note of the Th
 `thread_notes.state` and `completed_at` are retired in two deploys, because migrations run while the previous API still serves and that API reads and writes both.
 
 1. **`0009`, with this change**, rebuilds `thread_notes` so `state` defaults to `'open'`, without the `CHECK` that kept SQLite from dropping it, and replaces the two indexes that named it with one on `(user_id, thread_id, created_at DESC, id DESC)`. Every stored value is kept. The Drizzle schema no longer declares either column, so the new code never names them: Drizzle names every column it declares in an `INSERT`. The previous API, serving while `0009` runs, still finds both.
-2. **A later migration**, once this API is the one serving, drops both columns in place, as `0007` dropped `follow_up`. It is written by hand: the Drizzle snapshot already lacks the columns, so `migrations:generate` has nothing to emit.
+2. **`0010`**, once the API from step one is the one serving in production, drops both columns in place, as `0007` dropped `follow_up`. It is written by hand: the Drizzle snapshot already lacked the columns, so `migrations:generate` had nothing to emit.
 
-Until then the schema check in `apps/api/migration/test_drizzle_schema.py` lists the two columns as retired, the one place D1 and the Drizzle schema may differ; the drop removes the entry.
+Between the two, the schema check in `apps/api/migration/test_drizzle_schema.py` listed the two columns as retired, the one place D1 and the Drizzle schema could differ; `0010` removed the entry.
 
 ## Considered Options
 
@@ -35,5 +35,5 @@ Until then the schema check in `apps/api/migration/test_drizzle_schema.py` lists
 - A long Thread's Notes only grow; nothing folds them away. At personal scale that is a list to scroll, and Delete remains.
 - Something to do inside a Thread belongs in a **Task**. An undated **Standalone Note** added to a Thread becomes a Thread Note with no **Task** (ADR 0030), so a to-do written as a Note becomes a record there, and the person adds the Task.
 - A Thread Note's export row no longer carries `state` or `completed_at`, so a Note completed before this change exports like any other. An import accepts only a file from its own migration, so an older export never meets the new shape.
-- Until the drop ships, `thread_notes` holds two columns no code reads.
+- Between `0009` and `0010`, `thread_notes` held two columns no code read.
 - `CONTEXT.md` says a Thread Note is a record that is never completed; **Open Note** and **Completed Note** now name Standalone Notes only.

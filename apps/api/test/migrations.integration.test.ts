@@ -105,6 +105,13 @@ let recorder: { actorId: string; cookie: string };
 let threadNotesBeforeCleanup: Record<string, unknown>[];
 let threadNoteColumnsBeforeCleanup: Record<string, unknown>[];
 let schemaBeforeThreadNoteCleanup: Record<string, unknown>[];
+let threadNotesAfterCleanup: Record<string, unknown>[];
+let threadNoteColumnsAfterCleanup: Record<string, unknown>[];
+let schemaAfterThreadNoteCleanup: Record<string, unknown>[];
+let insertedWithoutState: Record<string, unknown> | null;
+let threadNotesBeforeDrop: Record<string, unknown>[];
+let threadNoteColumnsBeforeDrop: Record<string, unknown>[];
+let schemaBeforeDrop: Record<string, unknown>[];
 
 async function readSchema() {
   return (
@@ -396,21 +403,86 @@ beforeAll(async () => {
   threadNoteColumnsBeforeCleanup = await readColumns("thread_notes");
   schemaBeforeThreadNoteCleanup = await readSchema();
   await applyD1Migrations(database, migrationsThrough(9));
+  threadNotesAfterCleanup = await readThreadNotes();
+  threadNoteColumnsAfterCleanup = await readColumns("thread_notes");
+  schemaAfterThreadNoteCleanup = await readSchema();
+  // Between 0009 and 0010 both APIs write: the one before 0009 names state and
+  // completed_at, the one shipped with it names neither.
+  await database
+    .prepare(
+      "UPDATE thread_notes SET state = 'done', completed_at = 1700000000400 WHERE id = 'record-open'",
+    )
+    .run();
+  await database
+    .prepare(
+      `INSERT INTO thread_notes (id, user_id, thread_id, body, created_at, updated_at)
+       VALUES ('record-new', ?, 'record-thread', 'Booked for Monday', 1700000000500, 1700000000500)`,
+    )
+    .bind(recorder.actorId)
+    .run();
+  insertedWithoutState = await database
+    .prepare(
+      "SELECT state, completed_at FROM thread_notes WHERE id = 'record-new'",
+    )
+    .first();
+  threadNotesBeforeDrop = await readThreadNotes();
+  threadNoteColumnsBeforeDrop = await readColumns("thread_notes");
+  schemaBeforeDrop = await readSchema();
+  await applyD1Migrations(database, migrationsThrough(10));
+});
+
+describe("0010: Thread Notes lose state and completed_at", () => {
+  it("drops only the two columns, keeping every other saved value", async () => {
+    expect(threadNotesBeforeDrop.length).toBeGreaterThan(2);
+    expect(await readThreadNotes()).toEqual(
+      threadNotesBeforeDrop.map(
+        ({ state: _state, completed_at: _completedAt, ...row }) => row,
+      ),
+    );
+    // SQLite renumbers column positions after a drop; every other attribute stays.
+    const withoutPosition = (columns: Record<string, unknown>[]) =>
+      columns.map(({ cid: _position, ...column }) => column);
+    expect(withoutPosition(await readColumns("thread_notes"))).toEqual(
+      withoutPosition(
+        threadNoteColumnsBeforeDrop.filter(
+          (column) => column.name !== "state" && column.name !== "completed_at",
+        ),
+      ),
+    );
+    const unrelated = (rows: Record<string, unknown>[]) =>
+      rows.filter((row) => row.name !== "thread_notes");
+    expect(unrelated(await readSchema())).toEqual(unrelated(schemaBeforeDrop));
+    expect(
+      (await database.prepare("PRAGMA foreign_key_check").all()).results,
+    ).toEqual([]);
+  });
+
+  it("lists every Thread Note, newest first", async () => {
+    const listed = await read<ThreadNote[]>(
+      "/v1/threads/record-thread/notes",
+      recorder.cookie,
+    );
+    expect(listed.map((note) => note.body)).toEqual([
+      "Booked for Monday",
+      "Old consultation",
+      "Clinic opens at nine",
+    ]);
+  });
 });
 
 describe("0009: Thread Notes stop needing a state", () => {
   it("keeps every Thread Note as stored, state and completion included", async () => {
     expect(threadNotesBeforeCleanup.length).toBeGreaterThan(2);
-    expect(await readThreadNotes()).toEqual(threadNotesBeforeCleanup);
+    expect(threadNotesAfterCleanup).toEqual(threadNotesBeforeCleanup);
   });
 
   it("defaults state to open, drops its check and indexes, and changes nothing else", async () => {
-    expect(await readColumns("thread_notes")).toEqual(
+    expect(threadNoteColumnsAfterCleanup).toEqual(
       threadNoteColumnsBeforeCleanup.map((column) =>
         column.name === "state" ? { ...column, dflt_value: "'open'" } : column,
       ),
     );
-    const threadNotesSchema = (await readSchema()).filter(
+    const threadNotesSchema = schemaAfterThreadNoteCleanup.filter(
       (row) => row.tbl_name === "thread_notes",
     );
     expect(threadNotesSchema.map((row) => row.name)).toEqual([
@@ -422,44 +494,16 @@ describe("0009: Thread Notes stop needing a state", () => {
     ).toBe(true);
     const unrelated = (rows: Record<string, unknown>[]) =>
       rows.filter((row) => row.tbl_name !== "thread_notes");
-    expect(unrelated(await readSchema())).toEqual(
+    expect(unrelated(schemaAfterThreadNoteCleanup)).toEqual(
       unrelated(schemaBeforeThreadNoteCleanup),
     );
-    expect(
-      (await database.prepare("PRAGMA foreign_key_check").all()).results,
-    ).toEqual([]);
   });
 
   it("takes writes from the API before it and the API after it", async () => {
-    await database
-      .prepare(
-        "UPDATE thread_notes SET state = 'done', completed_at = 1700000000400 WHERE id = 'record-open'",
-      )
-      .run();
-    await database
-      .prepare(
-        `INSERT INTO thread_notes (id, user_id, thread_id, body, created_at, updated_at)
-         VALUES ('record-new', ?, 'record-thread', 'Booked for Monday', 1700000000500, 1700000000500)`,
-      )
-      .bind(recorder.actorId)
-      .run();
+    expect(insertedWithoutState).toEqual({ state: "open", completed_at: null });
     expect(
-      await database
-        .prepare(
-          "SELECT state, completed_at FROM thread_notes WHERE id = 'record-new'",
-        )
-        .first(),
-    ).toEqual({ state: "open", completed_at: null });
-
-    const listed = await read<ThreadNote[]>(
-      "/v1/threads/record-thread/notes",
-      recorder.cookie,
-    );
-    expect(listed.map((note) => note.body)).toEqual([
-      "Booked for Monday",
-      "Old consultation",
-      "Clinic opens at nine",
-    ]);
+      threadNotesBeforeDrop.find((row) => row.id === "record-open"),
+    ).toMatchObject({ state: "done", completed_at: 1_700_000_000_400 });
   });
 });
 

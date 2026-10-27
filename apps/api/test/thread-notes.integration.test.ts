@@ -5,7 +5,6 @@ import type {
   ThreadNote,
 } from "@vita-os/contracts";
 
-import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "./sessions";
@@ -134,29 +133,6 @@ describe("reading a Thread's Notes", () => {
       code: "not_found",
       message: "Thread not found.",
     });
-  });
-
-  it("lists a Note completed before Thread Notes lost Complete", async () => {
-    const owner = await createSession("thread-note-stored-done");
-    const thread = await seedThread(owner);
-    const open = await capture(owner, thread, "Still open");
-    const doneId = crypto.randomUUID();
-    await env.DB.prepare(
-      `INSERT INTO thread_notes (id, user_id, thread_id, body, state, completed_at, created_at, updated_at)
-       VALUES (?, ?, ?, 'Completed long ago', 'done', 1600000000500, 1600000000000, 1600000000000)`,
-    )
-      .bind(doneId, owner.actorId, thread._id)
-      .run();
-
-    expect(await threadNotes(owner, thread)).toEqual([
-      open,
-      {
-        _id: doneId,
-        body: "Completed long ago",
-        createdAt: 1600000000000,
-        updatedAt: 1600000000000,
-      },
-    ]);
   });
 });
 

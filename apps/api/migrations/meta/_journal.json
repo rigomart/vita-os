@@ -22,6 +22,13 @@
       "when": 1793138399403,
       "tag": "0009_thread_notes_never_completed",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1793141525722,
+      "tag": "0010_drop_retired_thread_note_columns",
+      "breakpoints": true
     }
   ]
 }

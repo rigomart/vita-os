@@ -324,7 +324,7 @@ async function seed(client: Client, stage: number) {
     user_id: OWNER,
     thread_id: "thread-open",
     body: "Clinic opens at nine",
-    state: "open",
+    ...(stage < 10 ? { state: "open" } : {}),
     created_at: ACTIVITY,
     updated_at: ACTIVITY,
   });
@@ -455,8 +455,6 @@ async function expectUpgraded(client: Client, stage: number) {
       user_id: OWNER,
       thread_id: "thread-open",
       body: "Clinic opens at nine",
-      state: "open",
-      completed_at: null,
       created_at: ACTIVITY,
       updated_at: ACTIVITY,
     },
@@ -477,7 +475,7 @@ async function expectUpgraded(client: Client, stage: number) {
 }
 
 describe("an upgrade keeps the data", () => {
-  it.each([1, 2, 3, 4, 5, 6, 7, 8])(
+  it.each([1, 2, 3, 4, 5, 6, 7, 8, 9])(
     "from %i to the latest, after copying the file",
     async (stage) => {
       const all = await repoMigrations();
@@ -529,21 +527,21 @@ function escape(text: string): string {
 
 describe("a failing migration", () => {
   it("rolls that migration back, keeps earlier ones and the copy, and names it", async () => {
-    await migrateThrough(9);
+    await migrateThrough(10);
     const client = open();
-    await seed(client, 9);
+    await seed(client, 10);
     const seeded = await snapshot(client);
     const seededSchema = await schema(client);
     client.close();
 
     const migrations = await migrationsDirectory({
       extra: {
-        "0010_works.sql": "CREATE TABLE tags (id TEXT PRIMARY KEY NOT NULL);",
+        "0011_works.sql": "CREATE TABLE tags (id TEXT PRIMARY KEY NOT NULL);",
         // DDL and a write succeed before the third statement fails.
-        "0011_breaks.sql": `CREATE TABLE half_done (id TEXT);
+        "0012_breaks.sql": `CREATE TABLE half_done (id TEXT);
 UPDATE notes SET body = 'changed';
 INSERT INTO no_such_table VALUES (1);`,
-        "0012_never.sql": "CREATE TABLE never (id TEXT);",
+        "0013_never.sql": "CREATE TABLE never (id TEXT);",
       },
     });
     const error = await migrateWith(migrations).catch(
@@ -552,16 +550,16 @@ INSERT INTO no_such_table VALUES (1);`,
 
     expect(error).toBeInstanceOf(MigrationFailedError);
     const failure = error as MigrationFailedError;
-    expect(failure.migration).toBe("0011_breaks.sql");
-    expect(failure.applied).toEqual(["0010_works.sql"]);
-    expect(failure.message).toContain("0011_breaks.sql");
+    expect(failure.migration).toBe("0012_breaks.sql");
+    expect(failure.applied).toEqual(["0011_works.sql"]);
+    expect(failure.message).toContain("0012_breaks.sql");
     expect(failure.message).toContain("no such table: no_such_table");
-    expect(failure.backupPath).toContain(".before-0010_works-");
+    expect(failure.backupPath).toContain(".before-0011_works-");
 
     const after = open();
     expect(await recorded(after)).toEqual([
       ...(await repoMigrations()),
-      "0010_works.sql",
+      "0011_works.sql",
     ]);
     expect(await snapshot(after)).toEqual({ ...seeded, tags: [] });
     const tableNames = (await schema(after)).map((row) => row.name);
@@ -575,11 +573,11 @@ INSERT INTO no_such_table VALUES (1);`,
 
     // Once the file is fixed, the next run picks up where this one stopped.
     await writeFile(
-      join(migrations, "0011_breaks.sql"),
+      join(migrations, "0012_breaks.sql"),
       "CREATE TABLE half_done (id TEXT);",
     );
     const retry = await migrateWith(migrations);
-    expect(retry.applied).toEqual(["0011_breaks.sql", "0012_never.sql"]);
+    expect(retry.applied).toEqual(["0012_breaks.sql", "0013_never.sql"]);
   });
 
   it("on a fresh file leaves no history table behind", async () => {
@@ -597,24 +595,24 @@ INSERT INTO no_such_table VALUES (1);`,
 
 describe("a database this app can't vouch for is refused, unchanged", () => {
   it("when a newer app applied a migration this one doesn't know", async () => {
-    await migrateThrough(9);
+    await migrateThrough(10);
     const client = open();
-    await seed(client, 9);
+    await seed(client, 10);
     await client.execute(
-      "INSERT INTO d1_migrations (name) VALUES ('0010_future.sql')",
+      "INSERT INTO d1_migrations (name) VALUES ('0011_future.sql')",
     );
     client.close();
     const before = await readFile(databasePath);
 
     const error = await migrateWith(
       await migrationsDirectory({
-        extra: { "0011_also_new.sql": "CREATE TABLE x (id TEXT);" },
+        extra: { "0012_also_new.sql": "CREATE TABLE x (id TEXT);" },
       }),
     ).catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(UnknownMigrationsError);
     expect((error as UnknownMigrationsError).unknownMigrations).toEqual([
-      "0010_future.sql",
+      "0011_future.sql",
     ]);
     expect(await readFile(databasePath)).toEqual(before);
     expect(await backupsOf(databasePath)).toEqual([]);

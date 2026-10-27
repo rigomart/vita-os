@@ -149,8 +149,6 @@ export const threadNotes = sqliteTable(
       .notNull()
       .references(() => threads.id, { onDelete: "cascade" }),
     body: text().notNull(),
-    // `state` and `completed_at` stay in D1 until a later migration drops them
-    // (ADR 0049); see RETIRED in apps/api/migration/test_drizzle_schema.py.
     created_at: integer().notNull(),
     updated_at: integer().notNull(),
   },
