@@ -8,6 +8,7 @@ import { XIcon } from "lucide-react";
 
 import { cn } from "../lib/utils";
 import { Button } from "./button";
+import { useDrawerPortalContainer } from "./drawer";
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
@@ -63,17 +64,22 @@ function DialogContent({
   children,
   showCloseButton = true,
   surface = "default",
+  style,
   ...props
 }: DialogPrimitive.Popup.Props &
   VariantProps<typeof dialogContentVariants> & {
     showCloseButton?: boolean;
   }) {
+  // Inside a drawer, rendered within it, where its focus trap lets fields take focus.
+  const container = useDrawerPortalContainer() ?? undefined;
   return (
-    <DialogPortal>
+    <DialogPortal container={container}>
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(dialogContentVariants({ surface }), className)}
+        // Radix drawers disable body pointer events while this portal is open.
+        style={{ pointerEvents: "auto", ...style }}
         {...props}
       >
         {children}
