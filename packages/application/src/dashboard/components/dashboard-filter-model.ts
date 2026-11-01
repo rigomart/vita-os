@@ -33,9 +33,9 @@ export interface DashboardFilterOption {
   /** Present on an Area's own option. */
   area?: AreaSummary;
   /**
-   * How many items this option shows: Open Threads and open Standalone Notes
-   * for All, Open Threads for the Areas and No area, open Standalone Notes
-   * for Notes.
+   * How many items this option shows: Open Threads and dated open
+   * Standalone Notes for All, Open Threads for the Areas and No area, every
+   * open Standalone Note for Notes.
    */
   count: number;
   /** An option with nothing open: still listed, drawn quietly. */
@@ -112,13 +112,17 @@ export function filterDashboard(input: {
               : areaOf(thread) === filter.area._id,
           );
 
+  // A date puts a Note on the board: All leaves undated ones to the Notes
+  // filter (ADR 0052).
+  const datedNotes = input.notes.filter((note) => note.followUp != null);
+
   const unlabeled = counts.get(undefined) ?? 0;
   const options: DashboardFilterOption[] = [
     {
       key: "all",
       search: {},
       label: "All",
-      count: input.threads.length + input.notes.length,
+      count: input.threads.length + datedNotes.length,
       muted: false,
       selected: filter.kind === "all",
       separated: false,
@@ -166,9 +170,13 @@ export function filterDashboard(input: {
     filter,
     threads,
     // Standalone Notes belong to no Area, so any Area narrowing leaves them
-    // out; the Notes filter shows nothing else.
+    // out; the Notes filter shows nothing else, undated ones included.
     notes:
-      filter.kind === "all" || filter.kind === "notes" ? [...input.notes] : [],
+      filter.kind === "all"
+        ? datedNotes
+        : filter.kind === "notes"
+          ? [...input.notes]
+          : [],
     options,
   };
 }

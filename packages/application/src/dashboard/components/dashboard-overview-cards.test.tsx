@@ -370,6 +370,8 @@ describe("copies of one Thread", () => {
 describe("a Dashboard Note view", () => {
   it("keeps the Note view open when completing removes its line", async () => {
     const user = userEvent.setup();
+    // Dated, so it stands on All.
+    const today: Note = { ...saved, followUp: new Date(2026, 6, 17).getTime() };
     const markNoteDone = vi.fn(async () => {
       rerender(
         <DashboardOverview
@@ -380,7 +382,7 @@ describe("a Dashboard Note view", () => {
         />,
       );
       return success<Note>({
-        ...saved,
+        ...today,
         state: "done",
         completedAt: currentDate,
       });
@@ -390,7 +392,7 @@ describe("a Dashboard Note view", () => {
       <DashboardOverview
         areas={[]}
         threads={[]}
-        notes={[saved]}
+        notes={[today]}
         currentDate={currentDate}
       />,
       { applicationClient },

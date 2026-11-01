@@ -200,13 +200,17 @@ describe("DashboardOverview", () => {
       notes: [note("Water the plants")],
     });
 
-    expect(screen.getByText("Unlabeled")).toBeVisible();
+    expect(
+      within(screen.getByRole("complementary", { name: "No date" })).getByText(
+        "Unlabeled",
+      ),
+    ).toBeVisible();
     const row = screen.getByRole("navigation", { name: "Filter the board" });
     expect(
       within(row)
         .getAllByRole("link")
         .map((link) => link.textContent),
-    ).toEqual(["All2", "Notes1"]);
+    ).toEqual(["All1", "Notes1"]);
   });
 
   it("sets Notes apart after the Areas, then offers Edit areas", () => {
@@ -231,16 +235,20 @@ describe("DashboardOverview", () => {
         thread("Dentist", { order: 1 }),
         thread("Passport", { areaId: undefined, order: 2 }),
       ],
-      notes: [note("Water the plants"), note("Call the bank")],
+      notes: [
+        note("Water the plants", { followUp: today }),
+        note("Call the bank"),
+      ],
     });
 
+    // All counts only the dated Note; Notes counts both.
     const row = screen.getByRole("navigation", { name: "Filter the board" });
     expect(
       within(row)
         .getAllByRole("link")
         .map((link) => [link.textContent, link.getAttribute("href")]),
     ).toEqual([
-      ["All5", "/"],
+      ["All4", "/"],
       ["Health2", "/?area=health"],
       ["Home0", "/?area=home"],
       ["No area1", "/?area=none"],
@@ -575,7 +583,7 @@ describe("DashboardOverview", () => {
    * #236, settled: a Follow-up outranks undated Tasks, so an actionable
    * Thread with no date keeps its own run in the margin rather than in Now.
    */
-  it("keeps undated Tasks off the list and in No date", () => {
+  it("keeps undated Tasks off the list and in No date, and undated Notes off All", () => {
     renderOverview({
       threads: [
         thread("Dated", { followUp: today }),
@@ -594,9 +602,10 @@ describe("DashboardOverview", () => {
     expect(within(margin).getByText("Call the clinic")).toBeVisible();
     expect(within(margin).getByText("Actionable")).toBeVisible();
     expect(within(margin).getByText("Idle")).toBeVisible();
+    expect(within(margin).queryByText("Notes")).toBeNull();
     expect(
-      within(margin).getByRole("button", { name: "Open note: Loose thought" }),
-    ).toBeVisible();
+      screen.queryByRole("button", { name: "Open note: Loose thought" }),
+    ).toBeNull();
   });
 
   it("places a Thread by its soonest dated Task, and only undated Tasks make it Ready to move", () => {
@@ -812,8 +821,8 @@ describe("DashboardOverview", () => {
         thread("Overdue", { followUp: today - DAY }),
         thread("Actionable", { tasks: tasks("Call the clinic"), order: 1 }),
         thread("Idle", { order: 2 }),
+        thread("Someday", { order: 3 }),
       ],
-      notes: [note("Loose thought")],
     });
 
     // Below `lg`; from `lg` the same runs sit in the aside instead.
@@ -836,6 +845,18 @@ describe("DashboardOverview", () => {
     ).toBeVisible();
   });
 
+  it("points to Notes when only undated Notes are open", () => {
+    renderOverview({ notes: [note("Wifi password is on the router")] });
+
+    expect(screen.getByText("Nothing is asking for you.")).toBeVisible();
+    expect(screen.getByText(/Undated notes are under/)).toBeVisible();
+    expect(
+      within(screen.getByText(/Undated notes are under/)).getByRole("link", {
+        name: "Notes",
+      }),
+    ).toHaveAttribute("href", "/?show=notes");
+  });
+
   it("leaves the folded No date out when everything has a date", () => {
     renderOverview({
       threads: [thread("Overdue", { followUp: today - DAY })],
@@ -853,6 +874,9 @@ describe("DashboardOverview", () => {
     renderOverview();
 
     expect(screen.getByText("Nothing is asking for you.")).toBeVisible();
+    expect(
+      screen.getByText("Every Thread is resolved and every Note is completed."),
+    ).toBeVisible();
     expect(
       screen.queryByRole("region", { name: "Today" }),
     ).not.toBeInTheDocument();
@@ -921,7 +945,7 @@ describe("DashboardOverview cursor", () => {
         thread("Kitchen", { followUp: today, order: 1 }),
         thread("Garden", { order: 2 }),
       ],
-      notes: [note("Call mum")],
+      notes: [note("Call mum", { followUp: today + DAY })],
     });
   const opener = (name: string) =>
     name === "Call mum"
@@ -958,19 +982,19 @@ describe("DashboardOverview cursor", () => {
     await user.keyboard("{ArrowDown}");
     expect(document.activeElement).toBe(opener("Kitchen"));
     await user.keyboard("j");
+    expect(document.activeElement).toBe(opener("Call mum"));
+    await user.keyboard("j");
     expect(document.activeElement).toBe(opener("Garden"));
     await user.keyboard("j");
-    expect(document.activeElement).toBe(opener("Call mum"));
-    await user.keyboard("j");
-    expect(document.activeElement).toBe(opener("Call mum"));
+    expect(document.activeElement).toBe(opener("Garden"));
     await user.keyboard("k");
-    expect(document.activeElement).toBe(opener("Garden"));
+    expect(document.activeElement).toBe(opener("Call mum"));
     await user.keyboard("{Home}");
     expect(document.activeElement).toBe(opener("Dentist"));
     await user.keyboard("{End}");
-    expect(document.activeElement).toBe(opener("Call mum"));
-    await user.keyboard("{ArrowUp}");
     expect(document.activeElement).toBe(opener("Garden"));
+    await user.keyboard("{ArrowUp}");
+    expect(document.activeElement).toBe(opener("Call mum"));
   });
 
   describe("after an item's own action takes it away", () => {

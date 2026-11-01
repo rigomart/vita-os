@@ -1,4 +1,4 @@
-import type { AreaId, ThreadId } from "@vita-os/contracts";
+import type { AreaId, NoteId, ThreadId } from "@vita-os/contracts";
 
 import { describe, expect, it } from "vitest";
 
@@ -44,6 +44,7 @@ const passport = aThread({ _id: "thread-passport" as ThreadId });
 const { areaId: _dropped, ...unlabeledShape } = passport;
 const unlabeled = unlabeledShape;
 const note = aNote();
+const datedNote = aNote({ _id: "note-dated" as NoteId, followUp: 10_000 });
 
 const threads = [checkup, dentist, gate, unlabeled];
 const areas = [health, home, career];
@@ -51,19 +52,19 @@ const areas = [health, home, career];
 function view(area: string | undefined, show?: "notes") {
   return filterDashboard({
     threads,
-    notes: [note],
+    notes: [note, datedNote],
     areas,
     params: { area, show },
   });
 }
 
 describe("filterDashboard", () => {
-  it("shows the whole board, Notes included, under All", () => {
+  it("shows the whole board under All, with only the dated Notes", () => {
     const result = view(undefined);
 
     expect(result.filter).toEqual({ kind: "all" });
     expect(result.threads).toEqual(threads);
-    expect(result.notes).toEqual([note]);
+    expect(result.notes).toEqual([datedNote]);
   });
 
   it("narrows to one Area's Open Threads and hides Standalone Notes", () => {
@@ -87,7 +88,7 @@ describe("filterDashboard", () => {
 
     expect(result.filter).toEqual({ kind: "all" });
     expect(result.threads).toEqual(threads);
-    expect(result.notes).toEqual([note]);
+    expect(result.notes).toEqual([datedNote]);
     expect(result.options.find((option) => option.selected)?.key).toBe("all");
   });
 
@@ -124,20 +125,20 @@ describe("filterDashboard", () => {
       ["Health", 2, { area: health.slug }, false],
       ["Career", 0, { area: career.slug }, false],
       ["No area", 1, { area: NO_AREA_PARAM }, false],
-      ["Notes", 1, { show: "notes" }, true],
+      ["Notes", 2, { show: "notes" }, true],
     ]);
   });
 
-  it("counts Standalone Notes under All when there are no Threads", () => {
+  it("counts only dated Standalone Notes under All when there are no Threads", () => {
     const result = filterDashboard({
       threads: [],
-      notes: [note],
+      notes: [note, datedNote],
       areas: [],
       params: {},
     });
 
     expect(result.threads).toEqual([]);
-    expect(result.notes).toEqual([note]);
+    expect(result.notes).toEqual([datedNote]);
     expect(result.options.find((option) => option.key === "all")).toMatchObject(
       {
         count: 1,
@@ -146,12 +147,12 @@ describe("filterDashboard", () => {
     );
   });
 
-  it("shows only the open Standalone Notes under Notes", () => {
+  it("shows every open Standalone Note, dated or not, under Notes", () => {
     const result = view(undefined, "notes");
 
     expect(result.filter).toEqual({ kind: "notes" });
     expect(result.threads).toEqual([]);
-    expect(result.notes).toEqual([note]);
+    expect(result.notes).toEqual([note, datedNote]);
     expect(
       result.options.filter((option) => option.selected).map((o) => o.key),
     ).toEqual(["notes"]);

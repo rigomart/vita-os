@@ -1,10 +1,15 @@
 import type { AreaSummary, Note, Thread } from "@vita-os/contracts";
 
+import { Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 
 import type { DashboardFilterParams } from "../../navigation/use-dashboard-filter-params";
 import type { BoardScope } from "./dashboard-line";
 
+import {
+  NOTES_FILTER,
+  withDashboardFilter,
+} from "../../navigation/search-params";
 import { StandaloneNoteDialog } from "../../notes/note-view/standalone-note-dialog";
 import { boardItems, buildAttentionBoard } from "./attention-board-model";
 import { DashboardFilter } from "./dashboard-filter";
@@ -53,6 +58,7 @@ export function DashboardOverview({
     currentDate,
   );
   const empty = boardItems(board).length === 0;
+  const hasUndatedNotes = notes.some((note) => note.followUp == null);
   const scope: BoardScope = {
     areaById: new Map(areas.map((area) => [area._id, area])),
     currentDate,
@@ -78,7 +84,21 @@ export function DashboardOverview({
                   Nothing is asking for you.
                 </p>
                 <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                  Every Thread is resolved and every Note is completed.
+                  {hasUndatedNotes ? (
+                    <>
+                      Undated notes are under{" "}
+                      <Link
+                        to="/"
+                        search={withDashboardFilter({ show: NOTES_FILTER })}
+                        className="underline underline-offset-2 hover:text-foreground"
+                      >
+                        Notes
+                      </Link>
+                      .
+                    </>
+                  ) : (
+                    "Every Thread is resolved and every Note is completed."
+                  )}
                 </p>
               </>
             ) : (
