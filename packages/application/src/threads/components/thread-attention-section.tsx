@@ -27,7 +27,6 @@ export function ThreadAttentionSection({
       onCompleteTaskWithNote={tasks.completeWithNote}
       onSetTaskDate={(taskId, date) => tasks.setDate(taskId, date)}
       onSetTaskRepeat={(taskId, repeat) => tasks.setRepeat(taskId, repeat)}
-      onSkipTask={(taskId) => tasks.skip(taskId)}
     />
   );
 }

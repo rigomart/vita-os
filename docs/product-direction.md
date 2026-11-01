@@ -85,7 +85,7 @@ An ongoing effort, concern, decision, or situation. It is **Open** or **Resolved
 A Thread may carry:
 
 - a **Summary**: what the Thread is about right now.
-- **Tasks**: useful actions, as unordered peers, each with an optional date and an optional repeat. No done state, no order. Completing one removes it, or moves a repeating one to its next occurrence, and writes it into the Activity Log; completed from Thread detail it can carry a note, kept as a Thread Note. A date is a soft resurfacing point, a day with an optional time of day; "look at this again in two weeks" is a dated Task. A repeat is every N days or weekly on chosen days: missed occurrences collapse into one, and an occurrence can be skipped.
+- **Tasks**: useful actions, as unordered peers, each with an optional date and an optional repeat. No done state, no order. Completing one removes it, or moves a repeating one to its next occurrence, and writes it into the Activity Log; completed from Thread detail it can carry a note, kept as a Thread Note. A date is a soft resurfacing point, a day with an optional time of day; "look at this again in two weeks" is a dated Task. A repeat is every N days or weekly on chosen days: missed occurrences collapse into one.
 
 - **Thread Notes**: body-only notes that belong to this Thread and nowhere else.
 - an **Activity Log**: the automatic, read-only record of meaningful changes.
@@ -126,7 +126,7 @@ Every item is a line under its day's heading, and the nearer a day, the larger a
 
 A filter at the top of the list narrows it to one Area, to unlabeled Threads, or to Notes alone. Notes have no list of their own: the Notes filter is where to read them together.
 
-The board can act on what it shows. A line completes the Task it displays in one click, skips it when it repeats, and sets, changes, or clears that Task's date and repeat, or adds a "Follow up" Task when it shows no single Task; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
+The board can act on what it shows. A line completes the Task it displays in one click, and sets, changes, or clears that Task's date and repeat, or adds a "Follow up" Task when it shows no single Task; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
 
 The intended loop takes one to two minutes:
 

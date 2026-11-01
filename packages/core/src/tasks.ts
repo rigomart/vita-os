@@ -177,7 +177,7 @@ export function decideCompleteTask(
     patch:
       task.repeat === undefined
         ? without(thread, taskId)
-        : advancedTask(thread, task, clock).patch,
+        : advancedTask(thread, task, task.repeat, clock).patch,
     logs: [
       {
         type: "move_completed",
@@ -248,32 +248,20 @@ function replaceTask(thread: TaskState, task: Task): ThreadUpdateDecision {
 function advancedTask(
   thread: TaskState,
   task: Task,
+  repeat: Repeat,
   clock: TaskClock,
 ): ThreadUpdateDecision {
-  if (task.repeat === undefined)
-    throw new ValidationError("Only a repeating Task can be skipped");
   if (task.date === undefined)
     throw new ValidationError("A Repeat requires a date");
   const date = requireTaskDate(
     nextTaskDate(
       requireTaskDate(task.date),
-      requireRepeat(task.repeat),
+      requireRepeat(repeat),
       requireTimeZone(clock.timeZone),
       clock.now,
     ),
   );
   return replaceTask(thread, { ...task, date });
-}
-
-/** Skip collapses missed occurrences just like complete, without any activity. */
-export function decideSkipTask(
-  thread: TaskState,
-  taskId: TaskId,
-  clock: { timeZone: string; now: number },
-): ThreadUpdateDecision | null {
-  requireOpenForTasks(thread);
-  const task = findTask(thread, taskId);
-  return task === undefined ? null : advancedTask(thread, task, clock);
 }
 
 /**

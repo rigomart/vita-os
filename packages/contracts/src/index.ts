@@ -16,7 +16,6 @@ export type {
   SetNoteRepeatInput,
   SetTaskDateInput,
   SetTaskRepeatInput,
-  SkipTaskInput,
   UpdateAreaInput,
   UpdateNoteFollowUpInput,
   UpdateThreadInput,

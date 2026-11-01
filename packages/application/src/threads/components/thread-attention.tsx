@@ -18,7 +18,6 @@ import {
   MessageSquarePlus,
   Plus,
   Repeat as RepeatIcon,
-  SkipForward,
   Trash2,
 } from "lucide-react";
 import { Fragment, useId, useRef, useState } from "react";
@@ -48,7 +47,7 @@ interface ThreadAttentionProps {
   onAddTask: (text: string) => unknown;
   onEditTask: (taskId: TaskId, text: string) => unknown;
   onRemoveTask: (taskId: TaskId) => unknown;
-  /** Tasks with a complete or skip on its way: they take no new note until it is answered. */
+  /** Tasks with a complete on its way: they take no new note until it is answered. */
   completingTaskIds?: ReadonlySet<TaskId>;
   onCompleteTask: (taskId: TaskId) => unknown;
   /**
@@ -61,8 +60,6 @@ interface ThreadAttentionProps {
   onSetTaskDate: (taskId: TaskId, date: number | null) => unknown;
   /** Sets, changes or (with `null`) clears one dated Task's Repeat. */
   onSetTaskRepeat: (taskId: TaskId, repeat: Repeat | null) => unknown;
-  /** Moves a repeating Task to its next occurrence. */
-  onSkipTask: (taskId: TaskId) => unknown;
 }
 
 /**
@@ -90,7 +87,6 @@ export function ThreadAttention({
   onCompleteTaskWithNote,
   onSetTaskDate,
   onSetTaskRepeat,
-  onSkipTask,
 }: ThreadAttentionProps) {
   const recoverFocus = useFocusRecovery();
   const section = useRef<HTMLElement>(null);
@@ -185,7 +181,6 @@ export function ThreadAttention({
                   }
                   onSetDate={(date) => onSetTaskDate(task._id, date)}
                   onSetRepeat={(repeat) => onSetTaskRepeat(task._id, repeat)}
-                  onSkip={() => onSkipTask(task._id)}
                 />
                 {noting === task._id && (
                   <CompletionNoteLine
@@ -235,7 +230,6 @@ function TaskRow({
   onToggleNote,
   onSetDate,
   onSetRepeat,
-  onSkip,
 }: {
   task: Task;
   now: number;
@@ -249,7 +243,6 @@ function TaskRow({
   onToggleNote: () => unknown;
   onSetDate: (date: number | null) => unknown;
   onSetRepeat: (repeat: Repeat | null) => unknown;
-  onSkip: () => unknown;
 }) {
   const action = useGuardedAsyncAction((run: () => unknown) => run(), {
     errorToast: false,
@@ -401,17 +394,6 @@ function TaskRow({
               </CommandButton>
             </Command>
             <span aria-hidden className="mx-0.5 h-3.5 w-px bg-border" />
-            {task.repeat !== undefined && (
-              <Command label="Skip to the next date">
-                <CommandButton
-                  aria-label="Skip task"
-                  aria-disabled={busy || undefined}
-                  onClick={() => act(onSkip)}
-                >
-                  <SkipForward />
-                </CommandButton>
-              </Command>
-            )}
             <Command label="Complete with a note">
               <CommandButton
                 aria-disabled={busy || undefined}

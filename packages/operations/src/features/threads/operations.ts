@@ -7,7 +7,6 @@ import type {
   RemoveTaskInput,
   SetTaskDateInput,
   SetTaskRepeatInput,
-  SkipTaskInput,
   Thread,
   ThreadDetail,
   ThreadId,
@@ -24,7 +23,6 @@ import {
   decideRemoveTask,
   decideSetTaskDate,
   decideSetTaskRepeat,
-  decideSkipTask,
   decideThreadUpdate,
   generateSlug,
   requireTaskId,
@@ -250,21 +248,6 @@ export function setTaskRepeat(
   return changeTasks(scope, input, (thread) =>
     decideSetTaskRepeat(thread, input.taskId, input.repeat, input.timeZone),
   );
-}
-
-export function skipTask(
-  scope: RequestScope,
-  input: SkipTaskInput,
-): Operation<Thread> {
-  return changeTasks(scope, input, (thread) => {
-    const task = thread.tasks?.find((task) => task._id === input.taskId);
-    if (task === undefined || task.date !== input.expectedOccurrence)
-      return null;
-    return decideSkipTask(thread, input.taskId, {
-      timeZone: input.timeZone,
-      now: scope.clock.now(),
-    });
-  });
 }
 
 export function removeThread(

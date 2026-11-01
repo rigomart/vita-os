@@ -25,7 +25,6 @@ const methods: Record<keyof ApplicationClient, true> = {
   completeTask: true,
   setTaskDate: true,
   setTaskRepeat: true,
-  skipTask: true,
   getThreadActivityPage: true,
   listOpenNotes: true,
   getDoneNotePage: true,

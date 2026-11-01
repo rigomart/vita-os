@@ -1,6 +1,6 @@
 # No Skip on a repeating Task
 
-**Status:** Proposed. Amends [ADR 0032](./0032-moves-with-an-optional-date-and-repeat.md) (Skip moves a repeating Move to its next occurrence and writes nothing). Follows the reasoning [ADR 0041](./0041-monthly-repeats-and-repeating-notes.md) gave for leaving Skip off a repeating Note.
+**Status:** Accepted. Amends [ADR 0032](./0032-moves-with-an-optional-date-and-repeat.md) (Skip moves a repeating Move to its next occurrence and writes nothing). Follows the reasoning [ADR 0041](./0041-monthly-repeats-and-repeating-notes.md) gave for leaving Skip off a repeating Note.
 **Date:** 2026-10-31
 
 ADR 0032 gave a repeating **Task** two ways to reach its next occurrence: Complete, which writes an **Activity Log** entry, and **Skip**, which writes nothing. Both show on every repeating line of the **Dashboard** and on every repeating row in **Thread** detail. In use Skip goes untouched: the owner completes every occurrence, done or not. So each repeating line carries a control nobody uses, and a choice nobody makes.

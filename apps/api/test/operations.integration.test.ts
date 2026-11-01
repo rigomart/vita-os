@@ -202,14 +202,14 @@ describe("current-state Task commands", () => {
     ]);
   });
 
-  it("rechecks the captured occurrence when Complete loses a race to Skip", async () => {
+  it("rechecks the captured occurrence when Complete loses a race to another Complete", async () => {
     const { scope, thread } = await tasksScope(true);
     const expectedOccurrence = thread.tasks![0]!.date!;
     const batch = env.DB.batch.bind(env.DB);
     vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
       value(
         await run(
-          threads.skipTask(scope, {
+          threads.completeTask(scope, {
             threadId: thread._id,
             taskId: "a" as TaskId,
             timeZone: "UTC",
@@ -234,7 +234,7 @@ describe("current-state Task commands", () => {
     expect(answer).toMatchObject({ ok: false, error: { code: "conflict" } });
     const after = await threadStorage(scope).find(thread._id);
     expect(after?.tasks?.[0]?.date).toBe(Date.parse("2026-10-10T15:30Z"));
-    expect(await stored(scope, thread)).toMatchObject({ notes: 0, logs: 0 });
+    expect(await stored(scope, thread)).toMatchObject({ notes: 0, logs: 1 });
   });
 
   it("a lost completion response followed by retry adds no Note or log and advances once", async () => {

@@ -59,10 +59,6 @@ export const SetTaskRepeatBody = v.strictObject({
   repeat: v.nullable(RequestRepeatSchema),
   timeZone: v.string(),
 });
-export const SkipTaskBody = v.strictObject({
-  expectedOccurrence: TaskOccurrenceSchema,
-  timeZone: v.string(),
-});
 
 export const CreateAreaBody = v.strictObject({
   name: v.string(),
