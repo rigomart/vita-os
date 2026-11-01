@@ -34,51 +34,45 @@ function Surface() {
   ) : null;
 }
 describe("rendered pending Task controls", () => {
-  it.each(["Complete task", "Skip task"])(
-    "%s accepts a double click once and advances a repeating Task once",
-    async (label) => {
-      const answer = deferred<OperationResult<Thread>>();
-      const completeTask = vi.fn(() => answer.promise);
-      const skipTask = vi.fn(() => answer.promise);
-      const queryClient = createTestQueryClient();
-      queryClient.setQueryData(queryKeys.threads.open(), [seed]);
-      const applicationClient = createQuietApplicationClient({
-        completeTask,
-        skipTask,
-        listOpenThreads: async () => success([seed]),
-      });
-      render(<Surface />, { applicationClient, queryClient });
-      const user = userEvent.setup();
-      const button = screen.getByRole("button", { name: label });
-      await user.dblClick(button);
-      await waitFor(() =>
-        expect(button).toHaveAttribute("aria-disabled", "true"),
-      );
-      expect(button).toHaveFocus();
-      const command = label === "Complete task" ? completeTask : skipTask;
-      expect(command).toHaveBeenCalledTimes(1);
-      expect(command).toHaveBeenCalledWith(
-        expect.objectContaining({
-          threadId: seed._id,
-          taskId: task._id,
-          expectedOccurrence: task.date,
-        }),
-      );
-      const next = nextTaskDate(
-        task.date!,
-        task.repeat!,
-        Intl.DateTimeFormat().resolvedOptions().timeZone,
-        Date.now(),
-      );
-      expect(
-        queryClient.getQueryData<Thread[]>(queryKeys.threads.open())?.[0]
-          ?.tasks?.[0]?.date,
-      ).toBe(next);
-      await act(async () =>
-        answer.resolve(success({ ...seed, tasks: [{ ...task, date: next }] })),
-      );
-      await waitFor(() => expect(button).not.toHaveAttribute("aria-disabled"));
-      expect(button).toHaveFocus();
-    },
-  );
+  it("Complete task accepts a double click once and advances a repeating Task once", async () => {
+    const answer = deferred<OperationResult<Thread>>();
+    const completeTask = vi.fn(() => answer.promise);
+    const queryClient = createTestQueryClient();
+    queryClient.setQueryData(queryKeys.threads.open(), [seed]);
+    const applicationClient = createQuietApplicationClient({
+      completeTask,
+      listOpenThreads: async () => success([seed]),
+    });
+    render(<Surface />, { applicationClient, queryClient });
+    const user = userEvent.setup();
+    const button = screen.getByRole("button", { name: "Complete task" });
+    await user.dblClick(button);
+    await waitFor(() =>
+      expect(button).toHaveAttribute("aria-disabled", "true"),
+    );
+    expect(button).toHaveFocus();
+    expect(completeTask).toHaveBeenCalledTimes(1);
+    expect(completeTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        threadId: seed._id,
+        taskId: task._id,
+        expectedOccurrence: task.date,
+      }),
+    );
+    const next = nextTaskDate(
+      task.date!,
+      task.repeat!,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      Date.now(),
+    );
+    expect(
+      queryClient.getQueryData<Thread[]>(queryKeys.threads.open())?.[0]
+        ?.tasks?.[0]?.date,
+    ).toBe(next);
+    await act(async () =>
+      answer.resolve(success({ ...seed, tasks: [{ ...task, date: next }] })),
+    );
+    await waitFor(() => expect(button).not.toHaveAttribute("aria-disabled"));
+    expect(button).toHaveFocus();
+  });
 });

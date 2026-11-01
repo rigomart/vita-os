@@ -17,7 +17,6 @@ import {
   removeThread,
   setTaskDate,
   setTaskRepeat,
-  skipTask,
   updateThread,
 } from "@vita-os/operations";
 import { Hono } from "hono";
@@ -32,7 +31,6 @@ import {
   CompleteTaskBody,
   SetTaskDateBody,
   SetTaskRepeatBody,
-  SkipTaskBody,
   normalizeSetTaskRepeat,
   normalizeThreadChange,
 } from "./requests";
@@ -125,18 +123,6 @@ export const threadsRoutes = new Hono<ApiEnv>()
         await setTaskRepeat(c.get("scope"), {
           ...c.req.valid("param"),
           ...normalizeSetTaskRepeat(c.req.valid("json")),
-        }),
-      ),
-  )
-  .post(
-    "/threads/:threadId/tasks/:taskId/skip",
-    validate("param", TaskParams, "Invalid Task change."),
-    validate("json", SkipTaskBody, "Invalid Task change."),
-    async (c) =>
-      respond(
-        await skipTask(c.get("scope"), {
-          ...c.req.valid("param"),
-          ...c.req.valid("json"),
         }),
       ),
   )

@@ -6,7 +6,6 @@ import {
   RequestRepeatSchema,
   SetTaskDateBody as ContractSetTaskDateBody,
   SetTaskRepeatBody as ContractSetTaskRepeatBody,
-  SkipTaskBody as ContractSkipTaskBody,
   UpdateThreadBody,
   Timestamp,
 } from "@vita-os/contracts";
@@ -79,10 +78,6 @@ export const RepeatSchema = v.pipe(
 export const SetTaskRepeatBody = v.strictObject({
   ...ContractSetTaskRepeatBody.entries,
   repeat: v.nullable(RepeatSchema),
-  timeZone: TimeZoneSchema,
-});
-export const SkipTaskBody = v.strictObject({
-  ...ContractSkipTaskBody.entries,
   timeZone: TimeZoneSchema,
 });
 

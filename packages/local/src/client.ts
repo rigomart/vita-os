@@ -74,7 +74,6 @@ export function createLocalApplicationClient({
     completeTask: command(operations.completeTask),
     setTaskDate: command(operations.setTaskDate),
     setTaskRepeat: command(operations.setTaskRepeat),
-    skipTask: command(operations.skipTask),
 
     getThreadActivityPage: command(operations.getThreadActivityPage),
 

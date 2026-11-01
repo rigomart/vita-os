@@ -20,7 +20,6 @@ import {
   decideRemoveTask,
   decideSetTaskDate,
   decideSetTaskRepeat,
-  decideSkipTask,
   generateSlug,
 } from "@vita-os/core";
 
@@ -63,10 +62,10 @@ function applyTaskDecision<T extends TaskFields>(
 }
 
 /**
- * Completing or skipping names the occurrence the person acted on: the date
- * the Task showed then. A repeating Task that has moved on since — a duplicate
+ * Completing names the occurrence the person acted on: the date the Task
+ * showed then. A repeating Task that has moved on since — a duplicate
  * activation behind the first, or a change from elsewhere — is not completed
- * or skipped again. The zone and the current time are taken once, when the
+ * again. The zone and the current time are taken once, when the
  * command is issued, so optimism computes the same next date as the service.
  */
 interface OccurrenceCommand {
@@ -81,7 +80,6 @@ export type TaskChange =
   | { kind: "edit"; taskId: TaskId; text: string }
   | { kind: "remove"; taskId: TaskId }
   | ({ kind: "complete" } & OccurrenceCommand)
-  | ({ kind: "skip" } & OccurrenceCommand)
   | { kind: "setDate"; taskId: TaskId; date: number | null; timeZone: string }
   | {
       kind: "setRepeat";
@@ -114,10 +112,6 @@ function decideTaskChange(
     case "complete":
       return atOccurrence(thread, change)
         ? decideCompleteTask(thread, change.taskId, change)
-        : null;
-    case "skip":
-      return atOccurrence(thread, change)
-        ? decideSkipTask(thread, change.taskId, change)
         : null;
 
     case "setDate":

@@ -52,7 +52,6 @@ export {
   decideRemoveTask,
   decideSetTaskDate,
   decideSetTaskRepeat,
-  decideSkipTask,
   hasTasks,
   isTaskDate,
   MAX_TASK_DATE,

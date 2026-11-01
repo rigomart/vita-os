@@ -45,7 +45,6 @@ vi.mock("@tanstack/react-router", () => ({
 // The cards' writes belong to the hooks; this suite is about what lands where.
 vi.mock("../../threads/use-tasks", () => ({
   useCompleteTask: () => vi.fn(),
-  useSkipTask: () => vi.fn(),
   useTaskDates: () => ({
     setDate: vi.fn(),
     setRepeat: vi.fn(),

@@ -15,7 +15,6 @@ import {
   decideCompleteTask,
   decideSetTaskDate,
   decideSetTaskRepeat,
-  decideSkipTask,
   nextTaskDate,
 } from "@vita-os/core";
 import { FeedbackProvider } from "@vita-os/ui/lib/feedback";
@@ -127,19 +126,6 @@ function coreService(options: { gated?: boolean } = {}) {
         }),
       ),
   );
-  const skipTask = vi.fn(
-    (input: {
-      taskId: TaskId;
-      expectedOccurrence: number | null;
-      timeZone: string;
-    }) =>
-      decide("skipTask", (thread) =>
-        decideSkipTask(thread, input.taskId, {
-          timeZone: input.timeZone,
-          now: NOW,
-        }),
-      ),
-  );
   const setTaskRepeat = vi.fn(
     (input: { taskId: TaskId; repeat: Repeat | null; timeZone: string }) =>
       decide("setTaskRepeat", (thread) =>
@@ -169,7 +155,6 @@ function coreService(options: { gated?: boolean } = {}) {
     getThreadActivityPage: async () => success({ entries: [] }),
     listOpenNotes: async () => success([]),
     completeTask,
-    skipTask,
     setTaskRepeat,
     setTaskDate,
     updateThread,
@@ -179,7 +164,6 @@ function coreService(options: { gated?: boolean } = {}) {
   return {
     client,
     completeTask,
-    skipTask,
     setTaskRepeat,
     setTaskDate,
     updateThread,
@@ -300,115 +284,39 @@ describe("completing a repeating Task", () => {
     );
     await waitFor(() => expect(open()?.tasks).toEqual([checkIn]));
   });
-});
-
-describe("skipping a repeating Task", () => {
-  it("moves it to its next occurrence at once, as the service does", async () => {
-    const service = coreService({ gated: true });
-    const { feedback, tasks, open } = setup(service);
-
-    let skipping: Promise<unknown> | undefined;
-    act(() => {
-      skipping = tasks.current.skip(checkIn._id);
-    });
-    await waitFor(() => expect(task(open(), checkIn._id)?.date).toBe(tonight));
-
-    await act(async () => {
-      service.flowFreely();
-      await skipping;
-    });
-    expect(service.skipTask).toHaveBeenCalledWith(
-      expect.objectContaining({
-        taskId: checkIn._id,
-        timeZone: zone,
-        expectedOccurrence: checkIn.date,
-      }),
-    );
-    expect(task(service.stored(), checkIn._id)?.date).toBe(tonight);
-    expect(task(open(), checkIn._id)).toEqual(
-      task(service.stored(), checkIn._id),
-    );
-    expect(feedback.error).not.toHaveBeenCalled();
-  });
-
-  // A double-click names the occurrence on screen twice: it skips that one
-  // occurrence once. A skip issued once the next occurrence shows skips that one.
-  it("skips the occurrence on screen once however often it is activated, and the next one when asked again", async () => {
-    const service = coreService();
-    const { feedback, tasks, open, showing } = setup(service);
-
-    await act(async () => {
-      await Promise.all([
-        tasks.current.skip(checkIn._id),
-        tasks.current.skip(checkIn._id),
-      ]);
-    });
-    expect(service.skipTask).toHaveBeenCalledTimes(1);
-    expect(task(open(), checkIn._id)?.date).toBe(tonight);
-
-    showing();
-    await act(async () => {
-      await tasks.current.skip(checkIn._id);
-    });
-    expect(service.skipTask).toHaveBeenCalledTimes(2);
-    expect(task(service.stored(), checkIn._id)?.date).toBe(at(7, 21));
-    expect(task(open(), checkIn._id)?.date).toBe(at(7, 21));
-    expect(feedback.error).not.toHaveBeenCalled();
-  });
 
   // A real double-click: the second click lands after the first one's
   // optimistic re-render, on a button that already shows the next occurrence.
-  it.each(["skip", "complete"] as const)(
-    "%s acts once when the second click lands on the re-rendered next occurrence, and again once answered",
-    async (command) => {
-      const service = coreService({ gated: true });
-      const { feedback, tasks, open, showing } = setup(service);
-      const sent = command === "skip" ? service.skipTask : service.completeTask;
+  it("acts once when the second click lands on the re-rendered next occurrence, and again once answered", async () => {
+    const service = coreService({ gated: true });
+    const { feedback, tasks, open, showing } = setup(service);
 
-      let first: Promise<unknown> | undefined;
-      act(() => {
-        first = tasks.current[command](checkIn._id);
-      });
-      await waitFor(() =>
-        expect(task(open(), checkIn._id)?.date).toBe(tonight),
-      );
-      showing();
-      let second: Promise<unknown> | undefined;
-      act(() => {
-        second = tasks.current[command](checkIn._id);
-      });
-      await act(async () => {
-        service.flowFreely();
-        await Promise.all([first, second]);
-      });
-
-      expect(sent).toHaveBeenCalledTimes(1);
-      expect(task(service.stored(), checkIn._id)?.date).toBe(tonight);
-      await waitFor(() =>
-        expect(task(open(), checkIn._id)?.date).toBe(tonight),
-      );
-
-      // Once the first is answered, a deliberate one acts on tonight.
-      showing();
-      await act(async () => {
-        await tasks.current[command](checkIn._id);
-      });
-      expect(sent).toHaveBeenCalledTimes(2);
-      expect(task(service.stored(), checkIn._id)?.date).toBe(at(7, 21));
-      expect(feedback.error).not.toHaveBeenCalled();
-    },
-  );
-
-  it("is not sent for a one-off Task", async () => {
-    const service = coreService();
-    const { feedback, tasks, open } = setup(service);
-
+    let first: Promise<unknown> | undefined;
+    act(() => {
+      first = tasks.current.complete(checkIn._id);
+    });
+    await waitFor(() => expect(task(open(), checkIn._id)?.date).toBe(tonight));
+    showing();
+    let second: Promise<unknown> | undefined;
+    act(() => {
+      second = tasks.current.complete(checkIn._id);
+    });
     await act(async () => {
-      await tasks.current.skip(refill._id);
+      service.flowFreely();
+      await Promise.all([first, second]);
     });
 
-    expect(service.skipTask).not.toHaveBeenCalled();
-    expect(open()?.tasks).toEqual([checkIn, refill]);
+    expect(service.completeTask).toHaveBeenCalledTimes(1);
+    expect(task(service.stored(), checkIn._id)?.date).toBe(tonight);
+    await waitFor(() => expect(task(open(), checkIn._id)?.date).toBe(tonight));
+
+    // Once the first is answered, a deliberate one acts on tonight.
+    showing();
+    await act(async () => {
+      await tasks.current.complete(checkIn._id);
+    });
+    expect(service.completeTask).toHaveBeenCalledTimes(2);
+    expect(task(service.stored(), checkIn._id)?.date).toBe(at(7, 21));
     expect(feedback.error).not.toHaveBeenCalled();
   });
 });
