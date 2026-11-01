@@ -45,4 +45,7 @@ jobs:
         run: node scripts/check-chunks.mjs
 
       - name: Test
-        run: bun run test:run
+        # Each package's Vitest sizes its worker pool to the runner's cores, so
+        # running turbo's default 10 packages at once starves them and tests
+        # time out.
+        run: bun run test:run --concurrency=2
