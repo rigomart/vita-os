@@ -69,7 +69,6 @@ vi.mock("../../areas/area-form/create-area-dialog", () => ({
 // The board renders real cards here; their writes have their own tests.
 vi.mock("../../threads/use-tasks", () => ({
   useCompleteTask: () => vi.fn(),
-  useSkipTask: () => vi.fn(),
   useTaskDates: () => ({
     setDate: vi.fn(),
     setRepeat: vi.fn(),

@@ -41,10 +41,10 @@ function command(
   taskId = "a",
 ) {
   return call(`/v1/threads/${thread._id}/tasks/${taskId}/${action}`, {
-    method: action === "complete" || action === "skip" ? "POST" : "PUT",
+    method: action === "complete" ? "POST" : "PUT",
     session,
     body: {
-      ...(action === "complete" || action === "skip"
+      ...(action === "complete"
         ? { expectedOccurrence: thread.tasks?.[0]?.date ?? null }
         : {}),
       ...change,
@@ -74,10 +74,9 @@ async function activity(session: Session, thread: Thread) {
   ).entries;
 }
 // A real authenticated HTTP request with the existing service clock fixed.
-async function advance(
+async function complete(
   session: Session,
   thread: Thread,
-  action: "skip" | "complete",
   timeZone = "UTC",
   now = Date.parse("2026-10-10T20:00Z"),
 ) {
@@ -91,7 +90,7 @@ async function advance(
     }),
   });
   const response = await app.request(
-    `/v1/threads/${thread._id}/tasks/a/${action}`,
+    `/v1/threads/${thread._id}/tasks/a/complete`,
     {
       method: "POST",
       headers: { cookie: session.cookie, "content-type": "application/json" },
@@ -193,15 +192,9 @@ describe("repeating Tasks over HTTP", () => {
       day: 31,
     });
 
-    const feb = await advance(owner, thread, "complete", "UTC", jan31);
+    const feb = await complete(owner, thread, "UTC", jan31);
     expect(feb.tasks?.[0]?.date).toBe(Date.parse("2027-02-28T15:30Z"));
-    const mar = await advance(
-      owner,
-      feb,
-      "complete",
-      "UTC",
-      feb.tasks![0]!.date!,
-    );
+    const mar = await complete(owner, feb, "UTC", feb.tasks![0]!.date!);
     expect(mar.tasks?.[0]).toEqual({
       ...thread.tasks![0],
       date: Date.parse("2027-03-31T15:30Z"),
@@ -219,10 +212,9 @@ describe("repeating Tasks over HTTP", () => {
         timeZone: "UTC",
       })
     ).body as Thread;
-    const late = await advance(
+    const late = await complete(
       owner,
       thread,
-      "complete",
       "UTC",
       Date.parse("2026-11-09T20:00Z"),
     );
@@ -244,13 +236,7 @@ describe("repeating Tasks over HTTP", () => {
       date: dec12,
       repeat: { kind: "monthly", day: 12 },
     });
-    const next = await advance(
-      owner,
-      changed.body as Thread,
-      "complete",
-      "UTC",
-      dec12,
-    );
+    const next = await complete(owner, changed.body as Thread, "UTC", dec12);
     expect(next.tasks?.[0]?.date).toBe(Date.parse("2027-01-12T15:30Z"));
   });
 
@@ -349,7 +335,7 @@ describe("repeating Tasks over HTTP", () => {
   it("completion keeps the Task, collapses missed dates using the service clock, and writes one entry", async () => {
     const owner = await createSession("repeat-complete");
     const thread = await repeating(owner);
-    const completed = await advance(owner, thread, "complete");
+    const completed = await complete(owner, thread);
     expect(completed.tasks).toEqual([
       { ...thread.tasks![0], date: Date.parse("2026-10-10T15:30Z") },
     ]);
@@ -364,21 +350,6 @@ describe("repeating Tasks over HTTP", () => {
       conflict,
     );
     expect(await activity(owner, thread)).toHaveLength(1);
-    const skipped = await advance(owner, completed, "skip");
-    expect(skipped.lastActivityAt).toBe(completed.lastActivityAt);
-    expect(skipped.lastActivityContent).toBe(completed.lastActivityContent);
-
-    expect(await activity(owner, thread)).toHaveLength(1);
-  });
-
-  it("skip moves the date without writing or stamping activity", async () => {
-    const owner = await createSession("repeat-skip");
-    const thread = await repeating(owner, { kind: "days", every: 3 });
-    const skipped = await advance(owner, thread, "skip");
-    expect(skipped.tasks?.[0]?.date).toBe(Date.parse("2026-10-12T15:30Z"));
-
-    expect(skipped).not.toHaveProperty("lastActivityAt");
-    expect(await activity(owner, thread)).toEqual([]);
   });
 
   it.each([
@@ -391,30 +362,25 @@ describe("repeating Tasks over HTTP", () => {
     "uses the caller's calendar across DST in the Worker: %s %s",
     async (timeZone, initial, next) => {
       const owner = await createSession("repeat-worker-dst");
-      for (const action of ["complete", "skip"] as const) {
-        const before = await dated(owner, true, Date.parse(initial));
-        const set = await command(owner, before, "repeat", {
-          repeat: daily,
-          timeZone,
-        });
-        expect(set.status).toBe(200);
-        const advanced = await advance(
-          owner,
-          set.body as Thread,
-          action,
-          timeZone,
-          Date.parse(initial),
-        );
-        expect(advanced.tasks?.[0]?.date).toBe(Date.parse(next));
+      const before = await dated(owner, true, Date.parse(initial));
+      const set = await command(owner, before, "repeat", {
+        repeat: daily,
+        timeZone,
+      });
+      expect(set.status).toBe(200);
+      const completed = await complete(
+        owner,
+        set.body as Thread,
+        timeZone,
+        Date.parse(initial),
+      );
+      expect(completed.tasks?.[0]?.date).toBe(Date.parse(next));
 
-        expect(await activity(owner, advanced)).toHaveLength(
-          action === "complete" ? 1 : 0,
-        );
-      }
+      expect(await activity(owner, completed)).toHaveLength(1);
     },
   );
 
-  it("refuses repeat without a date and skip without a Repeat; one-off completion needs no zone", async () => {
+  it("refuses repeat without a date; one-off completion needs no zone", async () => {
     const owner = await createSession("repeat-one-off");
     const thread = await dated(owner, false);
     expectError(
@@ -422,10 +388,6 @@ describe("repeating Tasks over HTTP", () => {
         repeat: daily,
         timeZone: "UTC",
       }),
-      validation,
-    );
-    expectError(
-      await command(owner, thread, "skip", { timeZone: "UTC" }),
       validation,
     );
     expect(await read(owner, thread)).toEqual(thread);
@@ -442,7 +404,6 @@ describe("repeating Tasks over HTTP", () => {
       const zone = timeZone === undefined ? {} : { timeZone };
       const changes = [
         ["complete", zone],
-        ["skip", zone],
         ["repeat", { repeat: daily, ...zone }],
         ["repeat", { repeat: null, ...zone }],
         ...(timeZone === undefined
@@ -476,11 +437,10 @@ describe("repeating Tasks over HTTP", () => {
     const thread = await repeating(owner);
     for (const [action, body] of [
       ["complete", { timeZone: "UTC" }],
-      ["skip", { timeZone: "UTC" }],
       ["repeat", { repeat: null, timeZone: "UTC" }],
       ["date", { date: null, timeZone: "UTC" }],
     ] as const) {
-      if (action === "complete" || action === "skip") {
+      if (action === "complete") {
         expectError(
           await command(
             owner,
@@ -510,22 +470,15 @@ describe("repeating Tasks over HTTP", () => {
     expect(await activity(owner, thread)).toEqual([]);
   });
 
-  it.each([
-    {},
-    { expectedOccurrence: null, timeZone: "UTC" },
-    { expectedOccurrence: 1.5, timeZone: "UTC" },
-    { expectedOccurrence: date, timeZone: "UTC", extra: true },
-  ])("rejects a missing or malformed Skip occurrence: %j", async (body) => {
-    const owner = await createSession("skip-shape");
+  it("has no Skip route", async () => {
+    const owner = await createSession("skip-gone");
     const thread = await repeating(owner);
-    expectError(
-      await call(`/v1/threads/${thread._id}/tasks/a/skip`, {
-        method: "POST",
-        session: owner,
-        body,
-      }),
-      validation,
-    );
+    const answer = await call(`/v1/threads/${thread._id}/tasks/a/skip`, {
+      method: "POST",
+      session: owner,
+      body: { expectedOccurrence: thread.tasks![0]!.date, timeZone: "UTC" },
+    });
+    expect(answer.status).toBe(404);
     expect(await read(owner, thread)).toEqual(thread);
   });
 

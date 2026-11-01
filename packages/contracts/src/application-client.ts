@@ -102,13 +102,6 @@ export interface SetTaskRepeatInput extends TaskCommand {
   timeZone: string;
 }
 
-export interface SkipTaskInput extends TaskCommand {
-  taskId: TaskId;
-  /** The displayed occurrence date; refuses if it has already advanced. */
-  expectedOccurrence: number;
-  timeZone: string;
-}
-
 export interface AddNoteToThreadInput {
   noteId: NoteId;
   threadId: ThreadId;
@@ -215,8 +208,6 @@ export interface ApplicationClient {
   /** Sets, changes or clears one Task's date. Writes nothing to the Activity Log. */
   setTaskDate(input: SetTaskDateInput): Promise<OperationResult<Thread>>;
   setTaskRepeat(input: SetTaskRepeatInput): Promise<OperationResult<Thread>>;
-  /** Advances a repeating Task without writing to the Activity Log. */
-  skipTask(input: SkipTaskInput): Promise<OperationResult<Thread>>;
 
   /* Activity Log */
   getThreadActivityPage(

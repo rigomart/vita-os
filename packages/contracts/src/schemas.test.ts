@@ -14,7 +14,6 @@ import {
   PageQuery,
   SetNoteRepeatBody,
   SetTaskRepeatBody,
-  SkipTaskBody,
   TaskSchema,
   ThreadDetailSchema,
   ThreadSchema,
@@ -198,7 +197,7 @@ describe("shared request shapes", () => {
       expectedOccurrence: -1,
     });
     expect(
-      v.parse(SkipTaskBody, {
+      v.parse(CompleteTaskBody, {
         expectedOccurrence: 253402300800000,
         timeZone: "UTC",
       }).expectedOccurrence,
@@ -207,10 +206,6 @@ describe("shared request shapes", () => {
       v.safeParse(CompleteTaskBody, {
         expectedOccurrence: Number.MAX_SAFE_INTEGER + 1,
       }).success,
-    ).toBe(false);
-    expect(
-      v.safeParse(SkipTaskBody, { expectedOccurrence: null, timeZone: "UTC" })
-        .success,
     ).toBe(false);
     expect(
       v.safeParse(AddTaskBody, { taskId: "task", text: "Call", date: 0.5 })

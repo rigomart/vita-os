@@ -11,7 +11,7 @@ import { Link } from "@tanstack/react-router";
 import { markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { useGuardedAsyncAction } from "@vita-os/ui/hooks/use-guarded-async-action";
 import { cn } from "@vita-os/ui/lib/utils";
-import { ListTodo, Repeat as RepeatIcon, SkipForward } from "lucide-react";
+import { ListTodo, Repeat as RepeatIcon } from "lucide-react";
 
 import type { ProductSearch } from "../../navigation/search-params";
 import type { BoardItem } from "./attention-board-model";
@@ -31,18 +31,15 @@ import { useUpdateNoteWhen } from "../../notes/use-update-note-when";
 import {
   useCompleteTask,
   useCompletingTaskIds,
-  useSkipTask,
   useTaskDates,
 } from "../../threads/use-tasks";
 import { lineTask } from "./attention-board-model";
 import { itemTitle } from "./dashboard-list-model";
 import {
   BoardCompleteButton,
-  BoardControl,
   BoardDate,
   focusRing,
   isLate,
-  revealed,
   showsBoardDate,
 } from "./line-controls";
 import { ThreadCopy } from "./thread-copies";
@@ -116,7 +113,6 @@ function ThreadLine({
   thread: Thread;
 }) {
   const completeTask = useCompleteTask(thread);
-  const skipTask = useSkipTask(thread);
   const taskDates = useTaskDates(thread);
   const completing = useCompletingTaskIds(thread);
   const tasks = thread.tasks ?? [];
@@ -221,23 +217,11 @@ function ThreadLine({
       }
       controls={
         lead !== undefined && (
-          <>
-            {lead.repeat !== undefined && (
-              <BoardControl
-                label={`Skip “${lead.text}” to its next date`}
-                disabled={busy}
-                onClick={() => void action.run(() => skipTask(lead._id))}
-                className={revealed}
-              >
-                <SkipForward className="size-3.5" />
-              </BoardControl>
-            )}
-            <BoardCompleteButton
-              label={`Complete “${lead.text}”`}
-              disabled={busy}
-              onClick={() => void action.run(() => completeTask(lead._id))}
-            />
-          </>
+          <BoardCompleteButton
+            label={`Complete “${lead.text}”`}
+            disabled={busy}
+            onClick={() => void action.run(() => completeTask(lead._id))}
+          />
         )
       }
     />

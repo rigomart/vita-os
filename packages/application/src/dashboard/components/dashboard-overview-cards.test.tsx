@@ -203,10 +203,8 @@ describe("a Dashboard repeating Task card", () => {
     repeat: { kind: "days" as const, every: 1 },
   };
 
-  it("shows one Late card with the repeat glyph, and skips from the card in the browser's zone", async () => {
-    const user = userEvent.setup();
+  it("shows one Late card with the repeat glyph", () => {
     const thread = aThread({ tasks: [checkIn] });
-    const skipTask = vi.fn(async () => success(thread));
     render(
       <DashboardOverview
         areas={[]}
@@ -214,7 +212,7 @@ describe("a Dashboard repeating Task card", () => {
         notes={[]}
         currentDate={currentDate}
       />,
-      { applicationClient: createQuietApplicationClient({ skipTask }) },
+      { applicationClient: createQuietApplicationClient() },
     );
 
     const late = screen.getByRole("region", { name: "Late" });
@@ -225,20 +223,6 @@ describe("a Dashboard repeating Task card", () => {
     expect(
       late.querySelector('[data-slot="repeat-glyph"]'),
     ).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Skip “Evening check-in” to its next date",
-      }),
-    );
-    await waitFor(() =>
-      expect(skipTask).toHaveBeenCalledExactlyOnceWith({
-        threadId: "thread1",
-        taskId: "check-in",
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        expectedOccurrence: checkIn.date,
-      }),
-    );
   });
 
   // The note on completing is offered in Thread detail only (ADR 0032).
@@ -271,46 +255,36 @@ describe("a Dashboard repeating Task card", () => {
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 
-  it.each(["complete", "skip"] as const)(
-    "disables the pending %s card control and accepts a double click once",
-    async (command) => {
-      const user = userEvent.setup();
-      const thread = aThread({ tasks: [checkIn] });
-      const answer = deferred<OperationResult<Thread>>();
-      const send = vi.fn(() => answer.promise);
-      render(
-        <DashboardOverview
-          areas={[]}
-          threads={[thread]}
-          notes={[]}
-          currentDate={currentDate}
-        />,
-        {
-          applicationClient: createQuietApplicationClient(
-            command === "complete"
-              ? { completeTask: send }
-              : { skipTask: send },
-          ),
-        },
-      );
-      const button = screen.getByRole("button", {
-        name:
-          command === "complete"
-            ? "Complete “Evening check-in”"
-            : "Skip “Evening check-in” to its next date",
-      });
-      await user.dblClick(button);
-      await waitFor(() => expect(button).toBeDisabled());
-      expect(send).toHaveBeenCalledTimes(1);
-      expect(send).toHaveBeenCalledWith(
-        expect.objectContaining({ expectedOccurrence: checkIn.date }),
-      );
-      await act(async () => answer.resolve(success(thread)));
-      await waitFor(() => expect(button).toBeEnabled());
-    },
-  );
+  it("disables the pending complete card control and accepts a double click once", async () => {
+    const user = userEvent.setup();
+    const thread = aThread({ tasks: [checkIn] });
+    const answer = deferred<OperationResult<Thread>>();
+    const send = vi.fn(() => answer.promise);
+    render(
+      <DashboardOverview
+        areas={[]}
+        threads={[thread]}
+        notes={[]}
+        currentDate={currentDate}
+      />,
+      {
+        applicationClient: createQuietApplicationClient({ completeTask: send }),
+      },
+    );
+    const button = screen.getByRole("button", {
+      name: "Complete “Evening check-in”",
+    });
+    await user.dblClick(button);
+    await waitFor(() => expect(button).toBeDisabled());
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedOccurrence: checkIn.date }),
+    );
+    await act(async () => answer.resolve(success(thread)));
+    await waitFor(() => expect(button).toBeEnabled());
+  });
 
-  it("offers no skip and no glyph on a one-off Task", () => {
+  it("shows no glyph on a one-off Task", () => {
     const { repeat: _repeat, ...oneOff } = checkIn;
     const thread = aThread({ tasks: [oneOff] });
     render(
@@ -326,7 +300,6 @@ describe("a Dashboard repeating Task card", () => {
     expect(
       screen.getByRole("button", { name: "Complete “Evening check-in”" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Skip/ })).toBeNull();
     expect(document.querySelector('[data-slot="repeat-glyph"]')).toBeNull();
   });
 });

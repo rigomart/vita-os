@@ -2,7 +2,7 @@
 
 Terminology amended by ADR 0033: **Move** is renamed **Task** (Moves become Tasks, Focused Move becomes Focused Task). This ADR keeps its original wording, and the sections added below use the new terms.
 
-**Status:** Accepted. Amended by #402: compatibility window closed, `threads.follow_up` dropped. Amended by #422: version reload replaces compatibility windows for browser tabs.
+**Status:** Accepted. Amended by #402: compatibility window closed, `threads.follow_up` dropped. Amended by #422: version reload replaces compatibility windows for browser tabs. Amended by [ADR 0051](./0051-no-skip-on-a-repeating-task.md): a repeating Task has no Skip.
 **Date:** 2026-10-04
 
 Amended by [ADR 0039](./0039-thread-tasks-in-one-list.md): Thread detail lists Tasks in one list, in capture order, with no "No date" divider.

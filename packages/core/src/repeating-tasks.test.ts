@@ -42,18 +42,14 @@ describe("repeating Tasks", () => {
     "advances %j at %s to %s, collapsing missed dates",
     (repeat, now, next) => {
       const original = thread("2026-10-06T15:30Z", repeat);
-      for (const command of [rules.decideCompleteTask, rules.decideSkipTask]) {
-        const decision = command(original, id, {
-          timeZone: "UTC",
-          now: ms(now),
-        });
-        expect(decision?.patch.tasks).toEqual([
-          { ...original.tasks[0], date: ms(next) },
-        ]);
-        expect(decision?.logs).toHaveLength(
-          command === rules.decideCompleteTask ? 1 : 0,
-        );
-      }
+      const decision = rules.decideCompleteTask(original, id, {
+        timeZone: "UTC",
+        now: ms(now),
+      });
+      expect(decision?.patch.tasks).toEqual([
+        { ...original.tasks[0], date: ms(next) },
+      ]);
+      expect(decision?.logs).toHaveLength(1);
       expect(original.tasks[0]?.date).toBe(ms("2026-10-06T15:30Z"));
     },
   );
@@ -80,10 +76,11 @@ describe("repeating Tasks", () => {
   ])(
     "keeps local time and date-only values across DST in %s",
     (timeZone, date, next) => {
-      for (const command of [rules.decideCompleteTask, rules.decideSkipTask]) {
-        const decision = command(thread(date), id, { timeZone, now: ms(date) });
-        expect(decision?.patch.tasks?.[0]?.date).toBe(ms(next));
-      }
+      const decision = rules.decideCompleteTask(thread(date), id, {
+        timeZone,
+        now: ms(date),
+      });
+      expect(decision?.patch.tasks?.[0]?.date).toBe(ms(next));
     },
   );
 
@@ -102,20 +99,18 @@ describe("repeating Tasks", () => {
   it.each([daily, { kind: "weekly", weekdays: [0, 1, 2] }] satisfies Repeat[])(
     "keeps Santiago date-only %j at each day's start across a midnight gap",
     (repeat) => {
-      for (const command of [rules.decideCompleteTask, rules.decideSkipTask]) {
-        let current: rules.TaskState = thread("2026-09-05T00:00-04:00", repeat);
-        for (const next of [
-          "2026-09-06T01:00-03:00",
-          "2026-09-07T00:00-03:00",
-          "2026-09-08T00:00-03:00",
-        ]) {
-          const decision = command(current, id, {
-            timeZone: "America/Santiago",
-            now: current.tasks![0]!.date!,
-          });
-          expect(decision?.patch.tasks?.[0]?.date).toBe(ms(next));
-          current = { ...current, ...decision!.patch };
-        }
+      let current: rules.TaskState = thread("2026-09-05T00:00-04:00", repeat);
+      for (const next of [
+        "2026-09-06T01:00-03:00",
+        "2026-09-07T00:00-03:00",
+        "2026-09-08T00:00-03:00",
+      ]) {
+        const decision = rules.decideCompleteTask(current, id, {
+          timeZone: "America/Santiago",
+          now: current.tasks![0]!.date!,
+        });
+        expect(decision?.patch.tasks?.[0]?.date).toBe(ms(next));
+        current = { ...current, ...decision!.patch };
       }
     },
   );
@@ -132,20 +127,18 @@ describe("repeating Tasks", () => {
   });
 
   it("keeps a timed Task's shifted New York wall time after a DST gap", () => {
-    for (const command of [rules.decideCompleteTask, rules.decideSkipTask]) {
-      let current: rules.TaskState = thread("2026-03-07T02:30-05:00");
-      for (const next of [
-        "2026-03-08T03:30-04:00",
-        "2026-03-09T03:30-04:00",
-        "2026-03-10T03:30-04:00",
-      ]) {
-        const decision = command(current, id, {
-          timeZone: "America/New_York",
-          now: current.tasks![0]!.date!,
-        });
-        expect(decision?.patch.tasks?.[0]?.date).toBe(ms(next));
-        current = { ...current, ...decision!.patch };
-      }
+    let current: rules.TaskState = thread("2026-03-07T02:30-05:00");
+    for (const next of [
+      "2026-03-08T03:30-04:00",
+      "2026-03-09T03:30-04:00",
+      "2026-03-10T03:30-04:00",
+    ]) {
+      const decision = rules.decideCompleteTask(current, id, {
+        timeZone: "America/New_York",
+        now: current.tasks![0]!.date!,
+      });
+      expect(decision?.patch.tasks?.[0]?.date).toBe(ms(next));
+      current = { ...current, ...decision!.patch };
     }
   });
 
@@ -294,23 +287,17 @@ describe("repeating Tasks", () => {
     ).toEqual({ _id: id, text: "Check", date: original.tasks[0]?.date });
   });
 
-  it("refuses skip on a one-off Task; one-off completion still needs no zone", () => {
+  it("completes a one-off Task without a zone", () => {
     const original = {
       state: "open" as const,
       tasks: [{ _id: id, text: "Check" }],
     };
-    expect(() =>
-      rules.decideSkipTask(original, id, {
-        timeZone: "UTC",
-        now: ms("2026-10-06"),
-      }),
-    ).toThrow(ValidationError);
     expect(
       rules.decideCompleteTask(original, id, { timeZone: undefined, now: 0 })
         ?.patch,
     ).toEqual({ tasks: undefined });
     expect(
-      rules.decideSkipTask(original, "missing" as TaskId, {
+      rules.decideCompleteTask(original, "missing" as TaskId, {
         timeZone: "UTC",
         now: ms("2026-10-06"),
       }),
@@ -395,7 +382,7 @@ describe("repeating Tasks", () => {
     }
   });
 
-  it("still requires a zone to set a weekly repeat and to complete or skip repeats", () => {
+  it("still requires a zone to set a weekly repeat and to complete repeats", () => {
     const original = thread("2026-10-06T15:30Z");
     // A caller without a zone does not compile; a request without one is
     // still refused at run time.
@@ -408,11 +395,12 @@ describe("repeating Tasks", () => {
         noZone,
       ),
     ).toThrow(ValidationError);
-    for (const command of [rules.decideCompleteTask, rules.decideSkipTask]) {
-      expect(() =>
-        command(original, id, { timeZone: noZone, now: ms("2026-10-06") }),
-      ).toThrow(ValidationError);
-    }
+    expect(() =>
+      rules.decideCompleteTask(original, id, {
+        timeZone: noZone,
+        now: ms("2026-10-06"),
+      }),
+    ).toThrow(ValidationError);
   });
 
   it.each([
@@ -497,13 +485,15 @@ describe("monthly Repeats", () => {
     ["2027-02-05T23:00Z", "2027-02-05T15:30Z"],
     ["2027-02-04T12:00Z", "2027-02-05T15:30Z"],
   ])("collapses missed occurrences: completed at %s, next %s", (now, next) => {
-    for (const command of [rules.decideCompleteTask, rules.decideSkipTask]) {
-      const decision = command(thread("2026-11-05T15:30Z", monthly(5)), id, {
+    const decision = rules.decideCompleteTask(
+      thread("2026-11-05T15:30Z", monthly(5)),
+      id,
+      {
         timeZone: "UTC",
         now: ms(now),
-      });
-      expect(decision?.patch.tasks?.[0]?.date).toBe(ms(next));
-    }
+      },
+    );
+    expect(decision?.patch.tasks?.[0]?.date).toBe(ms(next));
   });
 
   it.each([

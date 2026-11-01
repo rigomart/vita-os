@@ -40,7 +40,6 @@ function renderAttention(
     onCompleteTask: vi.fn(),
     onSetTaskDate: vi.fn(),
     onSetTaskRepeat: vi.fn(),
-    onSkipTask: vi.fn(),
   };
 
   const onCompleteTaskWithNote = vi.fn<
@@ -307,7 +306,7 @@ describe("ThreadAttention", () => {
     expect(screen.getByText("3")).toBeVisible();
   });
 
-  it("offers Remove, Skip when a Task repeats, Complete with a note, and Complete last, one date control, and nothing to focus", () => {
+  it("offers Remove, Complete with a note, and Complete last, repeating or not, one date control, and nothing to focus", () => {
     const daily: Task = {
       ...callClinic,
       date: today,
@@ -321,7 +320,6 @@ describe("ThreadAttention", () => {
         .map((button) => button.getAttribute("aria-label"));
     expect(commands(taskRows()[0]!)).toEqual([
       "Remove task",
-      "Skip task",
       "Complete with a note",
       "Complete task",
     ]);
@@ -635,9 +633,8 @@ describe("ThreadAttention repeating Tasks", () => {
   };
   const { repeat: _repeat, ...oneOff } = checkIn;
 
-  it("marks a repeating Task with the repeat glyph, and offers skip on it alone", async () => {
-    const user = userEvent.setup();
-    const { onSkipTask } = renderAttention({ tasks: [checkIn, bookScan] });
+  it("marks a repeating Task with the repeat glyph", () => {
+    renderAttention({ tasks: [checkIn, bookScan] });
 
     const [repeating, plain] = taskRows();
     const glyph = within(repeating!).getByRole("img", {
@@ -645,14 +642,6 @@ describe("ThreadAttention repeating Tasks", () => {
     });
     expect(glyph).toHaveAttribute("data-slot", "repeat-glyph");
     expect(within(plain!).queryByRole("img")).toBeNull();
-    expect(
-      within(plain!).queryByRole("button", { name: "Skip task" }),
-    ).toBeNull();
-
-    await user.click(
-      within(repeating!).getByRole("button", { name: "Skip task" }),
-    );
-    expect(onSkipTask).toHaveBeenCalledExactlyOnceWith(checkIn._id);
   });
 
   it("shows the time and the Repeat, disabled, until the Task has a day", async () => {
@@ -872,7 +861,6 @@ describe("ThreadAttention repeating Tasks", () => {
           onRemoveTask={vi.fn()}
           onCompleteTask={vi.fn()}
           onCompleteTaskWithNote={vi.fn()}
-          onSkipTask={vi.fn()}
           onSetTaskRepeat={onSetTaskRepeat}
           onSetTaskDate={(taskId, date) =>
             setTasks((current) =>
@@ -1037,7 +1025,7 @@ describe("ThreadAttention completing with a note", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("takes no note while a plain complete or skip of the Task is pending", () => {
+  it("takes no note while a plain complete of the Task is pending", () => {
     renderAttention({
       tasks: [callClinic, bookScan],
       completingTaskIds: new Set([callClinic._id]),
@@ -1049,7 +1037,7 @@ describe("ThreadAttention completing with a note", () => {
 });
 
 describe("ThreadAttention pending occurrence controls", () => {
-  it("marks Complete and Skip unavailable without disabling them", () => {
+  it("marks Complete unavailable without disabling it", () => {
     renderAttention({
       tasks: [
         { ...callClinic, date: today, repeat: { kind: "days", every: 1 } },
@@ -1059,9 +1047,6 @@ describe("ThreadAttention pending occurrence controls", () => {
     });
     expect(
       within(taskRows()[0]!).getByRole("button", { name: "Complete task" }),
-    ).toHaveAttribute("aria-disabled", "true");
-    expect(
-      within(taskRows()[0]!).getByRole("button", { name: "Skip task" }),
     ).toHaveAttribute("aria-disabled", "true");
     expect(
       within(taskRows()[1]!).getByRole("button", { name: "Complete task" }),
@@ -1091,7 +1076,6 @@ describe("ThreadAttention focus", () => {
               onCompleteTaskWithNote={remove}
               onSetTaskDate={vi.fn()}
               onSetTaskRepeat={vi.fn()}
-              onSkipTask={vi.fn()}
             />
           );
         }
@@ -1112,7 +1096,7 @@ describe("ThreadAttention focus", () => {
     }
   }
 
-  for (const command of ["Complete task", "Skip task", "Remove task"]) {
+  for (const command of ["Complete task", "Remove task"]) {
     it(`${command} stays focused and ignores a second activation while busy`, async () => {
       const user = userEvent.setup();
       const answer = deferred<void>();
@@ -1122,7 +1106,6 @@ describe("ThreadAttention focus", () => {
           { ...callClinic, date: today, repeat: { kind: "days", every: 1 } },
         ],
         onCompleteTask: run,
-        onSkipTask: run,
         onRemoveTask: run,
       });
       const button = screen.getByRole("button", { name: command });

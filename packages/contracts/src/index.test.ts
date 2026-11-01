@@ -84,7 +84,6 @@ const client = {
 
   setTaskDate: async () => ({ ok: true, value: thread }),
   setTaskRepeat: async () => ({ ok: true, value: thread }),
-  skipTask: async () => ({ ok: true, value: thread }),
 
   getThreadActivityPage: async () => ({
     ok: true,

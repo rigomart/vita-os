@@ -461,15 +461,6 @@ describe("createHttpApplicationClient", () => {
       { ok: true, value: thread },
     );
     await expect(
-      client.skipTask({
-        ...command,
-        expectedOccurrence: thread.tasks[0]!.date,
-      }),
-    ).resolves.toEqual({
-      ok: true,
-      value: thread,
-    });
-    await expect(
       client.completeTask({
         ...command,
         expectedOccurrence: thread.tasks[0]!.date,
@@ -483,9 +474,8 @@ describe("createHttpApplicationClient", () => {
     ).resolves.toEqual({ ok: true, value: thread });
     for (const [index, action, method, fields] of [
       [1, "repeat", "PUT", { repeat }],
-      [2, "skip", "POST", {}],
-      [3, "complete", "POST", {}],
-      [4, "date", "PUT", { date: thread.tasks[0]!.date }],
+      [2, "complete", "POST", {}],
+      [3, "date", "PUT", { date: thread.tasks[0]!.date }],
     ] as const) {
       expect(fetchImpl).toHaveBeenNthCalledWith(
         index,
@@ -497,7 +487,7 @@ describe("createHttpApplicationClient", () => {
       ).toEqual({
         ...fields,
         timeZone: command.timeZone,
-        ...(action === "skip" || action === "complete"
+        ...(action === "complete"
           ? { expectedOccurrence: thread.tasks[0]!.date }
           : {}),
       });

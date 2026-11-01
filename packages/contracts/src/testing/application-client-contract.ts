@@ -423,7 +423,7 @@ export function describeApplicationClient(
     });
 
     describe("Repeating Tasks", () => {
-      it("skips without a trace and completes into the Activity Log, keeping the Task", async () => {
+      it("completes into the Activity Log, keeping the Task", async () => {
         const client = await newClient();
         const day = 24 * 60 * 60 * 1000;
         const first = Date.UTC(2030, 4, 20, 15, 30);
@@ -450,28 +450,11 @@ export function describeApplicationClient(
           repeat: { kind: "days", every: 3 },
         });
 
-        const skipped = await value(
-          client.skipTask({
-            threadId: thread._id,
-            taskId,
-            expectedOccurrence: first,
-            timeZone: "UTC",
-          }),
-        );
-        expect(skipped.tasks?.[0]?.date).toBe(first + 3 * day);
-        expect(
-          (
-            await value(
-              client.getThreadActivityPage({ threadId: thread._id, limit: 10 }),
-            )
-          ).entries,
-        ).toEqual([]);
-
         const completed = await value(
           client.completeTask({
             threadId: thread._id,
             taskId,
-            expectedOccurrence: first + 3 * day,
+            expectedOccurrence: first,
             timeZone: "UTC",
           }),
         );
@@ -479,7 +462,7 @@ export function describeApplicationClient(
           {
             _id: taskId,
             text: "Water plants",
-            date: first + 6 * day,
+            date: first + 3 * day,
             repeat: { kind: "days", every: 3 },
           },
         ]);
@@ -493,7 +476,7 @@ export function describeApplicationClient(
           client.completeTask({
             threadId: thread._id,
             taskId,
-            expectedOccurrence: first + 3 * day,
+            expectedOccurrence: first,
             timeZone: "UTC",
           }),
         ).resolves.toMatchObject({ ok: false, error: { code: "conflict" } });
@@ -540,15 +523,15 @@ export function describeApplicationClient(
           repeat: { kind: "monthly", day: 31 },
         });
 
-        const skipped = await value(
-          client.skipTask({
+        const completed = await value(
+          client.completeTask({
             threadId: thread._id,
             taskId,
             expectedOccurrence: jan31,
             timeZone: "UTC",
           }),
         );
-        expect(skipped.tasks?.[0]?.date).toBe(Date.UTC(2031, 1, 28, 9));
+        expect(completed.tasks?.[0]?.date).toBe(Date.UTC(2031, 1, 28, 9));
         const moved = await value(
           client.setTaskDate({
             threadId: thread._id,

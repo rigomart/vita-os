@@ -34,7 +34,6 @@ import {
   decideSetNoteRepeat,
   decideSetTaskDate,
   decideSetTaskRepeat,
-  decideSkipTask,
   decideThreadUpdate,
   generateSlug,
   matchesNoteSearch,
@@ -460,20 +459,6 @@ export function createInMemoryApplicationClient(
             input.timeZone,
           ),
         ),
-      );
-    },
-
-    async skipTask(input) {
-      return ok(
-        changeTasks(input.threadId, (thread) => {
-          const task = thread.tasks?.find((task) => task._id === input.taskId);
-          if (task === undefined || task.date !== input.expectedOccurrence)
-            return null;
-          return decideSkipTask(thread, input.taskId, {
-            timeZone: input.timeZone,
-            now: clock.now(),
-          });
-        }),
       );
     },
 

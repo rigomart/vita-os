@@ -21,7 +21,7 @@ export const focusRing =
  * Held in place at rest, so the line never reflows on hover. A touch screen
  * has no hover, so there it is always shown.
  */
-export const revealed =
+const revealed =
   "opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100 pointer-coarse:opacity-100";
 
 /**
@@ -152,7 +152,7 @@ export function BoardCompleteButton({
 const boardControlClassName =
   "pointer-coarse:after:absolute pointer-coarse:after:-inset-x-0.5 pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:content-[''] relative z-10 -my-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform,opacity] hover:bg-muted hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-ring/40";
 
-export function BoardControl({
+function BoardControl({
   children,
   className,
   label,

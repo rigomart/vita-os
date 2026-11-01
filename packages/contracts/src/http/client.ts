@@ -272,13 +272,6 @@ export function createHttpApplicationClient({
         change,
         ThreadSchema,
       ),
-    skipTask: ({ threadId, taskId, ...change }) =>
-      send(
-        "POST",
-        path("threads", threadId, "tasks", taskId, "skip"),
-        change,
-        ThreadSchema,
-      ),
 
     /* Activity Log */
     getThreadActivityPage: ({ threadId, ...page }) =>

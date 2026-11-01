@@ -6,7 +6,7 @@ In a Thread's pane or drawer, `Add a task` adds a Task on Enter and stays ready 
 
 - Thread side pane (1280px and wider) and drawer (1024 to 1279px)
 - A No date line on the Dashboard: its `Set date` dates that Thread's only Task
-- Row controls: one date control (`Set date` while undated, then `Change date: <when>`), then the toolbar `Remove task`, `Skip task` when it repeats, `Complete with a note`, `Complete task`
+- Row controls: one date control (`Set date` while undated, then `Change date: <when>`), then the toolbar `Remove task`, `Complete with a note`, `Complete task`, repeating or not
 
 ## Preconditions
 

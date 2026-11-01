@@ -116,17 +116,6 @@ function useOccurrenceCommands(thread: Thread) {
       },
     },
   );
-  const skip = useTaskCommand<Occurrence & { occurrence: number }>(thread, {
-    mutationKey: occurrenceKey,
-    run: (client, { threadId, taskId, occurrence, timeZone }) =>
-      client.skipTask({
-        threadId,
-        taskId,
-        expectedOccurrence: occurrence,
-        timeZone,
-      }),
-    change: (input) => ({ kind: "skip", ...input }),
-  });
   // Mutation state is marked synchronously before onMutate awaits cancelled reads.
   const pending = (taskId: TaskId) =>
     cache
@@ -153,15 +142,6 @@ function useOccurrenceCommands(thread: Thread) {
               ...(note === undefined ? {} : { note }),
             })
             .then(() => "sent"),
-    skip: (taskId: TaskId): Promise<unknown> => {
-      const task = thread.tasks?.find((task) => task._id === taskId);
-      if (!task?.repeat || task.date === undefined || pending(taskId))
-        return Promise.resolve();
-      return skip.mutateAsync({
-        ...occurrenceOf(thread, taskId),
-        occurrence: task.date,
-      });
-    },
   };
 }
 interface DateInput {
@@ -192,11 +172,6 @@ export function useCompleteTask(thread: Thread) {
   const report = useReportFailure();
   const { complete } = useOccurrenceCommands(thread);
   return (taskId: TaskId) => complete(taskId).then(() => undefined, report);
-}
-export function useSkipTask(thread: Thread) {
-  const report = useReportFailure();
-  const { skip } = useOccurrenceCommands(thread);
-  return (taskId: TaskId) => skip(taskId).then(() => undefined, report);
 }
 export const FOLLOW_UP_TASK_TEXT = "Follow up";
 function useAddTaskCommand(thread: Thread) {
@@ -354,7 +329,6 @@ export function useTasks(thread: Thread) {
       settle(remove.mutateAsync({ threadId: thread._id, taskId })),
     complete: (taskId: TaskId) => settle(occurrences.complete(taskId)),
     completeWithNote,
-    skip: (taskId: TaskId) => settle(occurrences.skip(taskId)),
 
     setDate: (taskId: TaskId, date: number | null) =>
       settle(
