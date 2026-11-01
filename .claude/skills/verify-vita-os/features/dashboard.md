@@ -1,6 +1,6 @@
 # Dashboard
 
-One list groups dated Threads (one line per dated Task) and dated Standalone Notes under when they come due (Late, Today, Tomorrow, weekdays, then Later), beside No date, which runs `Ready to move`, `Open`, then `Notes`. A run with nothing in it is not shown. The filter row counts what is open and narrows the list.
+One list groups dated Threads (one line per dated Task) and dated Standalone Notes under when they come due (Late, Today, Tomorrow, weekdays, then Later), beside No date, which runs `Ready to move` and `Open`. Undated Standalone Notes are not on All: under the Notes filter No date runs `Notes` instead. A run with nothing in it is not shown. The filter row counts what is open and narrows the list.
 
 ## Entry points and variants
 
@@ -11,6 +11,7 @@ One list groups dated Threads (one line per dated Task) and dated Standalone Not
 ## Preconditions
 
 - Check 4: a new user's empty board.
+- Check 5: a new user whose only open item is one undated Note (New note).
 - Checks 1 to 3, made through the UI: a Thread with one undated Task (New thread, then `Add a task`), a Thread whose only Task is dated tomorrow (its row's `Set date`), a Thread with no Tasks (New thread alone), an undated Note (New note), and a Note with tomorrow's `Follow-up date` (picked in New note).
 
 ## Checks
@@ -19,11 +20,12 @@ Read the groups on screen and each group's own lines with
 `eval "JSON.stringify([...document.querySelectorAll('main section[aria-label]')].filter(s => s.checkVisibility()).map(s => ({group: s.getAttribute('aria-label'), items: [...s.querySelectorAll('li')].filter(li => li.closest('section[aria-label]') === s).map(li => li.innerText.replace(/\s*\n+\s*/g, ' | '))})))"`.
 
 1. Groups and lines, in this order:
-   - At 1440: `Tomorrow` holds `Task: | <dated task> · <its thread>`, then `<dated Note's text> | Note`; `Ready to move` holds `<thread> · | Task: | <undated task>`; `Open` the taskless Thread's title; `Notes` `<undated Note's text> | Note`.
-   - At 390, folded: only `No date` (no lines of its own) and `Tomorrow` (`Task: | <dated task> · <its thread>`, then `<dated Note's text> | Note`). Opened: `No date` (still no lines of its own), `Ready to move`, `Open` and `Notes` with the lines they have at 1440, then `Tomorrow`.
-2. `All <n>` counts open Threads plus open Standalone Notes, and `Notes <n>` counts open Standalone Notes (exact link text: `All 5` and `Notes 2` with the preconditions).
+   - At 1440: `Tomorrow` holds `Task: | <dated task> · <its thread>`, then `<dated Note's text> | Note`; `Ready to move` holds `<thread> · | Task: | <undated task>`; `Open` the taskless Thread's title. There is no `Notes` run, and the undated Note is nowhere on the page.
+   - At 390, folded: only `No date` (no lines of its own) and `Tomorrow` (`Task: | <dated task> · <its thread>`, then `<dated Note's text> | Note`); the fold reads `<undated task's thread>, <taskless thread>`. Opened: `No date` (still no lines of its own), `Ready to move` and `Open` with the lines they have at 1440, then `Tomorrow`.
+2. `All <n>` counts open Threads plus dated open Standalone Notes, and `Notes <n>` counts every open Standalone Note (exact link text: `All 4` and `Notes 2` with the preconditions).
 3. `?show=notes` keeps only Notes in every group (`Tomorrow` holds the dated Note, `Notes` the undated one, and no Thread line is left), and the selected filter is `Notes` (`nav[aria-label="Filter the board"] [aria-current]` reads `Notes 2`).
-4. With nothing open the board reads `Nothing is asking for you.`
+4. With nothing open the board reads `Nothing is asking for you.` over `Every Thread is resolved and every Note is completed.`
+5. With only an undated Note open, All reads `Nothing is asking for you.` over `Undated notes are under Notes.`, whose `Notes` link goes to `/?show=notes`, where the Note is in the `Notes` run of No date.
 
 ## Traps
 

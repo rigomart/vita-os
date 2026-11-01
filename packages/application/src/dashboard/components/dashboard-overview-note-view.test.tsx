@@ -27,6 +27,8 @@ const saved: Note = {
   body: "Last thought",
   state: "open",
   createdAt: currentDate,
+  // Dated, so it stands on All.
+  followUp: new Date(2026, 6, 17).getTime(),
 };
 
 function Dashboard() {

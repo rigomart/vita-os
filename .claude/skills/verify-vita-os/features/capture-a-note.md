@@ -1,6 +1,6 @@
 # Capture a note
 
-New note opens a Markdown editor; Add stores a Standalone Note and raises `Note added`. An undated Note stands under `Notes` in No date; one with a Follow-up date stands under the group for that day.
+New note opens a Markdown editor; Add stores a Standalone Note and raises `Note added`. An undated Note is not on All: it stands under `Notes` in No date under the Notes filter (`?show=notes`). One with a Follow-up date stands under the group for that day, on All and under Notes.
 
 ## Entry points and variants
 
@@ -16,7 +16,7 @@ New note opens a Markdown editor; Add stores a Standalone Note and raises `Note 
 1. Right after the dialog opens, focus is in the editor (`document.activeElement` is labelled `Note body`) and `Add` is disabled.
 2. After typing, the editor's `innerText` is exactly the typed text and `Add` is enabled.
 3. `Add` sends `POST /v1/notes` and gets `201`; `Note added` shows.
-4. After a reload an undated Note is `button "Open note: <text>"` under the `Notes` run of No date (below 1024px, inside the folded No date once it is opened), and the filter row reads `Notes 1` for a user with one Note.
+4. After a reload an undated Note is nowhere on All, and the filter row reads `All 0` and `Notes 1` for a user with one Note and nothing else. Under `Notes 1` (`?show=notes`) it is `button "Open note: <text>"` in the `Notes` run of No date (below 1024px, inside the folded No date once it is opened).
 5. Picking tomorrow in `Follow-up date` makes the button read `<Mon> <day>` (`Oct 24`); after Add and a reload the Note is under the `Tomorrow` group, headed `Tomorrow <weekday>`.
 6. Stored once, open, with the exact body and date:
    `SELECT body, state, attention_date FROM notes WHERE user_id = (SELECT id FROM user WHERE email = '<email>')` → undated `attention_date: null`; dated, local midnight of that day (`new Date(y, m, d + 1).getTime()` in the browser).

@@ -95,7 +95,7 @@ A plain Open Thread, with no Tasks, is valid. It means the situation still matte
 
 ### Standalone Note
 
-A body-only capture, valid the moment it is saved: a fact, a thought, or an action. It needs no classification and no processing. It lives on the Dashboard, and it may carry a **Follow-up date**, which places it in a time column instead of the margin. A Note is Open or **Archived**: archiving puts it away unchanged, and it stays findable by its words in the palette's **History**. Notes are archived rather than "done" because most of them are information or thoughts, which are put away, not finished (ADR 0031).
+A body-only capture, valid the moment it is saved: a fact, a thought, or an action. It needs no classification and no processing. It may carry a **Follow-up date**, which puts it on the Dashboard at that day; an undated Note is read under the Dashboard's Notes filter and asks for nothing (ADR 0052). A Note is Open or **Archived**: archiving puts it away unchanged, and it stays findable by its words in the palette's **History**. Notes are archived rather than "done" because most of them are information or thoughts, which are put away, not finished (ADR 0031).
 
 A Note that turns out to belong to a situation can be added to an Open Thread, or start a new one, from its Note view. It keeps its body and creation time, and a dated Note also adds a dated Task, named by its first line. Nothing prompts it: a Note with no Thread is complete (ADR 0030).
 
@@ -113,18 +113,18 @@ Finished things leave the Dashboard but not the product. The palette's **History
 
 ## The Dashboard
 
-The Dashboard lays every Open Thread and every open Standalone Note on one axis of time, as one list read from what is asking now outward:
+The Dashboard lays every Open Thread and every dated open Standalone Note on one axis of time, as one list read from what is asking now outward:
 
 - **Late**, then **Today**: what is asking.
 - **Tomorrow** and each day of the coming week that has something due, by name.
 - **Later**: the weeks and months, folded at the foot of the list to one line naming how many, when the next comes, and the first two. Opened, they read small and faint, there to be known about rather than read.
-- **No date**: **Ready to move** (Threads whose Tasks are all undated), **Open** (Threads with no Tasks), **Notes** (undated Notes). On a wide screen it sits beside the list; on a phone it leads the list, folded to one line.
+- **No date**: **Ready to move** (Threads whose Tasks are all undated), **Open** (Threads with no Tasks). Undated Notes are not here: they ask for nothing, and the Notes filter lists them. On a wide screen it sits beside the list; on a phone it leads the list, folded to one line.
 
 Placement is derived from dates and from whether a Thread has Tasks. A Thread sits at its soonest dated Task; a Standalone Note sits at its Follow-up date. The user never sets a status. A date outranks undated Tasks, so a Thread whose Tasks are all undated leads No date and is never Late or Today. Nothing is capped: Later and the folded No date hide lines, never that they exist.
 
 Every item is a line under its day's heading, and the nearer a day, the larger and darker it reads: what is asking stands out, and what is far off recedes. Above the page, the sky shows the time of day and nothing else.
 
-A filter at the top of the list narrows it to one Area, to unlabeled Threads, or to Notes alone. Notes have no list of their own: the Notes filter is where to read them together.
+A filter at the top of the list narrows it to one Area, to unlabeled Threads, or to Notes alone. Notes have no list of their own: the Notes filter is where to read them together, and the only place undated ones show.
 
 The board can act on what it shows. A line completes the Task it displays in one click, and sets, changes, or clears that Task's date and repeat, or adds a "Follow up" Task when it shows no single Task; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
 
