@@ -57,6 +57,13 @@ export const scenarios = [
     seed: seedLongActivity,
   },
   {
+    id: "info-notes",
+    name: "Info notes",
+    description:
+      "The sample life plus a pile of undated Notes that are only information, two undated to-dos, and dated Notes.",
+    seed: (client) => seedLife(client, infoNotesLife()),
+  },
+  {
     id: "busy",
     name: "Busy",
     description: "Forty Threads and a full Notes pile, for density.",
@@ -566,6 +573,43 @@ function busyLife(): Life {
     areas: SAMPLE.areas,
     threads: [...SAMPLE.threads, ...threads],
     notes: [...SAMPLE.notes, ...notes],
+  };
+}
+
+/**
+ * Notes that never ask: facts and lists kept to look up, beside two undated
+ * to-dos that the rule would take off All, and the sample's dated Notes.
+ */
+function infoNotesLife(): Life {
+  return {
+    ...SAMPLE,
+    notes: [
+      ...SAMPLE.notes,
+      {
+        body: "Car\n\n- Tyres: 205/55 R16\n- Oil: 5W-30, 4.2 litres\n- Last service at 48,000 km",
+      },
+      {
+        body: "Gift ideas\n\n- A good kitchen knife\n- Concert tickets\n- Framed photo from the trip",
+      },
+      { body: "Clinic opens 8:00 to 14:00 on weekdays, closed on holidays" },
+      {
+        body: "Films people recommended: Perfect Days, Past Lives, Aftersun",
+      },
+      {
+        body: "Router admin is at 192.168.1.1, login on the sticker underneath",
+      },
+      {
+        body: "Cat food: the salmon one, half a pouch morning and evening",
+      },
+      {
+        body: "Idea: a shelf above the desk would free the whole left side",
+      },
+      { body: "Passport number and expiry are in the blue folder" },
+      { body: "Buy batteries for the smoke alarm" },
+      { body: "Call the bank about the card limit" },
+      { body: "Water the plants", inDays: 2 },
+      { body: "Return the library books", inDays: -1 },
+    ],
   };
 }
 
