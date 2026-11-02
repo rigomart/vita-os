@@ -25,13 +25,24 @@ export interface AutoActivityLogEntry {
 }
 
 /**
+ * The Note entry's content when a Thread is started from that Note, which is
+ * how the Activity Log reads "Started from a note".
+ */
+export const NOTE_STARTED_THREAD = "Note added, starting the Thread";
+
+/**
  * A Thread Note was captured, written with a completion aside: that
  * completion's entry names the Note instead (`withCompletionNote`).
  */
 export function buildNoteAddedLogEntry(
   threadNoteId: string,
+  startsThread = false,
 ): AutoActivityLogEntry {
-  return { type: "note_added", content: "Note added", threadNoteId };
+  return {
+    type: "note_added",
+    content: startsThread ? NOTE_STARTED_THREAD : "Note added",
+    threadNoteId,
+  };
 }
 
 /** One entry per Task added; the Activity Log folds a day's into one line only when read. */

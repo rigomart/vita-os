@@ -64,6 +64,7 @@ export function addToThreadStorage(scope: RequestScope) {
     note: Note,
     threadId: string,
     change: PreparedThreadChange,
+    startsThread: boolean,
   ) {
     const threadNoteId = clock.newId();
     const copy = database
@@ -106,6 +107,7 @@ export function addToThreadStorage(scope: RequestScope) {
     const logged = activityLogStorage(scope).prepareNoteAdded(
       threadNoteId,
       change.changedAt,
+      startsThread,
     );
     const removal = database.delete(notes).where(
       and(
@@ -131,13 +133,18 @@ export function addToThreadStorage(scope: RequestScope) {
     change: PreparedThreadChange,
     note: Note,
     threadId: string,
-    leading?: ReturnType<typeof threads.prepareInsert>["statement"],
+    threadInsert?: ReturnType<typeof threads.prepareInsert>["statement"],
   ): Promise<NoteAddedToThread | null> {
-    const { copy, logged, removal } = copyAndRemoveNote(note, threadId, change);
+    const { copy, logged, removal } = copyAndRemoveNote(
+      note,
+      threadId,
+      change,
+      threadInsert !== undefined,
+    );
     // Logs and copying depend only on the fresh Thread token. Keeping their
     // queries in one batch retains rollback while preserving typed results.
     const [writtenRows, copyRows, logResult, deletion, ...insertResults] =
-      leading === undefined
+      threadInsert === undefined
         ? await database.batch([
             change.update,
             copy,
@@ -147,7 +154,7 @@ export function addToThreadStorage(scope: RequestScope) {
           ])
         : await database
             .batch([
-              leading,
+              threadInsert,
               change.update,
               copy,
               logged,

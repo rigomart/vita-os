@@ -28,8 +28,8 @@ export function activityLogStorage({ db, clock, actorId }: RequestScope) {
      * Note before it. It reads the Note's row, so it writes one entry exactly
      * when the Note was written.
      */
-    prepareNoteAdded(threadNoteId: string, at: number) {
-      const log = buildNoteAddedLogEntry(threadNoteId);
+    prepareNoteAdded(threadNoteId: string, at: number, startsThread = false) {
+      const log = buildNoteAddedLogEntry(threadNoteId, startsThread);
       return database.insert(activityLogEntries).select(
         database
           .select({

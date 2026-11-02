@@ -2,6 +2,7 @@ export {
   AUTO_ACTIVITY_LOG_ENTRY_TYPES,
   buildAreaMoveLogEntry,
   buildNoteAddedLogEntry,
+  NOTE_STARTED_THREAD,
   withCompletionNote,
   type AutoActivityLogEntry,
 } from "./activity-log";

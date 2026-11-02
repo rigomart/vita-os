@@ -165,7 +165,11 @@ export function createInMemoryApplicationClient(
   }
 
   /** Copy a Standalone Note into the Thread as a Thread Note, and drop it. */
-  function moveNoteInto(note: Note, thread: Thread): NoteAddedToThread {
+  function moveNoteInto(
+    note: Note,
+    thread: Thread,
+    startsThread = false,
+  ): NoteAddedToThread {
     const threadNote: ThreadNote = {
       _id: newRecordId() as ThreadNoteId,
       body: note.body,
@@ -173,7 +177,12 @@ export function createInMemoryApplicationClient(
       updatedAt: note.updatedAt ?? note.createdAt,
     };
     threadNotes.push({ ...threadNote, threadId: thread._id });
-    logNoteAdded(thread._id, threadNote._id);
+    logNoteAdded(
+      thread._id,
+      threadNote._id,
+      thread.lastActivityAt ?? clock.now(),
+      startsThread,
+    );
     notes.splice(notes.indexOf(note), 1);
     return { thread, threadNote };
   }
@@ -182,8 +191,12 @@ export function createInMemoryApplicationClient(
     threadId: ThreadId,
     threadNoteId: ThreadNoteId,
     at = clock.now(),
+    startsThread = false,
   ) {
-    const { type, content } = buildNoteAddedLogEntry(threadNoteId);
+    const { type, content } = buildNoteAddedLogEntry(
+      threadNoteId,
+      startsThread,
+    );
     activity.push({
       _id: newRecordId() as ActivityLogEntryId,
       threadId,
@@ -639,7 +652,7 @@ export function createInMemoryApplicationClient(
         ...(input.areaId === undefined ? {} : { areaId: input.areaId }),
       });
       write(thread, decision, { content: null });
-      return ok(moveNoteInto(note, thread));
+      return ok(moveNoteInto(note, thread, true));
     },
 
     /* Thread Notes */

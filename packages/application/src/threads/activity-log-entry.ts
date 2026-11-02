@@ -1,14 +1,17 @@
 import type { ActivityLogEntry, ThreadNote } from "@vita-os/contracts";
 import type { LucideIcon } from "lucide-react";
 
+import { NOTE_STARTED_THREAD } from "@vita-os/core";
 import { markdownToPlainText } from "@vita-os/ui/components/markdown";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import {
   ArrowRight,
   Bell,
   CircleCheck,
   CircleDot,
+  Flag,
   MapPin,
+  Repeat,
   RotateCcw,
   SquareCheck,
   SquareMinus,
@@ -29,6 +32,8 @@ export interface ActivityLogEntryReading {
   subject?: string;
   /** What it replaced, when it replaced something. */
   from?: string;
+  /** How many times it happened, when a line folds a stretch of them. */
+  times?: number;
   /**
    * A resolution's note, or the opening words of the Thread Note a
    * completion was written with.
@@ -64,7 +69,7 @@ export function readActivityLogEntry(
         label: "Task done",
         icon: SquareCheck,
         action: "Completed",
-        subject: previous ?? log.content.replace(/^Completed /, ""),
+        subject: completedTask(log),
         ...(threadNote === undefined ? {} : { note: openingWords(threadNote) }),
         dropped: [],
         ...opened,
@@ -165,32 +170,170 @@ export function readActivityLogEntry(
   }
 }
 
-/** One entry, or the Tasks added that day, newest first. */
-export type ActivityLogLine = ActivityLogEntry[];
+/**
+ * A line of the log, newest entry first: one entry, a day's Tasks added, a
+ * stretch of one Task's completions, or the Thread's beginning, which is read
+ * from its creation and never stored.
+ */
+export type ActivityLogLine =
+  | { kind: "entries"; logs: ActivityLogEntry[] }
+  | { kind: "started"; at: number; fromNote: boolean };
 
 /**
- * One day's entries, newest first, as the lines a person reads: each entry on
- * its own line, except the Tasks added that day, which share one line where
- * the newest of them sits.
+ * Lines read under one heading, newest first: a day's, or a stretch of
+ * completions spanning several days, under its first and last days.
+ */
+export interface ActivityLogGroup {
+  key: string;
+  /** The oldest and newest moments the group covers. */
+  from: number;
+  to: number;
+  lines: ActivityLogLine[];
+}
+
+/**
+ * The whole loaded log as a person reads it, newest first.
+ *
+ * - A day's Tasks added share one line where the newest of them sits.
+ * - Completions of one Task with no other line between them share one line,
+ *   unless a completion carries a Note: it stands alone with its Note.
+ * - `threadCreatedAt`, once the oldest page is loaded, ends the log with
+ *   Started at that moment, below any entry written at the same instant. It
+ *   reads "Started from a note" when the log holds the entry of the Note the
+ *   Thread was started from.
+ *
+ * Pages are folded together, so a stretch cut by a page boundary grows into
+ * one line as earlier pages load.
+ */
+export function readActivityLog(
+  logs: readonly ActivityLogEntry[],
+  threadCreatedAt?: number,
+): ActivityLogGroup[] {
+  const newestFirst = [...logs].sort((a, b) => b.createdAt - a.createdAt);
+  const days = new Map<string, ActivityLogEntry[]>();
+  for (const log of newestFirst) {
+    const key = dayKey(log.createdAt);
+    days.set(key, [...(days.get(key) ?? []), log]);
+  }
+  const lines: ActivityLogLine[] = foldStretches(
+    [...days.values()].flatMap(foldActivityLogDay),
+  ).map((logs) => ({ kind: "entries", logs }));
+  if (threadCreatedAt !== undefined) {
+    const started: ActivityLogLine = {
+      kind: "started",
+      at: threadCreatedAt,
+      fromNote: logs.some(
+        (log) =>
+          log.type === "note_added" && log.content === NOTE_STARTED_THREAD,
+      ),
+    };
+    const older = lines.findIndex((line) => newestAt(line) < threadCreatedAt);
+    lines.splice(older === -1 ? lines.length : older, 0, started);
+  }
+  return groupLines(lines);
+}
+
+/**
+ * One day's entries, newest first, as lines: each entry on its own, except
+ * the Tasks added that day, which share one line where the newest of them
+ * sits.
  */
 export function foldActivityLogDay(
   logs: readonly ActivityLogEntry[],
-): ActivityLogLine[] {
+): ActivityLogEntry[][] {
   const added = logs.filter((log) => log.type === "task_added");
   return logs.flatMap((log) =>
     log.type !== "task_added" ? [[log]] : log === added[0] ? [added] : [],
   );
 }
 
+function foldStretches(lines: ActivityLogEntry[][]): ActivityLogEntry[][] {
+  const folded: ActivityLogEntry[][] = [];
+  for (const line of lines) {
+    const previous = folded.at(-1);
+    if (
+      previous !== undefined &&
+      foldsIntoStretch(previous[0]!) &&
+      foldsIntoStretch(line[0]!) &&
+      completedTask(previous[0]!) === completedTask(line[0]!)
+    ) {
+      previous.push(line[0]!);
+    } else {
+      folded.push([...line]);
+    }
+  }
+  return folded;
+}
+
+function foldsIntoStretch(log: ActivityLogEntry) {
+  return log.type === "move_completed" && log.threadNoteId === undefined;
+}
+
+function groupLines(lines: ActivityLogLine[]): ActivityLogGroup[] {
+  const groups: ActivityLogGroup[] = [];
+  for (const line of lines) {
+    const [from, to] = [oldestAt(line), newestAt(line)];
+    const spansDays = !isSameDay(from, to);
+    const current = groups.at(-1);
+    if (
+      current !== undefined &&
+      !spansDays &&
+      isSameDay(current.from, current.to) &&
+      isSameDay(current.to, to)
+    ) {
+      current.lines.push(line);
+      current.from = from;
+    } else {
+      groups.push({ key: lineKey(line), from, to, lines: [line] });
+    }
+  }
+  return groups;
+}
+
+export function lineKey(line: ActivityLogLine) {
+  return line.kind === "started" ? "started" : line.logs[0]!._id;
+}
+
+export function newestAt(line: ActivityLogLine) {
+  return line.kind === "started" ? line.at : line.logs[0]!.createdAt;
+}
+
+function oldestAt(line: ActivityLogLine) {
+  return line.kind === "started" ? line.at : line.logs.at(-1)!.createdAt;
+}
+
+function dayKey(at: number) {
+  return format(at, "yyyy-MM-dd");
+}
+
 /**
- * A line as it reads: one entry, or several Tasks added the same day, named
- * in the order they were added.
+ * A line as it reads: one entry, several Tasks added the same day named in
+ * the order they were added, a stretch of completions counted, or Started.
  */
 export function readActivityLogLine(
-  logs: Readonly<ActivityLogLine>,
+  line: ActivityLogLine,
   threadNote?: ThreadNote,
 ): ActivityLogEntryReading {
+  if (line.kind === "started") {
+    return {
+      label: "Started",
+      icon: Flag,
+      action: line.fromNote ? "Started from a note" : "Started",
+      dropped: [],
+    };
+  }
+  const { logs } = line;
   if (logs.length === 1) return readActivityLogEntry(logs[0]!, threadNote);
+  if (logs[0]!.type === "move_completed") {
+    return {
+      label: "Task done",
+      icon: Repeat,
+      action: "Completed",
+      subject: completedTask(logs[0]!),
+      times: logs.length,
+      dropped: [],
+    };
+  }
   return {
     label: "Tasks added",
     icon: SquarePlus,
@@ -198,6 +341,10 @@ export function readActivityLogLine(
     subject: logs.map(addedTask).reverse().join(" · "),
     dropped: [],
   };
+}
+
+function completedTask(log: ActivityLogEntry) {
+  return log.previousValue ?? log.content.replace(/^Completed /, "");
 }
 
 function addedTask(log: ActivityLogEntry) {

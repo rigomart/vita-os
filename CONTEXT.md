@@ -172,12 +172,14 @@ _Avoid_: Archive, trash, completed list.
 
 ## Activity Rules
 
+- Every **Thread**'s **Activity Log** begins with "Started" at the Thread's creation, existing Threads included. A Thread started from a **Standalone Note** reads "Started from a note". The line is read from the Thread itself, never stored (ADR 0053).
 - Capturing a **Thread Note** updates its **Thread**'s last-activity date and adds one **Activity Log Entry**, "Note added", that names the Note but stores none of its words. The line shows the Note's opening words as they read now and opens it in the **Note view**; once the Note is deleted it reads "Note added", with nothing to open (ADR 0053).
 - Adding a **Standalone Note** to a **Thread**, or starting a **Thread** from one, counts as capturing a **Thread Note**, and adds its "Note added" entry. When the Note's date adds a dated **Task**, that Task is logged as added too, but the Note stays the Thread's last activity.
 - Editing or deleting an existing **Thread Note** changes only the Note: it does not update Thread activity or add an **Activity Log** entry.
 - Setting, changing, or clearing a **Task**'s date adds no **Activity Log** entry. Entries an earlier **Follow-up date** change wrote keep their wording.
 - Completing any **Task** adds one **Activity Log** entry. Completing it with a note also captures one **Thread Note**, which updates the **Thread**'s last-activity date as any captured Thread Note does, so the Note, not the completion, is the Thread's last activity. That Note gets no "Note added" entry of its own: the completion's entry names it and its line carries the Note's opening words. The **Task** change, the Note, and the entry are written together or not at all. A repeating Task keeps its identity and text and moves to its next occurrence; a one-off Task is removed. Completing every one-off **Task** leaves the **Thread** open.
 - Setting or clearing a **Repeat** adds no **Activity Log** entry.
+- Completions of one **Task** with no other line between them read as one line, "Completed <task> 14 times", under a heading naming the first and last days. Any other line between two completions starts a new stretch, and a completion written with a note stands on its own line with its Note. Storage keeps every completion; only the reading folds (ADR 0053).
 - Adding a **Task** adds one **Activity Log** entry, "Added", naming it, and updates its **Thread**'s last-activity date. **Tasks** added to the same **Thread** on the same day read as one line: "Added 3 Tasks: … · … · …". Tasks added before this rule are not logged (ADR 0053).
 - Removing a **Task** without completing it adds one **Activity Log** entry, "Removed", naming it, and updates its **Thread**'s last-activity date.
 - Editing a **Task**'s text adds no **Activity Log** entry.

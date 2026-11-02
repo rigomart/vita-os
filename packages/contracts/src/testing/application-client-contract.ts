@@ -657,10 +657,10 @@ export function describeApplicationClient(
             limit: 10,
           }),
         );
-        expect(activity.entries.map((entry) => entry.content).sort()).toEqual([
-          'Added "Dentist"',
-          "Note added",
-        ]);
+        expect(
+          activity.entries.map((entry) => entry.content).sort(),
+          "the Note's entry marks it as starting the Thread",
+        ).toEqual(['Added "Dentist"', "Note added, starting the Thread"]);
       });
     });
 
