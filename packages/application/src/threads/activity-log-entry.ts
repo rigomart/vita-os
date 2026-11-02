@@ -1,6 +1,7 @@
-import type { ActivityLogEntry } from "@vita-os/contracts";
+import type { ActivityLogEntry, ThreadNote } from "@vita-os/contracts";
 import type { LucideIcon } from "lucide-react";
 
+import { markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { format } from "date-fns";
 import {
   ArrowRight,
@@ -10,6 +11,7 @@ import {
   MapPin,
   RotateCcw,
   SquareCheck,
+  StickyNote,
 } from "lucide-react";
 
 import { withTimeToken } from "../attention-list/date-parts";
@@ -25,10 +27,15 @@ export interface ActivityLogEntryReading {
   subject?: string;
   /** What it replaced, when it replaced something. */
   from?: string;
-  /** A resolution's note, in the person's own words. */
+  /**
+   * A resolution's note, or the opening words of the Thread Note a
+   * completion was written with.
+   */
   note?: string;
   /** The Tasks a resolution dropped. */
   dropped: string[];
+  /** The Thread Note choosing the line opens, while it still exists. */
+  threadNote?: ThreadNote;
 }
 
 const DROPPED = " — discarded tasks: ";
@@ -37,12 +44,17 @@ const DROPPED = " — discarded tasks: ";
  * Every entry the log holds, legacy types included, read into its parts.
  * Entries written under a former name (Next Move, Follow-up date) keep their
  * label and wording.
+ *
+ * `threadNote` is the Thread Note the entry names, as it reads now; absent
+ * once that Note is deleted.
  */
 export function readActivityLogEntry(
   log: ActivityLogEntry,
+  threadNote?: ThreadNote,
 ): ActivityLogEntryReading {
   const previous = displayValue(log, log.previousValue);
   const next = displayValue(log, log.newValue);
+  const opened = threadNote === undefined ? {} : { threadNote };
 
   switch (log.type) {
     case "move_completed":
@@ -51,7 +63,19 @@ export function readActivityLogEntry(
         icon: SquareCheck,
         action: "Completed",
         subject: previous ?? log.content.replace(/^Completed /, ""),
+        ...(threadNote === undefined ? {} : { note: openingWords(threadNote) }),
         dropped: [],
+        ...opened,
+      };
+    case "note_added":
+      return {
+        label: "Note",
+        icon: StickyNote,
+        ...(threadNote === undefined
+          ? { action: "Note added" }
+          : { action: "Note added:", subject: openingWords(threadNote) }),
+        dropped: [],
+        ...opened,
       };
     case "area_move":
       return {
@@ -155,6 +179,11 @@ function displayValue(log: ActivityLogEntry, value?: string) {
   }
   const when = Number(value);
   return withTimeToken(format(when, "MMM d, yyyy"), when);
+}
+
+/** A Note's first line of text, as the Dashboard names a Note. */
+function openingWords(note: ThreadNote) {
+  return markdownToPlainText(note.body).trim().split("\n")[0]!.trim();
 }
 
 function capitalize(value: string) {

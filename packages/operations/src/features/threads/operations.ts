@@ -29,6 +29,7 @@ import {
   requireTaskText,
   requireNonBlankText,
   requireTimeZone,
+  withCompletionNote,
 } from "@vita-os/core";
 import { Result } from "better-result";
 
@@ -287,7 +288,15 @@ function changeTasks(
                 body: requireNonBlankText(note.body, "Thread note body"),
               };
             });
-      return Result.ok({ ...decision, completionNote });
+      return Result.ok(
+        completionNote === undefined
+          ? decision
+          : {
+              ...decision,
+              logs: withCompletionNote(decision.logs, completionNote.id),
+              completionNote,
+            },
+      );
     }),
   );
 }

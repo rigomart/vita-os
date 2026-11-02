@@ -1,4 +1,8 @@
-import type { ActivityLogEntry, ActivityLogEntryId } from "@vita-os/contracts";
+import type {
+  ActivityLogEntry,
+  ActivityLogEntryId,
+  ThreadNoteId,
+} from "@vita-os/contracts";
 
 import { activityLogEntries } from "../../platform/sqlite/schema";
 
@@ -18,6 +22,7 @@ export const ACTIVITY_FIELDS = {
   previous_value: activityLogEntries.previous_value,
   new_value: activityLogEntries.new_value,
   created_at: activityLogEntries.created_at,
+  thread_note_id: activityLogEntries.thread_note_id,
 };
 
 export type ActivityRow = Pick<
@@ -34,6 +39,9 @@ export function toActivityLogEntry(row: ActivityRow): ActivityLogEntry {
       ? {}
       : { previousValue: row.previous_value }),
     ...(row.new_value === null ? {} : { newValue: row.new_value }),
+    ...(row.thread_note_id === null
+      ? {}
+      : { threadNoteId: row.thread_note_id as ThreadNoteId }),
     createdAt: row.created_at,
   };
 }

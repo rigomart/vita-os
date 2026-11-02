@@ -136,6 +136,9 @@ function prepareThreadChange(
             "new_value",
           ),
           created_at: sql<number>`${changedAt}`.as("created_at"),
+          thread_note_id: sql<string | null>`${log.threadNoteId ?? null}`.as(
+            "thread_note_id",
+          ),
         })
         .from(threads)
         .where(

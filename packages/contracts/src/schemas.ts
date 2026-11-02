@@ -54,6 +54,7 @@ export const ActivityLogEntryTypeSchema = v.picklist([
   "area_move",
   "next_move_change",
   "move_completed",
+  "note_added",
   "state_change",
   "follow_up_change",
 ]);
@@ -123,6 +124,12 @@ export const ActivityLogEntrySchema = v.object({
   content: v.string(),
   previousValue: v.optional(v.string()),
   newValue: v.optional(v.string()),
+  /**
+   * The Thread Note the entry is about: the Note it added, or the one written
+   * with a completion. The Note's words are read from the Note itself; it
+   * may since have been deleted.
+   */
+  threadNoteId: v.optional(ThreadNoteIdSchema),
   createdAt: Timestamp,
 });
 export const ActivityLogPageSchema = v.object({

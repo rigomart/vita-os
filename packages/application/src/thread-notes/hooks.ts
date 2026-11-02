@@ -65,8 +65,9 @@ export function showThreadNote(
 }
 
 /**
- * Capturing a Note inside a Thread. It counts as Thread activity, so the reads
- * that show a Thread's recent activity are invalidated with it.
+ * Capturing a Note inside a Thread. It counts as Thread activity and adds a
+ * line to its Activity Log, so the reads that show either are invalidated
+ * with it.
  */
 export function useCaptureThreadNote(): ApplicationMutationResult<
   { threadId: ThreadId; body: string },
@@ -104,9 +105,10 @@ export function useCaptureThreadNote(): ApplicationMutationResult<
         notes.map((existing) => (existing._id === pendingId ? note : existing)),
       );
     },
-    alsoInvalidate: () => [
+    alsoInvalidate: (input) => [
       queryKeys.threads.open(),
       queryKeys.threads.details(),
+      queryKeys.threads.activity(input.threadId),
     ],
   });
 }

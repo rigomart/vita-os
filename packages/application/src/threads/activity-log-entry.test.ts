@@ -2,6 +2,8 @@ import type {
   ActivityLogEntry,
   ActivityLogEntryId,
   ActivityLogEntryType,
+  ThreadNote,
+  ThreadNoteId,
 } from "@vita-os/contracts";
 
 import { describe, expect, it } from "vitest";
@@ -107,6 +109,51 @@ describe("readActivityLogEntry", () => {
       label: "Follow-up date",
       action: "Cleared the Follow-up",
       subject: "May 20, 2026",
+    });
+  });
+
+  describe("an entry naming a Thread Note", () => {
+    const note: ThreadNote = {
+      _id: "note" as ThreadNoteId,
+      body: "## Called the office\nThey need the form **signed**",
+      createdAt: 0,
+      updatedAt: 0,
+    };
+    const added = {
+      ...entry("note_added", "Note added"),
+      threadNoteId: note._id,
+    };
+
+    it("reads a Note line with the Note's first line as it reads now, opening it", () => {
+      expect(readActivityLogEntry(added, note)).toMatchObject({
+        label: "Note",
+        action: "Note added:",
+        subject: "Called the office",
+        threadNote: note,
+      });
+    });
+
+    it("reads a deleted Note's line without words and with nothing to open", () => {
+      const reading = readActivityLogEntry(added);
+      expect(reading).toMatchObject({ label: "Note", action: "Note added" });
+      expect(reading).not.toHaveProperty("subject");
+      expect(reading).not.toHaveProperty("threadNote");
+    });
+
+    it("carries the Note written with a completion on the completion's line", () => {
+      const completed = {
+        ...entry("move_completed", 'Completed "Send the form"', {
+          previousValue: "Send the form",
+        }),
+        threadNoteId: note._id,
+      };
+      expect(readActivityLogEntry(completed, note)).toMatchObject({
+        action: "Completed",
+        subject: "Send the form",
+        note: "Called the office",
+        threadNote: note,
+      });
+      expect(readActivityLogEntry(completed)).not.toHaveProperty("note");
     });
   });
 });

@@ -149,11 +149,16 @@ function completionClient(
           lastActivityContent: decision.logs.at(-1)?.content,
         };
         if (note !== undefined) delete written.lastActivityContent;
-        const entries = decision.logs.map((log) => ({
-          ...log,
-          _id: newRecordId() as ActivityLogEntryId,
-          createdAt: now,
-        }));
+        const entries = decision.logs.map(
+          ({ threadNoteId: _, ...log }): ActivityLogEntry => ({
+            ...log,
+            ...(note === undefined || log.type !== "move_completed"
+              ? {}
+              : { threadNoteId: note._id }),
+            _id: newRecordId() as ActivityLogEntryId,
+            createdAt: now,
+          }),
+        );
         // All validation and ID creation finishes before either collection changes.
         state.threads[index] = written;
         state.activityLog ??= new Map();

@@ -1,4 +1,9 @@
-import type { ActivityLogEntry, ActivityLogEntryId } from "@vita-os/contracts";
+import type {
+  ActivityLogEntry,
+  ActivityLogEntryId,
+  ThreadNote,
+  ThreadNoteId,
+} from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
 import { subDays } from "date-fns";
@@ -127,5 +132,81 @@ describe("ActivityLog", () => {
 
     await user.click(screen.getByRole("button", { name: "Show earlier" }));
     expect(onLoadMore).toHaveBeenCalledTimes(1);
+  });
+
+  describe("a Note's line", () => {
+    const note: ThreadNote = {
+      _id: "note1" as ThreadNoteId,
+      body: "Called the office twice\nThey need it signed",
+      createdAt: now,
+      updatedAt: now,
+    };
+    const noteAdded = {
+      _id: "log4" as ActivityLogEntryId,
+      type: "note_added",
+      content: "Note added",
+      threadNoteId: note._id,
+      createdAt: now,
+    } satisfies ActivityLogEntry;
+
+    it("reads the Note's first line and opens the Note", async () => {
+      const user = userEvent.setup();
+      const onOpenNote = vi.fn();
+      render(
+        <ActivityLog
+          logs={[noteAdded]}
+          threadNotes={[note]}
+          onOpenNote={onOpenNote}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole("button", {
+          // jsdom drops the space after the screen-reader label.
+          name: /^Note: ?Note added: Called the office twice$/,
+        }),
+      );
+      expect(onOpenNote).toHaveBeenCalledWith(note);
+    });
+
+    it("stays once the Note is deleted, without words or anything to open", () => {
+      render(
+        <ActivityLog
+          logs={[noteAdded]}
+          threadNotes={[]}
+          onOpenNote={vi.fn()}
+        />,
+      );
+
+      expect(sentence("Note added")).toHaveTextContent("Note: Note added");
+      expect(screen.queryByRole("button")).toBeNull();
+    });
+
+    it("is part of the completion it was written with", () => {
+      render(
+        <ActivityLog
+          logs={[
+            {
+              _id: "log5" as ActivityLogEntryId,
+              type: "move_completed",
+              content: 'Completed "Send the form"',
+              previousValue: "Send the form",
+              threadNoteId: note._id,
+              createdAt: now,
+            },
+          ]}
+          threadNotes={[note]}
+          onOpenNote={vi.fn()}
+        />,
+      );
+
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
+      expect(
+        screen.getByRole("button", {
+          name: /^Task done: ?Completed Send the form$/,
+        }),
+      ).toBeVisible();
+      expect(screen.getByText("Called the office twice")).toBeVisible();
+    });
   });
 });

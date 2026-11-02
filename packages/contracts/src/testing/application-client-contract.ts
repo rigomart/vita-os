@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ApplicationClient, TaskId } from "../index";
+import type { ApplicationClient, TaskId, ThreadNoteId } from "../index";
 
 /**
  * What every `ApplicationClient` does, whatever is behind it: the HTTP API
@@ -357,6 +357,86 @@ export function describeApplicationClient(
           client.listThreadNotes({ threadId: thread._id }),
         ).resolves.toEqual({ ok: true, value: [] });
       });
+
+      it("logs capturing a Note, naming it, and keeps the line through edits and deletion", async () => {
+        const client = await newClient();
+        const thread = await value(
+          client.createThread({ title: "Tax letter" }),
+        );
+
+        const note = await value(
+          client.createThreadNote({
+            threadId: thread._id,
+            body: "Called the office",
+          }),
+        );
+        const line = {
+          _id: expect.any(String),
+          type: "note_added",
+          content: "Note added",
+          threadNoteId: note._id,
+          createdAt: note.createdAt,
+        };
+        const activity = () =>
+          value(
+            client.getThreadActivityPage({ threadId: thread._id, limit: 10 }),
+          ).then((page) => page.entries);
+        expect(await activity()).toEqual([line]);
+
+        await value(
+          client.updateThreadNoteBody({
+            threadNoteId: note._id,
+            body: "Called the office twice",
+          }),
+        );
+        expect(await activity()).toEqual([line]);
+
+        await value(client.removeThreadNote({ threadNoteId: note._id }));
+        expect(await activity()).toEqual([line]);
+      });
+
+      it("names the Note written with a completion on the completion's entry alone", async () => {
+        const client = await newClient();
+        const taskId = "task-send-form" as TaskId;
+        const thread = await value(
+          client.createThread({ title: "Tax letter" }),
+        );
+        await value(
+          client.addTask({
+            threadId: thread._id,
+            taskId,
+            text: "Send the form",
+          }),
+        );
+        const noteId = `note-${crypto.randomUUID()}` as ThreadNoteId;
+
+        await value(
+          client.completeTask({
+            threadId: thread._id,
+            taskId,
+            expectedOccurrence: null,
+            note: { id: noteId, body: "Clerk confirmed" },
+          }),
+        );
+
+        await expect(
+          client.getThreadActivityPage({ threadId: thread._id, limit: 10 }),
+        ).resolves.toEqual({
+          ok: true,
+          value: {
+            entries: [
+              {
+                _id: expect.any(String),
+                type: "move_completed",
+                content: 'Completed "Send the form"',
+                previousValue: "Send the form",
+                threadNoteId: noteId,
+                createdAt: expect.any(Number),
+              },
+            ],
+          },
+        });
+      });
     });
 
     describe("Adding Notes to Threads", () => {
@@ -391,7 +471,15 @@ export function describeApplicationClient(
         const activity = await value(
           client.getThreadActivityPage({ threadId: thread._id, limit: 10 }),
         );
-        expect(activity.entries).toEqual([]);
+        expect(activity.entries).toEqual([
+          {
+            _id: expect.any(String),
+            type: "note_added",
+            content: "Note added",
+            threadNoteId: added.threadNote._id,
+            createdAt: expect.any(Number),
+          },
+        ]);
       });
 
       it("starts a Thread from a Note", async () => {

@@ -100,6 +100,22 @@ async function activityOf(session: Session, threadId: string) {
   return page.entries;
 }
 
+/**
+ * The one Activity Log entry adding a Note writes: `Note added`, naming the
+ * Thread Note, when the Thread changed. Never one for the Task it adds.
+ */
+function noteAddedLine(added: NoteAddedToThread) {
+  return [
+    {
+      _id: expect.any(String),
+      type: "note_added",
+      content: "Note added",
+      threadNoteId: added.threadNote._id,
+      createdAt: added.thread.lastActivityAt,
+    },
+  ];
+}
+
 /** Everything the owner has stored in the four tables adding a Note can touch. */
 async function everything(session: Session) {
   const read = (table: string) =>
@@ -170,7 +186,7 @@ describe("adding a Note to a Thread", () => {
     });
   });
 
-  it("counts as Thread activity without an Activity Log entry for an undated Note", async () => {
+  it("counts as Thread activity and logs the Note for an undated Note", async () => {
     const owner = await createSession("add-to-thread-activity");
     const thread = await createThread(owner);
     const note = await createNote(owner, "Bring the referral");
@@ -182,7 +198,7 @@ describe("adding a Note to a Thread", () => {
     expect(added.thread).not.toHaveProperty("lastActivityContent");
     expect(added.thread).not.toHaveProperty("followUp");
 
-    expect(await activityOf(owner, thread._id)).toEqual([]);
+    expect(await activityOf(owner, thread._id)).toEqual(noteAddedLine(added));
     const detail = await succeed<ThreadDetail>(`/v1/threads/${thread.slug}`, {
       session: owner,
     });
@@ -190,7 +206,7 @@ describe("adding a Note to a Thread", () => {
   });
 
   describe("a dated Note adds a dated Task", () => {
-    it("appends a Task named by the Note's first line, dated as the Note, with no Activity Log entry", async () => {
+    it("appends a Task named by the Note's first line, dated as the Note, logging only the Note", async () => {
       const owner = await createSession("add-to-thread-undated");
       const thread = await createThread(owner);
       const note = await createNote(owner, "Call back\nabout the scan", jun1);
@@ -203,7 +219,7 @@ describe("adding a Note to a Thread", () => {
       ]);
       expect(added.thread).not.toHaveProperty("followUp");
       expect(added.thread).not.toHaveProperty("lastActivityContent");
-      expect(await activityOf(owner, thread._id)).toEqual([]);
+      expect(await activityOf(owner, thread._id)).toEqual(noteAddedLine(added));
       expect(
         (
           await succeed<ThreadNote[]>(`/v1/threads/${thread._id}/notes`, {
@@ -227,7 +243,7 @@ describe("adding a Note to a Thread", () => {
         { _id: expect.any(String), text: "Overdue", date: past },
       ]);
       expect(added.thread).not.toHaveProperty("followUp");
-      expect(await activityOf(owner, thread._id)).toEqual([]);
+      expect(await activityOf(owner, thread._id)).toEqual(noteAddedLine(added));
     });
 
     it.each([
@@ -271,7 +287,7 @@ describe("adding a Note to a Thread", () => {
 
       expect(added.thread.tasks).toEqual(thread.tasks);
       expect(added.thread.lastActivityAt).toEqual(expect.any(Number));
-      expect(await activityOf(owner, thread._id)).toEqual([]);
+      expect(await activityOf(owner, thread._id)).toEqual(noteAddedLine(added));
     });
   });
 
@@ -407,7 +423,9 @@ describe("starting a Thread from a Note", () => {
       { session: owner },
     );
     expect(detail.thread).toEqual(added.thread);
-    expect(await activityOf(owner, added.thread._id)).toEqual([]);
+    expect(await activityOf(owner, added.thread._id)).toEqual(
+      noteAddedLine(added),
+    );
     expect(await succeed<Note[]>("/v1/notes", { session: owner })).toEqual([]);
   });
 
@@ -423,7 +441,7 @@ describe("starting a Thread from a Note", () => {
     ]);
   });
 
-  it("starts an undated Thread from an undated Note with no Activity Log", async () => {
+  it("starts an undated Thread from an undated Note, logging the Note", async () => {
     const owner = await createSession("new-thread-undated");
     const note = await createNote(owner, "Just a thought");
 
@@ -433,7 +451,9 @@ describe("starting a Thread from a Note", () => {
     expect(added.thread).not.toHaveProperty("tasks");
     expect(added.thread).not.toHaveProperty("followUp");
     expect(added.thread).not.toHaveProperty("areaId");
-    expect(await activityOf(owner, added.thread._id)).toEqual([]);
+    expect(await activityOf(owner, added.thread._id)).toEqual(
+      noteAddedLine(added),
+    );
   });
 
   it("refuses another owner's Area, a missing Note, and a blank title, writing nothing", async () => {

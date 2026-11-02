@@ -17,6 +17,7 @@ import {
   threadNotes,
   threads as threadTable,
 } from "../../platform/sqlite/schema";
+import { activityLogStorage } from "../activity-log/storage";
 import { serializeRepeat } from "../notes/rows";
 import { THREAD_NOTE_FIELDS, toThreadNote } from "../thread-notes/rows";
 import { threadStorage } from "../threads/storage";
@@ -100,6 +101,10 @@ export function addToThreadStorage(scope: RequestScope) {
           ),
       )
       .returning(THREAD_NOTE_FIELDS);
+    const logged = activityLogStorage(scope).prepareNoteAdded(
+      threadNoteId,
+      change.changedAt,
+    );
     const removal = database.delete(notes).where(
       and(
         eq(notes.id, note._id),
@@ -117,7 +122,7 @@ export function addToThreadStorage(scope: RequestScope) {
         ),
       ),
     );
-    return { copy, removal };
+    return { copy, logged, removal };
   }
 
   async function write(
@@ -126,21 +131,36 @@ export function addToThreadStorage(scope: RequestScope) {
     threadId: string,
     leading?: ReturnType<typeof threads.prepareInsert>["statement"],
   ): Promise<NoteAddedToThread | null> {
-    const { copy, removal } = copyAndRemoveNote(note, threadId, change);
+    const { copy, logged, removal } = copyAndRemoveNote(note, threadId, change);
     // Logs and copying depend only on the fresh Thread token. Keeping their
     // queries in one batch retains rollback while preserving typed results.
-    const [writtenRows, copyRows, deletion, ...insertResults] =
+    const [writtenRows, copyRows, logResult, deletion, ...insertResults] =
       leading === undefined
         ? await database.batch([
             change.update,
             copy,
+            logged,
             removal,
             ...change.inserts,
           ])
         : await database
-            .batch([leading, change.update, copy, removal, ...change.inserts])
+            .batch([
+              leading,
+              change.update,
+              copy,
+              logged,
+              removal,
+              ...change.inserts,
+            ])
             .then(([, ...results]) => results);
-    return settle(change, writtenRows, insertResults, copyRows, deletion);
+    return settle(
+      change,
+      writtenRows,
+      insertResults,
+      copyRows,
+      logResult,
+      deletion,
+    );
   }
 
   function settle(
@@ -148,12 +168,17 @@ export function addToThreadStorage(scope: RequestScope) {
     writtenRows: ThreadRow[],
     insertResults: unknown[],
     copyRows: ThreadNoteRow[],
+    logged: unknown,
     removal: unknown,
   ): NoteAddedToThread | null {
     const thread = change.settle(writtenRows, insertResults);
     if (thread === null) return null;
     const threadNote = copyRows.at(0);
-    if (threadNote === undefined || db.changes(removal) !== 1) {
+    if (
+      threadNote === undefined ||
+      db.changes(logged) !== 1 ||
+      db.changes(removal) !== 1
+    ) {
       throw new Error("Adding a Note to a Thread wrote an inconsistent batch");
     }
     return { thread, threadNote: toThreadNote(threadNote) };
