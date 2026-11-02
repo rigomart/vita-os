@@ -9,13 +9,21 @@ import { Loader2 } from "lucide-react";
 import { clock } from "../../lib/clock";
 import {
   type ActivityLogEntryReading,
+  type ActivityLogGroup,
   type ActivityLogLine,
-  foldActivityLogDay,
+  lineKey,
+  newestAt,
+  readActivityLog,
   readActivityLogLine,
 } from "../activity-log-entry";
 
 interface ActivityLogProps {
   logs: ActivityLogEntry[] | undefined;
+  /**
+   * When the Thread was created, once the oldest page is loaded: the log then
+   * ends with Started.
+   */
+  startedAt?: number;
   /** The Thread's Notes as they read now, for the entries that name one. */
   threadNotes?: ThreadNote[];
   /** Opens a Note an entry names in the Note view. */
@@ -31,10 +39,12 @@ interface ActivityLogProps {
  * the node. Nothing is cut off: long Task text wraps, and a resolution shows
  * its note and the Tasks it dropped. An entry naming a Thread Note reads the
  * Note's opening words as they are now and opens it, until it is deleted.
- * Tasks added the same day share one line.
+ * Tasks added the same day share one line, and so does a stretch of one
+ * Task's completions, under a heading naming its first and last days.
  */
 export function ActivityLog({
   logs,
+  startedAt,
   threadNotes,
   onOpenNote,
   canLoadMore,
@@ -43,7 +53,8 @@ export function ActivityLog({
 }: ActivityLogProps) {
   if (logs === undefined) return <ActivityLogSkeleton />;
 
-  if (logs.length === 0) {
+  const groups = readActivityLog(logs, startedAt);
+  if (groups.length === 0) {
     return (
       <section aria-label="Activity log">
         <p className="text-sm text-muted-foreground">
@@ -61,29 +72,36 @@ export function ActivityLog({
           aria-hidden
           className="absolute inset-y-0 left-[11.5px] w-px bg-border [mask-image:linear-gradient(to_bottom,transparent,black_1.5rem,black_calc(100%_-_1.5rem),transparent)]"
         />
-        {groupLogsByDay(logs).map((group) => (
-          <section
-            key={group.key}
-            aria-label={group.label}
-            className="flex flex-col"
-          >
-            <h3 className="py-1 pl-9 text-xs font-medium text-muted-foreground">
-              {group.label}
-            </h3>
-            <ol>
-              {foldActivityLogDay(group.logs).map((line) => (
-                <ActivityLogItem
-                  key={line[0]!._id}
-                  line={line}
-                  threadNote={threadNotes?.find(
-                    (note) => note._id === line[0]!.threadNoteId,
-                  )}
-                  onOpenNote={onOpenNote}
-                />
-              ))}
-            </ol>
-          </section>
-        ))}
+        {groups.map((group) => {
+          const label = groupLabel(group);
+          return (
+            <section
+              key={group.key}
+              aria-label={label}
+              className="flex flex-col"
+            >
+              <h3 className="py-1 pl-9 text-xs font-medium text-muted-foreground">
+                {label}
+              </h3>
+              <ol>
+                {group.lines.map((line) => (
+                  <ActivityLogItem
+                    key={lineKey(line)}
+                    line={line}
+                    threadNote={
+                      line.kind === "entries"
+                        ? threadNotes?.find(
+                            (note) => note._id === line.logs[0]!.threadNoteId,
+                          )
+                        : undefined
+                    }
+                    onOpenNote={onOpenNote}
+                  />
+                ))}
+              </ol>
+            </section>
+          );
+        })}
       </div>
       {(canLoadMore || isLoadingMore) && (
         <Button
@@ -118,8 +136,10 @@ function ActivityLogItem({
   threadNote?: ThreadNote;
   onOpenNote?: (note: ThreadNote) => void;
 }) {
-  const log = line[0]!;
   const reading = readActivityLogLine(line, threadNote);
+  const datedByHeading =
+    line.kind === "entries" &&
+    !isSameDay(line.logs[0]!.createdAt, line.logs.at(-1)!.createdAt);
   const Icon = reading.icon;
   const opens = reading.threadNote;
   const sentence = (
@@ -156,7 +176,9 @@ function ActivityLogItem({
               {sentence}
             </p>
           )}
-          <ActivityLogTimestamp createdAt={log.createdAt} />
+          {!datedByHeading && (
+            <ActivityLogTimestamp createdAt={newestAt(line)} />
+          )}
         </div>
         <Carried reading={reading} />
       </div>
@@ -177,6 +199,9 @@ function Sentence({ reading }: { reading: ActivityLogEntryReading }) {
       )}
       {reading.from !== undefined && (
         <span className="text-muted-foreground">, from {reading.from}</span>
+      )}
+      {reading.times !== undefined && (
+        <span className="text-muted-foreground"> {reading.times} times</span>
       )}
     </>
   );
@@ -247,21 +272,12 @@ function ActivityLogSkeleton() {
   );
 }
 
-function groupLogsByDay(logs: ActivityLogEntry[]) {
-  const groups = new Map<string, ActivityLogEntry[]>();
-
-  for (const log of [...logs].sort((a, b) => b.createdAt - a.createdAt)) {
-    const key = format(new Date(log.createdAt), "yyyy-MM-dd");
-    const group = groups.get(key) ?? [];
-    group.push(log);
-    groups.set(key, group);
-  }
-
-  return [...groups.entries()].map(([key, groupLogs]) => ({
-    key,
-    label: getDayLabel(groupLogs[0]!.createdAt),
-    logs: groupLogs,
-  }));
+function groupLabel({ from, to }: ActivityLogGroup) {
+  if (isSameDay(from, to)) return getDayLabel(to);
+  const today = clock.now();
+  const day = (at: number) =>
+    format(at, isSameYear(at, today) ? "MMM d" : "MMM d, yyyy");
+  return `${day(from)} – ${day(to)}`;
 }
 
 function getDayLabel(createdAt: number) {

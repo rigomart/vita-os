@@ -15,6 +15,7 @@ import { ThreadNotesSection } from "./thread-notes-section";
 interface ThreadBodyTabsProps {
   threadId: ThreadId;
   threadTitle: string;
+  threadCreatedAt: number;
   /**
    * Whether the body scrolls itself (the pane) or flows in a scroll that
    * holds the whole Thread (the drawer).
@@ -30,6 +31,7 @@ interface ThreadBodyTabsProps {
 export function ThreadBodyTabs({
   threadId,
   threadTitle,
+  threadCreatedAt,
   scrolls,
 }: ThreadBodyTabsProps) {
   // The same read ThreadNotesSection observes, so the count costs nothing
@@ -63,7 +65,11 @@ export function ThreadBodyTabs({
           <ThreadNotesSection threadId={threadId} threadTitle={threadTitle} />
         </TabsContent>
         <TabsContent value="activity">
-          <ActivityLogSection threadId={threadId} threadTitle={threadTitle} />
+          <ActivityLogSection
+            threadId={threadId}
+            threadTitle={threadTitle}
+            threadCreatedAt={threadCreatedAt}
+          />
         </TabsContent>
       </div>
     </Tabs>

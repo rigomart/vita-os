@@ -100,21 +100,27 @@ async function activityOf(session: Session, threadId: string) {
   return page.entries;
 }
 
-function noteAddedLine(added: NoteAddedToThread) {
+const STARTED_THE_THREAD = "Note added, starting the Thread";
+
+function noteAddedLine(added: NoteAddedToThread, content = "Note added") {
   return [
     {
       _id: expect.any(String),
       type: "note_added",
-      content: "Note added",
+      content,
       threadNoteId: added.threadNote._id,
       createdAt: added.thread.lastActivityAt,
     },
   ];
 }
 
-function datedNoteLines(added: NoteAddedToThread, taskText: string) {
+function datedNoteLines(
+  added: NoteAddedToThread,
+  taskText: string,
+  content?: string,
+) {
   return [
-    ...noteAddedLine(added),
+    ...noteAddedLine(added, content),
     {
       _id: expect.any(String),
       type: "task_added",
@@ -468,7 +474,7 @@ describe("starting a Thread from a Note", () => {
     await expectActivityInAnyOrder(
       owner,
       added.thread._id,
-      datedNoteLines(added, "Dentist"),
+      datedNoteLines(added, "Dentist", STARTED_THE_THREAD),
     );
     expect(await succeed<Note[]>("/v1/notes", { session: owner })).toEqual([]);
   });
@@ -496,7 +502,7 @@ describe("starting a Thread from a Note", () => {
     expect(added.thread).not.toHaveProperty("followUp");
     expect(added.thread).not.toHaveProperty("areaId");
     expect(await activityOf(owner, added.thread._id)).toEqual(
-      noteAddedLine(added),
+      noteAddedLine(added, STARTED_THE_THREAD),
     );
   });
 

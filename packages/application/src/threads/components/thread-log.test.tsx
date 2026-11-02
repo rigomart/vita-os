@@ -6,6 +6,7 @@ import type {
 } from "@vita-os/contracts";
 
 import userEvent from "@testing-library/user-event";
+import { NOTE_STARTED_THREAD } from "@vita-os/core";
 import { subDays } from "date-fns";
 import { describe, expect, it, vi } from "vitest";
 
@@ -250,6 +251,88 @@ describe("ActivityLog", () => {
           /^Task removed: ?Removed Wait for the letter10:00 AM$/,
         ),
         expect.stringMatching(/^Task added: ?Added Call the office8:00 AM$/),
+      ]);
+    });
+  });
+  describe("a beginning, and rhythms that fold", () => {
+    const at = (day: number, hour = 20) =>
+      new Date(2026, 4, day, hour).getTime();
+    const completed = (id: string, createdAt: number, threadNoteId?: string) =>
+      ({
+        _id: id as ActivityLogEntryId,
+        type: "move_completed",
+        content: 'Completed "Evening check"',
+        previousValue: "Evening check",
+        ...(threadNoteId === undefined
+          ? {}
+          : { threadNoteId: threadNoteId as ThreadNoteId }),
+        createdAt,
+      }) satisfies ActivityLogEntry;
+    const noted = {
+      _id: "vet-note" as ThreadNoteId,
+      body: "Vet said halve the dose",
+      createdAt: at(11),
+      updatedAt: at(11),
+    } satisfies ThreadNote;
+
+    it("reads a rhythm as stretches around a completion with a Note, and ends with Started", () => {
+      render(
+        <ActivityLog
+          logs={[
+            ...[18, 17, 16, 15, 14, 13, 12].map((day) =>
+              completed(`late-${day}`, at(day)),
+            ),
+            completed("noted", at(11), noted._id),
+            ...[10, 9, 8, 7, 6, 5, 4].map((day) =>
+              completed(`early-${day}`, at(day)),
+            ),
+          ]}
+          threadNotes={[noted]}
+          startedAt={at(4, 9)}
+        />,
+      );
+
+      expect(
+        screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent),
+      ).toEqual([
+        "May 12 – May 18",
+        "Monday, May 11",
+        "May 4 – May 10",
+        "Monday, May 4",
+      ]);
+      expect(
+        screen.getAllByRole("listitem").map((item) => item.textContent),
+      ).toEqual([
+        expect.stringMatching(/^Task done: ?Completed Evening check 7 times$/),
+        expect.stringMatching(
+          /^Task done: ?Completed Evening check8:00 PMVet said halve the dose$/,
+        ),
+        expect.stringMatching(/^Task done: ?Completed Evening check 7 times$/),
+        expect.stringMatching(/^Started: ?Started9:00 AM$/),
+      ]);
+    });
+
+    it("reads Started from a note beside the Note the Thread was started from", () => {
+      render(
+        <ActivityLog
+          logs={[
+            {
+              _id: "n1" as ActivityLogEntryId,
+              type: "note_added",
+              content: NOTE_STARTED_THREAD,
+              threadNoteId: "gone" as ThreadNoteId,
+              createdAt: at(4, 9),
+            },
+          ]}
+          startedAt={at(4, 9)}
+        />,
+      );
+
+      expect(
+        screen.getAllByRole("listitem").map((item) => item.textContent),
+      ).toEqual([
+        expect.stringMatching(/^Note: ?Note added9:00 AM$/),
+        expect.stringMatching(/^Started: ?Started from a note9:00 AM$/),
       ]);
     });
   });

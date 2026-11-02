@@ -839,10 +839,15 @@ describe("ThreadDetailView", () => {
       screen.queryByRole("textbox", { name: "Activity log note" }),
     ).toBeNull();
     expect(mocks.applicationActivityThreadIds).toEqual([thread._id]);
+    expect(
+      screen.queryByText("Started"),
+      "Started waits for the oldest page",
+    ).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Show earlier" }));
     await waitFor(() =>
       expect(mocks.activityCursors).toEqual([undefined, "page-2"]),
     );
+    expect(await screen.findByText("Started")).toBeVisible();
     // No scroll container wraps the whole pane content.
     expect(header.closest(".overflow-y-auto")).toBeNull();
   });

@@ -5,6 +5,7 @@ import type {
   OperationResult,
   Repeat,
   TaskId,
+  ThreadNoteId,
   Thread,
   UpdateThreadInput,
 } from "@vita-os/contracts";
@@ -53,7 +54,7 @@ export const scenarios = [
     id: "long-activity",
     name: "Long activity",
     description:
-      "A Thread with weeks of history: long Tasks done, Area changes, a resolution with a note and dropped Tasks, a reopening.",
+      "A Thread with weeks of history: long Tasks done, Area changes, a resolution with a note and dropped Tasks, a reopening. Beside it, two weeks of a daily rhythm.",
     seed: seedLongActivity,
   },
   {
@@ -521,6 +522,48 @@ async function seedLongActivity(client: ApplicationClient) {
     );
     ago(5);
     await complete(boxes);
+
+    at(15, "08:00");
+    const { _id: drops } = must(
+      await client.createThread({ title: "Biscuit's eye drops" }),
+    );
+    const eveningDrops = newRecordId() as TaskId;
+    let dropsThread = must(
+      await client.addTask({
+        threadId: drops,
+        taskId: eveningDrops,
+        text: "Evening drops",
+        date: start - 14 * DAY,
+      }),
+    );
+    dropsThread = must(
+      await client.setTaskRepeat({
+        threadId: drops,
+        taskId: eveningDrops,
+        repeat: { kind: "days", every: 1 },
+        timeZone,
+      }),
+    );
+    for (let daysAgo = 14; daysAgo >= 1; daysAgo--) {
+      at(daysAgo, "20:15");
+      const task = dropsThread.tasks?.find((each) => each._id === eveningDrops);
+      dropsThread = must(
+        await client.completeTask({
+          threadId: drops,
+          taskId: eveningDrops,
+          expectedOccurrence: task?.date ?? null,
+          timeZone,
+          ...(daysAgo === 7
+            ? {
+                note: {
+                  id: newRecordId() as ThreadNoteId,
+                  body: "Vet says the left eye is clearing; keep going another week",
+                },
+              }
+            : {}),
+        }),
+      );
+    }
 
     at(10, "12:00");
     const { _id: tyres } = must(

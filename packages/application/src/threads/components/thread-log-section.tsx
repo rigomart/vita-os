@@ -16,6 +16,7 @@ import { ActivityLog } from "./thread-log";
 interface ActivityLogSectionProps {
   threadId: ThreadId;
   threadTitle: string;
+  threadCreatedAt: number;
 }
 
 const PAGE_SIZE = 20;
@@ -28,6 +29,7 @@ const PAGE_SIZE = 20;
 export function ActivityLogSection({
   threadId,
   threadTitle,
+  threadCreatedAt,
 }: ActivityLogSectionProps) {
   const activity = useThreadActivity(threadId, PAGE_SIZE);
   const notes = useThreadNotes(threadId);
@@ -45,6 +47,7 @@ export function ActivityLogSection({
         logs={
           activity.isPending || notes.isPending ? undefined : activity.entries
         }
+        startedAt={activity.hasNextPage ? undefined : threadCreatedAt}
         threadNotes={notes.data ?? undefined}
         onOpenNote={(note) => {
           deleted.current = false;

@@ -6,9 +6,16 @@ import type {
   ThreadNoteId,
 } from "@vita-os/contracts";
 
+import { NOTE_STARTED_THREAD } from "@vita-os/core";
 import { describe, expect, it } from "vitest";
 
-import { foldActivityLogDay, readActivityLogEntry } from "./activity-log-entry";
+import {
+  type ActivityLogGroup,
+  foldActivityLogDay,
+  readActivityLog,
+  readActivityLogEntry,
+  readActivityLogLine,
+} from "./activity-log-entry";
 
 function entry(
   type: ActivityLogEntryType,
@@ -196,5 +203,179 @@ describe("foldActivityLogDay", () => {
     expect(
       foldActivityLogDay([added3, removed, added2, completed, added1]),
     ).toEqual([[added3, added2, added1], [removed], [completed]]);
+  });
+});
+
+describe("readActivityLog", () => {
+  const day = (date: number, hour = 20) =>
+    new Date(2026, 9, date, hour).getTime();
+  const completed = (
+    id: string,
+    at: number,
+    text = "Evening check",
+    threadNoteId?: string,
+  ): ActivityLogEntry => ({
+    _id: id as ActivityLogEntryId,
+    type: "move_completed",
+    content: `Completed "${text}"`,
+    previousValue: text,
+    ...(threadNoteId === undefined
+      ? {}
+      : { threadNoteId: threadNoteId as ThreadNoteId }),
+    createdAt: at,
+  });
+  const logged = (
+    id: string,
+    type: ActivityLogEntryType,
+    at: number,
+  ): ActivityLogEntry => ({
+    _id: id as ActivityLogEntryId,
+    type,
+    content: "",
+    createdAt: at,
+  });
+  const lineKeysByGroup = (groups: ActivityLogGroup[]) =>
+    groups.map((group) =>
+      group.lines.map((line) =>
+        line.kind === "started"
+          ? "started"
+          : line.logs.map((log) => log._id).join("+"),
+      ),
+    );
+  const read = (groups: ActivityLogGroup[]) =>
+    groups.flatMap((group) =>
+      group.lines.map((line) => {
+        const { action, subject, times } = readActivityLogLine(line);
+        return [action, subject, times && `${times} times`]
+          .filter(Boolean)
+          .join(" ");
+      }),
+    );
+
+  it("folds a stretch of one Task's completions into one line under its first and last days", () => {
+    const fortnight = Array.from({ length: 14 }, (_, index) =>
+      completed(`c${14 - index}`, day(31 - index)),
+    );
+    const groups = readActivityLog(fortnight);
+
+    expect(read(groups)).toEqual(["Completed Evening check 14 times"]);
+    expect(groups).toMatchObject([{ from: day(18), to: day(31) }]);
+  });
+
+  it("starts a new stretch after any other line, and lets a completion with a Note stand alone", () => {
+    const groups = readActivityLog([
+      completed("c5", day(31)),
+      completed("c4", day(30)),
+      completed("noted", day(29), "Evening check", "note-1"),
+      completed("c3", day(28)),
+      completed("c2", day(27)),
+      logged("added", "task_added", day(26, 21)),
+      completed("c1", day(26)),
+      completed("other", day(25), "Morning walk"),
+    ]);
+
+    expect(lineKeysByGroup(groups)).toEqual([
+      ["c5+c4"],
+      ["noted"],
+      ["c3+c2"],
+      ["added", "c1"],
+      ["other"],
+    ]);
+    expect(groups[0]).toMatchObject({ from: day(30), to: day(31) });
+  });
+
+  it("keeps a stretch within one day under that day's heading, among its other lines", () => {
+    expect(
+      lineKeysByGroup(
+        readActivityLog([
+          logged("area", "area_move", day(31, 22)),
+          completed("c2", day(31, 21)),
+          completed("c1", day(31, 20)),
+        ]),
+      ),
+    ).toEqual([["area", "c2+c1"]]);
+  });
+
+  it("folds pages together, so a stretch cut by a page boundary grows into one line", () => {
+    const all = Array.from({ length: 30 }, (_, index) =>
+      completed(`c${30 - index}`, day(31, 20) - index * 86_400_000),
+    );
+    const firstPage = readActivityLog(all.slice(0, 20));
+    const bothPages = readActivityLog(all);
+
+    expect(read(firstPage)).toEqual(["Completed Evening check 20 times"]);
+    expect(read(bothPages)).toEqual(["Completed Evening check 30 times"]);
+    expect(
+      bothPages[0]!.key,
+      "the line updates in place as the page arrives",
+    ).toBe(firstPage[0]!.key);
+  });
+
+  it("ends the log with Started at the Thread's creation, below entries written at that instant", () => {
+    const createdAt = day(1, 9);
+    const groups = readActivityLog(
+      [
+        logged("added", "task_added", createdAt),
+        logged("area", "area_move", day(2)),
+      ],
+      createdAt,
+    );
+
+    expect(lineKeysByGroup(groups)).toEqual([["area"], ["added", "started"]]);
+    expect(read(groups).at(-1)).toBe("Started");
+  });
+
+  it("reads Started from a note only beside the entry of the Note the Thread was started from", () => {
+    const createdAt = day(1, 9);
+    const note = (content: string): ActivityLogEntry => ({
+      ...logged("note", "note_added", createdAt),
+      content,
+    });
+    const startedLine = (logs: ActivityLogEntry[]) =>
+      read(readActivityLog(logs, createdAt)).at(-1);
+
+    expect(startedLine([note(NOTE_STARTED_THREAD)])).toBe(
+      "Started from a note",
+    );
+    expect(
+      startedLine([note("Note added")]),
+      "a Note captured in the Thread's first millisecond did not start it",
+    ).toBe("Started");
+  });
+
+  it("gives a stretch over midnight a heading of its own", () => {
+    const groups = readActivityLog([
+      completed("c2", day(31, 0) + 5 * 60_000),
+      completed("c1", day(30, 23)),
+    ]);
+    expect(groups).toMatchObject([{ from: day(30, 23) }]);
+    expect(read(groups)).toEqual(["Completed Evening check 2 times"]);
+  });
+
+  it("splits a stretch where the Task's text changed", () => {
+    expect(
+      lineKeysByGroup(
+        readActivityLog([
+          completed("c3", day(31), "Evening drops"),
+          completed("c2", day(30), "Evening check"),
+          completed("c1", day(29), "Evening check"),
+        ]),
+      ),
+    ).toEqual([["c3"], ["c2+c1"]]);
+  });
+
+  it("leaves a backfilled Note written before the Thread began below Started", () => {
+    expect(
+      lineKeysByGroup(
+        readActivityLog([logged("note", "note_added", day(1, 8))], day(2, 9)),
+      ),
+    ).toEqual([["started"], ["note"]]);
+  });
+
+  it("reads no beginning while older pages remain", () => {
+    expect(lineKeysByGroup(readActivityLog([completed("c1", day(2))]))).toEqual(
+      [["c1"]],
+    );
+    expect(readActivityLog([])).toEqual([]);
   });
 });

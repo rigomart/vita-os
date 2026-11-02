@@ -384,6 +384,7 @@ function ThreadDetailContent({
       <ThreadBodyTabs
         threadTitle={thread.title}
         threadId={thread._id}
+        threadCreatedAt={thread.createdAt}
         scrolls={!scrollsWhole}
       />
     </div>
