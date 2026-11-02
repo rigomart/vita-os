@@ -1,4 +1,9 @@
-import type { ActivityLogPage, Thread, ThreadNote } from "@vita-os/contracts";
+import type {
+  ActivityLogEntry,
+  ActivityLogPage,
+  Thread,
+  ThreadNote,
+} from "@vita-os/contracts";
 
 import { newRecordId } from "@vita-os/core";
 import { threadStorage } from "@vita-os/operations/internal/features/threads/storage";
@@ -56,6 +61,19 @@ async function snapshot(session: Session, thread: Thread) {
     { session },
   );
   return { thread: detail.thread, notes, log: log.entries };
+}
+
+function besidesTheAdd(log: ActivityLogEntry[]) {
+  expect(log.filter((entry) => entry.type === "task_added")).toEqual([
+    {
+      _id: expect.any(String),
+      type: "task_added",
+      content: 'Added "Call clinic"',
+      newValue: "Call clinic",
+      createdAt: expect.any(Number),
+    },
+  ]);
+  return log.filter((entry) => entry.type !== "task_added");
 }
 
 async function complete(
@@ -203,7 +221,7 @@ describe("completing a Task with a Thread Note", () => {
       expect(answers.map((answer) => answer.status).sort()).toEqual([200, 409]);
       const after = await snapshot(session, thread);
       expect(after.notes).toHaveLength(1);
-      expect(after.log).toHaveLength(1);
+      expect(besidesTheAdd(after.log)).toHaveLength(1);
 
       const winner = answers.find((answer) => answer.status === 200);
       expect(after.thread).toEqual(winner!.body);
@@ -236,8 +254,9 @@ describe("completing a Task with a Thread Note", () => {
           { ...thread.tasks![0], date: Date.parse("2026-10-10T15:30Z") },
         ]);
       else expect(after.thread.tasks).toBeUndefined();
-      expect(after.log).toHaveLength(1);
-      expect(after.log[0]).toMatchObject({
+      const completions = besidesTheAdd(after.log);
+      expect(completions).toHaveLength(1);
+      expect(completions[0]).toMatchObject({
         type: "move_completed",
         content: 'Completed "Call clinic"',
         createdAt: now,
@@ -341,7 +360,7 @@ describe("completing a Task with a Thread Note", () => {
     expect(after.notes).toEqual([]);
     expect(after.thread.tasks).toBeUndefined();
     expect(after.thread.lastActivityContent).toBe('Completed "Call clinic"');
-    expect(after.log).toHaveLength(1);
+    expect(besidesTheAdd(after.log)).toHaveLength(1);
   });
 
   it("refuses another owner's Thread without changing it", async () => {

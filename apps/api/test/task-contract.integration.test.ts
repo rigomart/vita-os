@@ -59,9 +59,14 @@ describe("Task HTTP contract", () => {
       body: { expectedOccurrence: null },
     });
     expect(thread.tasks).toEqual([{ _id: "b", text: "Book a slot" }]);
-    expect(await logOf(owner, thread)).toEqual([
+    // Requests can land in the same millisecond, so the order is not checked.
+    const plan = [
+      ["task_added", 'Added "Call clinic"'],
+      ["task_added", 'Added "Book slot"'],
       ["move_completed", 'Completed "Call clinic"'],
-    ]);
+    ];
+    expect(await logOf(owner, thread)).toHaveLength(plan.length);
+    expect(await logOf(owner, thread)).toEqual(expect.arrayContaining(plan));
 
     thread = await succeed<Thread>(`${base}/tasks/b`, {
       method: "DELETE",
@@ -70,6 +75,9 @@ describe("Task HTTP contract", () => {
     });
     expect(thread).not.toHaveProperty("tasks");
     expect(thread).not.toHaveProperty("moves");
+    const removed = [...plan, ["task_removed", 'Removed "Book a slot"']];
+    expect(await logOf(owner, thread)).toHaveLength(removed.length);
+    expect(await logOf(owner, thread)).toEqual(expect.arrayContaining(removed));
   });
 
   it.each([-1, 253_402_300_800_000])(

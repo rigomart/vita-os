@@ -1,11 +1,12 @@
 # Activity Log
 
-A Thread's `Activity` tab, beside `Notes`: one sentence per entry under day headings, newest first. Capturing a Thread Note adds a line `Note added: <the Note's first line>`, read from the Note as it is now; choosing the line opens the Note view. After the Note is deleted the line stays as `Note added`, with no words and no button. A Note written with `Complete with a note` gets no line of its own: the completion's line carries it under the sentence and opens it.
+A Thread's `Activity` tab, beside `Notes`: one sentence per entry under day headings, newest first. Capturing a Thread Note adds a line `Note added: <the Note's first line>`, read from the Note as it is now; choosing the line opens the Note view. After the Note is deleted the line stays as `Note added`, with no words and no button. A Note written with `Complete with a note` gets no line of its own: the completion's line carries it under the sentence and opens it. Adding a Task adds a line `Added <task>`, and the Tasks added on one day share one line, `Added 3 Tasks: <a> · <b> · <c>`, in the order they were added. Removing a Task without completing it adds `Removed <task>`. Editing a Task's text, its date or its Repeat adds nothing, and lines already written keep the text the Task had then.
 
 ## Entry points and variants
 
 - The side pane (1280px and wider) and the drawer (1024 to 1279px)
 - Where a Thread Note comes from: `Write a note…`, `Complete with a note` on a Task row, and a Standalone Note's `Add to thread…` or `New thread from note`
+- Where a Task comes from: `Add a task`, or a dated Standalone Note's `Add to thread…` or `New thread from note`
 
 ## Preconditions
 
@@ -20,6 +21,14 @@ A Thread's `Activity` tab, beside `Notes`: one sentence per entry under day head
 4. `Complete with a note` on a Task, note `Clerk confirmed <stamp>` (`POST …/tasks/<task id>/complete` → `200`): the panel shows one line `Task done: | Completed <task> | <time>` with `Clerk confirmed <stamp>` under it, and no `Note added` line for that Note. In D1 the `move_completed` row's `thread_note_id` is the new Thread Note's ID. Choosing the line opens that Note.
 5. `Add to thread…` or `New thread from note` on a Standalone Note `<text>`: after the Undo offer (`POST /v1/notes/<id>/add-to-thread` → `200`, or `POST /v1/notes/<id>/new-thread` → `201`), that Thread's panel has `Note added: <text>` at the time it was added.
 
+6. Add the Tasks `Send the form`, `Ask about the deadline` and `Book a slot` (`POST /v1/threads/<id>/tasks` → `200` each). The panel reads `Today | Tasks added: | Added 3 Tasks: Send the form · Ask about the deadline · Book a slot | <time>`, with one `li`, also after a reload. D1 has three `task_added` rows, `content` `Added "<task>"` and `new_value` `<task>`: the line folds only when it is read.
+7. `Remove task` on `Book a slot` (`DELETE /v1/threads/<id>/tasks/<task id>` → `200`): a line `Task removed: | Removed Book a slot | <time>` appears above it.
+8. Change `Send the form`'s date twice (`PUT …/tasks/<task id>/date` → `200`), then edit its text (`PATCH …/tasks/<task id>` → `200`): the panel is unchanged, and the user's `activity_log_entries` count is the same as before.
+9. Resolve the Thread (`Thread actions`, `Resolve`, `Resolve thread`; `PATCH /v1/threads/<id>` → `200`). The pane closes; open the Thread again with `?thread=<slug>`. The panel reads `Resolved the Thread`, `Dropped 2 open Tasks` with both Tasks under it, then the lines from 6 and 7, and no new `Removed` line. D1 has one `state_change` row, `Resolved thread — discarded tasks: "<a>", "<b>"`, and no new `task_removed`.
+10. `Add to thread…` on a Standalone Note with a date, into an Open Thread: after the Undo offer, that Thread's panel has `Note added: <text>`, and the Task the date adds, `<first line>`, is named in the day's `Added` line. `threads.last_activity_content` stays `null`.
+
+Tasks open before migration `0011` get no `Added` line: Tasks carry no creation time.
+
 Notes written before migration `0010` are backfilled, one `Note added` line each at the Note's creation time, and a Note sharing a completion entry's timestamp is carried by that completion. No UI path writes a pre-`0010` row, so `apps/api/test/migrations.integration.test.ts` proves it; to see it on screen, create Notes on an instance before `0010` is applied, then run `bun run verify up` again on the branch that adds it.
 
 ## Traps
@@ -28,3 +37,4 @@ Notes written before migration `0010` are backfilled, one `Note added` line each
 - The tab highlight slides; a screenshot right after switching can show it still on `Notes`. Wait for `document.getAnimations().length === 0` first.
 - The Note editor is CodeMirror: `fill` appends to the body instead of replacing it. Click it, press `Meta+a`, then `keyboard inserttext`.
 - `Delete note` and `Add to thread` write only after the five-second `Undo` offer: wait for `Undo` to be gone before a reload or a D1 check.
+- A Task's text box is a `textarea`, and `press Meta+a` does not select inside it under agent-browser, so `fill` and `inserttext` append. Clear it with `Backspace` presses, check `value` is `""`, then `keyboard inserttext`.

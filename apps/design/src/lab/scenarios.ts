@@ -415,23 +415,35 @@ async function seedLongActivity(client: ApplicationClient) {
       thread = must(await client.updateThread({ threadId, ...patch }));
     };
 
+    at(46, "09:13");
     const quotes = await add(
       "Get three quotes from removal companies and ask whether they pack the kitchen too, or only move boxes",
     );
+    at(46, "09:14");
     const alcove = await add(
       "Measure the bedroom alcove to see whether the wardrobe fits, otherwise list it on Marketplace before the move",
     );
     // Still open at the resolution, so it names them as dropped.
+    at(46, "09:15");
     await add(
       "Cancel the old broadband contract — check the notice period first, it might be 30 days and they charge for the router",
     );
+    at(46, "09:16");
     await add("Redirect post at the Post Office for six months");
+    at(46, "09:17");
     const meter = await add("Read the meters");
 
     at(45, "18:40");
     await complete(quotes);
     at(44, "11:20");
     await complete(await add("Book the van for the 1st"));
+    at(43, "19:05");
+    must(
+      await client.removeTask({
+        threadId,
+        taskId: await add("Ask the neighbours to keep the parking bay free"),
+      }),
+    );
     at(41, "08:05");
     await complete(alcove);
     at(38, "21:17");

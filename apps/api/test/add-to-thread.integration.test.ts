@@ -100,10 +100,6 @@ async function activityOf(session: Session, threadId: string) {
   return page.entries;
 }
 
-/**
- * The one Activity Log entry adding a Note writes: `Note added`, naming the
- * Thread Note, when the Thread changed. Never one for the Task it adds.
- */
 function noteAddedLine(added: NoteAddedToThread) {
   return [
     {
@@ -114,6 +110,39 @@ function noteAddedLine(added: NoteAddedToThread) {
       createdAt: added.thread.lastActivityAt,
     },
   ];
+}
+
+function datedNoteLines(added: NoteAddedToThread, taskText: string) {
+  return [
+    ...noteAddedLine(added),
+    {
+      _id: expect.any(String),
+      type: "task_added",
+      content: `Added "${taskText}"`,
+      newValue: taskText,
+      createdAt: added.thread.lastActivityAt,
+    },
+  ];
+}
+
+function existingTaskLine(thread: Thread) {
+  return {
+    _id: expect.any(String),
+    type: "task_added",
+    content: 'Added "Existing"',
+    newValue: "Existing",
+    createdAt: thread.lastActivityAt,
+  };
+}
+
+async function expectActivityInAnyOrder(
+  session: Session,
+  threadId: string,
+  expected: object[],
+) {
+  const activity = await activityOf(session, threadId);
+  expect(activity).toHaveLength(expected.length);
+  expect(activity).toEqual(expect.arrayContaining(expected));
 }
 
 /** Everything the owner has stored in the four tables adding a Note can touch. */
@@ -206,7 +235,7 @@ describe("adding a Note to a Thread", () => {
   });
 
   describe("a dated Note adds a dated Task", () => {
-    it("appends a Task named by the Note's first line, dated as the Note, logging only the Note", async () => {
+    it("appends a Task named by the Note's first line, dated as the Note, logging the Note and the Task", async () => {
       const owner = await createSession("add-to-thread-undated");
       const thread = await createThread(owner);
       const note = await createNote(owner, "Call back\nabout the scan", jun1);
@@ -219,7 +248,11 @@ describe("adding a Note to a Thread", () => {
       ]);
       expect(added.thread).not.toHaveProperty("followUp");
       expect(added.thread).not.toHaveProperty("lastActivityContent");
-      expect(await activityOf(owner, thread._id)).toEqual(noteAddedLine(added));
+      await expectActivityInAnyOrder(
+        owner,
+        thread._id,
+        datedNoteLines(added, "Call back"),
+      );
       expect(
         (
           await succeed<ThreadNote[]>(`/v1/threads/${thread._id}/notes`, {
@@ -243,7 +276,11 @@ describe("adding a Note to a Thread", () => {
         { _id: expect.any(String), text: "Overdue", date: past },
       ]);
       expect(added.thread).not.toHaveProperty("followUp");
-      expect(await activityOf(owner, thread._id)).toEqual(noteAddedLine(added));
+      expect(added.thread).not.toHaveProperty("lastActivityContent");
+      await expectActivityInAnyOrder(owner, thread._id, [
+        existingTaskLine(thread),
+        ...datedNoteLines(added, "Overdue"),
+      ]);
     });
 
     it.each([
@@ -287,7 +324,11 @@ describe("adding a Note to a Thread", () => {
 
       expect(added.thread.tasks).toEqual(thread.tasks);
       expect(added.thread.lastActivityAt).toEqual(expect.any(Number));
-      expect(await activityOf(owner, thread._id)).toEqual(noteAddedLine(added));
+      expect(added.thread).not.toHaveProperty("lastActivityContent");
+      await expectActivityInAnyOrder(owner, thread._id, [
+        existingTaskLine(thread),
+        ...noteAddedLine(added),
+      ]);
     });
   });
 
@@ -413,6 +454,7 @@ describe("starting a Thread from a Note", () => {
       tasks: [{ _id: expect.any(String), text: "Dentist", date: jun1 }],
       lastActivityAt: expect.any(Number),
     });
+    expect(added.thread).not.toHaveProperty("lastActivityContent");
     expect(added.threadNote).toMatchObject({
       body: "# Dentist\nCall Monday",
       createdAt: note.createdAt,
@@ -423,8 +465,10 @@ describe("starting a Thread from a Note", () => {
       { session: owner },
     );
     expect(detail.thread).toEqual(added.thread);
-    expect(await activityOf(owner, added.thread._id)).toEqual(
-      noteAddedLine(added),
+    await expectActivityInAnyOrder(
+      owner,
+      added.thread._id,
+      datedNoteLines(added, "Dentist"),
     );
     expect(await succeed<Note[]>("/v1/notes", { session: owner })).toEqual([]);
   });
@@ -545,6 +589,15 @@ describe("contention", () => {
       .bind(thread._id)
       .first<{ n: number }>();
     expect(copies?.n).toBe(1);
+    const entries = await env.DB.prepare(
+      "SELECT type FROM activity_log_entries WHERE thread_id = ? ORDER BY type",
+    )
+      .bind(thread._id)
+      .all<{ type: string }>();
+    expect(entries.results.map((entry) => entry.type)).toEqual([
+      "note_added",
+      "task_added",
+    ]);
   });
 
   it("preserves a Task edit and a dated Note conversion when their writes race", async () => {

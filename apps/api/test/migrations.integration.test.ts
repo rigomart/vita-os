@@ -112,6 +112,9 @@ let neighbor: { actorId: string; cookie: string };
 let entriesBeforeStory: Record<string, unknown>[];
 let entryColumnsBeforeStory: Record<string, unknown>[];
 let schemaBeforeStory: Record<string, unknown>[];
+let entriesAt0010: Record<string, unknown>[];
+let entryColumnsAt0010: Record<string, unknown>[];
+let schemaAt0010: Record<string, unknown>[];
 
 async function readSchema() {
   return (
@@ -413,6 +416,10 @@ beforeAll(async () => {
   entryColumnsBeforeStory = await readColumns("activity_log_entries");
   schemaBeforeStory = await readSchema();
   await applyD1Migrations(database, migrationsThrough(10));
+  entriesAt0010 = await readEntries();
+  entryColumnsAt0010 = await readColumns("activity_log_entries");
+  schemaAt0010 = await readSchema();
+  await applyD1Migrations(database, migrationsThrough(11));
 });
 
 async function readEntries() {
@@ -534,6 +541,131 @@ async function seedStoryBeforeNoteLines(actorId: string, neighborId: string) {
   ]);
 }
 
+describe("0011: Tasks added and removed join the Activity Log", () => {
+  it("keeps every entry as stored, every column included", async () => {
+    const after = new Map(
+      (await readEntries()).map((row) => [row.id as string, row]),
+    );
+    expect(entriesAt0010.some((row) => row.thread_note_id !== null)).toBe(true);
+    for (const row of entriesAt0010) {
+      expect(after.get(row.id as string)).toEqual(row);
+    }
+  });
+
+  it("adds only the two types, changing nothing else", async () => {
+    expect(await readColumns("activity_log_entries")).toEqual(
+      entryColumnsAt0010,
+    );
+    const schema = await readSchema();
+    const table = schema.find((row) => row.name === "activity_log_entries");
+    expect(String(table?.sql)).toContain(
+      "CHECK (type IN ('area_move', 'next_move_change', 'move_completed', 'note_added', 'task_added', 'task_removed', 'state_change', 'follow_up_change'))",
+    );
+    const indexes = (rows: Record<string, unknown>[]) =>
+      rows.filter((row) => row.type === "index");
+    expect(indexes(schema)).toEqual(indexes(schemaAt0010));
+    const unrelated = (rows: Record<string, unknown>[]) =>
+      rows.filter((row) => row.tbl_name !== "activity_log_entries");
+    expect(unrelated(schema)).toEqual(unrelated(schemaAt0010));
+    expect(
+      (await database.prepare("PRAGMA foreign_key_check").all()).results,
+    ).toEqual([]);
+  });
+
+  it("takes the API before it and the API after it, and reads Task lines through the Worker", async () => {
+    await database
+      .prepare(
+        `INSERT INTO threads (id, user_id, title, slug, sort_order, state, created_at)
+         VALUES ('story-plan', ?, 'story-plan', 'story-plan', 0, 'open', ?)`,
+      )
+      .bind(storyteller.actorId, STORY)
+      .run();
+    const insert = (
+      id: string,
+      type: string,
+      content: string,
+      previous: string | null,
+      next: string | null,
+      at: number,
+      threadNoteId: string | null = null,
+    ) =>
+      database
+        .prepare(
+          `INSERT INTO activity_log_entries (id, user_id, thread_id, type, content, previous_value, new_value, created_at, thread_note_id)
+           VALUES (?, ?, 'story-plan', ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          id,
+          storyteller.actorId,
+          type,
+          content,
+          previous,
+          next,
+          at,
+          threadNoteId,
+        );
+    await database.batch([
+      insert(
+        "before-0011-completion",
+        "move_completed",
+        'Completed "Call the office"',
+        "Call the office",
+        null,
+        STORY + 1_000,
+        "plan-note-id",
+      ),
+      insert(
+        "after-0011-added",
+        "task_added",
+        'Added "Book a slot"',
+        null,
+        "Book a slot",
+        STORY + 2_000,
+      ),
+      insert(
+        "after-0011-removed",
+        "task_removed",
+        'Removed "Book a slot"',
+        "Book a slot",
+        null,
+        STORY + 3_000,
+      ),
+    ]);
+
+    const activity = await read<ActivityLogPage>(
+      "/v1/threads/story-plan/activity",
+      storyteller.cookie,
+    );
+    expect(activity.entries).toEqual([
+      {
+        _id: "after-0011-removed",
+        type: "task_removed",
+        content: 'Removed "Book a slot"',
+        previousValue: "Book a slot",
+        createdAt: STORY + 3_000,
+      },
+      {
+        _id: "after-0011-added",
+        type: "task_added",
+        content: 'Added "Book a slot"',
+        newValue: "Book a slot",
+        createdAt: STORY + 2_000,
+      },
+      {
+        _id: "before-0011-completion",
+        type: "move_completed",
+        content: 'Completed "Call the office"',
+        previousValue: "Call the office",
+        threadNoteId: "plan-note-id",
+        createdAt: STORY + 1_000,
+      },
+    ]);
+    await expect(
+      insert("plan-unknown", "started", "Started", null, null, STORY).run(),
+    ).rejects.toThrow(/CHECK constraint failed/);
+  });
+});
+
 describe("0010: Thread Notes join the Activity Log", () => {
   it("keeps every entry as stored, naming the Note a completion was written with", async () => {
     const after = new Map(
@@ -650,7 +782,7 @@ describe("0010: Thread Notes join the Activity Log", () => {
         pk: 0,
       },
     ]);
-    const schema = await readSchema();
+    const schema = schemaAt0010;
     const table = schema.find((row) => row.name === "activity_log_entries");
     expect(String(table?.sql)).toContain(
       "CHECK (type IN ('area_move', 'next_move_change', 'move_completed', 'note_added', 'state_change', 'follow_up_change'))",

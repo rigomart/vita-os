@@ -100,7 +100,7 @@ export const activityLogEntries = sqliteTable(
   (table) => [
     check(
       "activity_log_entries_type",
-      sql`${table.type} IN ('area_move', 'next_move_change', 'move_completed', 'note_added', 'state_change', 'follow_up_change')`,
+      sql`${table.type} IN ('area_move', 'next_move_change', 'move_completed', 'note_added', 'task_added', 'task_removed', 'state_change', 'follow_up_change')`,
     ),
     index("activity_log_entries_by_owner_thread_time").on(
       table.user_id,

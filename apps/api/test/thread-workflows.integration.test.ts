@@ -222,6 +222,7 @@ describe("a Thread resurfaces at its dated Tasks", () => {
   ])("refuses %s as an unknown field, writing nothing", async (_case, body) => {
     const owner = await createSession("thread-follow-up-refused");
     const thread = await datedThread(owner, [jun1]);
+    const activityBefore = await activityOf(owner, thread);
 
     expectError(
       await call(`/v1/threads/${thread._id}`, {
@@ -239,12 +240,13 @@ describe("a Thread resurfaces at its dated Tasks", () => {
     const after = (await detailOf(owner, thread)).thread;
     expect(after).toEqual(thread);
     expect(after.title).toBe(thread.title);
-    expect(await activityOf(owner, thread)).toEqual([]);
+    expect(await activityOf(owner, thread)).toEqual(activityBefore);
   });
 
   it("writes no follow_up_change entry for any Thread change", async () => {
     const owner = await createSession("thread-no-follow-up-entry");
     const thread = await datedThread(owner, [may20]);
+    const activityBefore = await activityOf(owner, thread);
 
     await succeed(`/v1/threads/${thread._id}`, {
       method: "PATCH",
@@ -258,7 +260,11 @@ describe("a Thread resurfaces at its dated Tasks", () => {
     });
 
     expect(
-      (await activityOf(owner, thread)).map((entry) => entry.type),
+      (await activityOf(owner, thread))
+        .filter(
+          (entry) => !activityBefore.some((before) => before._id === entry._id),
+        )
+        .map((entry) => entry.type),
     ).toEqual(["state_change"]);
   });
 });
@@ -460,11 +466,14 @@ describe("Thread lifecycle", () => {
     expect(resolved.state).toBe("resolved");
     expect(resolved).not.toHaveProperty("tasks");
     expect(resolved).not.toHaveProperty("followUp");
-    expect(
-      (await activityOf(owner, thread)).map((entry) => entry.content),
-    ).toContain(
+    const activity = await activityOf(owner, thread);
+    expect(activity.map((entry) => entry.content)).toContain(
       'Resolved thread: Clinic confirmed — discarded tasks: "Call clinic", "Book appointment"',
     );
+    expect(
+      activity.map((entry) => entry.type),
+      "discarding writes no task_removed",
+    ).not.toContain("task_removed");
   });
 
   it("reopening restores nothing it cleared", async () => {

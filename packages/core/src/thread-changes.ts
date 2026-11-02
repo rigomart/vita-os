@@ -9,6 +9,7 @@ import type {
 import {
   type AutoActivityLogEntry,
   buildAreaMoveLogEntry,
+  buildTaskAddedLogEntry,
 } from "./activity-log";
 import { ConflictError } from "./errors";
 import { isTaskDate } from "./tasks";
@@ -266,8 +267,9 @@ export function taskFromNote(
  * Note adds a Task named by its first line and carrying its date, time of day
  * included and even when that date has already passed, and its Repeat, appended to the end;
  * the whole Note joins the Thread's Notes as well, so nothing is
- * dropped. An undated Note adds no Task. Neither writes an Activity Log entry.
- * `taskId` names the Task that may be added.
+ * dropped. An undated Note adds no Task. A Task added logs `task_added`; the
+ * `note_added` line is storage's to write. `taskId` names the Task that may
+ * be added.
  */
 export function decideAddNoteToThread(
   thread: ThreadChangeState,
@@ -279,5 +281,8 @@ export function decideAddNoteToThread(
   if (thread.tasks?.some((existing) => existing._id === taskId)) {
     throw new ConflictError("The Thread already holds that Task");
   }
-  return { patch: { tasks: [...(thread.tasks ?? []), task] }, logs: [] };
+  return {
+    patch: { tasks: [...(thread.tasks ?? []), task] },
+    logs: [buildTaskAddedLogEntry(task.text)],
+  };
 }

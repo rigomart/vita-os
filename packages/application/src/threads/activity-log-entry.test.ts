@@ -8,7 +8,7 @@ import type {
 
 import { describe, expect, it } from "vitest";
 
-import { readActivityLogEntry } from "./activity-log-entry";
+import { foldActivityLogDay, readActivityLogEntry } from "./activity-log-entry";
 
 function entry(
   type: ActivityLogEntryType,
@@ -41,6 +41,27 @@ describe("readActivityLogEntry", () => {
       label: "Task done",
       action: "Completed",
       subject: "Call the clinic",
+    });
+  });
+
+  it("reads a Task added and a Task removed by its full text", () => {
+    expect(
+      read("task_added", 'Added "Send the form"', {
+        newValue: "Send the form",
+      }),
+    ).toMatchObject({
+      label: "Task added",
+      action: "Added",
+      subject: "Send the form",
+    });
+    expect(
+      read("task_removed", 'Removed "Book a slot"', {
+        previousValue: "Book a slot",
+      }),
+    ).toMatchObject({
+      label: "Task removed",
+      action: "Removed",
+      subject: "Book a slot",
     });
   });
 
@@ -155,5 +176,25 @@ describe("readActivityLogEntry", () => {
       });
       expect(readActivityLogEntry(completed)).not.toHaveProperty("note");
     });
+  });
+});
+
+describe("foldActivityLogDay", () => {
+  const at = (id: string, type: ActivityLogEntryType) => ({
+    ...entry(type, ""),
+    _id: id as ActivityLogEntryId,
+  });
+
+  it("puts the day's Tasks added on one line where the newest sits, and every other entry on its own", () => {
+    const [added3, removed, added2, completed, added1] = [
+      at("a3", "task_added"),
+      at("r", "task_removed"),
+      at("a2", "task_added"),
+      at("c", "move_completed"),
+      at("a1", "task_added"),
+    ];
+    expect(
+      foldActivityLogDay([added3, removed, added2, completed, added1]),
+    ).toEqual([[added3, added2, added1], [removed], [completed]]);
   });
 });

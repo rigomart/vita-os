@@ -66,6 +66,8 @@ export const ExportedActivityLogEntrySchema = v.strictObject({
     "next_move_change",
     "move_completed",
     "note_added",
+    "task_added",
+    "task_removed",
     "state_change",
     "follow_up_change",
   ]),

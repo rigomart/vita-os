@@ -60,8 +60,13 @@ describe("in-memory application client", () => {
     );
 
     expect(completed.tasks).toBeUndefined();
-    expect(log.entries).toHaveLength(1);
-    expect(completed.lastActivityContent).toBe(log.entries[0]!.content);
+    expect(log.entries.map((entry) => entry.type).sort()).toEqual([
+      "move_completed",
+      "task_added",
+    ]);
+    expect(completed.lastActivityContent).toBe(
+      log.entries.find((entry) => entry.type === "move_completed")!.content,
+    );
   });
 
   it("captures a completion Note without an activity summary", async () => {

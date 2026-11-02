@@ -3,7 +3,13 @@ import type { Task, TaskId } from "@vita-os/contracts";
 import { describe, expect, it } from "vitest";
 
 import { ConflictError, ValidationError } from "./errors";
-import { decideAddTask, decideSetTaskDate, MAX_TASK_DATE } from "./tasks";
+import {
+  decideAddTask,
+  decideEditTask,
+  decideRemoveTask,
+  decideSetTaskDate,
+  MAX_TASK_DATE,
+} from "./tasks";
 
 const task = (id: string, fields: Partial<Task> = {}): Task => ({
   _id: id as TaskId,
@@ -13,6 +19,41 @@ const task = (id: string, fields: Partial<Task> = {}): Task => ({
 
 const day = (date: number, hours = 0, minutes = 0) =>
   new Date(2026, 9, date, hours, minutes).getTime();
+
+describe("the plan changing in the Activity Log", () => {
+  it("logs a Task added, naming it", () => {
+    expect(decideAddTask({ state: "open" }, task("a"))?.logs).toEqual([
+      { type: "task_added", content: 'Added "Task a"', newValue: "Task a" },
+    ]);
+  });
+
+  it("logs a Task removed without completing it, naming it", () => {
+    const decision = decideRemoveTask(
+      { state: "open", tasks: [task("a"), task("b")] },
+      "b" as TaskId,
+    );
+    expect(decision).toEqual({
+      patch: { tasks: [task("a")] },
+      logs: [
+        {
+          type: "task_removed",
+          content: 'Removed "Task b"',
+          previousValue: "Task b",
+        },
+      ],
+    });
+  });
+
+  it("logs nothing for editing a Task's text", () => {
+    expect(
+      decideEditTask(
+        { state: "open", tasks: [task("a")] },
+        "a" as TaskId,
+        "Renamed",
+      )?.logs,
+    ).toEqual([]);
+  });
+});
 
 describe("setting a Task's date", () => {
   it("sets the date on one Task and leaves the others alone", () => {

@@ -173,17 +173,19 @@ _Avoid_: Archive, trash, completed list.
 ## Activity Rules
 
 - Capturing a **Thread Note** updates its **Thread**'s last-activity date and adds one **Activity Log Entry**, "Note added", that names the Note but stores none of its words. The line shows the Note's opening words as they read now and opens it in the **Note view**; once the Note is deleted it reads "Note added", with nothing to open (ADR 0053).
-- Adding a **Standalone Note** to a **Thread**, or starting a **Thread** from one, counts as capturing a **Thread Note**, and adds its "Note added" entry. It adds no entry for the dated **Task** the Note's date adds.
+- Adding a **Standalone Note** to a **Thread**, or starting a **Thread** from one, counts as capturing a **Thread Note**, and adds its "Note added" entry. When the Note's date adds a dated **Task**, that Task is logged as added too, but the Note stays the Thread's last activity.
 - Editing or deleting an existing **Thread Note** changes only the Note: it does not update Thread activity or add an **Activity Log** entry.
 - Setting, changing, or clearing a **Task**'s date adds no **Activity Log** entry. Entries an earlier **Follow-up date** change wrote keep their wording.
 - Completing any **Task** adds one **Activity Log** entry. Completing it with a note also captures one **Thread Note**, which updates the **Thread**'s last-activity date as any captured Thread Note does, so the Note, not the completion, is the Thread's last activity. That Note gets no "Note added" entry of its own: the completion's entry names it and its line carries the Note's opening words. The **Task** change, the Note, and the entry are written together or not at all. A repeating Task keeps its identity and text and moves to its next occurrence; a one-off Task is removed. Completing every one-off **Task** leaves the **Thread** open.
 - Setting or clearing a **Repeat** adds no **Activity Log** entry.
-- Adding, editing, dating, and removing **Tasks** add no **Activity Log** entries.
+- Adding a **Task** adds one **Activity Log** entry, "Added", naming it, and updates its **Thread**'s last-activity date. **Tasks** added to the same **Thread** on the same day read as one line: "Added 3 Tasks: … · … · …". Tasks added before this rule are not logged (ADR 0053).
+- Removing a **Task** without completing it adds one **Activity Log** entry, "Removed", naming it, and updates its **Thread**'s last-activity date.
+- Editing a **Task**'s text adds no **Activity Log** entry.
 - **Activity Log** entries written under a former name (**Next Move**, **Move**) keep their wording and label.
 - Adding, changing, or removing a **Thread**'s **Area** adds an **Activity Log** entry. Deleting an **Area** adds none: the label disappearing is not a change the user made to each Thread.
 - Resolving a **Thread** adds an **Activity Log** entry.
 - Resolving a **Thread** may include an optional resolution note; when present, it becomes an **Activity Log** entry.
-- Resolving a **Thread** clears its **Tasks**, dated ones included; when **Tasks** are discarded this way, the resolution entry names them in capture order.
+- Resolving a **Thread** clears its **Tasks**, dated ones included; when **Tasks** are discarded this way, the resolution entry names them in capture order, and no "Removed" entry is added for them.
 - Reopening a **Resolved Thread** makes it an **Open Thread** and adds an **Activity Log** entry.
 - Reopening a **Thread** does not restore discarded **Tasks** or their dates.
 

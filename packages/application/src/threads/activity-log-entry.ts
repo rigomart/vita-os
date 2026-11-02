@@ -11,6 +11,8 @@ import {
   MapPin,
   RotateCcw,
   SquareCheck,
+  SquareMinus,
+  SquarePlus,
   StickyNote,
 } from "lucide-react";
 
@@ -76,6 +78,22 @@ export function readActivityLogEntry(
           : { action: "Note added:", subject: openingWords(threadNote) }),
         dropped: [],
         ...opened,
+      };
+    case "task_added":
+      return {
+        label: "Task added",
+        icon: SquarePlus,
+        action: "Added",
+        subject: addedTask(log),
+        dropped: [],
+      };
+    case "task_removed":
+      return {
+        label: "Task removed",
+        icon: SquareMinus,
+        action: "Removed",
+        subject: previous ?? log.content,
+        dropped: [],
       };
     case "area_move":
       return {
@@ -145,6 +163,45 @@ export function readActivityLogEntry(
         dropped: [],
       };
   }
+}
+
+/** One entry, or the Tasks added that day, newest first. */
+export type ActivityLogLine = ActivityLogEntry[];
+
+/**
+ * One day's entries, newest first, as the lines a person reads: each entry on
+ * its own line, except the Tasks added that day, which share one line where
+ * the newest of them sits.
+ */
+export function foldActivityLogDay(
+  logs: readonly ActivityLogEntry[],
+): ActivityLogLine[] {
+  const added = logs.filter((log) => log.type === "task_added");
+  return logs.flatMap((log) =>
+    log.type !== "task_added" ? [[log]] : log === added[0] ? [added] : [],
+  );
+}
+
+/**
+ * A line as it reads: one entry, or several Tasks added the same day, named
+ * in the order they were added.
+ */
+export function readActivityLogLine(
+  logs: Readonly<ActivityLogLine>,
+  threadNote?: ThreadNote,
+): ActivityLogEntryReading {
+  if (logs.length === 1) return readActivityLogEntry(logs[0]!, threadNote);
+  return {
+    label: "Tasks added",
+    icon: SquarePlus,
+    action: `Added ${logs.length} Tasks:`,
+    subject: logs.map(addedTask).reverse().join(" · "),
+    dropped: [],
+  };
+}
+
+function addedTask(log: ActivityLogEntry) {
+  return log.newValue ?? log.content;
 }
 
 /**
