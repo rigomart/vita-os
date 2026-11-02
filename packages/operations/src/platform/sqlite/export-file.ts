@@ -65,6 +65,7 @@ export const ExportedActivityLogEntrySchema = v.strictObject({
     "area_move",
     "next_move_change",
     "move_completed",
+    "note_added",
     "state_change",
     "follow_up_change",
   ]),
@@ -72,6 +73,7 @@ export const ExportedActivityLogEntrySchema = v.strictObject({
   previous_value: v.nullable(v.string()),
   new_value: v.nullable(v.string()),
   created_at: Integer,
+  thread_note_id: v.nullable(Id),
 });
 
 export const ExportedNoteSchema = v.strictObject({

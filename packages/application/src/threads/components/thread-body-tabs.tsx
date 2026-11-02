@@ -63,7 +63,7 @@ export function ThreadBodyTabs({
           <ThreadNotesSection threadId={threadId} threadTitle={threadTitle} />
         </TabsContent>
         <TabsContent value="activity">
-          <ActivityLogSection threadId={threadId} />
+          <ActivityLogSection threadId={threadId} threadTitle={threadTitle} />
         </TabsContent>
       </div>
     </Tabs>

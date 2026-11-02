@@ -105,6 +105,13 @@ let recorder: { actorId: string; cookie: string };
 let threadNotesBeforeCleanup: Record<string, unknown>[];
 let threadNoteColumnsBeforeCleanup: Record<string, unknown>[];
 let schemaBeforeThreadNoteCleanup: Record<string, unknown>[];
+let schemaAfterThreadNoteCleanup: Record<string, unknown>[];
+let threadNotesAfterCleanup: Record<string, unknown>[];
+let storyteller: { actorId: string; cookie: string };
+let neighbor: { actorId: string; cookie: string };
+let entriesBeforeStory: Record<string, unknown>[];
+let entryColumnsBeforeStory: Record<string, unknown>[];
+let schemaBeforeStory: Record<string, unknown>[];
 
 async function readSchema() {
   return (
@@ -396,12 +403,302 @@ beforeAll(async () => {
   threadNoteColumnsBeforeCleanup = await readColumns("thread_notes");
   schemaBeforeThreadNoteCleanup = await readSchema();
   await applyD1Migrations(database, migrationsThrough(9));
+  schemaAfterThreadNoteCleanup = await readSchema();
+  threadNotesAfterCleanup = await readThreadNotes();
+
+  storyteller = await signUp("story-migration-owner");
+  neighbor = await signUp("story-migration-neighbor");
+  await seedStoryBeforeNoteLines(storyteller.actorId, neighbor.actorId);
+  entriesBeforeStory = await readEntries();
+  entryColumnsBeforeStory = await readColumns("activity_log_entries");
+  schemaBeforeStory = await readSchema();
+  await applyD1Migrations(database, migrationsThrough(10));
+});
+
+async function readEntries() {
+  return (
+    await database
+      .prepare("SELECT * FROM activity_log_entries ORDER BY id")
+      .all<Record<string, unknown>>()
+  ).results;
+}
+
+const STORY = 1_750_000_000_000;
+
+/**
+ * A Thread's story as the API before 0010 stored it: Thread Notes and an
+ * Activity Log that knows nothing about them. One Note was written with a
+ * completion, so it shares that entry's timestamp. A neighbor's Note at that
+ * same instant, in a Thread of their own, belongs to no one else's line.
+ */
+async function seedStoryBeforeNoteLines(actorId: string, neighborId: string) {
+  const thread = (id: string, owner: string) =>
+    database
+      .prepare(
+        `INSERT INTO threads (id, user_id, title, slug, sort_order, state, created_at)
+         VALUES (?, ?, ?, ?, 0, 'open', ?)`,
+      )
+      .bind(id, owner, id, id, STORY)
+      .run();
+  await thread("story-thread", actorId);
+  await thread("story-quiet", actorId);
+  await thread("story-neighbor", neighborId);
+  const note = (
+    id: string,
+    owner: string,
+    threadId: string,
+    body: string,
+    at: number,
+  ) =>
+    database
+      .prepare(
+        `INSERT INTO thread_notes (id, user_id, thread_id, body, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(id, owner, threadId, body, at, at + 5);
+  const entry = (
+    id: string,
+    owner: string,
+    threadId: string,
+    type: string,
+    content: string,
+    previous: string | null,
+    next: string | null,
+    at: number,
+  ) =>
+    database
+      .prepare(
+        `INSERT INTO activity_log_entries (id, user_id, thread_id, type, content, previous_value, new_value, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(id, owner, threadId, type, content, previous, next, at);
+  await database.batch([
+    note(
+      "story-letter",
+      actorId,
+      "story-thread",
+      "A letter came",
+      STORY + 1_000,
+    ),
+    entry(
+      "story-call-done",
+      actorId,
+      "story-thread",
+      "move_completed",
+      'Completed "Call the office"',
+      "Call the office",
+      null,
+      STORY + 2_000,
+    ),
+    note(
+      "story-call-note",
+      actorId,
+      "story-thread",
+      "They need the form signed",
+      STORY + 2_000,
+    ),
+    entry(
+      "story-form-done",
+      actorId,
+      "story-thread",
+      "move_completed",
+      'Completed "Send the form"',
+      "Send the form",
+      null,
+      STORY + 3_000,
+    ),
+    entry(
+      "story-labeled",
+      actorId,
+      "story-thread",
+      "area_move",
+      'Added to "Home"',
+      null,
+      "Home",
+      STORY + 4_000,
+    ),
+    note(
+      "story-later",
+      actorId,
+      "story-thread",
+      "Clerk confirmed",
+      STORY + 5_000,
+    ),
+    note(
+      "story-elsewhere",
+      neighborId,
+      "story-neighbor",
+      "Unrelated",
+      STORY + 3_000,
+    ),
+  ]);
+}
+
+describe("0010: Thread Notes join the Activity Log", () => {
+  it("keeps every entry as stored, naming the Note a completion was written with", async () => {
+    const after = new Map(
+      (await readEntries()).map((row) => [row.id as string, row]),
+    );
+    expect(entriesBeforeStory.length).toBeGreaterThan(3);
+    for (const row of entriesBeforeStory) {
+      expect(after.get(row.id as string)).toEqual({
+        ...row,
+        thread_note_id: row.id === "story-call-done" ? "story-call-note" : null,
+      });
+    }
+  });
+
+  it("adds one Note line per other Thread Note, at its creation time, for every owner", async () => {
+    const lines = (
+      await database
+        .prepare(
+          `SELECT user_id, thread_id, type, content, previous_value, new_value, created_at, thread_note_id
+           FROM activity_log_entries WHERE type = 'note_added' ORDER BY thread_note_id`,
+        )
+        .all<Record<string, unknown>>()
+    ).results;
+    const notes = (
+      await database
+        .prepare(
+          "SELECT id, user_id, thread_id, created_at FROM thread_notes WHERE id != 'story-call-note' ORDER BY id",
+        )
+        .all<{
+          id: string;
+          user_id: string;
+          thread_id: string;
+          created_at: number;
+        }>()
+    ).results;
+    expect(notes.length).toBeGreaterThan(4);
+    expect(lines).toEqual(
+      notes.map((note) => ({
+        user_id: note.user_id,
+        thread_id: note.thread_id,
+        type: "note_added",
+        content: "Note added",
+        previous_value: null,
+        new_value: null,
+        created_at: note.created_at,
+        thread_note_id: note.id,
+      })),
+    );
+  });
+
+  it("reads the story through the API, newest first", async () => {
+    const activity = await read<ActivityLogPage>(
+      "/v1/threads/story-thread/activity",
+      storyteller.cookie,
+    );
+    expect(
+      activity.entries.map(({ _id, ...entry }) => ({
+        ...entry,
+        ...(_id.startsWith("story-") ? { _id } : {}),
+      })),
+    ).toEqual([
+      {
+        type: "note_added",
+        content: "Note added",
+        threadNoteId: "story-later",
+        createdAt: STORY + 5_000,
+      },
+      {
+        _id: "story-labeled",
+        type: "area_move",
+        content: 'Added to "Home"',
+        newValue: "Home",
+        createdAt: STORY + 4_000,
+      },
+      {
+        _id: "story-form-done",
+        type: "move_completed",
+        content: 'Completed "Send the form"',
+        previousValue: "Send the form",
+        createdAt: STORY + 3_000,
+      },
+      {
+        _id: "story-call-done",
+        type: "move_completed",
+        content: 'Completed "Call the office"',
+        previousValue: "Call the office",
+        threadNoteId: "story-call-note",
+        createdAt: STORY + 2_000,
+      },
+      {
+        type: "note_added",
+        content: "Note added",
+        threadNoteId: "story-letter",
+        createdAt: STORY + 1_000,
+      },
+    ]);
+    await expect(
+      read<ActivityLogPage>(
+        "/v1/threads/story-quiet/activity",
+        storyteller.cookie,
+      ),
+    ).resolves.toEqual({ entries: [] });
+  });
+
+  it("adds only the nullable thread_note_id and the new type, changing nothing else", async () => {
+    expect(await readColumns("activity_log_entries")).toEqual([
+      ...entryColumnsBeforeStory,
+      {
+        cid: entryColumnsBeforeStory.length,
+        name: "thread_note_id",
+        type: "TEXT",
+        notnull: 0,
+        dflt_value: null,
+        pk: 0,
+      },
+    ]);
+    const schema = await readSchema();
+    const table = schema.find((row) => row.name === "activity_log_entries");
+    expect(String(table?.sql)).toContain(
+      "CHECK (type IN ('area_move', 'next_move_change', 'move_completed', 'note_added', 'state_change', 'follow_up_change'))",
+    );
+    expect(
+      schema
+        .filter((row) => row.tbl_name === "activity_log_entries")
+        .map((row) => row.name),
+    ).toEqual([
+      "activity_log_entries",
+      "activity_log_entries_by_owner_thread_time",
+    ]);
+    const unrelated = (rows: Record<string, unknown>[]) =>
+      rows.filter((row) => row.tbl_name !== "activity_log_entries");
+    expect(unrelated(schema)).toEqual(unrelated(schemaBeforeStory));
+    expect(
+      (await database.prepare("PRAGMA foreign_key_check").all()).results,
+    ).toEqual([]);
+  });
+
+  it("takes an entry from the API before it, with no Note", async () => {
+    await database
+      .prepare(
+        `INSERT INTO activity_log_entries (id, user_id, thread_id, type, content, previous_value, new_value, created_at)
+         VALUES ('story-old-api', ?, 'story-quiet', 'move_completed', 'Completed "Water"', 'Water', NULL, ?)`,
+      )
+      .bind(storyteller.actorId, STORY + 9_000)
+      .run();
+    const activity = await read<ActivityLogPage>(
+      "/v1/threads/story-quiet/activity",
+      storyteller.cookie,
+    );
+    expect(activity.entries).toEqual([
+      {
+        _id: "story-old-api",
+        type: "move_completed",
+        content: 'Completed "Water"',
+        previousValue: "Water",
+        createdAt: STORY + 9_000,
+      },
+    ]);
+  });
 });
 
 describe("0009: Thread Notes stop needing a state", () => {
   it("keeps every Thread Note as stored, state and completion included", async () => {
     expect(threadNotesBeforeCleanup.length).toBeGreaterThan(2);
-    expect(await readThreadNotes()).toEqual(threadNotesBeforeCleanup);
+    expect(threadNotesAfterCleanup).toEqual(threadNotesBeforeCleanup);
   });
 
   it("defaults state to open, drops its check and indexes, and changes nothing else", async () => {
@@ -410,7 +707,7 @@ describe("0009: Thread Notes stop needing a state", () => {
         column.name === "state" ? { ...column, dflt_value: "'open'" } : column,
       ),
     );
-    const threadNotesSchema = (await readSchema()).filter(
+    const threadNotesSchema = schemaAfterThreadNoteCleanup.filter(
       (row) => row.tbl_name === "thread_notes",
     );
     expect(threadNotesSchema.map((row) => row.name)).toEqual([
@@ -422,7 +719,7 @@ describe("0009: Thread Notes stop needing a state", () => {
     ).toBe(true);
     const unrelated = (rows: Record<string, unknown>[]) =>
       rows.filter((row) => row.tbl_name !== "thread_notes");
-    expect(unrelated(await readSchema())).toEqual(
+    expect(unrelated(schemaAfterThreadNoteCleanup)).toEqual(
       unrelated(schemaBeforeThreadNoteCleanup),
     );
     expect(
@@ -629,7 +926,9 @@ describe("0004: Areas become optional labels", () => {
       owner.cookie,
     );
 
-    expect(activity.entries.map((entry) => entry._id)).toEqual(["log-1"]);
+    expect(
+      activity.entries.map((entry) => entry.threadNoteId ?? entry._id),
+    ).toEqual(["note-1", "log-1"]);
     expect(notes.map((note) => note.body)).toEqual(["Clinic opens at nine"]);
   });
 

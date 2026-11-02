@@ -1,7 +1,8 @@
-import type { ActivityLogEntry } from "@vita-os/contracts";
+import type { ActivityLogEntry, ThreadNote } from "@vita-os/contracts";
 
 import { Button } from "@vita-os/ui/components/button";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
+import { cn } from "@vita-os/ui/lib/utils";
 import { format, isSameDay, isSameYear, subDays } from "date-fns";
 import { Loader2 } from "lucide-react";
 
@@ -13,6 +14,10 @@ import {
 
 interface ActivityLogProps {
   logs: ActivityLogEntry[] | undefined;
+  /** The Thread's Notes as they read now, for the entries that name one. */
+  threadNotes?: ThreadNote[];
+  /** Opens a Note an entry names in the Note view. */
+  onOpenNote?: (note: ThreadNote) => void;
   canLoadMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
@@ -22,10 +27,13 @@ interface ActivityLogProps {
  * The Thread's continuity record, written entirely by the system: one rail
  * behind every day, each entry a full sentence on it with its kind's icon as
  * the node. Nothing is cut off: long Task text wraps, and a resolution shows
- * its note and the Tasks it dropped.
+ * its note and the Tasks it dropped. An entry naming a Thread Note reads the
+ * Note's opening words as they are now and opens it, until it is deleted.
  */
 export function ActivityLog({
   logs,
+  threadNotes,
+  onOpenNote,
   canLoadMore,
   isLoadingMore,
   onLoadMore,
@@ -61,7 +69,14 @@ export function ActivityLog({
             </h3>
             <ol>
               {group.logs.map((log) => (
-                <ActivityLogItem key={log._id} log={log} />
+                <ActivityLogItem
+                  key={log._id}
+                  log={log}
+                  threadNote={threadNotes?.find(
+                    (note) => note._id === log.threadNoteId,
+                  )}
+                  onOpenNote={onOpenNote}
+                />
               ))}
             </ol>
           </section>
@@ -91,21 +106,52 @@ export function ActivityLog({
   );
 }
 
-function ActivityLogItem({ log }: { log: ActivityLogEntry }) {
-  const reading = readActivityLogEntry(log);
+function ActivityLogItem({
+  log,
+  threadNote,
+  onOpenNote,
+}: {
+  log: ActivityLogEntry;
+  threadNote?: ThreadNote;
+  onOpenNote?: (note: ThreadNote) => void;
+}) {
+  const reading = readActivityLogEntry(log, threadNote);
   const Icon = reading.icon;
+  const opens = reading.threadNote;
+  const sentence = (
+    <>
+      <span className="sr-only">{reading.label}: </span>
+      <Sentence reading={reading} />
+    </>
+  );
 
   return (
-    <li className="relative flex gap-3 py-2">
+    <li
+      className={cn(
+        "relative flex gap-3 py-2",
+        opens &&
+          onOpenNote &&
+          "rounded-lg transition-colors hover:bg-muted/50 has-focus-visible:bg-muted/60 motion-reduce:transition-none",
+      )}
+    >
       <span className="relative flex size-6 shrink-0 items-center justify-center rounded-full border bg-popover text-muted-foreground">
         <Icon aria-hidden className="size-3.5" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-2 pt-0.5">
         <div className="flex items-baseline gap-3">
-          <p className="min-w-0 flex-1 text-sm leading-snug wrap-anywhere">
-            <span className="sr-only">{reading.label}: </span>
-            <Sentence reading={reading} />
-          </p>
+          {opens && onOpenNote ? (
+            <button
+              type="button"
+              onClick={() => onOpenNote(opens)}
+              className="min-w-0 flex-1 text-left text-sm leading-snug wrap-anywhere outline-none after:absolute after:inset-0 after:rounded-lg"
+            >
+              {sentence}
+            </button>
+          ) : (
+            <p className="min-w-0 flex-1 text-sm leading-snug wrap-anywhere">
+              {sentence}
+            </p>
+          )}
           <ActivityLogTimestamp createdAt={log.createdAt} />
         </div>
         <Carried reading={reading} />
@@ -132,7 +178,10 @@ function Sentence({ reading }: { reading: ActivityLogEntryReading }) {
   );
 }
 
-/** What a resolution carried: its note, and the Tasks it dropped. */
+/**
+ * What an entry carried: a resolution's note and the Tasks it dropped, or the
+ * Note a completion was written with.
+ */
 function Carried({ reading }: { reading: ActivityLogEntryReading }) {
   if (reading.note === undefined && reading.dropped.length === 0) return null;
   return (

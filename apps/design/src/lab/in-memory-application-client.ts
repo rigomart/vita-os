@@ -21,6 +21,7 @@ import type { NoteRepeatState, ThreadUpdateDecision } from "@vita-os/core";
 import { clock } from "@vita-os/application";
 import { commandAcknowledged } from "@vita-os/contracts";
 import {
+  buildNoteAddedLogEntry,
   clearedToAbsent,
   ConflictError,
   decideAddNoteToThread,
@@ -46,6 +47,7 @@ import {
   slugify,
   validateAreaName,
   ValidationError,
+  withCompletionNote,
 } from "@vita-os/core";
 
 /**
@@ -105,6 +107,9 @@ export function createInMemoryApplicationClient(
           ? {}
           : { previousValue: log.previousValue }),
         ...(log.newValue === undefined ? {} : { newValue: log.newValue }),
+        ...(log.threadNoteId === undefined
+          ? {}
+          : { threadNoteId: log.threadNoteId as ThreadNoteId }),
         createdAt: now,
       });
     }
@@ -168,8 +173,25 @@ export function createInMemoryApplicationClient(
       updatedAt: note.updatedAt ?? note.createdAt,
     };
     threadNotes.push({ ...threadNote, threadId: thread._id });
+    logNoteAdded(thread._id, threadNote._id);
     notes.splice(notes.indexOf(note), 1);
     return { thread, threadNote };
+  }
+
+  function logNoteAdded(
+    threadId: ThreadId,
+    threadNoteId: ThreadNoteId,
+    at = clock.now(),
+  ) {
+    const { type, content } = buildNoteAddedLogEntry(threadNoteId);
+    activity.push({
+      _id: newRecordId() as ActivityLogEntryId,
+      threadId,
+      type,
+      content,
+      threadNoteId,
+      createdAt: at,
+    });
   }
 
   function requireOpenNote(noteId: NoteId): Note {
@@ -431,10 +453,11 @@ export function createInMemoryApplicationClient(
         now: clock.now(),
       });
       if (decision === null) return fail(tasksChanged);
-      // A completion that captures a Note stamps the Thread without a summary.
       write(
         thread,
-        decision,
+        note === undefined
+          ? decision
+          : { ...decision, logs: withCompletionNote(decision.logs, note.id) },
         note === undefined ? undefined : { content: null },
       );
       if (note !== undefined) insertThreadNote(thread._id, note.body, note.id);
@@ -631,6 +654,7 @@ export function createInMemoryApplicationClient(
       const text = requireNonBlankText(body, "Thread note body");
       const thread = requireThread(threadId);
       const note = insertThreadNote(threadId, text);
+      logNoteAdded(threadId, note._id, note.createdAt);
       thread.lastActivityAt = note.createdAt;
       delete thread.lastActivityContent;
       return ok(note);

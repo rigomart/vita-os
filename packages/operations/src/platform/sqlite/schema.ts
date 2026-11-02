@@ -94,11 +94,13 @@ export const activityLogEntries = sqliteTable(
     previous_value: text(),
     new_value: text(),
     created_at: integer().notNull(),
+    /** The Thread Note the entry is about. Not a reference: it outlives the Note. */
+    thread_note_id: text(),
   },
   (table) => [
     check(
       "activity_log_entries_type",
-      sql`${table.type} IN ('area_move', 'next_move_change', 'move_completed', 'state_change', 'follow_up_change')`,
+      sql`${table.type} IN ('area_move', 'next_move_change', 'move_completed', 'note_added', 'state_change', 'follow_up_change')`,
     ),
     index("activity_log_entries_by_owner_thread_time").on(
       table.user_id,

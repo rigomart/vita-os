@@ -125,11 +125,11 @@ class DrizzleSchemaTests(unittest.TestCase):
             )
             journal = json.loads((output / "meta/_journal.json").read_text())
             latest = journal["entries"][-1]
-            self.assertEqual(latest["idx"], 9)
-            self.assertEqual(latest["tag"], "0009_thread_notes_never_completed")
+            self.assertEqual(latest["idx"], 10)
+            self.assertEqual(latest["tag"], "0010_notes_in_the_activity_log")
             self.assertTrue((MIGRATIONS / f'{latest["tag"]}.sql').exists())
 
-    def test_next_column_change_generates_only_0010(self):
+    def test_next_column_change_generates_only_0011(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "migrations"
             shutil.copytree(MIGRATIONS / "meta", output / "meta")
@@ -148,7 +148,7 @@ class DrizzleSchemaTests(unittest.TestCase):
             generate(output, schema)
             files = list(output.glob("*.sql"))
             self.assertEqual(len(files), 1)
-            self.assertTrue(files[0].name.startswith("0010_"))
+            self.assertTrue(files[0].name.startswith("0011_"))
             self.assertEqual(
                 files[0].read_text().strip(),
                 'ALTER TABLE `threads` ADD `generation_probe` text;',

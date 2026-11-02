@@ -7,6 +7,7 @@ import type { ActivityLogEntryType } from "@vita-os/contracts";
 export const AUTO_ACTIVITY_LOG_ENTRY_TYPES = [
   "area_move",
   "move_completed",
+  "note_added",
   "state_change",
   "follow_up_change",
 ] as const satisfies readonly ActivityLogEntryType[];
@@ -17,6 +18,28 @@ export interface AutoActivityLogEntry {
   content: string;
   previousValue?: string;
   newValue?: string;
+  /** The Thread Note the entry is about. The log never holds its words. */
+  threadNoteId?: string;
+}
+
+/**
+ * A Thread Note was captured, written with a completion aside: that
+ * completion's entry names the Note instead (`withCompletionNote`).
+ */
+export function buildNoteAddedLogEntry(
+  threadNoteId: string,
+): AutoActivityLogEntry {
+  return { type: "note_added", content: "Note added", threadNoteId };
+}
+
+/** A completion written with a Note names it, so the one line carries both. */
+export function withCompletionNote(
+  logs: AutoActivityLogEntry[],
+  threadNoteId: string,
+): AutoActivityLogEntry[] {
+  return logs.map((log) =>
+    log.type === "move_completed" ? { ...log, threadNoteId } : log,
+  );
 }
 
 /**

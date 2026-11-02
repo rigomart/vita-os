@@ -5,10 +5,12 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import type { RequestScope } from "../../platform/request-scope";
 
 import { threadNotes, threads } from "../../platform/sqlite/schema";
+import { activityLogStorage } from "../activity-log/storage";
 import { THREAD_NOTE_FIELDS, toThreadNote } from "./rows";
 
 /** Thread Notes, with one owner-scoped statement or atomic batch per function. */
-export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
+export function threadNoteStorage(scope: RequestScope) {
+  const { db, clock, actorId } = scope;
   const database = db.drizzle;
   const owned = eq(threadNotes.user_id, actorId);
 
@@ -66,20 +68,30 @@ export function threadNoteStorage({ db, clock, actorId }: RequestScope) {
       return rows.map(toThreadNote);
     },
 
-    /** Capture and move the Thread activity stamp in one atomic batch. */
+    /**
+     * Capture, log it, and move the Thread activity stamp in one atomic
+     * batch. The stamp carries no summary, so the Note's words stay in its
+     * Thread.
+     */
     async insert(threadId: string, body: string): Promise<ThreadNote | null> {
       const now = clock.now();
-      const [insert] = await database.batch([
-        prepareInsert(threadId, body, { at: now }).returning(
+      const id = clock.newId();
+      const [insert, logged] = await database.batch([
+        prepareInsert(threadId, body, { at: now, id }).returning(
           THREAD_NOTE_FIELDS,
         ),
+        activityLogStorage(scope).prepareNoteAdded(id, now),
         database
           .update(threads)
           .set({ last_activity_at: now, last_activity_content: null })
           .where(and(eq(threads.id, threadId), eq(threads.user_id, actorId))),
       ]);
       const row = insert[0];
-      return row === undefined ? null : toThreadNote(row);
+      if (row === undefined) return null;
+      if (db.changes(logged) !== 1) {
+        throw new Error("Capturing a Thread Note wrote no Activity Log entry");
+      }
+      return toThreadNote(row);
     },
 
     setBody(threadNoteId: string, body: string): Promise<ThreadNote | null> {
