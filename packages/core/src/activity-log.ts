@@ -8,6 +8,8 @@ export const AUTO_ACTIVITY_LOG_ENTRY_TYPES = [
   "area_move",
   "move_completed",
   "note_added",
+  "task_added",
+  "task_removed",
   "state_change",
   "follow_up_change",
 ] as const satisfies readonly ActivityLogEntryType[];
@@ -30,6 +32,20 @@ export function buildNoteAddedLogEntry(
   threadNoteId: string,
 ): AutoActivityLogEntry {
   return { type: "note_added", content: "Note added", threadNoteId };
+}
+
+/** One entry per Task added; the Activity Log folds a day's into one line only when read. */
+export function buildTaskAddedLogEntry(text: string): AutoActivityLogEntry {
+  return { type: "task_added", content: `Added "${text}"`, newValue: text };
+}
+
+/** A Task left the plan without being completed. */
+export function buildTaskRemovedLogEntry(text: string): AutoActivityLogEntry {
+  return {
+    type: "task_removed",
+    content: `Removed "${text}"`,
+    previousValue: text,
+  };
 }
 
 /** A completion written with a Note names it, so the one line carries both. */

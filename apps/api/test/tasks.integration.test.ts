@@ -10,7 +10,8 @@ import { call, createSession, expectError, succeed } from "./sessions";
 
 /**
  * Tasks, driven through the Worker the way the browser drives them: peers in
- * capture order, and completion as the only change the Activity Log records.
+ * capture order, and adding, removing and completing as the changes the
+ * Activity Log records.
  */
 
 const taskConflict = {
@@ -115,7 +116,7 @@ async function storedFocus(thread: Thread) {
 }
 
 describe("capturing Tasks", () => {
-  it("keeps Tasks in capture order and writes no Activity Log", async () => {
+  it("keeps Tasks in capture order and logs each one added", async () => {
     const owner = await createSession("tasks-capture");
     const thread = await threadWith(owner, ["  Call clinic ", "Book slot"]);
 
@@ -124,8 +125,30 @@ describe("capturing Tasks", () => {
       { _id: "task-2", text: "Book slot" },
     ]);
 
-    expect(await activityOf(owner, thread)).toEqual([]);
-    expect(thread).not.toHaveProperty("lastActivityAt");
+    // Two requests can land in the same millisecond, so their order is not checked.
+    const activity = await activityOf(owner, thread);
+    expect(activity).toHaveLength(2);
+    expect(activity).toEqual(
+      expect.arrayContaining([
+        {
+          _id: expect.any(String),
+          type: "task_added",
+          content: 'Added "Call clinic"',
+          newValue: "Call clinic",
+          createdAt: expect.any(Number),
+        },
+        {
+          _id: expect.any(String),
+          type: "task_added",
+          content: 'Added "Book slot"',
+          newValue: "Book slot",
+          createdAt: expect.any(Number),
+        },
+      ]),
+    );
+    const last = activity.find((entry) => entry.newValue === "Book slot");
+    expect(thread.lastActivityContent).toBe('Added "Book slot"');
+    expect(thread.lastActivityAt).toBe(last?.createdAt);
   });
 
   it("refuses a blank Task and writes nothing", async () => {
@@ -143,6 +166,7 @@ describe("capturing Tasks", () => {
   it("edits a Task's text in place, silently", async () => {
     const owner = await createSession("tasks-edit");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
+    const activityBefore = await activityOf(owner, thread);
 
     const edited = await succeed<Thread>(
       `/v1/threads/${thread._id}/tasks/task-1`,
@@ -157,7 +181,9 @@ describe("capturing Tasks", () => {
       { _id: "task-1", text: "Call the clinic before nine" },
       { _id: "task-2", text: "Book slot" },
     ]);
-    expect(await activityOf(owner, thread)).toEqual([]);
+    expect(await activityOf(owner, thread)).toEqual(activityBefore);
+    expect(edited.lastActivityAt).toBe(thread.lastActivityAt);
+    expect(edited.lastActivityContent).toBe(thread.lastActivityContent);
   });
 
   it("refuses an ID the Thread already holds", async () => {
@@ -254,17 +280,30 @@ describe("completing and removing", () => {
     expect((await read(owner, thread))._id).toBe(thread._id);
   });
 
-  it("removes a Task without a trace", async () => {
+  it("removes a Task, logging it as removed and stamping last activity", async () => {
     const owner = await createSession("tasks-remove");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
+    const activityBefore = await activityOf(owner, thread);
 
     const answer = await remove(owner, thread, "task-2");
 
     expect(answer.status).toBe(200);
-    expect((answer.body as Thread).tasks).toEqual([
-      { _id: "task-1", text: "Call clinic" },
+    const removed = answer.body as Thread;
+    expect(removed.tasks).toEqual([{ _id: "task-1", text: "Call clinic" }]);
+    const written = (await activityOf(owner, thread)).filter(
+      (entry) => !activityBefore.some((before) => before._id === entry._id),
+    );
+    expect(written).toEqual([
+      {
+        _id: expect.any(String),
+        type: "task_removed",
+        content: 'Removed "Book slot"',
+        previousValue: "Book slot",
+        createdAt: expect.any(Number),
+      },
     ]);
-    expect(await activityOf(owner, thread)).toEqual([]);
+    expect(removed.lastActivityContent).toBe('Removed "Book slot"');
+    expect(removed.lastActivityAt).toBe(written[0]?.createdAt);
   });
 });
 
@@ -273,9 +312,10 @@ describe("conflicts", () => {
     const owner = await createSession("tasks-gone");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
     const completed = (await complete(owner, thread, "task-1")).body as Thread;
+    const activityBefore = await activityOf(owner, thread);
 
     expectError(await complete(owner, completed, "task-1"), taskConflict);
-    expect(await activityOf(owner, thread)).toHaveLength(1);
+    expect(await activityOf(owner, thread)).toEqual(activityBefore);
   });
 
   it("records exactly one of two competing completions", async () => {
@@ -291,7 +331,15 @@ describe("conflicts", () => {
     expect((await read(owner, thread)).tasks).toEqual([
       { _id: "task-2", text: "Book slot" },
     ]);
-    expect(await activityOf(owner, thread)).toHaveLength(1);
+    const completions = (await activityOf(owner, thread)).filter(
+      (entry) => entry.type !== "task_added",
+    );
+    expect(completions).toEqual([
+      expect.objectContaining({
+        type: "move_completed",
+        previousValue: "Call clinic",
+      }),
+    ]);
   });
 
   it("answers not found for a Thread that is not there", async () => {
@@ -326,6 +374,7 @@ describe("rollback", () => {
       )
       .run();
     const before = await read(owner, thread);
+    const activityBefore = await activityOf(owner, thread);
     const app = createTestApp({
       // The change token and the entry ID come from the same injected mint,
       // so the insert hits the existing entry's primary key and the whole batch
@@ -348,7 +397,7 @@ describe("rollback", () => {
 
     expect(response.status).toBe(500);
     expect(await read(owner, thread)).toEqual(before);
-    expect(await activityOf(owner, thread)).toHaveLength(1);
+    expect(await activityOf(owner, thread)).toEqual(activityBefore);
   });
 });
 

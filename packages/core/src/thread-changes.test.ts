@@ -286,7 +286,13 @@ describe("decideAddNoteToThread", () => {
         { _id: newId, text: "Bring the referral", date: afternoon },
       ],
     });
-    expect(decision.logs).toEqual([]);
+    expect(decision.logs).toEqual([
+      {
+        type: "task_added",
+        content: 'Added "Bring the referral"',
+        newValue: "Bring the referral",
+      },
+    ]);
   });
 
   it("starts a Task list on a Thread that held none, even for a date already past", () => {

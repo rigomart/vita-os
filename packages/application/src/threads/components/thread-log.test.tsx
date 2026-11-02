@@ -209,4 +209,48 @@ describe("ActivityLog", () => {
       expect(screen.getByText("Called the office twice")).toBeVisible();
     });
   });
+  describe("the plan changing", () => {
+    const at = (day: number, hour: number) =>
+      new Date(2026, 4, day, hour).getTime();
+    const added = (id: string, text: string, createdAt: number) =>
+      ({
+        _id: id as ActivityLogEntryId,
+        type: "task_added",
+        content: `Added "${text}"`,
+        newValue: text,
+        createdAt,
+      }) satisfies ActivityLogEntry;
+
+    it("folds the Tasks added on one day into one line, in the order they were added", () => {
+      render(
+        <ActivityLog
+          logs={[
+            added("a3", "Book a slot", at(19, 11)),
+            {
+              _id: "r1" as ActivityLogEntryId,
+              type: "task_removed",
+              content: 'Removed "Wait for the letter"',
+              previousValue: "Wait for the letter",
+              createdAt: at(19, 10),
+            },
+            added("a2", "Ask about the deadline", at(19, 9)),
+            added("a1", "Send the form", at(19, 8)),
+            added("a0", "Call the office", at(18, 8)),
+          ]}
+        />,
+      );
+
+      expect(
+        screen.getAllByRole("listitem").map((item) => item.textContent),
+      ).toEqual([
+        expect.stringMatching(
+          /^Tasks added: ?Added 3 Tasks: Send the form · Ask about the deadline · Book a slot11:00 AM$/,
+        ),
+        expect.stringMatching(
+          /^Task removed: ?Removed Wait for the letter10:00 AM$/,
+        ),
+        expect.stringMatching(/^Task added: ?Added Call the office8:00 AM$/),
+      ]);
+    });
+  });
 });

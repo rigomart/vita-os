@@ -65,13 +65,23 @@ async function read(session: Session, thread: Thread) {
     (item) => item._id === thread._id,
   );
 }
-async function activity(session: Session, thread: Thread) {
-  return (
+async function activityBesidesTheAdd(session: Session, thread: Thread) {
+  const entries = (
     await succeed<ActivityLogPage>(
       `/v1/threads/${thread._id}/activity?limit=50`,
       { session },
     )
   ).entries;
+  expect(entries.filter((entry) => entry.type === "task_added")).toEqual([
+    {
+      _id: expect.any(String),
+      type: "task_added",
+      content: 'Added "Check"',
+      newValue: "Check",
+      createdAt: expect.any(Number),
+    },
+  ]);
+  return entries.filter((entry) => entry.type !== "task_added");
 }
 // A real authenticated HTTP request with the existing service clock fixed.
 async function complete(
@@ -148,7 +158,7 @@ describe("repeating Tasks over HTTP", () => {
     expect(cleared.status).toBe(200);
     expect((cleared.body as Thread).tasks).toEqual(before.tasks);
 
-    expect(await activity(owner, thread)).toEqual([]);
+    expect(await activityBesidesTheAdd(owner, thread)).toEqual([]);
   });
 
   it("snaps a weekly Repeat and changed date to the caller's weekdays and time", async () => {
@@ -199,7 +209,7 @@ describe("repeating Tasks over HTTP", () => {
       ...thread.tasks![0],
       date: Date.parse("2027-03-31T15:30Z"),
     });
-    expect(await activity(owner, thread)).toHaveLength(2);
+    expect(await activityBesidesTheAdd(owner, thread)).toHaveLength(2);
   });
 
   it("moves a monthly Repeat to a changed date's day in the caller's zone", async () => {
@@ -251,7 +261,7 @@ describe("repeating Tasks over HTTP", () => {
       { _id: "a", text: "Check" },
     ]);
 
-    expect(await activity(owner, thread)).toEqual([]);
+    expect(await activityBesidesTheAdd(owner, thread)).toEqual([]);
   });
 
   it("clears a weekly Task's date without a zone", async () => {
@@ -263,7 +273,7 @@ describe("repeating Tasks over HTTP", () => {
       { _id: "a", text: "Check" },
     ]);
 
-    expect(await activity(owner, thread)).toEqual([]);
+    expect(await activityBesidesTheAdd(owner, thread)).toEqual([]);
   });
 
   it("changes an every-N-days date without a zone, preserving the repeat", async () => {
@@ -280,7 +290,7 @@ describe("repeating Tasks over HTTP", () => {
       date: next,
     });
     expect(unchanged.body).toEqual(changed.body);
-    expect(await activity(owner, thread)).toEqual([]);
+    expect(await activityBesidesTheAdd(owner, thread)).toEqual([]);
   });
 
   it("refuses a repeat on the add route", async () => {
@@ -328,7 +338,7 @@ describe("repeating Tasks over HTTP", () => {
         );
       }
       expect(await read(owner, thread)).toEqual(thread);
-      expect(await activity(owner, thread)).toEqual([]);
+      expect(await activityBesidesTheAdd(owner, thread)).toEqual([]);
     },
   );
 
@@ -340,7 +350,7 @@ describe("repeating Tasks over HTTP", () => {
       { ...thread.tasks![0], date: Date.parse("2026-10-10T15:30Z") },
     ]);
 
-    expect(await activity(owner, thread)).toMatchObject([
+    expect(await activityBesidesTheAdd(owner, thread)).toMatchObject([
       { type: "move_completed", previousValue: "Check" },
     ]);
     expect(completed.lastActivityAt).toBe(Date.parse("2026-10-10T20:00Z"));
@@ -349,7 +359,7 @@ describe("repeating Tasks over HTTP", () => {
       await command(owner, thread, "complete", { timeZone: "UTC" }),
       conflict,
     );
-    expect(await activity(owner, thread)).toHaveLength(1);
+    expect(await activityBesidesTheAdd(owner, thread)).toHaveLength(1);
   });
 
   it.each([
@@ -376,7 +386,7 @@ describe("repeating Tasks over HTTP", () => {
       );
       expect(completed.tasks?.[0]?.date).toBe(Date.parse(next));
 
-      expect(await activity(owner, completed)).toHaveLength(1);
+      expect(await activityBesidesTheAdd(owner, completed)).toHaveLength(1);
     },
   );
 
@@ -394,7 +404,7 @@ describe("repeating Tasks over HTTP", () => {
     const completed = await command(owner, thread, "complete", {});
     expect(completed.status).toBe(200);
     expect(completed.body).not.toHaveProperty("tasks");
-    expect(await activity(owner, thread)).toHaveLength(1);
+    expect(await activityBesidesTheAdd(owner, thread)).toHaveLength(1);
   });
 
   it("refuses missing and invalid zones, leaving a repeating Task untouched", async () => {
@@ -418,7 +428,7 @@ describe("repeating Tasks over HTTP", () => {
       }
     }
     expect(await read(owner, thread)).toEqual(thread);
-    expect(await activity(owner, thread)).toEqual([]);
+    expect(await activityBesidesTheAdd(owner, thread)).toEqual([]);
     // The retired route cannot complete or strip a Repeat.
     expect(
       (
@@ -467,7 +477,7 @@ describe("repeating Tasks over HTTP", () => {
       });
     }
     expect(await read(owner, thread)).toEqual(thread);
-    expect(await activity(owner, thread)).toEqual([]);
+    expect(await activityBesidesTheAdd(owner, thread)).toEqual([]);
   });
 
   it("has no Skip route", async () => {

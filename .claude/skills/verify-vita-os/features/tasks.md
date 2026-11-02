@@ -1,6 +1,6 @@
 # Tasks
 
-In a Thread's pane or drawer, `Add a task` adds a Task on Enter and stays ready for the next one. Each Task row can be dated, completed, completed with a note, or removed. A dated Task places its Thread on the Dashboard under that day; completing the last Task returns the Thread to `Open` and logs `Completed <Task>` in Activity.
+In a Thread's pane or drawer, `Add a task` adds a Task on Enter and stays ready for the next one. Each Task row can be dated, completed, completed with a note, or removed. A dated Task places its Thread on the Dashboard under that day; completing the last Task returns the Thread to `Open`. Activity logs `Added <Task>` and `Completed <Task>` (the Task lines are checked in [Activity Log](activity-log.md)).
 
 ## Entry points and variants
 
@@ -20,7 +20,7 @@ In a Thread's pane or drawer, `Add a task` adds a Task on Enter and stays ready 
 4. The stored date is local midnight of tomorrow:
    `SELECT moves_json FROM threads WHERE user_id = (SELECT id FROM user WHERE email = '<email>')` → `"date":<new Date(y, m, d + 1).getTime()>`
 5. `Complete task` sends `POST …/tasks/<task id>/complete` → `200`; the row is gone, focus lands on `Add a task`, and the Thread's Dashboard line moves from `Tomorrow` to `Open` in No date. (The pane's `Open` chip is the Thread's state and reads `Open` throughout.)
-6. On the `Activity` tab, the open tab panel (`eval "document.querySelector('[role=tabpanel]:not([hidden])').innerText"`, lines joined with ` | `) reads `Today | Task done: | Completed Pay the fee <stamp> | <h:mm AM/PM>`, where `Task done:` is screen-reader text. `moves_json` is `null` once the last Task is completed.
+6. On the `Activity` tab, the open tab panel (`eval "document.querySelector('[role=tabpanel]:not([hidden])').innerText"`, lines joined with ` | `) reads `Today | Task done: | Completed Pay the fee <stamp> | <h:mm AM/PM> | Task added: | Added Pay the fee <stamp> | <h:mm AM/PM>`, where `Task done:` and `Task added:` are screen-reader text. `moves_json` is `null` once the last Task is completed.
 7. On the Dashboard, a No date line for a Thread with one undated Task: its `Set date` opens the picker (`get count "[data-when-picker]"` is `1`), and picking tomorrow sends `PUT …/tasks/<that task id>/date` → `200` and closes the picker by itself (count `0`). The line moves under `Tomorrow`, reading `Task: | <task> · <thread title>`, and its button is renamed `Change date`.
 
 ## Traps

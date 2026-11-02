@@ -2,6 +2,10 @@ import type { Repeat, Task, TaskId, ThreadState } from "@vita-os/contracts";
 
 import type { ThreadUpdateDecision } from "./thread-changes";
 
+import {
+  buildTaskAddedLogEntry,
+  buildTaskRemovedLogEntry,
+} from "./activity-log";
 import { ConflictError, ValidationError } from "./errors";
 import {
   movedRepeat,
@@ -40,8 +44,8 @@ export interface TaskClock {
  * different Thread, so the command is refused rather than applied to something
  * else.
  *
- * Only completion writes to the Activity Log. Adding, editing, dating and
- * removing are silent, so the log stays about what happened to the situation.
+ * Adding, removing and completing write to the Activity Log; editing, dating
+ * and setting a Repeat do not (ADR 0053).
  */
 
 export interface TaskState {
@@ -127,7 +131,7 @@ export function decideAddTask(
 
   return {
     patch: { tasks: [...(thread.tasks ?? []), task] },
-    logs: [],
+    logs: [buildTaskAddedLogEntry(task.text)],
   };
 }
 
@@ -151,14 +155,17 @@ export function decideEditTask(
   };
 }
 
-/** A dropped idea leaves no trace in the Activity Log. */
 export function decideRemoveTask(
   thread: TaskState,
   taskId: TaskId,
 ): ThreadUpdateDecision | null {
-  if (!findTask(thread, taskId)) return null;
+  const task = findTask(thread, taskId);
+  if (!task) return null;
 
-  return { patch: without(thread, taskId), logs: [] };
+  return {
+    patch: without(thread, taskId),
+    logs: [buildTaskRemovedLogEntry(task.text)],
+  };
 }
 
 /**

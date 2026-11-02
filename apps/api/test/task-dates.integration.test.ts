@@ -67,6 +67,7 @@ describe("a Task's date", () => {
   it("is set, changed and cleared on one Task, with no Activity Log entry", async () => {
     const owner = await createSession("task-dates-cycle");
     const thread = await threadWith(owner, ["Call clinic", "Book slot"]);
+    const activityBefore = await activityOf(owner, thread);
 
     const set = (await setDate(owner, thread, "task-2", afternoon))
       .body as Thread;
@@ -88,8 +89,9 @@ describe("a Task's date", () => {
     expect(cleared.tasks?.[1]).not.toHaveProperty("date");
 
     expect(await read(owner, cleared)).toEqual(cleared);
-    expect(await activityOf(owner, thread)).toEqual([]);
-    expect(cleared).not.toHaveProperty("lastActivityAt");
+    expect(await activityOf(owner, thread)).toEqual(activityBefore);
+    expect(cleared.lastActivityAt).toBe(thread.lastActivityAt);
+    expect(cleared.lastActivityContent).toBe(thread.lastActivityContent);
   });
 
   it("is stored inside the Task JSON beside its ID and text", async () => {
@@ -221,9 +223,10 @@ describe("a Task's date", () => {
 });
 
 describe("adding a Task already dated", () => {
-  it("adds it in one action, dated, without an Activity Log entry", async () => {
+  it("adds it in one action, dated, logging it as added", async () => {
     const owner = await createSession("task-dates-add");
     const thread = await threadWith(owner, ["Call clinic"]);
+    const activityBefore = await activityOf(owner, thread);
 
     const added = await succeed<Thread>(`/v1/threads/${thread._id}/tasks`, {
       method: "POST",
@@ -240,7 +243,20 @@ describe("adding a Task already dated", () => {
       text: "Follow up",
       date: afternoon,
     });
-    expect(await activityOf(owner, thread)).toEqual([]);
+    const written = (await activityOf(owner, thread)).filter(
+      (entry) => !activityBefore.some((before) => before._id === entry._id),
+    );
+    expect(written).toEqual([
+      {
+        _id: expect.any(String),
+        type: "task_added",
+        content: 'Added "Follow up"',
+        newValue: "Follow up",
+        createdAt: expect.any(Number),
+      },
+    ]);
+    expect(added.lastActivityContent).toBe('Added "Follow up"');
+    expect(added.lastActivityAt).toBe(written[0]?.createdAt);
   });
 });
 

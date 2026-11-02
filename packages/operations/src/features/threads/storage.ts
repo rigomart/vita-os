@@ -367,7 +367,7 @@ export function threadStorage(scope: RequestScope) {
       }
     },
 
-    prepareChange: (input: ThreadChangeInput) => prepareChange(input),
+    prepareChange,
 
     /** Delete the Thread and all of its owned records in one atomic batch. */
     async remove(threadId: string): Promise<boolean> {

@@ -231,7 +231,11 @@ describe("atomic writes on libsql", () => {
       threadNotes: await database.drizzle.select().from(threadNotes),
     });
     const before = await stored();
-    expect(before.log).toHaveLength(1);
+    expect(before.log.map((entry) => entry.type).sort()).toEqual([
+      "move_completed",
+      "task_added",
+      "task_added",
+    ]);
 
     const causes: unknown[] = [];
     const colliding = createLocalApplicationClient({

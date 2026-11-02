@@ -22,6 +22,8 @@ import { serializeRepeat } from "../notes/rows";
 import { THREAD_NOTE_FIELDS, toThreadNote } from "../thread-notes/rows";
 import { threadStorage } from "../threads/storage";
 
+const NOTE_IS_THE_ACTIVITY = { content: null } as const;
+
 /**
  * A Standalone Note becoming a Thread Note, in one guarded atomic batch.
  * The Thread changes only while the source Note matches the decision. Its
@@ -192,13 +194,16 @@ export function addToThreadStorage(scope: RequestScope) {
       expectedRevision: number;
       change: ThreadChange;
     }): Promise<NoteAddedToThread | null> {
-      const change = threads.prepareChange({
-        threadId: input.threadId,
-        expectedRevision: input.expectedRevision,
-        change: input.change,
-        guard: and(eq(threadTable.state, "open"), noteUnchanged(input.note)),
-        stampActivity: true,
-      });
+      const change = threads.prepareChange(
+        {
+          threadId: input.threadId,
+          expectedRevision: input.expectedRevision,
+          change: input.change,
+          guard: and(eq(threadTable.state, "open"), noteUnchanged(input.note)),
+          stampActivity: true,
+        },
+        NOTE_IS_THE_ACTIVITY,
+      );
       return write(change, input.note, input.threadId);
     },
 
@@ -212,12 +217,15 @@ export function addToThreadStorage(scope: RequestScope) {
         input.thread,
         noteUnchanged(input.note),
       );
-      const change = threads.prepareChange({
-        threadId: insert.threadId,
-        expectedRevision: 0,
-        change: input.change,
-        stampActivity: true,
-      });
+      const change = threads.prepareChange(
+        {
+          threadId: insert.threadId,
+          expectedRevision: 0,
+          change: input.change,
+          stampActivity: true,
+        },
+        NOTE_IS_THE_ACTIVITY,
+      );
       return write(change, input.note, insert.threadId, insert.statement);
     },
   };

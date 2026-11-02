@@ -204,6 +204,7 @@ describe("current-state Task commands", () => {
 
   it("rechecks the captured occurrence when Complete loses a race to another Complete", async () => {
     const { scope, thread } = await tasksScope(true);
+    const before = await stored(scope, thread);
     const expectedOccurrence = thread.tasks![0]!.date!;
     const batch = env.DB.batch.bind(env.DB);
     vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
@@ -234,7 +235,10 @@ describe("current-state Task commands", () => {
     expect(answer).toMatchObject({ ok: false, error: { code: "conflict" } });
     const after = await threadStorage(scope).find(thread._id);
     expect(after?.tasks?.[0]?.date).toBe(Date.parse("2026-10-10T15:30Z"));
-    expect(await stored(scope, thread)).toMatchObject({ notes: 0, logs: 1 });
+    expect(await stored(scope, thread)).toMatchObject({
+      notes: 0,
+      logs: Number(before?.logs) + 1,
+    });
   });
 
   it("a lost completion response followed by retry adds no Note or log and advances once", async () => {
@@ -246,6 +250,7 @@ describe("current-state Task commands", () => {
       expectedOccurrence: thread.tasks![0]!.date!,
       note: { id: crypto.randomUUID() as ThreadNoteId, body: "Called" },
     };
+    const before = await stored(scope, thread);
     const batch = env.DB.batch.bind(env.DB);
     vi.spyOn(env.DB, "batch").mockImplementationOnce(async (statements) => {
       await batch(statements);
@@ -256,7 +261,7 @@ describe("current-state Task commands", () => {
       error: { code: "unexpected" },
     });
     const landed = await stored(scope, thread);
-    expect(landed).toMatchObject({ notes: 1, logs: 1 });
+    expect(landed).toMatchObject({ notes: 1, logs: Number(before?.logs) + 1 });
     expect(await run(threads.completeTask(scope, input))).toMatchObject({
       ok: false,
       error: { code: "conflict" },

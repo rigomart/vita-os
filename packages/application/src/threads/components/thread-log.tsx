@@ -9,7 +9,9 @@ import { Loader2 } from "lucide-react";
 import { clock } from "../../lib/clock";
 import {
   type ActivityLogEntryReading,
-  readActivityLogEntry,
+  type ActivityLogLine,
+  foldActivityLogDay,
+  readActivityLogLine,
 } from "../activity-log-entry";
 
 interface ActivityLogProps {
@@ -29,6 +31,7 @@ interface ActivityLogProps {
  * the node. Nothing is cut off: long Task text wraps, and a resolution shows
  * its note and the Tasks it dropped. An entry naming a Thread Note reads the
  * Note's opening words as they are now and opens it, until it is deleted.
+ * Tasks added the same day share one line.
  */
 export function ActivityLog({
   logs,
@@ -68,12 +71,12 @@ export function ActivityLog({
               {group.label}
             </h3>
             <ol>
-              {group.logs.map((log) => (
+              {foldActivityLogDay(group.logs).map((line) => (
                 <ActivityLogItem
-                  key={log._id}
-                  log={log}
+                  key={line[0]!._id}
+                  line={line}
                   threadNote={threadNotes?.find(
-                    (note) => note._id === log.threadNoteId,
+                    (note) => note._id === line[0]!.threadNoteId,
                   )}
                   onOpenNote={onOpenNote}
                 />
@@ -107,15 +110,16 @@ export function ActivityLog({
 }
 
 function ActivityLogItem({
-  log,
+  line,
   threadNote,
   onOpenNote,
 }: {
-  log: ActivityLogEntry;
+  line: ActivityLogLine;
   threadNote?: ThreadNote;
   onOpenNote?: (note: ThreadNote) => void;
 }) {
-  const reading = readActivityLogEntry(log, threadNote);
+  const log = line[0]!;
+  const reading = readActivityLogLine(line, threadNote);
   const Icon = reading.icon;
   const opens = reading.threadNote;
   const sentence = (

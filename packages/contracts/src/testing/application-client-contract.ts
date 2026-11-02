@@ -197,9 +197,15 @@ export function describeApplicationClient(
         const activity = await value(
           client.getThreadActivityPage({ threadId: thread._id, limit: 20 }),
         );
-        expect(activity.entries.map((entry) => entry.content)).toEqual([
-          'Completed "Call clinic"',
-        ]);
+        // Commands this quick can share a timestamp, so order is not checked.
+        expect(activity.entries.map((entry) => entry.content).sort()).toEqual(
+          [
+            'Added "Book appointment"',
+            'Added "Call clinic"',
+            'Completed "Call clinic"',
+            'Removed "Book appointment"',
+          ].sort(),
+        );
 
         const resolved = await value(
           client.updateThread({
@@ -248,6 +254,114 @@ export function describeApplicationClient(
         expect(added.tasks).toEqual([
           { _id: "task-current", text: "Still useful" },
         ]);
+      });
+
+      it("logs the plan changing: Tasks added and removed, never edits, dates or Repeats", async () => {
+        const client = await newClient();
+        const thread = await value(
+          client.createThread({ title: "Tax letter" }),
+        );
+        const sendForm = "task-send-form" as TaskId;
+        const bookSlot = "task-book-slot" as TaskId;
+        const activity = () =>
+          value(
+            client.getThreadActivityPage({ threadId: thread._id, limit: 10 }),
+          ).then((page) => page.entries);
+
+        await value(
+          client.addTask({
+            threadId: thread._id,
+            taskId: sendForm,
+            text: "Send the form",
+          }),
+        );
+        await value(
+          client.addTask({
+            threadId: thread._id,
+            taskId: bookSlot,
+            text: "Book a slot",
+          }),
+        );
+        await value(
+          client.removeTask({ threadId: thread._id, taskId: bookSlot }),
+        );
+        const plan = [
+          {
+            _id: expect.any(String),
+            type: "task_added",
+            content: 'Added "Send the form"',
+            newValue: "Send the form",
+            createdAt: expect.any(Number),
+          },
+          {
+            _id: expect.any(String),
+            type: "task_added",
+            content: 'Added "Book a slot"',
+            newValue: "Book a slot",
+            createdAt: expect.any(Number),
+          },
+          {
+            _id: expect.any(String),
+            type: "task_removed",
+            content: 'Removed "Book a slot"',
+            previousValue: "Book a slot",
+            createdAt: expect.any(Number),
+          },
+        ];
+        expect(await activity()).toEqual(expect.arrayContaining(plan));
+        expect(await activity()).toHaveLength(plan.length);
+
+        await value(
+          client.editTask({
+            threadId: thread._id,
+            taskId: sendForm,
+            text: "Send the signed form",
+          }),
+        );
+        await value(
+          client.setTaskDate({
+            threadId: thread._id,
+            taskId: sendForm,
+            date: Date.UTC(2030, 4, 20, 9),
+          }),
+        );
+        await value(
+          client.setTaskRepeat({
+            threadId: thread._id,
+            taskId: sendForm,
+            repeat: { kind: "days", every: 7 },
+            timeZone: "UTC",
+          }),
+        );
+        await value(
+          client.setTaskRepeat({
+            threadId: thread._id,
+            taskId: sendForm,
+            repeat: null,
+            timeZone: "UTC",
+          }),
+        );
+        await value(
+          client.setTaskDate({
+            threadId: thread._id,
+            taskId: sendForm,
+            date: null,
+          }),
+        );
+        expect(await activity()).toHaveLength(plan.length);
+
+        await value(
+          client.updateThread({ threadId: thread._id, state: "resolved" }),
+        );
+        const resolved = await activity();
+        expect(resolved).toHaveLength(plan.length + 1);
+        expect(resolved).toContainEqual(
+          expect.objectContaining({
+            type: "state_change",
+            content:
+              'Resolved thread — discarded tasks: "Send the signed form"',
+          }),
+        );
       });
     });
 
@@ -419,23 +533,21 @@ export function describeApplicationClient(
           }),
         );
 
-        await expect(
+        const activity = await value(
           client.getThreadActivityPage({ threadId: thread._id, limit: 10 }),
-        ).resolves.toEqual({
-          ok: true,
-          value: {
-            entries: [
-              {
-                _id: expect.any(String),
-                type: "move_completed",
-                content: 'Completed "Send the form"',
-                previousValue: "Send the form",
-                threadNoteId: noteId,
-                createdAt: expect.any(Number),
-              },
-            ],
+        );
+        expect(
+          activity.entries.filter((entry) => entry.type !== "task_added"),
+        ).toEqual([
+          {
+            _id: expect.any(String),
+            type: "move_completed",
+            content: 'Completed "Send the form"',
+            previousValue: "Send the form",
+            threadNoteId: noteId,
+            createdAt: expect.any(Number),
           },
-        });
+        ]);
       });
     });
 
@@ -468,17 +580,49 @@ export function describeApplicationClient(
           ok: true,
           value: [],
         });
+        // Written together, so the two share a timestamp and either may
+        // read first.
         const activity = await value(
           client.getThreadActivityPage({ threadId: thread._id, limit: 10 }),
         );
-        expect(activity.entries).toEqual([
-          {
-            _id: expect.any(String),
-            type: "note_added",
-            content: "Note added",
-            threadNoteId: added.threadNote._id,
-            createdAt: expect.any(Number),
-          },
+        const at = activity.entries[0]?.createdAt;
+        expect(activity.entries).toHaveLength(2);
+        expect(activity.entries).toEqual(
+          expect.arrayContaining([
+            {
+              _id: expect.any(String),
+              type: "note_added",
+              content: "Note added",
+              threadNoteId: added.threadNote._id,
+              createdAt: at,
+            },
+            {
+              _id: expect.any(String),
+              type: "task_added",
+              content: 'Added "Call back"',
+              newValue: "Call back",
+              createdAt: at,
+            },
+          ]),
+        );
+      });
+
+      it("logs only the Note for an undated Note", async () => {
+        const client = await newClient();
+        const thread = await value(client.createThread({ title: "Checkup" }));
+        const note = await value(
+          client.createNote({ body: "Ask about parking" }),
+        );
+
+        await value(
+          client.addNoteToThread({ noteId: note._id, threadId: thread._id }),
+        );
+
+        const activity = await value(
+          client.getThreadActivityPage({ threadId: thread._id, limit: 10 }),
+        );
+        expect(activity.entries.map((entry) => entry.type)).toEqual([
+          "note_added",
         ]);
       });
 
@@ -507,6 +651,16 @@ export function describeApplicationClient(
           ok: true,
           value: [],
         });
+        const activity = await value(
+          client.getThreadActivityPage({
+            threadId: added.thread._id,
+            limit: 10,
+          }),
+        );
+        expect(activity.entries.map((entry) => entry.content).sort()).toEqual([
+          'Added "Dentist"',
+          "Note added",
+        ]);
       });
     });
 
@@ -557,7 +711,8 @@ export function describeApplicationClient(
         const activity = await value(
           client.getThreadActivityPage({ threadId: thread._id, limit: 10 }),
         );
-        expect(activity.entries.map((entry) => entry.content)).toEqual([
+        expect(activity.entries.map((entry) => entry.content).sort()).toEqual([
+          'Added "Water plants"',
           'Completed "Water plants"',
         ]);
         await expect(
