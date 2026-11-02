@@ -172,11 +172,11 @@ _Avoid_: Archive, trash, completed list.
 
 ## Activity Rules
 
-- Capturing a **Thread Note** updates its **Thread**'s last-activity date without adding an **Activity Log Entry**.
-- Adding a **Standalone Note** to a **Thread**, or starting a **Thread** from one, counts as capturing a **Thread Note**. It adds no **Activity Log** entry, even when the Note's date adds a dated **Task**.
-- Editing or deleting an existing **Thread Note** changes only the Note and does not update Thread activity.
+- Capturing a **Thread Note** updates its **Thread**'s last-activity date and adds one **Activity Log Entry**, "Note added", that names the Note but stores none of its words. The line shows the Note's opening words as they read now and opens it in the **Note view**; once the Note is deleted it reads "Note added", with nothing to open (ADR 0053).
+- Adding a **Standalone Note** to a **Thread**, or starting a **Thread** from one, counts as capturing a **Thread Note**, and adds its "Note added" entry. It adds no entry for the dated **Task** the Note's date adds.
+- Editing or deleting an existing **Thread Note** changes only the Note: it does not update Thread activity or add an **Activity Log** entry.
 - Setting, changing, or clearing a **Task**'s date adds no **Activity Log** entry. Entries an earlier **Follow-up date** change wrote keep their wording.
-- Completing any **Task** adds one **Activity Log** entry. Completing it with a note also captures one **Thread Note**, which updates the **Thread**'s last-activity date as any captured Thread Note does, so the Note, not the completion, is the Thread's last activity. The **Task** change, the Note, and the entry are written together or not at all. A repeating Task keeps its identity and text and moves to its next occurrence; a one-off Task is removed. Completing every one-off **Task** leaves the **Thread** open.
+- Completing any **Task** adds one **Activity Log** entry. Completing it with a note also captures one **Thread Note**, which updates the **Thread**'s last-activity date as any captured Thread Note does, so the Note, not the completion, is the Thread's last activity. That Note gets no "Note added" entry of its own: the completion's entry names it and its line carries the Note's opening words. The **Task** change, the Note, and the entry are written together or not at all. A repeating Task keeps its identity and text and moves to its next occurrence; a one-off Task is removed. Completing every one-off **Task** leaves the **Thread** open.
 - Setting or clearing a **Repeat** adds no **Activity Log** entry.
 - Adding, editing, dating, and removing **Tasks** add no **Activity Log** entries.
 - **Activity Log** entries written under a former name (**Next Move**, **Move**) keep their wording and label.

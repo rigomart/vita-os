@@ -4,6 +4,8 @@ Terminology amended by ADR 0028: Follow-up and Attention Date are one **Follow-u
 
 Amended by [ADR 0049](./0049-thread-notes-are-never-completed.md): a Thread Note is never completed or reopened; it stays until it is deleted.
 
+Amended by [ADR 0053](./0053-the-activity-log-tells-the-threads-story.md): capturing a Thread Note adds a `Note added` entry naming it, without its words; the line reads the Note as it is now.
+
 Issue #315 separates prose from change history inside a Thread. Body-only Thread Notes have their own lifecycle and remain visible only on their parent Thread, while the Activity Log becomes a read-only list of changes the product records automatically. This keeps Notes editable without rewriting history and keeps the changelog trustworthy without turning ordinary Note edits into Thread activity.
 
 ## Migration
