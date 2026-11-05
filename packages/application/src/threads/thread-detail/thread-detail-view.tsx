@@ -385,6 +385,7 @@ function ThreadDetailContent({
         threadTitle={thread.title}
         threadId={thread._id}
         threadCreatedAt={thread.createdAt}
+        resolved={thread.state === "resolved"}
         scrolls={!scrollsWhole}
       />
     </div>

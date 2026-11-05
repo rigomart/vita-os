@@ -58,6 +58,13 @@ export const scenarios = [
     seed: seedLongActivity,
   },
   {
+    id: "thread-stories",
+    name: "Thread stories",
+    description:
+      "Seven Threads, each a story told over weeks to years: a burst then a weekly rhythm, Notes then quiet, a plan that changes, a burst then resolved, a check-up twice a year, a daily rhythm, and one that only started.",
+    seed: seedThreadStories,
+  },
+  {
     id: "info-notes",
     name: "Info notes",
     description:
@@ -340,16 +347,13 @@ const LONG_TASKS: Life = {
 const DAY = 24 * 60 * 60 * 1000;
 
 /**
- * One Thread lived through over six weeks, so its Activity Log runs past a
- * page and holds every entry the product still writes, at its longest: long
- * Task text, Area moves, a resolution with a note and the Tasks it dropped,
- * a reopening. Each step runs at its own past moment by setting the clock,
- * which is put back afterwards.
+ * Take the shared clock to past moments, so a seed's steps happen when the
+ * story says they did. Call `back` when done, in a `finally`.
  *
- * The clock is shared, and StrictMode seeds a scenario twice at once, so one
- * seed waits for the other to put it back before it starts.
+ * StrictMode seeds a scenario twice at once, so one seed waits for the other
+ * to put the clock back before it starts.
  */
-async function seedLongActivity(client: ApplicationClient) {
+async function travel() {
   const previous = travelling;
   let release = () => {};
   travelling = new Promise((resolve) => {
@@ -358,15 +362,43 @@ async function seedLongActivity(client: ApplicationClient) {
   await previous;
   const start = clock.now();
   const offset = start - Date.now();
-  const at = (daysAgo: number, time: string) => {
+  /** `daysAgo` days before the seed began, at `time` (`HH:mm`). */
+  const day = (daysAgo: number, time: string) => {
     const [hours, minutes] = time.split(":").map(Number);
     const date = new Date(start - daysAgo * DAY);
     date.setHours(hours!, minutes!, 0, 0);
-    clock.set(date.getTime());
+    return date.getTime();
   };
-  // Today's steps count back from now, so they never land in the future.
-  const ago = (minutes: number) => clock.set(start - minutes * 60 * 1000);
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return {
+    start,
+    day,
+    /** Set the clock to that `day`. */
+    at(daysAgo: number, time: string) {
+      clock.set(day(daysAgo, time));
+    },
+    /** Counts back from now, so today's steps never land in the future. */
+    ago(minutes: number) {
+      clock.set(start - minutes * 60 * 1000);
+    },
+    back() {
+      clock.set(Date.now() + offset);
+      release();
+    },
+  };
+}
+
+let travelling = Promise.resolve();
+
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+/**
+ * One Thread lived through over six weeks, so its Activity Log runs past a
+ * page and holds every entry the product still writes, at its longest: long
+ * Task text, Area moves, a resolution with a note and the Tasks it dropped,
+ * a reopening.
+ */
+async function seedLongActivity(client: ApplicationClient) {
+  const { start, at, ago, back } = await travel();
 
   try {
     at(46, "09:12");
@@ -579,12 +611,399 @@ async function seedLongActivity(client: ApplicationClient) {
     at(2, "12:00");
     must(await client.createThread({ title: "Learn to bake sourdough" }));
   } finally {
-    clock.set(Date.now() + offset);
-    release();
+    back();
   }
 }
 
-let travelling = Promise.resolve();
+/**
+ * One Thread per case in the Activity Log spec (issue 524), each lived
+ * through at its own past moments: Notes carrying the story, plans added and
+ * dropped, daily and weekly rhythms, long quiet, long Notes, an Area move,
+ * and a Thread resolved, reopened and resolved again. Among them, the odd
+ * lines: a Note deleted after it was captured, a completion whose Note was
+ * deleted, and a Thread started from a Standalone Note.
+ */
+async function seedThreadStories(client: ApplicationClient) {
+  const { at, day: daysAgo, back } = await travel();
+
+  try {
+    at(800, "09:00");
+    const areas = new Map<string, AreaId>();
+    for (const area of [
+      { name: "Family", icon: "Users" },
+      { name: "Money", icon: "WalletCards" },
+      { name: "Home", icon: "Home" },
+      { name: "Work", icon: "BriefcaseBusiness" },
+      { name: "Health", icon: "HeartPulse" },
+    ] as const) {
+      areas.set(area.name, must(await client.createArea(area))._id);
+    }
+    const area = (name: string) => areas.get(name)!;
+    const story = async (
+      input: Parameters<ApplicationClient["createThread"]>[0],
+    ) => threadStory(client, must(await client.createThread(input)));
+
+    // 1. A relative's surgery, then rehab: a burst, then a weekly rhythm.
+    at(124, "18:30");
+    const surgery = await story({
+      title: "Dad's knee operation and rehab",
+      summary:
+        "Operation on the 12th, then physio until he walks without the frame.",
+      areaId: area("Family"),
+    });
+    at(122, "12:10");
+    await surgery.note(
+      "Pre-op appointment: fasting from midnight, stop the blood thinners five days before, bring the medication list.",
+    );
+    at(122, "12:20");
+    const forms = await surgery.add("Pick up the pre-op forms");
+    const leave = await surgery.add("Book time off for the operation week");
+    const lift = await surgery.add("Arrange a lift to the hospital");
+    at(119, "17:00");
+    await surgery.complete(forms);
+    at(118, "09:30");
+    await surgery.complete(leave);
+    at(116, "08:15");
+    await surgery.complete(lift);
+    at(116, "16:40");
+    await surgery.note(
+      "Operation went fine. Two nights on the ward, then home with a frame. Physio starts next week.",
+    );
+    at(115, "20:05");
+    await surgery.note(
+      "Visited in the evening. Pain is under control; the nurse showed him how to use the frame on the stairs.",
+    );
+    at(115, "20:15");
+    const collect = await surgery.add("Collect him from the ward");
+    const stool = await surgery.add("Buy a shower stool");
+    at(114, "11:00");
+    await surgery.complete(collect);
+    at(114, "15:30");
+    await surgery.note("Home. The discharge letter is in the blue folder.");
+    at(114, "15:45");
+    await surgery.note(
+      [
+        "Discharge instructions from the ward nurse:",
+        "",
+        "- Ice the knee for 20 minutes, three times a day",
+        "- Painkillers every six hours for the first week, then only as needed",
+        "- No kneeling and no low chairs for six weeks",
+        "- Keep the dressing dry; the stitches come out at the GP after 12 days",
+        "- Walk with the frame every hour while awake, a little further each day",
+        "- Call the ward if the calf swells or feels hot",
+      ].join("\n"),
+    );
+    at(113, "10:00");
+    await surgery.complete(stool);
+    at(113, "10:05");
+    const physio = await surgery.add(
+      "Drive him to physio",
+      daysAgo(109, "10:00"),
+      { kind: "days", every: 7 },
+    );
+    at(113, "10:10");
+    await surgery.setArea(area("Health"));
+    for (let days = 109; days >= 4; days -= 7) {
+      at(days, "11:30");
+      await surgery.complete(
+        physio,
+        days === 60
+          ? "Physio says he can drop to one crutch at home. Keep the frame for outside."
+          : undefined,
+      );
+    }
+
+    // 2. A tax error: a letter, two calls, a Task to chase, then quiet.
+    at(55, "08:30");
+    const { _id: letter } = must(
+      await client.createNote({
+        body: "Letter from the tax office: they say last year's return underpaid by 412. Reference on page 2. Reply within 30 days.",
+      }),
+    );
+    at(54, "19:00");
+    const tax = threadStory(
+      client,
+      must(
+        await client.createThreadFromNote({
+          noteId: letter,
+          title: "Tax office letter about last year",
+          areaId: area("Money"),
+        }),
+      ).thread,
+    );
+    at(51, "13:20");
+    await tax.note(
+      "Called the helpline. They see a mismatch in the employer's figures; someone will check and call back within a week.",
+    );
+    at(51, "13:40");
+    await tax.note(
+      "What the agent said, for the file: the employer's figures for the year don't match the payslips for March and April. Their record shows the spring bonus paid twice, which would explain most of the difference. She can't change it herself; it goes to a caseworker, who compares it with the employer's own filing. If the employer confirms the double entry, the amount owed drops to about 30 and the rest is cancelled. Keep the March and April payslips to hand, and pay nothing until the written decision comes.",
+    );
+    at(47, "09:45");
+    await tax.note(
+      "Second call. No callback came. The new agent says the case is still open; asked for it in writing.",
+    );
+    at(47, "09:55");
+    await tax.add(
+      "Chase the tax office if no letter has come",
+      daysAgo(33, "00:00"),
+    );
+
+    // 3. A home repair with an insurer: visits and claims, a changing plan.
+    at(150, "08:20");
+    const roof = await story({
+      title: "Roof leak and the insurance claim",
+      areaId: area("Home"),
+    });
+    at(150, "08:25");
+    await roof.note(
+      "Water stain on the bedroom ceiling after the storm. Took photos of the ceiling and the loft.",
+    );
+    at(150, "08:30");
+    const claim = await roof.add("Call the insurer to open a claim");
+    const roofer = await roof.add("Get a roofer to look at it");
+    at(148, "10:15");
+    await roof.complete(
+      claim,
+      "Claim opened. They want photos and two quotes before sending an adjuster.",
+    );
+    at(148, "10:20");
+    const photos = await roof.add("Send the photos to the insurer");
+    const secondQuote = await roof.add("Get a second quote");
+    at(140, "14:00");
+    await roof.complete(roofer);
+    at(140, "14:10");
+    await roof.note(
+      "Roofer's visit: three cracked tiles and the flashing round the chimney is damaged. Quote to follow by email.",
+    );
+    at(136, "21:30");
+    const photosNote = await roof.complete(
+      photos,
+      "Sent 14 photos through the claims portal.",
+    );
+    at(130, "09:00");
+    await roof.note("Adjuster's visit booked for Tuesday morning.");
+    at(126, "18:45");
+    const draftNote = await roof.note(
+      "Adjuster's draft report came in. The numbers look low; check against the roofer's quote.",
+    );
+    at(123, "12:30");
+    await roof.note(
+      "Adjuster's report: they cover the tiles, not the flashing. They call it wear and tear.",
+    );
+    at(123, "12:40");
+    await roof.remove(secondQuote);
+    const dispute = await roof.add("Dispute the flashing decision");
+    const opinion = await roof.add(
+      "Ask the roofer for a written opinion on the flashing",
+    );
+    at(110, "16:00");
+    await roof.complete(opinion);
+    at(110, "16:05");
+    await roof.note(
+      "The roofer's letter says the flashing failed from storm damage, not age. Forwarded to the insurer.",
+    );
+    at(95, "11:20");
+    await roof.note(
+      "The insurer accepted the full claim after the roofer's letter.",
+    );
+    at(95, "11:25");
+    await roof.remove(dispute);
+    const booking = await roof.add("Book the repair date");
+    at(80, "09:10");
+    await roof.complete(booking);
+    at(80, "09:15");
+    const clearLoft = await roof.add(
+      "Clear the loft before the roofers come",
+      daysAgo(62, "00:00"),
+    );
+    at(62, "08:00");
+    await roof.complete(clearLoft);
+    at(60, "17:30");
+    await roof.note(
+      "Roof repaired. The ceiling needs repainting once it has dried out.",
+    );
+    at(60, "17:35");
+    const invoice = await roof.add("Send the final invoice to the insurer");
+    await roof.add("Repaint the bedroom ceiling", daysAgo(-7, "00:00"));
+    at(41, "20:00");
+    await roof.complete(invoice);
+    at(30, "13:00");
+    await roof.note(
+      "The insurer paid out. The ceiling stain is still there; waiting for a dry week to paint.",
+    );
+    // Deleting a Note writes nothing to the log.
+    at(10, "10:00");
+    await roof.deleteNote(draftNote);
+    if (photosNote !== undefined) await roof.deleteNote(photosNote);
+
+    // 4. A job change: a dense burst, then resolved with a note.
+    at(40, "18:00");
+    const job = await story({
+      title: "Starting the new job",
+      areaId: area("Work"),
+    });
+    at(40, "18:05");
+    await job.note(
+      "Offer accepted. Start date in four weeks; the notice period is one month.",
+    );
+    at(40, "18:20");
+    const notice = await job.add("Hand in my notice");
+    const contract = await job.add("Sign the contract");
+    const hr = await job.add("Send ID and bank details to HR");
+    const handover = await job.add("Hand over the monthly reports");
+    const laptop = await job.add("Return the old laptop");
+    await job.add("Set up the pension transfer");
+    at(39, "09:00");
+    await job.complete(notice);
+    at(39, "21:15");
+    await job.complete(contract);
+    at(38, "12:30");
+    await job.complete(hr);
+    at(38, "15:00");
+    await job.note(
+      "HR call: the first day starts at 9 with an induction. Bring photo ID.",
+    );
+    at(30, "16:20");
+    await job.note("Handover meeting: two reports still to document.");
+    at(20, "17:45");
+    await job.complete(handover);
+    at(13, "16:00");
+    await job.complete(laptop);
+    at(13, "18:30");
+    await job.note("Last day. Lunch with the team and a leaving card.");
+    at(13, "18:40");
+    await job.resolve();
+    at(12, "19:05");
+    await job.reopen();
+    at(12, "19:10");
+    await job.note(
+      "First day done. The laptop arrives tomorrow; a buddy is assigned for the first month.",
+    );
+    at(6, "20:00");
+    await job.resolve(
+      "Settled in. The pension transfer can wait until the probation review; nothing else to do here.",
+    );
+
+    // 5. A check-up every six months, for two years.
+    at(735, "09:00");
+    const dental = await story({
+      title: "Dental check-up",
+      areaId: area("Health"),
+    });
+    const checkup = await dental.add("Dental check-up", daysAgo(730, "10:00"), {
+      kind: "days",
+      every: 182,
+    });
+    for (const [days, note] of [
+      [730, "All fine. The hygienist next time."],
+      [548, undefined],
+      [366, "A small filling on the upper right, done the same day."],
+      [184, undefined],
+    ] as const) {
+      at(days, "11:00");
+      await dental.complete(checkup, note);
+    }
+
+    // 6. A pet's daily medication: every day for two months, one day missed.
+    at(62, "19:00");
+    const cat = await story({ title: "The cat's daily tablet" });
+    const tablet = await cat.add("Evening tablet", daysAgo(61, "20:00"), {
+      kind: "days",
+      every: 1,
+    });
+    for (let days = 61; days >= 1; days--) {
+      if (days === 44) continue;
+      at(days, "20:10");
+      // The day after the missed one, the late tablet moves to today.
+      if (days === 43) await cat.setDate(tablet, daysAgo(43, "20:00"));
+      await cat.complete(
+        tablet,
+        days === 30
+          ? "Vet check: kidney values are stable. Keep the same dose."
+          : undefined,
+      );
+    }
+
+    // 7. Someday: started, and nothing else.
+    at(200, "22:00");
+    await story({ title: "Learn piano, someday" });
+  } finally {
+    back();
+  }
+}
+
+/** The commands one Thread's story is told with, keeping its latest state. */
+function threadStory(client: ApplicationClient, created: Thread) {
+  let thread = created;
+  const threadId = thread._id;
+  return {
+    async add(text: string, date?: number, repeat?: Repeat) {
+      const taskId = newRecordId() as TaskId;
+      thread = must(
+        await client.addTask({
+          threadId,
+          taskId,
+          text,
+          ...(date === undefined ? {} : { date }),
+        }),
+      );
+      if (repeat !== undefined) {
+        thread = must(
+          await client.setTaskRepeat({ threadId, taskId, repeat, timeZone }),
+        );
+      }
+      return taskId;
+    },
+    /** Returns the Note written with the completion, if any. */
+    async complete(taskId: TaskId, note?: string) {
+      const task = thread.tasks?.find((each) => each._id === taskId);
+      const written =
+        note === undefined
+          ? undefined
+          : { id: newRecordId() as ThreadNoteId, body: note };
+      thread = must(
+        await client.completeTask({
+          threadId,
+          taskId,
+          expectedOccurrence: task?.date ?? null,
+          timeZone,
+          ...(written === undefined ? {} : { note: written }),
+        }),
+      );
+      return written?.id;
+    },
+    async setDate(taskId: TaskId, date: number) {
+      thread = must(
+        await client.setTaskDate({ threadId, taskId, date, timeZone }),
+      );
+    },
+    async remove(taskId: TaskId) {
+      thread = must(await client.removeTask({ threadId, taskId }));
+    },
+    async note(body: string) {
+      return must(await client.createThreadNote({ threadId, body }))._id;
+    },
+    async deleteNote(threadNoteId: ThreadNoteId) {
+      must(await client.removeThreadNote({ threadNoteId }));
+    },
+    async resolve(resolutionNote?: string) {
+      thread = must(
+        await client.updateThread({
+          threadId,
+          state: "resolved",
+          ...(resolutionNote === undefined ? {} : { resolutionNote }),
+        }),
+      );
+    },
+    async reopen() {
+      thread = must(await client.updateThread({ threadId, state: "open" }));
+    },
+    async setArea(areaId: AreaId) {
+      thread = must(await client.updateThread({ threadId, areaId }));
+    },
+  };
+}
 
 /** The sample life, then many more of everything, spread across time. */
 function busyLife(): Life {

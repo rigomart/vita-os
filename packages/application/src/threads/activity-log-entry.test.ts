@@ -152,36 +152,45 @@ describe("readActivityLogEntry", () => {
       threadNoteId: note._id,
     };
 
-    it("reads a Note line with the Note's first line as it reads now, opening it", () => {
-      expect(readActivityLogEntry(added, note)).toMatchObject({
+    it("reads a Note line as the Note itself, which it opens", () => {
+      const reading = readActivityLogEntry(added, note);
+      expect(reading).toMatchObject({
         label: "Note",
-        action: "Note added:",
-        subject: "Called the office",
+        action: "Note added",
         threadNote: note,
       });
+      expect(reading).not.toHaveProperty("subject");
     });
 
-    it("reads a deleted Note's line without words and with nothing to open", () => {
+    it("reads a deleted Note's line as since deleted, with nothing to open", () => {
       const reading = readActivityLogEntry(added);
-      expect(reading).toMatchObject({ label: "Note", action: "Note added" });
+      expect(reading).toMatchObject({
+        label: "Note",
+        action: "Note added, since deleted",
+      });
       expect(reading).not.toHaveProperty("subject");
       expect(reading).not.toHaveProperty("threadNote");
     });
 
-    it("carries the Note written with a completion on the completion's line", () => {
+    it("carries the Note written with a completion, and says when it was deleted", () => {
       const completed = {
         ...entry("move_completed", 'Completed "Send the form"', {
           previousValue: "Send the form",
         }),
         threadNoteId: note._id,
       };
-      expect(readActivityLogEntry(completed, note)).toMatchObject({
+      const withNote = readActivityLogEntry(completed, note);
+      expect(withNote).toMatchObject({
         action: "Completed",
         subject: "Send the form",
-        note: "Called the office",
         threadNote: note,
       });
-      expect(readActivityLogEntry(completed)).not.toHaveProperty("note");
+      expect(withNote).not.toHaveProperty("aside");
+      expect(readActivityLogEntry(completed)).toMatchObject({
+        action: "Completed",
+        subject: "Send the form",
+        aside: ", with a note since deleted",
+      });
     });
   });
 });
@@ -325,22 +334,51 @@ describe("readActivityLog", () => {
     expect(read(groups).at(-1)).toBe("Started");
   });
 
-  it("reads Started from a note only beside the entry of the Note the Thread was started from", () => {
+  it("folds the entry of the Note the Thread was started from into Started", () => {
     const createdAt = day(1, 9);
     const note = (content: string): ActivityLogEntry => ({
       ...logged("note", "note_added", createdAt),
       content,
     });
-    const startedLine = (logs: ActivityLogEntry[]) =>
-      read(readActivityLog(logs, createdAt)).at(-1);
+    const origin = note(NOTE_STARTED_THREAD);
+    const groups = readActivityLog([origin], createdAt);
 
-    expect(startedLine([note(NOTE_STARTED_THREAD)])).toBe(
-      "Started from a note",
-    );
+    expect(lineKeysByGroup(groups)).toEqual([["started"]]);
+    expect(groups[0]!.lines[0]).toEqual({
+      kind: "started",
+      at: createdAt,
+      origin,
+    });
+    expect(read(groups)).toEqual(["Started from a note, since deleted"]);
     expect(
-      startedLine([note("Note added")]),
+      lineKeysByGroup(readActivityLog([note("Note added")], createdAt)),
       "a Note captured in the Thread's first millisecond did not start it",
-    ).toBe("Started");
+    ).toEqual([["note", "started"]]);
+  });
+
+  it("reads Started as a turning point, from the Note it began with while it exists", () => {
+    const createdAt = day(1, 9);
+    const threadNote: ThreadNote = {
+      _id: "origin-note" as ThreadNoteId,
+      body: "Letter from the office",
+      createdAt,
+      updatedAt: createdAt,
+    };
+    const origin: ActivityLogEntry = {
+      ...logged("note", "note_added", createdAt),
+      content: NOTE_STARTED_THREAD,
+      threadNoteId: threadNote._id,
+    };
+    const [started] = readActivityLog([origin], createdAt)[0]!.lines;
+
+    expect(readActivityLogLine(started!, threadNote)).toMatchObject({
+      action: "Started the Thread from this note",
+      threadNote,
+      turningPoint: true,
+    });
+    expect(
+      readActivityLogLine({ kind: "started", at: createdAt }),
+    ).toMatchObject({ action: "Started", turningPoint: true });
   });
 
   it("gives a stretch over midnight a heading of its own", () => {

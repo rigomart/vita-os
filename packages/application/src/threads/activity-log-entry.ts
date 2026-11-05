@@ -2,7 +2,6 @@ import type { ActivityLogEntry, ThreadNote } from "@vita-os/contracts";
 import type { LucideIcon } from "lucide-react";
 
 import { NOTE_STARTED_THREAD } from "@vita-os/core";
-import { markdownToPlainText } from "@vita-os/ui/components/markdown";
 import { format, isSameDay } from "date-fns";
 import {
   ArrowRight,
@@ -34,15 +33,22 @@ export interface ActivityLogEntryReading {
   from?: string;
   /** How many times it happened, when a line folds a stretch of them. */
   times?: number;
-  /**
-   * A resolution's note, or the opening words of the Thread Note a
-   * completion was written with.
-   */
+  /** Quiet words after the sentence: ", with a note since deleted". */
+  aside?: string;
+  /** A resolution's note. */
   note?: string;
   /** The Tasks a resolution dropped. */
   dropped: string[];
-  /** The Thread Note choosing the line opens, while it still exists. */
+  /**
+   * The Thread Note the line is about, while it still exists: the line reads
+   * it and opens it.
+   */
   threadNote?: ThreadNote;
+  /**
+   * A change to what the Thread is (its beginning, its ending, its return,
+   * its Area), which reads at full size among the small lines.
+   */
+  turningPoint?: true;
 }
 
 const DROPPED = " — discarded tasks: ";
@@ -70,7 +76,9 @@ export function readActivityLogEntry(
         icon: SquareCheck,
         action: "Completed",
         subject: completedTask(log),
-        ...(threadNote === undefined ? {} : { note: openingWords(threadNote) }),
+        ...(log.threadNoteId !== undefined && threadNote === undefined
+          ? { aside: ", with a note since deleted" }
+          : {}),
         dropped: [],
         ...opened,
       };
@@ -78,9 +86,8 @@ export function readActivityLogEntry(
       return {
         label: "Note",
         icon: StickyNote,
-        ...(threadNote === undefined
-          ? { action: "Note added" }
-          : { action: "Note added:", subject: openingWords(threadNote) }),
+        action:
+          threadNote === undefined ? "Note added, since deleted" : "Note added",
         dropped: [],
         ...opened,
       };
@@ -112,6 +119,7 @@ export function readActivityLogEntry(
               ? { action: "Removed from", subject: previous }
               : { action: log.content }),
         dropped: [],
+        turningPoint: true,
       };
     case "state_change":
       if (log.newValue === "resolved") return readResolution(log.content);
@@ -121,6 +129,7 @@ export function readActivityLogEntry(
           icon: RotateCcw,
           action: "Reopened the Thread",
           dropped: [],
+          turningPoint: true,
         };
       }
       return {
@@ -134,6 +143,7 @@ export function readActivityLogEntry(
             }
           : { action: log.content }),
         dropped: [],
+        turningPoint: true,
       };
     case "follow_up_change":
       return {
@@ -173,11 +183,12 @@ export function readActivityLogEntry(
 /**
  * A line of the log, newest entry first: one entry, a day's Tasks added, a
  * stretch of one Task's completions, or the Thread's beginning, which is read
- * from its creation and never stored.
+ * from its creation and never stored. A Thread started from a Note begins
+ * with that Note's entry, its `origin`, which then has no line of its own.
  */
 export type ActivityLogLine =
   | { kind: "entries"; logs: ActivityLogEntry[] }
-  | { kind: "started"; at: number; fromNote: boolean };
+  | { kind: "started"; at: number; origin?: ActivityLogEntry };
 
 /**
  * Lines read under one heading, newest first: a day's, or a stretch of
@@ -198,9 +209,8 @@ export interface ActivityLogGroup {
  * - Completions of one Task with no other line between them share one line,
  *   unless a completion carries a Note: it stands alone with its Note.
  * - `threadCreatedAt`, once the oldest page is loaded, ends the log with
- *   Started at that moment, below any entry written at the same instant. It
- *   reads "Started from a note" when the log holds the entry of the Note the
- *   Thread was started from.
+ *   Started at that moment, below any entry written at the same instant. The
+ *   entry of the Note the Thread was started from becomes part of it.
  *
  * Pages are folded together, so a stretch cut by a page boundary grows into
  * one line as earlier pages load.
@@ -215,18 +225,21 @@ export function readActivityLog(
     const key = dayKey(log.createdAt);
     days.set(key, [...(days.get(key) ?? []), log]);
   }
-  const lines: ActivityLogLine[] = foldStretches(
+  let lines: ActivityLogLine[] = foldStretches(
     [...days.values()].flatMap(foldActivityLogDay),
   ).map((logs) => ({ kind: "entries", logs }));
   if (threadCreatedAt !== undefined) {
+    const origin = logs.find(
+      (log) => log.type === "note_added" && log.content === NOTE_STARTED_THREAD,
+    );
     const started: ActivityLogLine = {
       kind: "started",
       at: threadCreatedAt,
-      fromNote: logs.some(
-        (log) =>
-          log.type === "note_added" && log.content === NOTE_STARTED_THREAD,
-      ),
+      ...(origin === undefined ? {} : { origin }),
     };
+    lines = lines.filter(
+      (line) => line.kind !== "entries" || line.logs[0] !== origin,
+    );
     const older = lines.findIndex((line) => newestAt(line) < threadCreatedAt);
     lines.splice(older === -1 ? lines.length : older, 0, started);
   }
@@ -309,6 +322,9 @@ function dayKey(at: number) {
 /**
  * A line as it reads: one entry, several Tasks added the same day named in
  * the order they were added, a stretch of completions counted, or Started.
+ *
+ * `threadNote` is the Thread Note the line's entry names, or the one the
+ * Thread was started from, as it reads now; absent once it is deleted.
  */
 export function readActivityLogLine(
   line: ActivityLogLine,
@@ -318,8 +334,15 @@ export function readActivityLogLine(
     return {
       label: "Started",
       icon: Flag,
-      action: line.fromNote ? "Started from a note" : "Started",
+      action:
+        line.origin === undefined
+          ? "Started"
+          : threadNote === undefined
+            ? "Started from a note, since deleted"
+            : "Started the Thread from this note",
       dropped: [],
+      turningPoint: true,
+      ...(threadNote === undefined ? {} : { threadNote }),
     };
   }
   const { logs } = line;
@@ -369,6 +392,7 @@ function readResolution(content: string): ActivityLogEntryReading {
     action: "Resolved the Thread",
     ...(note ? { note } : {}),
     dropped: tail ? tail.slice(1, -1).split('", "') : [],
+    turningPoint: true,
   };
 }
 
@@ -383,11 +407,6 @@ function displayValue(log: ActivityLogEntry, value?: string) {
   }
   const when = Number(value);
   return withTimeToken(format(when, "MMM d, yyyy"), when);
-}
-
-/** A Note's first line of text, as the Dashboard names a Note. */
-function openingWords(note: ThreadNote) {
-  return markdownToPlainText(note.body).trim().split("\n")[0]!.trim();
 }
 
 function capitalize(value: string) {
