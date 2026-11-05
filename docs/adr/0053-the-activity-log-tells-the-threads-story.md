@@ -1,6 +1,6 @@
 # The Activity Log tells the Thread's story
 
-**Status:** Accepted. Amends [ADR 0016](./0016-thread-notes-and-automatic-activity-log.md) (capturing a Thread Note adds no Activity Log entry) and the Activity Rules in `CONTEXT.md`. Spec: issue #524. Delivered in slices: #525 (Notes), #526 (Tasks added and removed), #527 (Started, folding repeats).
+**Status:** Accepted. Amends [ADR 0016](./0016-thread-notes-and-automatic-activity-log.md) (capturing a Thread Note adds no Activity Log entry) and the Activity Rules in `CONTEXT.md`. Spec: issue #524. Delivered in slices: #525 (Notes), #526 (Tasks added and removed), #527 (Started, folding repeats). Amended by [ADR 0054](./0054-how-the-activity-log-reads.md): Notes lead the log in their own words, turning points read at full size and everything else small, long quiet reads as a line, folds open, and the Note a Thread was started from carries its beginning in place of a "Started from a note" line.
 **Date:** 2026-11-01
 
 Coming back to a **Thread** after weeks, the **Activity Log** should say what happened. It records only Task completions, Area changes, Resolve and Reopen, so most of a Thread's story leaves no trace there: when it started, when a plan appeared or was dropped, and above all its **Thread Notes**, which are its records (ADR 0049). ADR 0016 kept Notes out of the log to keep prose out of a changelog. This keeps the prose out and lets the log know the Notes exist.

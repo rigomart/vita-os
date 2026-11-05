@@ -16,6 +16,7 @@ interface ThreadBodyTabsProps {
   threadId: ThreadId;
   threadTitle: string;
   threadCreatedAt: number;
+  resolved: boolean;
   /**
    * Whether the body scrolls itself (the pane) or flows in a scroll that
    * holds the whole Thread (the drawer).
@@ -32,6 +33,7 @@ export function ThreadBodyTabs({
   threadId,
   threadTitle,
   threadCreatedAt,
+  resolved,
   scrolls,
 }: ThreadBodyTabsProps) {
   // The same read ThreadNotesSection observes, so the count costs nothing
@@ -69,6 +71,7 @@ export function ThreadBodyTabs({
             threadId={threadId}
             threadTitle={threadTitle}
             threadCreatedAt={threadCreatedAt}
+            resolved={resolved}
           />
         </TabsContent>
       </div>

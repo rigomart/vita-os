@@ -1,21 +1,20 @@
 import type { ActivityLogEntry, ThreadNote } from "@vita-os/contracts";
+import type { ReactNode } from "react";
 
 import { Button } from "@vita-os/ui/components/button";
 import { Skeleton } from "@vita-os/ui/components/skeleton";
-import { cn } from "@vita-os/ui/lib/utils";
-import { format, isSameDay, isSameYear, subDays } from "date-fns";
 import { Loader2 } from "lucide-react";
+import { Fragment } from "react";
 
-import { clock } from "../../lib/clock";
+import { useAttentionClock } from "../../hooks/use-attention-clock";
+import { lineKey, readActivityLog } from "../activity-log-entry";
 import {
-  type ActivityLogEntryReading,
-  type ActivityLogGroup,
-  type ActivityLogLine,
-  lineKey,
-  newestAt,
-  readActivityLog,
-  readActivityLogLine,
-} from "../activity-log-entry";
+  daysBetween,
+  headingLabel,
+  QUIET_DAYS,
+  spanWords,
+} from "../activity-log-time";
+import { ActivityLogLineItem } from "./thread-log-line";
 
 interface ActivityLogProps {
   logs: ActivityLogEntry[] | undefined;
@@ -24,6 +23,8 @@ interface ActivityLogProps {
    * ends with Started.
    */
   startedAt?: number;
+  /** Whether the Thread is Resolved: then no quiet is told above the newest line. */
+  resolved?: boolean;
   /** The Thread's Notes as they read now, for the entries that name one. */
   threadNotes?: ThreadNote[];
   /** Opens a Note an entry names in the Note view. */
@@ -34,23 +35,21 @@ interface ActivityLogProps {
 }
 
 /**
- * The Thread's continuity record, written entirely by the system: one rail
- * behind every day, each entry a full sentence on it with its kind's icon as
- * the node. Nothing is cut off: long Task text wraps, and a resolution shows
- * its note and the Tasks it dropped. An entry naming a Thread Note reads the
- * Note's opening words as they are now and opens it, until it is deleted.
- * Tasks added the same day share one line, and so does a stretch of one
- * Task's completions, under a heading naming its first and last days.
+ * The Thread's story, written by the system, newest first under day headings.
+ * Three weeks or more without a line read as quiet, between days and, on an
+ * Open Thread, above the newest.
  */
 export function ActivityLog({
   logs,
   startedAt,
+  resolved = false,
   threadNotes,
   onOpenNote,
   canLoadMore,
   isLoadingMore,
   onLoadMore,
 }: ActivityLogProps) {
+  const today = useAttentionClock();
   if (logs === undefined) return <ActivityLogSkeleton />;
 
   const groups = readActivityLog(logs, startedAt);
@@ -63,6 +62,7 @@ export function ActivityLog({
       </section>
     );
   }
+  const sinceNewest = daysBetween(today, groups[0]!.to);
 
   return (
     <section aria-label="Activity log" className="flex flex-col gap-4 pb-6">
@@ -72,34 +72,35 @@ export function ActivityLog({
           aria-hidden
           className="absolute inset-y-0 left-[11.5px] w-px bg-border [mask-image:linear-gradient(to_bottom,transparent,black_1.5rem,black_calc(100%_-_1.5rem),transparent)]"
         />
-        {groups.map((group) => {
-          const label = groupLabel(group);
+        {!resolved && sinceNewest >= QUIET_DAYS && (
+          <Quiet>Quiet for {spanWords(sinceNewest)}</Quiet>
+        )}
+        {groups.map((group, index) => {
+          const newer = groups[index - 1];
+          const gap =
+            newer === undefined ? 0 : daysBetween(newer.from, group.to);
+          const label = headingLabel(group.from, group.to, today);
           return (
-            <section
-              key={group.key}
-              aria-label={label}
-              className="flex flex-col"
-            >
-              <h3 className="py-1 pl-9 text-xs font-medium text-muted-foreground">
-                {label}
-              </h3>
-              <ol>
-                {group.lines.map((line) => (
-                  <ActivityLogItem
-                    key={lineKey(line)}
-                    line={line}
-                    threadNote={
-                      line.kind === "entries"
-                        ? threadNotes?.find(
-                            (note) => note._id === line.logs[0]!.threadNoteId,
-                          )
-                        : undefined
-                    }
-                    onOpenNote={onOpenNote}
-                  />
-                ))}
-              </ol>
-            </section>
+            <Fragment key={group.key}>
+              {gap >= QUIET_DAYS && <Quiet>{spanWords(gap)} quiet</Quiet>}
+              <section aria-label={label} className="flex flex-col">
+                <h3 className="py-1 pl-9 text-xs font-medium text-muted-foreground">
+                  {label}
+                </h3>
+                <ol>
+                  {group.lines.map((line) => (
+                    <ActivityLogLineItem
+                      key={lineKey(line)}
+                      line={line}
+                      startedAt={startedAt}
+                      threadNotes={threadNotes}
+                      onOpenNote={onOpenNote}
+                      today={today}
+                    />
+                  ))}
+                </ol>
+              </section>
+            </Fragment>
           );
         })}
       </div>
@@ -127,135 +128,16 @@ export function ActivityLog({
   );
 }
 
-function ActivityLogItem({
-  line,
-  threadNote,
-  onOpenNote,
-}: {
-  line: ActivityLogLine;
-  threadNote?: ThreadNote;
-  onOpenNote?: (note: ThreadNote) => void;
-}) {
-  const reading = readActivityLogLine(line, threadNote);
-  const datedByHeading =
-    line.kind === "entries" &&
-    !isSameDay(line.logs[0]!.createdAt, line.logs.at(-1)!.createdAt);
-  const Icon = reading.icon;
-  const opens = reading.threadNote;
-  const sentence = (
-    <>
-      <span className="sr-only">{reading.label}: </span>
-      <Sentence reading={reading} />
-    </>
-  );
-
+function Quiet({ children }: { children: ReactNode }) {
   return (
-    <li
-      className={cn(
-        "relative flex gap-3 py-2",
-        opens &&
-          onOpenNote &&
-          "rounded-lg transition-colors hover:bg-muted/50 has-focus-visible:bg-muted/60 motion-reduce:transition-none",
-      )}
-    >
-      <span className="relative flex size-6 shrink-0 items-center justify-center rounded-full border bg-popover text-muted-foreground">
-        <Icon aria-hidden className="size-3.5" />
-      </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-2 pt-0.5">
-        <div className="flex items-baseline gap-3">
-          {opens && onOpenNote ? (
-            <button
-              type="button"
-              onClick={() => onOpenNote(opens)}
-              className="min-w-0 flex-1 text-left text-sm leading-snug wrap-anywhere outline-none after:absolute after:inset-0 after:rounded-lg"
-            >
-              {sentence}
-            </button>
-          ) : (
-            <p className="min-w-0 flex-1 text-sm leading-snug wrap-anywhere">
-              {sentence}
-            </p>
-          )}
-          {!datedByHeading && (
-            <ActivityLogTimestamp createdAt={newestAt(line)} />
-          )}
-        </div>
-        <Carried reading={reading} />
-      </div>
-    </li>
-  );
-}
-
-/** The action quiet, what it happened to in full, what it replaced after. */
-function Sentence({ reading }: { reading: ActivityLogEntryReading }) {
-  return (
-    <>
-      <span className="text-muted-foreground">{reading.action}</span>
-      {reading.subject !== undefined && (
-        <>
-          {" "}
-          <span className="text-foreground">{reading.subject}</span>
-        </>
-      )}
-      {reading.from !== undefined && (
-        <span className="text-muted-foreground">, from {reading.from}</span>
-      )}
-      {reading.times !== undefined && (
-        <span className="text-muted-foreground"> {reading.times} times</span>
-      )}
-    </>
-  );
-}
-
-/**
- * What an entry carried: a resolution's note and the Tasks it dropped, or the
- * Note a completion was written with.
- */
-function Carried({ reading }: { reading: ActivityLogEntryReading }) {
-  if (reading.note === undefined && reading.dropped.length === 0) return null;
-  return (
-    <div className="flex flex-col gap-2">
-      {reading.note !== undefined && (
-        <p className="border-l-2 pl-3 text-sm leading-relaxed whitespace-pre-line wrap-anywhere text-foreground">
-          {reading.note}
-        </p>
-      )}
-      {reading.dropped.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">
-            Dropped{" "}
-            {reading.dropped.length === 1
-              ? "an open Task"
-              : `${reading.dropped.length} open Tasks`}
-          </p>
-          <ul className="flex flex-col gap-1">
-            {reading.dropped.map((task, index) => (
-              <li
-                key={index}
-                className="flex gap-2 text-sm leading-snug wrap-anywhere text-muted-foreground"
-              >
-                <span aria-hidden>–</span>
-                {task}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+    <div className="relative flex items-center py-3 pl-9">
+      <span aria-hidden className="absolute inset-y-0 left-2 w-2 bg-popover" />
+      <span
+        aria-hidden
+        className="absolute inset-y-1 left-[11.5px] border-l border-dashed border-muted-foreground/35"
+      />
+      <p className="text-xs text-muted-foreground italic">{children}</p>
     </div>
-  );
-}
-
-function ActivityLogTimestamp({ createdAt }: { createdAt: number }) {
-  const date = new Date(createdAt);
-
-  return (
-    <time
-      dateTime={date.toISOString()}
-      title={format(date, "PPpp")}
-      className="shrink-0 text-xs whitespace-nowrap text-muted-foreground"
-    >
-      {format(date, "h:mm a")}
-    </time>
   );
 }
 
@@ -269,23 +151,5 @@ function ActivityLogSkeleton() {
         </div>
       ))}
     </div>
-  );
-}
-
-function groupLabel({ from, to }: ActivityLogGroup) {
-  if (isSameDay(from, to)) return getDayLabel(to);
-  const today = clock.now();
-  const day = (at: number) =>
-    format(at, isSameYear(at, today) ? "MMM d" : "MMM d, yyyy");
-  return `${day(from)} – ${day(to)}`;
-}
-
-function getDayLabel(createdAt: number) {
-  const today = clock.now();
-  if (isSameDay(createdAt, today)) return "Today";
-  if (isSameDay(createdAt, subDays(today, 1))) return "Yesterday";
-  return format(
-    createdAt,
-    isSameYear(createdAt, today) ? "EEEE, MMMM d" : "MMMM d, yyyy",
   );
 }
