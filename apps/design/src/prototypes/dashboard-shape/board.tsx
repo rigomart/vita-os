@@ -142,15 +142,48 @@ export function BandCount({
   band: Band;
   className?: string;
 }) {
+  return <Count count={band.items.length} className={className} />;
+}
+
+export function Count({
+  count,
+  className,
+}: {
+  count: number;
+  className?: string;
+}) {
   return (
     <span
       className={cn(
         "font-heading font-semibold tabular-nums",
-        band.items.length === 0 && "text-muted-foreground/40",
+        count === 0 && "text-muted-foreground/40",
         className,
       )}
     >
-      {band.items.length}
+      {count}
+    </span>
+  );
+}
+
+/** A span's or a day's name, Late in the attention colour when it holds any. */
+export function SpanLabel({
+  label,
+  late,
+  className,
+}: {
+  label: string;
+  late: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "font-heading font-semibold tracking-tight",
+        late && "text-condition-attention",
+        className,
+      )}
+    >
+      {label}
     </span>
   );
 }

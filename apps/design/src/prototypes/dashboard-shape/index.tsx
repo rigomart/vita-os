@@ -3,9 +3,13 @@ import { DashboardScreen } from "@vita-os/application/internal/dashboard/screens
 import { definePrototype } from "@/lab/prototype";
 
 import { ShapeBoard } from "./board";
+import { Desk } from "./desk";
 import { TimeMap } from "./map";
+import { Mosaic } from "./mosaic";
 import { NearCards } from "./near-cards";
 import { Piles } from "./piles";
+import { Skyline } from "./skyline";
+import { ZoomCards } from "./zoom-cards";
 
 /**
  * Whether the board's shape can be seen before it is read: how many things
@@ -16,7 +20,7 @@ import { Piles } from "./piles";
 export default definePrototype({
   title: "Dashboard shape",
   description:
-    "Seeing the board's shape before reading it: a time treemap, cards for what is asking, or piles per span.",
+    "Seeing the board's shape before reading it: treemaps, cards, piles, a desk, a mosaic or a skyline.",
   shell: true,
   variants: [
     {
@@ -45,6 +49,34 @@ export default definePrototype({
       description:
         "Untangle's glance: a pile per span side by side, a large count over the first card, fanned out on click.",
       component: () => <ShapeBoard Body={Piles} wide />,
+    },
+    {
+      key: "zoom-cards",
+      name: "Cards all the way down",
+      description:
+        "One form for every item: cards that shrink with distance, Later as name chips, every group led by its count.",
+      component: () => <ShapeBoard Body={ZoomCards} />,
+    },
+    {
+      key: "desk",
+      name: "Desk and margin",
+      description:
+        "Most of the page is a desk holding only Late and Today as large cards; the week, Later and No date are one quiet margin.",
+      component: () => <ShapeBoard Body={Desk} wide />,
+    },
+    {
+      key: "mosaic",
+      name: "Mosaic",
+      description:
+        "The treemap with fixed tile sizes by nearness, so its area is the load: a light day is a small mosaic.",
+      component: () => <ShapeBoard Body={Mosaic} wide />,
+    },
+    {
+      key: "skyline",
+      name: "Skyline",
+      description:
+        "A column per day stacked up from one ground line, so each column's height is its count. Closest to a calendar.",
+      component: () => <ShapeBoard Body={Skyline} wide />,
     },
   ],
 });
