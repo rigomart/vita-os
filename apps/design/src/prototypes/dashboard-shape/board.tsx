@@ -111,7 +111,7 @@ export function ShapeBoard({
       )}
     >
       <h1 className="sr-only">Dashboard</h1>
-      <div className="pt-5 pb-4">
+      <div className="sticky top-0 z-20 -mx-4 bg-surface-1/90 px-4 pt-5 pb-3 backdrop-blur-md sm:-mx-6 sm:px-6">
         <DashboardFilter options={filtered.options} />
       </div>
       <ThreadCopies>

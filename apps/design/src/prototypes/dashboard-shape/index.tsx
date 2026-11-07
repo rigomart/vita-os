@@ -54,7 +54,7 @@ export default definePrototype({
       key: "zoom-cards",
       name: "Cards all the way down",
       description:
-        "One form for every item: cards that shrink with distance, Later as name chips, every group led by its count.",
+        "The shipped list, headings, Later fold and No date, with every item a card, two to a row, and each heading counted.",
       component: () => <ShapeBoard Body={ZoomCards} />,
     },
     {
