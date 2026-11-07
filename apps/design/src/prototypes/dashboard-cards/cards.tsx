@@ -23,14 +23,7 @@ import { useState } from "react";
 
 import type { BodyProps } from "./board";
 
-/**
- * Cards all the way down: the shipped list, its headings, grading, Later
- * fold and No date as they are, with every item a card instead of a line.
- * A group's cards sit two to a row, so their number reads as a shape before
- * any title is read; the nearer the group, the larger the card's type. Each
- * heading adds its count, small and neutral, as No date's does today.
- */
-export function ZoomCards({ board, scope }: BodyProps) {
+export function Cards({ board, scope }: BodyProps) {
   const [laterOpen, setLaterOpen] = useState(false);
   const near = groupByWhen([...board.now, ...board.week], scope.currentDate);
   const later = groupByWhen(board.later, scope.currentDate);
@@ -40,7 +33,6 @@ export function ZoomCards({ board, scope }: BodyProps) {
   return (
     <div className="grid gap-x-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="min-w-0 lg:pb-16">
-        {/* Below `lg`, No date leads the list folded, as it ships. */}
         <FoldedNoDate board={board} scope={scope} />
         {near.length === 0 && (
           <p className="px-1 pt-2 pb-3 text-sm text-muted-foreground">
@@ -88,7 +80,7 @@ export function ZoomCards({ board, scope }: BodyProps) {
                     {run.items.length}
                   </span>
                 </h3>
-                <Cards
+                <CardGrid
                   items={run.items}
                   distance={2}
                   scope={scope}
@@ -135,7 +127,7 @@ function Group({
           <span className="text-xs text-muted-foreground/70">{group.hint}</span>
         )}
       </h2>
-      <Cards
+      <CardGrid
         items={group.items}
         distance={look.distance}
         scope={scope}
@@ -146,15 +138,7 @@ function Group({
   );
 }
 
-/**
- * A group's items as cards, two to a row from `sm`, one in a narrow column.
- * Each card is the shipped line, laid out for a card: the Task's words in
- * up to two lines, the Thread's title on its own muted line, the Area and
- * the date on the last row with the date in the corner, and Complete in the
- * top corner on hover. Cards in a row share a height. The product would
- * build this as its own card; the prototype restyles the line in place.
- */
-function Cards({
+function CardGrid({
   items,
   distance,
   scope,
@@ -182,7 +166,11 @@ function Cards({
           <DashboardLine
             dateInHeading={dateInHeading}
             item={item}
-            look={cardLooks[Math.min(distance, cardLooks.length - 1)]!}
+            look={
+              cardLooksByDistance[
+                Math.min(distance, cardLooksByDistance.length - 1)
+              ]!
+            }
             scope={scope}
           />
         </li>
@@ -191,18 +179,26 @@ function Cards({
   );
 }
 
-/** The line, restyled from outside into a card. */
+const FILLS_ROW_HEIGHT =
+  "[&_[data-slot=thread-copy]]:h-full [&_div.grid]:h-full [&_div.grid]:grid-rows-[auto_1fr]";
+const CARD_SURFACE =
+  "[&_div.grid]:rounded-xl [&_div.grid]:bg-surface-2 [&_div.grid]:px-3 [&_div.grid]:hover:bg-surface-3";
+const AREA_AND_DATE_AT_FOOT =
+  "[&_div.grid>div:last-child]:self-end [&_div.grid>div:last-child]:pt-1";
+const TASK_IN_TWO_LINES =
+  "[&_p]:line-clamp-none [&_p]:pr-7 [&_p>span:first-child]:line-clamp-2";
+const THREAD_TITLE_ON_ITS_OWN_LINE =
+  "[&_p>span:not(:first-child)]:block [&_p>span:not(:first-child)]:truncate [&_p>span:not(:first-child)]:pt-0.5 [&_p>span:not(:first-child)>span[aria-hidden]]:hidden";
+const COMPLETE_IN_TOP_CORNER =
+  "[&_button[aria-label^=Complete]]:absolute [&_button[aria-label^=Complete]]:top-2 [&_button[aria-label^=Complete]]:right-2";
+
 const CARD = cn(
-  // The copy wrapper and the line fill the cell, so a row's cards match.
-  "[&_[data-slot=thread-copy]]:h-full",
-  "[&_div.grid]:h-full [&_div.grid]:grid-rows-[auto_1fr] [&_div.grid]:rounded-xl [&_div.grid]:bg-surface-2 [&_div.grid]:px-3 [&_div.grid]:hover:bg-surface-3",
-  // The last row, Area and date, sits at the foot.
-  "[&_div.grid>div:last-child]:self-end [&_div.grid>div:last-child]:pt-1",
-  // The Task's words clamp to two lines; the Thread's title gets its own line.
-  "[&_p]:line-clamp-none [&_p]:pr-7 [&_p>span:first-child]:line-clamp-2",
-  "[&_p>span:not(:first-child)]:block [&_p>span:not(:first-child)]:truncate [&_p>span:not(:first-child)]:pt-0.5 [&_p>span:not(:first-child)>span[aria-hidden]]:hidden",
-  // Complete moves to the top corner, so the date keeps the bottom one.
-  "[&_button[aria-label^=Complete]]:absolute [&_button[aria-label^=Complete]]:top-2 [&_button[aria-label^=Complete]]:right-2",
+  FILLS_ROW_HEIGHT,
+  CARD_SURFACE,
+  AREA_AND_DATE_AT_FOOT,
+  TASK_IN_TWO_LINES,
+  THREAD_TITLE_ON_ITS_OWN_LINE,
+  COMPLETE_IN_TOP_CORNER,
 );
 
 const LATE_CARD = cn(
@@ -210,11 +206,7 @@ const LATE_CARD = cn(
   "[&_div.grid]:hover:bg-[color-mix(in_oklab,var(--condition-attention)_12%,var(--color-surface-2))]",
 );
 
-/**
- * A card's type at each distance: smaller and lighter than the full-width
- * line's, since a card is half as wide. Late and Today lead at 15px medium.
- */
-const cardLooks: LineLook[] = [
+const cardLooksByDistance: LineLook[] = [
   {
     frame: "py-2.5 text-[15px] text-foreground",
     task: "font-medium",
@@ -244,7 +236,6 @@ const cardLooks: LineLook[] = [
   },
 ];
 
-/** Later folded at the foot as it ships: its count, when the next is due, the first two. */
 function LaterFold({
   items,
   currentDate,
