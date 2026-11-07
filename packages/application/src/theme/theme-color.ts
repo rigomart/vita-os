@@ -5,7 +5,9 @@ import type { ResolvedTheme } from "./theme-provider";
 /**
  * The page's ground (`--surface-1` in `globals.css`) as hex, which every
  * browser takes as a `theme-color`. `apps/web/index.html` paints the same
- * before the app loads.
+ * before the app loads. `apps/web/public/manifest.webmanifest` holds only the
+ * dark one: on Android, an installed app's gesture bar and launch splash take
+ * the manifest's colours, which can't follow the theme.
  */
 const GROUND: Record<ResolvedTheme, string> = {
   light: "#f6f6f8",
