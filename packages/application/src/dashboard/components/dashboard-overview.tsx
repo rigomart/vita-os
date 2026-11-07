@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 
 import type { DashboardFilterParams } from "../../navigation/use-dashboard-filter-params";
-import type { BoardScope } from "./dashboard-line";
+import type { BoardScope } from "./dashboard-card";
 
 import {
   NOTES_FILTER,

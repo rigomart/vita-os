@@ -1,6 +1,6 @@
 # Every Dashboard item a card, graded by attention
 
-**Status:** Proposed. Amends [ADR 0045](./0045-the-list-graded-by-attention.md) (items are cards, not lines; the grading by distance stays) and [ADR 0046](./0046-no-date-as-lines.md) (No date's lines become cards). [ADR 0037](./0037-one-list-under-the-sky.md)'s one list under the sky and [ADR 0048](./0048-later-folds-at-the-foot-of-the-list.md)'s Later fold are unchanged.
+**Status:** Accepted. Amends [ADR 0045](./0045-the-list-graded-by-attention.md) (items are cards, not lines; the grading by distance stays) and [ADR 0046](./0046-no-date-as-lines.md) (No date's lines become cards). [ADR 0037](./0037-one-list-under-the-sky.md)'s one list under the sky and [ADR 0048](./0048-later-folds-at-the-foot-of-the-list.md)'s Later fold are unchanged.
 **Date:** 2026-11-06
 
 ADR 0045 drew every item as a line and dropped the headings' counts, because short lines could be counted at a glance. On a full board they cannot: ten Late lines and six for Today run past the first screen, each one or two lines tall, and nothing says how many there are until they have been read. The question the Dashboard answers, what is asking now, is answered by how much is asking before it is answered by what. Two cards under Late and three under Today say it before a title is read.
@@ -31,7 +31,7 @@ This is close to what ADR 0045 replaced, ADR 0037's cards two to a row. What dif
 
 ## Considered Options
 
-The decision came out of a prototype in the design lab over the product's own data, filter, lines and controls. It is kept at `apps/design/src/prototypes/dashboard-cards/` with `current` and `cards`, and the pull request that ships the feature deletes it. Every direction tried is kept in commit `8582be0`.
+The decision came out of a prototype in the design lab over the product's own data, filter, lines and controls. The prototype was removed when this shipped. Its commits are in the pull request that added this ADR (`git log` on this file finds it); every direction tried is kept in commit `8582be0`.
 
 - **Round one** (`1fe8a39`, counts made neutral in `0dcb725`):
   - **Time treemap**, the whole board on one screen, a region per span led by its count, tiles sized by how near they are. Rejected: the screen is always full, so a light day with one late item looks as heavy as a busy one, and the far tiles shrink to names without controls.
@@ -46,17 +46,15 @@ The decision came out of a prototype in the design lab over the product's own da
 
 ## Left open
 
-- Whether a lone card should span its row. The default keeps every card the same width.
-- The card on a phone was checked at 390px only.
-- A card component of its own. The prototype restyles `DashboardLine` from outside; the product should draw a card, not a styled line.
+- Whether a lone card should span its row. Every card keeps the same width.
 
 ## Consequences
 
-- The Dashboard draws cards for every item. `DashboardLine` either gains a card layout or gives way to a card component; the controls (`BoardDate`, `BoardCompleteButton`) and the hooks behind them are unchanged.
+- `DashboardLine` is `DashboardCard`, drawing every item on the Dashboard with a card frame of its own; its looks are `CardLook`. The controls (`BoardDate`, `BoardCompleteButton`) and the hooks behind them are unchanged. The loading skeleton draws placeholder cards, two to a row.
 - A busy board's page is about as long as today's list: ten Late cards fill five rows. What changes is that the number is seen first.
-- `CONTEXT.md`, when this ships, in **Dashboard Structure**:
+- `CONTEXT.md`, in **Dashboard Structure**:
   - "Each group of the list is a heading on a rule across the list, led by the date's number when it names one day, over its items' lines. The nearer a group, the larger, bolder and darker its heading and lines read" becomes "Each group of the list is a heading on a rule across the list, led by the date's number when it names one day, over its items' cards, two to a row from `sm`. The nearer a group, the larger, bolder and darker its heading and cards read".
   - "**No date** draws the same lines at one size" becomes "**No date** draws the same cards in one column at one size".
   - The line paragraph ("On the list a line is one copy of its **Thread**…") describes a card: the marker and the **Task** in up to two lines, the **Thread**'s title on its own muted line, then the **Area** with the date in the bottom corner; Complete in the top corner, revealed on hover or focus and always shown on a touch screen; cards in a row share a height; Late's cards are tinted with the attention colour. "line" becomes "card" throughout it and in "can act on attention in place".
   - Add: "A day's heading carries no count; its cards show it. **Later** and **No date** keep their counts."
-- `docs/product-direction.md`, when this ships: "Every item is a line under its day's heading" becomes "Every item is a card under its day's heading, two to a row", and "A line completes the Task it displays" becomes "A card completes the Task it displays".
+- `docs/product-direction.md`: "Every item is a line under its day's heading" becomes "Every item is a card under its day's heading, two to a row", and "A line completes the Task it displays" becomes "A card completes the Task it displays".

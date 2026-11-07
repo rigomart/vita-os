@@ -9,7 +9,7 @@ import userEvent from "@testing-library/user-event";
 import { decideSetTaskDate, decideSetTaskRepeat } from "@vita-os/core";
 import { describe, expect, it, vi } from "vitest";
 
-import { DashboardLine } from "../../dashboard/components/dashboard-line";
+import { DashboardCard } from "../../dashboard/components/dashboard-card";
 import { NO_DATE_LOOK } from "../../dashboard/components/dashboard-list-model";
 import { queryKeys } from "../../query-keys";
 import {
@@ -49,7 +49,7 @@ function Surface({ surface }: { surface: "detail" | "line" }) {
   return surface === "detail" ? (
     <ThreadAttentionSection thread={thread} />
   ) : (
-    <DashboardLine
+    <DashboardCard
       dateInHeading={false}
       item={{ kind: "thread", thread }}
       look={NO_DATE_LOOK}

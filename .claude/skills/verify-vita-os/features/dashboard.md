@@ -1,6 +1,6 @@
 # Dashboard
 
-One list groups dated Threads (one line per dated Task) and dated Standalone Notes under when they come due (Late, Today, Tomorrow, weekdays, then Later), beside No date, which runs `Ready to move` and `Open`. Undated Standalone Notes are not on All: under the Notes filter No date runs `Notes` instead. A run with nothing in it is not shown. The filter row counts what is open and narrows the list.
+One list groups dated Threads (one card per dated Task, two to a row) and dated Standalone Notes under when they come due (Late, Today, Tomorrow, weekdays, then Later), beside No date, which runs `Ready to move` and `Open`. Undated Standalone Notes are not on All: under the Notes filter No date runs `Notes` instead. A run with nothing in it is not shown. The filter row counts what is open and narrows the list.
 
 ## Entry points and variants
 
@@ -16,21 +16,22 @@ One list groups dated Threads (one line per dated Task) and dated Standalone Not
 
 ## Checks
 
-Read the groups on screen and each group's own lines with
+Read the groups on screen and each group's own cards with
 `eval "JSON.stringify([...document.querySelectorAll('main section[aria-label]')].filter(s => s.checkVisibility()).map(s => ({group: s.getAttribute('aria-label'), items: [...s.querySelectorAll('li')].filter(li => li.closest('section[aria-label]') === s).map(li => li.innerText.replace(/\s*\n+\s*/g, ' | '))})))"`.
 
-1. Groups and lines, in this order:
-   - At 1440: `Tomorrow` holds `Task: | <dated task> · <its thread>`, then `<dated Note's text> | Note`; `Ready to move` holds `<thread> · | Task: | <undated task>`; `Open` the taskless Thread's title. There is no `Notes` run, and the undated Note is nowhere on the page.
-   - At 390, folded: only `No date` (no lines of its own) and `Tomorrow` (`Task: | <dated task> · <its thread>`, then `<dated Note's text> | Note`); the fold reads `<undated task's thread>, <taskless thread>`. Opened: `No date` (still no lines of its own), `Ready to move` and `Open` with the lines they have at 1440, then `Tomorrow`.
+1. Groups and cards, in this order:
+   - At 1440: `Tomorrow` holds `Task: | <dated task> | <its thread>`, then `<dated Note's text> | Note`; `Ready to move` holds `<thread> | Task: | <undated task>`; `Open` the taskless Thread's title. There is no `Notes` run, and the undated Note is nowhere on the page.
+   - At 390, folded: only `No date` (no cards of its own) and `Tomorrow` (`Task: | <dated task> | <its thread>`, then `<dated Note's text> | Note`); the fold reads `<undated task's thread>, <taskless thread>`. Opened: `No date` (still no cards of its own), `Ready to move` and `Open` with the cards they have at 1440, then `Tomorrow`.
 2. `All <n>` counts open Threads plus dated open Standalone Notes, and `Notes <n>` counts every open Standalone Note (exact link text: `All 4` and `Notes 2` with the preconditions).
-3. `?show=notes` keeps only Notes in every group (`Tomorrow` holds the dated Note, `Notes` the undated one, and no Thread line is left), and the selected filter is `Notes` (`nav[aria-label="Filter the board"] [aria-current]` reads `Notes 2`).
+3. `?show=notes` keeps only Notes in every group (`Tomorrow` holds the dated Note, `Notes` the undated one, and no Thread card is left), and the selected filter is `Notes` (`nav[aria-label="Filter the board"] [aria-current]` reads `Notes 2`).
 4. With nothing open the board reads `Nothing is asking for you.` over `Every Thread is resolved and every Note is completed.`
 5. With only an undated Note open, All reads `Nothing is asking for you.` over `Undated notes are under Notes.`, whose `Notes` link goes to `/?show=notes`, where the Note is in the `Notes` run of No date.
+6. Cards: at 1440 a group's `ul` lays two cards to a row (`gridTemplateColumns` has two tracks) and at 390 one. Hovering a card shows its Complete button in the card's top-right corner (its top and right within 12px of the card's), and the date, when shown, in the bottom-right corner. A Late card's frame is tinted (its background is not the Today cards').
 
 ## Traps
 
 - No date is in the page twice, one copy hidden. Below 1024px the side copy (`aside[aria-label='No date']`) stays mounted, so `main section[aria-label='<run>']` also matches its hidden runs, and the runs on screen are inside the folded `section[aria-label='No date']` once it is open. From 1024px the folded copy is the hidden one, an empty `section[aria-label='No date']`. Read only what `checkVisibility()` keeps, and count a group's own `li`s: an opened `No date` section also contains its runs' lines.
-- A line is two rows: the Task and the Thread's title, then under them the Thread's Area (`No area` when it has none and the user has Areas) or a Note's `Note`, so a Thread with an Area reads `Task: | <task> · <thread> | <area>` at any width.
+- A card is three rows: the Task, the Thread's title on its own line, then along the foot the Thread's Area (`No area` when it has none and the user has Areas) or a Note's `Note`, so a Thread with an Area reads `Task: | <task> | <thread> | <area>` at any width. A Thread with no Area and the user with no Areas has an empty foot.
 - On a touch screen (`pointer: coarse`) the date and Complete show at rest; with a mouse they show only on hover or focus. agent-browser's `set device` does not switch that media query: turn on `Emulation.setTouchEmulationEnabled` over CDP, and tap with `Input.dispatchTouchEvent` from the same connection, since agent-browser's `mouse` commands hang while touch emulation is on. The emulation ends when that connection closes.
-- A Thread line's link holds only the title; read the line from its `li`. `Task:` at its start is screen-reader text.
+- A Thread card's link holds only the title; read the card from its `li`. `Task:` at its start is screen-reader text.
 - Below 1024px the header buttons are in the page but hidden; check layout with `is visible "nav[aria-label=Actions]"`.

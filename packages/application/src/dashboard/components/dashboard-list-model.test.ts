@@ -65,17 +65,17 @@ describe("groupLook", () => {
     expect(august!.heading.label).toContain("text-xs");
   });
 
-  it("writes nearer lines larger, and fades them with distance", () => {
+  it("writes nearer cards larger, and fades them with distance", () => {
     const [late, today, tomorrow, thursday, week, august] = looks([
       -1, 0, 1, 6, 9, 40,
     ]);
-    expect(late!.line).toBe(today!.line);
-    expect(today!.line.frame).toContain("text-base");
-    expect(today!.line.task).toBe("font-semibold");
-    expect(tomorrow!.line.frame).toContain("text-sm");
-    expect(thursday!.line.frame).toContain("text-foreground/75");
-    expect(week!.line.frame).toContain("text-foreground/60");
-    expect(august!.line.frame).toContain("text-foreground/50");
+    expect(late!.card).toBe(today!.card);
+    expect(today!.card.frame).toContain("text-[15px]");
+    expect(today!.card.task).toBe("font-medium");
+    expect(tomorrow!.card.frame).toContain("text-sm");
+    expect(thursday!.card.frame).toContain("text-foreground/75");
+    expect(week!.card.frame).toContain("text-foreground/60");
+    expect(august!.card.frame).toContain("text-foreground/50");
   });
 
   it("gives a day's number to the days only, not to the weeks and months", () => {

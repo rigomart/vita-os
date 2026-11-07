@@ -75,13 +75,13 @@ export function DashboardOverviewSkeleton() {
                     style={wave}
                   />
                 </div>
-                <div className="-mx-1.5">
+                <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-2">
                   {group.lines.map((width, line) => (
                     <div
                       key={line}
                       className={cn(
-                        "grid grid-cols-[0.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-0.5 px-2.5 leading-snug",
-                        look.line.frame,
+                        "grid grid-cols-[0.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-0.5 rounded-xl bg-surface-2 px-3 leading-snug",
+                        look.card.frame,
                       )}
                     >
                       <div className="flex h-lh items-center justify-center">
@@ -94,7 +94,7 @@ export function DashboardOverviewSkeleton() {
                       <Bar
                         className={cn(
                           "col-start-2 opacity-70",
-                          look.line.detail,
+                          look.card.detail,
                         )}
                         width="w-1/3"
                         style={wave}

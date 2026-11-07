@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render, screen, waitFor } from "../../test/render-with-providers";
-import { DashboardLine } from "./dashboard-line";
+import { DashboardCard } from "./dashboard-card";
 import { NO_DATE_LOOK } from "./dashboard-list-model";
 
 const mocks = vi.hoisted(() => ({
@@ -58,7 +58,7 @@ function NoteLine({
   onOpenNote?: (note: Note) => void;
 }) {
   return (
-    <DashboardLine
+    <DashboardCard
       dateInHeading={dateInHeading}
       item={{ kind: "note", note }}
       look={NO_DATE_LOOK}
