@@ -14,7 +14,6 @@ import {
   foldedSummary,
   groupLook,
   LATER_LOOK,
-  NO_DATE_LOOK,
 } from "@vita-os/application/internal/dashboard/components/dashboard-list-model.ts";
 import { dateToken } from "@vita-os/application/internal/dashboard/components/dashboard-model.ts";
 import { FoldedNoDate } from "@vita-os/application/internal/dashboard/components/no-date.tsx";
@@ -91,7 +90,7 @@ export function ZoomCards({ board, scope }: BodyProps) {
                 </h3>
                 <Cards
                   items={run.items}
-                  look={NO_DATE_LOOK}
+                  distance={2}
                   scope={scope}
                   columns={1}
                 />
@@ -132,71 +131,118 @@ function Group({
         <span className={cn("font-heading tracking-tight", look.heading.label)}>
           {group.label}
         </span>
-        <Count count={group.items.length} />
         {group.hint && (
           <span className="text-xs text-muted-foreground/70">{group.hint}</span>
         )}
       </h2>
       <Cards
         items={group.items}
-        look={look.line}
+        distance={look.distance}
         scope={scope}
         dateInHeading={group.exact}
         late={group.tone === "late"}
-        far={look.distance >= 3}
       />
     </section>
   );
 }
 
-/** A group's items as cards, two to a row from `sm`, one in a narrow column. */
+/**
+ * A group's items as cards, two to a row from `sm`, one in a narrow column.
+ * Each card is the shipped line, laid out for a card: the Task's words in
+ * up to two lines, the Thread's title on its own muted line, the Area and
+ * the date on the last row with the date in the corner, and Complete in the
+ * top corner on hover. Cards in a row share a height. The product would
+ * build this as its own card; the prototype restyles the line in place.
+ */
 function Cards({
   items,
-  look,
+  distance,
   scope,
   columns = 2,
   dateInHeading = false,
   late = false,
-  far = false,
 }: {
   items: BoardItem[];
-  look: LineLook;
+  distance: number;
   scope: BodyProps["scope"];
   columns?: 1 | 2;
   dateInHeading?: boolean;
   late?: boolean;
-  far?: boolean;
 }) {
   return (
     <ul
       className={cn(
         "grid grid-cols-1 pt-1",
-        far ? "gap-1.5" : "gap-2",
+        distance >= 3 ? "gap-1.5" : "gap-2",
         columns === 2 && "sm:grid-cols-2",
       )}
     >
       {items.map((item) => (
-        <li key={itemKey(item)}>
-          <div
-            className={cn(
-              "h-full rounded-xl bg-surface-2 px-1",
-              far && "bg-surface-2/60",
-              late &&
-                "bg-[color-mix(in_oklab,var(--condition-attention)_9%,var(--color-surface-2))] ring-1 ring-condition-attention/30",
-            )}
-          >
-            <DashboardLine
-              dateInHeading={dateInHeading}
-              item={item}
-              look={look}
-              scope={scope}
-            />
-          </div>
+        <li key={itemKey(item)} className={cn(CARD, late && LATE_CARD)}>
+          <DashboardLine
+            dateInHeading={dateInHeading}
+            item={item}
+            look={cardLooks[Math.min(distance, cardLooks.length - 1)]!}
+            scope={scope}
+          />
         </li>
       ))}
     </ul>
   );
 }
+
+/** The line, restyled from outside into a card. */
+const CARD = cn(
+  // The copy wrapper and the line fill the cell, so a row's cards match.
+  "[&_[data-slot=thread-copy]]:h-full",
+  "[&_div.grid]:h-full [&_div.grid]:grid-rows-[auto_1fr] [&_div.grid]:rounded-xl [&_div.grid]:bg-surface-2 [&_div.grid]:px-3 [&_div.grid]:hover:bg-surface-3",
+  // The last row, Area and date, sits at the foot.
+  "[&_div.grid>div:last-child]:self-end [&_div.grid>div:last-child]:pt-1",
+  // The Task's words clamp to two lines; the Thread's title gets its own line.
+  "[&_p]:line-clamp-none [&_p]:pr-7 [&_p>span:first-child]:line-clamp-2",
+  "[&_p>span:not(:first-child)]:block [&_p>span:not(:first-child)]:truncate [&_p>span:not(:first-child)]:pt-0.5 [&_p>span:not(:first-child)>span[aria-hidden]]:hidden",
+  // Complete moves to the top corner, so the date keeps the bottom one.
+  "[&_button[aria-label^=Complete]]:absolute [&_button[aria-label^=Complete]]:top-2 [&_button[aria-label^=Complete]]:right-2",
+);
+
+const LATE_CARD = cn(
+  "[&_div.grid]:bg-[color-mix(in_oklab,var(--condition-attention)_8%,var(--color-surface-2))] [&_div.grid]:ring-1 [&_div.grid]:ring-condition-attention/25",
+  "[&_div.grid]:hover:bg-[color-mix(in_oklab,var(--condition-attention)_12%,var(--color-surface-2))]",
+);
+
+/**
+ * A card's type at each distance: smaller and lighter than the full-width
+ * line's, since a card is half as wide. Late and Today lead at 15px medium.
+ */
+const cardLooks: LineLook[] = [
+  {
+    frame: "py-2.5 text-[15px] text-foreground",
+    task: "font-medium",
+    detail: "text-xs",
+  },
+  {
+    frame: "py-2 text-sm text-foreground",
+    task: "font-medium",
+    detail: "text-xs",
+  },
+  {
+    frame: "py-2 text-[13px] text-foreground/90",
+    task: "font-medium",
+    detail: "text-xs",
+  },
+  {
+    frame:
+      "py-2 text-[13px] text-foreground/75 hover:text-foreground has-focus-visible:text-foreground",
+    task: "font-normal",
+    detail: "text-xs",
+  },
+  {
+    frame:
+      "py-1.5 text-xs text-foreground/60 hover:text-foreground has-focus-visible:text-foreground",
+    task: "font-normal",
+    detail: "text-[11px]",
+  },
+];
 
 /** Later folded at the foot as it ships: its count, when the next is due, the first two. */
 function LaterFold({
