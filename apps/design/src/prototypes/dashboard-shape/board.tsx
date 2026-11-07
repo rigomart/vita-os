@@ -130,7 +130,11 @@ export function ShapeBoard({
   );
 }
 
-/** A band's count, large enough to read before any title. */
+/**
+ * A band's count, large enough to read before any title. Always in neutral
+ * ink, Late's too: a coloured overdue count is the pressure the thesis keeps
+ * out. Only the word Late carries the attention colour, as it ships.
+ */
 export function BandCount({
   band,
   className,
@@ -138,13 +142,11 @@ export function BandCount({
   band: Band;
   className?: string;
 }) {
-  const late = band.key === "late" && band.items.length > 0;
   return (
     <span
       className={cn(
         "font-heading font-semibold tabular-nums",
         band.items.length === 0 && "text-muted-foreground/40",
-        late && "text-condition-attention",
         className,
       )}
     >
