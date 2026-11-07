@@ -187,7 +187,8 @@ The product narrowed from its first direction through daily use. [`docs/product-
 
 Ordered by how directly they serve the thesis. None is committed; each needs a spec before work starts.
 
-1. **Cross-device freshness stays parked** (issue #342) until normal use shows that refresh on focus is not enough.
+1. **Every Dashboard item a card** (spec #533, ADR 0055 proposed), so how much is asking is seen before it is read.
+2. **Cross-device freshness stays parked** (issue #342) until normal use shows that refresh on focus is not enough.
 
 Reaching Resolved Threads again, once an open direction, shipped as the palette's History (ADR 0029), which now holds Archived Notes too (ADR 0031).
 
