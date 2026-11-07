@@ -120,13 +120,13 @@ The Dashboard lays every Open Thread and every dated open Standalone Note on one
 - **Later**: the weeks and months, folded at the foot of the list to one line naming how many, when the next comes, and the first two. Opened, they read small and faint, there to be known about rather than read.
 - **No date**: **Ready to move** (Threads whose Tasks are all undated), **Open** (Threads with no Tasks). Undated Notes are not here: they ask for nothing, and the Notes filter lists them. On a wide screen it sits beside the list; on a phone it leads the list, folded to one line.
 
-Placement is derived from dates and from whether a Thread has Tasks. A Thread sits at its soonest dated Task; a Standalone Note sits at its Follow-up date. The user never sets a status. A date outranks undated Tasks, so a Thread whose Tasks are all undated leads No date and is never Late or Today. Nothing is capped: Later and the folded No date hide lines, never that they exist.
+Placement is derived from dates and from whether a Thread has Tasks. A Thread sits at its soonest dated Task; a Standalone Note sits at its Follow-up date. The user never sets a status. A date outranks undated Tasks, so a Thread whose Tasks are all undated leads No date and is never Late or Today. Nothing is capped: Later and the folded No date hide cards, never that they exist.
 
-Every item is a line under its day's heading, and the nearer a day, the larger and darker it reads: what is asking stands out, and what is far off recedes. Above the page, the sky shows the time of day and nothing else.
+Every item is a card under its day's heading, two to a row, and the nearer a day, the larger and darker it reads: what is asking stands out, and what is far off recedes. Above the page, the sky shows the time of day and nothing else.
 
 A filter at the top of the list narrows it to one Area, to unlabeled Threads, or to Notes alone. Notes have no list of their own: the Notes filter is where to read them together, and the only place undated ones show.
 
-The board can act on what it shows. A line completes the Task it displays in one click, and sets, changes, or clears that Task's date and repeat, or adds a "Follow up" Task when it shows no single Task; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
+The board can act on what it shows. A card completes the Task it displays in one click, and sets, changes, or clears that Task's date and repeat, or adds a "Follow up" Task when it shows no single Task; a Note can be archived or given a date. Everything else happens in Thread detail, which opens in place over the board.
 
 The intended loop takes one to two minutes:
 
@@ -140,7 +140,7 @@ Open the Dashboard → read Late and Today → handle or reschedule what is aski
 
 1. **Capture asks nothing.** A Thread needs a title. A Note needs a body. Area, Tasks, dates, and Summary are optional and can come later.
 2. **Derive, never ask.** Attention comes from dates and Tasks. The user does not maintain statuses, conditions, or priorities.
-3. **The app never invents a priority.** Capture order is not rank. If several Tasks exist, the line counts them rather than picking one.
+3. **The app never invents a priority.** Capture order is not rank. If several Tasks exist, the card counts them rather than picking one.
 4. **Dates are soft.** A date means "bring this back", not "due". There are no deadlines.
 5. **Colour belongs to time.** Lateness is the only thing the board colours. Areas are neutral.
 6. **Reading is not handling.** Opening a Thread never clears a Task's date. The user clears, reschedules, completes, or resolves.
@@ -169,7 +169,7 @@ Resembling another tool is not a test. Task managers have repeats, and repeats p
 | Idea | Verdict | Why |
 | --- | --- | --- |
 | Tasks with a date and repeat (ADR 0032) | In | Brings a rhythm back with no manual reset; missed occurrences collapse. |
-| One-tap "not now, next week" on a line | In | Deferring cheaply is the product. |
+| One-tap "not now, next week" on a card | In | Deferring cheaply is the product. |
 | A recap when a Thread is opened after weeks away | In | Restores context. |
 | "Last touched N months ago" on a Thread | Only if neutral | Plain information passes; a warning colour pressures. |
 | Priority levels | Out | Ranks the doing; the list already says what is asking. |

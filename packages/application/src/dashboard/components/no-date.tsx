@@ -3,10 +3,10 @@ import { ChevronDown } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import type { AttentionBoard } from "./attention-board-model";
-import type { BoardScope } from "./dashboard-line";
+import type { BoardScope } from "./dashboard-card";
 
 import { itemKey, unscheduledRuns } from "./attention-board-model";
-import { DashboardLine } from "./dashboard-line";
+import { DashboardCard } from "./dashboard-card";
 import {
   CURSOR_SCROLL_MARGIN,
   foldedSummary,
@@ -15,7 +15,7 @@ import {
 } from "./dashboard-list-model";
 
 /**
- * What has no date, under one heading, in three runs of lines like the
+ * What has no date, under one heading, in three runs of cards like the
  * list's: Ready to move, Open, Notes. From `lg` it sits beside the list,
  * pinned as the page scrolls.
  */
@@ -115,14 +115,14 @@ function Runs({ board, scope }: { board: AttentionBoard; scope: BoardScope }) {
           {run.items.length}
         </span>
       </h3>
-      <ul className="-mx-1.5">
+      <ul className="flex flex-col gap-1.5 pt-0.5">
         {run.items.map((item) => (
           <li
             key={itemKey(item)}
             data-cursor-item={itemKey(item)}
             className={CURSOR_SCROLL_MARGIN}
           >
-            <DashboardLine
+            <DashboardCard
               dateInHeading={false}
               item={item}
               look={NO_DATE_LOOK}

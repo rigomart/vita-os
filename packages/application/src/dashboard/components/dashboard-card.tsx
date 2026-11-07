@@ -15,7 +15,7 @@ import { ListTodo, Repeat as RepeatIcon } from "lucide-react";
 
 import type { ProductSearch } from "../../navigation/search-params";
 import type { BoardItem } from "./attention-board-model";
-import type { LineLook } from "./dashboard-list-model";
+import type { CardLook } from "./dashboard-list-model";
 
 import { AreaIcon } from "../../areas/components/area-icon";
 import { repeatLabel, taskDateLabels } from "../../attention-list";
@@ -44,9 +44,6 @@ import {
 } from "./line-controls";
 import { ThreadCopy } from "./thread-copies";
 
-/** The non-breaking space keeps the dot on the Thread's title when it wraps. */
-const SEPARATOR_KEPT_WITH_TITLE = " ·\u00a0";
-
 export interface BoardScope {
   areaById: ReadonlyMap<string, AreaSummary>;
   currentDate: number;
@@ -54,17 +51,17 @@ export interface BoardScope {
 }
 
 /**
- * One item on the Dashboard. `look` sizes and inks it by how near its group
- * is. The whole line opens the Thread or the Note.
+ * One item on the Dashboard, as a card. `look` sizes and inks it by how near
+ * its group is. The whole card opens the Thread or the Note.
  *
- * On the list a Thread's copy reads its Task, then the Thread's title, muted.
- * In No date the Thread's title leads, then its only Task or how many it has,
- * because the line must not invent a headline the person never chose. Every
- * control acts on the Task the line names (`lineTask`) and no other; a No date
- * line naming no single Task offers no Complete, and a date set there adds a
- * Task named "Follow up" with it.
+ * On the list a Thread's copy reads its Task, then the Thread's title on its
+ * own muted line. In No date the Thread's title leads, then its only Task or
+ * how many it has, because the card must not invent a headline the person
+ * never chose. Every control acts on the Task the card names (`lineTask`) and
+ * no other; a No date card naming no single Task offers no Complete, and a
+ * date set there adds a Task named "Follow up" with it.
  */
-export function DashboardLine({
+export function DashboardCard({
   dateInHeading,
   item,
   look,
@@ -73,7 +70,7 @@ export function DashboardLine({
   /** The group's heading names this item's day, so only a time is shown. */
   dateInHeading: boolean;
   item: BoardItem;
-  look: LineLook;
+  look: CardLook;
   scope: BoardScope;
 }) {
   if (item.kind === "note") {
@@ -87,7 +84,7 @@ export function DashboardLine({
     );
   }
   return (
-    <ThreadCopy thread={item.thread} className="rounded-lg">
+    <ThreadCopy thread={item.thread} className="h-full rounded-xl">
       <ThreadLine
         dateInHeading={dateInHeading}
         look={look}
@@ -107,7 +104,7 @@ function ThreadLine({
   thread,
 }: {
   dateInHeading: boolean;
-  look: LineLook;
+  look: CardLook;
   scope: BoardScope;
   task?: Task;
   thread: Thread;
@@ -147,7 +144,7 @@ function ThreadLine({
         ...previous,
         thread: thread.slug,
       })}
-      className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
+      className="outline-none after:absolute after:inset-0 after:rounded-xl after:content-['']"
     >
       {thread.title}
     </Link>
@@ -163,8 +160,9 @@ function ThreadLine({
     );
 
   return (
-    <LineFrame
+    <CardFrame
       busy={busy}
+      late={isLate(lead?.date, scope.currentDate)}
       look={look}
       marker={
         lead === undefined ? (
@@ -176,15 +174,19 @@ function ThreadLine({
         )
       }
       words={
-        <p className="line-clamp-2 @md:line-clamp-1">
-          <span className={look.task}>{first}</span>
+        <>
+          <p className={cn("line-clamp-2", look.task)}>{first}</p>
           {second && (
-            <span className={cn("text-muted-foreground", look.detail)}>
-              <span aria-hidden>{SEPARATOR_KEPT_WITH_TITLE}</span>
+            <p
+              className={cn(
+                "truncate pt-0.5 text-muted-foreground",
+                look.detail,
+              )}
+            >
               {second}
-            </span>
+            </p>
           )}
-        </p>
+        </>
       }
       detail={
         area ? (
@@ -240,7 +242,7 @@ function NoteLine({
   scope,
 }: {
   dateInHeading: boolean;
-  look: LineLook;
+  look: CardLook;
   note: Note;
   scope: BoardScope;
 }) {
@@ -267,8 +269,9 @@ function NoteLine({
   const repeats = when !== undefined && note.repeat !== undefined;
 
   return (
-    <LineFrame
+    <CardFrame
       busy={busy}
+      late={isLate(when, scope.currentDate)}
       look={look}
       marker={<NoteMarker />}
       words={
@@ -276,7 +279,7 @@ function NoteLine({
           type="button"
           aria-label={`Open note: ${markdownToPlainText(note.body).slice(0, 120)}`}
           onClick={() => scope.onOpenNote(note)}
-          className="line-clamp-2 text-left outline-none after:absolute after:inset-0 after:rounded-lg @md:line-clamp-1"
+          className="line-clamp-2 text-left outline-none after:absolute after:inset-0 after:rounded-xl"
         >
           {itemTitle({ kind: "note", note })}
         </button>
@@ -315,11 +318,12 @@ function NoteLine({
   );
 }
 
-function LineFrame({
+function CardFrame({
   busy,
   controls,
   date,
   detail,
+  late,
   look,
   marker,
   showsDate,
@@ -329,7 +333,8 @@ function LineFrame({
   controls: ReactNode;
   date: ReactNode;
   detail?: ReactNode;
-  look: LineLook;
+  late: boolean;
+  look: CardLook;
   marker?: ReactNode;
   showsDate: boolean;
   words: ReactNode;
@@ -338,19 +343,21 @@ function LineFrame({
     <div
       aria-busy={busy || undefined}
       className={cn(
-        "group/card relative grid grid-cols-[0.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-0.5 rounded-lg px-2.5 leading-snug transition-colors hover:bg-muted/50",
+        "group/card relative grid h-full grid-cols-[0.75rem_minmax(0,1fr)] grid-rows-[auto_1fr] gap-x-2.5 gap-y-0.5 rounded-xl px-3 leading-snug transition-colors",
+        late
+          ? "bg-[color-mix(in_oklab,var(--condition-attention)_8%,var(--color-surface-2))] ring-1 ring-condition-attention/25 ring-inset hover:bg-[color-mix(in_oklab,var(--condition-attention)_12%,var(--color-surface-2))]"
+          : "bg-surface-2 hover:bg-surface-3",
         focusRing,
-        "has-focus-visible:bg-muted/60",
         look.frame,
       )}
     >
       <span aria-hidden className="flex h-lh items-center justify-center">
         {marker}
       </span>
-      <div className="min-w-0">{words}</div>
+      <div className="min-w-0 pr-7">{words}</div>
       <div
         className={cn(
-          "col-start-2 flex min-h-5 items-center gap-2.5 text-muted-foreground",
+          "col-start-2 flex min-h-5 items-center gap-2.5 self-end pt-1 text-muted-foreground",
           look.detail,
         )}
       >
@@ -365,9 +372,11 @@ function LineFrame({
           )}
         >
           {date}
-          <span className="flex items-center gap-1">{controls}</span>
         </span>
       </div>
+      <span className="absolute top-2 right-2 flex items-center gap-1">
+        {controls}
+      </span>
     </div>
   );
 }

@@ -484,7 +484,7 @@ describe("DashboardOverview", () => {
     expect(screen.getByRole("button", { name: /^Later/ })).toBeVisible();
   });
 
-  it("shows items from next week on as the same lines, opening what they are", () => {
+  it("shows items from next week on as the same cards, opening what they are", () => {
     renderOverview({
       threads: [thread("Distant", { followUp: today + 30 * DAY })],
       notes: [
@@ -517,7 +517,7 @@ describe("DashboardOverview", () => {
       ".?thread=distant",
     );
     expect(within(month).getByRole("listitem")).toHaveTextContent(
-      /^Task: Follow up · DistantHealthAug 16$/,
+      /^Task: Follow upDistantHealthAug 16$/,
     );
   });
 
@@ -658,7 +658,7 @@ describe("DashboardOverview", () => {
 
     const sunday = screen.getByRole("region", { name: "Sunday" });
     const checkup = within(card("Checkup"));
-    expect(card("Checkup")).toHaveTextContent(/^Task: Book the scan · Checkup/);
+    expect(card("Checkup")).toHaveTextContent(/^Task: Book the scanCheckup/);
     expect(checkup.getByRole("link", { name: "Checkup" })).toBeVisible();
     expect(screen.queryByText("Pick a clinic")).toBeNull();
     expect(within(sunday).getAllByRole("listitem")).toHaveLength(1);
@@ -688,8 +688,8 @@ describe("DashboardOverview", () => {
     const todayGroup = screen.getByRole("region", { name: "Today" });
     const [morning, evening] = within(todayGroup).getAllByRole("listitem");
     expect(within(todayGroup).getAllByRole("listitem")).toHaveLength(2);
-    expect(morning).toHaveTextContent(/^Task: Morning check · Recovery/);
-    expect(evening).toHaveTextContent(/^Task: Evening check · Recovery/);
+    expect(morning).toHaveTextContent(/^Task: Morning checkRecovery/);
+    expect(evening).toHaveTextContent(/^Task: Evening checkRecovery/);
     expect(
       within(morning!).getByRole("button", {
         name: "Complete “Morning check”",
@@ -706,7 +706,7 @@ describe("DashboardOverview", () => {
       within(screen.getByRole("region", { name: "In 1 week" })).getByRole(
         "listitem",
       ),
-    ).toHaveTextContent(/^Task: Plan the week · RecoveryHealth7d$/);
+    ).toHaveTextContent(/^Task: Plan the weekRecoveryHealth7d$/);
   });
 
   it("rings every copy of a Thread while one is hovered or focused, and never a Thread that stands once", async () => {

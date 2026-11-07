@@ -1,6 +1,6 @@
 # No date as lines
 
-**Status:** Accepted. Amends [ADR 0045](./0045-the-list-graded-by-attention.md) (No date kept its cards) and supersedes what was left of [ADR 0038](./0038-board-cards-as-sheets.md) (cards as sheets).
+**Status:** Accepted. Amends [ADR 0045](./0045-the-list-graded-by-attention.md) (No date kept its cards) and supersedes what was left of [ADR 0038](./0038-board-cards-as-sheets.md) (cards as sheets). Amended by [ADR 0055](./0055-every-dashboard-item-a-card.md): No date's runs are cards in one column.
 **Date:** 2026-10-20
 
 ADR 0045 turned the list into ruled headings over lines and left No date with its cards. The Dashboard then held two designs side by side: lines on the left, bordered sheets on the right, each with its own type, spacing, markers and controls.

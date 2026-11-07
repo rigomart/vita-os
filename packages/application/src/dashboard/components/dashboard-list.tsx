@@ -3,10 +3,10 @@ import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 import type { AttentionBoard, BoardGroup } from "./attention-board-model";
-import type { BoardScope } from "./dashboard-line";
+import type { BoardScope } from "./dashboard-card";
 
 import { groupByWhen, itemKey } from "./attention-board-model";
-import { DashboardLine } from "./dashboard-line";
+import { DashboardCard } from "./dashboard-card";
 import {
   CURSOR_SCROLL_MARGIN,
   foldedSummary,
@@ -18,7 +18,7 @@ import { dateToken } from "./dashboard-model";
 /**
  * Every dated item in one list, what is asking first: Late, Today, then each
  * day of the week. A Thread stands once per dated Task, under the day it is
- * about. Each group is a ruled heading over its items' lines, the date's
+ * about. Each group is a ruled heading over its items' cards, two to a row, the date's
  * number first when it names one day. The nearer a group, the larger and
  * darker it reads.
  *
@@ -100,17 +100,22 @@ function Group({ group, scope }: { group: BoardGroup; scope: BoardScope }) {
           <span className="text-xs text-muted-foreground/70">{group.hint}</span>
         )}
       </h2>
-      <ul className="-mx-1.5">
+      <ul
+        className={cn(
+          "grid grid-cols-1 pt-1 sm:grid-cols-2",
+          look.distance >= 3 ? "gap-1.5" : "gap-2",
+        )}
+      >
         {group.items.map((item) => (
           <li
             key={itemKey(item)}
             data-cursor-item={itemKey(item)}
             className={CURSOR_SCROLL_MARGIN}
           >
-            <DashboardLine
+            <DashboardCard
               dateInHeading={group.exact}
               item={item}
-              look={look.line}
+              look={look.card}
               scope={scope}
             />
           </li>

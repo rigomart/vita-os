@@ -6,7 +6,7 @@ import type { BoardGroup, BoardItem } from "./attention-board-model";
  * How a group of the Dashboard's list reads, by how far it stands from today:
  * 0 is Late and Today, 1 Tomorrow, 2 two or three days out, 3 the rest of the
  * week, 4 the weeks after it, 5 the months. Every group is a ruled heading
- * over lines; the nearer it is, the larger, bolder and darker both read, with
+ * over cards; the nearer it is, the larger, bolder and darker both read, with
  * more room around them, so what is asking stands out and what is far off
  * recedes.
  */
@@ -21,16 +21,16 @@ export interface GroupLook {
     numeral: string;
     label: string;
   };
-  line: LineLook;
+  card: CardLook;
 }
 
-/** How each item's line reads at a group's distance. */
-export interface LineLook {
-  /** The line's room, type size and ink. */
+/** How each item's card reads at a group's distance. */
+export interface CardLook {
+  /** The card's room, type size and ink. */
   frame: string;
-  /** The first row: what the line names. */
+  /** The first words: what the card names. */
   task: string;
-  /** Ink for the muted words after the first and for the second row. */
+  /** Type size for the muted line under them and for the foot. */
   detail: string;
 }
 
@@ -81,37 +81,37 @@ const headings: GroupLook["heading"][] = [
   },
 ];
 
-const lines: LineLook[] = [
+const cards: CardLook[] = [
   {
-    frame: "py-2 text-base text-foreground",
-    task: "font-semibold",
-    detail: "text-[13px]",
-  },
-  {
-    frame: "py-1.5 text-sm text-foreground",
+    frame: "py-2.5 text-[15px] text-foreground",
     task: "font-medium",
     detail: "text-xs",
   },
   {
-    frame: "py-1.5 text-[13px] text-foreground/90",
+    frame: "py-2 text-sm text-foreground",
+    task: "font-medium",
+    detail: "text-xs",
+  },
+  {
+    frame: "py-2 text-[13px] text-foreground/90",
     task: "font-medium",
     detail: "text-xs",
   },
   {
     frame:
-      "py-1.5 text-[13px] text-foreground/75 hover:text-foreground has-focus-visible:text-foreground",
+      "py-2 text-[13px] text-foreground/75 hover:text-foreground has-focus-visible:text-foreground",
     task: "font-normal",
     detail: "text-xs",
   },
   {
     frame:
-      "py-1 text-xs text-foreground/60 hover:text-foreground has-focus-visible:text-foreground",
+      "py-1.5 text-xs text-foreground/60 hover:text-foreground has-focus-visible:text-foreground",
     task: "font-normal",
     detail: "text-[11px] opacity-70",
   },
   {
     frame:
-      "py-1 text-xs text-foreground/50 hover:text-foreground has-focus-visible:text-foreground",
+      "py-1.5 text-xs text-foreground/50 hover:text-foreground has-focus-visible:text-foreground",
     task: "font-normal",
     detail: "text-[11px] opacity-70",
   },
@@ -138,13 +138,13 @@ export function groupLook(group: BoardGroup): GroupLook {
 
 /** How a group reads at `distance`, whatever it holds. */
 export function lookAt(distance: number): GroupLook {
-  return { distance, heading: headings[distance]!, line: lines[distance]! };
+  return { distance, heading: headings[distance]!, card: cards[distance]! };
 }
 
 export const LATER_LOOK = lookAt(3);
 
-/** No date's lines read like the soon group's: nothing there is late, nothing is far off. */
-export const NO_DATE_LOOK = lookAt(2).line;
+/** No date's cards read like the soon group's: nothing there is late, nothing is far off. */
+export const NO_DATE_LOOK = lookAt(2).card;
 
 /** Clearance for the sticky filter above and the phone action bar below. */
 export const CURSOR_SCROLL_MARGIN = "scroll-mt-24 scroll-mb-24";
